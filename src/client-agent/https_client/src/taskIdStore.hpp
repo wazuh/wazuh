@@ -15,7 +15,7 @@
 #include <string>
 
 /**
- * @brief Seam onto the durable, restart-surviving task_id registry (#37833).
+ * @brief Seam onto the durable, restart-surviving task_id registry.
  *
  * Replaces the in-memory TaskDeduper (retired): the concrete implementation
  * (TaskIdStoreAdapter) round-trips through the C bridge to agent-info's
@@ -24,8 +24,8 @@
  *
  * checkAndRecord() is called synchronously on the control thread, once per
  * fresh task_id, BEFORE task batch planning/collapsing and BEFORE dispatch:
- * this is what makes a remote_upgrade idempotent across the restart it
- * itself triggers (04/#37833's ordering guarantee that #37834 depends on).
+ * this ordering guarantee is what makes a remote_upgrade idempotent across
+ * the restart it itself triggers.
  */
 class ITaskIdStore
 {

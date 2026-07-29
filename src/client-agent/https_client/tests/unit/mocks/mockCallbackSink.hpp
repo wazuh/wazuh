@@ -31,6 +31,9 @@ class MockCallbackSink : public ICallbackSink
                     (const std::string& taskId, const std::string& wpkFile,
                      std::shared_ptr<SpoolFile> file, const std::string& installer),
                     (override));
+        MOCK_METHOD(void, onTaskFailed,
+                    (const std::string& taskId, const std::string& taskType, const std::string& reason),
+                    (override));
         MOCK_METHOD(void, onManagerConfigHash, (const std::string& configHash), (override));
         MOCK_METHOD(void, onSyncResponse,
                     (const std::string& sessionId, int result, const std::string& body), (override));

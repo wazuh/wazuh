@@ -42,9 +42,8 @@ namespace
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
 
-    /// The group whose merged config /download serves. The spec's example uses
-    /// a single group name while agents can belong to several (open question
-    /// on #37733); until that settles, the first reported group is used.
+    /// The group whose merged config /download serves. Agents can belong to several groups;
+    /// until multi-group reporting settles, the first reported group is used.
     std::string firstGroup(const nlohmann::json& agent)
     {
         const auto groups = agent.find("groups");
@@ -59,8 +58,8 @@ namespace
     }
 
     /// The Notify batch after dedup: fresh, identifiable tasks only.
-    /// Deliberately deduped BEFORE planning, against the DURABLE registry
-    /// (#37833), so a task dropped as redundant by planTaskBatch is still
+    /// Deliberately deduped BEFORE planning, against the DURABLE registry,
+    /// so a task dropped as redundant by planTaskBatch is still
     /// marked seen (recorded before this function returns) and an
     /// at-least-once redelivery -- even across a restart, notably the one a
     /// remote_upgrade itself triggers -- stays dropped.
@@ -85,7 +84,7 @@ namespace
             // problem, which is the level buffer.c uses for the same thing.
             if (taskId.empty())
             {
-                // Every task carries a task_id (#37733 5.1.2), so one without
+                // Every task carries a task_id, so one without
                 // is a manager-side defect: it can be neither deduped nor
                 // acknowledged, and dropping it silently would leave a future
                 // reader with no way to tell it ever arrived.
@@ -131,11 +130,16 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
 {
 }
 
+ControlStream::~ControlStream()
+{
+    joinUpgradeWork();
+}
+
 bool ControlStream::step(Waiter& waiter)
 {
     // The 401 pause converges the machine to AUTH_ERROR from the control
     // thread only (whichever stream saw the first 401 woke this loop); once a
-    // new key clears the pause, recover and re-register. #37828.
+    // new key clears the pause, recover and re-register.
     if (m_authGate.paused())
     {
         applyEffects(m_machine.onEvent(ControlStateMachine::Event::AuthFailed), {});
@@ -166,10 +170,10 @@ bool ControlStream::step(Waiter& waiter)
 
 void ControlStream::drainStep(Waiter& waiter)
 {
-    // 5.1.3 (#37733): a graceful stop sends a bare shutdown so the manager
-    // marks the agent disconnected immediately (the successor of the legacy
-    // #!-agent shutdown). It never mutates the machine (already heading to
-    // Stopping) and handles no body.
+    // A graceful stop sends a bare shutdown so the manager marks the agent
+    // disconnected immediately (the successor of the legacy agent shutdown
+    // notice). It never mutates the machine (already heading to Stopping)
+    // and handles no body.
     sendShutdown(waiter);
 }
 
@@ -179,7 +183,7 @@ void ControlStream::sendShutdown(Waiter& waiter)
     // Operational visibility (send-time debug log, mirroring sendStartup()/
     // sendNotify() below): confirms the send was actually attempted, so a log
     // reader can tell "never attempted" from "attempted and failed" without
-    // needing source-level reasoning (finding 3, #37831 QA round).
+    // needing source-level reasoning.
     LOGFN_DEBUG2(m_logFn, "Sending /control shutdown.");
 
     // Best-effort within the drain window (drain_timeout_ms): a single attempt,
@@ -211,7 +215,7 @@ bool ControlStream::isRegistered() const
 
 OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 {
-    // 5.1.1 (#37733): the startup request carries only the discriminator and
+    // The startup request carries only the discriminator and
     // the agent version; hashes travel in the Notify response.
     nlohmann::json request;
     request["type"] = "startup";
@@ -226,9 +230,9 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
     if (result.outcome == OutcomeClass::Ok)
     {
         // settings_hash baseline: SHA-256 over the exact response bytes. The
-        // manager must hash the serialization it sends (team question on
-        // #37733); the refresh latch below degrades a mismatch to a one-time
-        // warning instead of a startup storm.
+        // manager must hash the serialization it sends; the refresh latch
+        // below degrades a mismatch to a one-time warning instead of a
+        // startup storm.
         m_settingsHash = sha256Hex(result.response.body.data(), result.response.body.size());
         applyClusterIdentity(result.response.body);
     }
@@ -252,7 +256,7 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
 OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 {
-    // 5.1.2 (#37733): the keepalive request is bare; the manager reports the
+    // The keepalive request is bare; the manager reports the
     // hashes and tasks in the response.
     const std::string body = R"({"type":"notify"})";
 
@@ -287,7 +291,7 @@ void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
 
 void ControlStream::applyClusterIdentity(const std::string& startupBody)
 {
-    // #37733: the manager owns the cluster identity. Overwrite unconditionally
+    // The manager owns the cluster identity. Overwrite unconditionally
     // — a missing/malformed cluster block clears the local value rather than
     // leaving a stale one, so /stats and /config tag data with the cluster the
     // manager actually recognizes.
@@ -330,7 +334,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         const std::string managerHash = jsonField(*agent, "config_hash");
         // Reported on every notify, matching or not: the agent's startup hash
         // gate waits on the manager-validated configuration and, when the
-        // hashes already agree, no download fires to tell it so (#37854).
+        // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
         maybeDownloadConfig(managerHash, firstGroup(*agent), waiter);
     }
@@ -408,7 +412,7 @@ void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& 
     {
         if (task.type == "remote_upgrade")
         {
-            // #37834: the WPK download/verify needs this module's own HTTP
+            // The WPK download/verify needs this module's own HTTP
             // machinery, so it cannot be handed off through the generic
             // on_task callback (which must not call back into hc_*
             // functions). Its task_id is already durably recorded (above,
@@ -430,6 +434,7 @@ void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
     {
         LOGFN_WARN(m_logFn, "remote_upgrade task %s has a malformed payload; aborting "
                    "(no /control response is sent).", task.id.c_str());
+        m_sink.onTaskFailed(task.id, task.type, "malformed payload");
         return;
     }
 
@@ -441,17 +446,48 @@ void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
     {
         LOGFN_WARN(m_logFn, "remote_upgrade task %s is missing wpk_file/wpk_sha1/installer; "
                    "aborting.", task.id.c_str());
+        m_sink.onTaskFailed(task.id, task.type, "missing wpk_file/wpk_sha1/installer");
         return;
     }
 
-    auto file = m_wpkFetcher.fetch(wpkFile, wpkSha1, waiter);
-
-    if (!file)
+    // Never block the control loop's own thread on a WPK download: neither handlers nor dedup
+    // IPC may stall the next Notify -- move the download and dispatch onto their own worker
+    // thread, mirroring the existing C-side bridge_upgrade_thread/bridge_control_task_thread
+    // idiom. At most one such thread runs at a time: WpkFetcher/RetrySender keep their own
+    // retry/backoff state and are not safe to call reentrantly from two threads at once, so a
+    // still-running previous upgrade thread is joined first -- rare (two different
+    // remote_upgrade task_ids back to back), and this still processes the new task rather
+    // than silently skipping it (its task_id is already durably recorded by this point;
+    // skipping it here would lose it for good). waiter is m_controlWaiter, safe to capture by
+    // reference: HttpsClientFacade::stop() joins this thread (see joinUpgradeWork()) before it
+    // destroys m_controlWaiter.
+    if (m_upgradeThread.joinable())
     {
-        return; // Already logged by the fetcher (download failure or sha1 mismatch).
+        m_upgradeThread.join();
     }
 
-    m_sink.onUpgradeReady(task.id, wpkFile, std::move(file), installer);
+    m_upgradeThread = std::thread(
+                          [this, taskId = task.id, taskType = task.type, wpkFile, wpkSha1, installer, &waiter]()
+    {
+        auto file = m_wpkFetcher.fetch(wpkFile, wpkSha1, waiter);
+
+        if (!file)
+        {
+            // Already logged by the fetcher (download failure or sha1 mismatch).
+            m_sink.onTaskFailed(taskId, taskType, "WPK download or sha1 verification failed");
+            return;
+        }
+
+        m_sink.onUpgradeReady(taskId, wpkFile, std::move(file), installer);
+    });
+}
+
+void ControlStream::joinUpgradeWork()
+{
+    if (m_upgradeThread.joinable())
+    {
+        m_upgradeThread.join();
+    }
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

@@ -21,7 +21,7 @@ namespace
     /// Few attempts on purpose, matching ConfigFetcher: a WPK is fetched once
     /// per task_id (the durable registry already guarantees that), so there
     /// is no "next notify re-arms it" safety net here -- a failed download
-    /// simply aborts the upgrade (fire-and-forget, #37834).
+    /// simply aborts the upgrade (fire-and-forget).
     constexpr uint32_t WPK_DOWNLOAD_MAX_ATTEMPTS = 2;
 
     std::string lowered(std::string value)

@@ -23,16 +23,15 @@
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
  * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
  * start_agent.c) and hc_set_agent_key(); on_state_change feeds the .state file
- * (client-agent/include/state.h) and, since a QA round against #37831 found
- * WAIT_FILE/os_setwait() had no HTTPS release path either, also clears that
- * producer lock on REGISTERED. on_startup_result applies module limits and
- * cluster-name authority (#37830's own scope), and on_config_downloaded
- * writes/applies merged.mg and releases the startup_gate (#37832's own
- * scope) -- both were previously dev-scaffold stubs despite their issues
- * being merged and closed; see startup_gate_release_from_https_apply()'s own
- * comment for why that release cannot reuse the legacy MD5-based gate
- * machinery. Still pending (later integration workstreams of #37702):
- * retiring the legacy TCP data path this module runs alongside.
+ * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
+ * release path either, also clears that producer lock on REGISTERED.
+ * on_startup_result applies module limits and cluster-name authority, and
+ * on_config_downloaded writes/applies merged.mg and releases the startup_gate
+ * -- both were previously dev-scaffold stubs; see
+ * startup_gate_release_from_https_apply()'s own comment for why that release
+ * cannot reuse the legacy MD5-based gate machinery. Still pending (a later
+ * integration workstream): retiring the legacy TCP data path this module runs
+ * alongside.
  */
 
 #include "https_client_bridge.h"
@@ -48,11 +47,11 @@
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
-#include "task_registry_client.h" /* durable task_id registry client (#37833) */
-#include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command (#37834) */
+#include "task_registry_client.h" /* durable task_id registry client */
+#include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command */
 #include "cJSON.h"
 #include "os_net.h"
-#include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* (#37833) */
+#include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* */
 
 #ifdef WIN32
 /* Declared (not static) in receiver.c; the AR forwarding path below mirrors
@@ -187,15 +186,15 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
 }
 #endif
 
-/* Startup-response parsing (#37830's own "In scope" text: apply module limits
- * and cluster-name authority from the handshake). Deliberately separate,
- * local copies of client-agent/src/start_agent.c's parse_fim_limits()/
+/* Startup-response parsing: applies module limits and cluster-name authority
+ * from the handshake. Deliberately separate, local copies of
+ * client-agent/src/start_agent.c's parse_fim_limits()/
  * parse_syscollector_limits()/parse_sca_limits()/parse_limits() logic rather
  * than calling those functions directly: they are file-static in start_agent.c
- * (legacy handshake code, out of this change's scope per finding 4), and
- * strict-required-field parsing is genuinely what the "limits" sub-object
- * needs (unlike cluster/groups below). Field names/nesting confirmed against
- * the current #37733 contract and the https_client module's own demo mock
+ * (legacy handshake code, out of this module's scope), and strict-required-field
+ * parsing is genuinely what the "limits" sub-object needs (unlike cluster/groups
+ * below). Field names/nesting confirmed against the manager's own contract and
+ * the https_client module's own demo mock
  * manager (https_client/demo/mock_manager.py): {"limits":{"fim":{...},
  * "syscollector":{...},"sca":{...}},"cluster":{"name":...,"node":...},
  * "agent":{"groups":[...]}}. */
@@ -271,10 +270,10 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
     return true;
 }
 
-/* Cluster-name authority (#37830): unlike start_agent.c's parse_cluster_name()/
+/* Cluster-name authority: unlike start_agent.c's parse_cluster_name()/
  * parse_cluster_node() -- which are flat top-level fields and REFUSE an empty
  * value -- the HTTPS contract nests them under "cluster":{"name","node"}, and
- * #37830's own scope explicitly wants an unconditional overwrite, even to
+ * explicitly wants an unconditional overwrite, even to
  * empty/unknown, so a manager that stops reporting identity doesn't leave a
  * stale value behind. Mirrors ControlStream::applyClusterIdentity() (the
  * module's own internal, HTTPS-side copy of this same rule) so the C side's
@@ -340,9 +339,9 @@ static void bridge_apply_agent_groups(const cJSON *root)
     }
 }
 
-/* Received-work callbacks: #37833 wires real routing for the four /control
+/* Received-work callbacks: real routing for the four /control
  * task_types (active_response/agent_restart/agent_reload/remote_upgrade),
- * durable dedup via agent-info (task_registry_client.c) and #37834 wires the
+ * durable dedup via agent-info (task_registry_client.c), and the
  * remote_upgrade download/verify/install seam. */
 static void bridge_on_startup_result(bool accepted, const char *metadata_json, void *user_data)
 {
@@ -361,7 +360,7 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
         return;
     }
 
-    /* #37830 "In scope": apply module limits into the existing exposure paths
+    /* Apply module limits into the existing exposure paths
      * (agent_module_limits, read by FIM/syscollector/SCA the same way the
      * legacy handshake feeds them) and reload under <auto_restart> only when
      * the limits actually changed -- mirrors start_agent.c's
@@ -431,7 +430,7 @@ static agent_status_t bridge_map_agent_status(int hc_state)
     }
 }
 
-/* Synchronous ITaskIdStore backing (#37833): fires on the CONTROL thread
+/* Synchronous ITaskIdStore backing: fires on the CONTROL thread
  * (collectFreshTasks, controlStream.cpp), once per fresh task_id, BEFORE
  * batch planning/dispatch. The round trip to agent-info (task_registry_
  * client.c: a local socket hop to wazuh-modulesd on Linux/macOS, in-process
@@ -439,9 +438,9 @@ static agent_status_t bridge_map_agent_status(int hc_state)
  * brief delay to the next Notify -- unlike task EXECUTION, which always
  * happens off this thread (inline for the fast AR-forward case, or a
  * dedicated worker thread for restart/reload/remote_upgrade, all below).
- * Fails closed: task_registry_check_and_record() itself already treats an
- * unreachable/erroring registry as "not new", so this only maps its bool
- * onto the callback's tri-state contract and counts the drop. */
+ * Fails closed both for a genuine duplicate and a registry error (do not
+ * dispatch either way), but counts them separately -- a real registry failure
+ * must never be miscounted as a duplicate. */
 static int bridge_check_and_record_task(const char *task_id, void *user_data)
 {
     (void)user_data;
@@ -450,12 +449,17 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
         return -1;
     }
 
-    if (task_registry_check_and_record(task_id)) {
+    switch (task_registry_check_and_record(task_id)) {
+    case TASK_REGISTRY_RESULT_NEW:
         return 1;
+    case TASK_REGISTRY_RESULT_DUPLICATE:
+        w_agentd_state_update(INCREMENT_TASK_DISCARDED_DUPLICATE, NULL);
+        return 0;
+    case TASK_REGISTRY_RESULT_ERROR:
+    default:
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return 0;
     }
-
-    w_agentd_state_update(INCREMENT_TASK_DISCARDED_DUPLICATE, NULL);
-    return 0;
 }
 
 /* active_response: forwards the task's AR document to execd over agt->
@@ -464,10 +468,8 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
  * here there is no legacy header to strip, since the task payload IS the AR
  * document. execd's ExecdRun() (os_execd/src/execd.c) parses plain JSON off
  * that queue, reading wazuh.active_response.{executable,type,
- * stateful_timeout}. #37733's manager-side spike confirmed the real
- * contract (issue #37733, comment
- * https://github.com/wazuh/wazuh/issues/37733#issuecomment-5027414121,
- * "11.1 Active Response"): the task payload is always already the complete
+ * stateful_timeout}. The manager's own contract confirms the task payload is
+ * always already the complete
  * AR document, wrapped as {"wazuh":{"active_response":{...},"agent":{...}},
  * "rule":{...},"data":{...}} -- there is no flat/unwrapped variant in the
  * real contract. So this forwards the whole parsed JSON to execd unchanged
@@ -604,7 +606,20 @@ static void bridge_on_task(const char *task_id, const char *task_type, const cha
     }
 }
 
-/* remote_upgrade (#37834): the WPK is already downloaded and sha1-verified
+/* A task's durable record already happened, but ControlStream determined it will never
+ * reach bridge_on_task()/bridge_on_remote_upgrade_ready() -- malformed payload, or (remote_
+ * upgrade only) a WPK download/sha1 failure. Without this callback that category would go
+ * uncounted, neither dispatched nor failed. */
+static void bridge_on_task_failed(const char *task_id, const char *task_type, const char *reason,
+                                  void *user_data)
+{
+    (void)user_data;
+    merror("https_client: task %s (%s) failed before dispatch: %s",
+           task_id ? task_id : "?", task_type ? task_type : "?", reason ? reason : "?");
+    w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+}
+
+/* remote_upgrade: the WPK is already downloaded and sha1-verified
  * by the time this fires (ControlStream::dispatchUpgradeTask); the task_id
  * is already durably recorded (bridge_check_and_record_task, before this
  * ever fires), which is what makes running the installer here idempotent
@@ -637,7 +652,7 @@ struct bridge_upgrade_ctx {
  * currently a write-only no-op everywhere, not only on Windows -- a pre-existing dead-code
  * observation, out of scope to fix here.) */
 #ifndef WIN32
-/* remote_upgrade (#37834): replicates the legacy manager's first step of the old multi-step
+/* remote_upgrade: replicates the legacy manager's first step of the old multi-step
  * upgrade protocol -- "%.3d com lock_restart -1" (wm_agent_upgrade_send_lock_restart(),
  * wm_agent_upgrade_upgrades.c, manager-side; kept only as a style/error-handling reference, not
  * touched here) -- sent to os_execd's local socket (COM_LOCAL_SOCK) before any WPK work starts,
@@ -869,7 +884,7 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * release path for the common case.
  *
  * The one deliberate difference from receiver.c: the HTTPS /control contract
- * has no merged_sum handshake field (#37733), so there is no later handshake
+ * has no merged_sum handshake field, so there is no later handshake
  * retry to lean on if reloadAgent() cannot even dispatch (control socket
  * unreachable). receiver.c's own fallback ("release inline only if
  * reloadAgent() fails") is mirrored exactly below for that case -- see the
@@ -903,8 +918,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * was computed over -- the SHA-256 recomputed from SHAREDCFG_FILE on the
      * next fresh instance (bridge_build_config()) would then never match the
      * manager's hash, forcing an endless re-download/reload loop (observed
-     * as a real, Windows-only regression during #37831 real-package
-     * validation, 2026-07-28). */
+     * as a real, Windows-only regression during real-package validation). */
     if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
         merror("https_client: could not copy the downloaded configuration into '%s'; "
                "keeping the previously applied one.", SHAREDCFG_FILE);
@@ -1164,7 +1178,7 @@ static int bridge_map_verify_mode(int agent_verify_mode)
     }
 }
 
-/* The AES-CMAC recipe (settled by the manager's resolver, PR #37821): decode
+/* The AES-CMAC recipe (settled by the manager's own resolver): decode
  * client.keys' raw_key verbatim as hex, cipher chosen by byte length
  * (16/24/32 bytes = 32/48/64 hex chars). The module's key provider re-derives
  * the same check lazily at signing time (so a bad key never crashes
@@ -1255,13 +1269,13 @@ static bool bridge_build_config(hc_config_t *config)
     config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
     config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
 
-    /* Bug found during real-package validation of #37831 (2026-07-28): this used to be
+    /* Bug found during real-package validation: this used to be
      * getsharedfiles() (client-agent/src/notify.c), which is an MD5 (OS_MD5_File) -- the legacy
      * merged_sum format. config->config_checksum seeds ConfigHashState's initial value
      * (httpsClientFacade.cpp: m_configHash(m_config.configChecksum)), which is compared
      * byte-for-byte against the manager-reported agent.config_hash on every Notify
      * (controlStream.cpp's maybeDownloadConfig()) -- and that value is a SHA-256 ("SHA256 hash
-     * of group configuration", #37733 OpenAPI; confirmed against configFetcher.cpp/digest.hpp,
+     * of group configuration" per the manager's own contract; confirmed against configFetcher.cpp/digest.hpp,
      * which verify downloads the same way). An MD5 hex string can never equal a SHA-256 hex
      * string, so seeding this from the MD5 guaranteed a mismatch on literally every comparison
      * against this seed, not just the first one -- and while the module's own optimistic
@@ -1327,6 +1341,7 @@ void w_https_client_start(void)
     callbacks.on_task = bridge_on_task;
     callbacks.check_and_record_task = bridge_check_and_record_task;
     callbacks.on_remote_upgrade_ready = bridge_on_remote_upgrade_ready;
+    callbacks.on_task_failed = bridge_on_task_failed;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_sync_response = bridge_on_sync_response;
