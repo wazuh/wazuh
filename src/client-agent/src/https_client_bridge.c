@@ -646,6 +646,13 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
          * session with the same EndAck it always has, so the module parses it
          * unchanged - only the transport that carried it here is different. */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
+
+        if (body_len > SIZE_MAX - header_len - 1) {
+            mdebug2("https_client: sync answer for session '%s' is too large to frame; dropping it.",
+                    session_id);
+            return;
+        }
+
         char *framed = NULL;
         os_malloc(header_len + body_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
