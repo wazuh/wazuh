@@ -123,6 +123,8 @@ table FullSession {
     start: Start;
     batches: [DataBatch];
     contexts: [DataContext];
+    cleans: [DataClean];
+    checksums: [ChecksumModule];
     end: End;
 }
 
