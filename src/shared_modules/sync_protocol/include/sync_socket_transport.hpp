@@ -40,7 +40,12 @@
 class SyncSocketTransport
 {
     public:
-        SyncSocketTransport(std::string socketPath, LoggerFunc logger);
+        /// @param socketPath The agent's queue-sync intake socket.
+        /// @param moduleName Prefixed onto the frame's session id, which is how
+        ///        agentd knows which module's *com socket the manager's answer
+        ///        belongs to - it never parses the session itself.
+        /// @param logger Logger function.
+        SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger);
 
         /// @brief Whether the intake socket is reachable.
         bool checkStatus();
@@ -52,7 +57,13 @@ class SyncSocketTransport
         /// @return True only once the agent confirms it queued the session.
         bool sendSession(uint64_t session, const std::vector<uint8_t>& message);
 
+        /// @brief The id put on the wire for a session: "<module>-<session>".
+        ///        Kept public so the response router can be tested against the
+        ///        exact string the producer sends.
+        std::string frameSessionId(uint64_t session) const;
+
     private:
         std::string m_socketPath;
+        std::string m_moduleName;
         LoggerFunc m_logger;
 };
