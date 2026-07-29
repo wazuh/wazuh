@@ -150,6 +150,14 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 
+# Unix only: on Windows the aggregator dispatches in-process instead of going
+# through the component sockets these wrappers stand in for.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_names "test_agent_report")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+                                -Wl,--wrap,OS_RecvSecureTCP ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
