@@ -36,7 +36,6 @@ typedef struct _global_agent_t {
     uint64_t sync_agent_info_get_queries;
     uint64_t sync_agent_info_set_queries;
     uint64_t update_agent_data_queries;
-    uint64_t update_agent_name_queries;
     uint64_t update_connection_status_queries;
     uint64_t update_status_code_queries;
     uint64_t update_keepalive_queries;
@@ -58,7 +57,6 @@ typedef struct _global_agent_t {
     struct timeval sync_agent_info_get_time;
     struct timeval sync_agent_info_set_time;
     struct timeval update_agent_data_time;
-    struct timeval update_agent_name_time;
     struct timeval update_connection_status_time;
     struct timeval update_status_code_time;
     struct timeval update_keepalive_time;
@@ -210,19 +208,6 @@ void w_inc_global_agent_update_agent_data();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_update_agent_data_time(struct timeval time);
-
-/**
- * @brief Increment update-agent-name global agent queries counter
- *
- */
-void w_inc_global_agent_update_agent_name();
-
-/**
- * @brief Increment update-agent-name global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_update_agent_name_time(struct timeval time);
 
 /**
  * @brief Increment update-keepalive global agent queries counter

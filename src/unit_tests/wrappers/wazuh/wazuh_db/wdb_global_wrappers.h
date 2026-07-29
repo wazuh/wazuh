@@ -15,8 +15,6 @@
 int __wrap_wdb_global_insert_agent(
     wdb_t* wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
 
-int __wrap_wdb_global_update_agent_name(wdb_t* wdb, int id, char* name);
-
 int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            int id,
                                            const char* os_name,
