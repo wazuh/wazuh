@@ -71,17 +71,16 @@
 #include "global-config.h"
 
 /* <remote><https> configuration. Every field defaults to an "unset" sentinel
- * (0/NULL) so an absent <https> block leaves the module's own defaults/env-var
- * fallback untouched. */
+ * (0/NULL) so an absent <https> block leaves the module's own defaults untouched. */
 typedef struct _remoted_https_config {
-    int port;                  ///< 0 -> module default/env
-    char *bind_addr;           ///< NULL -> module default/env
-    char *certificate;         ///< NULL -> module default/env
-    char *key;                 ///< NULL -> module default/env
+    int port;                  ///< 0 -> module default
+    char *bind_addr;           ///< NULL -> module default
+    char *certificate;         ///< NULL -> module default
+    char *key;                 ///< NULL -> module default
     char *ca;                  ///< NULL -> client-certificate verification disabled
     char *ciphers;             ///< NULL -> library default cipher list
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
-    long max_body_size;        ///< bytes; 0 -> module default/env
+    long max_body_size;        ///< bytes; 0 -> module default
     int dual_stack;            ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
 } remoted_https_config;
 
