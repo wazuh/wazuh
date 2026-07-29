@@ -399,6 +399,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_w
                                 -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
 
+list(APPEND shared_tests_names "test_module_report")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
