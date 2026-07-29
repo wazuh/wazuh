@@ -11,10 +11,20 @@
 
 #include <utility>
 
-SyncSocketTransport::SyncSocketTransport(std::string socketPath, LoggerFunc logger)
+SyncSocketTransport::SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger)
     : m_socketPath(std::move(socketPath))
+    , m_moduleName(std::move(moduleName))
     , m_logger(std::move(logger))
 {
+}
+
+std::string SyncSocketTransport::frameSessionId(uint64_t session) const
+{
+    // "<module>-<session>": agentd routes the manager's answer back to the right
+    // module on this prefix, so it never has to parse the session itself. Both
+    // halves stay inside the agent's session-id charset (alphanumerics, '-',
+    // '_', '.'), which is what keeps it safe to put in a request header.
+    return m_moduleName + "-" + std::to_string(session);
 }
 
 #ifndef _WIN32
@@ -123,8 +133,7 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
         return false;
     }
 
-    // Decimal digits only, which is what the agent accepts as a session id.
-    const std::string sessionId = std::to_string(session);
+    const std::string sessionId = frameSessionId(session);
 
     std::vector<uint8_t> header;
     header.reserve(SYNC_FRAME_MAGIC.size() + 4 + sessionId.size() + 8);
