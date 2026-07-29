@@ -46,6 +46,8 @@
 #include "https_client.h"
 #include "sendmsg.h" /* send_msg(): the AG_IN_UNMERGE manager-visible report on unmerge failure */
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
+#include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
+#include "wmodules.h"    /* wmcom_send: the leg for every other module */
 
 static hc_handle *g_https_client = NULL;
 
@@ -578,12 +580,90 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     }
 }
 
-static void bridge_on_sync_response(const char *session_id, int result, const char *body,
-                                    void *user_data)
+/* Maps a producing module to the sync header its *com dispatch expects, and to
+ * whether it lives behind syscheck's socket or the wmodules one. Same split
+ * receiver.c makes for the legacy transport. */
+static const struct {
+    const char *module;
+    const char *header;
+    bool syscheck;
+} SYNC_ROUTES[] = {
+    {"fim",             FIM_SYNC_HEADER,            true},
+    {"syscollector",    SYSCOLECTOR_SYNC_HEADER,    false},
+    {"syscollector_vd", SYSCOLECTOR_VD_SYNC_HEADER, false},
+    {"sca",             SCA_SYNC_HEADER,            false},
+    {"agent-info",      AGENT_INFO_SYNC_HEADER,     false},
+};
+
+/* Session ids arrive as "<module>-<session>". Split on the LAST hyphen, not the
+ * first: "agent-info" contains one of its own, and the session is always
+ * decimal, so the last hyphen is unambiguous. */
+static const char *bridge_module_of_session(const char *session_id, size_t *module_len)
 {
-    (void)body;
+    const char *dash = session_id ? strrchr(session_id, '-') : NULL;
+
+    if (dash == NULL || dash == session_id || dash[1] == '\0') {
+        return NULL;
+    }
+
+    for (const char *digit = dash + 1; *digit; digit++) {
+        if (!isdigit((unsigned char)*digit)) {
+            return NULL;
+        }
+    }
+
+    *module_len = (size_t)(dash - session_id);
+    return session_id;
+}
+
+static void bridge_on_sync_response(const char *session_id, int result, const char *body,
+                                    size_t body_len, void *user_data)
+{
     (void)user_data;
-    mdebug1("https_client /stateful session=%s result=%d", session_id ? session_id : "?", result);
+    mdebug1("https_client /stateful session=%s result=%d (%zu byte answer)",
+            session_id ? session_id : "?", result, body_len);
+
+    if (body == NULL || body_len == 0) {
+        return;
+    }
+
+    size_t module_len = 0;
+    const char *module = bridge_module_of_session(session_id, &module_len);
+
+    if (module == NULL) {
+        mdebug2("https_client: session id '%s' carries no module to answer; dropping the result.",
+                session_id ? session_id : "?");
+        return;
+    }
+
+    for (size_t i = 0; i < sizeof(SYNC_ROUTES) / sizeof(SYNC_ROUTES[0]); i++) {
+        if (strlen(SYNC_ROUTES[i].module) != module_len ||
+            strncmp(module, SYNC_ROUTES[i].module, module_len) != 0) {
+            continue;
+        }
+
+        /* Hand it back exactly as the legacy path does: the manager answers a
+         * session with the same EndAck it always has, so the module parses it
+         * unchanged - only the transport that carried it here is different. */
+        const size_t header_len = strlen(SYNC_ROUTES[i].header);
+        char *framed = NULL;
+        os_malloc(header_len + body_len + 1, framed);
+        memcpy(framed, SYNC_ROUTES[i].header, header_len);
+        memcpy(framed + header_len, body, body_len);
+        framed[header_len + body_len] = '\0';
+
+        if (SYNC_ROUTES[i].syscheck) {
+            ag_send_syscheck(framed, header_len + body_len);
+        } else {
+            wmcom_send(framed, header_len + body_len);
+        }
+
+        os_free(framed);
+        return;
+    }
+
+    mdebug2("https_client: no sync route for module '%.*s'; dropping the result.",
+            (int)module_len, module);
 }
 
 static void bridge_on_state_change(int state, void *user_data)
