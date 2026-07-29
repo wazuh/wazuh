@@ -201,6 +201,11 @@ class AbstractClient(common.Handler):
         self._cancel_payload_deadline()
         if exc is None:
             self.logger.info('The master closed the connection')
+        elif isinstance(exc, (ConnectionResetError, ConnectionAbortedError)):
+            # The peer forcibly closed the connection (e.g. a TCP reset while the master was shutting down).
+            # This is transient and recoverable: the client automatically retries the connection, so it is
+            # logged as a warning instead of an error.
+            self.logger.warning(f"Connection closed by the peer: {exc}. Reconnecting...")
         else:
             self.logger.error(f"Connection closed due to an unhandled error: {exc}\n"
                               f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
@@ -208,6 +213,9 @@ class AbstractClient(common.Handler):
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
         self._cancel_all_tasks()
+
+        if self.server is not None and self.server.client is self:
+            self.server.client = None
 
     def _cancel_all_tasks(self):
         """Cancel all asyncio tasks and clients."""

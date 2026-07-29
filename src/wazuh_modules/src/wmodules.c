@@ -365,13 +365,22 @@ int modulesSync(char* args, size_t length) {
 
         ++retry;
 
-        if (retry > WM_MAX_ATTEMPTS) {
+        // Stop retrying if the agent is shutting down: the target module is being torn down on
+        // purpose, so further attempts would only delay shutdown while always failing.
+        if (retry > WM_MAX_ATTEMPTS || wm_shutdown_requested) {
             break;
         }
     } while (ret != 0);
 
     if (ret) {
-        merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
+        if (wm_shutdown_requested) {
+            // Expected during agent shutdown/restart: a sync command reached a module that was already
+            // stopping. Report it as a debug breadcrumb instead of an error.
+            mdebug1("At modulesSync(): skipping sync for module '%s' (%d): the agent is shutting down.",
+                    cur_module ? cur_module->tag : "", ret);
+        } else {
+            merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
+        }
     }
     return ret;
 }

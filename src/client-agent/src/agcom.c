@@ -133,13 +133,29 @@ error:
  * @return Length of the response string.
  */
 size_t agcom_gethandshake(char **output) {
-    if (agent_cluster_name[0] == '\0') {
+    /* Snapshot the handshake globals under lock: they may be rewritten concurrently by
+     * the connection thread on every reconnect, and agent-info now polls this every cycle
+     * (not just once at startup), so a torn read is no longer a one-time-only risk. */
+    char cluster_name_snapshot[256];
+    char cluster_node_snapshot[256];
+    char agent_groups_snapshot[OS_SIZE_65536];
+
+    w_mutex_lock(&agent_handshake_mutex);
+    strncpy(cluster_name_snapshot, agent_cluster_name, sizeof(cluster_name_snapshot) - 1);
+    cluster_name_snapshot[sizeof(cluster_name_snapshot) - 1] = '\0';
+    strncpy(cluster_node_snapshot, agent_cluster_node, sizeof(cluster_node_snapshot) - 1);
+    cluster_node_snapshot[sizeof(cluster_node_snapshot) - 1] = '\0';
+    strncpy(agent_groups_snapshot, agent_agent_groups, sizeof(agent_groups_snapshot) - 1);
+    agent_groups_snapshot[sizeof(agent_groups_snapshot) - 1] = '\0';
+    w_mutex_unlock(&agent_handshake_mutex);
+
+    if (cluster_name_snapshot[0] == '\0') {
         mdebug1("Cluster name not received yet from manager.");
         os_strdup("err Cluster name not received yet from manager", *output);
         return strlen(*output);
     }
 
-    if (agent_cluster_node[0] == '\0') {
+    if (cluster_node_snapshot[0] == '\0') {
         mdebug1("Cluster node not received yet from manager.");
         os_strdup("err Cluster node not received yet from manager", *output);
         return strlen(*output);
@@ -151,9 +167,9 @@ size_t agcom_gethandshake(char **output) {
     cJSON *root = cJSON_CreateObject();
 
     if (root) {
-        cJSON_AddStringToObject(root, "cluster_name", agent_cluster_name);
-        cJSON_AddStringToObject(root, "cluster_node", agent_cluster_node);
-        cJSON_AddStringToObject(root, "agent_groups", agent_agent_groups);
+        cJSON_AddStringToObject(root, "cluster_name", cluster_name_snapshot);
+        cJSON_AddStringToObject(root, "cluster_node", cluster_node_snapshot);
+        cJSON_AddStringToObject(root, "agent_groups", agent_groups_snapshot);
         json_str = cJSON_PrintUnformatted(root);
         cJSON_Delete(root);
     }

@@ -104,6 +104,11 @@ void *win_module_thread(void *arg)
 
 void stop_wmodules()
 {
+    // Signal the agent-wide shutdown so dispatchers (e.g. modulesSync) skip work
+    // that targets modules already being torn down. On POSIX the modulesd SIGTERM
+    // handler sets this; on Windows shutdown flows through here instead.
+    wm_shutdown_requested = 1;
+
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {

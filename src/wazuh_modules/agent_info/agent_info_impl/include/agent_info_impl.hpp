@@ -25,6 +25,14 @@
 // Returns 0 on success, -1 on error. Response must be freed by caller.
 using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
 
+// Type definition for the handshake query callback function.
+// Queries agentd for fresh cluster_name/cluster_node/agent_groups into the given buffers.
+// Returns true if the query succeeded (buffers may still be empty if legitimately unset).
+using handshake_query_callback_t =
+    std::function<bool(char* cluster_name, size_t cluster_name_size,
+                       char* cluster_node, size_t cluster_node_size,
+                       char* agent_groups, size_t agent_groups_size)>;
+
 class AgentInfoImpl
 {
     public:
@@ -46,6 +54,7 @@ class AgentInfoImpl
         /// @param sysInfo Pointer to ISysInfo for system information gathering
         /// @param fileIO Pointer to IFileIOUtils for file I/O operations
         /// @param fileSystem Pointer to IFileSystemWrapper for file system operations
+        /// @param handshakeQueryFunction Function to query agentd for fresh handshake data on every cycle
         AgentInfoImpl(std::string dbPath,
                       std::function<void(const std::string&)> reportDiffFunction = nullptr,
                       std::function<void(const modules_log_level_t, const std::string&)> logFunction = nullptr,
@@ -53,7 +62,8 @@ class AgentInfoImpl
                       std::shared_ptr<IDBSync> dbSync = nullptr,
                       std::shared_ptr<ISysInfo> sysInfo = nullptr,
                       std::shared_ptr<IFileIOUtils> fileIO = nullptr,
-                      std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr);
+                      std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr,
+                      handshake_query_callback_t handshakeQueryFunction = nullptr);
         ~AgentInfoImpl();
 
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
@@ -287,6 +297,22 @@ class AgentInfoImpl
         /// @brief Function to query other modules
         module_query_callback_t m_queryModuleFunction;
 
+        /// @brief Function to query agentd for fresh handshake data (cluster_name, cluster_node,
+        /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy.
+        /// Only cluster_name/cluster_node are tracked from it - see populateAgentMetadata() for why
+        /// agent_groups deliberately keeps its own, separate one-shot-at-startup handling.
+        handshake_query_callback_t m_handshakeQueryFunction;
+
+        /// @brief True once a live handshake query has succeeded at least once. Until then,
+        /// populateAgentMetadata() falls back to the C-side startup cache; afterwards, a
+        /// transient live-query failure falls back to these last-known-good values instead
+        /// of reverting all the way back to the (possibly long-stale) startup cache.
+        bool m_hasLiveHandshakeSucceededOnce = false;
+
+        /// @brief Last successfully live-queried cluster_name/cluster_node
+        std::string m_lastLiveClusterName;
+        std::string m_lastLiveClusterNode;
+
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
@@ -366,6 +392,16 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
+
+        /// @brief Serializes destruction of m_spSyncProtocol in stop()
+        std::mutex m_syncProtocolMutex;
+
+        /// @brief Clean-stop handshake: stop() blocks until the run loop (start()) has
+        /// exited, so the sync-protocol connection can be closed with no other thread
+        /// using it.
+        std::mutex m_shutdownMutex;
+        std::condition_variable m_shutdownCv;
+        bool m_runLoopActive = false;
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;

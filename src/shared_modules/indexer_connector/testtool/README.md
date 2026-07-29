@@ -43,6 +43,7 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | `max_queue_bytes` | Optional | Async mode — max pending bytes before dropping (0 = unlimited) |
 | `bulk_max_bytes` | Optional | Async mode — target byte threshold for each bulk request |
 | `flush_interval_seconds` | Optional | Async mode — flush interval in seconds |
+| `max_retry_delay_seconds` | Optional | Async/sync — cap (seconds) for exponential-backoff retries (default: 15) |
 
 ### Example: dev e2e environment (HTTPS + TLS)
 

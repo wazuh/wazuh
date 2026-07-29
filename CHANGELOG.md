@@ -13,6 +13,7 @@
 - Added new CVE 5.0 schema fields to the Vulnerability Detector content model. ([#36000](https://github.com/wazuh/wazuh/issues/36000))
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
+- Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. ([#37706](https://github.com/wazuh/wazuh/issues/37706))
 
 #### Changed
 
@@ -49,7 +50,7 @@
 - Fixed `wazuh-db` error assigning groups by avoiding the keyentries counter as index. ([#34082](https://github.com/wazuh/wazuh/issues/34082))
 - Fixed token validation race condition after revoke. ([#35043](https://github.com/wazuh/wazuh/issues/35043))
 - Handled the stop signal during vulnerability feed download. ([#35638](https://github.com/wazuh/wazuh/issues/35638))
-- Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. ([#36721](https://github.com/wazuh/wazuh/issues/37521))
+- Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. ([#37521](https://github.com/wazuh/wazuh/issues/37521))
 - Fixed `make deps` branch detection in GitHub Actions. ([#35909](https://github.com/wazuh/wazuh/issues/35909))
 
 ### Agent
@@ -99,4 +100,7 @@
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
 - Lowered the `wazuh-agentd` connection socket error log to debug level to avoid duplicating the "Lost connection with manager" error on transient disconnections. ([#37653](https://github.com/wazuh/wazuh/issues/37653))
+- Fixed a race condition when saving the Logcollector file status on shutdown. ([#37626](https://github.com/wazuh/wazuh/issues/37626))
+- Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. ([#37656](https://github.com/wazuh/wazuh/issues/37656))
+- Fixed agent-info module caching cluster_name, cluster_node, and agent_groups from a one-time handshake at startup, causing stale values in `agent_metadata` until the agent process restarted. ([#37543](https://github.com/wazuh/wazuh/issues/37543))
 

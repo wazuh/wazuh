@@ -183,6 +183,12 @@ class SecurityConfigurationAssessment
         /// @brief Mutex for pause/resume coordination
         std::mutex m_pauseMutex;
 
+        /// @brief Execute the blocking flush work for the module.
+        /// @return 0 on success, -1 on error.
+        /// @note Protected (rather than private) so test subclasses can drive the flush path
+        ///       deterministically without spinning the asynchronous flush controller.
+        int executeFlushSync();
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -239,10 +245,6 @@ class SecurityConfigurationAssessment
         /// @brief Check if DB has data (policies or checks)
         /// @return true if DB contains any policies or checks
         bool hasDataInDatabase();
-
-        /// @brief Execute the blocking flush work for the module.
-        /// @return 0 on success, -1 on error.
-        int executeFlushSync();
 
         /// @brief Handle the case when no policies are available (either at startup or runtime).
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.

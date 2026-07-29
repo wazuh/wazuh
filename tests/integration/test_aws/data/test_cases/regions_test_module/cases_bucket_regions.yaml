@@ -44,12 +44,12 @@
   description: VPC regions configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     REGIONS: us-east-1
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     regions: us-east-1
@@ -87,12 +87,12 @@
   description: VPC regions configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     REGIONS: us-east-1,us-east-2
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     regions: us-east-1,us-east-2
@@ -130,12 +130,12 @@
   description: VPC regions configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     REGIONS: us-fake-1
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     regions: us-fake-1

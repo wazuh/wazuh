@@ -476,6 +476,17 @@ int main(int argc, char* argv[])
                 }
                 jsonCnf.setUint64(loggerThreads, "/logger_threads");
 
+                constexpr size_t INDEXER_MAX_RETRY_DELAY_MAX = 3600;
+                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
+                if (maxRetryDelay == 0 || maxRetryDelay > INDEXER_MAX_RETRY_DELAY_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_max_retry_delay must be between 1 and {} (got {})",
+                                    INDEXER_MAX_RETRY_DELAY_MAX,
+                                    maxRetryDelay));
+                }
+                jsonCnf.setUint64(maxRetryDelay, "/max_retry_delay_seconds");
+
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 

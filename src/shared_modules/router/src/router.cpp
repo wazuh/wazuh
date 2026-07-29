@@ -293,7 +293,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error sending message to provider: ") + e.what());
         }
         return retVal;
     }
@@ -420,7 +420,8 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error in router_provider_send_sync: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING,
+                       std::string("Error in router_provider_send_sync: ") + e.what());
             return -1;
         }
     }
@@ -582,7 +583,7 @@ extern "C"
     {
         if (!socketPath)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, "Error stopping API. Invalid socket path");
+            logMessage(modules_log_level_t::LOG_WARNING, "Error stopping API. Invalid socket path");
             return;
         }
 
@@ -645,7 +646,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error subscribing: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error subscribing: ") + e.what());
         }
         return retVal;
     }
@@ -659,7 +660,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error unsubscribing: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error unsubscribing: ") + e.what());
         }
     }
 

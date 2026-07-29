@@ -112,7 +112,7 @@ extern "C" {
     {
         try
         {
-            if (!handle) return {false, {}, false};
+            if (!handle) return {false, {}, false, false, 0};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -128,15 +128,19 @@ extern "C" {
 
             cResult.stopped = cppResult.stopped;
 
+            cResult.manager_not_ready = cppResult.managerNotReady;
+
+            cResult.consecutive_failures = cppResult.consecutiveFailures;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false};
+            return {false, {}, false, false, 0};
         }
         catch (...)
         {
-            return {false, {}, false};
+            return {false, {}, false, false, 0};
         }
     }
 
@@ -207,7 +211,7 @@ extern "C" {
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return {false, {}, false};
+            if (!handle || !indices || indices_count == 0) return {false, {}, false, false, 0};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -222,7 +226,7 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return {false, {}, false};
+            if (indices_vec.empty()) return {false, {}, false, false, 0};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -240,15 +244,19 @@ extern "C" {
 
             cResult.stopped = cppResult.stopped;
 
+            cResult.manager_not_ready = cppResult.managerNotReady;
+
+            cResult.consecutive_failures = cppResult.consecutiveFailures;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}, false};
+            return {false, {}, false, false, 0};
         }
         catch (...)
         {
-            return {false, {}, false};
+            return {false, {}, false, false, 0};
         }
     }
 

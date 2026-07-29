@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -61,16 +62,20 @@ public:
 
     /// Result of getOrParse(): the shared header plus what happened in the cache.
     using GetResult = std::pair<std::shared_ptr<const json::Json>, Operation>;
+    using ClockFn = std::function<std::chrono::steady_clock::time_point()>;
 
     /**
      * @brief Construct the cache with a given time-to-live for entries.
      * @param ttl Entries not accessed within this duration are eligible for eviction.
+     * @param clock Clock used to timestamp entries and calculate TTL expiry.
      *
      * @note fastmetrics::registerManager() must have been called before construction, as the
      *       cache resolves its metric counters from the metrics manager.
      */
-    explicit AgentMetadataCache(std::chrono::seconds ttl)
+    explicit AgentMetadataCache(
+        std::chrono::seconds ttl, ClockFn clock = []() { return std::chrono::steady_clock::now(); })
         : m_ttl(ttl)
+        , m_clock(std::move(clock))
         , m_hitsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS))
         , m_insertionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS))
         , m_updatesCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES))
@@ -79,6 +84,10 @@ public:
         if (ttl <= std::chrono::seconds(0) || ttl > std::chrono::seconds(3600 * 24)) // 1 day
         {
             throw std::invalid_argument("AgentMetadataCache: TTL must be > 0 and <= 86400 seconds");
+        }
+        if (!m_clock)
+        {
+            throw std::invalid_argument("AgentMetadataCache: clock function must be valid");
         }
         m_byAgent.reserve(CACHE_INITIAL_CAPACITY);
         m_byHash.reserve(CACHE_INITIAL_CAPACITY);
@@ -263,10 +272,7 @@ private:
     static inline const json::PointerPath AGENT_ID_PATH {"/wazuh/agent/id"}; ///< JSON pointer path to the agent ID.
     static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's internal maps.
 
-    static std::chrono::steady_clock::rep nowRep()
-    {
-        return std::chrono::steady_clock::now().time_since_epoch().count();
-    }
+    std::chrono::steady_clock::rep nowRep() const { return m_clock().time_since_epoch().count(); }
 
     struct CacheEntry
     {
@@ -276,7 +282,8 @@ private:
         std::atomic<std::chrono::steady_clock::rep> lastUsed {0}; ///< Last access timestamp for eviction.
     };
 
-    std::chrono::seconds m_ttl;        ///< Time-to-live for entries
+    std::chrono::seconds m_ttl;        ///< Time-to-live for entries.
+    ClockFn m_clock;                   ///< Clock used for cache entry age calculations.
     mutable std::shared_mutex m_mutex; ///< Protects m_byAgent and m_byHash for thread-safe access.
     std::unordered_map<std::string, std::shared_ptr<CacheEntry>> m_byAgent; ///< agentId -> entry (one per agent).
     std::unordered_map<std::size_t, std::shared_ptr<CacheEntry>> m_byHash;  ///< content hash -> entry (O(1) lookup).

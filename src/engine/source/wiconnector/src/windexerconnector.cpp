@@ -351,6 +351,7 @@ std::string Config::toJson() const
     }
 
     config["max_queue_bytes"] = maxQueueBytes;
+    config["max_retry_delay_seconds"] = maxRetryDelaySeconds;
 
     return config.dump();
 }

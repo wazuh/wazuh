@@ -52,6 +52,21 @@ const std::string HEADER_EMPTY_ID = R"({"wazuh":{"agent":{"id":"","name":"bad-ag
 // Invalid JSON
 const std::string HEADER_INVALID_JSON = R"({not valid json at all)";
 
+struct FakeClock
+{
+    AgentMetadataCache::ClockFn fn()
+    {
+        return [this]()
+        {
+            return now;
+        };
+    }
+
+    void advance(std::chrono::steady_clock::duration duration) { now += duration; }
+
+    std::chrono::steady_clock::time_point now {std::chrono::steady_clock::time_point {}};
+};
+
 } // namespace
 
 class AgentMetadataCacheTest : public ::testing::Test
@@ -146,13 +161,13 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_EmptyAgentId_Throws)
 
 TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 {
-    AgentMetadataCache shortCache(1s);
+    FakeClock fakeClock;
+    AgentMetadataCache shortCache(1s, fakeClock.fn());
 
     shortCache.getOrParse(HEADER_AGENT_001);
     EXPECT_EQ(shortCache.size(), 1);
 
-    // Wait for TTL to expire
-    std::this_thread::sleep_for(1100ms);
+    fakeClock.advance(1s + 1ns);
 
     auto evicted = shortCache.evictStale();
     EXPECT_EQ(evicted, 1);
@@ -161,19 +176,20 @@ TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 
 TEST_F(AgentMetadataCacheTest, EvictStale_KeepsRecentEntries)
 {
-    AgentMetadataCache shortCache(2s);
+    FakeClock fakeClock;
+    AgentMetadataCache shortCache(2s, fakeClock.fn());
 
     shortCache.getOrParse(HEADER_AGENT_001);
     shortCache.getOrParse(HEADER_AGENT_002);
 
-    // Wait partially (less than TTL)
-    std::this_thread::sleep_for(500ms);
+    // Advance partially (less than TTL).
+    fakeClock.advance(500ms);
 
-    // Access agent 001 again to refresh its timestamp
+    // Access agent 001 again to refresh its timestamp.
     shortCache.getOrParse(HEADER_AGENT_001);
 
-    // Wait until agent 002 has expired but 001 hasn't
-    std::this_thread::sleep_for(1600ms);
+    // Advance until agent 002 has expired but 001 has not.
+    fakeClock.advance(1500ms + 1ns);
 
     auto evicted = shortCache.evictStale();
     EXPECT_EQ(evicted, 1);
@@ -360,11 +376,12 @@ TEST_F(AgentMetadataCacheTest, Metrics_RecordsEvictions)
     auto evictions = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_EVICTIONS);
     const auto evictions0 = evictions->get();
 
-    AgentMetadataCache shortCache(1s);
+    FakeClock fakeClock;
+    AgentMetadataCache shortCache(1s, fakeClock.fn());
     shortCache.getOrParse(HEADER_AGENT_001);
     shortCache.getOrParse(HEADER_AGENT_002);
 
-    std::this_thread::sleep_for(1100ms);
+    fakeClock.advance(1s + 1ns);
     const auto evicted = shortCache.evictStale();
 
     EXPECT_EQ(evicted, 2u);

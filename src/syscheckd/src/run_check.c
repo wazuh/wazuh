@@ -1049,6 +1049,16 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization requested by agent-info aborted: FIM is stopping.");
+            } else if (sync_result.manager_not_ready
+                       && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                minfo("FIM synchronization requested by agent-info deferred: %s Will retry next cycle.",
+                      sync_result.failure_reason);
+            } else if (sync_result.manager_not_ready) {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                mwarn("FIM synchronization requested by agent-info failed %u times in a row: %s",
+                      sync_result.consecutive_failures, sync_result.failure_reason);
             } else {
                 mwarn("FIM synchronization requested by agent-info failed%s%s",
                       sync_result.failure_reason[0] != '\0' ? ": " : "",
@@ -1094,6 +1104,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization aborted: FIM is stopping.");
+            } else if (sync_result.manager_not_ready
+                       && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                minfo("FIM synchronization deferred: %s Will retry next cycle.", sync_result.failure_reason);
+            } else if (sync_result.manager_not_ready) {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                mwarn("FIM synchronization failed %u times in a row: %s",
+                      sync_result.consecutive_failures, sync_result.failure_reason);
             } else {
                 mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
             }

@@ -132,6 +132,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Default maximum events per second for synchronization operations
         size_t m_maxEps;
 
+        /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
+        /// @param success Whether the synchronization succeeded.
+        /// @param stopped Whether it was aborted because a stop was requested.
+        /// @return Consecutive failed synchronizations including this one, or 0 on success.
+        ///
+        /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
+        unsigned int trackSyncOutcome(bool success, bool stopped);
+
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
@@ -264,6 +272,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Last sync operation result for detailed error reporting.
             SyncResult lastSyncResult = SyncResult::SUCCESS;
 
+            /// @brief True when the manager did not answer the handshake or reported itself Offline.
+            /// Set only where that condition is known, since a SyncResult value alone does not identify
+            /// it (COMMUNICATION_ERROR is also used for a local send failure in the middle of an
+            /// established session).
+            bool lastSyncManagerNotReady = false;
+
             /// @brief Destructor ensures all waiting threads are woken up before destruction.
             ///
             /// This prevents deadlocks when the condition variable is destroyed while threads are still waiting.
@@ -288,6 +302,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 phase = SyncPhase::Idle;
                 session = 0;
                 lastSyncResult = SyncResult::SUCCESS;
+                lastSyncManagerNotReady = false;
             }
         };
 
@@ -301,6 +316,25 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// in progress the second caller skips its cycle — the in-flight sync drains the
         /// shared queue, making the concurrent call redundant.
         std::atomic<bool> m_syncInProgress{false};
+
+        /// @brief Consecutive failed synchronizations for this module, reset on the first success.
+        ///
+        /// Lives on the instance, not in SyncState, because SyncState is cleared at the start of every
+        /// cycle. It is what tells a brief post-restart hiccup (the count stays at one and clears on the
+        /// next cycle) apart from a lasting condition such as the manager having no indexer available
+        /// (the count keeps growing), which the modules must keep reporting at WARNING.
+        ///
+        /// The streak is counted in sync ATTEMPTS that reach the handshake, not in cycles, and it is
+        /// per protocol instance. When several sync flows share one instance (agent-info: metadata,
+        /// groups and the integrity check; FIM: the periodic and the agent-info-requested syncs;
+        /// SCA/Syscollector: the periodic sync and the flush), each of them bumps this same counter,
+        /// so the SYNC_MANAGER_NOT_READY_TOLERANCE threshold can be reached in fewer real cycles for
+        /// those modules than for a single-flow one. Only outcomes that reach the handshake move the
+        /// counter: early returns (queue-open failure, nothing-to-sync success, invalid mode) leave it
+        /// untouched, so "consecutive" is not strictly "consecutive cycles". This is acceptable because
+        /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
+        /// resetting the streak on it is correct regardless of which flow observed it.
+        std::atomic<unsigned int> m_consecutiveSyncFailures{0};
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

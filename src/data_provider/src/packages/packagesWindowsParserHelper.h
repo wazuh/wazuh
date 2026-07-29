@@ -12,7 +12,9 @@
 #ifndef _PACKAGES_WINDOWS_PARSER_HELPER_H
 #define _PACKAGES_WINDOWS_PARSER_HELPER_H
 
+#include <cstdio>
 #include <regex>
+#include <vector>
 #include "json.hpp"
 #include "registryHelper.h"
 #include "stringHelper.h"
@@ -210,6 +212,53 @@ namespace PackageWindowsHelper
         {
         }
 
+    }
+
+    /*
+     * @brief Gets the product version published on the VERSIONINFO resource of a file.
+     *
+     * The resource is read as plain file data (no code from the target file is executed).
+     *
+     * @param[in] filePath Path of the file to read.
+     *
+     * @return Returns the product version, or an empty string if the file has no readable VERSIONINFO.
+     */
+    static std::string getProductVersion(const std::string& filePath)
+    {
+        std::string version;
+        DWORD handle { 0 };
+        const auto size { GetFileVersionInfoSizeA(filePath.c_str(), &handle) };
+
+        if (size)
+        {
+            std::vector<unsigned char> buffer(size);
+
+            if (GetFileVersionInfoA(filePath.c_str(), 0, size, buffer.data()))
+            {
+                struct LangCodePage
+                {
+                    unsigned short language;
+                    unsigned short codePage;
+                }* translation { nullptr };
+                UINT length { 0 };
+
+                if (VerQueryValueA(buffer.data(), "\\VarFileInfo\\Translation", reinterpret_cast<LPVOID*>(&translation), &length)
+                        && translation && length >= sizeof(LangCodePage))
+                {
+                    char subBlock[64] {};
+                    snprintf(subBlock, sizeof(subBlock), "\\StringFileInfo\\%04x%04x\\ProductVersion", translation->language, translation->codePage);
+                    char* value { nullptr };
+                    UINT valueLength { 0 };
+
+                    if (VerQueryValueA(buffer.data(), subBlock, reinterpret_cast<LPVOID*>(&value), &valueLength) && value && valueLength)
+                    {
+                        version = Utils::trim(std::string(value), " \t");
+                    }
+                }
+            }
+        }
+
+        return version;
     }
 };
 

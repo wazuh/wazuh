@@ -24,12 +24,14 @@ using ::testing::StrictMock;
 
 // Define different connector types with GMock for async testing
 using IndexerConnectorAsyncImplTest = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest>;
-using IndexerConnectorAsyncImplSmallBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 5, 0>;
-using IndexerConnectorAsyncImplSmallBulkPair = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 2, 5, 0>;
+using IndexerConnectorAsyncImplSmallBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 5, 1>;
+using IndexerConnectorAsyncImplRetryableBulk =
+    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 350, 1, 1>;
+using IndexerConnectorAsyncImplSmallBulkPair = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 2, 5, 1>;
 using IndexerConnectorAsyncImplSmallBulkNoFlushInterval =
-    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 0, 0>;
-// Large template bulk (25000) with a 5-second flush timer and no retry delay.
-using IndexerConnectorAsyncImplLargeBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 25000, 5, 0>;
+    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 0, 1>;
+// Large template bulk (25000) with a 5-second flush timer and a minimal (1s) retry delay.
+using IndexerConnectorAsyncImplLargeBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 25000, 5, 1>;
 
 // Test fixture using GMock for async implementation
 class IndexerConnectorAsyncTest : public ::testing::Test
@@ -811,6 +813,257 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
     EXPECT_GE(callCount, 2);
 }
 
+// cluster_block_exception arrives as HTTP 200 with a per-item error: the bulk send itself succeeded,
+// so IndexerBulkQueue has nothing to retry - the blocked item is discarded (logged + counted) and
+// only a future send is paused via requestBackoff(). Unlike a real transport failure (429/502/503/...),
+// the blocked batch's data must never reappear in a later send.
+TEST_F(IndexerConnectorAsyncTest, ClusterBlockExceptionItemsAreDiscardedNotRetried)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> firstCallPromise;
+    std::future<void> firstCallFuture = firstCallPromise.get_future();
+    std::promise<void> secondCallPromise;
+    std::future<void> secondCallFuture = secondCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &firstCallPromise, &secondCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
+                this->receivedData.push_back(data);
+
+                if (currentCall == 1)
+                {
+                    std::string clusterBlockResponse = R"({
+                        "took": 1,
+                        "errors": true,
+                        "items": [
+                            {
+                                "create": {
+                                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
+                                    "status": 403,
+                                    "error": {
+                                        "type": "cluster_block_exception",
+                                        "reason": "index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"
+                                    }
+                                }
+                            },
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}}
+                        ]
+                    })";
+
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(clusterBlockResponse);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(std::move(clusterBlockResponse));
+                    }
+                    firstCallPromise.set_value();
+                }
+                else
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    secondCallPromise.set_value();
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        const std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity", data);
+    }
+
+    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the initial cluster-blocked bulk";
+
+    // Pushed only after the first (blocked) bulk was sent, so the next send is unambiguously a fresh
+    // batch, not a race with the first one still being formed.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value5"})");
+
+    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the next bulk after a cluster block";
+
+    EXPECT_EQ(callCount, 2);
+    ASSERT_GE(receivedData.size(), 2);
+
+    // None of the first bulk's items - including the blocked one - should have been retried/reinserted.
+    for (int i = 0; i < 5; ++i)
+    {
+        EXPECT_EQ(receivedData[1].find("value" + std::to_string(i)), std::string::npos)
+            << "value" << i << " should not have been retried after a cluster_block_exception";
+    }
+    // Only the genuinely new data goes out in the next send.
+    EXPECT_NE(receivedData[1].find("value5"), std::string::npos);
+}
+
+// Verifies the next bulk after a cluster_block_exception is actually delayed by IndexerBulkQueue's
+// backoff, not just eventually sent. nextDelay() for a *first* occurrence is uniform in [0, baseDelay)
+// - by design, so it can legitimately land near zero - so asserting a lower bound there would be
+// statistically flaky. To get a deterministic floor, this drives the backoff to its *second*
+// occurrence (two consecutive cluster_block_exception responses): its lower bound is exactly
+// baseDelay (see IndexerExponentialBackoffTest), which is never zero.
+TEST_F(IndexerConnectorAsyncTest, AppliesBackoffToNextBulkAfterClusterBlockException)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    static constexpr auto clusterBlockResponse = R"({
+        "took": 1,
+        "errors": true,
+        "items": [
+            {
+                "create": {
+                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
+                    "status": 403,
+                    "error": {
+                        "type": "cluster_block_exception",
+                        "reason": "index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"
+                    }
+                }
+            }
+        ]
+    })";
+    static constexpr auto cleanResponse = R"({"took":1,"errors":false,"items":[]})";
+
+    std::promise<void> firstCallPromise;
+    std::future<void> firstCallFuture = firstCallPromise.get_future();
+    std::promise<void> secondCallPromise;
+    std::future<void> secondCallFuture = secondCallPromise.get_future();
+    std::promise<void> thirdCallPromise;
+    std::future<void> thirdCallFuture = thirdCallPromise.get_future();
+    std::atomic<int> callIndex {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &firstCallPromise, &secondCallPromise, &thirdCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+                const int currentCall = ++callIndex;
+
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
+                this->receivedData.push_back(data);
+
+                const bool blocked = currentCall <= 2;
+                const char* response = blocked ? clusterBlockResponse : cleanResponse;
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(response));
+                }
+
+                if (currentCall == 1)
+                {
+                    firstCallPromise.set_value();
+                }
+                else if (currentCall == 2)
+                {
+                    secondCallPromise.set_value();
+                }
+                else if (currentCall == 3)
+                {
+                    thirdCallPromise.set_value();
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // 1. Send a first bulk.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value0"})");
+
+    // 2. It comes back with a cluster_block_exception (handled above).
+    ASSERT_EQ(firstCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the first (blocked) bulk";
+
+    // 3. Give the response logger time to classify it and call requestBackoff() before we enqueue
+    // more data - otherwise there's a race where the next send could go out before the signal lands.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // 4. Enqueue new, independent events - this becomes the second bulk, also reported as blocked
+    // to drive the backoff to its second (deterministic-floor) occurrence.
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value1"})");
+
+    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the second (also blocked) bulk";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    const auto thirdSendRequestedAt = std::chrono::steady_clock::now();
+    connector.bulkIndexDataStream("wazuh-events-v5-system-activity", R"({"field":"value2"})");
+
+    // 5. Verify the next (third) send is actually subject to the backoff: at least baseDelay
+    // (RetryDelay = 1s) must have elapsed, a hard floor guaranteed by the escalation above, not a
+    // random draw that could be near-zero.
+    ASSERT_EQ(thirdCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the third bulk";
+    const auto elapsed = std::chrono::steady_clock::now() - thirdSendRequestedAt;
+    EXPECT_GE(elapsed, std::chrono::milliseconds(900))
+        << "Third send should have been delayed by the escalated backoff (expected >= ~1000ms)";
+
+    // 6. None of the earlier bulks' data was ever resent.
+    EXPECT_EQ(callCount, 3);
+    ASSERT_GE(receivedData.size(), 3);
+    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[1].find("value0"), std::string::npos);
+    EXPECT_NE(receivedData[1].find("value1"), std::string::npos);
+    EXPECT_EQ(receivedData[2].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[2].find("value1"), std::string::npos);
+    EXPECT_NE(receivedData[2].find("value2"), std::string::npos);
+}
+
 TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -870,22 +1123,26 @@ TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
     EXPECT_GT(callCount, 0);
 }
 
-// Test for generic error handling (non-specific status codes)
-TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
+// 502 (like 408/503/504) commonly means OpenSearch actually processed the bulk but the response
+// never made it back - retrying would risk indexing the same documents twice, so it must NOT be
+// retried (unlike 429/connection errors, which mean the request was rejected before processing).
+TEST_F(IndexerConnectorAsyncTest, HandleBadGatewayIsNotRetried)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    std::promise<void> errorHandledPromise;
-    std::future<void> errorHandledFuture = errorHandledPromise.get_future();
+    std::promise<void> secondCallPromise;
+    std::future<void> secondCallFuture = secondCallPromise.get_future();
+    std::atomic<int> callIndex {0};
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &errorHandledPromise](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [this, &secondCallPromise, &callIndex](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
+                const int currentCall = ++callIndex;
 
-                // Extract data from variant
                 std::string data;
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
@@ -901,32 +1158,48 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
                 }
                 this->receivedData.push_back(data);
 
-                // Test with a generic error status code (502 Bad Gateway)
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                if (currentCall == 1)
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Bad Gateway", 502, "");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Bad Gateway", 502, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502, "");
+                    }
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502, "");
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    secondCallPromise.set_value();
                 }
-                errorHandledPromise.set_value();
             }));
 
+    // Small bulk threshold: each bulkIndex() below is sent as its own separate batch.
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    // Add data to trigger processing
-    for (int i = 0; i < 5; ++i)
-    {
-        std::string id = "id" + std::to_string(i);
-        std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
-        connector.bulkIndex(id, "index1", data);
-    }
+    connector.bulkIndex("id0", "index1", R"({"field":"value0"})");
+    connector.bulkIndex("id1", "index1", R"({"field":"value1"})");
 
-    // Wait for error handling to complete
-    auto status = errorHandledFuture.wait_for(std::chrono::seconds(10));
-    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for generic error handling";
-    EXPECT_GE(callCount, 1);
+    ASSERT_EQ(secondCallFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the second (unrelated) bulk";
+
+    EXPECT_EQ(callCount, 2);
+    ASSERT_GE(receivedData.size(), 2);
+    EXPECT_NE(receivedData[0].find("value0"), std::string::npos);
+    EXPECT_EQ(receivedData[1].find("value0"), std::string::npos) << "value0 should not have been retried after a 502";
+    EXPECT_NE(receivedData[1].find("value1"), std::string::npos);
 }
 
 // Test async queue processing with small bulk size

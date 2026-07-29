@@ -14,7 +14,12 @@ build_wazuh_test_flags() {
     echo "Building Wazuh for target: $target"
     cd "$GITHUB_WORKSPACE"
     make deps -C src TARGET=${target} -j$(nproc)
-    make -C src TARGET=${target} TEST=1 -j$(nproc)
+    # Building the engine unit tests at -j$(nproc) runs many heavy compiles and links at
+    # once; their combined peak memory exhausts the runner and the OOM killer aborts the
+    # build (ld or cc1plus terminated with SIGKILL). Halve the job count to keep the peak
+    # in bounds while still using half the cores.
+    local jobs=$(( $(nproc) / 2 )); [ "$jobs" -lt 1 ] && jobs=1
+    make -C src TARGET=${target} TEST=1 -j"$jobs"
 }
 
 build_wazuh_unit_tests() {

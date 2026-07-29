@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "commonDefs.h"
+#include "exponentialBackoff.hpp"
 #include "loggerHelper.h"
 
 /**
@@ -35,22 +36,27 @@
 class IndexerBulkQueue final
 {
 public:
-    using Processor = std::function<void(std::vector<std::string>&)>;
+    using Processor = std::function<void(uint64_t sequence, std::vector<std::string>&)>;
 
     /**
      * @param processor  Callback invoked on the worker thread with each batch.
      * @param maxBytes   Maximum bytes before push() starts discarding (0 = unlimited).
      * @param bulkMaxBytes  Target byte threshold per batch before dispatch.
      * @param flushIntervalSec  Max seconds to wait before flushing a partial batch.
-     * @param retryDelaySec     Seconds to sleep after a failed processor call.
+     * @param retryDelaySec     Base delay in seconds for exponential backoff after failed processor calls.
+     * @param maxRetryDelaySec  Maximum delay in seconds for exponential backoff.
      */
-    IndexerBulkQueue(
-        Processor processor, size_t maxBytes, size_t bulkMaxBytes, size_t flushIntervalSec, size_t retryDelaySec)
+    IndexerBulkQueue(Processor processor,
+                     size_t maxBytes,
+                     size_t bulkMaxBytes,
+                     size_t flushIntervalSec,
+                     size_t retryDelaySec,
+                     size_t maxRetryDelaySec)
         : m_processor(std::move(processor))
         , m_maxBytes(maxBytes)
         , m_bulkMaxBytes(bulkMaxBytes)
         , m_flushInterval(flushIntervalSec)
-        , m_retryDelay(retryDelaySec)
+        , m_backoff(std::chrono::seconds(retryDelaySec), std::chrono::seconds(maxRetryDelaySec))
     {
         m_worker = std::thread(&IndexerBulkQueue::dispatch, this);
     }
@@ -147,11 +153,72 @@ public:
         m_bulkMaxBytes.store(newSize);
     }
 
+    /// Requests a pause (shared backoff) before the dispatch thread's next send - e.g. an OpenSearch
+    /// HTTP 200 with a per-item cluster_block_exception. Coalesces repeated calls into one pause.
+    ///
+    /// @param sequence Batch's sequence id (see Processor). Only applied if newer than the last
+    ///                 applied report, so a stale, out-of-order classification can't win.
+    void requestBackoff(uint64_t sequence)
+    {
+        std::lock_guard<std::mutex> lock(m_backoffStateMutex);
+        if (sequence > m_lastReportedSequence)
+        {
+            m_lastReportedSequence = sequence;
+            m_externalBackoffPending = true;
+        }
+    }
+
+    /// Confirms `sequence`'s response was classified as NOT indicating a blocked indexer - the only
+    /// place the backoff resets (never implicitly in dispatch(), see below). Same out-of-order
+    /// protection as requestBackoff().
+    void reportHealthyResponse(uint64_t sequence)
+    {
+        std::lock_guard<std::mutex> lock(m_backoffStateMutex);
+        if (sequence > m_lastReportedSequence)
+        {
+            m_lastReportedSequence = sequence;
+            m_externalBackoffPending = false;
+            m_backoff.reset();
+        }
+    }
+
 private:
     void dispatch()
     {
+        // Set on failure (see catch below); the resulting pause happens up here, before the *next*
+        // send, alongside external backoff requests. Local to this thread only.
+        bool retryPending = false;
+
         while (true)
         {
+            // Checked before touching the buffer, so a pause always protects the very next batch and
+            // never holds a local `batch` mid-sleep (safe to discard on shutdown via the block below).
+            // No implicit reset when neither is pending: that could just mean classification for the
+            // batch we just sent hasn't finished yet, not that it's confirmed healthy - m_backoff only
+            // resets in reportHealthyResponse().
+            bool externalBackoffRequested;
+            std::chrono::milliseconds delay {};
+            {
+                std::lock_guard<std::mutex> lock(m_backoffStateMutex);
+                externalBackoffRequested = m_externalBackoffPending;
+                m_externalBackoffPending = false;
+                if (retryPending || externalBackoffRequested)
+                {
+                    delay = m_backoff.nextDelay();
+                }
+            }
+
+            if (retryPending || externalBackoffRequested)
+            {
+                retryPending = false;
+                logDebug1(LOGGER_DEFAULT_TAG,
+                          "IndexerBulkQueue: pausing %lld ms before next send (%s).",
+                          static_cast<long long>(delay.count()),
+                          externalBackoffRequested ? "external backoff requested" : "previous send failed");
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_cv.wait_for(lock, delay, [this]() { return !m_running; });
+            }
+
             std::vector<std::string> batch;
 
             {
@@ -201,7 +268,9 @@ private:
 
             try
             {
-                m_processor(batch);
+                // Assigned per send attempt (including retries of a failed batch), not per batch
+                // content: each attempt gets a fresh HTTP response of its own to classify.
+                m_processor(++m_nextSequence, batch);
             }
             catch (const std::exception& ex)
             {
@@ -211,9 +280,8 @@ private:
                     if (m_running)
                     {
                         shouldRetry = true;
-                        // Put the failed batch back at the front of the buffer, preserving order, so it
-                        // gets retried on the next iteration - possibly split into smaller batches if the
-                        // processor just reduced the bulk threshold (e.g. after a 413 Payload Too Large).
+                        // Requeue at the front (preserves order) for retry - possibly split smaller if
+                        // the processor just reduced the bulk threshold (e.g. after a 413).
                         for (auto it = batch.rbegin(); it != batch.rend(); ++it)
                         {
                             m_totalBytes += it->size();
@@ -224,9 +292,10 @@ private:
 
                 if (shouldRetry)
                 {
-                    logWarn(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s", ex.what());
-                    std::unique_lock<std::mutex> lock(m_mutex);
-                    m_cv.wait_for(lock, std::chrono::seconds(m_retryDelay), [this]() { return !m_running; });
+                    logDebug1(LOGGER_DEFAULT_TAG,
+                              "IndexerBulkQueue dispatch error: %s. Will retry after backoff.",
+                              ex.what());
+                    retryPending = true;
                 }
             }
         }
@@ -274,7 +343,16 @@ private:
     const size_t m_maxBytes;
     std::atomic<size_t> m_bulkMaxBytes;
     const size_t m_flushInterval;
-    const size_t m_retryDelay;
+    // Assigned per send attempt in dispatch() (the only writer, no sync needed); tags
+    // requestBackoff()/reportHealthyResponse() calls for out-of-order detection.
+    uint64_t m_nextSequence {0};
+    // Shared backoff for "pause before the next send" (processor exception or requestBackoff()).
+    // Guarded by m_backoffStateMutex, not atomic: reportHealthyResponse()/requestBackoff() can call
+    // into it from the response logger's thread(s), concurrently with dispatch()'s nextDelay().
+    std::mutex m_backoffStateMutex;
+    IndexerExponentialBackoff m_backoff;
+    bool m_externalBackoffPending {false};
+    uint64_t m_lastReportedSequence {0};
 
     // Threading
     mutable std::mutex m_mutex;

@@ -48,9 +48,9 @@ static void wm_sys_stop(wm_sys_t* sys);         // Module stopper
 const char* WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON* wm_sys_dump(const wm_sys_t* sys);
 int wm_sync_message(const char* command, size_t command_len);
-pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
-bool need_shutdown_wait = false;
+static pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool need_shutdown_wait = false;
 static pthread_t sys_main_thread;
 static bool sys_main_thread_initialized = false;
 #ifndef WIN32
@@ -787,15 +787,14 @@ void* wm_sys_main(wm_sys_t* sys)
     w_mutex_lock(&sys_stop_mutex);
     need_shutdown_wait = false;
     sys_main_thread_initialized = false;
-    w_cond_signal(&sys_stop_condition);
-    w_mutex_unlock(&sys_stop_mutex);
-
     // Safe to release resources now that the sync worker has exited.
     if (syscollector_release_resources_ptr)
     {
         syscollector_release_resources_ptr();
         syscollector_release_resources_ptr = NULL;
     }
+    w_cond_signal(&sys_stop_condition);
+    w_mutex_unlock(&sys_stop_mutex);
 
     return 0;
 }
@@ -836,15 +835,18 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
 
     if (need_shutdown_wait && !called_from_sys_main_thread)
     {
+        const time_t SHUTDOWN_WAIT_SECONDS = 10;  // max wait for the run loop to finish teardown
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += 10;
+        ts.tv_sec += SHUTDOWN_WAIT_SECONDS;
 
         while (need_shutdown_wait)
         {
             if (pthread_cond_timedwait(&sys_stop_condition, &sys_stop_mutex, &ts) == ETIMEDOUT)
             {
-                mtwarn(WM_SYS_LOGTAG, "Timeout waiting for Syscollector to complete shutdown.");
+                mtinfo(WM_SYS_LOGTAG,
+                       "Syscollector did not confirm shutdown within %ld seconds; releasing resources and continuing.",
+                       (long)SHUTDOWN_WAIT_SECONDS);
                 break;
             }
         }

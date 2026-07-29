@@ -323,8 +323,28 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     // shutdown-time failure from WARNING to INFO/DEBUG.
     // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
+    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, failureReason, stopped};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
+}
+
+unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
+{
+    if (success)
+    {
+        m_consecutiveSyncFailures.store(0, std::memory_order_relaxed);
+        return 0;
+    }
+
+    // A sync aborted because the module is stopping says nothing about the manager, so it must not
+    // count towards the streak: the module is torn down on purpose and will start over on restart.
+    if (stopped)
+    {
+        return m_consecutiveSyncFailures.load(std::memory_order_relaxed);
+    }
+
+    return m_consecutiveSyncFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
@@ -446,8 +466,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     // shutdown-time failure from WARNING to INFO/DEBUG.
     // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
+    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, failureReason, stopped};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
@@ -719,6 +741,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             m_logger(LOG_DEBUG, "Exceeded maximum retries for Start message.");
             m_syncState.lastSyncResult = SyncResult::START_TIMEOUT_ERROR;
+            // The manager never acknowledged the handshake: expected while it is not ready for this
+            // agent yet (mostly right after a restart). The module retries on its next cycle.
+            m_syncState.lastSyncManagerNotReady = true;
         }
 
         return false;
@@ -1120,6 +1145,9 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             m_logger(LOG_DEBUG, "Exceeded maximum retries for End message.");
             m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
+            // The manager never acknowledged the End message: same expected, self-recovering condition
+            // as the Start timeout above.
+            m_syncState.lastSyncManagerNotReady = true;
         }
 
         return false;
@@ -1175,6 +1203,9 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                             m_syncState.lastSyncResult = (startAck->status() == Wazuh::SyncSchema::Status::Offline)
                                                          ? SyncResult::COMMUNICATION_ERROR
                                                          : SyncResult::PROTOCOL_ERROR;
+                            // An Offline status means the manager itself reports it cannot serve this
+                            // agent yet: expected and self-recovering. An Error status is not.
+                            m_syncState.lastSyncManagerNotReady = (startAck->status() == Wazuh::SyncSchema::Status::Offline);
                             m_syncState.syncFailed = true;
                             m_syncState.cv.notify_all();
                             break;
@@ -1214,6 +1245,9 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+                            // The manager reports it cannot serve this agent: same condition as the
+                            // Offline StartAck above.
+                            m_syncState.lastSyncManagerNotReady = true;
                             m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)

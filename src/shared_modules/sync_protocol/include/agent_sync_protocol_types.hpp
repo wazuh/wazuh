@@ -36,4 +36,14 @@ struct SyncModuleResult
     /// Lets the calling module demote an expected shutdown-time failure from WARNING to
     /// INFO/DEBUG.
     bool stopped{false};
+    /// @brief True when the manager did not answer the handshake, or answered that it cannot serve
+    /// this agent yet (Offline). This describes what happened, not whether it is harmless: the same
+    /// condition covers a brief window after an agent restart and a lasting outage (for example the
+    /// manager having no indexer available). Use it together with @ref consecutiveFailures to decide
+    /// the log level.
+    bool managerNotReady{false};
+    /// @brief Number of consecutive failed synchronizations for this module, including this one.
+    /// Reset to zero on the first success. A single failure that recovers on the next cycle is an
+    /// expected hiccup; a growing count means the condition is not clearing and deserves a WARNING.
+    unsigned int consecutiveFailures{0};
 };

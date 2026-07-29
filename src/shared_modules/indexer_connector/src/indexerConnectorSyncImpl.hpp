@@ -10,6 +10,7 @@
  */
 
 #include "IURLRequest.hpp"
+#include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
@@ -316,10 +317,11 @@ template<typename TSelector,
          typename THttpRequest,
          size_t MaxBulkSize = 10 * 1024 * 1024,
          size_t RetryDelay = 1,
-         size_t FlushInterval = 20>
+         size_t FlushInterval = 20,
+         size_t MaxRetryDelay = 15>
 class IndexerConnectorSyncImpl final
 {
-    static constexpr size_t MAX_RETRY_BACKOFF_SECONDS {30};
+    static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
 
     LogFn m_logFn;
     SecureCommunication m_secureCommunication;
@@ -331,17 +333,21 @@ class IndexerConnectorSyncImpl final
     std::chrono::steady_clock::time_point m_lastBulkTime;
     std::condition_variable m_cv;
     std::mutex m_mutex;
+    // Dedicated to the retry-backoff sleep: processBulk()/processBulkChunk() hold m_mutex while
+    // running (see the bulk-thread loop below), so reusing it here would self-deadlock on failure.
+    std::mutex m_retryMutex;
+    std::condition_variable m_retryCv;
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
     bool m_shouldNotifyAfterBulk {false};
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
+    size_t m_maxRetryDelay {MaxRetryDelay};
 
     void processBulk()
     {
         bool needToRetry = false;
-        size_t retryDelaySeconds = RetryDelay;
         if (m_bulkData.empty() && m_deleteByQuery.empty())
         {
             throw IndexerConnectorException("No data to process");
@@ -418,9 +424,9 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry, &retryDelaySeconds](const std::string& error,
-                                                                      const long statusCode,
-                                                                      const std::string& responseBody) -> void
+        const auto onError = [this, &needToRetry](const std::string& error,
+                                                  const long statusCode,
+                                                  const std::string& responseBody) -> void
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
@@ -451,7 +457,7 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
             else
             {
@@ -466,6 +472,8 @@ class IndexerConnectorSyncImpl final
         // Only process bulk data if there is data to process
         if (!m_bulkData.empty())
         {
+            IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                    std::chrono::seconds {m_maxRetryDelay}};
             do
             {
                 if (m_stopping.load())
@@ -485,10 +493,13 @@ class IndexerConnectorSyncImpl final
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                     {});
-                if (needToRetry && retryDelaySeconds > 0)
+                if (needToRetry)
                 {
-                    std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
-                    retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
+                    const auto retryDelay = retryBackoff.nextDelay();
+                    LOGFN_DEBUG2(
+                        m_logFn, "Retrying bulk request in %lld ms.", static_cast<long long>(retryDelay.count()));
+                    std::unique_lock<std::mutex> lock(m_retryMutex);
+                    m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
                 }
             } while (needToRetry);
         }
@@ -565,7 +576,6 @@ class IndexerConnectorSyncImpl final
         url += m_selector->getNext();
         url += "/_bulk";
         bool needToRetry = false;
-        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this](const std::string& response)
         {
@@ -577,7 +587,7 @@ class IndexerConnectorSyncImpl final
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
-        const auto onError = [this, &needToRetry, &retryDelaySeconds, boundaries](
+        const auto onError = [this, &needToRetry, boundaries](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -610,7 +620,7 @@ class IndexerConnectorSyncImpl final
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                 needToRetry = true;
             }
             else
@@ -619,6 +629,8 @@ class IndexerConnectorSyncImpl final
                 throw IndexerConnectorException(error);
             }
         };
+        IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                std::chrono::seconds {m_maxRetryDelay}};
         do
         {
             if (m_stopping.load())
@@ -633,10 +645,12 @@ class IndexerConnectorSyncImpl final
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
-            if (needToRetry && retryDelaySeconds > 0)
+            if (needToRetry)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
-                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
+                const auto retryDelay = retryBackoff.nextDelay();
+                LOGFN_DEBUG2(m_logFn, "Retrying bulk chunk in %lld ms.", static_cast<long long>(retryDelay.count()));
+                std::unique_lock<std::mutex> lock(m_retryMutex);
+                m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
         } while (needToRetry);
     }
@@ -644,9 +658,16 @@ class IndexerConnectorSyncImpl final
 public:
     ~IndexerConnectorSyncImpl()
     {
+        // Order matters: set m_stopping (lock-free) and wake m_retryCv before touching m_mutex - if
+        // the bulk thread is retrying inside processBulk()/etc, it holds m_mutex while asleep on
+        // m_retryCv, so locking m_mutex first would block until that retry gives up on its own.
+        m_stopping.store(true);
         {
-            std::lock_guard timeoutLock(m_mutex);
-            m_stopping.store(true);
+            std::lock_guard<std::mutex> lock(m_retryMutex);
+            m_retryCv.notify_all();
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_cv.notify_one();
         }
         if (m_bulkThread.joinable())
@@ -748,6 +769,15 @@ public:
             config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
                 ? config.at("flush_interval_seconds").get<size_t>()
                 : FlushInterval;
+
+        m_maxRetryDelay =
+            config.contains("max_retry_delay_seconds") && config.at("max_retry_delay_seconds").is_number_integer()
+                ? config.at("max_retry_delay_seconds").get<size_t>()
+                : MaxRetryDelay;
+        if (m_maxRetryDelay < RetryDelay)
+        {
+            throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
         m_bulkThread = std::thread(
@@ -868,7 +898,6 @@ public:
         }
 
         bool needToRetry = false;
-        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this](const std::string& response)
         {
@@ -929,8 +958,8 @@ public:
             m_shouldNotifyAfterBulk = true;
         };
 
-        const auto onError = [this, &needToRetry, &retryDelaySeconds](
-                                 const std::string& url, const long statusCode, const std::string& error)
+        const auto onError =
+            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -943,7 +972,7 @@ public:
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
             else
             {
@@ -953,6 +982,8 @@ public:
             }
         };
 
+        IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                std::chrono::seconds {m_maxRetryDelay}};
         do
         {
             if (m_stopping.load())
@@ -976,10 +1007,13 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && retryDelaySeconds > 0)
+            if (needToRetry)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
-                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
+                const auto retryDelay = retryBackoff.nextDelay();
+                LOGFN_DEBUG1(
+                    m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                std::unique_lock<std::mutex> lock(m_retryMutex);
+                m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
         } while (needToRetry);
     }
@@ -994,7 +1028,6 @@ public:
 
         nlohmann::json resultJson;
         bool needToRetry = false;
-        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this, &resultJson](const std::string& response)
         {
@@ -1002,13 +1035,12 @@ public:
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [this, &needToRetry, &retryDelaySeconds](
-                                 const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG1(m_logFn, "Search query rate-limited (429), retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG1(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
             else
             {
@@ -1017,6 +1049,8 @@ public:
             }
         };
 
+        IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                std::chrono::seconds {m_maxRetryDelay}};
         do
         {
             if (m_stopping.load())
@@ -1040,10 +1074,12 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && retryDelaySeconds > 0)
+            if (needToRetry)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
-                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
+                const auto retryDelay = retryBackoff.nextDelay();
+                LOGFN_DEBUG1(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                std::unique_lock<std::mutex> lock(m_retryMutex);
+                m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
         } while (needToRetry);
 
@@ -1281,7 +1317,6 @@ public:
         nlohmann::json hitsResult;
         bool success = false;
         bool needToRetry = false;
-        size_t retryDelaySeconds = RetryDelay;
         std::string errorMessage;
 
         const auto onSuccess = [&hitsResult, &success](const std::string& response)
@@ -1304,13 +1339,12 @@ public:
             }
         };
 
-        const auto onError = [this, &needToRetry, &retryDelaySeconds](
-                                 const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
             else
             {
@@ -1320,6 +1354,8 @@ public:
             }
         };
 
+        IndexerExponentialBackoff retryBackoff {std::chrono::seconds {RetryDelay},
+                                                std::chrono::seconds {m_maxRetryDelay}};
         do
         {
             if (m_stopping.load())
@@ -1338,10 +1374,13 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && retryDelaySeconds > 0)
+            if (needToRetry)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
-                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
+                const auto retryDelay = retryBackoff.nextDelay();
+                LOGFN_DEBUG2(
+                    m_logFn, "Retrying search request in %lld ms.", static_cast<long long>(retryDelay.count()));
+                std::unique_lock<std::mutex> lock(m_retryMutex);
+                m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
         } while (needToRetry);
 
