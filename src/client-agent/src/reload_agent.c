@@ -27,9 +27,8 @@ static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
  * wm_control_dispatch() (src/wazuh_modules/src/wm_control.c) already handles
  * symmetrically for both verbs (systemctl <action> / bin/wazuh-control
  * <action> fallback on Linux/macOS; control_run_detached(action, ...) on
- * Windows). Introduced for #37833's agent_restart task_type: agent_reload
- * already drove this path (reloadAgent()), agent_restart previously had no
- * caller at all.
+ * Windows). agent_reload already drove this path (reloadAgent()); restartAgent()
+ * reuses it for the agent_restart task_type, which previously had no caller at all.
  */
 static bool controlAgent(const char *action) {
 
@@ -82,8 +81,17 @@ static bool controlAgent(const char *action) {
 
 	char *output = NULL;
 	control_dispatch(req, &output);
-	if (output) free(output);
-	return true;
+	/* control_dispatch() (control.c) reports its own outcome via *output: "ok "
+	 * on success, "err <reason>" (CreateProcess/GetModuleFileName failure, or an
+	 * unrecognized command) otherwise -- it never fails by return value, only by
+	 * this string, so it must be checked instead of assuming success -- this used to
+	 * always return true, reporting failed restarts/reloads as dispatched. */
+	bool ok = output && strncmp(output, "ok", 2) == 0;
+	if (!ok) {
+		merror("Could not auto-%s agent: %s", action, output ? output : "(no response)");
+	}
+	free(output);
+	return ok;
 
 	#endif
 }
