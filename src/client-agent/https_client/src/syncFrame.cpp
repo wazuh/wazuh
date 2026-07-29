@@ -11,15 +11,12 @@
 
 #include "syncFrame.hpp"
 
-#include "sessionId.hpp"
-
 #include <algorithm>
 #include <array>
 #include <vector>
 
 namespace
 {
-    constexpr std::array<uint8_t, 4> MAGIC {'W', 'Z', 'S', 'Y'};
     constexpr size_t CHUNK = 64 * 1024;
 
     void putU32(std::vector<uint8_t>& out, uint32_t value)
@@ -146,8 +143,8 @@ bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionI
                            const uint8_t* body, size_t length)
 {
     std::vector<uint8_t> header;
-    header.reserve(MAGIC.size() + 4 + sessionId.size() + 8);
-    header.insert(header.end(), MAGIC.begin(), MAGIC.end());
+    header.reserve(SYNC_FRAME_MAGIC.size() + 4 + sessionId.size() + 8);
+    header.insert(header.end(), SYNC_FRAME_MAGIC.begin(), SYNC_FRAME_MAGIC.end());
     putU32(header, static_cast<uint32_t>(sessionId.size()));
     header.insert(header.end(), sessionId.begin(), sessionId.end());
     putU64(header, static_cast<uint64_t>(length));
@@ -170,7 +167,7 @@ SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std
         return result;
     }
 
-    if (magic != MAGIC)
+    if (magic != SYNC_FRAME_MAGIC)
     {
         return SyncFrameResult::Malformed;
     }
