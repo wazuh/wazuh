@@ -149,7 +149,7 @@ namespace remoted::http
     struct HttpServerConfig
     {
         std::string bindAddress {"127.0.0.1"}; ///< Listen address.
-        std::uint16_t port {9443};             ///< Listen port.
+        std::uint16_t port {1517};             ///< Listen port.
         std::string certificatePath;           ///< TLS certificate chain (PEM) path.
         std::string privateKeyPath;            ///< TLS private key (PEM) path.
         std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
@@ -158,7 +158,7 @@ namespace remoted::http
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {50U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t maxBodySize {20U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
