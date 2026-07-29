@@ -148,6 +148,19 @@ int write_state() {
             fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
         }
 
+    fprintf(fp,
+        "\n"
+        "# /control tasks routed to a handler\n"
+        W_AGENTD_FIELD_TASK_DISPATCHED "='%u'\n"
+        "\n"
+        "# /control tasks discarded as duplicates (durable registry, #37833)\n"
+        W_AGENTD_FIELD_TASK_DUPLICATE "='%u'\n"
+        "\n"
+        "# /control tasks that failed to dispatch/execute\n"
+        W_AGENTD_FIELD_TASK_FAILED "='%u'\n",
+        agent_state.task_dispatched, agent_state.task_discarded_duplicate,
+        agent_state.task_failed);
+
     fclose(fp);
 
 #ifndef WIN32
@@ -218,6 +231,15 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
             agent_state.msg_count = *((unsigned int *) data);
         }
         break;
+    case INCREMENT_TASK_DISPATCHED:
+        agent_state.task_dispatched++;
+        break;
+    case INCREMENT_TASK_DISCARDED_DUPLICATE:
+        agent_state.task_discarded_duplicate++;
+        break;
+    case INCREMENT_TASK_FAILED:
+        agent_state.task_failed++;
+        break;
     default:
         break;
     }
@@ -233,6 +255,9 @@ char * w_agentd_state_get() {
     char last_ack[W_AGENTD_STATE_TIME_LENGHT] = {0};
     unsigned int count;
     unsigned int sent;
+    unsigned int dispatched;
+    unsigned int duplicate;
+    unsigned int failed;
     int buffered_event;
     bool buffer_enable = true;
 
@@ -257,6 +282,9 @@ char * w_agentd_state_get() {
 
     count = agent_state.msg_count;
     sent = agent_state.msg_sent;
+    dispatched = agent_state.task_dispatched;
+    duplicate = agent_state.task_discarded_duplicate;
+    failed = agent_state.task_failed;
     w_mutex_unlock(&state_mutex);
 
     if (buffered_event = w_agentd_get_buffer_lenght(), buffered_event < 0) {
@@ -275,6 +303,9 @@ char * w_agentd_state_get() {
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_BUFF, buffered_event);
     cJSON_AddBoolToObject(data, W_AGENTD_FIELD_EN_BUFF, buffer_enable);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_DISPATCHED, dispatched);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_DUPLICATE, duplicate);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_FAILED, failed);
 
     retval = cJSON_PrintUnformatted(json_retval);
     cJSON_Delete(json_retval);
