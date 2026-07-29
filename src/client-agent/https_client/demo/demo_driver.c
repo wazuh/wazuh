@@ -137,7 +137,8 @@ static void on_config_downloaded(const char *config_hash, const char *file_path,
     fflush(stdout);
 }
 
-static void on_sync_response(const char *session_id, int result, const char *body, void *user_data)
+static void on_sync_response(const char *session_id, int result, const char *body, size_t body_len,
+                             void *user_data)
 {
     (void)user_data;
     printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d body=%s\n", elapsed_ms(),
