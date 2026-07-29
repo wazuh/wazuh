@@ -391,6 +391,120 @@ static void test_retry_interval_is_deprecated(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+
+/* <stats_report> / <config_report> blocks (#37843) */
+
+static void test_reports_are_off_when_absent(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Both pushes must default to off: the manager's config/stats indices have
+     * a single writer, and nobody asked for it yet. */
+    const char *xml_str = "<server><address>10.0.0.1</address></server>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.stats_report.enabled, 0);
+    assert_int_equal(cfg.config_report.enabled, 0);
+    assert_int_equal(cfg.stats_report.interval, 0);
+    assert_int_equal(cfg.config_report.interval, 0);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_reports_are_independent_of_each_other(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* The issue requires two separate toggles: enabling stats must leave the
+     * config push alone. */
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<stats_report><enabled>yes</enabled><interval>30s</interval></stats_report>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.stats_report.enabled, 1);
+    assert_int_equal(cfg.stats_report.interval, 30);
+    assert_int_equal(cfg.config_report.enabled, 0);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_reports_accept_time_suffixes(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<stats_report><enabled>yes</enabled><interval>2m</interval></stats_report>"
+        "<config_report><enabled>yes</enabled><interval>1h</interval></config_report>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.stats_report.interval, 120);
+    assert_int_equal(cfg.config_report.interval, 3600);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_report_enabled_rejects_a_non_boolean(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<config_report><enabled>maybe</enabled></config_report>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_report_interval_beyond_a_day_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<stats_report><interval>2d</interval></stats_report>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_report_invalid_tag_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<stats_report><cadence>30s</cadence></stats_report>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ssl_full_verification_mode),
@@ -408,6 +522,12 @@ int main(void) {
         cmocka_unit_test(test_batch_zero_size_is_rejected),
         cmocka_unit_test(test_batch_interval_beyond_a_day_is_rejected),
         cmocka_unit_test(test_batch_invalid_tag_is_rejected),
+        cmocka_unit_test(test_reports_are_off_when_absent),
+        cmocka_unit_test(test_reports_are_independent_of_each_other),
+        cmocka_unit_test(test_reports_accept_time_suffixes),
+        cmocka_unit_test(test_report_enabled_rejects_a_non_boolean),
+        cmocka_unit_test(test_report_interval_beyond_a_day_is_rejected),
+        cmocka_unit_test(test_report_invalid_tag_is_rejected),
         cmocka_unit_test(test_time_reconnect_is_deprecated),
         cmocka_unit_test(test_max_retries_is_deprecated),
         cmocka_unit_test(test_retry_interval_is_deprecated),
