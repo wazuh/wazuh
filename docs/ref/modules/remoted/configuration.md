@@ -102,7 +102,7 @@ Configuration for the RESTinio-based HTTPS listener. All options are optional; a
 
 HTTPS listening port.
 
-- **Default value:** `9443`
+- **Default value:** `1517`
 - **Allowed values:** Integer from `1` to `65535`
 
 ### https.bind_addr
@@ -170,7 +170,7 @@ protocol version.
 
 Maximum accepted HTTP request body size.
 
-- **Default value:** `50MB`
+- **Default value:** `20MB`
 - **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
 
 ---
@@ -848,14 +848,14 @@ Require and validate agent client certificates, including a full IP-to-certifica
 <wazuh_config>
   <remote>
     <https>
-      <port>9443</port>
+      <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
       <certificate>etc/remoted-https/server.crt</certificate>
       <key>etc/remoted-https/server.key</key>
       <ca>etc/remoted-https/ca.crt</ca>
       <verification_mode>full</verification_mode>
       <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
-      <max_body_size>50MB</max_body_size>
+      <max_body_size>20MB</max_body_size>
     </https>
     <legacy>
       <port>1514</port>
