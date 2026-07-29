@@ -141,8 +141,9 @@ static void on_sync_response(const char *session_id, int result, const char *bod
                              void *user_data)
 {
     (void)user_data;
-    printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d body=%s\n", elapsed_ms(),
-           session_id, result, body ? body : "(none)");
+    (void)body; /* A binary FlatBuffer now, not printable text. */
+    printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d (%zu-byte answer)\n", elapsed_ms(),
+           session_id, result, body_len);
     fflush(stdout);
 }
 
