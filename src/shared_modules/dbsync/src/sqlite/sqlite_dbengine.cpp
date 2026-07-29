@@ -268,11 +268,9 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         }
                     }
                 }
-                // A row that is not in the table yields diffExist == false, which is
-                // indistinguishable from "no changes" here: the upsert would then insert
-                // `entry` as a new row. Callers that only carry a subset of the columns
-                // (a partial update) must not do that, since the missing NOT NULL columns
-                // make the insert fail. update_only turns the absent row into a no-op.
+                // diffExist is false for a missing row, so the upsert would insert `entry`.
+                // Callers passing only some columns must not do that: the omitted ones may
+                // be NOT NULL. update_only makes the absent row a no-op.
                 else if (!updateOnly)
                 {
                     insertElement(table, m_tableFields[table], entry,

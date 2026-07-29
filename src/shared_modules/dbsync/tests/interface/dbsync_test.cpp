@@ -811,11 +811,8 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
 
 
 
-// A partial row (primary key plus a couple of columns) must never be turned into an
-// INSERT when the row is missing: the columns it does not carry may be NOT NULL. This is
-// what made FIM's sync-flag update fail with
-// "sqlite: NOT NULL constraint failed: file_entry.checksum" (issue #37993) whenever the
-// entry was deleted between the scan and the deferred flush.
+// A partial row must not become an INSERT when the row is missing: the columns it omits
+// may be NOT NULL. This is FIM's sync-flag update failing on file_entry.checksum (#37993).
 TEST_F(DBSyncTest, syncRowUpdateOnlyDoesNotInsertMissingRow)
 {
     const auto sql{ "CREATE TABLE file_entry(`path` TEXT, `checksum` TEXT NOT NULL, `sync` INTEGER DEFAULT 0, PRIMARY KEY (`path`)) WITHOUT ROWID;"};
@@ -844,8 +841,7 @@ TEST_F(DBSyncTest, syncRowUpdateOnlyDoesNotInsertMissingRow)
 
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteRow.get()));
 
-    // The row is gone. Without the option the upsert inserts the partial row and trips
-    // the NOT NULL constraint on `checksum`; with it, the operation is a no-op.
+    // The row is gone: without the option the upsert trips the NOT NULL constraint.
     EXPECT_NE(0, dbsync_sync_row(handle, jsPartialRow.get(), callbackData));
     EXPECT_EQ(0, dbsync_sync_row(handle, jsPartialRowUpdateOnly.get(), callbackData));
 }

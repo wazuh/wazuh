@@ -146,14 +146,9 @@ def test_process_priority(test_configuration, test_metadata, configure_local_int
     '''
 
     priority = int(test_metadata['priority'])
-    # Matched on the process name rather than with wazuh_testing.utils.services.
-    # search_process_by_command(): that helper substring-matches the whole cmdline and
-    # returns the first process it iterates over, so when the daemon is launched through
-    # a wrapper the wrapper matches too. 'sudo /var/ossec/bin/wazuh-syscheckd' carries
-    # 'wazuh-syscheckd' in its cmdline and has the lower PID, so it can be returned
-    # instead of the daemon; sudo never gets the nice value syscheck applies to itself,
-    # so the priority assertion below fails intermittently. The process name is exact:
-    # the wrapper is named 'sudo', only the daemon is named 'wazuh-syscheckd'.
+    # Matched by name, not by search_process_by_command(): that helper matches the whole
+    # cmdline, so a 'sudo ... wazuh-syscheckd' wrapper matches too and, having the lower
+    # PID, can be returned instead of the daemon. sudo does not carry its nice value.
     syscheckd_process = next(
         (p for p in psutil.process_iter(['pid', 'name']) if p.info['name'] == SYSCHECK_DAEMON),
         None

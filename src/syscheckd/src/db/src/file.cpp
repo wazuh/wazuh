@@ -568,12 +568,9 @@ int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_v
         updateData["table"] = table_name;
         updateData["data"] = nlohmann::json::array();
         updateData["data"].push_back(rowData);
-        // rowData only carries the primary key, the sync flag and the version. If the row
-        // is gone by the time this runs (the pending updates are flushed after the scan
-        // transaction closes, so a realtime delete or the failed-validation cleanup can
-        // have removed it in between) the upsert would insert this partial row and fail
-        // the file_entry.checksum NOT NULL constraint. Nothing to update is the correct
-        // outcome here: the entry no longer exists.
+        // Partial row: primary key, sync and version only. These updates are flushed after
+        // the scan transaction closes, so the entry may be gone by now; without this the
+        // upsert would insert it and fail the checksum NOT NULL constraint.
         updateData["options"]["update_only"] = true;
 
         // Execute update
