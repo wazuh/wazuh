@@ -108,6 +108,9 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
      * second, so the join below still completes. */
     fim_sync_module_running = 0;
     bool join_sync_thread = fim_sync_thread_initialized;
+    /* Read the thread handle under the same lock its writer (start_daemon) holds, so the
+     * join below never races the creation store. */
+    pthread_t sync_thread = fim_sync_thread;
     fim_sync_thread_initialized = false;
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
@@ -127,7 +130,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 
         if (poll_ret > 0)
         {
-            pthread_join(fim_sync_thread, NULL);
+            pthread_join(sync_thread, NULL);
         }
         else
         {
@@ -318,11 +321,16 @@ int main(int argc, char **argv)
         merror_exit("Could not create the shutdown pipes: %s (%d)", strerror(errno), errno);
     }
 
-    /* Keep the pipes out of child processes (e.g. prefilter_cmd) */
-    fcntl(fim_shutdown_pipe[0], F_SETFD, FD_CLOEXEC);
-    fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
-    fcntl(fim_sync_exit_pipe[0], F_SETFD, FD_CLOEXEC);
-    fcntl(fim_sync_exit_pipe[1], F_SETFD, FD_CLOEXEC);
+    /* Keep the pipes out of child processes (e.g. prefilter_cmd). A failure here is not fatal
+     * (it would only mean the pipe fds could leak into a child), so log and continue. */
+    int cloexec_ret = 0;
+    cloexec_ret |= fcntl(fim_shutdown_pipe[0], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_sync_exit_pipe[0], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_sync_exit_pipe[1], F_SETFD, FD_CLOEXEC);
+    if (cloexec_ret < 0) {
+        mwarn("Could not set FD_CLOEXEC on the shutdown pipes: %s (%d)", strerror(errno), errno);
+    }
 
     w_create_thread(fim_shutdown_waiter, NULL);
 
