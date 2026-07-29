@@ -68,7 +68,6 @@ typedef enum wdb_global_group_hash_operations_t {
 
 typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_INSERT_AGENT,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_NAME,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION,
     WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
@@ -448,17 +447,6 @@ void wdb_global_post(void *wdb_ctx);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the update agent name request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_update_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the update agent data request.
@@ -925,16 +913,6 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add);
-
-/**
- * @brief Function to update an agent name.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] name The agent name
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
 
 /**
  * @brief Function to update an agent version data.
