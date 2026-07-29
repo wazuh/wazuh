@@ -30,7 +30,11 @@ target_link_libraries(
   pthread
   # inventorySyncServerModule_test.cpp builds a real cJSON tree to exercise the C-ABI's borrow
   # contract; wazuhext is where cJSON lives (see the module's CMakeLists.txt).
-  wazuhext)
+  wazuhext
+  # indexerGating_test.cpp's file-local fake connectors implement IIndexerConnector directly and
+  # need no indexer_connector symbols themselves, but inventorySyncServerModule_test.cpp's default
+  # (unmocked) startup path resolves into the real IndexerConnectorSync inside the linked .so.
+  indexer_connector)
 
 target_include_directories(
   inventory_sync_server_utest

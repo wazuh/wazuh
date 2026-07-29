@@ -109,6 +109,18 @@ extern "C"
                                       ///< One deferred response costs one fd, so this is the
                                       ///< knob that bounds fd usage. <=0 -> default.
 
+        /* ---- Indexer connector tuning: overlaid onto the <indexer> block below before it is
+         *      handed to IndexerConnectorSync -- the same connector class inventory_sync (the
+         *      module this one will eventually replace) already uses, so these mirror its own
+         *      tunables exactly. <=0 -> module default. ---- */
+        int indexer_bulk_size_bytes; ///< Bulk-request size threshold, bytes, before a flush is
+                                     ///< forced. Maps to `max_bulk_size` -- the same key
+                                     ///< inventory_sync overlays via its own `indexerBulkSize`
+                                     ///< option. <=0 -> 10 MiB.
+        int indexer_flush_interval;  ///< Periodic flush interval, seconds, forced even if the
+                                     ///< bulk-size threshold has not been reached. Maps to
+                                     ///< `flush_interval_seconds`. <=0 -> 20 s.
+
         /* ---- Nested, opaque ---- */
         /**
          * @brief The <indexer> configuration block, verbatim, as nested cJSON.
@@ -119,6 +131,10 @@ extern "C"
          * a fixed-size C struct cannot express without flattening it here and re-nesting
          * it on the other side. Passing the subtree through untouched keeps this header
          * from having to track the indexer connector's schema at all.
+         *
+         * `indexer_bulk_size_bytes`/`indexer_flush_interval` above are overlaid onto this
+         * subtree by the module before construction; they are not expected to already be
+         * present in it.
          *
          * OWNERSHIP: BORROWED for the duration of the start() call only. The module
          * deep-copies whatever it needs before returning, so the caller may free it as
