@@ -1,0 +1,101 @@
+name: 5.X - Inventory Sync Server - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_inventorysyncserver.yml"
+      - "src/shared_modules/utils/**"
+      - "src/wazuh_modules/inventory_sync_server/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  inventorysyncserver-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Inventory sync server - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_sync_server_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is deliberately off for this suite. It drives a real Unix-domain-socket server with
+      # hundreds of concurrent connections and several timing-sensitive shutdown tests; under
+      # Valgrind's serialized execution those exceed their deadlines and fail for the wrong reason.
+      # The sanitizer job below is what covers the memory-safety surface, and it is the one that
+      # matters here because the risk is teardown ORDER, not leaks.
+      - name: Inventory sync server - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "inventory_sync_server_utest"
+
+      - name: Inventory sync server - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/wazuh_modules/inventory_sync_server
+          test_directory: src/wazuh_modules/inventory_sync_server
+          id: inventory_sync_server
+          validate_function_coverage: "false"
+
+  inventorysyncserver-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Inventory sync server - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_sync_server_utest"
+          test: "true"
+          asan: "true"
+
+      # This job is the point of the workflow, not a redundant second run: the shutdown tests are
+      # only real regression checks under a sanitizer. Without one, an asio object destroyed while
+      # the reactor is being torn down -- or a responder touching a freed session -- usually still
+      # passes.
+      - name: Inventory sync server - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "inventory_sync_server_utest"
+          valgrind: "false"

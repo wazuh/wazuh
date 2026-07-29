@@ -1,0 +1,129 @@
+/*
+ * Wazuh inventory sync server module
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 28, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "inventorySyncServer.hpp"
+#include "cjsonSmartDeleter.hpp"
+#include "inventorySyncServerFacade.hpp"
+
+namespace Log
+{
+    // Single definition of the DSO-global log sink used by loggerHelper.h. It has hidden
+    // visibility, so every .so needs its own -- this one is not shared with (and cannot be
+    // interposed by) libinventory_sync.so's copy, which is the point.
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+} // namespace Log
+
+void InventorySyncServer::start(
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+        logFunction,
+    const inventory_sync_server_config_t& configuration,
+    nlohmann::json indexerConfig) const
+{
+    invsync::InventorySyncServerFacade::instance().start(logFunction, configuration, std::move(indexerConfig));
+}
+
+void InventorySyncServer::stop() const
+{
+    invsync::InventorySyncServerFacade::instance().stop();
+}
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    void inventory_sync_server_start(full_log_fnc_t callbackLog, const inventory_sync_server_config_t* configuration)
+    {
+        try
+        {
+            // Defaults when modulesd passes no configuration.
+            inventory_sync_server_config_t config {};
+            if (configuration)
+            {
+                config = *configuration;
+            }
+
+            // Convert the borrowed <indexer> subtree into an owned nlohmann::json HERE, at the
+            // boundary. inventory_sync_server.h promises the pointer is borrowed for the duration
+            // of this call only, so the copy has to happen before we return -- and doing it here
+            // keeps cJSON out of the facade entirely.
+            nlohmann::json indexerConfig = nlohmann::json::object();
+            if (config.indexer != nullptr)
+            {
+                const std::unique_ptr<char, CJsonSmartFree> printed {cJSON_Print(config.indexer)};
+                if (printed)
+                {
+                    indexerConfig = nlohmann::json::parse(printed.get());
+                }
+            }
+
+            // Defensive: the copy above is the only reader of this pointer. Clearing it means a
+            // later change that starts passing `config` further down cannot accidentally
+            // dereference a pointer the caller has already freed.
+            config.indexer = nullptr;
+
+            InventorySyncServer::instance().start(
+                [callbackLog](const int logLevel,
+                              const char* tag,
+                              const char* file,
+                              const int line,
+                              const char* func,
+                              const char* logMessage,
+                              va_list args)
+                {
+                    if (callbackLog)
+                    {
+                        callbackLog(logLevel, tag, file, line, func, logMessage, args);
+                    }
+                },
+                config,
+                std::move(indexerConfig));
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(
+                LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error starting inventory sync server: %s", e.what());
+        }
+        catch (...)
+        {
+            // inventory_sync_server.h promises this never throws into C. A non-std::exception
+            // escaping here would cross the extern "C" boundary into modulesd's C code, where
+            // there is no handler -- std::terminate, taking the whole daemon down.
+            LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
+                        "Error starting inventory sync server: non-standard exception.");
+        }
+    }
+
+    void inventory_sync_server_stop(void)
+    {
+        try
+        {
+            InventorySyncServer::instance().stop();
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(
+                LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error stopping inventory sync server: %s", e.what());
+        }
+        catch (...)
+        {
+            // Same reasoning as inventory_sync_server_start(): nothing may cross back into C.
+            // This one runs from modulesd's signal handler (wazuh_modules/src/main.c), where a
+            // terminate would turn a clean shutdown into a crash.
+            LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
+                        "Error stopping inventory sync server: non-standard exception.");
+        }
+    }
+
+#ifdef __cplusplus
+}
+#endif
