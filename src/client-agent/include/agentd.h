@@ -225,6 +225,12 @@ void * req_receiver(void * arg);
  * a fallback (e.g. release the startup hash gate directly). */
 bool reloadAgent(void);
 
+// Restart agent (#37833's agent_restart task_type). Same mechanism and
+// return-value contract as reloadAgent(), with wm_control dispatched
+// "restart" instead of "reload" (systemctl/wazuh-control restart on
+// Linux/macOS, a detached service restart on Windows).
+bool restartAgent(void);
+
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 

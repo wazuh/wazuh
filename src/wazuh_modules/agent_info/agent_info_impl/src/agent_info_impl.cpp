@@ -34,6 +34,7 @@ extern "C"
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
+constexpr auto TASKS_TABLE = "tasks";
 
 // Module coordination configuration.
 // FIM is listed first so its async pause-completion probe runs before the other
@@ -120,6 +121,12 @@ const char* DB_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS db_metadata 
                                         "last_groups_integrity      INTEGER NOT NULL DEFAULT 0,"
                                         "is_first_run               INTEGER NOT NULL DEFAULT 1,"
                                         "is_first_groups_run        INTEGER NOT NULL DEFAULT 1);";
+
+// Durable /control task_id dedup guard (#37833). agent-info is new in 5.0.0, so this table
+// needs no upgrade path -- it is simply part of the schema from day one.
+const char* TASKS_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS tasks ("
+                                  "task_id       TEXT NOT NULL PRIMARY KEY,"
+                                  "recorded_at   INTEGER NOT NULL);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -396,6 +403,7 @@ std::string AgentInfoImpl::GetCreateStatement() const
     ret += AGENT_METADATA_SQL_STATEMENT;
     ret += AGENT_GROUPS_SQL_STATEMENT;
     ret += DB_METADATA_SQL_STATEMENT;
+    ret += TASKS_SQL_STATEMENT;
     return ret;
 }
 
@@ -2177,6 +2185,131 @@ void AgentInfoImpl::loadSyncFlags()
         m_isFirstRun = true;
         m_isFirstGroupsRun = true;
     }
+}
+
+bool AgentInfoImpl::checkAndRecordTask(const std::string& taskId)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot check/record task " + taskId + ": DBSync not available");
+        return false;
+    }
+
+    try
+    {
+        bool alreadyRecorded = false;
+
+        auto existsQuery = SelectQuery::builder()
+                           .table(TASKS_TABLE)
+                           .columnList({"task_id"})
+                           .rowFilter("WHERE task_id = ?")
+                           .rowFilterBindText(taskId)
+                           .countOpt(1)
+                           .build();
+
+        const auto existsCallback = [&alreadyRecorded](ReturnTypeCallback, const nlohmann::json&)
+        {
+            alreadyRecorded = true;
+        };
+
+        m_dBSync->selectRows(existsQuery.query(), existsCallback);
+
+        if (alreadyRecorded)
+        {
+            m_logFunction(LOG_DEBUG, "Dropping /control task " + taskId + ": already recorded in agent_info.db.");
+            return false;
+        }
+
+        nlohmann::json row;
+        row["task_id"] = taskId;
+        row["recorded_at"] = Utils::getSecondsFromEpoch();
+
+        nlohmann::json insertInput;
+        insertInput["table"] = TASKS_TABLE;
+        insertInput["data"] = nlohmann::json::array({row});
+
+        m_dBSync->insertData(insertInput);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to check/record task " + taskId + " in agent_info.db: " + std::string(e.what()));
+        return false;
+    }
+}
+
+void AgentInfoImpl::cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return;
+    }
+
+    const uint32_t effectiveMaxEntries = maxEntries == 0 ? 1 : maxEntries;
+
+    try
+    {
+        const int64_t cutoff = Utils::getSecondsFromEpoch() - static_cast<int64_t>(ttlSeconds);
+
+        auto ttlDeleteQuery = DeleteQuery::builder()
+                              .table(TASKS_TABLE)
+                              .rowFilter("recorded_at < " + std::to_string(cutoff))
+                              .build();
+
+        m_dBSync->deleteRows(ttlDeleteQuery.query());
+
+        auto capDeleteQuery = DeleteQuery::builder()
+                              .table(TASKS_TABLE)
+                              .rowFilter("task_id NOT IN (SELECT task_id FROM " + std::string(TASKS_TABLE) +
+                                         " ORDER BY recorded_at DESC LIMIT " + std::to_string(effectiveMaxEntries) + ")")
+                              .build();
+
+        m_dBSync->deleteRows(capDeleteQuery.query());
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Failed to clean up expired tasks: ") + e.what());
+    }
+}
+
+size_t AgentInfoImpl::countTasks()
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return 0;
+    }
+
+    size_t count = 0;
+
+    try
+    {
+        auto countQuery = SelectQuery::builder()
+                          .table(TASKS_TABLE)
+                          .columnList({"COUNT(*) AS count"})
+                          .build();
+
+        const auto countCallback = [&count](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("count") && data["count"].is_number())
+            {
+                count = data["count"].get<size_t>();
+            }
+        };
+
+        m_dBSync->selectRows(countQuery.query(), countCallback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, std::string("Failed to count tasks: ") + e.what());
+    }
+
+    return count;
 }
 
 void AgentInfoImpl::resetSyncFlag(const std::string& table)
