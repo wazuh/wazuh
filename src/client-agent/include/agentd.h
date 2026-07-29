@@ -268,6 +268,26 @@ bool startup_gate_check_hash_match(void);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+size_t agcom_getallconfig(char ** output);
+size_t agcom_getallstats(char ** output);
+
+/**
+ * @brief Collect every module's configuration into one /config document.
+ *
+ * Queries each agent daemon once and concatenates what they report.
+ *
+ * @return Allocated JSON document the caller frees, or NULL when no component
+ *         answered and the cycle should be skipped.
+ */
+char *w_agent_collect_config(void);
+
+/**
+ * @brief Collect every module's statistics into one /stats document.
+ *
+ * @return Allocated JSON document the caller frees, or NULL when no component
+ *         answered and the cycle should be skipped.
+ */
+char *w_agent_collect_stats(void);
 
 #ifdef WIN32
 size_t control_dispatch(char *command, char **output);
