@@ -147,6 +147,24 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     });
 }
 
+void CallbackDispatcher::onUpgradeReady(const std::string& taskId, const std::string& wpkFile,
+                                        std::shared_ptr<SpoolFile> file, const std::string& installer)
+{
+    if (m_callbacks.on_remote_upgrade_ready == nullptr)
+    {
+        return; // Last reference dropped here: the temp WPK file is deleted now.
+    }
+
+    // The lambda owns the file; run() destroys the task right after invoking
+    // it, so the file is deleted as soon as the C callback returns (same
+    // convention as onConfigDownloaded).
+    enqueue([this, taskId, wpkFile, file = std::move(file), installer]
+    {
+        m_callbacks.on_remote_upgrade_ready(taskId.c_str(), wpkFile.c_str(), file->path().c_str(),
+                                            installer.c_str(), m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
 {
     if (m_callbacks.on_manager_config_hash == nullptr)

@@ -48,6 +48,18 @@
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
+#include "task_registry_client.h" /* durable task_id registry client (#37833) */
+#include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command (#37834) */
+#include "cJSON.h"
+#include "os_net.h"
+#include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* (#37833) */
+
+#ifdef WIN32
+/* Declared (not static) in receiver.c; the AR forwarding path below mirrors
+ * its exact legacy write, just triggered from a /control task instead of the
+ * legacy TCP receiver. */
+extern w_queue_t *winexec_queue;
+#endif
 
 static hc_handle *g_https_client = NULL;
 
@@ -174,10 +186,6 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
     return 0;
 }
 #endif
-
-/* Received-work callbacks. The production hookups still pending (later
- * integration workstreams): execd/module-com routing for on_task-equivalent
- * work. */
 
 /* Startup-response parsing (#37830's own "In scope" text: apply module limits
  * and cluster-name authority from the handshake). Deliberately separate,
@@ -332,6 +340,10 @@ static void bridge_apply_agent_groups(const cJSON *root)
     }
 }
 
+/* Received-work callbacks: #37833 wires real routing for the four /control
+ * task_types (active_response/agent_restart/agent_reload/remote_upgrade),
+ * durable dedup via agent-info (task_registry_client.c) and #37834 wires the
+ * remote_upgrade download/verify/install seam. */
 static void bridge_on_startup_result(bool accepted, const char *metadata_json, void *user_data)
 {
     (void)user_data;
@@ -419,13 +431,407 @@ static agent_status_t bridge_map_agent_status(int hc_state)
     }
 }
 
+/* Synchronous ITaskIdStore backing (#37833): fires on the CONTROL thread
+ * (collectFreshTasks, controlStream.cpp), once per fresh task_id, BEFORE
+ * batch planning/dispatch. The round trip to agent-info (task_registry_
+ * client.c: a local socket hop to wazuh-modulesd on Linux/macOS, in-process
+ * on Windows) is bounded (a few seconds at most) and judged an acceptable,
+ * brief delay to the next Notify -- unlike task EXECUTION, which always
+ * happens off this thread (inline for the fast AR-forward case, or a
+ * dedicated worker thread for restart/reload/remote_upgrade, all below).
+ * Fails closed: task_registry_check_and_record() itself already treats an
+ * unreachable/erroring registry as "not new", so this only maps its bool
+ * onto the callback's tri-state contract and counts the drop. */
+static int bridge_check_and_record_task(const char *task_id, void *user_data)
+{
+    (void)user_data;
+
+    if (!task_id) {
+        return -1;
+    }
+
+    if (task_registry_check_and_record(task_id)) {
+        return 1;
+    }
+
+    w_agentd_state_update(INCREMENT_TASK_DISCARDED_DUPLICATE, NULL);
+    return 0;
+}
+
+/* active_response: forwards the task's AR document to execd over agt->
+ * execdq, mirroring the legacy path (receiver.c:~102-115) that strips the
+ * EXECD_HEADER prefix and hands the remainder straight to execd -- except
+ * here there is no legacy header to strip, since the task payload IS the AR
+ * document. execd's ExecdRun() (os_execd/src/execd.c) parses plain JSON off
+ * that queue, reading wazuh.active_response.{executable,type,
+ * stateful_timeout}. #37733's manager-side spike confirmed the real
+ * contract (issue #37733, comment
+ * https://github.com/wazuh/wazuh/issues/37733#issuecomment-5027414121,
+ * "11.1 Active Response"): the task payload is always already the complete
+ * AR document, wrapped as {"wazuh":{"active_response":{...},"agent":{...}},
+ * "rule":{...},"data":{...}} -- there is no flat/unwrapped variant in the
+ * real contract. So this forwards the whole parsed JSON to execd unchanged
+ * (not just wazuh.active_response: execd may use sibling fields, and the
+ * payload is explicitly "the complete AR document"); a payload missing
+ * "wazuh" at the top level means the task is genuinely malformed, not an
+ * alternate valid shape to repair. */
+static void bridge_dispatch_active_response(const char *task_id, const char *payload_json)
+{
+    cJSON *payload = cJSON_Parse(payload_json ? payload_json : "");
+
+    if (!payload || !cJSON_HasObjectItem(payload, "wazuh")) {
+        merror("https_client: active_response task %s has a malformed payload; dropping.", task_id);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        cJSON_Delete(payload); /* No-op if NULL (parse failure). */
+        return;
+    }
+
+    char *msg_str = cJSON_PrintUnformatted(payload);
+    cJSON_Delete(payload);
+
+    if (!msg_str) {
+        merror("https_client: active_response task %s could not be serialized; dropping.", task_id);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    bool sent = false;
+
+    if (agt->execdq >= 0) {
+#ifndef WIN32
+        if (OS_SendUnix(agt->execdq, msg_str, 0) < 0) {
+            mdebug1("https_client: active_response task %s: error communicating with execd.", task_id);
+        } else {
+            sent = true;
+        }
+#else
+        queue_push_ex(winexec_queue, strdup(msg_str));
+        sent = true;
+#endif
+    } else {
+        mdebug1("https_client: active_response task %s dropped: execd queue not available.", task_id);
+    }
+
+    os_free(msg_str);
+    w_agentd_state_update(sent ? INCREMENT_TASK_DISPATCHED : INCREMENT_TASK_FAILED, NULL);
+}
+
+/* agent_restart/agent_reload: both drive wm_control's already-symmetric
+ * "restart"/"reload" dispatch (src/wazuh_modules/src/wm_control.c) via
+ * restartAgent()/reloadAgent() (src/client-agent/src/reload_agent.c). Their
+ * POSIX path can retry the control-socket connect for up to ~30s (modulesd
+ * not up yet), which must not stall the dispatcher thread (the module's
+ * callback contract) or every other queued callback behind it -- so this
+ * runs on its own short-lived worker thread, the same idiom already used for
+ * re-enrollment (bridge_reenroll_thread). */
+struct bridge_control_task_ctx {
+    char *task_id;
+    bool restart; /* true: agent_restart: false: agent_reload. */
+};
+
+/* Not static: unit-tested by calling it directly (synchronously), bypassing
+ * w_create_thread, same convention as bridge_reenroll_thread above. */
+void *bridge_control_task_thread(void *arg)
+{
+    struct bridge_control_task_ctx *ctx = (struct bridge_control_task_ctx *)arg;
+    const char *type_name = ctx->restart ? "agent_restart" : "agent_reload";
+    bool ok = ctx->restart ? restartAgent() : reloadAgent();
+
+    if (ok) {
+        minfo("https_client: task %s (%s) dispatched.", ctx->task_id, type_name);
+        w_agentd_state_update(INCREMENT_TASK_DISPATCHED, NULL);
+    } else {
+        merror("https_client: task %s (%s) failed to dispatch.", ctx->task_id, type_name);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+    }
+
+    os_free(ctx->task_id);
+    os_free(ctx);
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI bridge_control_task_thread_win(LPVOID arg)
+{
+    bridge_control_task_thread(arg);
+    return 0;
+}
+#endif
+
+static void bridge_dispatch_control_task(const char *task_id, bool restart)
+{
+    struct bridge_control_task_ctx *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup(task_id ? task_id : "", ctx->task_id);
+    ctx->restart = restart;
+
+#ifdef WIN32
+    w_create_thread(NULL, 0, bridge_control_task_thread_win, ctx, 0, NULL);
+#else
+    w_create_thread(bridge_control_task_thread, ctx);
+#endif
+}
+
 static void bridge_on_task(const char *task_id, const char *task_type, const char *payload_json,
                            void *user_data)
 {
-    (void)payload_json;
     (void)user_data;
     mdebug1("https_client task received: id=%s type=%s", task_id ? task_id : "?",
             task_type ? task_type : "?");
+
+    if (!task_id || !task_type) {
+        merror("https_client: task missing id/type; dropping.");
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    if (strcmp(task_type, "active_response") == 0) {
+        bridge_dispatch_active_response(task_id, payload_json);
+    } else if (strcmp(task_type, "agent_restart") == 0) {
+        bridge_dispatch_control_task(task_id, true);
+    } else if (strcmp(task_type, "agent_reload") == 0) {
+        bridge_dispatch_control_task(task_id, false);
+    } else {
+        /* remote_upgrade is routed through on_remote_upgrade_ready instead
+         * (it needs the module's own HTTP/download machinery, so ControlStream
+         * intercepts it before this callback ever fires -- see controlStream.
+         * cpp's dispatchPlannedTasks). Reaching this branch for "remote_upgrade"
+         * would mean that interception broke; treat any other value as an
+         * unknown/unsupported type either way. */
+        merror("https_client: task %s has an unknown/unsupported task_type '%s'; dropping.",
+               task_id, task_type);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+    }
+}
+
+/* remote_upgrade (#37834): the WPK is already downloaded and sha1-verified
+ * by the time this fires (ControlStream::dispatchUpgradeTask); the task_id
+ * is already durably recorded (bridge_check_and_record_task, before this
+ * ever fires), which is what makes running the installer here idempotent
+ * across the restart it triggers -- a post-restart re-delivery of the same
+ * task_id is discarded upstream and never reaches this callback again.
+ *
+ * wpk_path is a module-owned temp file valid ONLY until this callback
+ * returns (same convention as on_config_downloaded), so the file is staged
+ * into INCOMING_DIR synchronously, here, before anything is deferred; only
+ * the (potentially slow, installer-running) dispatch to the upgrade module
+ * moves to a worker thread. */
+struct bridge_upgrade_ctx {
+    char *task_id;
+    char *wpk_file;
+    char *installer;
+};
+
+/* POSIX-only, confirmed via an actual winagent cross-compile (MinGW), not just by inspection:
+ * os_execd's wcom_main() -- the COM_LOCAL_SOCK listener that dispatches "lock_restart" to
+ * lock_restart(), os_execd/src/wcom.c:335-412 -- is itself wrapped in #ifndef WIN32, and is
+ * absent (no such symbol at all) from the winagent build's libexecd_lib.a, so there is nothing
+ * on Windows listening on COM_LOCAL_SOCK to receive this request in the first place. This
+ * predates this PR: the legacy manager-driven "%.3d com lock_restart -1" request was always the
+ * same OS-agnostic string regardless of agent platform, but Windows agents never had a receiver
+ * for it -- so not adding a Windows path here is continuity of a pre-existing gap, not a new
+ * regression. (lock_restart() itself and the pending_upg it sets, os_execd/src/wcom.c:427-429,
+ * do compile cross-platform, but as of this writing nothing in the codebase reads pending_upg on
+ * *any* platform: wcom_restart()/wcom_reload(), the only callers that used to check it, were
+ * removed by 7217e26d24 ("Remove restart and reload command handling from wcom"). The lock is
+ * currently a write-only no-op everywhere, not only on Windows -- a pre-existing dead-code
+ * observation, out of scope to fix here.) */
+#ifndef WIN32
+/* remote_upgrade (#37834): replicates the legacy manager's first step of the old multi-step
+ * upgrade protocol -- "%.3d com lock_restart -1" (wm_agent_upgrade_send_lock_restart(),
+ * wm_agent_upgrade_upgrades.c, manager-side; kept only as a style/error-handling reference, not
+ * touched here) -- sent to os_execd's local socket (COM_LOCAL_SOCK) before any WPK work starts,
+ * so wcom_dispatch()'s "lock_restart" branch (os_execd/src/wcom.c:65) calls lock_restart(-1) and
+ * blocks the agent's own auto-restart mechanism for the configured max duration while the
+ * installer runs. Nothing in the new HTTPS remote_upgrade path called this before, which is a
+ * real behavioral gap against the legacy flow; this restores it.
+ *
+ * A failed connect/send only logs a warning and the upgrade proceeds anyway: this lock is
+ * best-effort (the old protocol's own manager-side sender treated it the same way -- see
+ * wm_agent_upgrade_send_lock_restart()'s own error handling), so it must not abort the upgrade
+ * itself. Single attempt, no retry loop: unlike reloadAgent()/restartAgent() at start-up (which
+ * retry because modulesd may not be up yet), execd is already running by the time an upgrade
+ * task reaches this thread, and a stuck retry loop here would only delay the installer for no
+ * benefit. */
+static void bridge_send_lock_restart(const char *task_id)
+{
+    int sock = OS_ConnectUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        mwarn("https_client: remote_upgrade task %s: could not connect to '%s' to lock the "
+              "agent's auto-restart: %s (%d). Proceeding without it.",
+              task_id, COM_LOCAL_SOCK, strerror(errno), errno);
+        return;
+    }
+
+    const char *lock_command = "lock_restart -1";
+
+    if (OS_SendSecureTCP(sock, strlen(lock_command), lock_command) < 0) {
+        mwarn("https_client: remote_upgrade task %s: could not send lock_restart to '%s': %s "
+              "(%d). Proceeding without it.",
+              task_id, COM_LOCAL_SOCK, strerror(errno), errno);
+    }
+
+    close(sock);
+}
+#endif
+
+/* Not static: unit-tested by calling it directly (synchronously), bypassing
+ * w_create_thread, same convention as bridge_reenroll_thread above. */
+void *bridge_upgrade_thread(void *arg)
+{
+    struct bridge_upgrade_ctx *ctx = (struct bridge_upgrade_ctx *)arg;
+    bool ok = false;
+
+#ifndef WIN32
+    bridge_send_lock_restart(ctx->task_id);
+#endif
+
+    cJSON *parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "file", ctx->wpk_file);
+    cJSON_AddStringToObject(parameters, "installer", ctx->installer);
+    cJSON *command = cJSON_CreateObject();
+    cJSON_AddStringToObject(command, "command", "upgrade");
+    cJSON_AddItemToObject(command, "parameters", parameters);
+    char *command_str = cJSON_PrintUnformatted(command);
+    cJSON_Delete(command);
+
+    if (!command_str) {
+        merror("https_client: remote_upgrade task %s: could not build the upgrade command.", ctx->task_id);
+        goto done;
+    }
+
+    char *output = NULL;
+
+#ifndef WIN32
+    int sock = OS_ConnectUnixDomain(AGENT_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        merror("https_client: remote_upgrade task %s: could not connect to '%s': %s (%d).",
+               ctx->task_id, AGENT_UPGRADE_SOCK, strerror(errno), errno);
+        os_free(command_str);
+        goto done;
+    }
+
+    if (OS_SendSecureTCP(sock, strlen(command_str), command_str) < 0) {
+        merror("https_client: remote_upgrade task %s: OS_SendSecureTCP failed: %s (%d).",
+               ctx->task_id, strerror(errno), errno);
+        close(sock);
+        os_free(command_str);
+        goto done;
+    }
+
+    char response[OS_MAXSTR + 1] = {0};
+    /* No recv timeout set on purpose: this runs on its own thread (not the
+     * dispatcher), and the installer itself can legitimately take a while
+     * (up to execd.request_timeout, default cap 3600s) before wm_agent_
+     * upgrade_com_upgrade() replies -- unlike the dedup IPC hop, blocking
+     * here has no fan-out cost on other callbacks. */
+    ssize_t recv_len = OS_RecvSecureTCP(sock, response, OS_MAXSTR);
+    close(sock);
+
+    if (recv_len > 0) {
+        response[recv_len < OS_MAXSTR ? recv_len : OS_MAXSTR] = '\0';
+        os_strdup(response, output);
+    }
+
+#else
+    wm_agent_upgrade_process_command(command_str, &output);
+#endif
+
+    os_free(command_str);
+
+    if (!output) {
+        merror("https_client: remote_upgrade task %s: no response from the upgrade module.", ctx->task_id);
+        goto done;
+    }
+
+    cJSON *ack = cJSON_Parse(output);
+    int error_code = -1;
+
+    if (ack) {
+        cJSON *error_item = cJSON_GetObjectItem(ack, "error");
+
+        if (error_item && cJSON_IsNumber(error_item)) {
+            error_code = error_item->valueint;
+        }
+
+        cJSON_Delete(ack);
+    }
+
+    if (error_code == 0) {
+        minfo("https_client: remote_upgrade task %s dispatched to the upgrade module (installer "
+              "running; the agent may restart shortly). No /control response is sent "
+              "(fire-and-forget, #37834).", ctx->task_id);
+        ok = true;
+    } else {
+        merror("https_client: remote_upgrade task %s: upgrade module rejected the command: %s",
+               ctx->task_id, output);
+    }
+
+    os_free(output);
+
+done:
+    w_agentd_state_update(ok ? INCREMENT_TASK_DISPATCHED : INCREMENT_TASK_FAILED, NULL);
+    os_free(ctx->task_id);
+    os_free(ctx->wpk_file);
+    os_free(ctx->installer);
+    os_free(ctx);
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI bridge_upgrade_thread_win(LPVOID arg)
+{
+    bridge_upgrade_thread(arg);
+    return 0;
+}
+#endif
+
+static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_file,
+                                           const char *wpk_path, const char *installer,
+                                           void *user_data)
+{
+    (void)user_data;
+
+    if (!task_id || !wpk_file || !wpk_path || !installer) {
+        merror("https_client: remote_upgrade callback missing required fields; aborting.");
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    if (w_ref_parent_folder(wpk_file)) {
+        merror("https_client: remote_upgrade task %s: wpk_file '%s' is not a safe filename; aborting.",
+               task_id, wpk_file);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    char dest_path[PATH_MAX + 1];
+#ifndef WIN32
+    snprintf(dest_path, sizeof(dest_path), "%s/%s", INCOMING_DIR, wpk_file);
+#else
+    snprintf(dest_path, sizeof(dest_path), "%s\\%s", INCOMING_DIR, wpk_file);
+#endif
+
+    if (w_copy_file(wpk_path, dest_path, 'b', NULL, 0) < 0) {
+        merror("https_client: remote_upgrade task %s: could not stage the WPK at '%s'; aborting.",
+               task_id, dest_path);
+        w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
+        return;
+    }
+
+    struct bridge_upgrade_ctx *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup(task_id, ctx->task_id);
+    os_strdup(wpk_file, ctx->wpk_file);
+    os_strdup(installer, ctx->installer);
+
+#ifdef WIN32
+    w_create_thread(NULL, 0, bridge_upgrade_thread_win, ctx, 0, NULL);
+#else
+    w_create_thread(bridge_upgrade_thread, ctx);
+#endif
 }
 
 /* The startup hash gate (client-agent/src/startup_gate.c) holds syscheckd and
@@ -919,6 +1325,8 @@ void w_https_client_start(void)
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
+    callbacks.check_and_record_task = bridge_check_and_record_task;
+    callbacks.on_remote_upgrade_ready = bridge_on_remote_upgrade_ready;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_sync_response = bridge_on_sync_response;

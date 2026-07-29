@@ -38,6 +38,13 @@ class ICallbackSink
         /// production sink drops it right after the C callback returns.
         virtual void onConfigDownloaded(const std::string& configHash,
                                         std::shared_ptr<SpoolFile> file) = 0;
+        /// A remote_upgrade task's WPK was downloaded and sha1-verified
+        /// (#37834); taskId's durable record already happened before this is
+        /// ever called (#37833's ordering guarantee). file lives while the
+        /// callback chain holds the shared_ptr, same convention as
+        /// onConfigDownloaded.
+        virtual void onUpgradeReady(const std::string& taskId, const std::string& wpkFile,
+                                    std::shared_ptr<SpoolFile> file, const std::string& installer) = 0;
         virtual void onManagerConfigHash(const std::string& configHash) = 0;
         virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
         virtual void onStateChange(hc_conn_state_t state) = 0;

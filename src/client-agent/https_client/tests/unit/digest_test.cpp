@@ -57,3 +57,34 @@ TEST(DigestTest, Sha256FileHexOfAMissingFileIsNullopt)
 {
     EXPECT_FALSE(sha256FileHex("/nonexistent/hc-digest/none.tmp").has_value());
 }
+
+TEST(DigestTest, Sha1OfEmptyInputMatchesThePinnedVector)
+{
+    EXPECT_EQ("da39a3ee5e6b4b0d3255bfef95601890afd80709", sha1Hex("", 0));
+}
+
+TEST(DigestTest, Sha1OfAbcMatchesThePinnedVector)
+{
+    // FIPS 180-1 test vector.
+    EXPECT_EQ("a9993e364706816aba3e25717850c26c9cd0d89d", sha1Hex("abc", 3));
+}
+
+TEST(DigestTest, Sha1FileHexMatchesTheBufferDigest)
+{
+    const std::string path = ::testing::TempDir() + "hc_digest_sha1_file.tmp";
+    const std::string content = "fake-wpk-bytes";
+    {
+        std::ofstream file {path, std::ios::binary};
+        file << content;
+    }
+
+    const auto fromFile = sha1FileHex(path);
+    ASSERT_TRUE(fromFile.has_value());
+    EXPECT_EQ(sha1Hex(content.data(), content.size()), *fromFile);
+    std::remove(path.c_str());
+}
+
+TEST(DigestTest, Sha1FileHexOfAMissingFileIsNullopt)
+{
+    EXPECT_FALSE(sha1FileHex("/nonexistent/hc-digest/none-sha1.tmp").has_value());
+}

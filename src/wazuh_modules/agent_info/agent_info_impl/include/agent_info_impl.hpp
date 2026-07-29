@@ -107,6 +107,25 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
+        /// @brief Durable /control task_id dedup guard (#37833), backed by the `tasks` table in
+        /// this same agent_info.db (rather than a private flat file), keyed by task_id.
+        /// Atomically checks whether taskId was already recorded and, if not, records it.
+        /// @param taskId The task_id to check and record
+        /// @return true when taskId was new and is now recorded (dispatch it); false when it is
+        ///         a duplicate, or when the check/insert itself failed (fail closed -- callers
+        ///         must not dispatch a task whose durability could not be confirmed).
+        bool checkAndRecordTask(const std::string& taskId);
+
+        /// @brief Prune the `tasks` table: entries older than ttlSeconds, then (if still over
+        /// maxEntries) the oldest surplus entries. Safe to call periodically.
+        /// @param ttlSeconds Entries last recorded more than this many seconds ago are deleted.
+        /// @param maxEntries Entries beyond this count (oldest first) are deleted; 0 is treated as 1.
+        void cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries);
+
+        /// @brief Current number of remembered task_ids in the `tasks` table. For tests and
+        /// .state metrics.
+        size_t countTasks();
+
     private:
         /// @brief Determine if a stateless event should be generated based on changed fields
         /// @param result Type of change (INSERTED, MODIFIED, DELETED)
