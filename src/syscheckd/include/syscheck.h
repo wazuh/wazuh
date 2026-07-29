@@ -715,6 +715,14 @@ size_t syscom_dispatch(char* command, size_t command_len, char** output);
  */
 size_t syscom_getconfig(const char* section, char** output);
 
+/**
+ * @brief Build this daemon's entry for the agent's /config document.
+ *
+ * @param output Receives the allocated "ok <json>" reply.
+ * @return Length of *output.
+ */
+size_t syscom_getallconfig(char** output);
+
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 extern atomic_int_t fim_flush_in_progress;  // 0 = idle, 1 = flush active
 extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid only when in_progress=0)
