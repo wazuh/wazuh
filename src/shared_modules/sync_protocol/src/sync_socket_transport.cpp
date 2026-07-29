@@ -9,12 +9,16 @@
 
 #include "sync_socket_transport.hpp"
 
+#include "sync_session_wire.hpp"
+
 #include <utility>
 
-SyncSocketTransport::SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger)
+SyncSocketTransport::SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger,
+                                         std::chrono::milliseconds ioTimeout)
     : m_socketPath(std::move(socketPath))
     , m_moduleName(std::move(moduleName))
     , m_logger(std::move(logger))
+    , m_ioTimeout(ioTimeout)
 {
 }
 
@@ -22,17 +26,18 @@ std::string SyncSocketTransport::frameSessionId(uint64_t session) const
 {
     // "<module>-<session>": agentd routes the manager's answer back to the right
     // module on this prefix, so it never has to parse the session itself. Both
-    // halves stay inside the agent's session-id charset (alphanumerics, '-',
-    // '_', '.'), which is what keeps it safe to put in a request header.
+    // halves must stay inside the wire's session-id charset, which is what keeps
+    // the id safe to put in a request header; sendSession() enforces it.
     return m_moduleName + "-" + std::to_string(session);
 }
 
 #ifndef _WIN32
 
-#include <array>
+#include <cerrno>
 #include <cstring>
 
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -42,9 +47,6 @@ std::string SyncSocketTransport::frameSessionId(uint64_t session) const
 
 namespace
 {
-    constexpr std::array<uint8_t, 4> SYNC_FRAME_MAGIC {'W', 'Z', 'S', 'Y'};
-    constexpr uint8_t SYNC_FRAME_ACCEPTED = 1;
-
     /// sun_path is a fixed field with no way to report truncation, so an
     /// over-long path has to be refused rather than silently shortened.
     bool fitsInSunPath(const std::string& path)
@@ -79,6 +81,18 @@ namespace
         return fd;
     }
 
+    /// Bounds every send/recv on the socket so a wedged intake turns into a
+    /// failed attempt (the sync worker retries) instead of an eternal hang.
+    bool boundSocketIo(int fd, std::chrono::milliseconds timeout)
+    {
+        timeval bound {};
+        bound.tv_sec = static_cast<time_t>(timeout.count() / 1000);
+        bound.tv_usec = static_cast<suseconds_t>((timeout.count() % 1000) * 1000);
+
+        return setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &bound, sizeof(bound)) == 0 &&
+               setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &bound, sizeof(bound)) == 0;
+    }
+
     bool writeAll(int fd, const void* data, size_t length)
     {
         const auto* cursor = static_cast<const uint8_t*>(data);
@@ -87,6 +101,11 @@ namespace
         while (remaining > 0)
         {
             const auto written = send(fd, cursor, remaining, MSG_NOSIGNAL);
+
+            if (written < 0 && errno == EINTR)
+            {
+                continue; // A signal is not a transport failure.
+            }
 
             if (written <= 0)
             {
@@ -98,6 +117,21 @@ namespace
         }
 
         return true;
+    }
+
+    bool readStatusByte(int fd, uint8_t& status)
+    {
+        while (true)
+        {
+            const auto got = recv(fd, &status, sizeof(status), 0);
+
+            if (got < 0 && errno == EINTR)
+            {
+                continue;
+            }
+
+            return got == static_cast<ssize_t>(sizeof(status));
+        }
     }
 
     void putLittleEndian(std::vector<uint8_t>& out, uint64_t value, int bytes)
@@ -125,6 +159,17 @@ bool SyncSocketTransport::checkStatus()
 
 bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_t>& message)
 {
+    const std::string sessionId = frameSessionId(session);
+
+    // The intake rejects an out-of-contract id after reading the whole frame;
+    // checking here fails fast and names the culprit. Only a bad module name
+    // can trip this, since the session half is always decimal.
+    if (!isValidSessionId(sessionId))
+    {
+        m_logger(LOG_ERROR, "Sync session id '" + sessionId + "' violates the wire contract.");
+        return false;
+    }
+
     const int fd = connectTo(m_socketPath);
 
     if (fd < 0)
@@ -133,7 +178,12 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
         return false;
     }
 
-    const std::string sessionId = frameSessionId(session);
+    if (!boundSocketIo(fd, m_ioTimeout))
+    {
+        m_logger(LOG_DEBUG, "Failed to bound I/O on the sync intake socket " + m_socketPath + ".");
+        close(fd);
+        return false;
+    }
 
     std::vector<uint8_t> header;
     header.reserve(SYNC_FRAME_MAGIC.size() + 4 + sessionId.size() + 8);
@@ -150,9 +200,8 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
         // The status byte is what makes this return value honest: the agent may
         // have taken the bytes and still refused the session (a full queue), and
         // silence would read as success.
-        uint8_t status = 0;
-        ok = recv(fd, &status, sizeof(status), 0) == static_cast<ssize_t>(sizeof(status)) &&
-             status == SYNC_FRAME_ACCEPTED;
+        uint8_t status = SYNC_FRAME_REFUSED;
+        ok = readStatusByte(fd, status) && status == SYNC_FRAME_ACCEPTED;
 
         if (!ok)
         {
