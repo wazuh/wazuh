@@ -168,21 +168,14 @@ TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
                                   false);  // notifyOnFirstScan
 
     // Initialize sync protocols
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     EXPECT_NO_THROW(
     {
         Syscollector::instance().initSyncProtocol(
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -258,21 +251,14 @@ TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
                                   false);  // notifyOnFirstScan
 
     // Initialize sync protocols
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     EXPECT_NO_THROW(
     {
         Syscollector::instance().initSyncProtocol(
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -405,21 +391,14 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
                                   false);  // notifyOnFirstScan
 
     // Initialize sync protocols
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     EXPECT_NO_THROW(
     {
         Syscollector::instance().initSyncProtocol(
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -527,21 +506,14 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
                                   false);  // notifyOnFirstScan
 
     // Initialize sync protocols
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     EXPECT_NO_THROW(
     {
         Syscollector::instance().initSyncProtocol(
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });

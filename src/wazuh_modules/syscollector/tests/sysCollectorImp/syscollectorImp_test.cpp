@@ -2789,83 +2789,6 @@ TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
     Syscollector::instance().destroy();
 }
 
-TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
-{
-    static std::atomic<bool> s_blockStart {false};
-    static std::atomic<bool> s_startEntered {false};
-    s_blockStart = true;
-    s_startEntered = false;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions blockingMq {};
-    blockingMq.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1;
-    };
-    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              blockingMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(flushResponse["data"]["action"], "flush");
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        return s_startEntered.load();
-    }));
-
-    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(inProgressResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
-
-    s_blockStart = false;
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto completedResponse =
-            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return completedResponse["data"]["status"] == "completed";
-    }));
-
-    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(completedResponse["data"]["status"], "completed");
-    EXPECT_EQ(completedResponse["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
 TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
@@ -2882,26 +2805,15 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
                                   3600, false, false, false, false, false, false,
                                   false, false, false, false, false, false, false, false);
 
-    MQ_Functions failingMq {};
-    failingMq.start = [](const char*, short, short) -> int
-    {
-        return -1;
-    };
-    failingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
     Syscollector::instance().initSyncProtocol("syscollector",
                                               ":memory:",
                                               ":memory:",
-                                              failingMq,
-                                              std::chrono::seconds(0),
                                               std::chrono::seconds(1),
                                               1,
-                                              100,
                                               0);
 
+    // No sync intake socket is available in the test environment, so the flush
+    // synchronization fails and the query must report completed with error.
     auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
     EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
     EXPECT_EQ(flushResponse["data"]["action"], "flush");
@@ -2916,318 +2828,6 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
     auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
     EXPECT_EQ(completedResponse["data"]["status"], "completed");
     EXPECT_EQ(completedResponse["data"]["result"], "error");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os  (VD requires os)
-                                  false,    // network
-                                  true,     // packages (VD requires packages)
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    // Initialize once to create the schema (including table_metadata), then destroy to
-    // release the DB so we can seed the VD first-sync marker directly.
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_TEST_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os
-                                  false,    // network
-                                  true,     // packages
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-    Syscollector::instance().destroy();
-
-    {
-        sqlite3* rawDb = nullptr;
-        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
-
-        char* rawErrMsg = nullptr;
-        const int execResult = sqlite3_exec(db.get(),
-                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
-                                            nullptr,
-                                            nullptr,
-                                            &rawErrMsg);
-        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
-        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
-    }
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_TEST_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os  (VD requires os)
-                                  false,    // network
-                                  true,     // packages (VD requires packages)
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_VDSyncDisabled_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    // os=false, packages=false → m_vdSyncEnabled=false → VD protocol uses Option::SYNC
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueFails_VDSucceeds_FlushFails)
-{
-    static std::atomic<int> s_startCallCount {0};
-    s_startCallCount = 0;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    // First start call (regular protocol) fails; second (VD protocol) succeeds
-    MQ_Functions partialMq {};
-    partialMq.start = [](const char*, short, short) -> int
-    {
-        return (++s_startCallCount == 1) ? -1 : 0;
-    };
-    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              partialMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "error");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_FlushFails)
-{
-    static std::atomic<int> s_startCallCount {0};
-    s_startCallCount = 0;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    // First start call (regular protocol) succeeds; second (VD protocol) fails
-    MQ_Functions partialMq {};
-    partialMq.start = [](const char*, short, short) -> int
-    {
-        return (++s_startCallCount == 1) ? 0 : -1;
-    };
-    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              partialMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "error");
 
     Syscollector::instance().destroy();
 }
@@ -3907,11 +3507,6 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
@@ -3919,11 +3514,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -3966,11 +3558,6 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
@@ -3978,11 +3565,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -4025,11 +3609,6 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
@@ -4037,11 +3616,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(5),
             3,
-            100,
             86400
         );
     });
@@ -4053,7 +3629,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
 {
     /**
      * Test: Verify initSyncProtocol accepts and handles different parameter values
-     * Tests various timeout, retry, and maxEps values
+     * Tests various timeout and retry values
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -4084,11 +3660,6 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test with different parameter values
     EXPECT_NO_THROW(
     {
@@ -4096,11 +3667,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(30),  // Different syncEndDelay
             std::chrono::seconds(15),  // Different timeout
             5,                          // Different retries
-            500,                        // Different maxEps
             86400
         );
     });
@@ -4576,26 +4144,13 @@ TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
                                   3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
 
     // Initialize sync protocol with integrity interval
-    MQ_Functions mqFuncs{};
-    mqFuncs.start = [](const char*, short, short)
-    {
-        return 0;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-    {
-        return 0;
-    };
-
     EXPECT_NO_THROW(
         Syscollector::instance().initSyncProtocol(
             "syscollector",
             ":memory:",
             ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
             std::chrono::seconds(30),
             3,
-            1000,
             86400  // 24 hours integrity interval
         )
     );
@@ -4636,25 +4191,12 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
                                   3600, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs{};
-    mqFuncs.start = [](const char*, short, short)
-    {
-        return 0;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-    {
-        return 0;
-    };
-
     Syscollector::instance().initSyncProtocol(
         "syscollector",
         ":memory:",
         ":memory:",
-        mqFuncs,
-        std::chrono::seconds(10),
         std::chrono::seconds(30),
         3,
-        1000,
         86400
     );
 
@@ -4720,19 +4262,12 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
                                           5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -4827,19 +4362,12 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
                                           5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -4921,19 +4449,12 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
                                           5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -5130,19 +4651,12 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
                                           5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -5228,19 +4742,12 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
                                           5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -5345,19 +4852,12 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -5485,19 +4985,12 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             Syscollector::instance().initSyncProtocol(
                 "syscollector",
                 ":memory:",
                 ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
                 std::chrono::seconds(5),
                 3,
-                100,
                 86400
             );
 
@@ -6070,92 +5563,6 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
-}
-
-TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
-{
-    // Static atomics used by the plain C function pointers in MQ_Functions.
-    // They are reset to initial values at the top of the test.
-    static std::atomic<bool> s_blockStart{false};
-    static std::atomic<bool> s_startEntered{false};
-    s_blockStart  = true;
-    s_startEntered = false;
-
-    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions blockingMq{};
-    // Block inside start(), which is called unconditionally from checkStatus() at the
-    // top of synchronizeModule() — before the empty-queue early-return.  This ensures
-    // the async flush worker remains active while we verify that destroy() waits for it,
-    // regardless of whether the persistent queue has any data to send.
-    blockingMq.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1; // valid queue descriptor
-    };
-    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    Syscollector::instance().initSyncProtocol(
-        "syscollector", ":memory:", ":memory:",
-        blockingMq,
-        std::chrono::seconds(0),
-        std::chrono::seconds(1),
-        1, 100, 0);
-
-    std::atomic<bool> destroyDone{false};
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(flushResponse["data"]["action"], "flush");
-
-    // Wait until the async worker has entered start().
-    while (!s_startEntered)
-    {
-        std::this_thread::yield();
-    }
-
-    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
-
-    // destroy() signals stop on the protocol and waits for the async worker to finish.
-    std::thread destroyThread([&]()
-    {
-        Syscollector::instance().destroy();
-        destroyDone = true;
-    });
-
-    // Give destroy time to start and block waiting for the worker.
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    EXPECT_FALSE(destroyDone) << "destroy should be waiting for the async flush to finish";
-
-    // Release the blocking start — the worker completes, then destroy can proceed.
-    s_blockStart = false;
-
-    destroyThread.join();
-
-    EXPECT_TRUE(destroyDone);
 }
 
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
