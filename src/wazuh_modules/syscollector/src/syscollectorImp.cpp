@@ -693,6 +693,7 @@ void Syscollector::quiesce()
 {
     m_stopping = true;
     m_cv.notify_all();
+    m_pauseCv.notify_all();
 
     if (m_spSyncProtocol)
     {
