@@ -114,17 +114,48 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  * Local renamedata shadow for kernels >= 5.12 (vfs_rename takes a single
  * struct renamedata * instead of separate params). The ___local suffix tells
  * libbpf to use this definition instead of kernel BTF, avoiding CO-RE
- * failures on kernels where renamedata is not in BTF (e.g. 5.15).
- * new_mnt_userns must be present to keep new_dentry at the correct offset
- * (field layout stable across 5.12-6.3+).
+ * failures on kernels where renamedata is not in BTF (e.g. 5.15). Field
+ * accesses below use plain bpf_probe_read_kernel (not BPF_CORE_READ), so
+ * there is no actual CO-RE relocation here — correctness depends entirely
+ * on this struct's field layout matching the real one at compile time.
+ *
+ * CONFIRMED WRONG for newer kernels (validated live on a kernel 7.0.0 VM,
+ * spike #37396/#37533 eBPF-engine validation): the previous version of this
+ * struct (old_mnt_userns/old_dir/old_dentry/new_mnt_userns/new_dir/
+ * new_dentry, old_dir/new_dir typed as struct inode*) put new_dentry at
+ * offset 40. The kprobe fired (confirmed via `bpftool prog list`'s run_cnt)
+ * but every single call silently produced zero events — new_dentry read
+ * garbage (actually landing on delegated_inode's value) and failed the
+ * following NULL/regular-file checks every time, with no error surfaced
+ * anywhere. This is a silent detection gap: renames stop being reported by
+ * the eBPF whodata provider on any kernel with the newer layout, with
+ * nothing in the logs to indicate it.
+ *
+ * Actual current layout (confirmed via `grep -A10 '^struct renamedata '
+ * vmlinux.h` on the test kernel):
+ *   struct renamedata {
+ *       struct mnt_idmap *mnt_idmap;
+ *       struct dentry *old_parent;
+ *       struct dentry *old_dentry;
+ *       struct dentry *new_parent;
+ *       struct dentry *new_dentry;
+ *       struct delegated_inode *delegated_inode;
+ *       unsigned int flags;
+ *   };
+ * One mnt_idmap (not a userns/idmap pair), and old_dir/new_dir are dentries
+ * (old_parent/new_parent), not inodes. old_dentry's offset is unchanged
+ * (16 bytes either way); new_dentry moved from 40 to 32.
+ *
+ * This shadow only needs to be layout-compatible up to new_dentry (nothing
+ * past it is read), so old_parent/new_parent are declared as dentry* here
+ * even though this code never dereferences them, purely to keep the offset
+ * of new_dentry correct.
  */
 struct renamedata___local {
-    void          *old_mnt_userns;  /* user_namespace* on 5.12-5.15, mnt_idmap* on 6.3+ */
-    struct inode  *old_dir;
+    void          *mnt_idmap;
+    struct dentry *old_parent;
     struct dentry *old_dentry;
-    void          *new_mnt_userns;  /* mirrors old_mnt_userns; must be present or
-                                     * &rd->new_dentry reads new_dir (off-by-8) */
-    struct inode  *new_dir;
+    struct dentry *new_parent;
     struct dentry *new_dentry;
 };
 
