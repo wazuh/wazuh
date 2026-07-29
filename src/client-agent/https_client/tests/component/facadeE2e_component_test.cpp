@@ -58,7 +58,7 @@ namespace
         }
     }
 
-    void onSync(const char*, int, const char*, void* userData)
+    void onSync(const char*, int, const char*, size_t, void* userData)
     {
         static_cast<Recorder*>(userData)->syncCount++;
     }
