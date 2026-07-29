@@ -12,15 +12,12 @@
 __attribute__((weak)) void __wrap_asp_sync_module_hook(void) {
 }
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t max_eps) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries) {
     check_expected_ptr(module);
-    (void)mq_funcs;
     (void)db_path;
     (void)logger;
-    check_expected(sync_end_delay);
     check_expected(timeout);
     check_expected(retries);
-    check_expected(max_eps);
     return mock_ptr_type(AgentSyncProtocolHandle*);
 }
 

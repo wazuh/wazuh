@@ -12,7 +12,6 @@
  * @brief Unit tests for DataContext message handling in AgentSyncProtocol
  *
  * This file contains tests for:
- * - sendDataContextMessages()
  * - synchronizeModule() with DataContext separation logic
  * - Mixed DataValue and DataContext scenarios
  */
@@ -88,9 +87,7 @@ class AgentSyncProtocolDataContextTest : public ::testing::Test
         std::unique_ptr<AgentSyncProtocol> protocol;
         const uint64_t session = 1234;
         const unsigned int retries = 1;
-        const unsigned int maxEps = 100;
         const unsigned int delay = 100;
-        const unsigned int syncEndDelay = 1;
         const unsigned int max_timeout = 10;
 };
 
@@ -98,9 +95,9 @@ class AgentSyncProtocolDataContextTest : public ::testing::Test
 // Tests for synchronizeModule() with DataContext
 // ========================================
 //
-// Note: sendDataContextMessages() is tested indirectly through
-// synchronizeModule() tests below, as it's meant to be called
-// within an active sync session context.
+// Note: DataContext items travel inside the FullSession that
+// synchronizeModule() builds, so the tests below assert on the
+// captured session.
 
 // ========================================
 // Tests for synchronizeModule() with DataContext
@@ -111,25 +108,15 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     // Test synchronization with only DataValue items (no DataContext)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void*, size_t, const char*, char)
-    {
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
@@ -174,25 +161,15 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     // Test synchronization with only DataContext items (no DataValue)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void*, size_t, const char*, char)
-    {
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
@@ -242,42 +219,15 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     dataValuesInBatch = 0;       // Reset
     dataContextMessagesSent = 0; // Reset
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        // Inspect message type from flatbuffer
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                dataValuesInBatch += static_cast<int>(batch->values()->size());
-            }
-        }
-        else if (message->content_type() == Wazuh::SyncSchema::MessageType::DataContext)
-        {
-            dataContextMessagesSent++;
-        }
-
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
@@ -336,34 +286,15 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
 
     static int messageCount = 0;
     messageCount = 0; // Reset
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        messageCount++;
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        // Fail on DataContext messages
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataContext)
-        {
-            return 0; // Failure
-        }
-
-        return 1; // Success for other messages
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
@@ -409,42 +340,15 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
     dataValueMessagesSent = 0;
     totalDataValuesInBatches = 0;
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            dataBatchMessagesSent++;
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                totalDataValuesInBatches += static_cast<int>(batch->values()->size());
-            }
-        }
-        else if (message->content_type() == Wazuh::SyncSchema::MessageType::DataValue)
-        {
-            dataValueMessagesSent++; // should stay zero
-        }
-
-        return 1;
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
@@ -498,43 +402,15 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
     static std::vector<std::pair<uint64_t, std::string>> received; // {seq, id}
     received.clear();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                for (const auto* dv : *batch->values())
-                {
-                    if (dv)
-                    {
-                        received.emplace_back(dv->seq(), dv->id() ? dv->id()->str() : "");
-                    }
-                }
-            }
-        }
-
-        return 1;
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
                                                    mockQueue,
                                                    mockSyncTransport);
 
