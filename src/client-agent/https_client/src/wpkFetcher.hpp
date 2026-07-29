@@ -26,19 +26,19 @@
 #include <string>
 
 /**
- * @brief Pulls a remote_upgrade task's WPK through POST /download (#37834,
- *        #37733 5.4/Appendix A.2): a signed request streamed into a spool
- *        file, verified against the task payload's wpk_sha1 before it is
- *        handed anywhere.
+ * @brief Pulls a remote_upgrade task's WPK through POST /download: a signed
+ *        request streamed into a spool file, verified against the task
+ *        payload's wpk_sha1 before it is handed anywhere.
  *
  * Deliberately mirrors ConfigFetcher (same request/spool/verify shape): the
  * only differences are the resource_type ("wpk" instead of "config") and the
  * digest (SHA-1, matching the manager's own WPK checksum convention and the
  * legacy upgrade module's OS_SHA1_File, NOT this module's SHA-256 used for
- * config). Runs blocking on the control thread, like ConfigFetcher: a
- * remote_upgrade is rare and already ends in a restart, so a stall here is a
- * lesser concern than for the routine config-sync path -- worth revisiting if
- * that assumption turns out wrong in practice.
+ * config). Runs blocking on ControlStream's dedicated upgrade-work thread
+ * (joined before the module stops or another upgrade is dispatched), not the
+ * control thread itself: a remote_upgrade is rare and already ends in a
+ * restart, so a stall here is a lesser concern than for the routine
+ * config-sync path.
  */
 class WpkFetcher final
 {

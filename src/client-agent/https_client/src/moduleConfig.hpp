@@ -51,7 +51,7 @@ struct ModuleConfig
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 
-        /// Safety bound for a remote_upgrade WPK download (#37834): stops a
+        /// Safety bound for a remote_upgrade WPK download: stops a
         /// hostile or faulty manager exhausting disk. WPKs are tens of MB,
         /// much larger than merged.mg, hence the bigger default than config's.
         uint64_t wpkMaxDownloadBytes {200ULL * 1024 * 1024};

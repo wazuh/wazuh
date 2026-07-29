@@ -825,7 +825,7 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_state_get_disconected),
         cmocka_unit_test(test_w_agentd_state_get_unknown),
 
-        // Tests w_agentd_state_update (task dispatch metrics, #37833) -- run
+        // Tests w_agentd_state_update (task dispatch metrics) -- run
         // after the get_* tests above, which assert the fields start at 0.
         cmocka_unit_test(test_w_agentd_state_update_task_dispatched),
         cmocka_unit_test(test_w_agentd_state_update_task_discarded_duplicate),

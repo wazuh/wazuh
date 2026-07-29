@@ -8,7 +8,7 @@
  */
 
 /*
- * Component test for the durable dedup + IPC round-trip (#37833).
+ * Component test for the durable dedup + IPC round-trip.
  *
  * What is REAL here (unmodified production code, statically linked, no
  * mocks/fakes/wraps for any of it):
@@ -23,7 +23,7 @@
  *     the real `wmodules` linked list, which this test populates with one
  *     real wm_context (WM_AGENT_INFO_CONTEXT) -- this is the one piece that
  *     would otherwise come from XML config parsing at startup, which this
- *     test bypasses since it is not what #37833 is about.
+ *     test bypasses since it is not what this test is exercising.
  *   - wm_agent_info_query() (wazuh_modules/src/wm_agent_info.c): the real
  *     query handler, unmodified.
  *   - agent_info_task_check_and_record()/agent_info_task_registry_init()/
@@ -247,9 +247,11 @@ TEST_F(TaskRegistryIpcComponentTest, FirstDeliveryDispatchesSecondOverRealIpcIsD
 
     // Real client -> real socket -> real wmcom_dispatch -> real
     // wm_agent_info_query -> real `tasks` table in agent_info.db, round-tripped
-    // twice for the exact same task_id.
-    EXPECT_TRUE(task_registry_check_and_record("ipc-real-task-1"));
-    EXPECT_FALSE(task_registry_check_and_record("ipc-real-task-1"));
+    // twice for the exact same task_id. task_registry_check_and_record() returns a
+    // tri-state task_registry_result_t, not a bool -- compare explicitly rather
+    // than relying on truthiness, since TASK_REGISTRY_RESULT_NEW is not guaranteed nonzero.
+    EXPECT_EQ(task_registry_check_and_record("ipc-real-task-1"), TASK_REGISTRY_RESULT_NEW);
+    EXPECT_EQ(task_registry_check_and_record("ipc-real-task-1"), TASK_REGISTRY_RESULT_DUPLICATE);
 
     server.join();
 }
@@ -260,7 +262,7 @@ TEST_F(TaskRegistryIpcComponentTest, DuplicateSurvivesARealRestartOfTheRegistry)
         int serverSock = OS_BindUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
         ASSERT_GE(serverSock, 0);
         std::thread server(runModuleSideDispatchLoop, serverSock, /*requestCount=*/1);
-        EXPECT_TRUE(task_registry_check_and_record("ipc-restart-task"));
+        EXPECT_EQ(task_registry_check_and_record("ipc-restart-task"), TASK_REGISTRY_RESULT_NEW);
         server.join();
     }
 
@@ -279,11 +281,11 @@ TEST_F(TaskRegistryIpcComponentTest, DuplicateSurvivesARealRestartOfTheRegistry)
         // Re-delivery of the SAME task_id after the "restart": the durable
         // file (not the in-memory map, which was just wiped) is what makes
         // this still a duplicate.
-        EXPECT_FALSE(task_registry_check_and_record("ipc-restart-task"));
+        EXPECT_EQ(task_registry_check_and_record("ipc-restart-task"), TASK_REGISTRY_RESULT_DUPLICATE);
 
         // A genuinely new task_id is still accepted post-restart: the
         // registry as a whole still works, this isn't fail-closed-forever.
-        EXPECT_TRUE(task_registry_check_and_record("ipc-restart-task-new"));
+        EXPECT_EQ(task_registry_check_and_record("ipc-restart-task-new"), TASK_REGISTRY_RESULT_NEW);
 
         server.join();
     }

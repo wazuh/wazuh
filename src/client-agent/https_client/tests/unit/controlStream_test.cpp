@@ -371,7 +371,7 @@ TEST_F(ControlStreamTest, ManagerConfigHashIsReportedEvenWhenItMatches)
 {
     // The agent's startup hash gate waits on the manager-validated config, and
     // an agent already in sync never downloads, so the hash has to reach the
-    // consumer on the notify itself or the gate never releases (#37854).
+    // consumer on the notify itself or the gate never releases.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default"],"config_hash":"abc"}})";
     EXPECT_CALL(m_performer, perform(_))
@@ -521,7 +521,7 @@ TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
     .WillOnce(Return(response(TransportStatus::Ok, 200, repeatResponse)));
 
     // t1 and t2 dispatched once; the repeated t1 is dropped (at-least-once),
-    // per the injected durable store (#37833) -- not an in-memory TTL anymore.
+    // per the injected durable store -- not an in-memory TTL anymore.
     EXPECT_CALL(m_sink, onTask("t1", "active_response", R"({"cmd":"x"})"));
     EXPECT_CALL(m_sink, onTask("t2", "agent_restart", "{}"));
 
@@ -535,7 +535,7 @@ TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
 TEST_F(ControlStreamTest, DurableStoreIsCheckedBeforeDispatchSoARejectionDropsTheTask)
 {
     // Simulates the durable registry either already holding this task_id
-    // (a genuine duplicate) or being unreachable (fail-closed, #37833): in
+    // (a genuine duplicate) or being unreachable (fail-closed): in
     // both cases checkAndRecord() returning false must drop the task before
     // any handler runs, never after.
     const std::string body =
@@ -606,6 +606,7 @@ TEST_F(ControlStreamTest, NotifyBatchIsPrioritizedAndCollapsedBeforeDispatch)
     EXPECT_CALL(m_sink, onTask("t-reload", _, _)).Times(0);
     EXPECT_CALL(m_sink, onTask("t-up", _, _)).Times(0);
     EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("t-up", "remote_upgrade", _)); // Empty payload: missing fields.
     EXPECT_CALL(m_sink, onTask("t-ar", "active_response", "{}"));
 
     m_stream.step(m_waiter); // Startup.
@@ -615,7 +616,7 @@ TEST_F(ControlStreamTest, NotifyBatchIsPrioritizedAndCollapsedBeforeDispatch)
 
 TEST_F(ControlStreamTest, RemoteUpgradeDownloadsVerifiesAndDeliversInsteadOfOnTask)
 {
-    // #37834: a remote_upgrade task is intercepted before the generic on_task
+    // A remote_upgrade task is intercepted before the generic on_task
     // callback -- its WPK is downloaded via /download and sha1-verified here,
     // and only onUpgradeReady (never onTask) is called for it. The task_id is
     // already durably recorded by this point (checked in collectFreshTasks,
@@ -654,7 +655,12 @@ TEST_F(ControlStreamTest, RemoteUpgradeDownloadsVerifiesAndDeliversInsteadOfOnTa
     }));
 
     m_stream.step(m_waiter); // Startup.
-    m_stream.step(m_waiter); // Notify -> download -> verify -> deliver.
+    m_stream.step(m_waiter); // Notify -> spawns the download/verify/deliver worker thread.
+    // The download/verify/deliver chain runs off the control thread (see
+    // ControlStream::dispatchUpgradeTask()), so it must be explicitly waited for before
+    // asserting on its side effects below -- step() itself returns as soon as the thread is
+    // spawned.
+    m_stream.joinUpgradeWork();
 
     EXPECT_EQ(R"({"resource_type":"wpk","resource_id":"agent.wpk"})", downloadBody);
     ASSERT_NE(nullptr, delivered);
@@ -666,7 +672,7 @@ TEST_F(ControlStreamTest, RemoteUpgradeDownloadsVerifiesAndDeliversInsteadOfOnTa
 
 TEST_F(ControlStreamTest, RemoteUpgradeSha1MismatchAbortsWithoutDeliveringOrDispatching)
 {
-    // #37834's explicit requirement: a sha1 mismatch aborts the upgrade
+    // A sha1 mismatch aborts the upgrade
     // without installing (and, per the fire-and-forget contract, without any
     // /control response either -- there is nothing to send).
     const std::string wpkBytes = "fake-wpk-bytes";
@@ -687,9 +693,13 @@ TEST_F(ControlStreamTest, RemoteUpgradeSha1MismatchAbortsWithoutDeliveringOrDisp
     }));
     EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
     EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("up-bad", "remote_upgrade", _));
 
     m_stream.step(m_waiter);
-    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Spawns the download/verify worker thread.
+    // Wait for the worker thread (download/verify happens off the control
+    // thread) before the fixture tears down and gmock verifies the EXPECT_CALLs above.
+    m_stream.joinUpgradeWork();
 }
 
 TEST_F(ControlStreamTest, RemoteUpgradeMissingPayloadFieldsAbortsWithoutDownloading)
@@ -703,9 +713,11 @@ TEST_F(ControlStreamTest, RemoteUpgradeMissingPayloadFieldsAbortsWithoutDownload
     .WillOnce(Return(response(TransportStatus::Ok, 200, notify))); // No /download call follows.
     EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
     EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("up-missing", "remote_upgrade", _));
 
     m_stream.step(m_waiter);
-    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Aborts synchronously (no thread spawned): missing fields are
+    // caught before the worker thread would start.
 }
 
 TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)

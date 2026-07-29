@@ -122,7 +122,7 @@ const char* DB_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS db_metadata 
                                         "is_first_run               INTEGER NOT NULL DEFAULT 1,"
                                         "is_first_groups_run        INTEGER NOT NULL DEFAULT 1);";
 
-// Durable /control task_id dedup guard (#37833). agent-info is new in 5.0.0, so this table
+// Durable /control task_id dedup guard. agent-info is new in 5.0.0, so this table
 // needs no upgrade path -- it is simply part of the schema from day one.
 const char* TASKS_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS tasks ("
                                   "task_id       TEXT NOT NULL PRIMARY KEY,"
@@ -250,6 +250,15 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         {
             performIntegritySync(AGENT_GROUPS_TABLE);
         }
+
+        // Durable task_id registry cleanup: runs on this same
+        // loop/thread instead of a dedicated cleanup thread, at the same cadence as the
+        // metadata/groups sync cycle above (no separate cleanup_interval). cleanupExpiredTasks()
+        // guards its m_dBSync access with m_dbSyncMutex, the same mutex every other DB access in
+        // this loop already uses -- so it is already safe against a concurrent stop()/destructor
+        // resetting m_dBSync, unlike the old dedicated thread, which touched g_agent_info_impl
+        // (a different object entirely, in agent_info.cpp) with no synchronization at all.
+        cleanupExpiredTasks(m_taskRegistryTtlSeconds, m_taskRegistryMaxEntries);
 
         lock.lock();
 
