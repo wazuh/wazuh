@@ -33,7 +33,8 @@ namespace remoted::http
      * verification_mode), and dual_stack are regular `<remote><https>` settings that
      * remoted copies straight from the parsed config (see w_remoted_build_module_config()
      * in secure.c):
-     *   - certificate/private key/ca default to `etc/remoted-https/{server.crt,server.key,ca.crt}`.
+     *   - certificate/private key/ca default to `etc/https-manager.cert`, `etc/https-manager.key`,
+     *     and `etc/https-manager-ca.pem`.
      *   - ciphers defaults to `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
      *   - verification_mode's C-ABI UNSET sentinel (-1, "operator never configured it") resolves
      *     to disabled, distinct from an explicit `none` (0) -- both end up as

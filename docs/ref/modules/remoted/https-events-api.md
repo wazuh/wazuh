@@ -30,9 +30,10 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **Certificate paths (evaluated after `remoted` enters its chroot):**
-  `etc/remoted-https/server.crt` and `etc/remoted-https/server.key` — i.e. host paths
-  `/var/wazuh-manager/etc/remoted-https/server.{crt,key}`. The private key must be readable by the
+- **TLS file paths (evaluated after `remoted` enters its chroot):**
+  `etc/https-manager.cert`, `etc/https-manager.key`, and `etc/https-manager-ca.pem` — i.e. host paths
+  `/var/wazuh-manager/etc/https-manager.cert`, `/var/wazuh-manager/etc/https-manager.key`, and
+  `/var/wazuh-manager/etc/https-manager-ca.pem`. The private key must be readable by the
   `wazuh` user that `remoted` runs as.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
@@ -204,9 +205,9 @@ above).
 | Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
 | Port | `port` | `1517` |
 | Transport max body size | `max_body_size` | `20 MiB` |
-| TLS certificate chain | `certificate` | `etc/remoted-https/server.crt` |
-| TLS private key | `key` | `etc/remoted-https/server.key` |
-| Client CA bundle | `ca` | `etc/remoted-https/ca.crt` |
+| TLS certificate chain | `certificate` | `etc/https-manager.cert` |
+| TLS private key | `key` | `etc/https-manager.key` |
+| Client CA bundle | `ca` | `etc/https-manager-ca.pem` |
 | Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
 | TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
 
