@@ -484,11 +484,11 @@ def test_inspector_discard_regex(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', aws_profile,
+        '--aws_profile', f'"{aws_profile}"',
         '--only_logs_after', only_logs_after,
         '--regions', regions,
-        '--discard-field', discard_field,
-        '--discard-regex', discard_regex,
+        '--discard-field', f'"{discard_field}"',
+        '--discard-regex', f'"{discard_regex}"',
         '--debug', '2'
     ]
 
