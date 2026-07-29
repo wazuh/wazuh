@@ -12,16 +12,19 @@
 /*
  * Facade end to end over the C ABI against a TLS fake manager. This is what
  * exercises the composition root's registered path: the control loop reaching
- * REGISTERED and the drain-on-stop. The client speaks real HTTPS
+ * REGISTERED, the gate releasing the data streams, the stateless/stateful
+ * sender loops flushing, and the drain-on-stop. The client speaks real HTTPS
  * (HC_VERIFY_NONE against the fake manager's self-signed cert).
  */
 
 #include "fakeManager.hpp"
 #include "https_client.h"
+#include "syncIntake.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstdio>
+#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -43,6 +46,7 @@ namespace
     {
         std::mutex mutex;
         std::atomic<int> startupCount {0};
+        std::atomic<int> syncCount {0};
         std::vector<int> states;
     };
 
@@ -52,6 +56,11 @@ namespace
         {
             static_cast<Recorder*>(userData)->startupCount++;
         }
+    }
+
+    void onSync(const char*, int, const char*, size_t, void* userData)
+    {
+        static_cast<Recorder*>(userData)->syncCount++;
     }
 
     void onState(int state, void* userData)
@@ -109,6 +118,78 @@ namespace
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        }
+
+        return false;
+    }
+
+    /// Destroys the handle however the test body leaves. A bare ASSERT_ between
+    /// hc_start() and hc_destroy() returns from the body with the client's
+    /// threads, curl handles and OpenSSL state still up, which valgrind then
+    /// reports as definitely lost - one failed assertion turns into a wall of
+    /// leaks that hides it.
+    class HandleGuard final
+    {
+        public:
+            explicit HandleGuard(hc_handle* handle)
+                : m_handle(handle)
+            {
+            }
+
+            ~HandleGuard()
+            {
+                if (m_handle != nullptr)
+                {
+                    hc_destroy(m_handle);
+                }
+            }
+
+            HandleGuard(const HandleGuard&) = delete;
+            HandleGuard& operator=(const HandleGuard&) = delete;
+
+        private:
+            hc_handle* m_handle;
+    };
+
+    /// The manager runs in a forked process, so everything the test wants to
+    /// know about what it received comes back through a /peek endpoint.
+    int peekCount(httplib::Client& peek, const char* target)
+    {
+        const auto result = peek.Get(target);
+        return result && !result->body.empty() ? std::stoi(result->body) : -1;
+    }
+
+    bool waitForCount(httplib::Client& peek, const char* target, int atLeast, int timeoutMs)
+    {
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 20)
+        {
+            if (peekCount(peek, target) >= atLeast)
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        return false;
+    }
+
+    bool waitForBody(httplib::Client& peek, const char* target, const std::string& needle,
+                     int timeoutMs)
+    {
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 20)
+        {
+            if (const auto result = peek.Get(target);
+                    result && result->body.find(needle) != std::string::npos)
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
         }
 
         return false;
@@ -250,6 +331,93 @@ TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)
 
     hc_destroy(handle);
     EXPECT_NE(std::string::npos, received.find("size-wakeup-first"));
+}
+
+TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
+{
+    // The full chain: a producer streams a multi-MB session over the local
+    // STREAM intake socket -> the module spools it -> the stateful sender
+    // streams it to the manager over HTTPS. Nothing hits the 64 KB cap.
+    Recorder recorder;
+    const std::string sockPath = "/tmp/hc_facade_si_" + std::to_string(getpid()) + ".sock";
+
+    hc_config_t config = tlsConfig();
+    std::strncpy(config.sync_socket_path, sockPath.c_str(), sizeof(config.sync_socket_path) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_sync_response = onSync;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    std::string body(2u * 1024 * 1024, 'S'); // 2 MB, far past the 64 KB DGRAM cap.
+    ASSERT_TRUE(sendSyncSession(sockPath, "intake-session-1",
+                                reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+
+    // The session crossed the socket, was spooled, and was POSTed to the mock.
+    EXPECT_TRUE(waitFor(recorder.syncCount, 1, 5000));
+    hc_destroy(handle);
+}
+
+TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
+{
+    // #37836 wants this proven, not assumed: a sync session is one long POST,
+    // so while the manager sits on it the stateless and control planes must
+    // keep flowing on their own threads. The manager holds /stateful until the
+    // gate file goes away, which makes the window a fact rather than a race
+    // against a sleep.
+    const uint16_t port = TLS_PORT + 9;
+    const std::string gate = "/tmp/hc_hold_stateful_" + std::to_string(getpid());
+    {
+        std::ofstream open {gate};    // Held from here until we remove it.
+    }
+
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, 0, 0, {}, gate};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_sync_response = onSync;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    const HandleGuard guard {handle}; // Torn down even if an assertion below returns early.
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const int notifiesBefore = peekCount(peek, "/peek/notifies");
+
+    const std::string session(256 * 1024, 'H');
+    ASSERT_TRUE(hc_submit_sync_session(handle, "held-session-1",
+                                       reinterpret_cast<const uint8_t*>(session.data()),
+                                       session.size()));
+    std::this_thread::sleep_for(std::chrono::milliseconds {scaledTimeout(300)}); // Get inside the POST.
+
+    // Stateless keeps going while the session is stuck mid-flight.
+    const std::string event = "1:/var/log/syslog:while-stateful-is-held";
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
+                                event.size()));
+    EXPECT_TRUE(waitForBody(peek, "/peek/stateless", "while-stateful-is-held", 4000));
+
+    // ...and so does control, on its own cadence.
+    EXPECT_TRUE(waitForCount(peek, "/peek/notifies", notifiesBefore + 1, 4000));
+
+    // Both of those happened with the session still unanswered, which is the
+    // whole point: nothing above was waiting on it.
+    EXPECT_EQ(0, recorder.syncCount.load());
+
+    std::remove(gate.c_str()); // Release the manager.
+    EXPECT_TRUE(waitFor(recorder.syncCount, 1, 10000));
 }
 
 namespace

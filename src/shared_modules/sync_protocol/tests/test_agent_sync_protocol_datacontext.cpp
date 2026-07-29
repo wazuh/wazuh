@@ -12,12 +12,12 @@
  * @brief Unit tests for DataContext message handling in AgentSyncProtocol
  *
  * This file contains tests for:
- * - sendDataContextMessages()
  * - synchronizeModule() with DataContext separation logic
  * - Mixed DataValue and DataContext scenarios
  */
 
 #include "gmock/gmock.h"
+#include "mock_sync_transport.hpp"
 #include "gtest/gtest.h"
 
 #include "agent_sync_protocol.hpp"
@@ -82,12 +82,12 @@ class AgentSyncProtocolDataContextTest : public ::testing::Test
         }
 
         std::shared_ptr<MockPersistentQueue> mockQueue;
+        std::shared_ptr<MockSyncTransport> mockSyncTransport =
+            std::make_shared<MockSyncTransport>();
         std::unique_ptr<AgentSyncProtocol> protocol;
         const uint64_t session = 1234;
         const unsigned int retries = 1;
-        const unsigned int maxEps = 100;
         const unsigned int delay = 100;
-        const unsigned int syncEndDelay = 1;
         const unsigned int max_timeout = 10;
 };
 
@@ -95,9 +95,9 @@ class AgentSyncProtocolDataContextTest : public ::testing::Test
 // Tests for synchronizeModule() with DataContext
 // ========================================
 //
-// Note: sendDataContextMessages() is tested indirectly through
-// synchronizeModule() tests below, as it's meant to be called
-// within an active sync session context.
+// Note: DataContext items travel inside the FullSession that
+// synchronizeModule() builds, so the tests below assert on the
+// captured session.
 
 // ========================================
 // Tests for synchronizeModule() with DataContext
@@ -108,26 +108,17 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     // Test synchronization with only DataValue items (no DataContext)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void*, size_t, const char*, char)
-    {
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     // Only DataValue items (is_data_context = false)
     std::vector<PersistedData> testData = {{0, "id_1", "network", "net_data_1", Operation::CREATE, 1, false},
@@ -144,19 +135,9 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
         EXPECT_TRUE(result.success);
     });
 
-    // Wait for start
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
 
     // Send StartAck
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     // Wait for data messages
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
@@ -165,7 +146,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(session);
+    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -180,26 +161,17 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     // Test synchronization with only DataContext items (no DataValue)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void*, size_t, const char*, char)
-    {
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     // Only DataContext items (is_data_context = true)
     std::vector<PersistedData> testData = {{0, "ctx_id_1", "vd_packages", "package_data_1", Operation::CREATE, 1, true},
@@ -216,19 +188,9 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
         EXPECT_TRUE(result.success);
     });
 
-    // Wait for start
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
 
     // Send StartAck
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     // Wait for DataContext messages
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
@@ -237,7 +199,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(session);
+    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -257,43 +219,17 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     dataValuesInBatch = 0;       // Reset
     dataContextMessagesSent = 0; // Reset
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        // Inspect message type from flatbuffer
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                dataValuesInBatch += static_cast<int>(batch->values()->size());
-            }
-        }
-        else if (message->content_type() == Wazuh::SyncSchema::MessageType::DataContext)
-        {
-            dataContextMessagesSent++;
-        }
-
-        return 1; // Success
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     // Mixed DataValue and DataContext items
     std::vector<PersistedData> testData =
@@ -314,19 +250,9 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
         EXPECT_TRUE(result.success);
     });
 
-    // Wait for start
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
 
     // Send StartAck
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     // Wait for all data messages (DataValue first, then DataContext)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 3));
@@ -335,7 +261,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(session);
+    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -345,8 +271,12 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     syncThread.join();
 
     // DataValues are packed into DataBatch messages; DataContext sent individually
-    EXPECT_EQ(dataValuesInBatch, 2);
-    EXPECT_EQ(dataContextMessagesSent, 2);
+    std::vector<uint8_t> keepAlive;
+    const auto* session = capturedSession(mockSyncTransport, keepAlive);
+    ASSERT_NE(nullptr, session);
+    EXPECT_EQ(2, countedDataValues(session));
+    ASSERT_NE(nullptr, session->contexts());
+    EXPECT_EQ(2u, session->contexts()->size());
 }
 
 TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoesNotAffectDataValue)
@@ -356,35 +286,17 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
 
     static int messageCount = 0;
     messageCount = 0; // Reset
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        messageCount++;
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        // Fail on DataContext messages
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataContext)
-        {
-            return 0; // Failure
-        }
-
-        return 1; // Success for other messages
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     std::vector<PersistedData> testData =
     {
@@ -402,19 +314,9 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
         EXPECT_FALSE(result.success); // Should fail due to DataContext send failure
     });
 
-    // Wait for start
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
 
     // Send StartAck
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     // Wait for failure
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
@@ -438,43 +340,17 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
     dataValueMessagesSent = 0;
     totalDataValuesInBatches = 0;
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            dataBatchMessagesSent++;
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                totalDataValuesInBatches += static_cast<int>(batch->values()->size());
-            }
-        }
-        else if (message->content_type() == Wazuh::SyncSchema::MessageType::DataValue)
-        {
-            dataValueMessagesSent++; // should stay zero
-        }
-
-        return 1;
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     std::vector<PersistedData> testData = {{0, "id_1", "network", "net_data_1", Operation::CREATE, 1, false},
         {1, "id_2", "processes", "proc_data_1", Operation::CREATE, 1, false},
@@ -493,22 +369,13 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
 
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(session);
+    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -518,9 +385,13 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
     syncThread.join();
 
     // All DataValues must arrive inside DataBatch messages, never as individual DataValue messages
-    EXPECT_EQ(dataValueMessagesSent, 0);
-    EXPECT_EQ(totalDataValuesInBatches, 3);
-    EXPECT_GE(dataBatchMessagesSent, 1);
+    std::vector<uint8_t> keepAlive;
+    const auto* session = capturedSession(mockSyncTransport, keepAlive);
+    ASSERT_NE(nullptr, session);
+    EXPECT_EQ(1, mockSyncTransport->sendCount());          // One message for the whole session.
+    ASSERT_NE(nullptr, session->batches());
+    EXPECT_EQ(1u, session->batches()->size());             // No ~60 KB split any more.
+    EXPECT_EQ(3, countedDataValues(session));
 }
 
 TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValues)
@@ -531,44 +402,17 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
     static std::vector<std::pair<uint64_t, std::string>> received; // {seq, id}
     received.clear();
 
-    MQ_Functions mqFuncs = {.start = [](const char*, short int, short int) { return 1; },
-    .send_binary =
-        [](int, const void* data, size_t, const char*, char)
-    {
-        auto message = Wazuh::SyncSchema::GetMessage(data);
-
-        if (message->content_type() == Wazuh::SyncSchema::MessageType::DataBatch)
-        {
-            auto batch = message->content_as<Wazuh::SyncSchema::DataBatch>();
-
-            if (batch && batch->values())
-            {
-                for (const auto* dv : *batch->values())
-                {
-                    if (dv)
-                    {
-                        received.emplace_back(dv->seq(), dv->id() ? dv->id()->str() : "");
-                    }
-                }
-            }
-        }
-
-        return 1;
-    }
-                           };
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
     {
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module",
                                                    ":memory:",
-                                                   mqFuncs,
                                                    testLogger,
-                                                   std::chrono::seconds(syncEndDelay),
                                                    std::chrono::seconds(max_timeout),
                                                    retries,
-                                                   maxEps,
-                                                   mockQueue);
+                                                   mockQueue,
+                                                   mockSyncTransport);
 
     std::vector<PersistedData> testData = {{0, "host_id_1", "network", "net_data", Operation::CREATE, 1, false},
         {1, "host_id_2", "packages", "pkg_data", Operation::CREATE, 1, false}
@@ -586,22 +430,13 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    flatbuffers::FlatBufferBuilder startBuilder;
-    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
-    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    startAckBuilder.add_session(session);
-    auto startAckOffset = startAckBuilder.Finish();
-    auto startMessage = Wazuh::SyncSchema::CreateMessage(
-                            startBuilder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
-    startBuilder.Finish(startMessage);
-    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay * 2));
 
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(session);
+    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -610,9 +445,16 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
 
     syncThread.join();
 
-    ASSERT_EQ(received.size(), 2u);
-    EXPECT_EQ(received[0].first, 0u);
-    EXPECT_EQ(received[0].second, "host_id_1");
-    EXPECT_EQ(received[1].first, 1u);
-    EXPECT_EQ(received[1].second, "host_id_2");
+    std::vector<uint8_t> keepAlive;
+    const auto* session = capturedSession(mockSyncTransport, keepAlive);
+    ASSERT_NE(nullptr, session);
+    ASSERT_NE(nullptr, session->batches());
+    ASSERT_EQ(1u, session->batches()->size());
+    const auto* values = session->batches()->Get(0)->values();
+    ASSERT_NE(nullptr, values);
+    ASSERT_EQ(2u, values->size());
+    EXPECT_EQ(0u, values->Get(0)->seq());
+    EXPECT_EQ("host_id_1", values->Get(0)->id()->str());
+    EXPECT_EQ(1u, values->Get(1)->seq());
+    EXPECT_EQ("host_id_2", values->Get(1)->id()->str());
 }

@@ -6,10 +6,10 @@
  * production libhttps_client, exactly as agentd would through the bridge) at a
  * local mock manager, printing every callback so the conversation is visible.
  *
- * It stands in for agentd: build a config, hc_create/hc_start, watch the
- * /control lifecycle run (startup, notifies, a settings flip, a key rotation
- * with re-enrollment), then hc_destroy. Not production code; a demo harness
- * only.
+ * It stands in for agentd: build a config, hc_create/hc_start, feed a few
+ * events, a small sync session and a multi-MB FIM full sync (over the intake
+ * socket), force a Notify, let the control loop run, then hc_destroy. Not
+ * production code; a demo harness only.
  */
 
 /* Expose POSIX clock_gettime/nanosleep under strict -std=c11 on glibc. */
@@ -137,6 +137,16 @@ static void on_config_downloaded(const char *config_hash, const char *file_path,
     fflush(stdout);
 }
 
+static void on_sync_response(const char *session_id, int result, const char *body, size_t body_len,
+                             void *user_data)
+{
+    (void)user_data;
+    (void)body; /* A binary FlatBuffer now, not printable text. */
+    printf("[+%7ld ms] >> STATEFUL result: session=%s result=%d (%zu-byte answer)\n", elapsed_ms(),
+           session_id, result, body_len);
+    fflush(stdout);
+}
+
 static void on_state_change(int state, void *user_data)
 {
     (void)user_data;
@@ -157,13 +167,66 @@ static void nap(int ms)
     nanosleep(&t, NULL);
 }
 
+/* Deterministic hex filler (xorshift-style) for the fake file hashes. */
+static void fake_hex(char *dst, size_t hex_chars, uint64_t seed)
+{
+    static const char digits[] = "0123456789abcdef";
+    for (size_t i = 0; i < hex_chars; i++)
+    {
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        dst[i] = digits[(seed >> 60) & 0xF];
+    }
+    dst[hex_chars] = '\0';
+}
+
+/* Builds a FIM full-sync session: "FULLSESSION:fim:" followed by one JSON
+ * entry per monitored file (path, attributes, md5/sha1/sha256), one per line.
+ * The shape mirrors what syscheck reports; the content is generated. */
+static unsigned char *build_fim_full_sync(size_t entries, size_t *out_len)
+{
+    const size_t cap = 32 + entries * 420;
+    unsigned char *buf = malloc(cap);
+    size_t len = (size_t)snprintf((char *)buf, cap, "FULLSESSION:fim:");
+    char md5[33], sha1[41], sha256[65];
+    for (size_t i = 0; i < entries; i++)
+    {
+        fake_hex(md5, 32, i * 3 + 1);
+        fake_hex(sha1, 40, i * 3 + 2);
+        fake_hex(sha256, 64, i * 3 + 3);
+        len += (size_t)snprintf((char *)buf + len, cap - len,
+                                "{\"path\":\"/usr/lib/pkg-%05zu/libcomponent-%zu.so\","
+                                "\"attributes\":{\"type\":\"file\",\"size\":%zu,"
+                                "\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\","
+                                "\"inode\":%zu,\"mtime\":%ld,\"hash_md5\":\"%s\","
+                                "\"hash_sha1\":\"%s\",\"hash_sha256\":\"%s\"}}\n",
+                                i / 20, i, 4096 + i % 65536, 100000 + i,
+                                1784500000L + (long)(i % 86400), md5, sha1, sha256);
+    }
+    *out_len = len;
+    return buf;
+}
+
+/* Cheap integrity witness both sides can compute: sum of all bytes mod 2^32.
+ * The mock prints the same over what it received; equal values on screen mean
+ * the multi-MB session survived socket -> spool -> HTTPS byte-exact. */
+static uint32_t additive_checksum(const unsigned char *data, size_t len)
+{
+    uint32_t sum = 0;
+    for (size_t i = 0; i < len; i++)
+    {
+        sum += data[i];
+    }
+    return sum;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        fprintf(stderr, "usage: %s <host> <port> <key_hex>\n", argv[0]);
+        fprintf(stderr, "usage: %s <host> <port> <key_hex> [sync_socket_path]\n", argv[0]);
         return 2;
     }
+    const char *sync_socket = argc > 4 ? argv[4] : NULL;
     clock_gettime(CLOCK_MONOTONIC, &g_start);
 
     struct sigaction action;
@@ -181,7 +244,7 @@ int main(int argc, char **argv)
     config.verify_mode = HC_VERIFY_NONE; /* demo mock uses a self-signed cert */
     config.notify_interval_s = 2;        /* Notify every 2 s so we see a few   */
     config.batch_interval_ms = 1000;     /* flush events every 1 s             */
-    config.request_timeout_ms = 10000;
+    config.request_timeout_ms = 10000;   /* a multi-MB /stateful takes a moment */
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
     strncpy(config.version, "5.1.0", sizeof config.version - 1);
@@ -190,6 +253,10 @@ int main(int argc, char **argv)
     strncpy(config.config_checksum,
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             sizeof config.config_checksum - 1);
+    if (sync_socket)
+    {
+        strncpy(config.sync_socket_path, sync_socket, sizeof config.sync_socket_path - 1);
+    }
 
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof callbacks);
@@ -198,6 +265,7 @@ int main(int argc, char **argv)
     callbacks.on_reenroll_required = on_reenroll_required;
     callbacks.on_task = on_task;
     callbacks.on_config_downloaded = on_config_downloaded;
+    callbacks.on_sync_response = on_sync_response;
     callbacks.on_state_change = on_state_change;
     callbacks.on_buffer_level = on_buffer_level;
 
@@ -221,6 +289,34 @@ int main(int argc, char **argv)
         hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
     }
 
+    printf("== submitting a small /stateful sync session (in-memory) ==\n");
+    unsigned char session[4096];
+    memcpy(session, "FULLSESSION:syscollector:", 25);
+    memset(session + 25, 'D', sizeof session - 25);
+    hc_submit_sync_session(handle, "demo-sess-1", session, sizeof session);
+
+    unsigned char *fim_session = NULL;
+    size_t fim_len = 0;
+    if (sync_socket)
+    {
+        /* The producer path, playing the FIM module: a full sync sends every
+         * monitored file's entry as ONE FullSession over the local intake
+         * socket. It bypasses the legacy 64 KB DGRAM cap entirely, is spooled
+         * to disk by the module, and streamed to /stateful. */
+        const size_t entries = 100000; /* a mid-size server's file inventory */
+        printf("== FIM full sync: building %zu file entries ==\n", entries);
+        fflush(stdout);
+        fim_session = build_fim_full_sync(entries, &fim_len);
+        printf("== streaming the FIM full sync over the intake socket: %zu entries, "
+               "%.2f MB, checksum 0x%08x ==\n", entries, fim_len / (1024.0 * 1024.0),
+               additive_checksum(fim_session, fim_len));
+        fflush(stdout);
+        if (!hc_send_sync_session(sync_socket, "fim-full-sync-1", fim_session, fim_len))
+        {
+            printf("   (!) failed to stream the session to %s\n", sync_socket);
+        }
+    }
+
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
 
@@ -235,15 +331,17 @@ int main(int argc, char **argv)
 
     /* Optional sustained mode: DEMO_SECONDS=<n> keeps the client alive after
      * the scripted walkthrough, submitting an event every 2 s so the periodic
-     * Notify + /stateless traffic stays visible. SIGINT/SIGTERM (Ctrl-C,
-     * docker stop) ends it early through the same clean drain. */
+     * Notify + /stateless traffic stays visible, and re-running the FIM full
+     * sync every 60 s. SIGINT/SIGTERM (Ctrl-C, docker stop) ends it early
+     * through the same clean drain. */
     const char *extra = getenv("DEMO_SECONDS");
     const long extra_s = extra ? strtol(extra, NULL, 10) : 0;
     if (extra_s > 0)
     {
-        printf("== sustained mode: ~%ld s of keepalive traffic (Ctrl-C stops cleanly) ==\n",
-               extra_s);
+        printf("== sustained mode: ~%ld s of keepalive traffic, FIM full re-sync "
+               "every 60 s (Ctrl-C stops cleanly) ==\n", extra_s);
         fflush(stdout);
+        int fim_round = 1;
         for (long tick = 0; tick * 2 < extra_s && !atomic_load(&g_stop); tick++)
         {
             char frame[80];
@@ -265,10 +363,20 @@ int main(int argc, char **argv)
                     hc_submit_event(handle, (const uint8_t *)big, (size_t)m);
                 }
             }
+            if (fim_session && tick > 0 && tick % 30 == 0)
+            {
+                char sid[48];
+                snprintf(sid, sizeof sid, "fim-full-sync-%d", ++fim_round);
+                printf("== periodic FIM full re-sync (%s, %.2f MB) ==\n", sid,
+                       fim_len / (1024.0 * 1024.0));
+                fflush(stdout);
+                hc_send_sync_session(sync_socket, sid, fim_session, fim_len);
+            }
             nap(2000);
         }
     }
 
+    free(fim_session);
     printf("== stopping (drain + join) ==\n");
     hc_destroy(handle);
     printf("== done ==\n");

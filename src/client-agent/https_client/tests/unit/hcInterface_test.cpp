@@ -194,6 +194,7 @@ TEST_F(HcInterfaceTest, SubmitBeforeStartIsRejected)
     ASSERT_NE(nullptr, handle);
     const uint8_t frame[] = "1:/var/log/syslog:hello";
     EXPECT_FALSE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    EXPECT_FALSE(hc_submit_sync_session(handle, "sess-0001", frame, sizeof(frame) - 1));
     hc_notify_now(handle);
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
     hc_destroy(handle);
@@ -206,7 +207,24 @@ TEST_F(HcInterfaceTest, SubmitAfterStartAcceptsIntoQueues)
     ASSERT_TRUE(hc_start(handle));
     const uint8_t frame[] = "1:/var/log/syslog:hello";
     EXPECT_TRUE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    EXPECT_TRUE(hc_submit_sync_session(handle, "sess-0001", frame, sizeof(frame) - 1));
     hc_notify_now(handle);
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, SyncSubmitAfterStopIsRejected)
+{
+    // Both sync entry points read the lifecycle flag under the same lock stop()
+    // writes it with, so a session can never be queued behind the sender's exit.
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    hc_stop(handle);
+
+    const uint8_t frame[] = "1:/var/log/syslog:hello";
+    EXPECT_FALSE(hc_submit_sync_session(handle, "sess-0001", frame, sizeof(frame) - 1));
+    EXPECT_FALSE(hc_submit_sync_session_file(handle, "sess-0002", "/tmp/hc_never_read", 1));
+    EXPECT_FALSE(hc_submit_event(handle, frame, sizeof(frame) - 1));
     hc_destroy(handle);
 }
 
@@ -218,6 +236,21 @@ TEST_F(HcInterfaceTest, SubmitNullArgumentsAreRejected)
     const uint8_t frame[] = "x";
     EXPECT_FALSE(hc_submit_event(handle, nullptr, 1));
     EXPECT_FALSE(hc_submit_event(handle, frame, 0));
+    EXPECT_FALSE(hc_submit_sync_session(handle, nullptr, frame, 1));
+    EXPECT_FALSE(hc_submit_sync_session(handle, "sess", nullptr, 1));
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, SyncIntakeBindFailureIsNonFatal)
+{
+    // A sync socket in a nonexistent directory cannot bind; the client must
+    // still start (the intake is best-effort) and stop cleanly.
+    hc_config_t config = m_config;
+    std::strncpy(config.sync_socket_path, "/nonexistent_dir_xyz/hc_sync.sock",
+                 sizeof(config.sync_socket_path) - 1);
+    hc_handle* handle = hc_create(&config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_TRUE(hc_start(handle)); // Bind fails, but start succeeds.
     hc_destroy(handle);
 }
 
@@ -269,6 +302,7 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     hc_destroy(nullptr);
     const uint8_t frame[] = "x";
     EXPECT_FALSE(hc_submit_event(nullptr, frame, 1));
+    EXPECT_FALSE(hc_submit_sync_session(nullptr, "s", frame, 1));
     hc_notify_now(nullptr);
     EXPECT_FALSE(hc_set_config_hash(nullptr, "abc"));
     EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));

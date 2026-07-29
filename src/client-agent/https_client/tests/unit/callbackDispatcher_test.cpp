@@ -17,6 +17,7 @@
 #include <atomic>
 #include <fstream>
 #include <memory>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -52,30 +53,31 @@ namespace
         record->count++;
     }
 
-    void recordReenroll(void* userData)
+    void recordTag(const std::string& tag, Record* record)
     {
-        auto* record = static_cast<Record*>(userData);
         std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back("reenroll");
-        record->threads.push_back(std::this_thread::get_id());
-        record->count++;
-    }
-
-    void recordBuffer(int level, void* userData)
-    {
-        auto* record = static_cast<Record*>(userData);
-        std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back("buffer:" + std::to_string(level));
+        record->order.push_back(tag);
         record->count++;
     }
 
     void recordStartup(bool accepted, const char*, void* userData)
     {
-        auto* record = static_cast<Record*>(userData);
-        std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back(accepted ? "startup:ok" : "startup:no");
-        record->threads.push_back(std::this_thread::get_id());
-        record->count++;
+        recordTag(accepted ? "startup:ok" : "startup:no", static_cast<Record*>(userData));
+    }
+
+    void recordReenroll(void* userData)
+    {
+        recordTag("reenroll", static_cast<Record*>(userData));
+    }
+
+    void recordSync(const char* sessionId, int, const char*, size_t, void* userData)
+    {
+        recordTag(std::string {"sync:"} + sessionId, static_cast<Record*>(userData));
+    }
+
+    void recordBuffer(int level, void* userData)
+    {
+        recordTag("buffer:" + std::to_string(level), static_cast<Record*>(userData));
     }
 
     hc_callbacks_t makeCallbacks(Record* record)
@@ -84,6 +86,7 @@ namespace
         callbacks.on_startup_result = recordStartup;
         callbacks.on_task = recordTask;
         callbacks.on_reenroll_required = recordReenroll;
+        callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
         callbacks.on_buffer_level = recordBuffer;
         callbacks.user_data = record;
@@ -162,7 +165,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.start();
     dispatcher.onTask("x", "ar", "{}");
     dispatcher.onStateChange(HC_STATE_STARTING);
-    dispatcher.onReenrollRequired();
+    dispatcher.onSyncResponse("s", 0, "{}");
     dispatcher.onStartupResult(true, "{}");
     dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
     dispatcher.stop(); // No crash despite null handlers.
@@ -176,9 +179,10 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.onStartupResult(true, R"({"limits":{}})");
     dispatcher.onTask("t1", "active_response", "{}");
     dispatcher.onReenrollRequired();
+    dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 5);
+    waitForCount(record, 6);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
@@ -186,6 +190,8 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "state:" + std::to_string(HC_STATE_REGISTERED)));
@@ -275,4 +281,46 @@ TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
     dispatcher.stop();
     dispatcher.stop(); // Ignored.
     EXPECT_EQ(1, record.count.load());
+}
+
+TEST(CallbackDispatcherBinaryTest, ASyncResponseBodyKeepsItsNulBytes)
+{
+    // A session is answered with an EndAck FlatBuffer, which is binary. The
+    // callback used to hand the body over as a bare const char*, so anything
+    // past the first NUL was lost - which for a FlatBuffer is most of it.
+    struct Captured
+    {
+        std::mutex mutex;
+        std::condition_variable cv;
+        std::string body;
+        bool got {false};
+    } captured;
+
+    hc_callbacks_t callbacks {};
+    callbacks.on_sync_response = [](const char*, int, const char* body, size_t bodyLen,
+                                    void* userData)
+    {
+        auto* sink = static_cast<Captured*>(userData);
+        std::lock_guard<std::mutex> lock(sink->mutex);
+        sink->body.assign(body, bodyLen);
+        sink->got = true;
+        sink->cv.notify_all();
+    };
+    callbacks.user_data = &captured;
+
+    // Shaped like a FlatBuffer root: a leading offset with high NUL bytes.
+    const std::string endAck {"\x0c\x00\x00\x00WZ\x00\x01\x00\x00\x00\x00", 12};
+
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onSyncResponse("fim-42", HC_RESULT_OK, endAck);
+
+    {
+        std::unique_lock<std::mutex> lock(captured.mutex);
+        ASSERT_TRUE(captured.cv.wait_for(lock, std::chrono::seconds {5}, [&] { return captured.got; }));
+    }
+
+    dispatcher.stop();
+    EXPECT_EQ(endAck, captured.body);
+    EXPECT_EQ(12u, captured.body.size()); // Not 4, which is where the first NUL sits.
 }

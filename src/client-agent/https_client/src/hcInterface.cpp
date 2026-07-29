@@ -18,6 +18,7 @@
 
 #include "https_client.h"
 #include "httpsClientFacade.hpp"
+#include "syncIntake.hpp"
 
 namespace Log
 {
@@ -135,6 +136,60 @@ extern "C"
         try
         {
             return handle->impl.submitEvent(frame, length);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_submit_sync_session(hc_handle* handle, const char* session_id, const uint8_t* buffer,
+                                size_t length)
+    {
+        if (handle == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return handle->impl.submitSyncSession(session_id, buffer, length);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id, const char* file_path,
+                                     uint64_t size)
+    {
+        if (handle == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return handle->impl.submitSyncSessionFile(session_id, file_path, size);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_send_sync_session(const char* socket_path, const char* session_id, const uint8_t* body,
+                              size_t length)
+    {
+        if (socket_path == nullptr || session_id == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return sendSyncSession(socket_path, session_id, body, length);
         }
         catch (...)
         {

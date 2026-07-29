@@ -33,6 +33,12 @@ int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     return mock();
 }
 
+/* Stateless frames go to the HTTPS module now, not send_msg (#37835 cutover). */
+int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
+    check_expected(frame);
+    return mock();
+}
+
 int mock_sysinfo_networks_func(cJSON **object) {
 
     static const char *ip_update_success =
@@ -258,8 +264,8 @@ static void test_SendMSGAction_non_escape(void **state) {
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:locmsg:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:locmsg:message");
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);
@@ -277,8 +283,8 @@ static void test_SendMSGAction_escape(void **state) {
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:loc||msg|:test:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:loc||msg|:test:message");
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 0);
@@ -297,8 +303,8 @@ static void test_SendMSGAction_multi_escape(void **state) {
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);

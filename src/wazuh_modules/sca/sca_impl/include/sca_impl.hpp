@@ -93,14 +93,11 @@ class SecurityConfigurationAssessment
         /// @brief Initialize the sync protocol
         /// @param moduleName Name of the module
         /// @param syncDbPath Path to the sync database
-        /// @param mqFuncs Message queue functions
-        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
-        /// @param maxEps Maximum events per second
         /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps, std::chrono::seconds integrityInterval);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, std::chrono::seconds timeout, unsigned int retries,
+                              std::chrono::seconds integrityInterval);
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode

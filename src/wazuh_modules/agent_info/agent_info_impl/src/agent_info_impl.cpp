@@ -290,7 +290,7 @@ void AgentInfoImpl::stop()
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
-void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs)
+void AgentInfoImpl::initSyncProtocol(const std::string& moduleName)
 {
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
     {
@@ -301,13 +301,9 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Fun
     {
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName,
                                                                std::nullopt,
-                                                               mqFuncs,
                                                                logger_func,
-                                                               std::chrono::seconds(m_syncEndDelay),
                                                                std::chrono::seconds(m_syncResponseTimeout),
-                                                               m_syncRetries,
-                                                               m_syncMaxEps,
-                                                               nullptr);
+                                                               m_syncRetries);
         m_logFunction(LOG_DEBUG, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
@@ -318,17 +314,13 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Fun
     }
 }
 
-void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps)
+void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries)
 {
-    m_syncEndDelay = syncEndDelay;
     m_syncResponseTimeout = timeout;
     m_syncRetries = retries;
-    m_syncMaxEps = maxEps;
 
     m_logFunction(LOG_DEBUG,
-                  "Sync parameters set: syncEndDelay =" + std::to_string(syncEndDelay) +
-                  "s, timeout=" + std::to_string(timeout) + "s, retries=" + std::to_string(retries) +
-                  ", maxEps=" + std::to_string(maxEps));
+                  "Sync parameters set: timeout=" + std::to_string(timeout) + "s, retries=" + std::to_string(retries));
 }
 
 void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)

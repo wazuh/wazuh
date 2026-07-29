@@ -160,6 +160,23 @@ void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
     });
 }
 
+void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result,
+                                        const std::string& body)
+{
+    if (m_callbacks.on_sync_response == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, sessionId, result, body]
+    {
+        // Length-carrying: the body is an EndAck FlatBuffer, so it is binary and
+        // c_str() alone would truncate it at the first NUL.
+        m_callbacks.on_sync_response(
+            sessionId.c_str(), result, body.data(), body.size(), m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onStateChange(hc_conn_state_t state)
 {
     if (m_callbacks.on_state_change == nullptr)

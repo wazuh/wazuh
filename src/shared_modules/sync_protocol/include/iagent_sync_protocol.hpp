@@ -67,7 +67,7 @@ class IAgentSyncProtocol
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///
         /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-        /// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+        /// Sent as one FullSession carrying Start and End (no data items).
         /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
         /// @param indices Vector of index names that will be updated by the manager
         /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
@@ -77,22 +77,12 @@ class IAgentSyncProtocol
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///
         /// This method sends DataClean messages for each index in the provided vector.
-        /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
+        /// Sent as one FullSession carrying Start, a DataClean per index, and End.
         /// Upon receiving Ok, it clears the local database and returns true.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
         /// @return true if notification completed successfully and database was cleared, false otherwise
         virtual bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) = 0;
-
-        /// @brief Sends DataContext messages to the server for VD sync.
-        ///
-        /// This method sends DataContext flatbuffer messages for each data item in the vector.
-        /// DataContext messages are used for vulnerability detection data that bypasses the indexer.
-        /// @param session Session id for the current sync
-        /// @param data Vector of PersistedData to send as DataContext messages
-        /// @return true if all messages were sent successfully, false otherwise
-        virtual bool sendDataContextMessages(uint64_t session,
-                                             const std::vector<PersistedData>& data) = 0;
 
         /// @brief Fetches pending DataValue items from the persistent queue without marking them.
         /// @param onlyDataValues If true, only returns items with is_data_context=false

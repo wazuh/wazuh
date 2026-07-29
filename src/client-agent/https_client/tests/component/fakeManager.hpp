@@ -35,7 +35,7 @@
  *        idiom). It validates the AES-CMAC of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
  *        interop; a mismatch yields 401. It supports a one-shot 503 (back-
- *        pressure) and a 426 mode.
+ *        pressure), a session LRU-of-one (dedup), and a 426 mode.
  *
  * The child process runs the server; the parent asserts on the responses it
  * receives (the two sides do not share memory).
@@ -54,10 +54,14 @@ class FakeManager final
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
         /// notifies the server verifies ONLY against rotatedKeyHex, so the old
         /// key starts getting 401 (#37828 re-enrollment).
+        /// statefulHoldFile set: /stateful does not answer while that path
+        /// exists, so a test can hold one session open and watch the other
+        /// endpoints carry on. The server forks and shares no memory with the
+        /// test, so the file is the release signal (#37836 isolation).
         FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
                     int settingsFlipAfter = 0, std::string configBlob = {},
                     size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
-                    std::string rotatedKeyHex = {})
+                    std::string rotatedKeyHex = {}, std::string statefulHoldFile = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -66,6 +70,7 @@ class FakeManager final
             , m_statelessMaxBody(statelessMaxBody)
             , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
             , m_rotatedKeyHex(std::move(rotatedKeyHex))
+            , m_statefulHoldFile(std::move(statefulHoldFile))
         {
             m_pid = fork();
 
@@ -139,11 +144,13 @@ class FakeManager final
             const int settingsFlipAfter = m_settingsFlipAfter;
             const std::string configBlob = m_configBlob;
             const size_t statelessMaxBody = m_statelessMaxBody;
+            const std::string holdFile = m_statefulHoldFile;
             const std::string configHash =
                 configBlob.empty() ? std::string {}
                 :
                 sha256Hex(configBlob.data(), configBlob.size());
             auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
+            auto lastSession = std::make_shared<std::string>();
             auto notifyCount = std::make_shared<std::atomic<int>>(0);
 
             // The key every endpoint verifies against: after the configured
@@ -204,6 +211,45 @@ class FakeManager final
                 std::lock_guard<std::mutex> lock(*acceptedMutex);
                 response.status = 200;
                 response.set_content(*acceptedEvents, "text/plain");
+            });
+
+            // Same channel for the control plane: how many notifies landed.
+            server.Get("/peek/notifies",
+                       [notifyCount](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(std::to_string(notifyCount->load()), "text/plain");
+            });
+
+            server.Post("/stateful",
+                        [verify, lastSession, holdFile](const httplib::Request & request,
+                                                        httplib::Response & response)
+            {
+                if (!verify("/stateful", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                // Sit on the response until the test removes the file, with a
+                // hard stop so a broken test cannot wedge the run. The cap sits
+                // well above the test's own deadlines even when valgrind
+                // stretches them tenfold, so it only fires on a real hang.
+                for (int waited = 0; !holdFile.empty() && waited < 120000 &&
+                        access(holdFile.c_str(), F_OK) == 0; waited += 20)
+                {
+                    usleep(20 * 1000);
+                }
+
+                const auto session = request.get_header_value("X-Session-Id");
+                const bool cached = (*lastSession == session);
+                *lastSession = session;
+                response.status = 200;
+                response.set_content(
+                    std::string {"{\"sessionId\":\""} + session + "\",\"cached\":" +
+                    (cached ? "true" : "false") + ",\"bytes\":" +
+                    std::to_string(request.body.size()) + "}",
+                    "application/json");
             });
 
             server.Post("/download",
@@ -417,6 +463,7 @@ class FakeManager final
         size_t m_statelessMaxBody {0};
         int m_rotateKeyAfterNotifies {0};
         std::string m_rotatedKeyHex;
+        std::string m_statefulHoldFile;
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

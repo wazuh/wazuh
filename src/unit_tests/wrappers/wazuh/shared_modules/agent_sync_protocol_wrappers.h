@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include "agent_sync_protocol_c_interface.h"
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t max_eps);
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries);
 
 void __wrap_asp_destroy(AgentSyncProtocolHandle* handle);
 

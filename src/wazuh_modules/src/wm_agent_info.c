@@ -212,12 +212,6 @@ static int wm_agent_info_startmq(const char* key, short type, short attempts)
     return StartMQPredicated(key, type, attempts, wm_agent_info_is_shutting_down);
 }
 
-static int
-wm_agent_info_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
-{
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
-}
-
 // Wrapper function to adapt wm_module_query signature to the expected callback type
 static int wm_agent_info_query_module_wrapper(const char* module_name, const char* json_query, char** response)
 {
@@ -673,8 +667,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     if (agent_info_init_sync_protocol_ptr)
     {
-        MQ_Functions mq_funcs = {.start = wm_agent_info_startmq, .send_binary = wm_agent_info_send_binary_msg};
-        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
+        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME);
     }
 
     // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom

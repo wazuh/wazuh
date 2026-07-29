@@ -23,15 +23,11 @@ extern "C" {
 ///
 /// @param module Name of the module associated with this instance.
 /// @param db_path Optional full path to the SQLite database file to be used (nullptr for in-memory only).
-/// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
-/// @param syncEndDelay Delay for synchronization end message in seconds
 /// @param timeout Default timeout for synchronization operations in seconds.
 /// @param retries Default number of retries for synchronization operations.
-/// @param maxEps Default maximum events per second for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
-                                    size_t maxEps);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -101,7 +97,7 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// @brief Synchronizes metadata or groups with the server without sending data.
 ///
 /// This function handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-/// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+/// Sent as one FullSession carrying Start and End (no data items).
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
 /// @param indices Array of index name strings that will be updated by the manager.
@@ -117,7 +113,7 @@ SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
 /// @brief Notifies the manager about data cleaning for specified indices.
 ///
 /// This function sends DataClean messages for each index in the provided array.
-/// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
+/// Sent as one FullSession carrying Start, a DataClean per index, and End.
 /// Upon receiving Ok, it clears the local database and returns true.
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param indices Array of index name strings to clean.
