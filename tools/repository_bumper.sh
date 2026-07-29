@@ -499,45 +499,57 @@ update_root_changelog() {
         return
     fi
 
+    # Skeleton for the new version: every section and block heading with an
+    # empty table ready to receive entries.
+    local table_header=$'| Issue | Comment |\n|-------|---------|'
+    local skeleton="## [v${new_version}]"
+    local section block
+    for section in Manager Agent; do
+        skeleton+=$'\n\n'"### ${section}"
+        for block in Added Changed Removed Fixed; do
+            skeleton+=$'\n\n'"#### ${block}"$'\n\n'"${table_header}"
+        done
+    done
+
     if [[ ! -f "$changelog_file" ]]; then
-        echo "## [v$new_version]" > "$changelog_file"
+        echo "$skeleton" > "$changelog_file"
         log_action "Created $changelog_file with new version: $new_version"
         return
     fi
 
-    if grep -q "\[v\?$new_version\]" "$changelog_file"; then
+    local version_escaped="${new_version//./\\.}"
+    if grep -qE "^## \[v?${version_escaped}\]" "$changelog_file"; then
         log_action "Version $new_version already exists in changelog."
         return
     fi
 
-    # Minor series (MAJOR.MINOR) of the version being released.
-    local new_mm="${new_version%.*}"
-
-    # Candidate prior versions: the current top version (whose full changelog is
-    # replaced by a link) plus every version already listed under
-    # "## Prior versions", newest first.
+    # Candidate prior versions: every version section being replaced by a link
+    # plus the versions already listed under "## Prior versions", newest first.
     local candidates
     candidates=$(
         {
-            grep -m1 -E '^## \[v?[0-9]+\.[0-9]+\.[0-9]+\]' "$changelog_file" \
+            grep -E '^## \[v?[0-9]+\.[0-9]+\.[0-9]+\]' "$changelog_file" \
                 | sed -E 's/^## \[v?([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/'
             sed -n '/^## Prior versions/,$p' "$changelog_file" \
                 | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//'
-        } | sort -Vr
+        } | sort -Vru
     )
 
-    # Keep the highest patch per minor series, ignore versions older than 5.0.0,
-    # drop the new release's own series, and take only the two latest minor series.
+    # Ignore versions older than 5.0.0 and keep every version belonging to the
+    # two latest minor series.
     local prior_tags
-    prior_tags=$(awk -F. -v skip="$new_mm" -v min_major=5 '
+    prior_tags=$(awk -F. -v min_major=5 '
         NF < 3 { next }
         $1 < min_major { next }
         { mm = $1 "." $2 }
-        mm == skip { next }
-        !seen[mm]++ { print }' <<< "$candidates" | head -n2)
+        !(mm in minors) {
+            if (nminors == 2) next
+            minors[mm]; nminors++
+        }
+        { print }' <<< "$candidates")
 
-    # Rebuild the changelog: the new version section plus the prior-version links.
-    local new_content="## [v${new_version}]"
+    # Rebuild the changelog: the new version skeleton plus the prior-version links.
+    local new_content="$skeleton"
     if [[ -n "$prior_tags" ]]; then
         new_content+=$'\n\n'"## Prior versions"$'\n'
         local tag
