@@ -36,10 +36,6 @@ public:
     /**
      * @brief Start the module.
      *
-     * Throws if the HTTPS transport fails to start (e.g. the TLS
-     * certificate/key are not in place). Not caught here: there is no retry,
-     * and the caller must let it propagate.
-     *
      * @param logFunction   Log function to be used by the module.
      * @param configuration Module configuration.
      */
