@@ -2266,10 +2266,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                    std::chrono::seconds timeout,
-                                    unsigned int retries,
-                                    size_t maxEps, uint32_t integrityInterval)
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
+                                    std::chrono::seconds timeout, unsigned int retries, uint32_t integrityInterval)
 {
     m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
     m_integrityIntervalValue = integrityInterval;
@@ -2287,12 +2285,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     try
     {
         // Initialize regular sync protocol
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func, timeout, retries);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize VD sync protocol with different module name to avoid routing conflicts
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd, timeout, retries);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources

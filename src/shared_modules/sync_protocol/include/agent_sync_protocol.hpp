@@ -10,10 +10,8 @@
 #ifndef AGENT_SYNC_PROTOCOL_HPP
 #define AGENT_SYNC_PROTOCOL_HPP
 
-#include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
-#include "mqueue_transport.hpp"
 #include "sync_socket_transport.hpp"
 
 #include <atomic>
@@ -31,16 +29,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Constructs the synchronization protocol handler.
         /// @param moduleName Name of the module associated with this instance.
         /// @param dbPath Optional path to the SQLite database file for this protocol instance. If not provided, only in-memory synchronization is available.
-        /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
-        /// @param queue Optional persistent queue to use for message storage and retrieval.
-        /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
-        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Default timeout for synchronization operations.
         /// @param retries Default number of retries for synchronization operations.
-        /// @param maxEps Default maximum events per second for synchronization operations.
-        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
-                                   unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr,
+        /// @param queue Optional persistent queue to use for message storage and retrieval.
+        /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
+        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger, std::chrono::seconds timeout,
+                                   unsigned int retries, std::shared_ptr<IPersistentQueue> queue = nullptr,
                                    std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
@@ -74,10 +69,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
 
-        /// @copydoc IAgentSyncProtocol::sendDataContextMessages
-        bool sendDataContextMessages(uint64_t session,
-                                     const std::vector<PersistedData>& data) override;
-
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
 
@@ -108,9 +99,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief The MQueue message transport.
-        std::unique_ptr<MQueueTransport> m_transport;
-
         /// @brief Carries a whole session to the agent over the queue-sync STREAM
         ///        socket, which has no 64 KB bound.
         std::shared_ptr<ISyncSessionTransport> m_syncTransport;
@@ -120,9 +108,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Logger function
         LoggerFunc m_logger;
-
-        /// @brief Delay for synchronization end message in seconds
-        std::chrono::seconds m_syncEndDelay;
 
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};
@@ -136,9 +121,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Default number of retries for synchronization operations
         unsigned int m_retries;
 
-        /// @brief Default maximum events per second for synchronization operations
-        size_t m_maxEps;
-
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
         /// @param stopped Whether it was aborted because a stop was requested.
@@ -147,9 +129,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
         unsigned int trackSyncOutcome(bool success, bool stopped);
 
-        /// @brief Builds the Start table into an existing FlatBuffer builder, waiting
-        ///        for agent metadata to become available first. Owns the metadata
-        ///        lifetime end to end.
+        /// @brief Waits for agent metadata to become available - indefinitely,
+        ///        unless a stop is requested - then builds the Start table into
+        ///        an existing FlatBuffer builder. Owns the metadata lifetime end
+        ///        to end.
         /// @param builder Builder to emit the table into.
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
@@ -158,7 +141,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param globalVersion Optional global version to include in the Start message
         /// @return The Start offset, or a null offset when metadata or groups are
         ///         unavailable, or a stop was requested.
-        flatbuffers::Offset<Wazuh::SyncSchema::Start> buildStartOffset(
+        flatbuffers::Offset<Wazuh::SyncSchema::Start> waitMetadataAndBuildStart(
             flatbuffers::FlatBufferBuilder& builder,
             Mode mode,
             size_t dataSize,
@@ -176,11 +159,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Everything a session carries. All four flows (module sync,
         ///        metadata/groups, integrity check, data clean) differ only in
         ///        which of these are populated, so they all go through
-        ///        runSession() and produce one FullSession message.
+        ///        runSession() and produce one FullSession message. The size
+        ///        announced in Start is derived from the item vectors.
         struct SessionContent
         {
             Mode mode {Mode::DELTA};
-            size_t declaredSize {0};              ///< The size announced in Start.
             std::vector<std::string> indices;
             Option option {Option::SYNC};
             std::optional<uint64_t> globalVersion;
@@ -208,27 +191,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param content What the session carries.
         /// @return The serialized message, or an empty vector on failure.
         std::vector<uint8_t> buildFullSessionMessage(uint64_t session, const SessionContent& content);
-
-        /// @brief Sends a checksum module message to the server
-        /// @param session Session id
-        /// @param index Index name
-        /// @param checksum Checksum value
-        /// @return True on success, false on failure
-        bool sendChecksumMessage(uint64_t session,
-                                 const std::string& index,
-                                 const std::string& checksum);
-
-        /// @brief Sends DataClean messages to the server for each data item
-        /// @param session Session id
-        /// @param data Vector of PersistedData to send as DataClean messages
-        /// @return True on success, false on failure
-        bool sendDataCleanMessages(uint64_t session,
-                                   const std::vector<PersistedData>& data);
-
-        /// @brief Sends a flatbuffer message as a string to the server
-        /// @param fbData Flatbuffer data
-        /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase

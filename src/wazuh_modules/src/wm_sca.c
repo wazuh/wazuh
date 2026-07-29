@@ -60,9 +60,7 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 // SCA sync protocol variables
 unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sca_sync_end_delay = 1;                 // Database synchronization end message delay in seconds (default value)
 uint32_t sca_sync_response_timeout = 60;         // Database synchronization response timeout (default value)
-long sca_sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
 uint32_t sca_integrity_interval = 86400;         // Integrity check interval in seconds (default value, 0 = disabled)
 
 // Forward declarations
@@ -318,19 +316,6 @@ static void sca_log_callback(const modules_log_level_t level, const char* log, _
     }
 }
 
-// SCA message queue functions
-static int wm_sca_startmq(const char* key, short type, short attempts) {
-    return StartMQPredicated(key, type, attempts, wm_sca_is_shutting_down);
-}
-
-static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
-    // returns on shutdown: the protocol's stop() cannot interrupt this wait, and a parked
-    // send would stall the sync worker join in wm_sca_start() — and, if it arrived through
-    // a wcom query holding m_resourcesMutex shared, the releaseResources() teardown too.
-    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, wm_sca_is_shutting_down);
-}
-
 static bool wm_sca_parse_query_int(const char* output, const char* field, int* value)
 {
     bool result = false;
@@ -470,8 +455,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr)
         {
-            MQ_Functions mq_funcs = {.start = wm_sca_startmq, .send_binary = wm_sca_send_binary_msg};
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_integrity_interval);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -581,19 +565,13 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_enable_synchronization = data->sync.enable_synchronization;
         if (sca_enable_synchronization) {
             sca_sync_interval = data->sync.sync_interval;
-            sca_sync_end_delay = data->sync.sync_end_delay;
             sca_sync_response_timeout = data->sync.sync_response_timeout;
-            sca_sync_max_eps = data->sync.sync_max_eps;
             sca_integrity_interval = data->sync.integrity_interval;
         }
 
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr) {
-            MQ_Functions mq_funcs = {
-                .start = wm_sca_startmq,
-                .send_binary = wm_sca_send_binary_msg
-            };
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs, sca_sync_end_delay, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps, sca_integrity_interval);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_integrity_interval);
         }
 
         // Set the yaml to cjson function

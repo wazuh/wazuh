@@ -23,15 +23,11 @@ extern "C" {
 ///
 /// @param module Name of the module associated with this instance.
 /// @param db_path Optional full path to the SQLite database file to be used (nullptr for in-memory only).
-/// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
-/// @param syncEndDelay Delay for synchronization end message in seconds
 /// @param timeout Default timeout for synchronization operations in seconds.
 /// @param retries Default number of retries for synchronization operations.
-/// @param maxEps Default maximum events per second for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
-                                    size_t maxEps);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
