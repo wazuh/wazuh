@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <cerrno>
 #include <sstream>
 #include <sys/stat.h>
@@ -26,6 +27,8 @@
 
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
+#include "container_baseline_fim_bridge.h"
+#include "container_live_fim.h"
 
 // Define global function pointers (declared extern in bpf_helpers.h)
 void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton* obj) = nullptr;
@@ -87,6 +90,52 @@ time_t (*w_time)(time_t*) = time;
 int ebpf_kernel_queue_full_reported = 0;
 fim::BoundedQueue<std::unique_ptr<dynamic_file_event>> kernelEventQueue;
 
+// Container-candidate events (#37533): populated by handle_event() when a raw
+// event's path matches a configured `tags="container"` directory, drained by
+// its own worker thread (ebpf_pop_container_events) so the — potentially
+// IPC-blocking — cgroup->container resolution never runs on the thread that
+// drains the kernel ring buffer.
+int ebpf_container_queue_full_reported = 0;
+fim::BoundedQueue<std::unique_ptr<container_file_event>> containerEventQueue;
+
+/*
+ * Cheap, local (no IPC) check of whether `path` falls under one of the
+ * currently configured `<directories tags="container">` prefixes. Reuses
+ * fim_collect_container_monitored_paths() — the same OSList walk the #37532
+ * baseline already does at startup — so this always reflects the live
+ * configuration (including after a reload) without needing its own cache.
+ */
+static bool matches_container_prefix(const char* path)
+{
+    if (!path)
+    {
+        return false;
+    }
+
+    cb_monitored_path_t* paths = nullptr;
+    size_t count = 0;
+
+    if (fim_collect_container_monitored_paths(&paths, &count) != 0 || !paths)
+    {
+        return false;
+    }
+
+    bool matched = false;
+    const std::string path_str(path);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (paths[i].internal_path && path_str.compare(0, strlen(paths[i].internal_path), paths[i].internal_path) == 0)
+        {
+            matched = true;
+            break;
+        }
+    }
+
+    fim_free_container_monitored_paths(paths);
+    return matched;
+}
+
 static char* uint_to_str(unsigned int num)
 {
     std::string s = std::to_string(num);
@@ -107,9 +156,46 @@ int handle_event(void* ctx, void* data, size_t data_sz)
 
     file_event* e = static_cast<file_event*>(data);
     auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn)
+    {
+        return 0;
+    }
+
+    // Container files (#37533): classified by a cheap, local path-prefix
+    // match against configured `tags="container"` directories — NOT by
+    // fim_configuration_directory(), which matches against host directory
+    // config and would be meaningless against a kernel-reported path that
+    // may be in a container's own mount-namespace view. Routed to a
+    // dedicated queue/thread so the (possibly IPC-blocking) container
+    // resolution never runs here. Host events fall through unchanged below.
+    if (matches_container_prefix(e->filename))
+    {
+        auto cevent = std::make_unique<container_file_event>(container_file_event
+        {
+            .filename  = std::string(e->filename),
+            .cgroup_id = e->cgroup_id,
+            .mnt_ns    = e->mnt_ns,
+            .pid       = e->pid,
+            .inode     = e->inode,
+            .dev       = e->dev
+        });
+
+        if (!containerEventQueue.push(std::move(cevent)))
+        {
+            if (!ebpf_container_queue_full_reported)
+            {
+                logFn(LOG_WARNING, FIM_FULL_EBPF_CONTAINER_QUEUE);
+                ebpf_container_queue_full_reported = 1;
+            }
+        }
+
+        return 0;
+    }
+
     auto confFn = fimebpf::instance().m_fim_configuration_directory;
 
-    if (!logFn || !confFn)
+    if (!confFn)
     {
         return 0;
     }
@@ -643,7 +729,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     return 0;
 }
 
-/* Worker thread to pop events from kernelEventQueue */
+/* Worker thread to pop events from kernelEventQueue (host files, unchanged) */
 void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& local_kernelEventQueue)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
@@ -690,6 +776,44 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
 
             fimebpf::instance().m_fim_whodata_event(w_evt);
             fimebpf::instance().m_free_whodata_event(w_evt);
+        }
+    }
+}
+
+/* Worker thread to pop events from containerEventQueue (#37533). Calls
+ * fim_handle_container_whodata_event() directly instead of going through the
+ * host whodata_evt/fim_whodata_event() pipeline: container files need
+ * cgroup->container resolution and /proc/<pid>/root path translation first,
+ * which that pipeline has no seam for. */
+void ebpf_pop_container_events(fim::BoundedQueue<std::unique_ptr<container_file_event>>& local_containerEventQueue)
+{
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn)
+    {
+        return;
+    }
+
+    while (!fimebpf::instance().m_fim_shutdown_process_on())
+    {
+        std::unique_ptr<container_file_event> event;
+
+        if (!local_containerEventQueue.pop(event, WAIT_MS))
+        {
+            if (fimebpf::instance().m_fim_shutdown_process_on())
+            {
+                return;
+            }
+        }
+
+        if (event)
+        {
+            fim_handle_container_whodata_event(event->cgroup_id,
+                                               event->mnt_ns,
+                                               event->pid,
+                                               event->filename.c_str(),
+                                               event->inode,
+                                               event->dev);
         }
     }
 }
@@ -813,6 +937,35 @@ int ebpf_whodata()
         bpf_helpers->ebpf_pop_events(kernelEventQueue);
     });
     ebpf_pop_thread.detach();
+
+    // Only spin up the container worker thread (and pay its per-event prefix
+    // check in handle_event()) when at least one `tags="container"` directory
+    // is actually configured — mirrors fim_run_container_baseline()'s own
+    // no-op-when-unconfigured behavior instead of always paying the cost.
+    // Known limitation: this check runs once at thread startup, like the
+    // baseline; container directories added via a config reload after
+    // ebpf_whodata() is already running won't get a drain thread until the
+    // next agent restart (matches_container_prefix() would still route their
+    // events into containerEventQueue, which would then just fill up and log
+    // "queue full" rather than being processed).
+    {
+        cb_monitored_path_t* paths = nullptr;
+        size_t path_count = 0;
+        if (fim_collect_container_monitored_paths(&paths, &path_count) == 0 && paths && path_count > 0U)
+        {
+            fim_free_container_monitored_paths(paths);
+            containerEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
+            std::thread ebpf_pop_container_thread([&]()
+            {
+                ebpf_pop_container_events(containerEventQueue);
+            });
+            ebpf_pop_container_thread.detach();
+        }
+        else if (paths)
+        {
+            fim_free_container_monitored_paths(paths);
+        }
+    }
 
     while (!fimebpf::instance().m_fim_shutdown_process_on())
     {

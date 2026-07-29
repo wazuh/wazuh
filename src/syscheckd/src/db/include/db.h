@@ -140,6 +140,21 @@ EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t c
 EXPORTED FIMDBErrorCode fim_db_file_delete(const char* file_path);
 
 /**
+ * @brief Remove one container-scoped file entry from the database (#37533).
+ *
+ * Unlike fim_db_file_delete(), which matches on path alone, this filters on
+ * both file_entry primary-key columns (container_id, path) so deleting a
+ * container's file can never remove a same-path row belonging to a different
+ * container or to the host (container_id="").
+ *
+ * @param file_path The logical (in-container) path of the file to remove.
+ * @param container_id The container the row belongs to.
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_container_file_delete(const char* file_path, const char* container_id);
+
+/**
  * @brief Find entries using the inode.
  *
  * @param inode Inode.

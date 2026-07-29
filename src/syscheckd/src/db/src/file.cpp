@@ -40,6 +40,23 @@ void DB::removeFile(const std::string& path)
     FIMDB::instance().removeItem(deleteQuery.query());
 }
 
+void DB::removeFile(const std::string& path, const std::string& containerId)
+{
+    std::string encodedPath = path;
+    FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
+
+    auto deleteQuery
+    {
+        DeleteQuery::builder()
+            .table(FIMDB_FILE_TABLE_NAME)
+            .data({{"path", encodedPath}, {"container_id", containerId}})
+            .rowFilter("")
+            .build()
+    };
+
+    FIMDB::instance().removeItem(deleteQuery.query());
+}
+
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
 {
     std::string encodedPath = path;
@@ -337,6 +354,30 @@ FIMDBErrorCode fim_db_file_delete(const char* file_path)
         try
         {
             DB::instance().removeFile(file_path);
+            retVal = FIMDB_OK;
+        }
+        catch (const std::exception& err)
+        {
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
+        }
+    }
+
+    return retVal;
+}
+
+FIMDBErrorCode fim_db_container_file_delete(const char* file_path, const char* container_id)
+{
+    auto retVal {FIMDB_ERR};
+
+    if (!file_path || !container_id)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+    }
+    else
+    {
+        try
+        {
+            DB::instance().removeFile(file_path, container_id);
             retVal = FIMDB_OK;
         }
         catch (const std::exception& err)

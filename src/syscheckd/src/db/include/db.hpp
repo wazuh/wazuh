@@ -98,6 +98,20 @@ class EXPORTED DB final
         void removeFile(const std::string& path);
 
         /**
+         * @brief removeFile Remove one container-scoped file row from the database.
+         *
+         * Host removeFile(path) alone is ambiguous once container_id is part of
+         * file_entry's primary key: the same in-container path can exist under
+         * several containers plus the host row (container_id=""). This overload
+         * filters on both PK columns so only the exact (container_id, path) row
+         * is removed (#37533 live container FIM delete path).
+         *
+         * @param path File to remove (logical, in-container path).
+         * @param containerId Container the row belongs to.
+         */
+        void removeFile(const std::string& path, const std::string& containerId);
+
+        /**
          * @brief getFile Get a file from the database.
          *
          * @param path File to get.

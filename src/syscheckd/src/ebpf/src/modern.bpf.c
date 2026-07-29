@@ -42,6 +42,19 @@ struct file_event {
     __u32 gid;
     __u64 inode;
     __u64 dev;
+    /* Container-correlation keys (#37533). Both are read unconditionally for
+     * every event, including host events, so consumers can tell a host event
+     * apart from a container one without a separate flag: on cgroup v2 hosts
+     * cgroup_id is the process's own (non-container) cgroup inode, which the
+     * container_instances module resolves to "not a container". On cgroup v1
+     * hosts (RHEL8/AL2) bpf_get_current_cgroup_id() collapses to a constant
+     * and cannot be used for correlation — mnt_ns is read as a fallback key,
+     * though resolving mnt_ns -> container identity is not yet implemented
+     * on the container_instances side (tracked as a follow-up, see ADR-002
+     * of spike #37396).
+     */
+    __u64 cgroup_id;
+    __u32 mnt_ns;
     char comm[TASK_COMM_LEN];
     char filename[MAX_PATH_LEN];
     char cwd[MAX_PATH_LEN];
@@ -258,6 +271,28 @@ statfunc long get_path_str_from_path(unsigned char **path_str,
 }
 
 /*
+* Reads the mount-namespace inode number for the given task, i.e. the
+* value FIM matches against a container's mnt_ns as the cgroup-v1 fallback
+* correlation key (see the file_event.mnt_ns comment above). Returns 0
+* (the host/unknown sentinel used throughout this contract) if any pointer
+* in the chain can't be read.
+*/
+statfunc __u32 get_mnt_ns_inum(struct task_struct *task) {
+    if (!task)
+        return 0;
+
+    struct nsproxy *nsproxy = BPF_CORE_READ(task, nsproxy);
+    if (!nsproxy)
+        return 0;
+
+    struct mnt_namespace *mnt_ns = BPF_CORE_READ(nsproxy, mnt_ns);
+    if (!mnt_ns)
+        return 0;
+
+    return BPF_CORE_READ(mnt_ns, ns.inum);
+}
+
+/*
 * Safely reads inode number and device information from an inode pointer.
 */
 statfunc void get_inode_dev(struct inode *inode_ptr, __u64 *inode, __u64 *dev) {
@@ -320,6 +355,10 @@ statfunc void submit_event(const char *filename,
     __u64 uid_gid = bpf_get_current_uid_gid();
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
+
+    /* Container-correlation keys (#37533). See the struct field comment. */
+    evt->cgroup_id = bpf_get_current_cgroup_id();
+    evt->mnt_ns = get_mnt_ns_inum(current_task);
 
     /* Command name of the current task */
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));

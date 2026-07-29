@@ -16,13 +16,17 @@ include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
 # #37532: container-baseline module (host-side FIM baseline for containers).
 include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
+# #37533: live container FIM needs the container_instances query client
+# directly (container_baseline's own CMakeLists only re-exposes its own
+# public C API header, not this one, via plain include_directories()).
+include_directories(${SRC_FOLDER}/shared_modules/container_instances_client/include/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_baseline_fim_bridge.c ../persist_syscheck_msg.c)
+add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp src/container_baseline_fim_bridge.c src/container_live_fim.cpp ../persist_syscheck_msg.c)
 
 # Link against wazuh and the container-baseline module (#37532).
 target_link_libraries(fimebpf PRIVATE wazuh container_baseline)

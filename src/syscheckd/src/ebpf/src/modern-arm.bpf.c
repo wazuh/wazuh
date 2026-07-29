@@ -41,6 +41,11 @@ struct file_event {
     __u32 gid;
     __u64 inode;
     __u64 dev;
+    /* Container-correlation keys (#37533) — see modern.bpf.c's file_event
+     * comment for the cgroup v1/v2 caveat; kept identical across arches
+     * since userspace reads this struct with a single shared layout. */
+    __u64 cgroup_id;
+    __u32 mnt_ns;
     char comm[TASK_COMM_LEN];
     char filename[MAX_PATH_LEN];
     char cwd[MAX_PATH_LEN];
@@ -176,6 +181,26 @@ statfunc long get_path_str_from_path(unsigned char **path_str,
 }
 
 /*
+* Reads the mount-namespace inode number for the given task (#37533
+* cgroup-v1 fallback correlation key — see file_event.mnt_ns comment above).
+* Returns 0 (host/unknown sentinel) if any pointer in the chain can't be read.
+*/
+statfunc __u32 get_mnt_ns_inum(struct task_struct *task) {
+    if (!task)
+        return 0;
+
+    struct nsproxy *nsproxy = BPF_CORE_READ(task, nsproxy);
+    if (!nsproxy)
+        return 0;
+
+    struct mnt_namespace *mnt_ns = BPF_CORE_READ(nsproxy, mnt_ns);
+    if (!mnt_ns)
+        return 0;
+
+    return BPF_CORE_READ(mnt_ns, ns.inum);
+}
+
+/*
 * Safely reads inode number and device information from an inode pointer.
 */
 statfunc void get_inode_dev(struct inode *inode_ptr, __u64 *inode, __u64 *dev) {
@@ -236,6 +261,11 @@ statfunc void submit_event(const char *filename,
     /* PID and UID/GID */
     evt->pid = BPF_CORE_READ(current_task, tgid);
     __u64 uid_gid = bpf_get_current_uid_gid();
+
+    /* Container-correlation keys (#37533). See the struct field comment. */
+    evt->cgroup_id = bpf_get_current_cgroup_id();
+    evt->mnt_ns = get_mnt_ns_inum(current_task);
+
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
 

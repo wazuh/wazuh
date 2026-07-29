@@ -33,6 +33,12 @@ struct file_event
     __u32 gid;
     uint64_t inode;
     uint64_t dev;
+    // Container-correlation keys (#37533). Layout MUST match struct file_event
+    // in modern.bpf.c / modern-arm.bpf.c exactly: this struct is populated by
+    // reinterpreting the raw ring-buffer bytes (see handle_event()), not by
+    // deserializing a wire format.
+    uint64_t cgroup_id;
+    __u32 mnt_ns;
     char comm[TASK_COMM_LEN];
     char filename[PATH_MAX];
     char cwd[PATH_MAX];
@@ -53,6 +59,20 @@ struct dynamic_file_event
     uint32_t gid;
     uint64_t inode;
     uint64_t dev;
+};
+
+// One raw file-activity event classified as container-relevant (its path
+// matched a configured `tags="container"` directory prefix) by handle_event(),
+// queued for the slower cgroup->container resolution + host-path resolution +
+// persist path in container_live_fim.cpp, off the ring-buffer-draining thread.
+struct container_file_event
+{
+    std::string filename;   // Kernel-reported path, in the writer's own mount-ns view.
+    uint64_t    cgroup_id;
+    uint32_t    mnt_ns;
+    uint32_t    pid;         // PID that triggered the hook — first choice for /proc/<pid>/root resolution.
+    uint64_t    inode;
+    uint64_t    dev;
 };
 
 struct ring_buffer
