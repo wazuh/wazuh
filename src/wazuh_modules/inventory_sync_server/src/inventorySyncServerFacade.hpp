@@ -25,9 +25,13 @@
 #include "http_server/IUdsHttpServer.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
 #include "http_server/udsHttpServerFactory.hpp"
+#include "indexer/IIndexerConnector.hpp"
+#include "indexer/indexerConnectorAdapter.hpp"
+#include "indexer/indexerConnectorConfig.hpp"
 #include "inventory_sync_server.h"
 #include "loggerHelper.h"
 #include "singleton.hpp"
+#include <functional>
 #include <json.hpp>
 
 namespace invsync
@@ -95,7 +99,12 @@ namespace invsync
 
             m_config = configuration;
             m_indexerConfig = std::move(indexerConfig);
+            m_logFunction = logFunction;
             m_stopping = false;
+            // Fresh escalation state for this run: a stale count carried over from a previous
+            // start()/stop() cycle would desync reportFailedStart()'s "first attempt" ERROR branch
+            // from what is actually the first failure THIS time.
+            m_failedStartAttempts = 0;
 
             LOGFN_INFO(moduleLogFn(),
                        "Starting inventory sync server (cluster='%s', node='%s').",
@@ -151,9 +160,12 @@ namespace invsync
                     m_httpServer->stopAccepting();
                 }
 
-                // Phase 2: drain the ingestion pipeline. Nothing to drain yet -- this is where the
-                // FlatBuffer/indexer pipeline's shutdown goes, and it must happen HERE, between the
-                // two transport phases, so its in-flight responders are still deliverable.
+                // Phase 2: tear down the indexer connector. Unconditional -- NOT gated on
+                // m_httpServer being set -- because construction can succeed (and its background
+                // threads start running) even when the HTTP server never came up afterward (e.g.
+                // valid indexer config, unbindable socket path). Leaving it gated here would leak
+                // those threads on every stop() in that scenario.
+                m_indexerConnector.reset();
 
                 // Phase 3: now it is safe to release the I/O runtime. Any responder still
                 // outstanding is force-closed, and a late send() becomes a well-defined no-op.
@@ -178,12 +190,36 @@ namespace invsync
             LOGFN_INFO(moduleLogFn(), "inventory sync server stopped.");
         }
 
+        /// Builds an IIndexerConnector from a fully-resolved config + logging context. The default,
+        /// production value constructs the real IndexerConnectorSync adapter; tests substitute a
+        /// fake so the startup gate can be exercised without real network I/O.
+        using IndexerConnectorFactory =
+            std::function<std::unique_ptr<invsync::indexer::IIndexerConnector>(const nlohmann::json&, LoggingContext)>;
+
+        /**
+         * @brief TEST-ONLY. Overrides how the indexer connector is constructed.
+         *
+         * Never called in production -- modulesd only ever calls start()/stop(). Exists so a test
+         * can gate/unblock the startup gate deterministically, without waiting on
+         * IndexerConnectorSync's real per-host health-check I/O.
+         */
+        void setIndexerConnectorFactoryForTests(IndexerConnectorFactory factory)
+        {
+            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+            m_indexerConnectorFactory = std::move(factory);
+        }
+
+        /// TEST-ONLY. Forces one retry attempt synchronously instead of waiting out the real 60 s
+        /// heartbeat. Never called in production.
+        void forceRetryForTests()
+        {
+            tryStartHttpServer();
+        }
+
     private:
         void startHttpServer(const invsync::http::UdsHttpServerConfig& config)
         {
             m_httpServer = invsync::http::makeUdsHttpServer();
-
-            logIndexerSummary();
 
             // Liveness probe. Exempt from the in-flight byte budget so it keeps answering under
             // memory pressure -- which is exactly when someone is most likely to be probing it.
@@ -212,10 +248,9 @@ namespace invsync
         /**
          * @brief Report what arrived in the <indexer> block, without its secrets.
          *
-         * The indexer connector is not wired up yet, so this is the only consumer of the parsed
-         * configuration. It exists so the C-ABI's `indexer` field is exercised and diagnosable from
-         * day one rather than on the day the connector lands: a misconfigured <indexer> shows up
-         * here as `hosts=0` instead of as a silent failure later.
+         * Runs once, right before the indexer connector is first constructed (see
+         * ensureIndexerReady()) -- a misconfigured <indexer> shows up here as `hosts=0` alongside
+         * whatever construction-failure reason follows, rather than as a silent mismatch later.
          *
          * Counts and set/unset only -- never values. The hosts can contain credentials in the URL
          * and the certificate paths are not useful in a log line.
@@ -246,11 +281,60 @@ namespace invsync
 
             LOGFN_DEBUG1(moduleLogFn(),
                          "Indexer configuration received: hosts=%zu, ssl.certificate_authorities=%zu, "
-                         "ssl.certificate=%s, ssl.key=%s. Not used yet (the indexer connector is not wired up).",
+                         "ssl.certificate=%s, ssl.key=%s.",
                          arraySize("hosts"),
                          caCount,
                          hasCertificate ? "<set>" : "<unset>",
                          hasKey ? "<set>" : "<unset>");
+        }
+
+        /// Which half of tryStartHttpServer()'s work a failure belongs to, so reportFailedStart()
+        /// can name the actual setting to check instead of always blaming the socket.
+        enum class FailureStage
+        {
+            Indexer,
+            HttpServer
+        };
+
+        /**
+         * @brief Ensures the indexer connector exists, constructing it at most once.
+         *
+         * The gate is deliberately just "did construction throw", not "is it currently reachable":
+         * IndexerConnectorSync's constructor already validates config synchronously (hosts present,
+         * referenced CA files exist, max_retry_delay_seconds sane) and throws on failure -- a host
+         * that is merely unreachable does NOT throw, it only leaves isAvailable() false. Since a
+         * successful construction is a "config is valid" signal that cannot change without a
+         * restart, it is never redone: once m_indexerConnector exists, this returns immediately.
+         *
+         * @return false if this attempt must not proceed to the HTTP server (already reported via
+         *         reportFailedStart()).
+         */
+        bool ensureIndexerReady()
+        {
+            if (m_indexerConnector)
+            {
+                return true;
+            }
+
+            logIndexerSummary();
+
+            try
+            {
+                m_indexerConnector =
+                    m_indexerConnectorFactory(invsync::indexer::buildConnectorConfig(m_indexerConfig, m_config),
+                                              LoggingContext {moduleLogFn().m_tag, m_logFunction});
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                reportFailedStart(FailureStage::Indexer, e.what());
+                return false;
+            }
+            catch (...)
+            {
+                reportFailedStart(FailureStage::Indexer, "non-standard exception");
+                return false;
+            }
         }
 
         void tryStartHttpServer()
@@ -267,6 +351,13 @@ namespace invsync
             const auto config = invsync::http::buildServerConfig(m_config);
             m_resolvedSocketPath = config.socketPath;
 
+            // The indexer gates the HTTP server: it must not start accepting connections on a
+            // manager whose indexer connector configuration is invalid.
+            if (!ensureIndexerReady())
+            {
+                return;
+            }
+
             try
             {
                 startHttpServer(config);
@@ -280,25 +371,26 @@ namespace invsync
             }
             catch (const std::exception& e)
             {
-                reportFailedStart(e.what());
+                reportFailedStart(FailureStage::HttpServer, e.what());
                 m_httpServer.reset();
             }
             catch (...)
             {
-                reportFailedStart("non-standard exception");
+                reportFailedStart(FailureStage::HttpServer, "non-standard exception");
                 m_httpServer.reset();
             }
         }
 
         /**
-         * @brief Escalating report for a failed server start.
+         * @brief Escalating report for a failed start, either stage.
          *
          * The first attempt is an ERROR naming the real reason and the setting to check, so a
-         * permanent misconfiguration (an unwritable path, a leftover non-socket file, a directory
-         * that does not exist) is visible immediately. The next hour of retries stays at debug so a
-         * transient condition does not flood, and after that one WARN per hour keeps it visible.
+         * permanent misconfiguration is visible immediately. The next hour of retries stays at
+         * debug so a transient condition does not flood, and after that one WARN per hour keeps it
+         * visible. One shared attempt counter/cadence across both stages -- only the wording (and
+         * therefore the setting an operator is pointed at) differs.
          */
-        void reportFailedStart(const char* reason)
+        void reportFailedStart(FailureStage stage, const char* reason)
         {
             ++m_failedStartAttempts;
 
@@ -307,13 +399,25 @@ namespace invsync
 
             if (m_failedStartAttempts == 1)
             {
-                LOGFN_ERROR(
-                    moduleLogFn(),
-                    "The inventory sync server could not start on '%s': %s. Retrying every %d s. Check the "
-                    "'inventory_sync_server_socket_path' setting and that the directory exists and is writable.",
-                    m_resolvedSocketPath.c_str(),
-                    reason,
-                    INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
+                if (stage == FailureStage::Indexer)
+                {
+                    LOGFN_ERROR(moduleLogFn(),
+                                "The inventory sync server could not start: the indexer connector "
+                                "configuration is invalid (%s). Retrying every %d s. Check the <indexer> "
+                                "configuration block (hosts, ssl.certificate_authorities/certificate/key).",
+                                reason,
+                                INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
+                }
+                else
+                {
+                    LOGFN_ERROR(
+                        moduleLogFn(),
+                        "The inventory sync server could not start on '%s': %s. Retrying every %d s. Check the "
+                        "'inventory_sync_server_socket_path' setting and that the directory exists and is writable.",
+                        m_resolvedSocketPath.c_str(),
+                        reason,
+                        INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
+                }
             }
             else if (m_failedStartAttempts % ATTEMPTS_PER_ESCALATION == 0)
             {
@@ -394,11 +498,22 @@ namespace invsync
 
         inventory_sync_server_config_t m_config {}; ///< Copy of the caller's configuration.
         std::string m_resolvedSocketPath;           ///< Path of the most recent start attempt, for diagnostics.
-        /// Owned copy of the <indexer> block. Reserved for the indexer connector; only
-        /// logIndexerSummary() reads it today.
+        /// Owned copy of the <indexer> block, before the bulk-size/flush-interval overlay.
         nlohmann::json m_indexerConfig {nlohmann::json::object()};
+        /// Retained so the indexer connector -- built later, on the worker thread -- gets the same
+        /// LoggingContext the older inventory_sync module builds inline in its own start().
+        std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+            m_logFunction;
 
         std::unique_ptr<invsync::http::IUdsHttpServer> m_httpServer; ///< HTTP-over-UDS transport.
+
+        /// Constructed at most once per start()/stop() cycle -- see ensureIndexerReady().
+        std::unique_ptr<invsync::indexer::IIndexerConnector> m_indexerConnector;
+        IndexerConnectorFactory m_indexerConnectorFactory {
+            [](const nlohmann::json& config, LoggingContext logging)
+            {
+                return std::make_unique<invsync::indexer::IndexerConnectorAdapter>(config, std::move(logging));
+            }};
     };
 
 } // namespace invsync
