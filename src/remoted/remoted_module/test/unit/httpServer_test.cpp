@@ -139,9 +139,9 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 512U);
-    EXPECT_EQ(config.certificatePath, "etc/remoted-https/server.crt");
-    EXPECT_EQ(config.privateKeyPath, "etc/remoted-https/server.key");
-    EXPECT_EQ(config.caPath, "etc/remoted-https/ca.crt");
+    EXPECT_EQ(config.certificatePath, "etc/https-manager.cert");
+    EXPECT_EQ(config.privateKeyPath, "etc/https-manager.key");
+    EXPECT_EQ(config.caPath, "etc/https-manager-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct

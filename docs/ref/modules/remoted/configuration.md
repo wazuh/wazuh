@@ -130,19 +130,19 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 
 Path to the TLS certificate chain (PEM) presented by the server.
 
-- **Default value:** `etc/remoted-https/server.crt` (relative to the manager's chroot)
+- **Default value:** `etc/https-manager.cert` (relative to the manager's chroot)
 
 ### https.key
 
 Path to the TLS private key (PEM) matching `certificate`.
 
-- **Default value:** `etc/remoted-https/server.key` (relative to the manager's chroot)
+- **Default value:** `etc/https-manager.key` (relative to the manager's chroot)
 
 ### https.ca
 
 Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
-- **Default value:** `etc/remoted-https/ca.crt` (relative to the manager's chroot)
+- **Default value:** `etc/https-manager-ca.pem` (relative to the manager's chroot)
 - **Note:** Only actually read when `verification_mode` is `certificate` or `full`; harmless
   if left at its default and `verification_mode` stays `none`. See the special case below.
 
@@ -850,9 +850,9 @@ Require and validate agent client certificates, including a full IP-to-certifica
     <https>
       <port>1517</port>
       <bind_addr>0.0.0.0</bind_addr>
-      <certificate>etc/remoted-https/server.crt</certificate>
-      <key>etc/remoted-https/server.key</key>
-      <ca>etc/remoted-https/ca.crt</ca>
+      <certificate>etc/https-manager.cert</certificate>
+      <key>etc/https-manager.key</key>
+      <ca>etc/https-manager-ca.pem</ca>
       <verification_mode>full</verification_mode>
       <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
       <max_body_size>20MB</max_body_size>
