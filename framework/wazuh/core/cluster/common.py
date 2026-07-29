@@ -1604,8 +1604,10 @@ class SyncFiles(SyncTask):
                 # Remove local file.
                 os.unlink(compressed_data)
             except FileNotFoundError:
-                self.logger.error(f"File {compressed_data} could not be removed/not found. "
-                                  f"May be due to a lost connection.")
+                # Expected when a connection reset triggers connection_lost's cluster.clean_up(),
+                # which wipes this same file while this task is still in flight.
+                self.logger.warning(f"File {compressed_data} could not be removed/not found. "
+                                    f"May be due to a lost connection.")
 
 
 class SyncWazuhdb(SyncTask):

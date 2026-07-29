@@ -87,9 +87,9 @@ public:
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
-                    LOG_INFO(m_logFn,
-                             "Queue size normalized. Resuming event acceptance after %zu discarded events.",
-                             m_discardedCount.load());
+                    LOGFN_INFO(m_logFn,
+                               "Queue size normalized. Resuming event acceptance after %zu discarded events.",
+                               m_discardedCount.load());
                     m_discardedCount = 0;
                     m_firstDiscardLogged = false;
                 }
@@ -104,12 +104,12 @@ public:
                 // Log the first discard immediately
                 if (!m_firstDiscardLogged.exchange(true))
                 {
-                    LOG_WARN(m_logFn,
-                             "Queue is full (size: %zu, max: %zu). Starting to discard events. "
-                             "Periodic summaries will be logged every %zu seconds.",
-                             m_queue->size(),
-                             m_maxQueueSize,
-                             m_summaryInterval);
+                    LOGFN_WARN(m_logFn,
+                               "Queue is full (size: %zu, max: %zu). Starting to discard events. "
+                               "Periodic summaries will be logged every %zu seconds.",
+                               m_queue->size(),
+                               m_maxQueueSize,
+                               m_summaryInterval);
                     m_lastSummaryLog = now;
                 }
                 // Log periodic summary
@@ -119,14 +119,14 @@ public:
                         std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
                     if (elapsed >= m_summaryInterval)
                     {
-                        LOG_WARN(m_logFn,
-                                 "Queue overflow continues: %zu events discarded in the last %lld seconds "
-                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
-                                 discarded - m_lastDiscardedCount.load(),
-                                 elapsed,
-                                 m_queue->size(),
-                                 m_maxQueueSize,
-                                 discarded);
+                        LOGFN_WARN(m_logFn,
+                                   "Queue overflow continues: %zu events discarded in the last %lld seconds "
+                                   "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                   discarded - m_lastDiscardedCount.load(),
+                                   elapsed,
+                                   m_queue->size(),
+                                   m_maxQueueSize,
+                                   discarded);
                         m_lastSummaryLog = now;
                         m_lastDiscardedCount = discarded;
                     }
@@ -151,11 +151,11 @@ public:
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
-                    LOG_INFO(m_logFn,
-                             "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
-                             static_cast<int>(prefix.size()),
-                             prefix.data(),
-                             m_discardedCount.load());
+                    LOGFN_INFO(m_logFn,
+                               "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
+                               static_cast<int>(prefix.size()),
+                               prefix.data(),
+                               m_discardedCount.load());
                     m_discardedCount = 0;
                     m_firstDiscardLogged = false;
                 }
@@ -170,14 +170,14 @@ public:
                 // Log the first discard immediately
                 if (!m_firstDiscardLogged.exchange(true))
                 {
-                    LOG_WARN(m_logFn,
-                             "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
-                             "Periodic summaries will be logged every %zu seconds.",
-                             static_cast<int>(prefix.size()),
-                             prefix.data(),
-                             m_queue->size(prefix),
-                             m_maxQueueSize,
-                             m_summaryInterval);
+                    LOGFN_WARN(m_logFn,
+                               "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
+                               "Periodic summaries will be logged every %zu seconds.",
+                               static_cast<int>(prefix.size()),
+                               prefix.data(),
+                               m_queue->size(prefix),
+                               m_maxQueueSize,
+                               m_summaryInterval);
                     m_lastSummaryLog = now;
                 }
                 // Log periodic summary
@@ -187,16 +187,16 @@ public:
                         std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
                     if (elapsed >= m_summaryInterval)
                     {
-                        LOG_WARN(m_logFn,
-                                 "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
-                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
-                                 static_cast<int>(prefix.size()),
-                                 prefix.data(),
-                                 discarded - m_lastDiscardedCount.load(),
-                                 elapsed,
-                                 m_queue->size(prefix),
-                                 m_maxQueueSize,
-                                 discarded);
+                        LOGFN_WARN(m_logFn,
+                                   "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
+                                   "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                   static_cast<int>(prefix.size()),
+                                   prefix.data(),
+                                   discarded - m_lastDiscardedCount.load(),
+                                   elapsed,
+                                   m_queue->size(prefix),
+                                   m_maxQueueSize,
+                                   discarded);
                         m_lastSummaryLog = now;
                         m_lastDiscardedCount = discarded;
                     }
@@ -335,11 +335,11 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
-                    LOG_WARN(m_logFn, "Dispatch handler error, %s", ex.what());
+                    LOGFN_WARN(m_logFn, "Dispatch handler error, %s", ex.what());
                 }
                 else
                 {
-                    LOG_DEBUG1(m_logFn, "ThreadEventDispatcher dispatch end.");
+                    LOGFN_DEBUG1(m_logFn, "ThreadEventDispatcher dispatch end.");
                 }
             }
         }

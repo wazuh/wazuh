@@ -241,12 +241,12 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     cJSON_Delete(items);
 
     // Synchronize
-    bool success = asp_sync_module(handle, MODE_FULL);
+    SyncModuleResult_t result = asp_sync_module(handle, MODE_FULL);
 
-    if (success) {
+    if (result.success) {
         mdebug1("Recovery completed successfully");
     } else {
-        mdebug1("Recovery synchronization failed, will retry later");
+        mdebug1("Recovery synchronization failed, will retry later%s%s", result.failure_reason[0] != '\0' ? ": " : "", result.failure_reason);
     }
 }
 

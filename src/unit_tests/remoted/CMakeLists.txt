@@ -90,7 +90,7 @@ list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-state")
-list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
+list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -Wl,--wrap,rem_get_input_max_bytes \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
@@ -102,6 +102,9 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUn
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
                            -Wl,--wrap,assign_group_to_agent \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND remoted_names "test_queue")
+list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")

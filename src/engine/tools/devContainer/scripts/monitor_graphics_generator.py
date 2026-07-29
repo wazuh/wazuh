@@ -374,6 +374,27 @@ ANALYSISD_METRICS = [
     ("spaces_standard_events_unclassified", "Standard Space — Events Unclassified",  "Count"),
 ]
 
+# Agent metadata cache metrics. "entries" is an instantaneous gauge (pull); the rest are
+# monotonic cumulative counters.
+AGENT_CACHE_METRICS = [
+    ("agent_cache_entries",    "Agent Cache — Entries (current)",         "Count"),
+    ("agent_cache_hits",       "Agent Cache — Hits (cumulative)",         "Count"),
+    ("agent_cache_insertions", "Agent Cache — Insertions (cumulative)",   "Count"),
+    ("agent_cache_updates",    "Agent Cache — Updates (cumulative)",      "Count"),
+    ("agent_cache_evictions",  "Agent Cache — Evictions (cumulative)",    "Count"),
+]
+
+EXTRA_PROCESS_COMPONENTS = (
+    "wazuh-indexer",
+    "wazuh-indexer-engine",
+    "wazuh-dashboard",
+)
+SIMPLE_MONITOR_EXTRA_COMPONENTS = (
+    "wazuh-indexer",
+    "wazuh-indexer-engine",
+)
+TOTAL_MONITOR_EXTRA_COMPONENTS = EXTRA_PROCESS_COMPONENTS
+
 
 # ---------------------------------------------------------------------------
 # Main chart generation
@@ -392,9 +413,11 @@ def generate_charts(
     analysisd_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
-    # wazuh-indexer process CSV (present only in all-in-one deployments).
-    # Kept separate so manager-only charts stay clean; combined charts add it back.
-    indexer_proc_dfs: dict[str, pd.DataFrame] = {}
+    # Optional all-in-one components. Kept separate so manager-only charts
+    # stay clean; selected combined charts add them back explicitly.
+    extra_proc_dfs: dict[str, dict[str, pd.DataFrame]] = {
+        name: {} for name in EXTRA_PROCESS_COMPONENTS
+    }
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
@@ -455,12 +478,12 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if proc_name == "wazuh-indexer":
-                    if len(df) > 0:
-                        indexer_proc_dfs[label] = df
+                if len(df) == 0:
+                    continue
+                if proc_name in extra_proc_dfs:
+                    extra_proc_dfs[proc_name][label] = df
                 else:
-                    if len(df) > 0:
-                        monitors[key] = df
+                    monitors[key] = df
                     if "modulesd" in proc_name:
                         modulesd_dfs[label] = df
         elif os.path.isfile(monitor_path):
@@ -479,16 +502,18 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if proc_name == "wazuh-indexer":
-                    if len(df) > 0:
-                        indexer_proc_dfs[label] = df
+                if len(df) == 0:
+                    continue
+                if proc_name in extra_proc_dfs:
+                    extra_proc_dfs[proc_name][label] = df
                 else:
-                    if len(df) > 0:
-                        monitors[key] = df
+                    monitors[key] = df
                     if "modulesd" in proc_name:
                         modulesd_dfs[label] = df
 
-    if not monitors and not benches and not disk_dfs and not remoted_dfs:
+    has_extra_procs = any(extra_proc_dfs.values())
+    if (not monitors and not benches and not disk_dfs and not remoted_dfs
+            and not analysisd_dfs and not has_extra_procs):
         print("No data files found — nothing to generate.")
         return
 
@@ -498,48 +523,69 @@ def generate_charts(
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
     analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
-    indexer_proc_dfs = {k: v for k, v in indexer_proc_dfs.items() if len(v) > 0}
+    extra_proc_dfs = {
+        name: {lbl: df for lbl, df in datasets.items() if len(df) > 0}
+        for name, datasets in extra_proc_dfs.items()
+    }
+    has_extra_procs = any(extra_proc_dfs.values())
 
-    if not monitors and not benches and not disk_dfs and not remoted_dfs:
+    if (not monitors and not benches and not disk_dfs and not remoted_dfs
+            and not analysisd_dfs and not has_extra_procs):
         print("All CSV files are empty — nothing to generate.")
         return
 
     print(f"\nGenerating charts in {out_dir}/\n")
 
     # -- Monitor time-series: one chart per metric, overlaying all runs ------
-    if monitors:
-        # For the simple per-metric charts, include wazuh-indexer as an extra
-        # line when available.  For multi-result-dir runs the key follows the
-        # same "{label}/{proc}" convention used by other processes.
-        monitors_with_indexer: dict[str, pd.DataFrame] = dict(monitors)
-        for lbl, idf in indexer_proc_dfs.items():
-            ikey = f"{lbl}/wazuh-indexer" if len(result_dirs) > 1 else "wazuh-indexer"
-            monitors_with_indexer[ikey] = idf
+    simple_extra_proc_dfs = {
+        name: extra_proc_dfs.get(name, {})
+        for name in SIMPLE_MONITOR_EXTRA_COMPONENTS
+    }
+    has_simple_extra_procs = any(simple_extra_proc_dfs.values())
+    if monitors or has_simple_extra_procs:
+        # For the simple per-metric charts, include wazuh-indexer and the
+        # indexer-owned engine when available. For multi-result-dir runs the
+        # key follows the same "{label}/{proc}" convention used by other
+        # processes.
+        monitors_with_simple_extras: dict[str, pd.DataFrame] = dict(monitors)
+        for component, datasets in simple_extra_proc_dfs.items():
+            for lbl, df in datasets.items():
+                key = f"{lbl}/{component}" if len(result_dirs) > 1 else component
+                monitors_with_simple_extras[key] = df
 
         for col, title_suffix, ylabel in MONITOR_METRICS:
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
             plot_timeseries(
-                monitors_with_indexer, col,
+                monitors_with_simple_extras, col,
                 f"Wazuh Manager — {title_suffix}",
                 ylabel, out,
             )
 
-        # manager-only: per-process lines + manager total (no indexer).
-        _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
-                         "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
-        _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
-                         "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
+        if monitors:
+            # manager-only: per-process lines + manager total (no indexer,
+            # indexer engine, or dashboard).
+            _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
+                             "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
+            _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
+                             "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
 
-        # combined: manager processes + wazuh-indexer line + single grand total.
-        if indexer_proc_dfs:
-            _plot_with_total_and_indexer(
-                monitors, indexer_proc_dfs, "cpu_pct",
-                "CPU Usage — Manager + Indexer", "CPU %",
-                os.path.join(out_dir, f"monitor_cpu_total_with_indexer.{fmt}"))
-            _plot_with_total_and_indexer(
-                monitors, indexer_proc_dfs, "rss_mb",
-                "RSS Memory — Manager + Indexer", "MB",
-                os.path.join(out_dir, f"monitor_rss_total_with_indexer.{fmt}"))
+            # combined: manager processes + optional all-in-one components +
+            # single grand total. Keep the historical *_with_indexer filenames
+            # because downstream docs and comparisons already reference them.
+            total_extra_proc_dfs = {
+                name: extra_proc_dfs.get(name, {})
+                for name in TOTAL_MONITOR_EXTRA_COMPONENTS
+                if extra_proc_dfs.get(name)
+            }
+            if total_extra_proc_dfs:
+                _plot_with_total_and_extra_components(
+                    monitors, total_extra_proc_dfs, "cpu_pct",
+                    "CPU Usage — Manager + Indexer + Dashboard", "CPU %",
+                    os.path.join(out_dir, f"monitor_cpu_total_with_indexer.{fmt}"))
+                _plot_with_total_and_extra_components(
+                    monitors, total_extra_proc_dfs, "rss_mb",
+                    "RSS Memory — Manager + Indexer + Dashboard", "MB",
+                    os.path.join(out_dir, f"monitor_rss_total_with_indexer.{fmt}"))
 
     # -- Disk-usage time series (from disk_usage.csv) ------------------------
     if disk_dfs:
@@ -627,27 +673,72 @@ def generate_charts(
                 out,
             )
 
-        # Router queue: size + usage percent — stacked panels
+        # Router queue (events): size + usage percent — stacked panels.
+        # router.queue.size / router.queue.usage.percent are the event-count
+        # view of the router's internal queue (see orchestrator.cpp), NOT bytes.
         if any("router_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
                 "router_queue_size", "router_queue_usage_percent",
-                "Router Queue Size", "Router Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Router Queue",
-                os.path.join(out_dir, f"analysisd_router_queue.{fmt}"),
+                "Router Queue Size (events)", "Router Queue Size Usage %",
+                "Events", "%",
+                "Analysisd — Router Queue (events)",
+                os.path.join(out_dir, f"analysisd_router_queue_events.{fmt}"),
             )
 
-        # Indexer queue: size + usage percent — stacked panels
+        # Router queue (bytes): size + usage percent — stacked panels.
+        # router.queue.bytes.used / router.queue.bytes.usage.percent are the
+        # byte-based view of the same queue, tracked independently of the
+        # event-count view above.
+        if any("router_queue_bytes_used" in df.columns for df in analysisd_dfs.values()):
+            plot_stacked_timeseries(
+                analysisd_dfs,
+                "router_queue_bytes_used", "router_queue_bytes_usage_percent",
+                "Router Queue Size (bytes)", "Router Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Router Queue (bytes)",
+                os.path.join(out_dir, f"analysisd_router_queue_bytes.{fmt}"),
+            )
+
+        # Indexer queue: size + usage percent — stacked panels.
+        # indexer.queue.size is only ever tracked in bytes (no event-count
+        # variant exists for the indexer connector's egress queue).
         if any("indexer_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
                 "indexer_queue_size", "indexer_queue_usage_percent",
-                "Indexer Queue Size", "Indexer Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Indexer Queue",
+                "Indexer Queue Size (bytes)", "Indexer Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Indexer Queue (bytes)",
                 os.path.join(out_dir, f"analysisd_indexer_queue.{fmt}"),
             )
+
+        # -- Agent metadata cache -------------------------------------------
+        # Per-metric overlay charts (one per run) for each cache metric.
+        for col, title_suffix, ylabel in AGENT_CACHE_METRICS:
+            if not any(col in df.columns for df in analysisd_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"analysisd_{col}.{fmt}")
+            plot_timeseries(
+                analysisd_dfs,
+                col,
+                f"Analysisd — {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # Combined cache overview: entries gauge (top) + cumulative counters
+        # (bottom), one chart per run.
+        if any(
+            any(c in df.columns for c, _, _ in AGENT_CACHE_METRICS)
+            for df in analysisd_dfs.values()
+        ):
+            for label, df in analysisd_dfs.items():
+                safe_label = label.replace(" ", "_")
+                _plot_agent_cache_overview(
+                    df, label,
+                    os.path.join(out_dir, f"analysisd_agent_cache_overview_{safe_label}.{fmt}"),
+                )
 
     # -- Summary bar charts --------------------------------------------------
     if monitors:
@@ -1161,26 +1252,37 @@ def _plot_with_total(
     print(f"  -> {out_path}")
 
 
-def _plot_with_total_and_indexer(
+def _plot_with_total_and_extra_components(
     manager_datasets: dict[str, pd.DataFrame],
-    indexer_datasets: dict[str, pd.DataFrame],
+    extra_component_datasets: dict[str, dict[str, pd.DataFrame]],
     y_col: str,
     title: str,
     ylabel: str,
     out_path: str,
     figsize=(14, 7),
 ):
-    """Per-process manager lines + wazuh-indexer line + single grand total.
+    """Manager process lines + extra component lines + grand total.
 
-    For a single-result-dir run (keys have no "/") all manager processes are
-    summed into one total, the indexer is added on top, and a single "Total"
-    line is drawn.  For multi-result-dir runs each run gets its own total.
+    For a single-result-dir run (manager keys have no "/") all manager
+    processes are summed into one total, every available extra component is
+    added on top, and a single "Total" line is drawn. For multi-result-dir
+    runs each run gets its own total.
     """
     fig, ax = plt.subplots(figsize=figsize)
 
     def _run_of(key: str) -> str:
         """Return the run label part of a dataset key."""
         return key.split("/")[0] if "/" in key else ""
+
+    def _component_df(
+        component_datasets: dict[str, pd.DataFrame],
+        run_label: str,
+    ) -> pd.DataFrame | None:
+        if run_label in component_datasets:
+            return component_datasets[run_label]
+        if not run_label and component_datasets:
+            return next(iter(component_datasets.values()))
+        return None
 
     # Accumulate per-run manager totals.
     run_labels = list(dict.fromkeys(_run_of(k) for k in manager_datasets))
@@ -1201,27 +1303,24 @@ def _plot_with_total_and_indexer(
             t_r = int(float(t))
             mt[t_r] = mt.get(t_r, 0.0) + float(v)
 
-    # For each run: add indexer line and compute one grand total.
+    # For each run: add each extra component as its own line and compute one
+    # grand total that includes every available extra component.
     for run_label in run_labels:
         mt = run_totals[run_label]
         suffix = f" ({run_label})" if len(run_labels) > 1 and run_label else ""
-
-        # Locate indexer data: for single-dir (run_label=="") use first entry.
-        if run_label in indexer_datasets:
-            idf = indexer_datasets[run_label]
-        elif not run_label and indexer_datasets:
-            idf = next(iter(indexer_datasets.values()))
-        else:
-            idf = None
-
         grand: dict[int, float] = dict(mt)
-        if idf is not None and y_col in idf.columns:
+
+        for comp_idx, (component, component_datasets) in enumerate(extra_component_datasets.items()):
+            df = _component_df(component_datasets, run_label)
+            if df is None or y_col not in df.columns:
+                continue
             ax.plot(
-                idf["elapsed_s"], idf[y_col],
-                label=f"wazuh-indexer{suffix}",
-                color=COLORS[3], linewidth=2.0, alpha=0.9, linestyle="-",
+                df["elapsed_s"], df[y_col],
+                label=f"{component}{suffix}",
+                color=run_color(len(manager_datasets) + comp_idx),
+                linewidth=2.0, alpha=0.9, linestyle="-",
             )
-            for t, v in zip(idf["elapsed_s"], idf[y_col]):
+            for t, v in zip(df["elapsed_s"], df[y_col]):
                 t_r = int(float(t))
                 grand[t_r] = grand.get(t_r, 0.0) + float(v)
 
@@ -1498,6 +1597,75 @@ def _plot_combined(
     ax2.set_xlabel("Elapsed time (s)")
     ax2.set_ylabel("Sessions completed / s")
     ax2.legend(loc="upper right", fontsize=9)
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_agent_cache_overview(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+):
+    """Two stacked panels sharing X (elapsed_s) for the agent metadata cache:
+      - Top:    entries — instantaneous number of cached agents (gauge).
+      - Bottom: hits / insertions / updates / evictions — cumulative counters.
+
+    The bottom panel makes the cache's effectiveness legible at a glance: hits
+    climbing far faster than insertions/updates means most batches reuse a
+    cached header (the win the cache exists for); evictions track TTL turnover.
+    """
+    counter_series = [
+        ("agent_cache_hits",       "Hits",       COLORS[2]),
+        ("agent_cache_insertions", "Insertions", COLORS[0]),
+        ("agent_cache_updates",    "Updates",    COLORS[1]),
+        ("agent_cache_evictions",  "Evictions",  COLORS[3]),
+    ]
+    has_entries = "agent_cache_entries" in df.columns and df["agent_cache_entries"].notna().any()
+    has_counters = any(c in df.columns and df[c].notna().any() for c, _, _ in counter_series)
+    if not has_entries and not has_counters:
+        return
+
+    # Derive the overall hit rate from the final cumulative values for the title.
+    hit_rate_txt = ""
+    if has_counters and {"agent_cache_hits", "agent_cache_insertions", "agent_cache_updates"}.issubset(df.columns):
+        hits = float(pd.to_numeric(df["agent_cache_hits"], errors="coerce").fillna(0).iloc[-1])
+        ins = float(pd.to_numeric(df["agent_cache_insertions"], errors="coerce").fillna(0).iloc[-1])
+        upd = float(pd.to_numeric(df["agent_cache_updates"], errors="coerce").fillna(0).iloc[-1])
+        lookups = hits + ins + upd
+        if lookups > 0:
+            hit_rate_txt = f"  —  hit rate {100.0 * hits / lookups:.1f}%"
+
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=(14, 8), sharex=True, gridspec_kw={"height_ratios": [1, 1]},
+    )
+
+    # Panel 1 — entries (gauge).
+    if has_entries:
+        ax1.plot(df["elapsed_s"], df["agent_cache_entries"],
+                 color=COLORS[4], linewidth=1.6, alpha=0.9, label="Entries (current)")
+        ax1.fill_between(df["elapsed_s"], df["agent_cache_entries"],
+                         alpha=0.15, color=COLORS[4])
+    ax1.set_ylabel("Entries")
+    ax1.set_ylim(0, None)
+    ax1.set_title(f"Analysisd — Agent Metadata Cache ({label}){hit_rate_txt}",
+                  fontsize=14, fontweight="bold")
+    ax1.legend(loc="upper left", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+
+    # Panel 2 — cumulative counters.
+    for col, name, color in counter_series:
+        if col in df.columns and df[col].notna().any():
+            ax2.plot(df["elapsed_s"], df[col],
+                     color=color, linewidth=1.4, alpha=0.9, label=name)
+    ax2.set_xlabel("Elapsed time (s)")
+    ax2.set_ylabel("Count (cumulative)")
+    ax2.set_ylim(0, None)
+    ax2.legend(loc="upper left", fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 

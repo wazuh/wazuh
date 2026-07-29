@@ -15,6 +15,7 @@
 #include <thread>
 
 #include "agent_sync_protocol.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "logging_helper.hpp"
 #include "hashHelper.h"
 #include "sca.h"
@@ -130,12 +131,13 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
+    refreshFirstSyncCompletedState();
+
     if (m_syncManager)
     {
-        m_syncManager->initialize();
+        const auto limitResult = m_syncManager->initialize();
+        handleLimitEvents(limitResult.demotedIds, limitResult.promotedIds);
     }
-
-    refreshFirstSyncCompletedState();
 
     // Reset the in-memory scan-completed flag only when the first sync has not yet happened.
     // Once first_sync_completed is set this flag is never polled again, so resetting it
@@ -235,7 +237,8 @@ void SecurityConfigurationAssessment::Run()
 
         if (m_syncManager)
         {
-            m_syncManager->reconcile();
+            const auto limitResult = m_syncManager->reconcile();
+            handleLimitEvents(limitResult.demotedIds, limitResult.promotedIds);
         }
 
         // Check for policies removed at runtime (e.g., config change during scan loop).
@@ -359,11 +362,35 @@ void SecurityConfigurationAssessment::quiesce()
 
 void SecurityConfigurationAssessment::releaseResources()
 {
+    // Take the flush controller out under the exclusive lock (so a concurrent wcom
+    // "flush"/"is_flush_completed" query sees either the live controller or none) but
+    // destroy it outside of it: its destructor joins the flush worker, which runs
+    // executeFlushSync() -> m_spSyncProtocol->synchronizeModule() without taking
+    // m_resourcesMutex. The protocol must outlive that join, so it is reset after it.
+    std::unique_ptr<Utils::AsyncFlushController> flushController;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+        flushController = std::move(m_asyncFlushController);
+    }
+    flushController.reset();
+
+    std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     // Explicitly release DBSync before static destruction to avoid use-after-free
     // during shutdown when DBSyncImplementation singleton may be destroyed first.
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
     m_dBSync.reset();
+
+    // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
+    // (sqlite3_close_v2 on last close checkpoints the WAL and removes the -wal/-shm
+    // files). Stop() only signals the workers; without this the connection is leaked
+    // and a graceful stop leaves stale WAL files behind (issue #37334). The sync worker
+    // thread and the SCA run loop have already exited (see wm_sca_start teardown),
+    // mirroring Syscollector::releaseResources(); the entry points still reachable from
+    // other threads (wcom queries and sync responses, agent-info's in-process
+    // coordination queries) are excluded by the lock, which they take shared.
+    m_spSyncProtocol.reset();
 }
 
 void SecurityConfigurationAssessment::Stop()
@@ -415,7 +442,7 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
         return {};
     }
 
-    std::string concatenatedChecksums = m_dBSync->getConcatenatedChecksums("sca_check", "WHERE sync = 1");
+    std::string concatenatedChecksums = m_dBSync->getConcatenatedChecksums("sca_check", "WHERE sync = 1 AND result != 'Not run'");
 
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
@@ -436,7 +463,12 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        {
+            // Publish under the exclusive lock: wcom queries can arrive while the module
+            // is still starting up, and they read the pointer under the shared lock.
+            std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize schema validator factory from embedded resources
@@ -499,7 +531,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     const bool firstSyncPending = !m_firstSyncCompleted.load();
 
-    bool result = false;
+    SyncModuleResult result;
 
     if (firstSyncPending)
     {
@@ -513,7 +545,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         result = m_spSyncProtocol->synchronizeModule(mode);
     }
 
-    if (result)
+    if (result.success)
     {
         if (firstSyncPending)
         {
@@ -529,20 +561,46 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         m_pauseCv.notify_all();
     }
 
-    if (result)
+    if (result.success)
     {
         LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization finished successfully.");
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
+        if (result.stopped || !m_keepRunning.load())
+        {
+            // Not a real failure: the sync was aborted because the module is stopping.
+            // Report it as an expected event, not a WARNING.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
+        }
+        else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        {
+            // The manager is not ready for this agent yet, mostly right after a restart, and the sync
+            // has not failed enough times in a row to suspect it will not clear. Not a WARNING yet.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason +
+                                             " Will retry next cycle.");
+        }
+        else if (result.managerNotReady)
+        {
+            // The manager has not been ready for several cycles in a row: this is no longer a restart
+            // hiccup, so it must stay visible.
+            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed " +
+                                             std::to_string(result.consecutiveFailures) + " times in a row: " +
+                                             result.failureReason);
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed" + (result.failureReason.empty() ? "." : ": " + result.failureReason));
+        }
     }
 
-    return result;
+    return result.success;
 }
 
 void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
@@ -551,6 +609,8 @@ void SecurityConfigurationAssessment::persistDifference(const std::string& id, O
 
 bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
@@ -582,6 +642,8 @@ void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
 
 bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->notifyDataClean(indices);
@@ -592,6 +654,8 @@ bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::str
 
 void SecurityConfigurationAssessment::deleteDatabase()
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
@@ -761,12 +825,35 @@ int SecurityConfigurationAssessment::executeFlushSync()
     }
 
     // Trigger immediate synchronization to flush pending messages
-    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
-    if (result)
+    if (result.success)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
+    }
+    else if (result.stopped || !m_keepRunning.load())
+    {
+        // Not a real failure: the flush sync was aborted because the module is stopping.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
+        return -1;
+    }
+    else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    {
+        // The manager is not ready for this agent yet, mostly right after a restart, and the sync
+        // has not failed enough times in a row to suspect it will not clear. Not an error yet.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
+                                         " Will retry next cycle.");
+        return -1;
+    }
+    else if (result.managerNotReady)
+    {
+        // The manager has not been ready for several cycles in a row: this is no longer a restart
+        // hiccup, so it must stay visible.
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
+                                         std::to_string(result.consecutiveFailures) + " times in a row: " +
+                                         result.failureReason);
+        return -1;
     }
     else
     {
@@ -788,6 +875,13 @@ void SecurityConfigurationAssessment::resume()
 
 std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 {
+    // Serialize against releaseResources(): queries arrive from the wcom dispatcher and
+    // from agent-info's in-process coordination polls, which outlive the module teardown.
+    // The blocking commands stay bounded under the shared lock at shutdown because
+    // quiesce() (which precedes releaseResources()) wakes pause() and stops the sync
+    // protocol before the exclusive lock is ever requested.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // Log the received query
     LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
 
@@ -1079,10 +1173,10 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
 bool SecurityConfigurationAssessment::performRecovery()
 {
-    return synchronizeDatabaseSnapshot(true, "recovery");
+    return synchronizeDatabaseSnapshot(true, "recovery").success;
 }
 
-bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
+SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA " + syncReason + " full synchronization");
 
@@ -1091,13 +1185,13 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         if (!m_dBSync)
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot synchronize SCA snapshot");
-            return false;
+            return {false, {}};
         }
 
         if (!m_spSyncProtocol)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot synchronize SCA snapshot");
-            return false;
+            return {false, {}};
         }
 
         if (increaseVersions)
@@ -1210,9 +1304,9 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        const bool success = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
 
-        if (success)
+        if (result.success)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " completed successfully");
         }
@@ -1223,12 +1317,12 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
-        return success;
+        return result;
     }
     catch (const std::exception& err)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "Error during SCA " + syncReason + ": " + std::string(err.what()));
-        return false;
+        return {false, {}};
     }
 }
 
@@ -1549,6 +1643,32 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         LoggingHelper::getInstance().log(LOG_DEBUG,
                                          "DataClean notification aborted due to module shutdown");
         return false;
+    }
+}
+
+void SecurityConfigurationAssessment::handleLimitEvents(const std::vector<std::string>& demotedIds,
+                                                        const std::vector<std::string>& promotedIds)
+{
+    if (demotedIds.empty() && promotedIds.empty())
+    {
+        return;
+    }
+
+    const SCAEventHandler eventHandler(
+        m_dBSync,
+        m_pushStatelessMessage,
+        m_pushStatefulMessage,
+        m_syncManager,
+        m_firstSyncCompleted.load());
+
+    if (!demotedIds.empty())
+    {
+        eventHandler.ReportDemotedChecks(demotedIds);
+    }
+
+    if (!promotedIds.empty())
+    {
+        eventHandler.ReportPromotedChecks(promotedIds);
     }
 }
 

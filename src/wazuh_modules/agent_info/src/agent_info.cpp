@@ -39,6 +39,7 @@ static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 static report_callback_t g_report_callback = nullptr;
 static log_callback_t g_log_callback = nullptr;
 static query_module_callback_t g_query_module_callback = nullptr;
+static is_shutting_down_callback_t g_is_shutting_down_callback = nullptr;
 
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
@@ -59,6 +60,7 @@ static char g_agent_groups[65536] = {0};
 static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const modules_log_level_t, const std::string&)> g_log_function_wrapper;
 static std::function<int(const std::string&, const std::string&, char**)> g_query_module_function_wrapper;
+static std::function<bool()> g_is_shutting_down_wrapper;
 
 void agent_info_set_log_function(log_callback_t log_callback)
 {
@@ -109,6 +111,24 @@ void agent_info_set_query_module_function(query_module_callback_t query_module_c
         };
     }
 
+}
+
+void agent_info_set_is_shutting_down_function(is_shutting_down_callback_t is_shutting_down_callback)
+{
+    g_is_shutting_down_callback = is_shutting_down_callback;
+
+    if (g_is_shutting_down_callback)
+    {
+        g_is_shutting_down_wrapper = []()
+        {
+            return g_is_shutting_down_callback ? g_is_shutting_down_callback() : false;
+        };
+    }
+
+    if (g_agent_info_impl)
+    {
+        g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
+    }
 }
 
 void agent_info_set_cluster_name(const char* cluster_name)
@@ -223,6 +243,10 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
             g_agent_info_impl =
                 std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper, g_query_module_function_wrapper);
+
+            // Propagate the shutdown predicate if it was registered before the instance existed
+            // (the wm_agent_info wrapper sets the callbacks before calling agent_info_start).
+            g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
 
             // Set sync parameters from configuration
             g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_end_delay,

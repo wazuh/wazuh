@@ -48,10 +48,10 @@ The module is configured programmatically by its caller (the Vulnerability Scann
 | `configData.databasePath` | Path to the RocksDB cursor database |
 | `configData.indexer.hosts` | Indexer endpoint URLs |
 | `configData.indexer.index` | Index to read from |
-| `configData.indexer.pageSize` | Documents per PIT page (default 250) |
+| `configData.indexer.pageSize` | Documents per PIT page (default 100) |
 | `configData.indexer.numSlices` | Parallel PIT slices for initial load (default 2) |
 
-The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Configuration](../../configuration/indexer.md)).
+The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Configuration](configuration.md)).
 
 ## Key source files
 

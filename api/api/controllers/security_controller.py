@@ -1102,7 +1102,8 @@ async def get_rbac_resources(resource: str = None, pretty: bool = False) -> Conn
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -1131,7 +1132,8 @@ async def get_rbac_actions(pretty: bool = False, endpoint: str = None) -> Connex
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=True,
-                          logger=logger
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

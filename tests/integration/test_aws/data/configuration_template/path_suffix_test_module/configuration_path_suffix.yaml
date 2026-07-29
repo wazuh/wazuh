@@ -12,6 +12,6 @@
               - name:
                   value: BUCKET_NAME
               - only_logs_after:
-                  value: 2022-NOV-20
+                  value: ONLY_LOGS_AFTER
               - path_suffix:
                   value: PATH_SUFFIX

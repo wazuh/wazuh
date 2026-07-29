@@ -25,6 +25,15 @@ void randombytes(void *ptr, size_t length)
 
 #ifdef WIN32
     static HCRYPTPROV prov = 0;
+    static pthread_mutex_t prov_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+    /* Multiple agent threads (syscheck, logcollector, execd, wodles...) may reach
+     * this function concurrently on the first call. Without serializing access,
+     * two threads can race inside CryptAcquireContext: one creates the default
+     * key container while the other, having just observed NTE_BAD_KEYSET, tries
+     * to create it too and gets NTE_EXISTS, aborting the whole process.
+     */
+    w_mutex_lock(&prov_mutex);
 
     if (prov == 0) {
         if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
@@ -55,6 +64,8 @@ void randombytes(void *ptr, size_t length)
     if (!failed && !CryptGenRandom(prov, length, ptr)) {
         failed = 1;
     }
+
+    w_mutex_unlock(&prov_mutex);
 #else
     static int fh = -1;
     ssize_t ret;

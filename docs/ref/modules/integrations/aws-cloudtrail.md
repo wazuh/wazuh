@@ -57,8 +57,7 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file:
 | `path_suffix` | No | — | S3 key suffix filter. |
 | `only_logs_after` | No | — | Only process logs created after this date (`YYYY-MM-DD`). |
 | `remove_from_bucket` | No | `no` | Delete log files from the bucket after processing. |
-| `discard_field` | No | — | JSON field name to evaluate for discarding events. |
-| `discard_regex` | No | — | Regular expression applied to `discard_field` to filter out matching events. |
+| `discard_regex` | No | — | Regular expression to filter out matching events. Requires `field` attribute specifying JSON field name. Format: `<discard_regex field="fieldName">regex</discard_regex>` |
 | `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
 | `service_endpoint` | No | — | Custom AWS S3 endpoint URL. |
 

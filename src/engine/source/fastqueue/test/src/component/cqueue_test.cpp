@@ -887,3 +887,166 @@ TEST_F(CQueueTest, RateLimiterWaitPopMultipleThreads)
     ASSERT_LE(totalPopped, expectedMax);
     ASSERT_GT(totalPopped, 0); // Should have popped something
 }
+
+// =============================================================================
+// Byte-limit tests
+// =============================================================================
+
+// Helper: a simple string-typed queue with a size function
+static std::size_t stringSizeOf(const std::string& s)
+{
+    return s.size();
+}
+
+// Item-count limit is still enforced alongside byte limit
+TEST_F(CQueueTest, ByteLimit_ItemCountLimitCoexists)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(1000, stringSizeOf);
+
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+    EXPECT_EQ(cq.maxBytes(), 1000u);
+}
+
+// Byte limit reached: queue rejects events once accumulated bytes exceed the cap
+TEST_F(CQueueTest, ByteLimit_GlobalLimitRejectsExtra)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(10, stringSizeOf); // only 10 bytes total
+
+    ASSERT_TRUE(cq.push(std::string("12345"))); // 5 bytes → total 5
+    EXPECT_EQ(cq.bytesUsed(), 5u);
+
+    ASSERT_TRUE(cq.push(std::string("12345"))); // 5 bytes → total 10
+    EXPECT_EQ(cq.bytesUsed(), 10u);
+
+    ASSERT_FALSE(cq.push(std::string("x"))); // 1 byte → quota full, rejected
+    EXPECT_EQ(cq.bytesUsed(), 10u);          // unchanged
+}
+
+// Oversized individual event is rejected even if the queue is otherwise empty
+TEST_F(CQueueTest, ByteLimit_OversizedEventRejected)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(5, stringSizeOf);
+
+    ASSERT_FALSE(cq.push(std::string("123456"))); // 6 bytes > limit of 5
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+    EXPECT_TRUE(cq.empty());
+}
+
+// Byte quota is released when an event is popped
+TEST_F(CQueueTest, ByteLimit_QuotaRecoveryAfterPop)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(10, stringSizeOf);
+
+    ASSERT_TRUE(cq.push(std::string("12345"))); // 5 bytes
+    ASSERT_TRUE(cq.push(std::string("12345"))); // 5 bytes → quota full
+    ASSERT_FALSE(cq.push(std::string("x")));    // rejected
+
+    std::string out;
+    ASSERT_TRUE(cq.tryPop(out)); // consume 5 bytes
+    EXPECT_EQ(cq.bytesUsed(), 5u);
+
+    ASSERT_TRUE(cq.push(std::string("xyz"))); // 3 bytes → now fits (5 + 3 = 8)
+    EXPECT_EQ(cq.bytesUsed(), 8u);
+}
+
+// waitPop also decrements the byte counter
+TEST_F(CQueueTest, ByteLimit_WaitPopReleasesBytes)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(20, stringSizeOf);
+
+    ASSERT_TRUE(cq.push(std::string("hello"))); // 5 bytes
+    EXPECT_EQ(cq.bytesUsed(), 5u);
+
+    std::string out;
+    ASSERT_TRUE(cq.waitPop(out, WAIT_DEQUEUE_TIMEOUT_USEC));
+    EXPECT_EQ(out, "hello");
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+}
+
+// tryPopBulk releases bytes for all elements popped
+TEST_F(CQueueTest, ByteLimit_TryPopBulkReleasesBytes)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    cq.setByteLimit(100, stringSizeOf);
+
+    ASSERT_TRUE(cq.push(std::string("abc")));   // 3 bytes
+    ASSERT_TRUE(cq.push(std::string("defgh"))); // 5 bytes
+    EXPECT_EQ(cq.bytesUsed(), 8u);
+
+    std::string buf[2];
+    std::size_t n = cq.tryPopBulk(buf, 2);
+    EXPECT_EQ(n, 2u);
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+}
+
+// Without byte limit configured, bytesUsed() stays 0 and pushes are unrestricted
+TEST_F(CQueueTest, ByteLimit_DisabledByDefault)
+{
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY);
+    EXPECT_EQ(cq.maxBytes(), 0u);
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        ASSERT_TRUE(cq.push(std::string(1000, 'x')));
+    }
+    EXPECT_EQ(cq.bytesUsed(), 0u); // no tracking when disabled
+}
+
+// Concurrent producers and consumer: byte counter returns to 0 after full drain
+TEST_F(CQueueTest, ByteLimit_ConcurrentProducersConsumer)
+{
+    constexpr int ITEMS = 500;
+    constexpr std::size_t ITEM_SIZE = 10;
+    constexpr std::size_t BYTE_CAP = ITEMS * ITEM_SIZE * 2; // generous cap
+
+    CQueue<std::string> cq(MIN_QUEUE_CAPACITY * 4);
+    cq.setByteLimit(BYTE_CAP, stringSizeOf);
+
+    std::atomic<int> produced {0};
+    std::atomic<int> consumed {0};
+
+    auto producerFn = [&]()
+    {
+        for (int i = 0; i < ITEMS; ++i)
+        {
+            std::string item(ITEM_SIZE, static_cast<char>('a' + (i % 26)));
+            while (!cq.push(std::move(item)))
+            {
+                std::this_thread::yield(); // retry on quota or count limit
+                item = std::string(ITEM_SIZE, static_cast<char>('a' + (i % 26)));
+            }
+            ++produced;
+        }
+    };
+
+    auto consumerFn = [&]()
+    {
+        while (consumed.load() < ITEMS * 2)
+        {
+            std::string out;
+            if (cq.waitPop(out, WAIT_DEQUEUE_TIMEOUT_USEC))
+            {
+                ++consumed;
+            }
+        }
+    };
+
+    std::thread p1(producerFn);
+    std::thread p2(producerFn);
+    std::thread c(consumerFn);
+
+    p1.join();
+    p2.join();
+    c.join();
+
+    EXPECT_EQ(produced.load(), ITEMS * 2);
+    EXPECT_EQ(consumed.load(), ITEMS * 2);
+    EXPECT_EQ(cq.bytesUsed(), 0u);
+    EXPECT_TRUE(cq.empty());
+}

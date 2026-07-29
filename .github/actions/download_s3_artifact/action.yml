@@ -4,7 +4,7 @@ description: >
   the internal CI S3 bucket (passed via the CI_INTERNAL_S3_BUCKET secret) instead of GitHub artifact storage
   (see https://github.com/wazuh/wazuh-automation/issues/3502).
   Downloads and extracts the archive previously uploaded by upload_s3_artifact from:
-    <bucket>/<repository>/<workflow>/<name>/artifacts_<run_id>.zip
+    <bucket>/<repository>/<workflow>/<run_id>/<name>.zip
   AWS credentials are configured by the action itself via OIDC, so the calling
   job only needs `permissions: id-token: write`. Pass the region via the
   `aws_region` input (set it to the CI_AWS_REGION secret at the call site).
@@ -51,7 +51,7 @@ runs:
         wf="${wf_file%.*}"
         # Make the artifact name safe for use as a single S3 key segment
         safe_name="$(printf '%s' "$ARTIFACT_NAME" | tr ' /\\:' '____')"
-        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${safe_name}/artifacts_${RUN_ID}.zip" >> "$GITHUB_OUTPUT"
+        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${RUN_ID}/${safe_name}.zip" >> "$GITHUB_OUTPUT"
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6

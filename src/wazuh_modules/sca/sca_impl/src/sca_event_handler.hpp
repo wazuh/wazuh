@@ -52,6 +52,10 @@ class SCAEventHandler
         /// @param demotedIds Vector of check IDs to delete from the indexer.
         void ReportDemotedChecks(const std::vector<std::string>& demotedIds) const;
 
+        /// @brief Reports checks promoted by a sync limit incrementation.
+        /// @param demotedIds Vector of check IDs to delete from the indexer.
+        void ReportPromotedChecks(const std::vector<std::string>& promotedIds) const;
+
         /// @brief Reports the result of a check execution.
         /// @param policyId The ID of the policy associated with the check.
         /// @param checkId The ID of the check.
@@ -189,6 +193,13 @@ class SCAEventHandler
 
         /// @brief Handle failed checks deletion and sync promotions.
         void HandleFailedChecks(std::vector<nlohmann::json> failedChecks) const;
+
+        /// @brief Process checks promoted or demoted by a sync limit change, pushing a stateful
+        /// event (insert or delete) for each and collecting any that fail validation.
+        void ProcessSyncedChecks(const std::vector<std::string>& checkIds,
+                                 ReturnTypeCallback result,
+                                 const std::string& actionLabel,
+                                 std::vector<nlohmann::json>* failedChecks) const;
 
         /// @brief Process promoted checks after deletion to keep FIFO sync limit.
         void ProcessPromotedChecks(const std::vector<std::string>& promotedIds,

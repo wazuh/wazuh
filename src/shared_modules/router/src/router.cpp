@@ -20,6 +20,8 @@
 #include <iostream>
 #include <string>
 
+#include <proc.hpp>
+
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
@@ -29,6 +31,11 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
         GS_LOG_FUNCTION(level, msg);
     }
 }
+
+// Clamp httplib worker threads to the [4, 16] range.
+#ifndef CPPHTTPLIB_THREAD_POOL_COUNT
+#define CPPHTTPLIB_THREAD_POOL_COUNT ((std::min)(16u, (std::max)(4u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
+#endif
 
 #include "external/cpp-httplib/httplib.h"
 #include "router.h"
@@ -286,7 +293,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error sending message to provider: ") + e.what());
         }
         return retVal;
     }
@@ -413,7 +420,8 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error in router_provider_send_sync: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING,
+                       std::string("Error in router_provider_send_sync: ") + e.what());
             return -1;
         }
     }
@@ -575,7 +583,7 @@ extern "C"
     {
         if (!socketPath)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, "Error stopping API. Invalid socket path");
+            logMessage(modules_log_level_t::LOG_WARNING, "Error stopping API. Invalid socket path");
             return;
         }
 
@@ -638,7 +646,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error subscribing: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error subscribing: ") + e.what());
         }
         return retVal;
     }
@@ -652,7 +660,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error unsubscribing: ") + e.what());
+            logMessage(modules_log_level_t::LOG_WARNING, std::string("Error unsubscribing: ") + e.what());
         }
     }
 

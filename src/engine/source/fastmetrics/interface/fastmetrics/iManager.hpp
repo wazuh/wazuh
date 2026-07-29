@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <streamlog/logger.hpp>
-
 #include "iMetric.hpp"
 
 namespace fastmetrics
@@ -30,12 +28,6 @@ class IManager
 {
 public:
     virtual ~IManager() = default;
-
-    /**
-     * @brief Write all metrics as JSON lines using the provided writer.
-     * @param metricsWriter Writer to output each JSON line.
-     */
-    virtual void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const = 0;
 
     /**
      * @brief Create or get an existing counter

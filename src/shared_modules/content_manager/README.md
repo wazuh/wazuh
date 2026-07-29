@@ -53,8 +53,8 @@ After all pages are processed, the downloader signals completion via `indexer_co
         "databasePath": "queue/vd/vd_updater/rocksdb",
         "indexer": {
             "hosts": ["https://localhost:9200"],
-            "username": "admin",
-            "password": "admin",
+            "username": "wazuh-manager",
+            "password": "wazuh-manager",
             "ssl": {
                 "certificate_authorities": ["/etc/wazuh-indexer/certs/root-ca.pem"],
                 "certificate": "",
@@ -63,7 +63,7 @@ After all pages are processed, the downloader signals completion via `indexer_co
             "index": ".wazuh-threatintel-vulnerabilities",
             "consumerStatusIndex": ".wazuh-cti-consumers",
             "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
-            "pageSize": 250,
+            "pageSize": 100,
             "numSlices": 2
         }
     }

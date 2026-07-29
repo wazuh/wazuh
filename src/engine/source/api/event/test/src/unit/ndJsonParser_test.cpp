@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include <agentcache/agentMetadataCache.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/behaviour.hpp>
 #include <base/eventParser.hpp>
@@ -13,6 +16,12 @@
 
 using namespace api::event::protocol;
 using namespace base::test;
+
+// Agent metadata cache instance for the parser, mirroring production (5-minute TTL).
+static std::shared_ptr<agentcache::AgentMetadataCache> makeAgentMetadataCache()
+{
+    return std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300});
+}
 
 using SuccessExpected = InnerExpected<std::vector<base::Event>, None>;
 using FailureExpected = InnerExpected<None, None>;
@@ -235,7 +244,7 @@ static std::vector<base::Event> runNDJson(std::string_view batch)
         out.push_back(std::move(ev));
     };
 
-    parseNDJson(batch, hook);
+    parseNDJson(batch, hook, makeAgentMetadataCache());
     return out;
 }
 
@@ -286,7 +295,7 @@ TEST_P(NdJsonParserTest, Parse)
         case CaseMode::NullHookNoThrow:
         {
             EventHook empty {};
-            ASSERT_NO_THROW(parseNDJson(batch, empty));
+            ASSERT_NO_THROW(parseNDJson(batch, empty, makeAgentMetadataCache()));
             break;
         }
 
@@ -299,7 +308,7 @@ TEST_P(NdJsonParserTest, Parse)
 
             try
             {
-                parseNDJson(batch, throwing);
+                parseNDJson(batch, throwing, makeAgentMetadataCache());
                 FAIL() << "Expected std::runtime_error";
             }
             catch (const std::runtime_error& ex)
@@ -329,9 +338,10 @@ static inline std::string E(std::string p)
     return "E " + std::move(p);
 }
 
-// Example JSON headers
-static const std::string HDR1 = R"({"agent":{"name":"agent-X","id":"123"}})";
-static const std::string HDR2 = R"({"agent":{"name":"alt","id":"321"}})";
+// Example JSON headers. The enriched-event header is wrapped under a top-level "wazuh" object;
+// AgentMetadataCache extracts the agent id from /wazuh/agent/id, so it must live there.
+static const std::string HDR1 = R"({"wazuh":{"agent":{"name":"agent-X","id":"123"}}})";
+static const std::string HDR2 = R"({"wazuh":{"agent":{"name":"alt","id":"321"}}})";
 
 // OSSEC events: "queue:location:message"
 static const std::string EV1 = "1:/etc/passwd:File modified md5=abc";

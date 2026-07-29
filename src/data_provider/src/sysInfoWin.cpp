@@ -905,10 +905,32 @@ const std::set<std::string> getPythonDirectories()
         pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
     };
 
+    const auto storePostAction = [&](const std::string & packageRootFolder)
+    {
+        /*
+         * Only the Python Store packages bundle a site-packages directory. The prefix is
+         * anchored to the folder name; PackageRootFolder has no trailing separator, unlike
+         * InstallPath.
+         */
+        if (packageRootFolder.find(std::string(R"(\)") + PYTHON_STORE_PACKAGE_PREFIX) != std::string::npos)
+        {
+            pythonDirList.insert(packageRootFolder + R"(\Lib\site-packages)");
+        }
+    };
+
     try
     {
         expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        /*
+         * Microsoft Store Python does not expose its PEP 514 registration under HKEY_USERS
+         * (it lives in the MSIX virtualized hive), so its site-packages directory is derived
+         * from the package location kept on the AppModel repository.
+         */
+        expandFromRegistry(HKEY_USERS,
+                           std::string(R"(*\)") + APPLICATION_STORE_REGISTRY + R"(\*)",
+                           "PackageRootFolder",
+                           storePostAction);
     }
     catch (const std::exception&)
     {
@@ -976,16 +998,78 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
+namespace
+{
+    /// @brief RAII per-thread COM initializer for the syscollector hotfixes collector.
+    ///
+    /// getHotfixes() runs on syscollector's single long-lived scan thread, so COM is
+    /// initialized once per thread (issue #37655) instead of on every scan cycle: a
+    /// per-cycle CoInitializeEx/CoUninitialize churns the COM/RPC infrastructure (notably
+    /// the Windows Update Agent) and leaks ~1 anonymous Event handle per cycle. The
+    /// destructor runs when the thread exits (thread_local storage), balancing the
+    /// CoInitializeEx we own.
+    class ThreadComContext final
+    {
+        public:
+            ThreadComContext() = default;
+            ThreadComContext(const ThreadComContext&) = delete;
+            ThreadComContext& operator=(const ThreadComContext&) = delete;
+
+            /// @brief Ensures COM is usable on this thread; retries on transient failure.
+            /// @return true when COM can be used for the hotfix queries.
+            bool ensureInitialized()
+            {
+                if (!m_usable)
+                {
+                    const HRESULT hres = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+                    if (SUCCEEDED(hres))
+                    {
+                        // We added the reference, so we must balance it on thread exit.
+                        m_usable = true;
+                        m_ownsInit = true;
+                    }
+                    else if (hres == RPC_E_CHANGED_MODE)
+                    {
+                        // COM is already initialized on this thread in another apartment
+                        // model; it is still usable, but we did not add a reference, so we
+                        // must not call CoUninitialize.
+                        m_usable = true;
+                    }
+
+                    // Any other failure leaves m_usable false so the next cycle retries.
+                }
+
+                return m_usable;
+            }
+
+            ~ThreadComContext()
+            {
+                if (m_ownsInit)
+                {
+                    CoUninitialize();
+                }
+            }
+
+        private:
+            bool m_usable {false};
+            bool m_ownsInit {false};
+    };
+} // namespace
+
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;
     std::ostringstream oss;
     ComHelper comHelper;
 
-    // Initialize COM
-    HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+    // Initialize COM once per thread instead of per scan cycle (issue #37655). The RAII
+    // guard initializes COM once, retries on transient failure, tolerates COM already
+    // being initialized in another apartment, and balances CoUninitialize when the
+    // collection thread exits.
+    static thread_local ThreadComContext comContext;
 
-    if (SUCCEEDED(hres))
+    if (comContext.ensureInitialized())
     {
         try
         {
@@ -997,7 +1081,6 @@ nlohmann::json SysInfo::getHotfixes() const
             // Ignore the error. The OS does not support WMI API.
         }
 
-
         try
         {
             // Query hotfixes using Windows Update API
@@ -1007,9 +1090,6 @@ nlohmann::json SysInfo::getHotfixes() const
         {
             // Ignore the error. The OS does not support WUA API.
         }
-
-        // Uninitialize COM
-        CoUninitialize();
     }
 
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, hotfixes);

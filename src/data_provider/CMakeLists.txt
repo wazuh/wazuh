@@ -180,6 +180,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             oleaut32
             shell32
             ntdll
+            version
             groups
             users
             services

@@ -109,6 +109,7 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
 
     minfo(STARTUP_MSG, (int)getpid());
+    mdebug1("Available processors: %d", get_nproc());
 
     // Configure signal handling before startup gate wait so SIGTERM
     // triggers graceful cleanup even when modules are blocked.

@@ -365,13 +365,22 @@ int modulesSync(char* args, size_t length) {
 
         ++retry;
 
-        if (retry > WM_MAX_ATTEMPTS) {
+        // Stop retrying if the agent is shutting down: the target module is being torn down on
+        // purpose, so further attempts would only delay shutdown while always failing.
+        if (retry > WM_MAX_ATTEMPTS || wm_shutdown_requested) {
             break;
         }
     } while (ret != 0);
 
     if (ret) {
-        merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
+        if (wm_shutdown_requested) {
+            // Expected during agent shutdown/restart: a sync command reached a module that was already
+            // stopping. Report it as a debug breadcrumb instead of an error.
+            mdebug1("At modulesSync(): skipping sync for module '%s' (%d): the agent is shutting down.",
+                    cur_module ? cur_module->tag : "", ret);
+        } else {
+            merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
+        }
     }
     return ret;
 }
@@ -499,7 +508,17 @@ size_t wm_fim_query_json(const char* command, char** response) {
     // Connect to syscheck syscom socket
     mdebug1("WM_FIM_QUERY_JSON: Attempting to connect to socket: %s", SYS_LOCAL_SOCK);
     if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0) {
-        merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        // This is a transport helper: the connection failure is returned to the caller as a
+        // structured JSON error (see the switch below), and the caller (agent-info) is the one
+        // that contextualizes it (e.g. FIM unavailable during shutdown -> ECONNREFUSED/errno 111).
+        // During shutdown syscheck is stopped first, so this is expected and kept at debug to avoid
+        // a spurious ERROR; during normal operation a dead syscheck is a genuine fault worth ERROR.
+        if (wm_shutdown_requested) {
+            mdebug1("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        } else {
+            merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        }
+
         switch (errno) {
             case ECONNREFUSED:
                 snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be disabled\"}",
@@ -522,7 +541,13 @@ size_t wm_fim_query_json(const char* command, char** response) {
 
     // Send the JSON query to syscheck
     if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
-        merror("WM_FIM_QUERY_JSON: Failed to send command");
+        // Transport-level failure returned to the caller as a JSON error; debug during shutdown
+        // (expected race), ERROR otherwise (genuine fault).
+        if (wm_shutdown_requested) {
+            mdebug1("WM_FIM_QUERY_JSON: Failed to send command");
+        } else {
+            merror("WM_FIM_QUERY_JSON: Failed to send command");
+        }
         close(sock);
         snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
                  MQ_ERR_INTERNAL);
