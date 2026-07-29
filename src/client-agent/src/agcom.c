@@ -10,8 +10,12 @@
 
 #include <shared.h>
 #include "agentd.h"
+#include "module_report.h"
 #include "os_net.h"
 #include "wmodules.h"
+
+/* Name this daemon reports itself under in the /config and /stats documents. */
+#define AGCOM_MODULE_NAME "agent"
 
 
 size_t agcom_dispatch(char * command, char ** output){
@@ -32,6 +36,12 @@ size_t agcom_dispatch(char * command, char ** output){
             return strlen(*output);
         }
         return agcom_getconfig(rcv_args, output);
+
+    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+        return agcom_getallconfig(output);
+
+    } else if (strcmp(rcv_comm, "getallstats") == 0) {
+        return agcom_getallstats(output);
 
     } else if (strcmp(rcv_comm, "getstate") == 0) {
         *output = w_agentd_state_get();
@@ -125,6 +135,34 @@ error:
     mdebug1("At AGCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
+}
+
+size_t agcom_getallconfig(char ** output) {
+
+    cJSON *report = cJSON_CreateArray();
+    cJSON *body = cJSON_CreateObject();
+
+    module_report_merge(body, getClientConfig());
+    module_report_merge(body, getBufferConfig());
+    module_report_merge(body, getAgentInternalOptions());
+#ifndef WIN32
+    module_report_merge(body, getAntiTamperingConfig());
+#endif
+
+    module_report_add_config(report, AGCOM_MODULE_NAME, body);
+    return module_report_reply(report, output);
+}
+
+size_t agcom_getallstats(char ** output) {
+
+    cJSON *report = cJSON_CreateArray();
+    char *state = w_agentd_state_get();
+
+    /* w_agentd_state_get() hands back a serialized document; parse it so the
+     * report carries the object rather than a string holding JSON. */
+    module_report_add_stats(report, AGCOM_MODULE_NAME, state ? cJSON_Parse(state) : NULL);
+    os_free(state);
+    return module_report_reply(report, output);
 }
 
 /**

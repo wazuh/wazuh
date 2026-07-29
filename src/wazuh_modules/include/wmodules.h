@@ -196,6 +196,16 @@ void * wmcom_main(void * arg);
 void wmcom_send(char * message, size_t length);
 size_t wmcom_dispatch(char * command, size_t length, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
+
+/**
+ * @brief Build this daemon's entries for the agent's /config document.
+ *
+ * One entry per hosted wodle, plus one for modulesd's internal options.
+ *
+ * @param output Receives the allocated "ok <json>" reply.
+ * @return Length of *output.
+ */
+size_t wmcom_getallconfig(char ** output);
 int wmcom_sync(char * buffer, size_t length);
 
 /**
