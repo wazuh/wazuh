@@ -12,6 +12,8 @@
 #ifndef _HC_SYNC_FRAME_HPP
 #define _HC_SYNC_FRAME_HPP
 
+#include "shared_modules/sync_protocol/include/sync_session_wire.hpp"
+
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -23,16 +25,9 @@
  * 64 KB per-message cap: one session is one frame, and the body is STREAMED
  * (never held whole in memory).
  *
- * Wire layout (little-endian, the OS_SendSecureTCP convention):
- *   magic      4 bytes  "WZSY"
- *   id_len     4 bytes  session-id length (bounded by SESSION_ID_MAX_LENGTH)
- *   id         id_len   session-id bytes (see sessionId.hpp for the charset)
- *   body_len   8 bytes  session body length
- *   body       body_len session bytes (streamed)
- *
- * The receiver then answers with one status byte, so the producer learns
- * whether the session was actually taken and can hold on to it if it was not.
- * Without it a full queue would look like a successful send.
+ * The wire layout, its bounds and the session-id charset live in
+ * sync_session_wire.hpp, the one definition shared with the producer
+ * (sync_protocol's SyncSocketTransport) so the two ends cannot drift.
  *
  * The transport is abstracted as read/write callbacks so the framing is unit
  * tested without any socket; the socket component supplies fd-backed ones.
@@ -51,11 +46,6 @@ enum class SyncFrameResult
     WriteError, ///< Spooling the body to disk failed.
     Error       ///< Transport read error.
 };
-
-constexpr uint64_t SYNC_FRAME_MAX_BODY = 512ULL * 1024 * 1024;    ///< 512 MB body cap.
-
-constexpr uint8_t SYNC_FRAME_ACCEPTED = 1;  ///< Queued for /stateful; the producer may forget it.
-constexpr uint8_t SYNC_FRAME_REFUSED = 0;   ///< Not taken; the session is still the producer's.
 
 /// Frames and writes a whole session through the write callback. Returns false
 /// on a transport write error.
