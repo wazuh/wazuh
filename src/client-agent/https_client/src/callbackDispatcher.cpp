@@ -165,6 +165,21 @@ void CallbackDispatcher::onUpgradeReady(const std::string& taskId, const std::st
     });
 }
 
+void CallbackDispatcher::onTaskFailed(const std::string& taskId, const std::string& taskType,
+                                      const std::string& reason)
+{
+    if (m_callbacks.on_task_failed == nullptr)
+    {
+        return; // Optional callback: this failure category simply goes uncounted.
+    }
+
+    enqueue([this, taskId, taskType, reason]
+    {
+        m_callbacks.on_task_failed(taskId.c_str(), taskType.c_str(), reason.c_str(),
+                                   m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
 {
     if (m_callbacks.on_manager_config_hash == nullptr)

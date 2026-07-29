@@ -29,16 +29,17 @@ typedef struct wm_agent_info_sync_flags_t
     long sync_max_eps;
 } wm_agent_info_sync_flags_t;
 
-// #37833: the durable, restart-surviving task_id registry (dedup for
+// The durable, restart-surviving task_id registry (dedup for
 // /control tasks, reached from agentd over the wmcom "query agent-info ..."
-// IPC verb -- see wm_agent_info_query()). Bounded by max_entries (oldest-
-// first eviction) and ttl_seconds; cleanup_interval_s controls how often the
-// background prune runs.
+// IPC verb -- see wm_agent_info_query()). Bounded by max_entries (oldest-first
+// eviction) and ttl_s; both are internal_options.conf tunables (agent_info.max_entries/
+// agent_info.ttl, read via getDefine_Int_default() in wm_agent_info_read()), not part of
+// this module's ossec.conf surface. Cleanup runs on the module's own <interval> cycle
+// (AgentInfoImpl::start()'s loop) -- no separate cadence to configure.
 typedef struct wm_agent_info_task_registry_t
 {
     uint32_t max_entries;
     uint32_t ttl_s;
-    uint32_t cleanup_interval_s;
 } wm_agent_info_task_registry_t;
 
 typedef struct wm_agent_info_t

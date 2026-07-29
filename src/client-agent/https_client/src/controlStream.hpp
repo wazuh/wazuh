@@ -28,11 +28,11 @@
 #include "wpkFetcher.hpp"
 
 #include <string>
+#include <thread>
 #include <vector>
 
 /**
- * @brief The /control client: Startup, Notify and shutdown, speaking the
- *        message formats of #37733 5.1.
+ * @brief The /control client: Startup, Notify and shutdown.
  *
  * Drives the pure ControlStateMachine: nextAction() decides the request,
  * step() performs it and feeds the result back as an event. Startup applies
@@ -47,6 +47,12 @@ class ControlStream final
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
                       ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore);
+
+        /// Safety net for any destruction path that doesn't go through HttpsClientFacade::
+        /// stop() first (e.g. a test constructing a bare ControlStream): joins m_upgradeThread
+        /// if still joinable, same as joinUpgradeWork(). A joinable std::thread destroyed
+        /// without being joined calls std::terminate(), so this is not optional.
+        ~ControlStream();
 
         /// One control iteration. Returns whether Startup has been accepted (the
         /// producer gate is open) so the facade can gate the data streams.
@@ -64,6 +70,14 @@ class ControlStream final
         {
             return m_machine.useSlowCadence();
         }
+
+        /// Blocks until any in-flight remote_upgrade download/dispatch thread (see
+        /// dispatchUpgradeTask()) finishes. Must be called by the owner (HttpsClientFacade::
+        /// stop()) BEFORE any referenced Waiter is destroyed -- ControlStream's own
+        /// destructor runs too late for this (HttpsClientFacade destroys m_controlWaiter,
+        /// which the upgrade thread may still be using, before it destroys m_control; see
+        /// httpsClientFacade.hpp's member declaration order).
+        void joinUpgradeWork();
 
     private:
         OutcomeClass sendStartup(Waiter& waiter);
@@ -102,6 +116,14 @@ class ControlStream final
         /// refreshing forever (guards a non-deterministic manager hash).
         std::string m_refreshedForSettingsHash;
         bool m_settingsLoopWarned {false};
+
+        /// Background thread for the current/last remote_upgrade's download+dispatch: must not
+        /// run inline on the control thread, since that would stall the next Notify for the
+        /// whole download (neither handlers nor dedup IPC may stall it). At most one at a time:
+        /// dispatchUpgradeTask() joins a still-running previous one before starting a new one,
+        /// since WpkFetcher/RetrySender are not safe for concurrent reentrant calls on the same
+        /// instance. See joinUpgradeWork() for shutdown ordering.
+        std::thread m_upgradeThread;
 
 };
 

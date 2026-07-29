@@ -48,8 +48,8 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void* arg)
 
 /**
  * Checks if an agent has been recently upgraded, by reading the upgrade_result file.
- * If a result is present, it is logged locally (purely informational: since #37733/#37834
- * the agent never reports the outcome back to the manager) and the result file is removed
+ * If a result is present, it is logged locally (purely informational: the HTTPS
+ * remote_upgrade path never reports the outcome back to the manager) and the result file is removed
  * so a stale result cannot be picked up again on the next start. Either way, upgrades are
  * unconditionally re-allowed afterward -- there is no manager round-trip left to wait for.
  * @param agent_config Agent configuration parameters (unused; kept for call-site stability)
@@ -171,7 +171,7 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void* arg)
 STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config)
 {
     // No longer used: the redesigned, synchronous check_status() has no manager round-trip
-    // to size a retry/backoff loop for (see the function's own header comment, #37733/#37834).
+    // to size a retry/backoff loop for (see the function's own header comment).
     (void)agent_config;
 
     // Wait until the pkg_installer script verifies the agent was connected and writes the
@@ -188,7 +188,7 @@ STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config)
         wm_upgrade_agent_state state =
             (raw_code < WM_UPGRADE_MAX_STATE) ? (wm_upgrade_agent_state)raw_code : WM_UPGRADE_FAILED;
 
-        // Purely informational (#37733/#37834): nothing is sent to the manager anymore.
+        // Purely informational: nothing is sent to the manager anymore.
         mtinfo(WM_AGENT_UPGRADE_LOGTAG, "%s", upgrade_messages[state]);
 
         if (remove(WM_AGENT_UPGRADE_RESULT_FILE) != 0)

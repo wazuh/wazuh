@@ -270,7 +270,7 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_fclose, _File, (FILE*)1);
     will_return(__wrap_fclose, 1);
 
-    // Purely informational now (#37733/#37834): nothing is sent to the manager.
+    // Purely informational now: nothing is sent to the manager.
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Upgrade was successful");
 

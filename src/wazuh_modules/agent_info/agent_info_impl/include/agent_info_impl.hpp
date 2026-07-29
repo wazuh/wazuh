@@ -107,7 +107,7 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
-        /// @brief Durable /control task_id dedup guard (#37833), backed by the `tasks` table in
+        /// @brief Durable /control task_id dedup guard, backed by the `tasks` table in
         /// this same agent_info.db (rather than a private flat file), keyed by task_id.
         /// Atomically checks whether taskId was already recorded and, if not, records it.
         /// @param taskId The task_id to check and record
@@ -125,6 +125,18 @@ class AgentInfoImpl
         /// @brief Current number of remembered task_ids in the `tasks` table. For tests and
         /// .state metrics.
         size_t countTasks();
+
+        /// @brief Configure the bounds cleanupExpiredTasks() enforces on its own periodic call
+        /// from within start()'s loop. Runs on that loop rather than a dedicated cleanup thread,
+        /// which would otherwise race with this instance's destruction since nothing
+        /// synchronizes the two.
+        /// @param ttlSeconds Entries older than this are pruned.
+        /// @param maxEntries Entries beyond this count (oldest first) are pruned.
+        void setTaskRegistryLimits(uint32_t ttlSeconds, uint32_t maxEntries)
+        {
+            m_taskRegistryTtlSeconds = ttlSeconds;
+            m_taskRegistryMaxEntries = maxEntries == 0 ? 1 : maxEntries;
+        }
 
     private:
         /// @brief Determine if a stateless event should be generated based on changed fields
@@ -379,4 +391,11 @@ class AgentInfoImpl
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;
+
+        /// @brief Task registry cleanup bounds (see setTaskRegistryLimits()), read once per
+        /// start()'s loop iteration. Defaults match the internal_options.conf defaults
+        /// (agent_info.ttl / agent_info.max_entries) so a call to start() before
+        /// setTaskRegistryLimits() still behaves sanely rather than pruning everything.
+        uint32_t m_taskRegistryTtlSeconds = 86400;
+        uint32_t m_taskRegistryMaxEntries = 4096;
 };

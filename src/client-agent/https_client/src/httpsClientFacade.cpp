@@ -151,6 +151,12 @@ void HttpsClientFacade::stop()
         m_controlThread.join();
     }
 
+    // Joins any in-flight remote_upgrade download/dispatch thread ControlStream may have
+    // spawned (dispatchUpgradeTask()). Must happen here, before member teardown begins --
+    // m_controlWaiter (destroyed before m_control, per this class's declaration order) is
+    // captured by reference in that thread's lambda, so it must finish first.
+    m_control.joinUpgradeWork();
+
     if (m_statelessThread.joinable())
     {
         m_statelessThread.join();
@@ -229,9 +235,9 @@ void HttpsClientFacade::statefulLoop()
 
 void HttpsClientFacade::drain()
 {
-    // Finding 3 (#37831 QA round): the manager was observed never receiving
-    // the /control shutdown message, with no failure log either -- pointing
-    // at this guard silently skipping the send. Neither branch had a log
+    // The manager was observed never receiving the /control shutdown message, with no
+    // failure log either -- pointing at this guard silently skipping the send. Neither
+    // branch had a log
     // statement at any verbosity before this, so raising debug logging could
     // not distinguish "guard tripped" from "never reached this code at all".
     // These two lines make that observable; see controlStream.cpp's
