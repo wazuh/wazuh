@@ -140,6 +140,12 @@ int wm_config() {
     if ((module = wm_inventory_sync_read()))
         wm_add(module);
 
+    // Inventory sync server (transitional; will replace inventory_sync above).
+    // Registered AFTER it deliberately: wm_add() appends and main() starts the modules in list
+    // order, so the older module still claims its socket and its router subscription first.
+    if ((module = wm_inventory_sync_server_read()))
+        wm_add(module);
+
     // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);
