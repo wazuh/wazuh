@@ -32,15 +32,6 @@ int __wrap_wdb_global_insert_agent(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-int __wrap_wdb_global_update_agent_name(__attribute__((unused)) wdb_t *wdb,
-                                        int id,
-                                        char* name) {
-    check_expected(id);
-    check_expected(name);
-
-    return mock();
-}
-
 int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
                                            int id,
                                            const char *os_name,

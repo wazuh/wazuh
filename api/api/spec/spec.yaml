@@ -2411,9 +2411,6 @@ components:
                                 update-agent-data:
                                   type: integer
                                   format: int32
-                                update-agent-name:
-                                  type: integer
-                                  format: int32
                                 update-connection-status:
                                   type: integer
                                   format: int32
@@ -2569,9 +2566,6 @@ components:
                                   type: integer
                                   format: int32
                                 update-agent-data:
-                                  type: integer
-                                  format: int32
-                                update-agent-name:
                                   type: integer
                                   format: int32
                                 update-connection-status:

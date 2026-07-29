@@ -52,10 +52,6 @@ void __wrap_w_inc_global_agent_update_agent_data();
 
 void __wrap_w_inc_global_agent_update_agent_data_time(__attribute__((unused)) struct timeval diff);
 
-void __wrap_w_inc_global_agent_update_agent_name();
-
-void __wrap_w_inc_global_agent_update_agent_name_time(__attribute__((unused)) struct timeval diff);
-
 void __wrap_w_inc_global_agent_update_keepalive();
 
 void __wrap_w_inc_global_agent_update_keepalive_time(__attribute__((unused)) struct timeval diff);

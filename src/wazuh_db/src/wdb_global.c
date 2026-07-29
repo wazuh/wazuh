@@ -109,33 +109,6 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
     return wdb_exec_stmt_silent(stmt);
 }
 
-int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
-    sqlite3_stmt *stmt = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_NAME) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_NAME];
-
-    if (sqlite3_bind_text(stmt, 1, name, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_int(stmt, 2, id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
-}
-
 int wdb_global_update_agent_version(wdb_t *wdb,
                                     int id,
                                     const char *os_name,

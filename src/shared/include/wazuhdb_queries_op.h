@@ -18,7 +18,6 @@ typedef enum global_db_access
 {
     WDB_INSERT_AGENT,
     WDB_INSERT_AGENT_GROUP,
-    WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
@@ -71,16 +70,6 @@ int wdb_insert_agent(int id,
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_insert_group(const char* name, int* sock);
-
-/**
- * @brief Update agent name in global.db.
- *
- * @param[in] id The agent ID.
- * @param[in] name The agent name.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_update_agent_name(int id, const char* name, int* sock);
 
 /**
  * @brief Update agent data in global.db.
