@@ -1005,10 +1005,10 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# llhttp (server only)
+# llhttp (Linux server only)
 # ------------------------------------------------------------------------------
 
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
+if(IS_LINUX AND NOT IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/llhttp/build/libllhttp.a)
     message(STATUS "Using precompiled llhttp library")
     add_library(ext_llhttp STATIC IMPORTED GLOBAL)
@@ -1033,10 +1033,10 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# RESTinio (server only)
+# RESTinio (Linux server only)
 # ------------------------------------------------------------------------------
 
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
+if(IS_LINUX AND NOT IS_AGENT)
   add_library(ext_asio INTERFACE)
   target_include_directories(ext_asio SYSTEM INTERFACE ${EXTERNAL_DIR}/asio/include)
 
@@ -1048,7 +1048,7 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   target_include_directories(ext_restinio SYSTEM
                              INTERFACE ${EXTERNAL_DIR}/restinio/dev)
   target_link_libraries(ext_restinio INTERFACE ext_asio ext_llhttp ext_fmt
-                                              ext_expected_lite ssl crypto)
+                                              ext_expected_lite pthread ssl crypto)
 endif()
 
 # ------------------------------------------------------------------------------
