@@ -17,6 +17,9 @@ endif()
 
 add_definitions(-DWIN32=1 -DCLIENT -D_POSIX_C_SOURCE -DPSAPI_VERSION=1)
 
+# Lift the 32-bit 2 GB user-space limit to ~4 GB on 64-bit Windows (issue #6800).
+add_link_options(-Wl,--large-address-aware)
+
 include_directories(
   ${SRC_FOLDER}/
   ${SRC_FOLDER}/shared/include/
