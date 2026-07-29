@@ -11,7 +11,7 @@
 
 #include "statefulStream.hpp"
 
-#include "sessionId.hpp"
+#include "shared_modules/sync_protocol/include/sync_session_wire.hpp"
 
 namespace
 {
