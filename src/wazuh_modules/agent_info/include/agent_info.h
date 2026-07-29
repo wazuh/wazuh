@@ -124,15 +124,18 @@ EXPORTED const char* agent_info_get_agent_groups(void);
 EXPORTED void agent_info_clear_agent_groups(void);
 
 /**
- * @brief Configure the durable task_id registry (#37833): the `tasks` table in agent-info's
+ * @brief Configure the durable task_id registry: the `tasks` table in agent-info's
  * own agent_info.db (not a private flat file -- see AgentInfoImpl::checkAndRecordTask/
- * cleanupExpiredTasks).
+ * cleanupExpiredTasks/setTaskRegistryLimits).
  *
- * Only stores the max_entries/ttl_seconds config; does not itself touch the database. Task
- * dispatch is gated on agent_info.db being available (see agent_info_task_check_and_record),
- * which in production becomes true partway through agent_info_start() -- an accepted
- * trade-off for sharing agent-info's single database rather than keeping a registry
- * independent of AgentInfoImpl's own lifecycle.
+ * Constructs agent_info.db if needed (via agent_info_ensure_database()) and configures its
+ * ttl/max_entries bounds. Cleanup itself is NOT triggered by this call or any other exported
+ * function -- it runs automatically, once per iteration, from within AgentInfoImpl::start()'s
+ * own loop, instead of a dedicated cleanup thread that would otherwise have no synchronization
+ * against this same instance's destruction. Task dispatch is gated on agent_info.db being
+ * available (see agent_info_task_check_and_record), which in production becomes true as soon
+ * as this function runs -- an accepted trade-off for sharing agent-info's single database
+ * rather than keeping a registry independent of AgentInfoImpl's own lifecycle.
  *
  * @param max_entries Bound on remembered task_ids (oldest-first eviction).
  * @param ttl_seconds How long a task_id is remembered before a re-delivery
@@ -143,7 +146,7 @@ EXPORTED void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_s
 /**
  * @brief Atomically check-and-record a task_id against the durable `tasks` table.
  *
- * This is the whole point of #37833: agentd calls this (over IPC) before
+ * This is the whole point of the durable registry: agentd calls this (over IPC) before
  * dispatching a /control task, and a remote_upgrade's task_id must be
  * recorded here BEFORE its installer runs, so a post-restart re-delivery is
  * discarded.
@@ -152,19 +155,6 @@ EXPORTED void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_s
  *         -1 on error (including: agent_info.db not yet available, null/empty id).
  */
 EXPORTED int agent_info_task_check_and_record(const char* task_id);
-
-/**
- * @brief Prune TTL-expired and over-cap entries from the `tasks` table.
- *        A no-op if agent_info.db is not yet available. Intended to be called
- *        periodically from a background thread.
- */
-EXPORTED void agent_info_task_registry_cleanup(void);
-
-/**
- * @brief Current number of remembered task_ids. For tests/diagnostics.
- * @return 0 if agent_info.db is not yet available.
- */
-EXPORTED size_t agent_info_task_registry_count(void);
 
 /**
  * @brief Ensure agent_info.db (and thus the `tasks` table) is constructed, without running
@@ -200,7 +190,5 @@ typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);
 typedef void (*agent_info_task_registry_init_func)(uint32_t max_entries, uint32_t ttl_seconds);
 typedef int (*agent_info_task_check_and_record_func)(const char* task_id);
-typedef void (*agent_info_task_registry_cleanup_func)(void);
-typedef size_t (*agent_info_task_registry_count_func)(void);
 
 #endif //_AGENT_INFO_H

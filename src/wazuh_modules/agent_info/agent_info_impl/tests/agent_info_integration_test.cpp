@@ -151,7 +151,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     EXPECT_TRUE(foundMetadataEvent);
 }
 
-// Durable /control task_id dedup guard (#37833) against a real (in-memory) SQLite database --
+// Durable /control task_id dedup guard against a real (in-memory) SQLite database --
 // no mocking of selectRows/insertData/deleteRows, exercising the actual `tasks` table schema
 // and SQL this same agent_info.db now shares with agent_metadata/agent_groups.
 

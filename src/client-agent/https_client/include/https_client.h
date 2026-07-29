@@ -22,10 +22,9 @@
  * ever throws into C. agentd links the module directly (see
  * src/client-agent/CMakeLists.txt).
  *
- * The transport contract implemented behind this ABI is the one proposed in
- * #37732 (AES-CMAC request signing, H/E stateless format, status codes) and
- * #37733 (task delivery via /control Notify, single-request /stateful
- * sessions), as consolidated in the #37738 spike.
+ * The transport contract implemented behind this ABI covers AES-CMAC request signing, the
+ * H/E stateless format, status codes, task delivery via /control Notify, and single-request
+ * /stateful sessions.
  */
 
 // Define EXPORTED for any platform
@@ -111,9 +110,7 @@ typedef struct hc_config_t
     char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
     uint16_t server_port;          ///< Manager HTTPS port.
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. The
-    ///< recipe (settled by the manager's
-    ///< resolver, PR #37821): decode verbatim,
+    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
     ///< AES-128/192/256-CMAC by byte length
     ///< (16/24/32; a real key is 64 hex = 32).
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
@@ -141,7 +138,7 @@ typedef struct hc_config_t
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
-    /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB (#37834).
+    /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB.
     uint64_t wpk_max_download_bytes;
 
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
@@ -174,7 +171,7 @@ typedef struct hc_config_t
  * may fire from any module thread.
  */
 /// Synchronous check-and-record against the durable agent-info task_id
-/// registry (#37833). Called on the CONTROL thread (not the dispatcher),
+/// registry. Called on the CONTROL thread (not the dispatcher),
 /// once per fresh task_id in a Notify batch, before batch planning and
 /// before any dispatch -- this ordering is what makes remote_upgrade
 /// idempotent across the restart it triggers. Must be fast and bounded (a
@@ -204,7 +201,7 @@ typedef struct hc_callbacks_t
     /// error return.
     hc_check_and_record_task_fn check_and_record_task;
     /// A remote_upgrade task's WPK was downloaded via /download and its
-    /// wpk_sha1 verified (#37834): wpk_path is ready to hand to the upgrade
+    /// wpk_sha1 verified: wpk_path is ready to hand to the upgrade
     /// module together with installer. Fires from the dispatcher thread,
     /// same as on_task; wpk_path is a module-owned temp file valid ONLY
     /// until this callback returns (copy/move it inside the callback, same
@@ -215,6 +212,13 @@ typedef struct hc_callbacks_t
     /// upstream and never reaches here again.
     void (*on_remote_upgrade_ready)(const char* task_id, const char* wpk_file,
                                     const char* wpk_path, const char* installer, void* user_data);
+    /// A task's durable record already happened (check_and_record_task), but it will NEVER
+    /// reach on_task/on_remote_upgrade_ready: its payload was malformed, or (remote_upgrade
+    /// only) the WPK download/sha1 verification failed. Distinct from a duplicate, so a
+    /// consumer can count it as a real failure. Optional: a null value just means this
+    /// category of failure goes uncounted.
+    void (*on_task_failed)(const char* task_id, const char* task_type, const char* reason,
+                           void* user_data);
     /// A Notify reported a merged-config hash differing from the local one;
     /// the module fetched the new configuration via POST /download and
     /// verified its SHA-256. file_path is a module-owned temp file valid ONLY

@@ -153,7 +153,7 @@ int write_state() {
         "# /control tasks routed to a handler\n"
         W_AGENTD_FIELD_TASK_DISPATCHED "='%u'\n"
         "\n"
-        "# /control tasks discarded as duplicates (durable registry, #37833)\n"
+        "# /control tasks discarded as duplicates (durable registry)\n"
         W_AGENTD_FIELD_TASK_DUPLICATE "='%u'\n"
         "\n"
         "# /control tasks that failed to dispatch/execute\n"
