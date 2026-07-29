@@ -14,6 +14,7 @@
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
 #include "mqueue_transport.hpp"
+#include "sync_socket_transport.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -33,12 +34,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
+        /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
         /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Default timeout for synchronization operations.
         /// @param retries Default number of retries for synchronization operations.
         /// @param maxEps Default maximum events per second for synchronization operations.
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
-                                   unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr);
+                                   unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr,
+                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -108,6 +111,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief The MQueue message transport.
         std::unique_ptr<MQueueTransport> m_transport;
 
+        /// @brief Carries a whole session to the agent over the queue-sync STREAM
+        ///        socket, which has no 64 KB bound.
+        std::shared_ptr<ISyncSessionTransport> m_syncTransport;
+
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
 
@@ -159,55 +166,48 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             Option option = Option::SYNC,
             std::optional<uint64_t> globalVersion = std::nullopt);
 
+        /// @brief One checksum declaration inside a session.
+        struct ChecksumEntry
+        {
+            std::string index;
+            std::string checksum;
+        };
+
+        /// @brief Everything a session carries. All four flows (module sync,
+        ///        metadata/groups, integrity check, data clean) differ only in
+        ///        which of these are populated, so they all go through
+        ///        runSession() and produce one FullSession message.
+        struct SessionContent
+        {
+            Mode mode {Mode::DELTA};
+            size_t declaredSize {0};              ///< The size announced in Start.
+            std::vector<std::string> indices;
+            Option option {Option::SYNC};
+            std::optional<uint64_t> globalVersion;
+            std::vector<PersistedData> dataValues;
+            std::vector<PersistedData> dataContexts;
+            std::vector<PersistedData> dataCleans;
+            std::vector<ChecksumEntry> checksums;
+        };
+
+        /// @brief Sends one whole session and waits for the manager's answer.
+        ///        Retries resend the entire session under the same id, which is
+        ///        what makes the retry safe: the manager dedups on it.
+        /// @param content What the session carries.
+        /// @return True when the manager accepted it.
+        bool runSession(const SessionContent& content);
+
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry
         ///        reuses the same value so the manager can dedup on it.
         /// @return A session id unique within this agent.
         static uint64_t nextSessionId();
 
-        /// @brief Serializes a whole synchronization session as one FullSession
-        ///        message: Start + one DataBatch + the DataContext items + End.
+        /// @brief Serializes a whole session as one FullSession message.
         /// @param session Session id, stamped on the message and on every item.
-        /// @param mode Sync mode.
-        /// @param dataValueItems Items carried as DataValue entries.
-        /// @param dataContextItems Items carried as DataContext entries.
-        /// @param uniqueIndices Indices to declare in Start.
-        /// @param option Synchronization option.
-        /// @param globalVersion Optional global version for Start.
+        /// @param content What the session carries.
         /// @return The serialized message, or an empty vector on failure.
-        std::vector<uint8_t> buildFullSessionMessage(
-            uint64_t session,
-            Mode mode,
-            const std::vector<PersistedData>& dataValueItems,
-            const std::vector<PersistedData>& dataContextItems,
-            const std::vector<std::string>& uniqueIndices,
-            Option option = Option::SYNC,
-            std::optional<uint64_t> globalVersion = std::nullopt);
-
-        /// @brief Sends a start message to the server
-        /// @param mode Sync mode
-        /// @param dataSize Size of data to send
-        /// @param uniqueIndices Vector of unique indices to be synchronized
-        /// @param option Synchronization option.
-        /// @param globalVersion Optional global version to include in the Start message
-        /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(Mode mode,
-                                 size_t dataSize,
-                                 const std::vector<std::string>& uniqueIndices,
-                                 Option option = Option::SYNC,
-                                 std::optional<uint64_t> globalVersion = std::nullopt);
-
-        /// @brief Receives a startack message from the server
-        /// @param timeout Timeout to wait for Ack
-        /// @return True on success, false on failure
-        bool receiveStartAck(std::chrono::seconds timeout);
-
-        /// @brief Sends data messages to the server
-        /// @param session Session id
-        /// @param data Data to send
-        /// @return True on success, false on failure
-        bool sendDataMessages(uint64_t session,
-                              const std::vector<PersistedData>& data);
+        std::vector<uint8_t> buildFullSessionMessage(uint64_t session, const SessionContent& content);
 
         /// @brief Sends a checksum module message to the server
         /// @param session Session id
@@ -225,13 +225,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendDataCleanMessages(uint64_t session,
                                    const std::vector<PersistedData>& data);
 
-        /// @brief Sends an end message to the server
-        /// @param session Session id
-        /// @param dataToSync The complete vector of data items being synchronized in the current session.
-        /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(uint64_t session,
-                               const std::vector<PersistedData>& dataToSync);
-
         /// @brief Sends a flatbuffer message as a string to the server
         /// @param fbData Flatbuffer data
         /// @return True on success, false on failure
@@ -242,9 +235,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         {
             /// @brief The protocol is not in an active synchronization process.
             Idle,
-            /// @brief A start message has been sent, waiting for the manager's StartAck.
-            WaitingStartAck,
-            /// @brief An end message has been sent, waiting for the manager's EndAck.
+            /// @brief The session has been sent, waiting for the manager's answer.
             WaitingEndAck
         };
 
@@ -256,14 +247,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Safely resets the synchronization state by acquiring a lock.
         void clearSyncState();
-
-        /// @brief Filters a vector of persisted data based on a list of sequence number ranges.
-        /// @param sourceData The complete vector of `PersistedData` items.
-        /// @param ranges A vector of pairs [begin, end] inclusive range of sequence numbers.
-        /// @return A new vector containing only the `PersistedData` items that match the requested ranges.
-        std::vector<PersistedData> filterDataByRanges(
-            const std::vector<PersistedData>& sourceData,
-            const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 
         /// @brief Converts internal Mode enum to protocol schema Mode.
         /// @param mode The internal Mode enum value.
@@ -289,28 +272,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Condition variable used to signal waiting threads.
             std::condition_variable cv;
 
-            /// @brief Indicates whether a StartAck response has been received.
-            bool startAckReceived = false;
-
             /// @brief Indicates whether an EndAck response has been received.
             bool endAckReceived = false;
-
-            /// @brief Indicates that a ReqRet message has been received.
-            bool reqRetReceived = false;
 
             /// @brief Indicates that the manager reported a error, forcing the sync to fail.
             bool syncFailed = false;
 
-            /// @brief Indicates that the manager is still processing the session (EndAck with Processing status).
-            bool processingAckReceived = false;
-
-            /// @brief Ranges requested by the manager via ReqRet message.
-            std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
-
             /// @brief Current phase of the synchronization process.
             SyncPhase phase = SyncPhase::Idle;
 
-            /// @brief Unique identifier for the current synchronization session, received from the manager.
+            /// @brief Unique identifier for the current synchronization session, chosen by this agent.
             uint64_t session = 0;
 
             /// @brief Last sync operation result for detailed error reporting.
@@ -337,12 +308,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// This should be called before starting a new synchronization cycle.
             void reset()
             {
-                startAckReceived = false;
                 endAckReceived = false;
-                reqRetReceived = false;
                 syncFailed = false;
-                processingAckReceived = false;
-                reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
                 lastSyncResult = SyncResult::SUCCESS;

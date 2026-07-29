@@ -67,7 +67,7 @@ class IAgentSyncProtocol
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///
         /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-        /// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+        /// Sent as one FullSession carrying Start and End (no data items).
         /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
         /// @param indices Vector of index names that will be updated by the manager
         /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
@@ -77,7 +77,7 @@ class IAgentSyncProtocol
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///
         /// This method sends DataClean messages for each index in the provided vector.
-        /// The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck.
+        /// Sent as one FullSession carrying Start, a DataClean per index, and End.
         /// Upon receiving Ok, it clears the local database and returns true.
         /// @param indices Vector of index names to clean
         /// @param option Synchronization option.
