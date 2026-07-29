@@ -11,32 +11,11 @@
 
 #include "agent_sync_protocol_types.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-/**
- * @brief Sends a whole synchronization session over the agent's local STREAM
- *        socket (`queue-sync`), which the HTTPS client's intake binds.
- *
- * This is the transport that makes FullSession worth having. The DGRAM queue
- * behind MQueueTransport is bounded by OS_MAXSTR (65536), which is the only
- * reason a session was ever split into ~60 KB batches; a STREAM socket has no
- * such bound, so one session is one write.
- *
- * The frame is the same `WZSY` layout the intake reads:
- *   [magic "WZSY"][id_len u32][id][body_len u64][body]
- * and the intake answers with one status byte. That byte is the only thing
- * that makes the return value honest: without it a full queue on the other
- * side looks exactly like a successful send.
- *
- * Note this reports whether the AGENT took the session, not whether the
- * manager accepted it. The manager's verdict arrives asynchronously on the
- * HTTPS response and is routed separately.
- *
- * Unix-only: the Windows agent runs its modules in-process, so there is no
- * socket in the path and sendSession() always fails there.
- */
 /**
  * @brief What AgentSyncProtocol needs from whatever carries a session.
  *
@@ -56,6 +35,28 @@ class ISyncSessionTransport
         virtual bool sendSession(uint64_t session, const std::vector<uint8_t>& message) = 0;
 };
 
+/**
+ * @brief Sends a whole synchronization session over the agent's local STREAM
+ *        socket (`queue-sync`), which the HTTPS client's intake binds.
+ *
+ * This is the transport that makes FullSession worth having. The DGRAM queue
+ * the sessions used to ride is bounded by OS_MAXSTR (65536), which is the only
+ * reason a session was ever split into ~60 KB batches; a STREAM socket has no
+ * such bound, so one session is one write.
+ *
+ * The frame is the same `WZSY` layout the intake reads (sync_session_wire.hpp,
+ * the one definition both ends include), and the intake answers with one
+ * status byte. That byte is the only thing that makes the return value honest:
+ * without it a full queue on the other side looks exactly like a successful
+ * send.
+ *
+ * Note this reports whether the AGENT took the session, not whether the
+ * manager accepted it. The manager's verdict arrives asynchronously on the
+ * HTTPS response and is routed separately.
+ *
+ * Unix-only: the Windows agent runs its modules in-process, so there is no
+ * socket in the path and sendSession() always fails there.
+ */
 class SyncSocketTransport final : public ISyncSessionTransport
 {
     public:
@@ -64,7 +65,12 @@ class SyncSocketTransport final : public ISyncSessionTransport
         ///        agentd knows which module's *com socket the manager's answer
         ///        belongs to - it never parses the session itself.
         /// @param logger Logger function.
-        SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger);
+        /// @param ioTimeout Bound on each socket send/receive, so a wedged
+        ///        intake fails the attempt instead of hanging the sync worker
+        ///        forever. The default is generous because the intake spools
+        ///        the whole body to disk before it answers.
+        SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger,
+                            std::chrono::milliseconds ioTimeout = std::chrono::seconds {60});
 
         /// @brief Whether the intake socket is reachable.
         bool checkStatus() override;
@@ -85,4 +91,5 @@ class SyncSocketTransport final : public ISyncSessionTransport
         std::string m_socketPath;
         std::string m_moduleName;
         LoggerFunc m_logger;
+        std::chrono::milliseconds m_ioTimeout;
 };

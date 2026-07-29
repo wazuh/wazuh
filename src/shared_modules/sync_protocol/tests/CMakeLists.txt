@@ -28,7 +28,7 @@ set(TEST_SOURCES
     test_agent_sync_protocol_datacontext.cpp
     test_sync_protocol_integration.cpp
     test_agent_sync_protocol.cpp
-    test_mqueue_transport.cpp)
+    test_sync_socket_transport.cpp)
 
 # Add the test executable
 add_executable(agent_sync_protocol_tests ${TEST_SOURCES})
