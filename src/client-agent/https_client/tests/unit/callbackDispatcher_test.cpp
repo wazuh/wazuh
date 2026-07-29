@@ -17,6 +17,7 @@
 #include <atomic>
 #include <fstream>
 #include <memory>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -69,7 +70,7 @@ namespace
         recordTag("reenroll", static_cast<Record*>(userData));
     }
 
-    void recordSync(const char* sessionId, int, const char*, void* userData)
+    void recordSync(const char* sessionId, int, const char*, size_t, void* userData)
     {
         recordTag(std::string {"sync:"} + sessionId, static_cast<Record*>(userData));
     }
@@ -280,4 +281,46 @@ TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
     dispatcher.stop();
     dispatcher.stop(); // Ignored.
     EXPECT_EQ(1, record.count.load());
+}
+
+TEST(CallbackDispatcherBinaryTest, ASyncResponseBodyKeepsItsNulBytes)
+{
+    // A session is answered with an EndAck FlatBuffer, which is binary. The
+    // callback used to hand the body over as a bare const char*, so anything
+    // past the first NUL was lost - which for a FlatBuffer is most of it.
+    struct Captured
+    {
+        std::mutex mutex;
+        std::condition_variable cv;
+        std::string body;
+        bool got {false};
+    } captured;
+
+    hc_callbacks_t callbacks {};
+    callbacks.on_sync_response = [](const char*, int, const char* body, size_t bodyLen,
+                                    void* userData)
+    {
+        auto* sink = static_cast<Captured*>(userData);
+        std::lock_guard<std::mutex> lock(sink->mutex);
+        sink->body.assign(body, bodyLen);
+        sink->got = true;
+        sink->cv.notify_all();
+    };
+    callbacks.user_data = &captured;
+
+    // Shaped like a FlatBuffer root: a leading offset with high NUL bytes.
+    const std::string endAck {"\x0c\x00\x00\x00WZ\x00\x01\x00\x00\x00\x00", 12};
+
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onSyncResponse("fim-42", HC_RESULT_OK, endAck);
+
+    {
+        std::unique_lock<std::mutex> lock(captured.mutex);
+        ASSERT_TRUE(captured.cv.wait_for(lock, std::chrono::seconds {5}, [&] { return captured.got; }));
+    }
+
+    dispatcher.stop();
+    EXPECT_EQ(endAck, captured.body);
+    EXPECT_EQ(12u, captured.body.size()); // Not 4, which is where the first NUL sits.
 }
