@@ -37,7 +37,26 @@
  * Unix-only: the Windows agent runs its modules in-process, so there is no
  * socket in the path and sendSession() always fails there.
  */
-class SyncSocketTransport
+/**
+ * @brief What AgentSyncProtocol needs from whatever carries a session.
+ *
+ * Injected so tests can drive a session without a socket, the same way the
+ * persistent queue already is.
+ */
+class ISyncSessionTransport
+{
+    public:
+        virtual ~ISyncSessionTransport() = default;
+
+        /// @brief Whether the transport can carry a session right now.
+        virtual bool checkStatus() = 0;
+
+        /// @brief Hands one whole session over. True only once the far side
+        ///        confirms it took it.
+        virtual bool sendSession(uint64_t session, const std::vector<uint8_t>& message) = 0;
+};
+
+class SyncSocketTransport final : public ISyncSessionTransport
 {
     public:
         /// @param socketPath The agent's queue-sync intake socket.
@@ -48,14 +67,14 @@ class SyncSocketTransport
         SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger);
 
         /// @brief Whether the intake socket is reachable.
-        bool checkStatus();
+        bool checkStatus() override;
 
         /// @brief Streams one whole session across and waits for the intake's
         ///        status byte.
         /// @param session Session id; also becomes the frame's id, in decimal.
         /// @param message The serialized FullSession message.
         /// @return True only once the agent confirms it queued the session.
-        bool sendSession(uint64_t session, const std::vector<uint8_t>& message);
+        bool sendSession(uint64_t session, const std::vector<uint8_t>& message) override;
 
         /// @brief The id put on the wire for a session: "<module>-<session>".
         ///        Kept public so the response router can be tested against the
