@@ -159,6 +159,18 @@ cJSON *getClientConfig(void) {
         cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
         cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
     }
+    /* The two periodic report pushes (#37843). Reported so the /config document
+     * says whether the agent is reporting, and on what cadence. */
+    cJSON *stats_report = cJSON_CreateObject();
+    cJSON_AddStringToObject(stats_report, "enabled", agt->stats_report.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(stats_report, "interval", agt->stats_report.interval);
+    cJSON_AddItemToObject(client, "stats_report", stats_report);
+
+    cJSON *config_report = cJSON_CreateObject();
+    cJSON_AddStringToObject(config_report, "enabled", agt->config_report.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(config_report, "interval", agt->config_report.interval);
+    cJSON_AddItemToObject(client, "config_report", config_report);
+
     cJSON_AddItemToObject(root,"client",client);
 
     return root;

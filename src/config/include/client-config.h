@@ -57,6 +57,19 @@ typedef struct agent_batch {
     long interval;  ///< <interval>: longest an event waits before a flush, seconds.
 } agent_batch;
 
+/**
+ * @brief <client><stats_report> / <client><config_report>: the periodic push of
+ *        a whole-agent snapshot to /stats and /config (#37843).
+ *
+ * The two are independent and both stay off until <enabled> says otherwise.
+ * Zero interval means "unset": the transport module applies its own default
+ * (60 s for stats, 3600 s for config).
+ */
+typedef struct agent_report {
+    unsigned char enabled; ///< <enabled>: whether to push at all.
+    long interval;         ///< <interval>: seconds between pushes.
+} agent_report;
+
 /* Configuration structure */
 typedef struct _agent {
     agent_server * server;
@@ -76,6 +89,8 @@ typedef struct _agent {
     agent_flags_t flags;
     agent_ssl ssl;     ///< HTTPS transport TLS settings (<client><ssl>).
     agent_batch batch; ///< /stateless batching limits (<client><batch>).
+    agent_report stats_report;  ///< Periodic /stats push (<client><stats_report>).
+    agent_report config_report; ///< Periodic /config push (<client><config_report>).
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 
