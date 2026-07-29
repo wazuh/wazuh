@@ -14,6 +14,7 @@
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
 - Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. ([#37706](https://github.com/wazuh/wazuh/issues/37706))
+- Added `inventory_sync_server`, a transitional `wazuh-manager-modulesd` module that exposes the inventory synchronization ingress over an HTTP/1.1 Unix domain socket. ([#38018](https://github.com/wazuh/wazuh/issues/38018))
 
 #### Changed
 
