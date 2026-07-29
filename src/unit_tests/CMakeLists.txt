@@ -297,6 +297,8 @@ add_custom_target(
     "*wazuh_modules/src/wm_router.c" --remove coverage.total
     "*wazuh_modules/src/wm_content_manager.c" --remove coverage.total
     "*wazuh_modules/src/wm_inventory_sync.c" --remove coverage.total
+    "*wazuh_modules/src/wm_inventory_sync_server.c" --remove coverage.total
+    "*wazuh_modules/inventory_sync_server/*" --remove coverage.total
     "*wazuh_modules/src/wm_vulnerability_scanner.c"
     ${TARGET_LCOV_EXTRA_REMOVE} --rc branch_coverage=1
     --ignore-errors mismatch,mismatch,unused,unused --output-file coverage.info.cleaned
