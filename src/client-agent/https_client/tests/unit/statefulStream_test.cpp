@@ -13,7 +13,7 @@
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 #include "mockSpoolFactory.hpp"
-#include "sessionId.hpp"
+#include "shared_modules/sync_protocol/include/sync_session_wire.hpp"
 #include "statefulStream.hpp"
 
 #include <gmock/gmock.h>
