@@ -292,7 +292,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
     // own classic TCP/UDP port, already bound by the time we get here). Populated
     // from <remote><https> when configured; otherwise left at 0 so the module falls
-    // back to WAZUH_REMOTED_HTTPS_PORT/its own default.
+    // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
     // rm_config->max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
@@ -310,7 +310,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     rm_config->keystore_refresh_interval = keyupdate_interval;
     rm_config->worker_node = logr->worker_node;
     rm_config->verification_mode = logr->https.verification_mode;
-    rm_config->max_body_size = logr->https.max_body_size;
+    rm_config->http_max_body_size = logr->https.max_body_size;
     rm_config->dual_stack = logr->https.dual_stack;
 
     if (logr->https.bind_addr) {

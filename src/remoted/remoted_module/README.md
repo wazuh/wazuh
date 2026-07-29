@@ -302,7 +302,7 @@ sequenceDiagram
 ### Step by step
 
 1. **[A] Ingress.** RESTinio accepts the TLS connection and reads the full request into its own buffer
-   (bounded by `max_body_size` and `max_parallel_connections`). The route handler runs on the I/O
+   (bounded by `http_max_body_size` and `max_parallel_connections`). The route handler runs on the I/O
    thread: it reserves the payload against the **byte budget** (plain `503` if exhausted), copies the
    body **once** into a shared `RequestContext` (with its `Reservation`), builds a `RestinioResponder`
    (`create_response()` moves the connection into a builder), and **drops the RESTinio handle** — freeing
