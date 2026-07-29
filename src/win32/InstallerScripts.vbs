@@ -362,8 +362,10 @@ Private Function GetVersion()
 		If Err.Number = 0 And Len(currentVersion) > 0 Then
 			GetVersion = Split(currentVersion, ".")(0)
 		Else
-			' Last resort: don't abort the install if the version can't be read.
-			GetVersion = "0"
+			' Last resort: don't abort the install if the version can't be read, and don't
+			' silently skip SetWazuhPermissions()'s ACL hardening either - every currently
+			' supported Windows version satisfies ">= 6", so assume one instead of "0".
+			GetVersion = "6"
 		End If
 	End If
 
