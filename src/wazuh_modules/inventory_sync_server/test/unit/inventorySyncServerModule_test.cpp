@@ -10,6 +10,8 @@
  */
 
 #include "inventory_sync_server.h"
+#include "testIndexerConnectorFakes.hpp"
+#include "testLogRecorder.hpp"
 
 #include <gtest/gtest.h>
 
@@ -24,105 +26,12 @@
 #include <unistd.h>
 #include <vector>
 
+using invsync::test::logCallCount;
+using invsync::test::LogRecorder;
+using invsync::test::testLogCallback;
+
 namespace
 {
-    std::atomic<int> g_logCalls {0};
-
-    /**
-     * @brief Process-wide recorder for the module's log output.
-     *
-     * This is the ONLY way a test can observe what the module logs: Log::GLOBAL_LOG_FUNCTION is
-     * declared with hidden visibility and defined inside libinventory_sync_server.so, so a
-     * definition in this test binary would be a different object entirely. Going through
-     * inventory_sync_server_start() installs this callback into the library's own sink.
-     *
-     * Must be process-wide rather than per-test: Log::assignLogFunction() only assigns while the
-     * sink is still empty, so the FIRST test to start the module wins for the lifetime of the
-     * process.
-     */
-    struct LogRecorder
-    {
-        static std::mutex& mutex()
-        {
-            static std::mutex instance;
-            return instance;
-        }
-
-        static std::vector<std::string>& lines()
-        {
-            static std::vector<std::string> instance;
-            return instance;
-        }
-
-        static void clear()
-        {
-            std::lock_guard<std::mutex> lock {mutex()};
-            lines().clear();
-        }
-
-        /// Whether any recorded message contains @p needle. Polls, because the module logs from its
-        /// own worker thread.
-        static bool waitForMessageContaining(const std::string& needle,
-                                             std::chrono::milliseconds timeout = std::chrono::seconds {5})
-        {
-            const auto deadline = std::chrono::steady_clock::now() + timeout;
-            while (std::chrono::steady_clock::now() < deadline)
-            {
-                {
-                    std::lock_guard<std::mutex> lock {mutex()};
-                    for (const auto& line : lines())
-                    {
-                        if (line.find(needle) != std::string::npos)
-                        {
-                            return true;
-                        }
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds {20});
-            }
-            return false;
-        }
-
-        static bool sawMessageContaining(const std::string& needle)
-        {
-            std::lock_guard<std::mutex> lock {mutex()};
-            for (const auto& line : lines())
-            {
-                if (line.find(needle) != std::string::npos)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-    };
-
-    void testLogCallback(int /*level*/,
-                         const char* /*tag*/,
-                         const char* /*file*/,
-                         int /*line*/,
-                         const char* /*func*/,
-                         const char* msg,
-                         va_list args)
-    {
-        g_logCalls.fetch_add(1, std::memory_order_relaxed);
-
-        // Render exactly as the real logger would. A va_list may only be traversed once, so this
-        // consumes it -- fine, nothing downstream of us needs it.
-        char buffer[4096];
-        if (msg != nullptr)
-        {
-            std::vsnprintf(buffer, sizeof(buffer), msg, args);
-        }
-        else
-        {
-            buffer[0] = '\0';
-        }
-
-        std::lock_guard<std::mutex> lock {LogRecorder::mutex()};
-        LogRecorder::lines().emplace_back(buffer);
-    }
-
     std::string uniqueSocketPath(const char* tag)
     {
         static std::atomic<int> counter {0};
@@ -147,7 +56,7 @@ class InventorySyncServerModuleTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        g_logCalls.store(0, std::memory_order_relaxed);
+        logCallCount().store(0, std::memory_order_relaxed);
         LogRecorder::clear();
     }
 
@@ -155,6 +64,8 @@ protected:
     {
         // Ensure the module is stopped even if a test asserted early.
         inventory_sync_server_stop();
+        // An override made by one test must never leak into the next.
+        invsync::test::resetIndexerConnectorFactoryToProduction();
     }
 };
 
@@ -167,7 +78,7 @@ TEST_F(InventorySyncServerModuleTest, StartAndStop)
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("worker thread running"));
     inventory_sync_server_stop();
 
-    EXPECT_GT(g_logCalls.load(), 0);
+    EXPECT_GT(logCallCount().load(), 0);
 }
 
 TEST_F(InventorySyncServerModuleTest, StopWithoutStartIsSafe)
@@ -183,7 +94,7 @@ TEST_F(InventorySyncServerModuleTest, StartWithNullConfigIsSafe)
 {
     inventory_sync_server_start(testLogCallback, nullptr);
     inventory_sync_server_stop();
-    EXPECT_GT(g_logCalls.load(), 0);
+    EXPECT_GT(logCallCount().load(), 0);
 }
 
 TEST_F(InventorySyncServerModuleTest, DoubleStartIsIgnored)
@@ -235,6 +146,8 @@ TEST_F(InventorySyncServerModuleTest, StartStopStartAgainWorks)
 // The socket actually in use has to be diagnosable from wazuh-manager.log alone.
 TEST_F(InventorySyncServerModuleTest, StartLogsTheResolvedSocketPath)
 {
+    invsync::test::installAlwaysAvailableFakeIndexer();
+
     const auto path = uniqueSocketPath("logpath");
     const auto config = makeConfig(path);
 
@@ -246,6 +159,8 @@ TEST_F(InventorySyncServerModuleTest, StartLogsTheResolvedSocketPath)
 
 TEST_F(InventorySyncServerModuleTest, StartCreatesTheConfiguredSocket)
 {
+    invsync::test::installAlwaysAvailableFakeIndexer();
+
     const auto path = uniqueSocketPath("created");
     const auto config = makeConfig(path);
 
@@ -263,6 +178,10 @@ TEST_F(InventorySyncServerModuleTest, StartCreatesTheConfiguredSocket)
  */
 TEST_F(InventorySyncServerModuleTest, UnbindableSocketPathIsReportedNamingThePathAndTheSetting)
 {
+    // Without this, the indexer gate would fail first (no <indexer> configured), and the failure
+    // reported would be about the indexer rather than the socket this test means to exercise.
+    invsync::test::installAlwaysAvailableFakeIndexer();
+
     auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
 
     inventory_sync_server_start(testLogCallback, &config);
@@ -284,6 +203,11 @@ TEST_F(InventorySyncServerModuleTest, UnbindableSocketPathIsReportedNamingThePat
  */
 TEST_F(InventorySyncServerModuleTest, IndexerConfigIsCopiedAndNotRetained)
 {
+    // This test is about the C-ABI's borrow contract, not about really constructing an
+    // IndexerConnectorSync (whose CA-file-must-exist check would otherwise reject the fake path
+    // used below) -- bypass real construction so it stays fast and deterministic.
+    invsync::test::installAlwaysAvailableFakeIndexer();
+
     const auto path = uniqueSocketPath("indexer");
     auto config = makeConfig(path);
 
@@ -315,6 +239,9 @@ TEST_F(InventorySyncServerModuleTest, IndexerConfigIsCopiedAndNotRetained)
 // are not useful in a log line, so neither may be rendered.
 TEST_F(InventorySyncServerModuleTest, IndexerSummaryLogsCountsNotSecrets)
 {
+    // Keeps this test from making a real (if fast) network attempt against the fake hosts below.
+    invsync::test::installAlwaysAvailableFakeIndexer();
+
     const auto path = uniqueSocketPath("secrets");
     auto config = makeConfig(path);
 
