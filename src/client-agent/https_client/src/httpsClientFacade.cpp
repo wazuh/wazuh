@@ -21,11 +21,12 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_performer(m_config, defaultCurlHandleFactory())
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
+    , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate)
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
                  m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
-                m_configHash, m_cluster, m_authGate)
+                m_configHash, m_cluster, m_authGate, m_taskStore)
 {
 }
 
