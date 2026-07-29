@@ -75,8 +75,10 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 512U);
-    EXPECT_EQ(config.certificatePath, "/etc/remoted-https/server.crt");
-    EXPECT_EQ(config.privateKeyPath, "/etc/remoted-https/server.key");
+    // No built-in default: remoted always reads the PEM content itself (before dropping
+    // privileges) and hands it over. Empty here just means "nothing was provided".
+    EXPECT_EQ(config.certificatePem, "");
+    EXPECT_EQ(config.privateKeyPem, "");
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
@@ -119,8 +121,8 @@ TEST(HttpServerConfigTest, StructValuesWin)
     raw.http_max_pipelined_requests = 8;
     raw.http_concurrent_accepts = 4;
     raw.http_buffer_size = 16384;
-    std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
-    std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
+    std::snprintf(raw.certificate_pem, sizeof(raw.certificate_pem), "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
+    std::snprintf(raw.private_key_pem, sizeof(raw.private_key_pem), "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
 
     const auto config = buildHttpServerConfig(raw);
 
@@ -138,8 +140,8 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.maxPipelinedRequests, 8U);
     EXPECT_EQ(config.concurrentAccepts, 4U);
     EXPECT_EQ(config.bufferSize, 16384U);
-    EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
-    EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
+    EXPECT_EQ(config.certificatePem, "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
+    EXPECT_EQ(config.privateKeyPem, "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
 }
 
 // Negative values can't come from remoted (getDefine_Int_default's own min bound
@@ -181,20 +183,33 @@ TEST(HttpServerTest, RegisterRoutesDoesNotThrow)
     });
 }
 
-TEST(HttpServerTest, StartWithMissingCertificateThrowsAndStaysStopped)
+TEST(HttpServerTest, StartWithoutCertificateThrowsAndStaysStopped)
 {
     auto server = makeHttpServer();
 
     HttpServerConfig config;
     config.port = 0; // ask the OS for a free port (never actually bound: TLS fails first)
-    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
-    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
+    // certificatePem/privateKeyPem left empty -- nothing was provided.
 
     EXPECT_THROW(server->start(config), std::exception);
 
     // stopAccepting()/stop() must be safe after a failed start, and idempotent.
     EXPECT_NO_THROW(server->stopAccepting());
     EXPECT_NO_THROW(server->stop());
+    EXPECT_NO_THROW(server->stop());
+}
+
+TEST(HttpServerTest, StartWithMalformedCertificateThrowsAndStaysStopped)
+{
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePem = "not a real certificate";
+    config.privateKeyPem = "not a real key";
+
+    EXPECT_THROW(server->start(config), std::exception);
+
     EXPECT_NO_THROW(server->stop());
 }
 

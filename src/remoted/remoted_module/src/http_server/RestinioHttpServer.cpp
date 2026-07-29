@@ -25,7 +25,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <fstream>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -87,8 +86,8 @@ namespace
      * the same "client fault" bucket as an auth rejection, just one layer lower in the stack. The one
      * event here that IS a genuine, rare, operator-facing problem -- the acceptor failing to bind
      * (port in use, TLS context rejected) -- is already surfaced distinctly and more clearly by our
-     * own checkTlsFileReadable() pre-check and RemotedModuleFacade::reportFailedStart(), so demoting
-     * RESTinio's own duplicate report of it costs nothing.
+     * own createTlsContext() checks and RemotedModuleFacade::start()'s catch block (which logs and
+     * rethrows), so demoting RESTinio's own duplicate report of it costs nothing.
      *
      * Four things here are load-bearing:
      *
@@ -232,24 +231,22 @@ namespace
         return request;
     }
 
-    // Pre-check cert/key readability so the failure names the offending FILE. Asio's own exception
-    // for a missing PEM is an opaque OpenSSL error string ("no start line", "system library"), which
-    // gave the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
-    // all surfaced as the same generic retry warning.
-    void checkTlsFileReadable(const std::string& path, const char* what)
-    {
-        std::ifstream file {path};
-        if (!file.is_open())
-        {
-            throw std::runtime_error("The configured TLS " + std::string {what} + " '" + path +
-                                     "' is missing or unreadable");
-        }
-    }
-
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
     {
-        checkTlsFileReadable(config.certificatePath, "certificate");
-        checkTlsFileReadable(config.privateKeyPath, "private key");
+        // Named separately (not one combined check) so the failure names the offending ONE: an
+        // opaque OpenSSL error from Asio's own PEM parsing ("no start line", "system library") gave
+        // the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
+        // all surfaced as the same generic retry warning. remoted.c reads both files while still
+        // root and hands us the PEM content directly (not a path); empty here means that read
+        // failed or nothing was ever generated/configured.
+        if (config.certificatePem.empty())
+        {
+            throw std::runtime_error("The configured TLS certificate is missing or unreadable");
+        }
+        if (config.privateKeyPem.empty())
+        {
+            throw std::runtime_error("The configured TLS private key is missing or unreadable");
+        }
 
         asio::ssl::context context {asio::ssl::context::tls_server};
 
@@ -262,8 +259,8 @@ namespace
             throw std::runtime_error("Unable to configure TLS 1.2 as the minimum protocol version");
         }
 
-        context.use_certificate_chain_file(config.certificatePath);
-        context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+        context.use_certificate_chain(asio::buffer(config.certificatePem));
+        context.use_private_key(asio::buffer(config.privateKeyPem), asio::ssl::context::pem);
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {

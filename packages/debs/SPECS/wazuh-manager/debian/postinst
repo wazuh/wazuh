@@ -125,6 +125,13 @@ case "$1" in
 
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
 
+    # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
+    if [ ! -f "${DIR}/etc/https-manager.key" ] && [ ! -f "${DIR}/etc/https-manager.cert" ]; then
+        ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
+    fi
+
+    chmod 640 ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
+
     if [ -z "$2" ]; then
         # For the etc dir
         if [ -f /etc/localtime ]; then

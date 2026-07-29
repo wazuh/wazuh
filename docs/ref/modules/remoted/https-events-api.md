@@ -8,8 +8,9 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 > **Experimental / work in progress.** The endpoint today performs **authentication and request
 > validation only** — it does **not** parse the H/E payload or ingest events yet. A successful
 > request is authenticated and answered `200` with an empty body; nothing is forwarded downstream.
-> The listener also only starts when a TLS certificate and key are present (see
-> [Transport and TLS](#transport-and-tls)); on a default install it is effectively off.
+> The listener **requires** a TLS certificate and key to be present (see
+> [Transport and TLS](#transport-and-tls)); a self-signed pair is generated automatically at
+> install time on manager packages, so this is satisfied on a default install.
 
 ## Overview
 
@@ -17,9 +18,10 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   manager only** (agents and Windows do not build it).
 - The transport (RESTinio) sits behind an internal interface, so the endpoint contract and the
   authentication layer are independent of the HTTP library.
-- The server is started **lazily** by the module's worker thread and retried on every heartbeat
-  (every 60 s): if the certificate/key are missing it logs a warning and tries again later, so a
-  missing certificate never blocks `remoted` startup.
+- The HTTPS server is started **synchronously** as part of the module's startup, and there is
+  **no retry**: if the certificate/key are missing or invalid, starting the module fails and
+  `remoted` itself does not start. This is intentional — the manager must not come up believing
+  the HTTPS listener is available when it silently is not.
 - Authentication and endpoint handlers run on a bounded worker pool, off the I/O threads.
 
 ## Transport and TLS
@@ -27,24 +29,29 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 - **Bind address / port:** `127.0.0.1:9443` by default.
 - **TLS:** minimum version TLS 1.2; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **Certificate paths (evaluated after `remoted` enters its chroot):**
-  `/etc/remoted-https/server.crt` and `/etc/remoted-https/server.key` — i.e. host paths
-  `/var/wazuh-manager/etc/remoted-https/server.{crt,key}`. The private key must be readable by the
-  `wazuh` user that `remoted` runs as.
+- **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
+  mode `640` — same scheme as `sslmanager.cert`/`.key`. `remoted` reads both files itself,
+  while still root, **before** it calls change of user.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 16 MiB by default; read/handshake timeout 10 s,
   write timeout 10 s, request timeout 30 s. All tunable via `remoted.http_*` internal options -- see
   [Configuration](#configuration) below.
 
-Generate a self-signed certificate for testing:
+A self-signed certificate/key pair is generated automatically at install time (source install,
+`.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
+`authd` uses for `sslmanager.cert`/`sslmanager.key` — now shared code, invoked through remoted's
+own binary:
 
 ```bash
-mkdir -p /var/wazuh-manager/etc/remoted-https
-openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=localhost" \
-  -keyout /var/wazuh-manager/etc/remoted-https/server.key \
-  -out   /var/wazuh-manager/etc/remoted-https/server.crt
-chown wazuh /var/wazuh-manager/etc/remoted-https/server.key
+wazuh-manager-remoted -C 365 -B 2048 \
+  -K /var/wazuh-manager/etc/https-manager.key \
+  -X /var/wazuh-manager/etc/https-manager.cert \
+  -S "/C=US/ST=California/CN=Wazuh/"
 ```
+
+Generation is skipped if a certificate/key pair already exists at those paths, so an
+administrator-provided certificate is never overwritten. To force regeneration, remove both files
+and re-run the command above (or reinstall).
 
 ## Authentication (AES-CMAC)
 
@@ -167,8 +174,8 @@ fields unset -- in practice the built-in defaults below apply.
 | Bind address | `127.0.0.1` |
 | Port | `9443` |
 | Transport max body size | `16 MiB` |
-| TLS certificate chain | `/etc/remoted-https/server.crt` |
-| TLS private key | `/etc/remoted-https/server.key` |
+| TLS certificate chain | `etc/https-manager.cert` |
+| TLS private key | `etc/https-manager.key` |
 
 The **memory-management / capacity** settings are a separate, third group: `remoted` sets them
 directly on the C-ABI struct in `secure.c` (→ built-in default when unset) and they are
@@ -191,7 +198,7 @@ caps how many requests are parked awaiting a downstream service. Exhausting eith
 
 > There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
 > limited to the internal options above, the memory-management settings, and the certificate
-> files on disk.
+> files on disk (auto-generated at install time, see [Transport and TLS](#transport-and-tls)).
 
 ### Downstream client and auth middleware
 
@@ -265,10 +272,13 @@ Three more that are not about tuning:
   otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
 - **`AES-CMAC is unavailable…`** (ERROR) means the OpenSSL provider is broken and *every* agent will
   fail to authenticate. Previously indistinguishable from one agent having a corrupt key.
-- **The HTTPS server failing to start** is an ERROR on the first attempt, naming the offending file
-  (e.g. a missing `certificate_path`), then quiet while it retries, escalating to a WARN roughly
-  hourly if it never succeeds. On a fresh install the certificate is genuinely not in place yet, so
-  the retry loop is expected; a permanent misconfiguration is what the escalation catches.
+- **The HTTPS server failing to start** is an ERROR naming which of the two is the problem (the
+  certificate or the private key). There is no retry: remoted must not start without the HTTPS
+  transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
+  this module — the certificate is expected to already be in place by then (auto-generated at
+  install time, see [Transport and TLS](#transport-and-tls)). remoted reads both files itself while
+  still root and hands the PEM content to the module directly (not a path), so the module never
+  opens a certificate file as an unprivileged user.
 
 Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
 visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.

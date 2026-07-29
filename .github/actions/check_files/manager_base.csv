@@ -40,6 +40,8 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/etc/shared/default/agent.conf,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/sslmanager.cert,root,root,640,file,-rw-r-----,,
 /var/wazuh-manager/etc/sslmanager.key,root,root,640,file,-rw-r-----,,
+/var/wazuh-manager/etc/https-manager.cert,root,root,640,file,-rw-r-----,,
+/var/wazuh-manager/etc/https-manager.key,root,root,640,file,-rw-r-----,,
 /var/wazuh-manager/etc/wazuh-manager.conf,root,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/etc/indexer-plugins,root,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/etc/indexer-plugins/metrics-agents.json,root,wazuh-manager,640,file,-rw-r-----,,

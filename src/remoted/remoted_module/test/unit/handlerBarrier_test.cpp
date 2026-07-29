@@ -35,8 +35,10 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -67,6 +69,16 @@ namespace
             return std::nullopt;
         }
         return cert;
+    }
+
+    // remoted.c reads the certificate/key content itself (see IHttpServer.hpp's
+    // certificatePem/privateKeyPem); this test stands in for that read.
+    std::string readFile(const std::string& path)
+    {
+        std::ifstream file(path);
+        std::ostringstream contents;
+        contents << file.rdbuf();
+        return contents.str();
     }
 
     class ScratchFileCleanup final
@@ -136,8 +148,8 @@ namespace
         HttpServerConfig config;
         config.bindAddress = "127.0.0.1";
         config.port = port;
-        config.certificatePath = cert.certPath;
-        config.privateKeyPath = cert.keyPath;
+        config.certificatePem = readFile(cert.certPath);
+        config.privateKeyPem = readFile(cert.keyPath);
         config.ioThreads = 1;
         config.workerThreads = 1;
         return config;

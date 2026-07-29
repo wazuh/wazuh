@@ -38,6 +38,8 @@ extern "C"
 
 #include "commonDefs.h" // full_log_fnc_t
 
+#define REMOTED_MODULE_PEM_MAX_SIZE 8192
+
     /**
      * @brief Configuration passed from remoted (C) to the C++ module.
      *
@@ -52,8 +54,13 @@ extern "C"
         bool worker_node;                ///< true if this manager is a cluster worker node.
         char cluster_name[256];          ///< Cluster name.
         char node_name[256];             ///< Cluster node name.
-        char certificate_path[512];      ///< TLS certificate chain (PEM) path (empty -> module default).
-        char private_key_path[512];      ///< TLS private key (PEM) path (empty -> module default).
+        /// TLS certificate chain, PEM-encoded content (NOT a path). remoted reads the file
+        /// itself, while still root and before Privsep_SetUser() drops privileges, so the
+        /// on-disk file can stay root:root like sslmanager.cert/.key -- the module never
+        /// opens a certificate file post-privilege-drop. Empty -> start() fails.
+        char certificate_pem[REMOTED_MODULE_PEM_MAX_SIZE];
+        /// TLS private key, PEM-encoded content. Same rationale as certificate_pem.
+        char private_key_pem[REMOTED_MODULE_PEM_MAX_SIZE];
         int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
         int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
                                          ///< (see remoted.http_worker_threads).
@@ -105,10 +112,9 @@ extern "C"
     } remoted_module_config_t;
 
     /**
-     * @brief Start the C++ module. Launches its worker thread and returns
-     *        immediately; the module owns the thread's lifecycle.
-     *
-     * All exceptions are caught at the boundary, so this never throws into C.
+     * @brief Start the C++ module: brings up the HTTPS transport synchronously
+     *        and, only on success, launches the worker thread that owns its
+     *        lifecycle.
      *
      * @param callbackLog   Logging callback (remoted passes mtLoggingFunctionsWrapper).
      * @param configuration Module configuration (may be NULL -> defaults are used).

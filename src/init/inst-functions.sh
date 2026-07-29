@@ -184,6 +184,32 @@ GenerateAuthCert()
 }
 
 ##########
+# GenerateHttpsManagerCert()
+##########
+# Self-signed certificate for the HTTPS agent server (remoted_module). Manager
+# only -- the listener doesn't exist on agents. Uses wazuh-manager-remoted's own
+# -C/-B/-K/-X/-S flags (same generate_cert() used for sslmanager.cert/key, now
+# in shared/, exposed through remoted's own binary instead of authd's).
+GenerateHttpsManagerCert()
+{
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        return
+    fi
+
+    if [ "X$SSL_CERT" = "Xyes" ]; then
+        # Generation auto-signed certificate if not exists
+        if [ ! -f "${INSTALLDIR}/etc/https-manager.key" ] && [ ! -f "${INSTALLDIR}/etc/https-manager.cert" ]; then
+            if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
+                    echo "Generating self-signed certificate for the HTTPS agent server..."
+                    ${INSTALLDIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -K ${INSTALLDIR}/etc/https-manager.key -X ${INSTALLDIR}/etc/https-manager.cert -S "/C=US/ST=California/CN=wazuh/"
+                    chmod 640 ${INSTALLDIR}/etc/https-manager.key
+                    chmod 640 ${INSTALLDIR}/etc/https-manager.cert
+            fi
+        fi
+    fi
+}
+
+##########
 # WriteLogs()
 ##########
 WriteLogs()
@@ -1203,6 +1229,7 @@ InstallServer()
     fi
 
     GenerateAuthCert
+    GenerateHttpsManagerCert
 
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore

@@ -112,7 +112,11 @@ src/http_server/
        on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
        example* below for the exact multiplier per pool.
     2. Regular `<remote>` settings not wired yet (built-in defaults apply in practice): `port`,
-       `http_max_body_size`, `certificate_path`, `private_key_path`.
+       `http_max_body_size`. `certificate_pem`/`private_key_pem` carry the TLS certificate/key as
+       raw PEM **content**, not a path: `remoted` reads the file itself while still root, before
+       it drops privileges, and hands the bytes over -- the module never opens a certificate file
+       as an unprivileged user. Empty means nothing was provided and `start()` fails; there's no
+       built-in fallback.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound
@@ -499,7 +503,8 @@ protocol/socket event (a truncated read, a malformed parse, a header/URL over it
 overwhelmingly by client behavior — a portscanner, or deliberately-malformed negative-test traffic
 like `tools/send_stateless.py --all` — not "the manager is broken" in the sense this module reserves
 `LOGFN_ERROR` for. The one genuinely rare, operator-facing case (the acceptor failing to bind) is
-already surfaced distinctly by our own cert/key pre-check and `reportFailedStart()` escalation, so
+already surfaced distinctly by our own cert/key pre-check and `RemotedModuleFacade::start()`, which
+logs and rethrows on failure (there is no retry: remoted must not start without HTTPS up), so
 demoting RESTinio's own duplicate report of it costs nothing. The throttle matters even at DEBUG1:
 `Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` is `0` fixed), so the message
 builder — an allocation — runs unconditionally per call unless bounded; the real `dbg_flag` filter
