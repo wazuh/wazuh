@@ -298,13 +298,14 @@ TEST(HttpServerTest, RegisterRoutesDoesNotThrow)
     });
 }
 
-TEST(HttpServerTest, StartWithoutCertificateThrowsAndStaysStopped)
+TEST(HttpServerTest, StartWithMissingCertificateThrowsAndStaysStopped)
 {
     auto server = makeHttpServer();
 
     HttpServerConfig config;
     config.port = 0; // ask the OS for a free port (never actually bound: TLS fails first)
-    // certificatePem/privateKeyPem left empty -- nothing was provided.
+    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
+    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
 
     EXPECT_THROW(server->start(config), std::exception);
 
