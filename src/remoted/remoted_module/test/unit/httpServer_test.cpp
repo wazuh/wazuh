@@ -123,10 +123,10 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     const auto config = buildHttpServerConfig(zeroedConfig());
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
-    EXPECT_EQ(config.port, 9443);
+    EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxBodySize, 50U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 20U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
     EXPECT_EQ(config.requestTimeoutSec, 30U);
@@ -237,7 +237,7 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
 
     const auto config = buildHttpServerConfig(raw);
 
-    EXPECT_EQ(config.port, 9443);
+    EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxUrlSize, 2048U);
 }

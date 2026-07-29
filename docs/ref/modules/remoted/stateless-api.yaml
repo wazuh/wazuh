@@ -16,8 +16,8 @@ info:
     version, HTTP method, request target, agent id, timestamp and the exact request body.
 
 servers:
-  - url: https://127.0.0.1:9443
-    description: Default local bind (configurable via WAZUH_REMOTED_HTTPS_ADDRESS/PORT)
+  - url: https://127.0.0.1:1517
+    description: Default local bind (configurable via <remote><https>)
 
 tags:
   - name: Events

@@ -26,7 +26,7 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 
 ## Transport and TLS
 
-- **Bind address / port:** `127.0.0.1:9443` by default. Both IPv4 and IPv6 literals are accepted
+- **Bind address / port:** `127.0.0.1:1517` by default. Both IPv4 and IPv6 literals are accepted
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
@@ -35,7 +35,7 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   `/var/wazuh-manager/etc/remoted-https/server.{crt,key}`. The private key must be readable by the
   `wazuh` user that `remoted` runs as.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
-  max 64 header fields, and a transport body cap of 50 MiB by default (`<remote><https><max_body_size>`);
+  max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
   limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
   below.
@@ -131,7 +131,7 @@ The payload-identity check runs **before** the batch is forwarded: a mismatch ne
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
 
-Requests larger than the 50 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
+Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
 The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
@@ -202,8 +202,8 @@ above).
 |---|---|---|
 | Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
 | Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
-| Port | `port` | `9443` |
-| Transport max body size | `max_body_size` | `50 MiB` |
+| Port | `port` | `1517` |
+| Transport max body size | `max_body_size` | `20 MiB` |
 | TLS certificate chain | `certificate` | `etc/remoted-https/server.crt` |
 | TLS private key | `key` | `etc/remoted-https/server.key` |
 | Client CA bundle | `ca` | `etc/remoted-https/ca.crt` |
@@ -337,7 +337,7 @@ python3 send_stateless.py --agent-id 1001 --tamper
 
 # run every success/failure scenario and check the expected status codes
 python3 send_stateless.py --all
-# options: --url (default https://127.0.0.1:9443), --body, --client-keys
+# options: --url (default https://127.0.0.1:1517), --body, --client-keys
 ```
 
 ## References

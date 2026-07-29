@@ -104,7 +104,7 @@ Forwards enriched event batches to analysisd:
 ### 6. HTTPS Events Listener (C++ module) — *experimental*
 
 A self-contained C++ module (`remoted_module`) embedded in `remoted` runs a separate **HTTPS
-listener** (RESTinio + OpenSSL, default `127.0.0.1:9443`) for agent-authenticated event ingestion,
+listener** (RESTinio + OpenSSL, default `127.0.0.1:1517`) for agent-authenticated event ingestion,
 independent of the AES-encrypted TCP/UDP channel above. Each request is authenticated with a
 per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`). It is
 Linux-manager only and starts lazily (retried on the module's 60 s heartbeat) only when a TLS
