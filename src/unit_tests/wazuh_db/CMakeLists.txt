@@ -19,7 +19,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
-                             -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_name -Wl,--wrap,wdb_global_update_agent_version \
+                             -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_version \
                              -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
                              -Wl,--wrap,wdb_global_validate_sync_status -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name -Wl,--wrap,wdb_global_select_agent_group \
                              -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
@@ -34,8 +34,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_get_group_agents -Wl,--wrap,w_inc_queries_total -Wl,--wrap,w_inc_global -Wl,--wrap,gettimeofday \
                              -Wl,--wrap,w_inc_global_sql -Wl,--wrap,w_inc_global_sql_time -Wl,--wrap,w_inc_global_vacuum -Wl,--wrap,w_inc_global_vacuum_time \
                              -Wl,--wrap,w_inc_global_get_fragmentation -Wl,--wrap,w_inc_global_get_fragmentation_time \
-                             -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time -Wl,--wrap,w_inc_global_agent_update_agent_name \
-                             -Wl,--wrap,w_inc_global_agent_update_agent_name_time -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
+                             -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time \
+                             -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive_time \
                              -Wl,--wrap,w_inc_global_agent_update_connection_status -Wl,--wrap,w_inc_global_agent_update_connection_status_time \

@@ -18,7 +18,6 @@
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
-    [WDB_UPDATE_AGENT_NAME] = "global update-agent-name %s",
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
@@ -138,55 +137,6 @@ int wdb_insert_group(const char *name, int *sock) {
             mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             mdebug2("Global DB SQL query: %s", wdbquery);
             return OS_INVALID;
-    }
-
-    return result;
-}
-
-int wdb_update_agent_name(int id, const char *name, int *sock) {
-    int result = 0;
-    cJSON *data_in = NULL;
-    char* data_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    data_in = cJSON_CreateObject();
-
-    if (!data_in) {
-        mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
-    }
-
-    cJSON_AddNumberToObject(data_in, "id", id);
-    cJSON_AddStringToObject(data_in, "name", name);
-    data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_UPDATE_AGENT_NAME], data_in_str);
-    os_free(data_in_str);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
     }
 
     return result;
