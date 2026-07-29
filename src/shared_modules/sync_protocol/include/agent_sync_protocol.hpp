@@ -159,6 +159,31 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             Option option = Option::SYNC,
             std::optional<uint64_t> globalVersion = std::nullopt);
 
+        /// @brief Picks the id for a new session. The agent chooses it because the
+        ///        single-message exchange has no StartAck to carry one back; a retry
+        ///        reuses the same value so the manager can dedup on it.
+        /// @return A session id unique within this agent.
+        static uint64_t nextSessionId();
+
+        /// @brief Serializes a whole synchronization session as one FullSession
+        ///        message: Start + one DataBatch + the DataContext items + End.
+        /// @param session Session id, stamped on the message and on every item.
+        /// @param mode Sync mode.
+        /// @param dataValueItems Items carried as DataValue entries.
+        /// @param dataContextItems Items carried as DataContext entries.
+        /// @param uniqueIndices Indices to declare in Start.
+        /// @param option Synchronization option.
+        /// @param globalVersion Optional global version for Start.
+        /// @return The serialized message, or an empty vector on failure.
+        std::vector<uint8_t> buildFullSessionMessage(
+            uint64_t session,
+            Mode mode,
+            const std::vector<PersistedData>& dataValueItems,
+            const std::vector<PersistedData>& dataContextItems,
+            const std::vector<std::string>& uniqueIndices,
+            Option option = Option::SYNC,
+            std::optional<uint64_t> globalVersion = std::nullopt);
+
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
