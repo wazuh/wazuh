@@ -447,6 +447,7 @@ typedef struct _config {
     int sym_checker_interval;
 
     pthread_rwlock_t directories_lock;
+    atomic_int_t directories_lock_ready;                /* Flag (0=false, 1=true): directories_lock has been pthread_rwlock_init'd. On Windows, getSyscheckConfig() can be reached in-process (agent_report.c) from another thread before Start_Syscheck() gets here; this lets it decline instead of locking uninitialized memory. */
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 #ifdef WIN32
