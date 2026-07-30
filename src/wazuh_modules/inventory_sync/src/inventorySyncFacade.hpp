@@ -134,16 +134,15 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", data->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle data - pass the raw flatbuffer bytes directly
                 it->second.handleData(data, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Data handled for session %llu", data->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Data handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataClean)
@@ -156,18 +155,16 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(dataClean->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
-                             dataClean->session());
+                LOGFN_DEBUG2(
+                    m_logFn, "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle DataClean - stores index and tracks seq number
                 it->second.handleDataClean(dataClean);
-                LOGFN_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: DataClean handled for session %llu", dataClean->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: DataClean handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
@@ -180,20 +177,17 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
-                             dataContext->session());
+                LOGFN_DEBUG2(
+                    m_logFn, "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle DataContext - stores context in RocksDB and tracks seq number
                 it->second.handleDataContext(
                     dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: DataContext handled for session %llu",
-                             dataContext->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: DataContext handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataBatch)
@@ -216,11 +210,9 @@ class InventorySyncFacadeImpl final
                     continue;
                 }
 
-                if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
+                if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
                 {
-                    LOGFN_DEBUG2(m_logFn,
-                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                 dataValue->session());
+                    LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
                 }
                 else
                 {
@@ -239,7 +231,7 @@ class InventorySyncFacadeImpl final
 
                         Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
                         dataValueBuilder.add_seq(dataValue->seq());
-                        dataValueBuilder.add_session(dataValue->session());
+                        // TODO(#38117): session field removed from agent FlatBuffer schema
                         dataValueBuilder.add_id(idStr);
                         dataValueBuilder.add_index(idxStr);
                         dataValueBuilder.add_version(dataValue->version());
@@ -252,15 +244,14 @@ class InventorySyncFacadeImpl final
                         dvBuilder.Finish(msgOffset);
 
                         it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
-                        LOGFN_DEBUG2(m_logFn,
-                                     "InventorySyncFacade::start: DataBatch item handled for session %llu",
-                                     dataValue->session());
+                        LOGFN_DEBUG2(
+                            m_logFn, "InventorySyncFacade::start: DataBatch item handled for session %llu", 0ULL);
                     }
                     catch (const std::exception& e)
                     {
                         LOGFN_ERROR(m_logFn,
                                     "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
-                                    dataValue->session(),
+                                    0ULL,
                                     dataValue->seq(),
                                     e.what());
                     }
@@ -389,19 +380,15 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(checksumModule->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                             checksumModule->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle checksum module.
                 it->second.handleChecksumModule(checksumModule);
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: ChecksumModule handled for session %llu",
-                             checksumModule->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: ChecksumModule handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
@@ -414,15 +401,15 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", end->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle end.
                 it->second.handleEnd(*m_responseDispatcher);
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: End handled for session %llu", end->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: End handled for session %llu", 0ULL);
             }
         }
         else

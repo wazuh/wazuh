@@ -48,7 +48,8 @@ TEST_F(ResponseDispatcherTest, SendStartAck)
                 auto startAck = msg->content_as_StartAck();
                 ASSERT_NE(startAck, nullptr);
                 EXPECT_EQ(startAck->status(), Wazuh::SyncSchema::Status_Ok);
-                EXPECT_EQ(startAck->session(), 12345);
+                // TODO(#38117): session field removed from agent FlatBuffer schema
+                // EXPECT_EQ(startAck->session(), 12345);
                 // Note: StartAck schema doesn't include module field
             }));
 
@@ -74,7 +75,8 @@ TEST_F(ResponseDispatcherTest, SendEndAck)
                 auto endAck = msg->content_as_EndAck();
                 ASSERT_NE(endAck, nullptr);
                 EXPECT_EQ(endAck->status(), Wazuh::SyncSchema::Status_Error);
-                EXPECT_EQ(endAck->session(), 54321);
+                // TODO(#38117): session field removed from agent FlatBuffer schema
+                // EXPECT_EQ(endAck->session(), 54321);
                 // Note: EndAck schema doesn't include module field
             }));
 
@@ -98,7 +100,8 @@ TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
 
                 auto reqRet = msg->content_as_ReqRet();
                 ASSERT_NE(reqRet, nullptr);
-                EXPECT_EQ(reqRet->session(), 98765);
+                // TODO(#38117): session field removed from agent FlatBuffer schema
+                // EXPECT_EQ(reqRet->session(), 98765);
 
                 auto receivedRanges = reqRet->seq();
                 ASSERT_EQ(receivedRanges->size(), 2);
