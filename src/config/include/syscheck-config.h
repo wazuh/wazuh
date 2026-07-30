@@ -445,7 +445,6 @@ typedef struct _config {
     int sym_checker_interval;
 
     pthread_rwlock_t directories_lock;
-    atomic_int_t directories_lock_ready;                /* Flag (0=false, 1=true): directories_lock has been pthread_rwlock_init'd. On Windows, getSyscheckConfig() can be reached in-process (agent_report.c) from another thread before Start_Syscheck() gets here; this lets it decline instead of locking uninitialized memory. */
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 #ifdef WIN32
@@ -467,6 +466,21 @@ typedef struct _config {
     int registry_key_limit;
     int registry_value_limit;
 } syscheck_config;
+
+/**
+ * @brief Whether directories_lock has been pthread_rwlock_init'd yet.
+ *
+ * Deliberately NOT a syscheck_config member. Windows dispatches the /config
+ * report in-process (agent_report.c), so getSyscheckConfig() can be reached
+ * from another thread before fim_initialize() has run at all -- and the whole
+ * `syscheck` struct is zero-initialized until then. On winpthreads
+ * PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel, so an atomic_int_t here
+ * would need its OWN mutex initialized to be read -- trading the uninitialized
+ * rwlock for an uninitialized mutex. A plain flag needs nothing initialized,
+ * which is the only property that holds this early. It is written once, after
+ * the rwlock is real, and only ever read afterwards.
+ */
+extern volatile int syscheck_directories_lock_ready;
 
 
 /**
