@@ -17,6 +17,9 @@ namespace base::process
 {
 constexpr auto ENV_ENGINE_STANDALONE = "WAZUH_ENGINE_STANDALONE"; ///< Env var to indicate standalone mode
 
+constexpr auto WAZUH_USER = "wazuh-manager";  ///< User the engine drops to in manager-integrated mode
+constexpr auto WAZUH_GROUP = "wazuh-manager"; ///< Group the engine drops to in manager-integrated mode
+
 /**
  * @brief Transforms the current process into a daemon (double fork + detach).
  */

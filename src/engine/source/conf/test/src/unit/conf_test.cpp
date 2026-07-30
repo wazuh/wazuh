@@ -449,36 +449,27 @@ TEST(ConfGet, badKey)
 }
 
 /************************************************************************
- *                       Process owner keys
+ *                       Privilege drop key
  ************************************************************************/
-TEST(ConfProcessOwner, Defaults)
+TEST(ConfDropPrivileges, DefaultsToTrue)
 {
     logging::testInit();
-    unsetenv("WAZUH_ENGINE_USER");
-    unsetenv("WAZUH_SKIP_USER_CHANGE");
-    unsetenv("WAZUH_ENGINE_GROUP");
-    unsetenv("WAZUH_SKIP_GROUP_CHANGE");
+    unsetenv("WAZUH_ENGINE_DROP_PRIVILEGES");
 
     conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
 
-    EXPECT_EQ(conf.get<std::string>(conf::key::USER), "wazuh-manager");
-    EXPECT_FALSE(conf.get<bool>(conf::key::SKIP_USER_CHANGE));
-    EXPECT_EQ(conf.get<std::string>(conf::key::GROUP), "wazuh-manager");
-    EXPECT_FALSE(conf.get<bool>(conf::key::SKIP_GROUP_CHANGE));
+    EXPECT_TRUE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
 }
 
-TEST(ConfProcessOwner, EnvOverride)
+TEST(ConfDropPrivileges, EnvOverride)
 {
     logging::testInit();
-    setEnv("WAZUH_ENGINE_USER", "custom-user");
-    setEnv("WAZUH_SKIP_USER_CHANGE", "true");
+    setEnv("WAZUH_ENGINE_DROP_PRIVILEGES", "false");
 
     conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
 
-    EXPECT_EQ(conf.get<std::string>(conf::key::USER), "custom-user");
-    EXPECT_TRUE(conf.get<bool>(conf::key::SKIP_USER_CHANGE));
+    EXPECT_FALSE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
 
-    unsetEnv("WAZUH_ENGINE_USER");
-    unsetEnv("WAZUH_SKIP_USER_CHANGE");
+    unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
 } // namespace
