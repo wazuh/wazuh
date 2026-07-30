@@ -79,6 +79,20 @@ static char *report_query(const char *target, const char *command) {
     char request[OS_SIZE_128] = {0};
     char *response = NULL;
 
+    /* On POSIX, a component that has not finished starting up simply is not
+     * listening on its socket yet, so report_query() below fails the connect
+     * and skips it cleanly. In-process there is no socket to refuse the call:
+     * dispatching straight into e.g. syscheckd before its own thread has run
+     * past the startup gate touches state it has not initialized yet (its
+     * directories_lock is a prime example) instead of getting turned away.
+     * The startup gate is the only cross-module readiness signal this process
+     * has, so until it opens, every target is treated the same way a POSIX
+     * daemon that is not answering yet would be. */
+    if (!startup_gate_is_ready()) {
+        mdebug1("Component '%s' is not answering, leaving it out of the report.", target);
+        return NULL;
+    }
+
     snprintf(request, sizeof(request), "%s", command);
 
     if (report_dispatch(target, request, &response) == 0) {
