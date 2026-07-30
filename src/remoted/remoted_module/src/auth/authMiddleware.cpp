@@ -59,6 +59,8 @@ namespace remoted::auth
             case AuthError::InvalidMac: return "invalid_mac";
             case AuthError::PayloadAgentMismatch: return "payload_agent_mismatch";
             case AuthError::BodyTooLarge: return "body_too_large";
+            case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
+            case AuthError::MalformedContentEncoding: return "malformed_content_encoding";
         }
         return "unknown";
     }
@@ -71,6 +73,8 @@ namespace remoted::auth
             case AuthError::UnsupportedProtocolVersion: return {400, "Unsupported protocol-version"};
             case AuthError::PayloadAgentMismatch: return {400, "Invalid event batch"};
             case AuthError::BodyTooLarge: return {413, "Request payload is too large"};
+            case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body"};
+            case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
             // ExpiredRequest, FutureRequest, InvalidMac: collapse to one generic 401

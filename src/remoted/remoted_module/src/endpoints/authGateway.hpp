@@ -32,9 +32,14 @@ namespace remoted::endpoints
      * gateway owns one AuthMiddleware and registers, on our transport-agnostic
      * IHttpServer, a raw async route whose worker-thread body:
      *   1. runs the full validation (protocol-version + Authorization + timestamp
-     *      window + key lookup + AES-CMAC over the exact body bytes),
-     *   2. on failure, answers with publicErrorFor()'s status/message, and
-     *   3. on success, hands the verified request and the responder to the handler.
+     *      window + key lookup + AES-CMAC over the exact wire body bytes -- the MAC
+     *      always covers what was actually sent, compressed or not),
+     *   2. on failure, answers with publicErrorFor()'s status/message,
+     *   3. if authenticated and Content-Encoding: zstd is set, decompresses the body
+     *      (bounded to the configured max body size) before the handler ever sees it,
+     *      answering directly on a bad/oversized/unsupported encoding, and
+     *   4. on success, hands the verified (and, if applicable, decompressed) request
+     *      and the responder to the handler.
      *
      * The gateway is the only adapter between remoted::auth (framework-agnostic) and
      * remoted::http (our transport); swapping the HTTP library never touches it.
@@ -67,6 +72,9 @@ namespace remoted::endpoints
 
     private:
         std::shared_ptr<remoted::auth::AuthMiddleware> m_middleware;
+        // Captured from AuthConfig before it's moved into m_middleware: also the cap applied to a
+        // zstd-decompressed body (see addAuthenticatedRoute()'s Content-Encoding handling).
+        std::size_t m_maxBodySize;
     };
 
 } // namespace remoted::endpoints

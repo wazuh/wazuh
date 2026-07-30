@@ -11,7 +11,9 @@
 
 #include "auth/cmac.hpp"
 #include "endpoints/authGateway.hpp"
+#include "gzipTestHelper.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
 
@@ -150,6 +152,15 @@ namespace
         request.body = body;
         request.headers.emplace("protocol-version", "1");
         request.headers.emplace("authorization", buildAuthorization("POST", "/stateless", body, ts));
+        return request;
+    }
+
+    // Same as signedRequest(), plus a Content-Encoding header. The MAC still covers exactly
+    // `body` -- whatever the caller passes as the wire bytes, compressed or not.
+    HttpRequest signedRequestWithContentEncoding(const std::string& body, const std::string& encoding)
+    {
+        auto request = signedRequest(body);
+        request.headers.emplace("content-encoding", encoding);
         return request;
     }
 } // namespace
@@ -378,4 +389,217 @@ TEST(AuthGatewayTest, KeystoreThrowDuringAuthYields500)
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(responder->captured->status, 500);
     EXPECT_FALSE(handlerCalled); // the throw happened during auth, before the handler ever ran
+}
+
+// ---------------------------------------------------------------------------
+// Content-Encoding: zstd is the only supported encoding -- gzip was dropped.
+// ---------------------------------------------------------------------------
+
+TEST(AuthGatewayTest, GzipContentEncodingIsNowUnsupportedYields415AndSkipsHandler)
+{
+    // Regression guard: zstd is the only supported Content-Encoding. A well-formed gzip body
+    // must be rejected as unsupported, not silently decompressed.
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    const auto compressed = remoted::testutil::gzipCompress("some payload");
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                        std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
+
+    const auto request = signedRequestWithContentEncoding(compressed, "gzip");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 415);
+    EXPECT_FALSE(handlerCalled);
+}
+
+TEST(AuthGatewayTest, NoContentEncodingPassesBodyThroughUnchanged)
+{
+    // Regression guard: absence of the header must keep today's uncompressed behavior exactly.
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    std::string seenBody;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&seenBody](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                   std::shared_ptr<IHttpResponder> responder)
+        {
+            seenBody = std::string {authReq->payload.bytes()};
+            responder->send(HttpResponse::json(200, "{}"));
+        });
+
+    const auto request = signedRequest("plain uncompressed body");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenBody, "plain uncompressed body");
+}
+
+TEST(AuthGatewayTest, UnsupportedContentEncodingYields415AndSkipsHandler)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                        std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
+
+    const auto request = signedRequestWithContentEncoding("some-body", "br");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 415);
+    EXPECT_FALSE(handlerCalled);
+}
+
+// ---------------------------------------------------------------------------
+// Content-Encoding: zstd
+// ---------------------------------------------------------------------------
+
+TEST(AuthGatewayTest, ZstdEncodedBodyIsDecompressedBeforeHandler)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    const std::string plain = R"(H {"wazuh":{"agent":{"id":"1"}}})";
+    const auto compressed = remoted::testutil::zstdCompress(plain);
+
+    std::string seenBody;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&seenBody](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                   std::shared_ptr<IHttpResponder> responder)
+        {
+            seenBody = std::string {authReq->payload.bytes()};
+            responder->send(HttpResponse::json(200, R"({"ok":true})"));
+        });
+
+    // Signed over the COMPRESSED bytes: the MAC always covers the exact wire body.
+    const auto request = signedRequestWithContentEncoding(compressed, "zstd");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenBody, plain); // the handler saw the DECOMPRESSED body, not the wire bytes
+}
+
+TEST(AuthGatewayTest, ZstdContentEncodingHeaderValueIsCaseInsensitive)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    const std::string plain = "some payload";
+    const auto compressed = remoted::testutil::zstdCompress(plain);
+
+    std::string seenBody;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&seenBody](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                   std::shared_ptr<IHttpResponder> responder)
+        {
+            seenBody = std::string {authReq->payload.bytes()};
+            responder->send(HttpResponse::json(200, "{}"));
+        });
+
+    const auto request = signedRequestWithContentEncoding(compressed, "ZSTD");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenBody, plain);
+}
+
+TEST(AuthGatewayTest, MalformedZstdBodyYields400AndSkipsHandler)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                        std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
+
+    // Claims zstd, but the body is not a zstd frame at all.
+    const auto request = signedRequestWithContentEncoding("definitely not a zstd frame", "zstd");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 400);
+    EXPECT_FALSE(handlerCalled);
+}
+
+TEST(AuthGatewayTest, ZstdDecompressedBodyExceedingConfiguredLimitYields413AndSkipsHandler)
+{
+    FakeHttpServer server;
+
+    // A cap comfortably above the (small, highly-compressed) wire size but below the real
+    // decompressed size -- otherwise the auth layer's own wire-body cap (same field) would
+    // reject the request before decompression is ever attempted.
+    remoted::auth::AuthConfig cfg;
+    cfg.maxBodySize = 100;
+    AuthGateway gateway {cfg, std::make_shared<FakeKeystore>()};
+
+    const std::string plain(1000, 'a'); // highly repetitive -> compresses far below 100 bytes
+    const auto compressed = remoted::testutil::zstdCompress(plain);
+    ASSERT_LT(compressed.size(), cfg.maxBodySize);
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                        std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
+
+    const auto request = signedRequestWithContentEncoding(compressed, "zstd");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 413);
+    EXPECT_FALSE(handlerCalled);
 }

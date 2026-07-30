@@ -1052,6 +1052,45 @@ if(IS_LINUX AND NOT IS_AGENT)
 endif()
 
 # ------------------------------------------------------------------------------
+# zstd (server only)
+# ------------------------------------------------------------------------------
+#
+# Upstream ships its CMake project under build/cmake (not at the repo root),
+# so SOURCE_DIR points there. BINARY_DIR is kept out of that tree (as
+# build/cmake-build) to avoid colliding with the vendored build/{cmake,meson,
+# VS2010,single_file_libs} directories. The static archive lands under
+# <BINARY_DIR>/lib/libzstd.a because upstream's lib/CMakeLists.txt is pulled
+# in via add_subdirectory(lib).
+if(NOT IS_AGENT AND NOT IS_WINDOWS)
+  if(EXISTS ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
+    message(STATUS "Using precompiled zstd library")
+    add_custom_target(zstd_external)
+  else()
+    ExternalProject_Add(
+      zstd_external
+      SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
+      BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+                 -DBUILD_SHARED_LIBS=OFF
+                 -DZSTD_BUILD_STATIC=ON
+                 -DZSTD_BUILD_SHARED=OFF
+                 -DZSTD_BUILD_PROGRAMS=OFF
+                 -DZSTD_BUILD_TESTS=OFF
+                 -DZSTD_LEGACY_SUPPORT=OFF
+                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      INSTALL_COMMAND ""
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
+  endif()
+
+  add_library(ext_zstd STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ext_zstd PROPERTIES IMPORTED_LOCATION
+                        ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
+  add_dependencies(ext_zstd zstd_external)
+  target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
+endif()
+
+# ------------------------------------------------------------------------------
 # popt (Linux agent only)
 # ------------------------------------------------------------------------------
 
