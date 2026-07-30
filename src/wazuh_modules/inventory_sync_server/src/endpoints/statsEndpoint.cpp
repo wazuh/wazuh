@@ -36,18 +36,30 @@ namespace
     {
         return invsync::http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
     }
+
+    /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is
+    /// unreachable" are the same thing to the caller (retry later), and telling them apart would leak
+    /// internal state. The two are distinguished in the logs instead.
+    invsync::http::HttpResponse serviceUnavailable()
+    {
+        return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+    }
 } // namespace
 
 namespace invsync::endpoints::stats
 {
 
-    http::RouteHandler makeHandler()
+    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector)
     {
-        return [](std::shared_ptr<const http::HttpRequest> request, std::shared_ptr<http::IHttpResponder> responder)
+        return [connector = std::move(connector)](std::shared_ptr<const http::HttpRequest> request,
+                                                  std::shared_ptr<http::IHttpResponder> responder)
         {
-            // Throttled and function-local: how often this fires is driven by how often agents report,
+            // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
+            // One slot per condition, so a persistent one cannot mask a newly-appearing different one.
             static invsync::common::LogThrottle acceptedThrottle;
+            static invsync::common::LogThrottle goneThrottle;
+            static invsync::common::LogThrottle unavailableThrottle;
 
             if (!request)
             {
@@ -74,6 +86,47 @@ namespace invsync::endpoints::stats
                 return;
             }
 
+            /*
+             * The indexer gate, deliberately AFTER every 400 above.
+             *
+             * Those rejections are the caller's fault and do not depend on the indexer, so they must
+             * not be masked by an outage: with the checks the other way round, a malformed document
+             * sent during an indexer outage would get a 503 and the agent would retry a payload that is
+             * never going to work. Parsing a document we are about to drop is the cheaper mistake --
+             * the 503 is the rare path.
+             */
+            const auto indexer = connector.lock();
+            if (!indexer)
+            {
+                // The facade cleared the connector: stop() is running. Distinct from an outage.
+                if (const auto decision = goneThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Rejected %llu stats document(s) with 503 in the last %d s: the module is shutting "
+                                 "down and the indexer connector is already gone.",
+                                 static_cast<unsigned long long>(decision.total),
+                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
+                }
+                responder->send(serviceUnavailable());
+                return;
+            }
+
+            if (!indexer->isAvailable())
+            {
+                // WARN rather than debug: no healthy indexer host is an operator-actionable condition,
+                // and it is the reason agents are being turned away.
+                if (const auto decision = unavailableThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu stats document(s) with 503 in the last %d s: no configured indexer host "
+                               "is currently healthy. Check the <indexer> hosts and that the indexer is running.",
+                               static_cast<unsigned long long>(decision.total),
+                               invsync::common::LogThrottle::kDefaultWindowSeconds);
+                }
+                responder->send(serviceUnavailable());
+                return;
+            }
+
             try
             {
                 // JSON pointers rather than bracket chaining, so `wazuh.agent.id` reads the same way
@@ -86,7 +139,8 @@ namespace invsync::endpoints::stats
                 {
                     LOGFN_DEBUG1(logFn(),
                                  "Enriched and discarded %llu stats document(s) in the last %d s. This endpoint is a "
-                                 "dummy: the document is echoed back but not stored.",
+                                 "dummy: the document is echoed back but NOT indexed -- `indexer` is available and "
+                                 "injected, but nothing writes through it yet.",
                                  static_cast<unsigned long long>(decision.total),
                                  invsync::common::LogThrottle::kDefaultWindowSeconds);
                 }

@@ -25,6 +25,8 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -39,11 +41,16 @@ namespace invsync::test
      */
     struct ConnectorEvents
     {
-        std::mutex m_mutex;                   ///< Guards m_destroyed.
+        std::mutex m_mutex;                   ///< Guards m_destroyed and m_writes.
         std::vector<std::string> m_destroyed; ///< "async"/"sync"/"session", in destruction order.
         std::atomic<int> m_sessionBuilds {0}; ///< Times the session factory was invoked.
         std::atomic<int> m_syncBuilds {0};    ///< Times the sync connector factory was invoked.
         std::atomic<int> m_asyncBuilds {0};   ///< Times the async connector factory was invoked.
+        /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
+        /// without an unreachable host, since the fake never touches a network.
+        std::atomic<bool> m_asyncAvailable {true};
+        /// Writes seen by the async fake: (id, index, data). Empty while the endpoints are dummies.
+        std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
 
         void recordDestruction(const char* what)
         {
@@ -55,6 +62,18 @@ namespace invsync::test
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_destroyed;
+        }
+
+        void recordWrite(std::string id, std::string index, std::string data)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_writes.emplace_back(std::move(id), std::move(index), std::move(data));
+        }
+
+        std::vector<std::tuple<std::string, std::string, std::string>> writes()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_writes;
         }
     };
 
@@ -115,7 +134,61 @@ namespace invsync::test
     };
 
     using FakeIndexerConnectorSync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorSync>;
-    using FakeIndexerConnectorAsync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorAsync>;
+
+    /**
+     * @brief Async connector fake. Its own class rather than an alias of the template above.
+     *
+     * IIndexerConnectorAsync exposes the two fire-and-forget writes on top of isAvailable(), so the
+     * shared template is ABSTRACT for it. The writes cannot be pushed up into the template either:
+     * for the sync alias they would be overrides of virtuals that do not exist. Duplicating the
+     * destruction bookkeeping is the cheaper of the two costs.
+     *
+     * Writes are recorded but nothing in the module calls them yet -- that is what the endpoints'
+     * NothingIsIndexedYet tests pin.
+     */
+    class FakeIndexerConnectorAsync final : public invsync::indexer::IIndexerConnectorAsync
+    {
+    public:
+        FakeIndexerConnectorAsync(std::shared_ptr<ConnectorEvents> events, const char* name)
+            : m_events {std::move(events)}
+            , m_name {name}
+        {
+        }
+
+        ~FakeIndexerConnectorAsync() override
+        {
+            if (m_events)
+            {
+                m_events->recordDestruction(m_name);
+            }
+        }
+
+        /// Reads the shared flag so a test can make the endpoints' 503 gate fire.
+        bool isAvailable() const override
+        {
+            return m_events == nullptr || m_events->m_asyncAvailable.load();
+        }
+
+        void index(std::string_view id, std::string_view index, std::string_view data) override
+        {
+            if (m_events)
+            {
+                m_events->recordWrite(std::string {id}, std::string {index}, std::string {data});
+            }
+        }
+
+        void indexDataStream(std::string_view index, std::string_view data) override
+        {
+            if (m_events)
+            {
+                m_events->recordWrite(std::string {}, std::string {index}, std::string {data});
+            }
+        }
+
+    private:
+        std::shared_ptr<ConnectorEvents> m_events;
+        const char* m_name;
+    };
 
     /**
      * @brief Installs fakes for all three slots that succeed instantly, bypassing the real objects'
