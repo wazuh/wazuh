@@ -35,6 +35,9 @@ extern int test_mode;
 
 extern void wm_aws_run_s3(wm_aws_bucket *bucket);
 
+// Static in wm_aws.c, but visible here because WAZUH_UNIT_TESTING drops the qualifier.
+extern void wm_aws_add_quoted_arg(char **command, const char *value);
+
 void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Will wrap this function to check running times in order to check scheduling
     return;
@@ -268,6 +271,82 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+/* Tests for wm_aws_add_quoted_arg (quoting of the command-line values that may contain
+   spaces: discard_regex, discard_field, aws_profile, aws_account_alias, trail_prefix
+   and trail_suffix) */
+
+// A value with spaces should end up quoted and, once w_strtok splits the command line
+// the way wm_exec does, come back out as a single argument.
+void test_add_quoted_arg_value_with_spaces(void **state) {
+    char *command = NULL;
+    wm_strcat(&command, "--discard-regex", ' ');
+    wm_aws_add_quoted_arg(&command, "Security Hub Insight Results");
+
+    assert_string_equal(command, "--discard-regex \"Security Hub Insight Results\"");
+
+    char **argv = w_strtok(command);
+    assert_string_equal(argv[0], "--discard-regex");
+    assert_string_equal(argv[1], "Security Hub Insight Results");
+    assert_null(argv[2]);
+
+    free_strarray(argv);
+    os_free(command);
+}
+
+// A value without spaces gets quoted too, and still comes back unchanged.
+void test_add_quoted_arg_value_without_spaces(void **state) {
+    char *command = NULL;
+    wm_aws_add_quoted_arg(&command, "detail-type");
+
+    assert_string_equal(command, "\"detail-type\"");
+
+    char **argv = w_strtok(command);
+    assert_string_equal(argv[0], "detail-type");
+    assert_null(argv[1]);
+
+    free_strarray(argv);
+    os_free(command);
+}
+
+// Quotes and backslashes inside the value (think regexes like \d+ "value") have to be
+// escaped so w_strtok hands the exact same string back.
+void test_add_quoted_arg_value_with_special_chars(void **state) {
+    char *command = NULL;
+    wm_aws_add_quoted_arg(&command, "a\\d+ \"b\"");
+
+    assert_string_equal(command, "\"a\\\\d+ \\\"b\\\"\"");
+
+    char **argv = w_strtok(command);
+    assert_string_equal(argv[0], "a\\d+ \"b\"");
+    assert_null(argv[1]);
+
+    free_strarray(argv);
+    os_free(command);
+}
+
+// S3 object keys accept spaces, so a path prefix has to survive the split as one argument
+// too. Same for the free-form account alias taken from the configuration.
+void test_add_quoted_arg_bucket_values_with_spaces(void **state) {
+    char *command = NULL;
+    wm_strcat(&command, "--trail_prefix", ' ');
+    wm_aws_add_quoted_arg(&command, "AWSLogs/my folder/");
+    wm_strcat(&command, "--aws_account_alias", ' ');
+    wm_aws_add_quoted_arg(&command, "Production Account");
+
+    assert_string_equal(command,
+        "--trail_prefix \"AWSLogs/my folder/\" --aws_account_alias \"Production Account\"");
+
+    char **argv = w_strtok(command);
+    assert_string_equal(argv[0], "--trail_prefix");
+    assert_string_equal(argv[1], "AWSLogs/my folder/");
+    assert_string_equal(argv[2], "--aws_account_alias");
+    assert_string_equal(argv[3], "Production Account");
+    assert_null(argv[4]);
+
+    free_strarray(argv);
+    os_free(command);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -277,7 +356,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_add_quoted_arg_value_with_spaces),
+        cmocka_unit_test(test_add_quoted_arg_value_without_spaces),
+        cmocka_unit_test(test_add_quoted_arg_value_with_special_chars),
+        cmocka_unit_test(test_add_quoted_arg_bucket_values_with_spaces)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
