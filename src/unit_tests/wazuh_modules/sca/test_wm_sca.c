@@ -82,6 +82,8 @@ static int setup_module() {
         "</policies>\n";
     lxml = malloc(sizeof(OS_XML));
 
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -91,7 +93,7 @@ static int setup_module() {
     will_return(__wrap_IsFile, 0);
 
     XML_NODE nodes = string_to_xml_node(string, lxml);
-    int ret = wm_sca_read(lxml, nodes, sca_module);
+    int ret = wm_sca_read(lxml, nodes, sca_module, 0);
     OS_ClearNode(nodes);
     test_mode = 0;
 
@@ -184,6 +186,8 @@ void test_fake_tag(void **state) {
 
     expect_string(__wrap__mterror, tag, "sca");
     expect_string(__wrap__mterror, formatted_msg, "No such tag 'fake' at module 'sca'.");
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -192,7 +196,7 @@ void test_fake_tag(void **state) {
     expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
     will_return(__wrap_IsFile, 0);
 
-    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),-1);
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0),-1);
 }
 
 void test_read_scheduling_monthday_configuration(void **state) {
@@ -207,6 +211,8 @@ void test_read_scheduling_monthday_configuration(void **state) {
     test_structure *test = *state;
 
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one month. New interval value: 1M");
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -216,7 +222,7 @@ void test_read_scheduling_monthday_configuration(void **state) {
     will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 7);
     assert_int_equal(module_data->scan_config.interval, 1);
@@ -237,6 +243,8 @@ void test_read_scheduling_weekday_configuration(void **state) {
     test_structure *test = *state;
 
     expect_string(__wrap__mwarn, formatted_msg, "Interval must be a multiple of one week. New interval value: 1w");
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -246,7 +254,7 @@ void test_read_scheduling_weekday_configuration(void **state) {
     will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 604800);
@@ -265,6 +273,8 @@ void test_read_scheduling_daytime_configuration(void **state) {
         "</policies>\n";
     test_structure *test = *state;
 
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -274,7 +284,7 @@ void test_read_scheduling_daytime_configuration(void **state) {
     will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, WM_DEF_INTERVAL);
@@ -293,6 +303,8 @@ void test_read_scheduling_interval_configuration(void **state) {
         "</policies>\n";
     test_structure *test = *state;
 
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
     will_return(__wrap_opendir, 0);
     expect_string(__wrap__mtinfo, tag, "sca");
     expect_any(__wrap__mtinfo, formatted_msg);
@@ -302,12 +314,119 @@ void test_read_scheduling_interval_configuration(void **state) {
     will_return(__wrap_IsFile, 0);
 
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module),0);
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0),0);
     wm_sca_t* module_data = (wm_sca_t *)test->module->data;
     assert_int_equal(module_data->scan_config.scan_day, 0);
     assert_int_equal(module_data->scan_config.interval, 7200);
     assert_int_equal(module_data->scan_config.month_interval, false);
     assert_int_equal(module_data->scan_config.scan_wday, -1);
+}
+
+/* policy->remote classification tests (GHSA-qmhg-366r-jjfp) */
+
+void test_wm_sca_policy_remote_agent_conf_outside_ruleset(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<scan_on_start>no</scan_on_start>\n"
+        "<policies>\n"
+        "    <policy>/var/ossec/var/incoming/evil.yml</policy>\n"
+        "</policies>\n";
+    test_structure *test = *state;
+
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mtinfo, tag, "sca");
+    expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/var/incoming/evil.yml");
+    will_return(__wrap_realpath, "/var/ossec/var/incoming/evil.yml");
+    expect_string(__wrap_IsFile, file, "/var/ossec/var/incoming/evil.yml");
+    will_return(__wrap_IsFile, 0);
+
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    /* Policy activated from agent.conf (agent_cfg = 1), pointing outside ruleset/sca: must be remote */
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 1), 0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
+    assert_int_equal(module_data->policies[0]->remote, 1);
+}
+
+void test_wm_sca_policy_remote_agent_conf_path_contains_ruleset_substring(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<scan_on_start>no</scan_on_start>\n"
+        "<policies>\n"
+        "    <policy>/root/ruleset/sca/cis_ubuntu24-04.yml</policy>\n"
+        "</policies>\n";
+    test_structure *test = *state;
+
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mtinfo, tag, "sca");
+    expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/root/ruleset/sca/cis_ubuntu24-04.yml");
+    will_return(__wrap_realpath, "/root/ruleset/sca/cis_ubuntu24-04.yml");
+    expect_string(__wrap_IsFile, file, "/root/ruleset/sca/cis_ubuntu24-04.yml");
+    will_return(__wrap_IsFile, 0);
+
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    /* Path contains the "ruleset/sca" substring but is NOT under the actual resolved
+     * ruleset directory ("/var/ossec/ruleset/sca"): must still be remote. */
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 1), 0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
+    assert_int_equal(module_data->policies[0]->remote, 1);
+}
+
+void test_wm_sca_policy_local_agent_conf_inside_ruleset(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<scan_on_start>no</scan_on_start>\n"
+        "<policies>\n"
+        "    <policy>/var/ossec/ruleset/sca/my_policy.yml</policy>\n"
+        "</policies>\n";
+    test_structure *test = *state;
+
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mtinfo, tag, "sca");
+    expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/ruleset/sca/my_policy.yml");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca/my_policy.yml");
+    expect_string(__wrap_IsFile, file, "/var/ossec/ruleset/sca/my_policy.yml");
+    will_return(__wrap_IsFile, 0);
+
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    /* Policy activated from agent.conf (agent_cfg = 1), but inside ruleset/sca: must stay local */
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 1), 0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
+    assert_int_equal(module_data->policies[0]->remote, 0);
+}
+
+void test_wm_sca_policy_local_ossec_conf_outside_ruleset(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<scan_on_start>no</scan_on_start>\n"
+        "<policies>\n"
+        "    <policy>/var/ossec/etc/shared/your_policy_file.yml</policy>\n"
+        "</policies>\n";
+    test_structure *test = *state;
+
+    expect_string(__wrap_realpath, path, "ruleset/sca");
+    will_return(__wrap_realpath, "/var/ossec/ruleset/sca");
+    will_return(__wrap_opendir, 0);
+    expect_string(__wrap__mtinfo, tag, "sca");
+    expect_any(__wrap__mtinfo, formatted_msg);
+    expect_string(__wrap_realpath, path, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_realpath, "/var/ossec/etc/shared/your_policy_file.yml");
+    expect_string(__wrap_IsFile, file, "/var/ossec/etc/shared/your_policy_file.yml");
+    will_return(__wrap_IsFile, 0);
+
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    /* Policy activated from local ossec.conf (agent_cfg = 0), outside ruleset/sca: must stay local */
+    assert_int_equal(wm_sca_read(&(test->xml), test->nodes, test->module, 0), 0);
+    wm_sca_t* module_data = (wm_sca_t *)test->module->data;
+    assert_int_equal(module_data->policies[0]->remote, 0);
 }
 
 /* wm_sort_variables tests */
@@ -786,6 +905,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_wm_sca_policy_remote_agent_conf_outside_ruleset, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_wm_sca_policy_remote_agent_conf_path_contains_ruleset_substring, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_wm_sca_policy_local_agent_conf_inside_ruleset, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_wm_sca_policy_local_ossec_conf_outside_ruleset, setup_test_read, teardown_test_read),
         cmocka_unit_test(test_wm_sort_variables_null),
         cmocka_unit_test(test_wm_sort_variables_duplicated),
         cmocka_unit_test(test_wm_sort_variables),
