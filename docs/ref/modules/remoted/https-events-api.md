@@ -340,7 +340,7 @@ same way the manager verifies them (AES-CMAC over the canonical sequence, key re
 `client.keys`). Requires `pip install requests cryptography`.
 
 ```bash
-# one valid signed request -> 200
+# one valid signed request -> 202
 python3 send_stateless.py --agent-id 1001
 
 # tamper the body after signing -> 401 (invalid MAC)
