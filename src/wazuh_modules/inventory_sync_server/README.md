@@ -11,13 +11,14 @@ UDS conversation is too large a change to graft onto the existing module, so thi
 to it. When it is complete, `inventory_sync` is removed and this becomes the only inventory sync
 module.
 
-**Scope today: scaffolding plus a live UDS server, gated on a real indexer connector, with a stub
+**Scope today: scaffolding plus a live UDS server, gated on real indexer connectors, with a stub
 route.** There is no FlatBuffer decoding or agent session handling yet — `POST /inventory/sync`
 accepts a request, counts its bytes and **discards** it. The module DOES already construct a real
-`IndexerConnectorSync` and will not start accepting UDS connections unless that construction
-succeeds (see [Indexer connector](#indexer-connector-srcindexer) below). The point is to have the
-module installed, registered, logging, gatekeeping on its real dependency, and *serving real
-connections*, so the rest can be built on top of something verifiable.
+shared `IndexerSession` plus **both** an `IndexerConnectorSync` and an `IndexerConnectorAsync`, and
+will not start accepting UDS connections unless all three construct successfully (see
+[Indexer connectors](#indexer-connectors-srcindexer) below). The point is to have the module
+installed, registered, logging, gatekeeping on its real dependencies, and *serving real connections*,
+so the rest can be built on top of something verifiable.
 
 ## Layout
 
@@ -37,9 +38,13 @@ inventory_sync_server/
 │   ├── endpoints/
 │   │   └── syncEndpoint.{hpp,cpp}       # POST /inventory/sync policy (a stub today)
 │   ├── indexer/
-│   │   ├── IIndexerConnector.hpp        # neutral interface (isAvailable() only, so far)
-│   │   ├── indexerConnectorAdapter.hpp  # wraps the real IndexerConnectorSync
-│   │   └── indexerConnectorConfig.{hpp,cpp} # C-ABI overlay -> max_bulk_size/flush_interval_seconds
+│   │   ├── IIndexerSession.hpp          # seam over the shared session (construction IS the contract)
+│   │   ├── IIndexerConnectorSync.hpp    # seam, isAvailable() only -- deliberately NOT a shared base
+│   │   ├── IIndexerConnectorAsync.hpp   # seam, ditto (see the header for why they stay apart)
+│   │   ├── indexerSessionAdapter.hpp    # wraps the real IndexerSession
+│   │   ├── indexerConnectorSyncAdapter.hpp   # wraps IndexerConnectorSync, built on the session
+│   │   ├── indexerConnectorAsyncAdapter.hpp  # wraps IndexerConnectorAsync, built on the session
+│   │   └── indexerConnectorConfig.{hpp,cpp}  # TWO C-ABI overlays, one per connector's key names
 │   └── http_server/
 │       ├── IUdsHttpServer.hpp           # neutral interface + the PEER CONTRACT comment
 │       ├── udsHttpServerConfig.{hpp,cpp}# C-ABI struct -> UdsHttpServerConfig, every default
@@ -115,9 +120,15 @@ fallback precisely so each default lives in exactly one place — this module.
 JSON with arrays (`hosts[]`, `ssl.certificate_authorities[]`, …), which a fixed-size C struct cannot
 express without flattening it on one side and re-nesting it on the other. Passing the subtree through
 untouched also keeps this header from having to track the connector's schema at all.
-`indexer_bulk_size_bytes`/`indexer_flush_interval` (two plain `int` fields, same sentinel rule) are
-overlaid onto that subtree before construction — see
-[Indexer connector](#indexer-connector-srcindexer).
+The `indexer_sync_*`/`indexer_async_*` fields (plain `int`/`long long`, same sentinel rule) are
+overlaid onto a *copy* of that subtree before construction, once per connector — see
+[Indexer connectors](#indexer-connectors-srcindexer).
+
+`indexer_async_max_queue_bytes` is the **one field that does not follow the sentinel rule**: `0` there
+is the connector's own documented "unlimited", not "use the module default". modulesd therefore ships
+a real bounded default (64 MiB) for it, and the option's minimum is `0` rather than `1` — with `min=1`,
+an operator writing the legal value `0` would hit `getDefine_Int_default()`'s `merror_exit()` and take
+modulesd down.
 
 Its ownership contract: **borrowed for the duration of the `start()` call only.** The `extern "C"`
 shim deep-copies it into an owned `nlohmann::json` and then clears the pointer defensively, so the
@@ -145,42 +156,106 @@ freeing the tree while the module is still running (meaningful under ASan).
   before joining them under one shared 30 s budget. That is why the transport's drain window is 2 s
   by default: a long drain here delays every other module's teardown.
 
-## Indexer connector (`src/indexer/`)
+## Indexer connectors (`src/indexer/`)
 
-The module constructs a real **`IndexerConnectorSync`** — the same connector class `inventory_sync`
-already uses, not `IndexerConnectorAsync`. Deliberate: this module's whole purpose is to eventually
-replace `inventory_sync`, so it needs the same config keys (`max_bulk_size`,
-`flush_interval_seconds`) and the same richer write/lock API (`bulkIndex`, `bulkDelete`,
-`scopeLock`, `flush`, `registerNotify`) the real sync pipeline will need once it lands — using Async
-now would mean discarding that API on the day the pipeline is ported.
+The module builds **three** things, in order: one shared `IndexerSession`, then an
+`IndexerConnectorSync` and an `IndexerConnectorAsync` on top of it.
 
-**The UDS server will not start accepting connections unless the indexer connector construction
-succeeds.** This is the first real gatekeeping this module does, and it reuses the exact same
-retry/escalation mechanism already built for the socket bind (`ensureIndexerReady()`, called from
-`tryStartHttpServer()` before the HTTP server is touched):
+**Why both connectors.** `IndexerConnectorSync` is the class `inventory_sync` already uses, and this
+module's whole purpose is to replace it — so it needs the same config keys and the same richer
+write/lock API (`bulkIndex`, `bulkDelete`, `scopeLock`, `flush`, `registerNotify`) the ported sync
+pipeline will need. `IndexerConnectorAsync` is the high-throughput, fire-and-forget write path for
+functionality still to come. They are not interchangeable, which is the whole reason their
+configuration is kept rigorously separate (below).
 
-- **The gate is "did construction throw", not "is it currently reachable".**
-  `IndexerConnectorSync`'s constructor validates config synchronously — hosts present, any
-  referenced CA certificate file exists on disk, `max_retry_delay_seconds` sane — and throws
-  `IndexerConnectorException` on failure. A host that is merely *unreachable* does **not** throw; it
-  only leaves `isAvailable()` false. So a manager with a valid `<indexer>` block but a temporarily
-  down indexer still opens its socket; only a genuinely invalid configuration blocks it. Reachability
-  stays a per-request concern for later, mirroring how `inventory_sync` already treats it (checked
-  only when handling an inbound `Start` message, never at its own startup).
-- **Construction happens at most once per `start()`/`stop()` cycle.** A successful construction is a
-  "config is valid" signal that cannot change without a restart, so `ensureIndexerReady()` never
-  redoes it — only the socket-bind half of `tryStartHttpServer()` keeps retrying on its own.
-- **`reportFailedStart()` is stage-aware.** A config failure is reported as *"the indexer connector
-  configuration is invalid"* naming the `<indexer>` block; a bind failure keeps its original wording
-  naming the socket path setting — so an operator is never pointed at the wrong knob.
-- **Teardown is unconditional.** `stop()`'s phase 2 resets the connector even if the HTTP server
-  never came up (e.g. indexer OK, socket path bad) — otherwise its background threads would leak on
-  every `stop()` in that scenario.
+**Why a shared session.** Each connector's constructor would otherwise run its own synchronous
+`GET /_cat/health` per configured host (5 s timeout each), its own keystore read and its own CA merge,
+and start its own monitoring thread. Two connectors would double all of it. `IndexerSession` — added
+to `shared_modules/indexer_connector` for this — does that work **once** and both connectors adopt it,
+so adding the async connector costs no extra startup latency, no second monitoring thread and no
+second `queue/keystore` open. The component test
+`TwoConnectorsSharingASessionCostOneHealthCheckRound` pins it, with
+`SessionlessConnectorsEachRunTheirOwnHealthCheckRound` as the contrast that keeps it honest.
 
-**Two new C-ABI tunables**, `indexer_bulk_size_bytes`/`indexer_flush_interval`, are overlaid onto the
-`<indexer>` block by `indexer/indexerConnectorConfig.hpp`'s `buildConnectorConfig()` before
-construction — same range/default as `inventory_sync`'s own `indexerBulkSize`/`indexerFlushInterval`
-options, just under this module's `inventory_sync_server_*` naming convention.
+### The startup gate
+
+**The UDS server will not start accepting connections unless all three construct successfully.** All
+four stages share the one retry/escalation mechanism, in `tryStartHttpServer()`:
+
+- **The gate is "did construction throw", not "is the indexer reachable".** The constructors validate
+  configuration synchronously — hosts present, any referenced CA file exists on disk,
+  `max_retry_delay_seconds` sane — and throw `IndexerConnectorException` on failure. A host that is
+  merely *unreachable* does **not** throw; it only stays unavailable until the monitor sees it come up.
+  So the indexer is free to start *after* modulesd: a valid `<indexer>` block pointing at a down
+  indexer still opens the socket. Only a genuinely invalid configuration blocks it.
+- **Each of the three is constructed at most once per `start()`/`stop()` cycle, and memoised
+  independently.** A successful construction is a "configuration is valid" signal that cannot change
+  without a restart. `buildAndPublish()` publishes each one *the moment it succeeds* rather than at the
+  end of the attempt — otherwise a persistently failing later stage would discard the earlier ones and
+  rebuild them next heartbeat, which for the session means another full round of health checks every
+  60 s. `TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries` pins this; it caught exactly that bug.
+- **`reportFailedStart()` names the failing stage in every branch**, not just the first-attempt ERROR.
+  With four stages the failing one can *alternate* between heartbeats while the ERROR is emitted only
+  once per incident, so without the label an hour of debug lines cannot say which part is stuck. Each
+  stage also names its own option family, so an operator is never pointed at the wrong knob.
+- **Construction runs outside `m_lifecycleMutex`** (phase B of three). Holding it across the health
+  checks would queue `stop()` — which runs from modulesd's signal handler under a 30 s budget shared by
+  every module — behind them. Note the honest limit: `stop()` joins the worker, so this does not by
+  itself shorten the wait when the worker is already inside a constructor; what it does is let `stop()`
+  set `m_stopping` immediately, which is what lets phase B bail early. Combined with the shared
+  session, the worst case stays at **one** health-check round.
+- **Teardown is unconditional and reverse-ordered** (async, sync, session). The gate can legitimately
+  leave only some of them built, and each carries live background threads from construction, so gating
+  one reset on another's pointer would leak those threads on every `stop()` in that state.
+  `StopTearsDownWhatExistsEvenWhenLaterStagesNeverRan` pins it.
+
+### Configuration: two families that must not be crossed
+
+`IndexerConnectorSync` reads `max_bulk_size`; `IndexerConnectorAsync` reads `bulk_max_bytes` — **the
+same concept under a different key name**. Handing either connector the other's key is **ignored
+silently**: no throw, no log, the built-in default applies instead. Three things guard against that:
+
+1. **Two separate option families**, `inventory_sync_server_indexer_sync_*` and
+   `..._indexer_async_*`, mapped to C fields named `indexer_<sync|async>_<the connector's own key
+   name>` — so crossing them produces a visible name mismatch rather than a silent no-op.
+2. **Two separate builders**, `buildSyncConnectorConfig()`/`buildAsyncConnectorConfig()`, each
+   emitting *only* the keys its own connector reads. Unit tests assert each result does **not** contain
+   the other's key names.
+3. **One funnelled setter** for every numeric write. `max_queue_bytes` is the only key the connector
+   gates on `is_number_unsigned()` (every other uses `is_number_integer()`), so a *signed* JSON integer
+   there is silently ignored and the queue stays unbounded. `setIfPositive()` is the only way
+   `indexerConnectorConfig.cpp` writes a number, and it always stores `std::size_t`.
+   `AsyncMaxQueueBytesIsStoredAsAnUnsignedJsonNumber` pins the type, not just the key's presence.
+
+The nine options, all prefixed `wazuh_modules.inventory_sync_server_`:
+
+| Option | Connector key | min | max | default |
+|---|---|---|---|---|
+| `indexer_sync_max_bulk_size` | `max_bulk_size` | 4096 | 100 MiB | 10 MiB |
+| `indexer_sync_flush_interval_seconds` | `flush_interval_seconds` | 1 | 3600 | 20 |
+| `indexer_sync_max_retry_delay_seconds` | `max_retry_delay_seconds` | 1 | 3600 | 15 |
+| `indexer_async_bulk_max_bytes` | `bulk_max_bytes` | 4096 | 100 MiB | 4 MiB |
+| `indexer_async_flush_interval_seconds` | `flush_interval_seconds` | 1 | 3600 | 20 |
+| `indexer_async_max_retry_delay_seconds` | `max_retry_delay_seconds` | 1 | 3600 | 15 |
+| `indexer_async_max_queue_bytes` | `max_queue_bytes` | 0 | 2147483647 | 64 MiB |
+| `indexer_async_logger_queue_size` | `logger_queue_size` | 1 | 65536 | 8 |
+| `indexer_async_logger_threads` | `logger_threads` | 1 | 64 | 1 |
+
+`flush_interval_seconds` is the one key name both read; it is fed from two independent fields so the
+two can be tuned separately.
+
+The minimum of **1** on both `max_retry_delay_seconds` exists because the connector constructors reject
+anything below their base retry delay of 1. Note what that means in combination with the `<=0` sentinel:
+a rejecting value is **not reachable from configuration** — `0` would be dropped by `setIfPositive()`
+and the connector's own default of 15 would apply, and the option's minimum makes an operator's `0` a
+startup-time complaint rather than a silent fallback. So in practice the only stage a *configuration*
+mistake can fail is the session (shared `hosts`/`ssl.*`); the per-connector stages guard against
+non-config failures such as thread-spawn or allocation failure, and their gating is covered by the unit
+tests' injected failures rather than by any reachable configuration.
+
+Each object also gets its own log tag (`:indexer`, `:sync`, `:async`), so their own output can be told
+apart. The `:suffix` form is load-bearing — `LogFn::compose()` truncates from the first `(`, so a
+parenthesised suffix would be discarded.
 
 ## Transport (`src/http_server/`)
 
@@ -275,7 +350,7 @@ Anything else is 404; a known path with the wrong verb is 405 with an `Allow` he
 
 ## Tests
 
-`inventory_sync_server_utest` — 110 tests.
+`inventory_sync_server_utest` — 123 tests.
 
 | File | What it covers |
 |---|---|
@@ -286,23 +361,36 @@ Anything else is 404; a known path with the wrong verb is 405 with an `Allow` he
 | `udsHttpServer_test.cpp` | The live server over a real UDS. Highlights: `DeferredReplyFromAnotherThreadArrivesAfterTheHandlerReturned` (the reason this design exists) and **`ThreeHundredConcurrentDeferralsOnTwoIoThreads`** — the requirement stated so it can fail, and the test a blocking thread-per-request server cannot pass. Plus socket mode under a hostile umask, stale-socket recovery, the non-socket refusal, budget/connection 503s, the 500-on-throw barrier *and that the reactor still serves afterwards*, and both never-answered backstops. |
 | `udsShutdown_test.cpp` | The shutdown protocol: S1, S2, S3 (including after the server is destroyed), the bounded drain, force-close, concurrent `send()`/`stop()` from 64 threads, and the whole protocol under 200 live deferrals. |
 | `inventorySyncServerModule_test.cpp` | The C-ABI as a black box, through the real `start()`/`stop()`. Includes the `m_running` wedge regression, the escalating ERROR naming the path and the setting, and the indexer borrow contract. |
-| `indexerGating_test.cpp` | The startup gate: a real, unconfigured `IndexerConnectorSync` blocks the socket fast (no network needed — the hosts-missing check happens before any I/O); an injected fake unblocks it; `stop()` tears the connector down exactly once; a successful construction is never repeated across retries, even while the socket keeps failing and retrying. Also `IndexerConnectorConfigTest`, pure unit tests of the `max_bulk_size`/`flush_interval_seconds` overlay with no server involved at all. |
+| `indexerGating_test.cpp` | The four-stage startup gate. A real, unconfigured `IndexerSession` blocks the socket fast (no network needed — the hosts-missing check runs first, so it does not even open `queue/keystore`). Each of the three stages is failed in isolation to pin that the ERROR names *that* stage and that no later stage is attempted; that a healthy session + sync connector is **not** enough; that each slot is built exactly once across retries, and that the ones which already succeeded are not rebuilt while another keeps failing; that one heartbeat produces exactly one reported attempt (the escalation clock); and that `stop()` tears down in reverse order — including when only some stages ever ran. |
+| `indexerConnectorConfig_test.cpp` | Pure unit tests of the two overlays, no server. Each builder emits only its own connector's key names and **not** the other's; `max_queue_bytes` is stored as an *unsigned* JSON number (the silent-ignore trap — a `contains()` assertion passes even with the bug); every overlaid key is unsigned; the two `flush_interval_seconds` are independent; negatives do not wrap to `SIZE_MAX`; `hosts`/`ssl.*` pass through and the input is not mutated. |
 
-**Why some tests inject a fake indexer connector.** `IndexerConnectorSync`'s constructor does real,
-synchronous network I/O (a health check per configured host) — unacceptable in a fast unit suite.
-`InventorySyncServerFacade::setIndexerConnectorFactoryForTests()` swaps in a test double instead.
-Calling it (or `forceRetryForTests()`) directly from a test `.cpp` would fail to link, though: the
-facade is header-only, and its methods call `LOGFN_*` macros that need
+**Why some tests inject fakes.** The real `IndexerSession` constructor does synchronous network I/O (a
+health check per configured host, 5 s timeout each) — unacceptable in a fast unit suite. Three
+independent factory setters swap in test doubles, so a test can fail exactly one stage while leaving
+the others healthy.
+
+Calling those setters (or `forceRetryForTests()`) directly from a test `.cpp` would fail to link,
+though: the facade is header-only, and its methods call `LOGFN_*` macros that need
 `Log::GLOBAL_LOG_FUNCTION` — a hidden-visibility symbol only this module's own `.so` can resolve.
-`include/inventorySyncServerTestHooks.hpp` + `src/inventorySyncServerTestHooks.cpp` route both hooks
+`include/inventorySyncServerTestHooks.hpp` + `src/inventorySyncServerTestHooks.cpp` route every hook
 through plain `EXPORTED` functions defined in a `.cpp` (compiled into the `.so`, exactly like the
 `extern "C"` `inventory_sync_server_start()`/`_stop()` shims), so calling them from the test binary is
-a normal resolved symbol rather than an inline re-instantiation. `test/unit/testIndexerConnectorFakes.hpp`
-wraps these into `installAlwaysAvailableFakeIndexer()`/`resetIndexerConnectorFactoryToProduction()`,
-and `test/unit/testLogRecorder.hpp` holds the log-observing `LogRecorder`, **shared across every test
-file in this binary** — `Log::assignLogFunction()` only assigns while empty, so whichever file's
-`inventory_sync_server_start()` call happens first in the whole process wins for good; a per-file
-recorder would leave every other file blind.
+a normal resolved symbol rather than an inline re-instantiation.
+
+`test/unit/testIndexerConnectorFakes.hpp` wraps these into `installAlwaysAvailableFakeIndexers()` and
+the per-stage failure variants, all returning one shared `ConnectorEvents` record — a single record
+rather than three counters because independent counters cannot express the *relative* teardown order
+`stop()` now specifies. `test/unit/testLogRecorder.hpp` holds the log-observing `LogRecorder`,
+**shared across every test file in this binary** — `Log::assignLogFunction()` only assigns while empty,
+so whichever file's `inventory_sync_server_start()` call happens first in the whole process wins for
+good; a per-file recorder would leave every other file blind.
+
+> The singular `installAlwaysAvailableFakeIndexer()`/`resetIndexerConnectorFactoryToProduction()` were
+> **deleted rather than kept as aliases** when the second connector landed. Had the old names survived,
+> every existing call site would have kept compiling while silently letting the *real* session and async
+> connector be constructed — real `queue/keystore` opens and real per-host health checks — turning fast
+> unit tests into slow, environment-dependent ones. Deleting the names made the migration a compile
+> error at each call site instead.
 
 **`m_failedStartAttempts` is reset in `start()`.** A stale count carried over from a previous
 `start()`/`stop()` cycle would desync `reportFailedStart()`'s "first attempt" ERROR branch from what
@@ -349,9 +437,11 @@ curl -i --unix-socket queue/sockets/inventory-sync.sock -X POST \
 Named so none of it is mistaken for an oversight:
 
 - FlatBuffer decoding of the sync protocol, and the agent session table (`agentSession`, `gapSet`,
-  `inventorySyncQueryBuilder` in the older module). The indexer connector exists and gates startup,
-  but nothing in the request path calls into it yet — `POST /inventory/sync` still discards its
-  payload without touching `m_indexerConnector` at all.
+  `inventorySyncQueryBuilder` in the older module). Both indexer connectors exist and gate startup,
+  but nothing in the request path calls into them yet — `POST /inventory/sync` still discards its
+  payload without touching either connector at all. Only `isAvailable()` is forwarded through the
+  seams; the write APIs (`bulkIndex`/`index`/…) are reached through the adapters' inner objects when
+  the pipeline lands.
 - The RocksDB store. Its path constant is already reserved (`queue/inventory-sync-server`) because
   choosing it wrongly is destructive, not merely broken.
 - Removing the router subscription from `inventory_sync`, and deleting that module.

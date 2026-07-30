@@ -18,7 +18,9 @@
 #define EXPORTED
 #endif
 
-#include "indexer/IIndexerConnector.hpp"
+#include "indexer/IIndexerConnectorAsync.hpp"
+#include "indexer/IIndexerConnectorSync.hpp"
+#include "indexer/IIndexerSession.hpp"
 
 #include <indexerConnector.hpp>
 
@@ -45,12 +47,23 @@ namespace invsync::test_hooks
      * Never called in production; modulesd only ever calls inventory_sync_server_start()/_stop().
      */
 
-    using IndexerConnectorFactory =
-        std::function<std::unique_ptr<invsync::indexer::IIndexerConnector>(const nlohmann::json&, LoggingContext)>;
+    using IndexerSessionFactory =
+        std::function<std::unique_ptr<invsync::indexer::IIndexerSession>(const nlohmann::json&, LoggingContext)>;
+    using IndexerConnectorSyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorSync>(
+        const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
+    using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
+        const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
 
-    /// Overrides how the indexer connector is constructed, so a test can gate/unblock the startup
-    /// gate deterministically without IndexerConnectorSync's real per-host health-check I/O.
-    EXPORTED void setIndexerConnectorFactoryForTests(IndexerConnectorFactory factory);
+    /*
+     * Override how each of the three indexer objects is constructed, so a test can drive the startup
+     * gate deterministically without the real per-host health-check I/O (5 s timeout per host).
+     *
+     * Three separate setters: a gate test needs to fail exactly one of the three while leaving the
+     * others healthy.
+     */
+    EXPORTED void setIndexerSessionFactoryForTests(IndexerSessionFactory factory);
+    EXPORTED void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory);
+    EXPORTED void setIndexerConnectorAsyncFactoryForTests(IndexerConnectorAsyncFactory factory);
 
     /// Forces one retry attempt synchronously instead of waiting out the real heartbeat.
     EXPORTED void forceRetryForTests();

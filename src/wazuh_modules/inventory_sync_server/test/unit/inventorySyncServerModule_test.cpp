@@ -65,7 +65,7 @@ protected:
         // Ensure the module is stopped even if a test asserted early.
         inventory_sync_server_stop();
         // An override made by one test must never leak into the next.
-        invsync::test::resetIndexerConnectorFactoryToProduction();
+        invsync::test::resetIndexerConnectorFactoriesToProduction();
     }
 };
 
@@ -146,7 +146,7 @@ TEST_F(InventorySyncServerModuleTest, StartStopStartAgainWorks)
 // The socket actually in use has to be diagnosable from wazuh-manager.log alone.
 TEST_F(InventorySyncServerModuleTest, StartLogsTheResolvedSocketPath)
 {
-    invsync::test::installAlwaysAvailableFakeIndexer();
+    invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("logpath");
     const auto config = makeConfig(path);
@@ -159,7 +159,7 @@ TEST_F(InventorySyncServerModuleTest, StartLogsTheResolvedSocketPath)
 
 TEST_F(InventorySyncServerModuleTest, StartCreatesTheConfiguredSocket)
 {
-    invsync::test::installAlwaysAvailableFakeIndexer();
+    invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("created");
     const auto config = makeConfig(path);
@@ -180,7 +180,7 @@ TEST_F(InventorySyncServerModuleTest, UnbindableSocketPathIsReportedNamingThePat
 {
     // Without this, the indexer gate would fail first (no <indexer> configured), and the failure
     // reported would be about the indexer rather than the socket this test means to exercise.
-    invsync::test::installAlwaysAvailableFakeIndexer();
+    invsync::test::installAlwaysAvailableFakeIndexers();
 
     auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
 
@@ -206,7 +206,7 @@ TEST_F(InventorySyncServerModuleTest, IndexerConfigIsCopiedAndNotRetained)
     // This test is about the C-ABI's borrow contract, not about really constructing an
     // IndexerConnectorSync (whose CA-file-must-exist check would otherwise reject the fake path
     // used below) -- bypass real construction so it stays fast and deterministic.
-    invsync::test::installAlwaysAvailableFakeIndexer();
+    invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("indexer");
     auto config = makeConfig(path);
@@ -240,7 +240,7 @@ TEST_F(InventorySyncServerModuleTest, IndexerConfigIsCopiedAndNotRetained)
 TEST_F(InventorySyncServerModuleTest, IndexerSummaryLogsCountsNotSecrets)
 {
     // Keeps this test from making a real (if fast) network attempt against the fake hosts below.
-    invsync::test::installAlwaysAvailableFakeIndexer();
+    invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("secrets");
     auto config = makeConfig(path);
