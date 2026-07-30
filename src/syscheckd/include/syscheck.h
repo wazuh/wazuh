@@ -316,8 +316,6 @@ void free_whodata_event(whodata_evt* w_evt);
  *
  * @param msg The message to be sent
  */
-void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
-
 /**
  * @brief Persist a message related to syscheck change/addition/deletion
  *
@@ -327,8 +325,6 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
  * @param _msg The message to be persisted
  * @param version The document version (64-bit unsigned integer)
  */
-void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
-
 /**
  * @brief Validate and persist a FIM event with schema validation
  *
@@ -355,6 +351,8 @@ void persist_syscheck_msg(const char* id, Operation_t operation, const char* ind
 #ifdef __cplusplus
 extern "C" {
 #endif
+void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
+void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
 bool validate_and_persist_fim_event(
     const cJSON* stateful_event,
     const char* id,

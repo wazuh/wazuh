@@ -38,6 +38,18 @@ extern "C" {
  * through, so a live container file change behaves like a normal FIM change
  * rather than a separate mechanism.
  *
+ * Also emits the stateless alert (collector "file", carrying `changed_fields`
+ * for modifications) that fim_persist_baseline_row() itself never produces —
+ * see send_container_stateless_event() in container_live_fim.cpp, which
+ * reuses file.c's own fim_attributes_json()/fim_calculate_dbsync_difference()
+ * so a container file alert has the same shape as a host FIM alert, with
+ * container/kubernetes enrichment attached. Sent for added/modified/deleted;
+ * "modified" alerts are suppressed if the diff turns out empty (e.g. only a
+ * bookkeeping column changed). Not yet implemented: report-changes/content
+ * diff for container files (`owner`/`group` names are never populated either,
+ * since that needs the container's own /etc/passwd — a separate, unaddressed
+ * data class).
+ *
  * This is intentionally called from its own worker thread (see
  * ebpf_pop_container_events() in ebpf_whodata.cpp), never from the
  * ring-buffer-draining thread: resolving container identity can block on

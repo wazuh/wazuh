@@ -15,12 +15,24 @@
 #include "md5_sha1_sha256_op.h"
 #include "syscheck.h"
 
+// Neither header has an extern "C" guard of its own (both are included only
+// from .c translation units elsewhere) -- wrap them here so
+// fim_attributes_json(), fim_calculate_dbsync_difference(), and
+// get_iso8601_utc_time() get C linkage, matching how their definitions in
+// file.c/events.c/time_op.c are actually compiled.
+extern "C"
+{
+#include "file.h"
+#include "time_op.h"
+}
+
 #include <json.hpp>
 
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 namespace {
@@ -80,6 +92,125 @@ std::string build_container_json(const std::string& container_id, const nlohmann
     return out.dump();
 }
 
+// Builds and sends the stateless FIM alert (the one carrying `changed_fields`)
+// that neither fim_persist_baseline_row() nor validate_and_persist_fim_event()
+// ever produce on their own -- they only ever build the stateful/synced
+// document. This mirrors file.c's transaction_callback(), the host FIM
+// equivalent: same event envelope, same fim_attributes_json()/
+// fim_calculate_dbsync_difference() calls, so a container file alert looks
+// like a normal FIM alert with container/kubernetes enrichment attached.
+//
+// `row_data` is the current (or, for "deleted", the last-known) flat row;
+// `old_data` is non-null only for "modified" and holds just the changed
+// columns' previous values -- dbsync's own "old" object (see
+// SQLiteDBEngine::getRowDiff(), which fills "old" with only-what-changed and
+// "new"/the top-level row with every column, so fim_attributes_json() always
+// sees a complete row here).
+//
+// Container rows have no fim_file_data struct (see the primary-key section
+// of requirements-analysis.md) so this always calls fim_attributes_json()
+// in its JSON-only mode (data == NULL) -- unlike the host path, which mostly
+// uses the typed struct and only falls back to JSON for orphaned deletes.
+//
+// Always sends, regardless of notify_scan: unlike host FIM's scheduled scan,
+// there is no "first full scan" for this live path to suppress -- the
+// container's own one-shot initial population is a separate module
+// (container_baseline) that never calls this function.
+void send_container_stateless_event(const char* event_type, const cJSON* row_data, const cJSON* old_data)
+{
+    const cJSON* path_json = cJSON_GetObjectItem(row_data, "path");
+    if (!path_json || !cJSON_IsString(path_json))
+    {
+        return;
+    }
+    const char* path = cJSON_GetStringValue(path_json);
+
+    directory_t* config = fim_configuration_directory(path, true, syscheck.directories);
+    if (!config)
+    {
+        return;
+    }
+
+    cJSON* changed_attributes = nullptr;
+    cJSON* old_attributes = nullptr;
+    if (old_data)
+    {
+        changed_attributes = cJSON_CreateArray();
+        old_attributes = cJSON_CreateObject();
+        fim_calculate_dbsync_difference(config, old_data, changed_attributes, old_attributes);
+        if (cJSON_GetArraySize(changed_attributes) == 0)
+        {
+            // Nothing the configured checks care about actually changed (e.g. only
+            // internal bookkeeping columns did) -- matches file.c's own
+            // FIM_EMPTY_CHANGED_ATTRIBUTES early-exit, avoiding a no-op alert.
+            cJSON_Delete(changed_attributes);
+            cJSON_Delete(old_attributes);
+            return;
+        }
+    }
+
+    cJSON* stateless_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(stateless_event, "collector", "file");
+    cJSON_AddStringToObject(stateless_event, "module", "fim");
+
+    cJSON* data = cJSON_CreateObject();
+    cJSON_AddItemToObject(stateless_event, "data", data);
+
+    cJSON* event = cJSON_CreateObject();
+    cJSON_AddItemToObject(data, "event", event);
+
+    char iso_time[32];
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", event_type);
+
+    // A deleted file has no live attributes left to report -- mirrors file.c's
+    // handle_orphaned_delete(), which also sends a path/mode-only stateless event.
+    cJSON* file_stateless =
+        (strcmp(event_type, "deleted") == 0) ? cJSON_CreateObject() : fim_attributes_json(row_data, nullptr, config);
+    cJSON_AddItemToObject(data, "file", file_stateless);
+    cJSON_AddStringToObject(file_stateless, "path", path);
+    cJSON_AddStringToObject(file_stateless, "mode", "whodata");
+    if (config->tag)
+    {
+        cJSON_AddStringToObject(file_stateless, "tags", config->tag);
+    }
+
+    if (changed_attributes)
+    {
+        cJSON_AddItemToObject(file_stateless, "previous", old_attributes);
+        cJSON_AddItemToObject(event, "changed_fields", changed_attributes);
+    }
+
+    // Lift container/kubernetes enrichment onto the alert at the same level
+    // container_baseline_fim_bridge.c's normalize_container_fim_row() already
+    // uses for the stateful document (top-level blocks, siblings of "file"),
+    // rather than inventing a new placement convention for the stateless side.
+    const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+    if (container_json_item && cJSON_IsString(container_json_item) && container_json_item->valuestring &&
+        container_json_item->valuestring[0])
+    {
+        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
+        if (ctx)
+        {
+            cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
+            if (container_block)
+            {
+                cJSON_AddItemToObject(data, "container", container_block);
+            }
+            cJSON* kubernetes_block = cJSON_DetachItemFromObject(ctx, "kubernetes");
+            if (kubernetes_block)
+            {
+                cJSON_AddItemToObject(data, "kubernetes", kubernetes_block);
+            }
+            cJSON_Delete(ctx);
+        }
+    }
+
+    send_syscheck_msg(stateless_event);
+    cJSON_Delete(stateless_event);
+}
+
 // Single-row upsert: opens a transaction scoped to this one container
 // (mirroring container_baseline_fim.cpp's sync_container()) but — unlike the
 // baseline — never calls fim_db_transaction_deleted_rows(). That call is
@@ -109,6 +240,7 @@ void upsert_container_file_row(const std::string& container_id, const std::strin
             }
 
             const cJSON* row_data = result_json;
+            const cJSON* old_data = nullptr;
             int operation;
 
             switch (result_type)
@@ -118,6 +250,7 @@ void upsert_container_file_row(const std::string& container_id, const std::strin
                     break;
                 case MODIFIED:
                     row_data = cJSON_GetObjectItem(result_json, "new");
+                    old_data = cJSON_GetObjectItem(result_json, "old");
                     if (!row_data)
                     {
                         return;
@@ -134,6 +267,8 @@ void upsert_container_file_row(const std::string& container_id, const std::strin
             {
                 return;
             }
+
+            send_container_stateless_event(result_type == INSERTED ? "added" : "modified", row_data, old_data);
 
             const std::string id = std::string(cJSON_GetStringValue(cid_json)) + ":" + cJSON_GetStringValue(path_json);
             char* row_str = cJSON_PrintUnformatted(row_data);
@@ -164,7 +299,17 @@ void delete_container_file_row(const std::string& container_id, const std::strin
     const std::string id = container_id + ":" + path;
     const std::string row_str = row.dump();
 
-    // Persist the DELETE document first — once fim_db_container_file_delete()
+    // Stateless "deleted" alert first, from the same flat JSON handed to
+    // fim_persist_baseline_row() below -- once fim_db_container_file_delete()
+    // removes the row, there is no diff-callback path left to build it from.
+    cJSON* row_json = cJSON_Parse(row_str.c_str());
+    if (row_json)
+    {
+        send_container_stateless_event("deleted", row_json, nullptr);
+        cJSON_Delete(row_json);
+    }
+
+    // Persist the DELETE document — once fim_db_container_file_delete()
     // removes the row, there is no diff-callback path left to build it from.
     fim_persist_baseline_row(id.c_str(), 2 /* OPERATION_DELETE */, FIM_FILES_SYNC_INDEX, row_str.c_str(), 1);
     fim_db_container_file_delete(path.c_str(), container_id.c_str());
