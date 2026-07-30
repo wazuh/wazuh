@@ -12,6 +12,7 @@
 #ifndef _INVSYNC_ENDPOINTS_STATS_ENDPOINT_HPP
 #define _INVSYNC_ENDPOINTS_STATS_ENDPOINT_HPP
 
+#include "common/clusterIdentity.hpp"
 #include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 
@@ -24,10 +25,10 @@ namespace invsync::endpoints::stats
      * @brief The agent statistics ingress endpoint, reached through remoted's `POST /stats`.
      *
      * DUMMY. It does the full request/response cycle and the enrichment, but nothing durable: the
-     * document is parsed, checked to be a JSON object, stamped with `wazuh.agent.id` and
-     * `@timestamp`, echoed back, and then DISCARDED. Nothing is indexed or stored. This is the seam
-     * where the real statistics handling lands; keeping it a separate unit from the start means that
-     * work is a change to one file plus its test.
+     * document is parsed, checked to be a JSON object, stamped with `wazuh.agent.id`, `@timestamp`,
+     * `wazuh.cluster.name` and `wazuh.cluster.node`, echoed back, and then DISCARDED. Nothing is
+     * indexed or stored. This is the seam where the real statistics handling lands; keeping it a
+     * separate unit from the start means that work is a change to one file plus its test.
      *
      * @note `/stats` and `/config` are deliberate near-duplicates rather than one shared handler
      * registered twice. They are identical today only because both are dummies; their real payloads
@@ -41,6 +42,13 @@ namespace invsync::endpoints::stats
      * endpoint stamps the *authenticated* id onto whatever the agent sent, so a document claiming a
      * different id cannot override it. A request without that header is a remoted/modulesd contract
      * violation rather than agent input, and is answered 400.
+     *
+     * ## Where the cluster name and node name come from
+     *
+     * From this module's own configuration (`inventory_sync_server_config_t::cluster_name` /
+     * `node_name`), injected once at registration time via `makeHandler()`'s `cluster` parameter --
+     * NOT read per-request from anything the caller sends. There is no per-request source for them,
+     * unlike the agent id: this manager's identity does not change between requests.
      */
 
     /// @brief The verb this endpoint answers.
@@ -87,8 +95,14 @@ namespace invsync::endpoints::stats
      *
      * Weak keeps both properties: correct after deferral lands, and the facade's documented phase
      * ordering stays true. The cost is one lock() per request and an explicit "it is gone" branch.
+     *
+     * @param cluster This manager's cluster name/node name, taken BY VALUE (two small strings, copied
+     *                once per registration) rather than by weak_ptr: unlike the connector, there is no
+     *                background object with a teardown ordering to protect -- just two strings whose
+     *                lifetime the closure can own outright.
      */
-    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector);
+    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+                                   invsync::common::ClusterIdentity cluster);
 
 } // namespace invsync::endpoints::stats
 

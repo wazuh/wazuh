@@ -49,10 +49,11 @@ namespace
 namespace invsync::endpoints::stats
 {
 
-    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector)
+    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+                                   invsync::common::ClusterIdentity cluster)
     {
-        return [connector = std::move(connector)](std::shared_ptr<const http::HttpRequest> request,
-                                                  std::shared_ptr<http::IHttpResponder> responder)
+        return [connector = std::move(connector), cluster = std::move(cluster)](
+                   std::shared_ptr<const http::HttpRequest> request, std::shared_ptr<http::IHttpResponder> responder)
         {
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
@@ -130,9 +131,12 @@ namespace invsync::endpoints::stats
             try
             {
                 // JSON pointers rather than bracket chaining, so `wazuh.agent.id` reads the same way
-                // it is spelled everywhere else in the schema. Both overwrite whatever the agent sent:
-                // the authenticated id and the server's clock are the authoritative ones.
+                // it is spelled everywhere else in the schema. All four overwrite whatever the agent
+                // sent: the authenticated id, this manager's own identity and the server's clock are
+                // the authoritative ones.
                 document["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
+                document["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
+                document["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
                 document["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
 
                 if (const auto decision = acceptedThrottle.record())
