@@ -120,9 +120,10 @@ src/http_server/
        `ca_path`, when configured) must be readable by the unprivileged user `remoted` runs as.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
-       set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound
-       in-memory resource usage rather than tune the transport). The transport clamps the budget
-       up to at least one max-size request so a too-small value can't reject everything.
+       populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
+       `remoted.max_deferred_requests` internal options in `secure.c` (same pattern as group 1).
+       The transport still clamps the in-flight budget up to at least one max-size request at
+       start(), so a too-small value can't reject everything.
     4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
        `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
        `downstream_post_process_threads`, `downstream_max_response_body_size`,
