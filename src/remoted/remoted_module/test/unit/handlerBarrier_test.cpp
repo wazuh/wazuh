@@ -238,7 +238,7 @@ TEST(HandlerBarrier, ThrowAfterRespondingKeepsTheOriginalResponse)
 
 // --- Transport-level diagnostics (WazuhRestinioLogger) -----------------------------------------
 //
-// RESTinio's own diagnostics now flow into ossec.log instead of being compiled away by
+// RESTinio's own diagnostics now flow into wazuh-manager.log instead of being compiled away by
 // null_logger_t. The test binary cannot read the module's log sink (Log::GLOBAL_LOG_FUNCTION has
 // hidden visibility and is defined inside libremoted_module.so), so these tests assert the
 // property that actually matters for safety: exercising the adapter's error()/warn() paths with

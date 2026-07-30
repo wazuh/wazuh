@@ -305,7 +305,7 @@ sequenceDiagram
     participant E as Engine
 
     Ag->>A: TLS + POST /stateless (H/E batch)
-    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder; drop RESTinio's buffer
+    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder drop RESTinio's buffer
     A->>B: asio::post (worker queue)
     Note over A: return request_accepted() — I/O thread free
     Note over B: AES-CMAC verify (beginSession→update→finish)<br/>build AuthenticatedRequest (payload = view + keep-alive)
@@ -319,7 +319,7 @@ sequenceDiagram
     E-->>C: 200 / 400 / 500
     Note over C: async_read → llhttp parse → finish() (once)
     C->>D: asio::post (post-proc queue)
-    Note over D: stateless::postProcess → 202 / 400 / 413 / 503<br/>responder->send(); Slot released
+    Note over D: stateless::postProcess → 202 / 400 / 413 / 503<br/>responder->send() Slot released
     D->>A: builder.done() schedules the write on the connection strand
     A-->>Ag: HTTP response
 ```
@@ -518,7 +518,7 @@ generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s complet
 the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
 so by the time the agent is answered the cause is gone.
 
-RESTinio's own diagnostics reach `ossec.log` too, via `WazuhRestinioLogger`
+RESTinio's own diagnostics reach `wazuh-manager.log` too, via `WazuhRestinioLogger`
 (`http_server/RestinioHttpServer.cpp`), which replaces `restinio::null_logger_t` — whose methods are
 `constexpr void {}`, i.e. every transport diagnostic was previously discarded *at compile time*. This
 covers TLS handshake failures, malformed HTTP, `EADDRINUSE`, and every `http_max_*` breach — but

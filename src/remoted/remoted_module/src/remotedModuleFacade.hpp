@@ -367,7 +367,7 @@ private:
         catch (const std::exception& e)
         {
             // Deliberately does NOT re-enter the loop: an exception that repeats every iteration
-            // would spin forever writing to ossec.log, which is worse than a dead worker. The
+            // would spin forever writing to wazuh-manager.log, which is worse than a dead worker. The
             // module keeps serving whatever the HTTP server already started.
             LOGFN_ERROR(
                 moduleLogFn(), "The remoted module worker thread stopped on an unexpected exception: %s.", e.what());
