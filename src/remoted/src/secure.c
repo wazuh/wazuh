@@ -103,6 +103,12 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 // Read the remoted.http_* internal options into the C++ module's config struct
 STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
 
+// Build limits JSON from manager_module_limits (only the limits object, not cluster/groups)
+STATIC char* build_limits_json(const module_limits_t *limits);
+
+// Read control endpoint internal options into the C++ module's config struct
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
+
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
 #define UPGRADE_ACK_HEADER_SIZE 17
@@ -331,6 +337,83 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     }
 }
 
+STATIC char* build_limits_json(const module_limits_t *limits) {
+    if (!limits) {
+        return NULL;
+    }
+
+    cJSON *limits_obj = cJSON_CreateObject();
+    if (!limits_obj) {
+        return NULL;
+    }
+
+    /* FIM limits */
+    cJSON *fim = cJSON_CreateObject();
+    if (fim) {
+        cJSON_AddNumberToObject(fim, "file", limits->fim.file);
+        cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
+        cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
+        cJSON_AddItemToObject(limits_obj, "fim", fim);
+    }
+
+    /* Syscollector limits */
+    cJSON *syscollector = cJSON_CreateObject();
+    if (syscollector) {
+        cJSON_AddNumberToObject(syscollector, "hotfixes", limits->syscollector.hotfixes);
+        cJSON_AddNumberToObject(syscollector, "packages", limits->syscollector.packages);
+        cJSON_AddNumberToObject(syscollector, "processes", limits->syscollector.processes);
+        cJSON_AddNumberToObject(syscollector, "ports", limits->syscollector.ports);
+        cJSON_AddNumberToObject(syscollector, "network_iface", limits->syscollector.network_iface);
+        cJSON_AddNumberToObject(syscollector, "network_protocol", limits->syscollector.network_protocol);
+        cJSON_AddNumberToObject(syscollector, "network_address", limits->syscollector.network_address);
+        cJSON_AddNumberToObject(syscollector, "hardware", limits->syscollector.hardware);
+        cJSON_AddNumberToObject(syscollector, "os_info", limits->syscollector.os_info);
+        cJSON_AddNumberToObject(syscollector, "users", limits->syscollector.users);
+        cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
+        cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
+        cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
+        cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
+    }
+
+    /* SCA limits */
+    cJSON *sca = cJSON_CreateObject();
+    if (sca) {
+        cJSON_AddNumberToObject(sca, "checks", limits->sca.checks);
+        cJSON_AddItemToObject(limits_obj, "sca", sca);
+    }
+
+    char *json_str = cJSON_PrintUnformatted(limits_obj);
+    cJSON_Delete(limits_obj);
+
+    return json_str;
+}
+
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
+    snprintf(rm_config->manager_version, sizeof(rm_config->manager_version), "%s", __wazuh_version);
+    rm_config->allow_higher_versions = logr.allow_higher_versions;
+
+    rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 60);
+    rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
+    rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 2000);
+    rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 256, 10);
+    rm_config->keepalive_batch_cap = getDefine_Int_default("remoted", "control_keepalive_batch_cap", 10, 100000, 1000);
+
+    extern module_limits_t manager_module_limits;
+    extern bool manager_module_limits_enabled;
+
+    if (manager_module_limits_enabled) {
+        char *limits_json = build_limits_json(&manager_module_limits);
+        if (limits_json) {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "%s", limits_json);
+            os_free(limits_json);
+        } else {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+        }
+    } else {
+        snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+    }
+}
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -420,6 +503,7 @@ void HandleSecure()
     {
         remoted_module_config_t rm_config;
         w_remoted_build_module_config(&logr, &rm_config);
+        remoted_module_control_config(&rm_config);
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {
