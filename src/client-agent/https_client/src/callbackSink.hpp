@@ -38,6 +38,17 @@ class ICallbackSink
         /// production sink drops it right after the C callback returns.
         virtual void onConfigDownloaded(const std::string& configHash,
                                         std::shared_ptr<SpoolFile> file) = 0;
+        /// A remote_upgrade task's WPK was downloaded and sha1-verified; taskId's durable
+        /// record already happened before this is ever called (an ordering guarantee). file
+        /// lives while the callback chain holds the shared_ptr, same convention as
+        /// onConfigDownloaded.
+        virtual void onUpgradeReady(const std::string& taskId, const std::string& wpkFile,
+                                    std::shared_ptr<SpoolFile> file, const std::string& installer) = 0;
+        /// A task's durable record already happened, but it will never reach onTask()/
+        /// onUpgradeReady(): malformed payload, or (remote_upgrade only) a WPK download/sha1
+        /// failure. Distinct from a duplicate -- lets the consumer count it as a real failure.
+        virtual void onTaskFailed(const std::string& taskId, const std::string& taskType,
+                                  const std::string& reason) = 0;
         virtual void onManagerConfigHash(const std::string& configHash) = 0;
         virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
         virtual void onStateChange(hc_conn_state_t state) = 0;

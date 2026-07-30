@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 #include "digest.hpp"
 #include "fakeSysSeams.hpp"
+#include "fakeTaskIdStore.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 
@@ -54,7 +55,7 @@ namespace
                 , m_configHash("abc")
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
-                       m_spoolFactory, m_configHash, m_cluster, m_authGate)
+                       m_spoolFactory, m_configHash, m_cluster, m_authGate, m_taskStore)
             {
             }
 
@@ -81,6 +82,7 @@ namespace
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
             FakeWaiter m_waiter;
+            FakeTaskIdStore m_taskStore;
             ControlStream m_stream;
     };
 } // namespace
@@ -369,7 +371,7 @@ TEST_F(ControlStreamTest, ManagerConfigHashIsReportedEvenWhenItMatches)
 {
     // The agent's startup hash gate waits on the manager-validated config, and
     // an agent already in sync never downloads, so the hash has to reach the
-    // consumer on the notify itself or the gate never releases (#37854).
+    // consumer on the notify itself or the gate never releases.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default"],"config_hash":"abc"}})";
     EXPECT_CALL(m_performer, perform(_))
@@ -518,21 +520,70 @@ TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
     .WillOnce(Return(response(TransportStatus::Ok, 200, notifyResponse)))
     .WillOnce(Return(response(TransportStatus::Ok, 200, repeatResponse)));
 
-    // t1 and t2 dispatched once; the repeated t1 is dropped (at-least-once).
+    // t1 and t2 dispatched once; the repeated t1 is dropped (at-least-once),
+    // per the injected durable store -- not an in-memory TTL anymore.
     EXPECT_CALL(m_sink, onTask("t1", "active_response", R"({"cmd":"x"})"));
     EXPECT_CALL(m_sink, onTask("t2", "agent_restart", "{}"));
 
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> t1, t2.
     m_stream.step(m_waiter); // Notify -> t1 duplicate dropped.
+
+    EXPECT_THAT(m_taskStore.calls(), ::testing::ElementsAre("t1", "t2", "t1"));
+}
+
+TEST_F(ControlStreamTest, DurableStoreIsCheckedBeforeDispatchSoARejectionDropsTheTask)
+{
+    // Simulates the durable registry either already holding this task_id
+    // (a genuine duplicate) or being unreachable (fail-closed): in
+    // both cases checkAndRecord() returning false must drop the task before
+    // any handler runs, never after.
+    const std::string body =
+        R"({"status":"ok","tasks":[)"
+        R"({"task_id":"blocked","task_type":"active_response","payload":{}}]})";
+    m_taskStore.forceDuplicate("blocked");
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)));
+    EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+}
+
+TEST_F(ControlStreamTest, TaskDispatchesAgainOnceTheDurableStoreForgetsIt)
+{
+    // From ControlStream's point of view, a restart (or a TTL expiry inside
+    // agent-info) is opaque: it just asks the store again. This exercises
+    // that a store reporting "new" again re-dispatches, matching the
+    // at-least-once contract without ControlStream needing its own clock
+    // logic (that lives in the durable registry now, tested separately).
+    const std::string body =
+        R"({"status":"ok","tasks":[)"
+        R"({"task_id":"t-restart-sim","task_type":"active_response","payload":{}}]})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)));
+    EXPECT_CALL(m_sink, onTask("t-restart-sim", "active_response", "{}")).Times(2);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Dispatch #1.
+    m_taskStore.forget("t-restart-sim"); // Simulated restart / TTL expiry.
+    m_stream.step(m_waiter); // Dispatch #2 (store reports "new" again).
+    m_stream.step(m_waiter); // Duplicate again: dropped.
 }
 
 TEST_F(ControlStreamTest, NotifyBatchIsPrioritizedAndCollapsedBeforeDispatch)
 {
-    // A shuffled batch: dispatch order is AR -> reload -> upgrade; the restart
-    // is dropped (covered by the upgrade). Because dedup runs before the
-    // planner, the dropped restart is marked seen and its at-least-once
-    // redelivery on the next Notify stays dropped.
+    // A shuffled batch: dispatch order is AR -> reload; the restart and the
+    // upgrade (empty/malformed payload here, so it aborts without calling
+    // the sink either way) are dropped by the planner as covered by the
+    // upgrade. Because the durable check runs before the planner, the
+    // dropped restart is recorded and its at-least-once redelivery on the
+    // next Notify stays dropped.
     const std::string batch =
         R"({"status":"ok","tasks":[)"
         R"({"task_id":"t-restart","task_type":"agent_restart","payload":{}},)"
@@ -548,39 +599,125 @@ TEST_F(ControlStreamTest, NotifyBatchIsPrioritizedAndCollapsedBeforeDispatch)
     .WillOnce(Return(response(TransportStatus::Ok, 200, batch)))
     .WillOnce(Return(response(TransportStatus::Ok, 200, redelivery)));
 
-    // restart + reload dropped (both covered by the upgrade).
+    // restart + reload dropped (both covered by the upgrade); the upgrade
+    // itself never reaches onTask (routed to onUpgradeReady instead) and its
+    // malformed payload here means neither fires.
     EXPECT_CALL(m_sink, onTask("t-restart", _, _)).Times(0);
     EXPECT_CALL(m_sink, onTask("t-reload", _, _)).Times(0);
-    {
-        ::testing::InSequence ordered;
-        EXPECT_CALL(m_sink, onTask("t-ar", "active_response", "{}"));
-        EXPECT_CALL(m_sink, onTask("t-up", "remote_upgrade", "{}"));
-    }
+    EXPECT_CALL(m_sink, onTask("t-up", _, _)).Times(0);
+    EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("t-up", "remote_upgrade", _)); // Empty payload: missing fields.
+    EXPECT_CALL(m_sink, onTask("t-ar", "active_response", "{}"));
 
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify: planned dispatch in priority order.
     m_stream.step(m_waiter); // Redelivered restart: still dropped.
 }
 
-TEST_F(ControlStreamTest, DuplicateTaskIsReDeliveredAfterTheDedupTtl)
+TEST_F(ControlStreamTest, RemoteUpgradeDownloadsVerifiesAndDeliversInsteadOfOnTask)
 {
-    // The default fixture config carries the 3600 s dedup TTL; advancing the
-    // FakeClock past it lets the same task_id through again (at-least-once).
-    const std::string body =
-        R"({"status":"ok","tasks":[)"
-        R"({"task_id":"t-ttl","task_type":"active_response","payload":{}}]})";
+    // A remote_upgrade task is intercepted before the generic on_task
+    // callback -- its WPK is downloaded via /download and sha1-verified here,
+    // and only onUpgradeReady (never onTask) is called for it. The task_id is
+    // already durably recorded by this point (checked in collectFreshTasks,
+    // before planning/dispatch), so this is what makes the eventual installer
+    // run idempotent across the restart it triggers.
+    const std::string wpkBytes = "fake-wpk-bytes";
+    const std::string wpkSha1 = sha1Hex(wpkBytes.data(), wpkBytes.size());
+    const std::string notify =
+        R"({"status":"ok","tasks":[{"task_id":"up-1","task_type":"remote_upgrade",)"
+        R"("payload":{"wpk_file":"agent.wpk","wpk_sha1":")" + wpkSha1 +
+        R"(","installer":"upgrade.sh"}}]})";
+
+    std::string downloadBody;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))  // Startup.
-    .WillOnce(Return(response(TransportStatus::Ok, 200, body)))  // First delivery.
-    .WillOnce(Return(response(TransportStatus::Ok, 200, body)))  // Within TTL: dropped.
-    .WillOnce(Return(response(TransportStatus::Ok, 200, body))); // After TTL: re-dispatched.
-    EXPECT_CALL(m_sink, onTask("t-ttl", "active_response", "{}")).Times(2);
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillOnce(Invoke( // /download.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ("/download", spec.target);
+        downloadBody = bodyOf(spec);
+        std::ofstream file {spec.responseFilePath, std::ios::binary};
+        file << wpkBytes;
+        return response(TransportStatus::Ok, 200);
+    }));
+    EXPECT_CALL(m_sink, onTask("up-1", _, _)).Times(0);
+
+    std::shared_ptr<SpoolFile> delivered;
+    std::string deliveredInstaller;
+    EXPECT_CALL(m_sink, onUpgradeReady("up-1", "agent.wpk", _, "upgrade.sh"))
+    .WillOnce(Invoke([&](const std::string&, const std::string&, std::shared_ptr<SpoolFile> file,
+                         const std::string & installer)
+    {
+        delivered = std::move(file);
+        deliveredInstaller = installer;
+    }));
 
     m_stream.step(m_waiter); // Startup.
-    m_stream.step(m_waiter); // Dispatch #1.
-    m_stream.step(m_waiter); // Duplicate within TTL: no dispatch.
-    m_clock.advance(std::chrono::seconds {3601});
-    m_stream.step(m_waiter); // Past TTL: dispatch #2.
+    m_stream.step(m_waiter); // Notify -> spawns the download/verify/deliver worker thread.
+    // The download/verify/deliver chain runs off the control thread (see
+    // ControlStream::dispatchUpgradeTask()), so it must be explicitly waited for before
+    // asserting on its side effects below -- step() itself returns as soon as the thread is
+    // spawned.
+    m_stream.joinUpgradeWork();
+
+    EXPECT_EQ(R"({"resource_type":"wpk","resource_id":"agent.wpk"})", downloadBody);
+    ASSERT_NE(nullptr, delivered);
+    EXPECT_EQ("upgrade.sh", deliveredInstaller);
+    std::ifstream file {delivered->path(), std::ios::binary};
+    const std::string content {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    EXPECT_EQ(wpkBytes, content);
+}
+
+TEST_F(ControlStreamTest, RemoteUpgradeSha1MismatchAbortsWithoutDeliveringOrDispatching)
+{
+    // A sha1 mismatch aborts the upgrade
+    // without installing (and, per the fire-and-forget contract, without any
+    // /control response either -- there is nothing to send).
+    const std::string wpkBytes = "fake-wpk-bytes";
+    const std::string notify =
+        R"({"status":"ok","tasks":[{"task_id":"up-bad","task_type":"remote_upgrade",)"
+        R"("payload":{"wpk_file":"agent.wpk","wpk_sha1":"0000000000000000000000000000000000000",)"
+        R"("installer":"upgrade.sh"}}]})";
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        std::ofstream file {spec.responseFilePath, std::ios::binary};
+        file << wpkBytes; // Downloaded bytes' real sha1 will not match.
+        return response(TransportStatus::Ok, 200);
+    }));
+    EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("up-bad", "remote_upgrade", _));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Spawns the download/verify worker thread.
+    // Wait for the worker thread (download/verify happens off the control
+    // thread) before the fixture tears down and gmock verifies the EXPECT_CALLs above.
+    m_stream.joinUpgradeWork();
+}
+
+TEST_F(ControlStreamTest, RemoteUpgradeMissingPayloadFieldsAbortsWithoutDownloading)
+{
+    const std::string notify =
+        R"({"status":"ok","tasks":[{"task_id":"up-missing","task_type":"remote_upgrade",)"
+        R"("payload":{"wpk_file":"agent.wpk"}}]})"; // wpk_sha1/installer missing.
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))); // No /download call follows.
+    EXPECT_CALL(m_sink, onUpgradeReady(_, _, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
+    EXPECT_CALL(m_sink, onTaskFailed("up-missing", "remote_upgrade", _));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Aborts synchronously (no thread spawned): missing fields are
+    // caught before the worker thread would start.
 }
 
 TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)

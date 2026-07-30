@@ -142,6 +142,11 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent -Wl,--wrap,send_msg \
                                 -Wl,--wrap,startup_gate_release_from_https_apply -Wl,--wrap,os_delwait \
                                 -Wl,--wrap,OS_SHA256_File \
+                                -Wl,--wrap,task_registry_check_and_record \
+                                -Wl,--wrap,restartAgent \
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,w_ref_parent_folder \
+                                -Wl,--wrap,OS_ConnectUnixDomain \
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 
@@ -184,4 +189,58 @@ endforeach()
 if(TARGET test_https_client_bridge)
     # https_client.h (the module's C ABI) isn't on the global include path.
     target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+# Component test for the durable dedup + IPC round-trip: wires the
+# REAL client (task_registry_client.c, via CLIENT-AGENT, unwrapped) to the
+# REAL server-side dispatch chain (wmcom_dispatch -> wm_module_query ->
+# wm_agent_info_query -> the real TaskIdRegistry) over a REAL AF_UNIX
+# socket, all in one process. See test_task_registry_ipc_component.cpp's
+# file banner for exactly what is real vs. test harness. Needs real
+# sockets/threads (POSIX) and gtest; agent target, not winagent.
+if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  enable_language(CXX)
+
+  file(GLOB_RECURSE task_registry_ipc_wm_objs
+       ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+  list(REMOVE_ITEM task_registry_ipc_wm_objs
+       ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+
+  add_library(TASK_REGISTRY_IPC_WM_O STATIC ${task_registry_ipc_wm_objs})
+  set_source_files_properties(
+      ${task_registry_ipc_wm_objs}
+      PROPERTIES
+      EXTERNAL_OBJECT true
+      GENERATED true)
+  set_target_properties(TASK_REGISTRY_IPC_WM_O PROPERTIES LINKER_LANGUAGE C)
+  target_link_libraries(TASK_REGISTRY_IPC_WM_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
+
+  link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+  add_executable(test_task_registry_ipc_component test_task_registry_ipc_component.cpp)
+  target_include_directories(
+      test_task_registry_ipc_component
+      PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include/
+              ${SRC_FOLDER}/wazuh_modules/agent_info/include
+              ${SRC_FOLDER}/wazuh_modules/src)
+  target_link_libraries(
+      test_task_registry_ipc_component
+      debug gtestd
+      debug gtest_maind
+      optimized gtest
+      optimized gtest_main
+      CLIENT-AGENT
+      -Wl,--start-group
+      TASK_REGISTRY_IPC_WM_O
+      ${SRC_FOLDER}/build/lib/libagent_info.so
+      ${WAZUHLIB}
+      ${WAZUHEXT}
+      -Wl,--end-group
+      pthread
+      dl
+      cmocka
+      -fprofile-arcs
+      -ftest-coverage)
+  add_test(NAME test_task_registry_ipc_component COMMAND test_task_registry_ipc_component)
+  set_tests_properties(test_task_registry_ipc_component PROPERTIES LABELS "client-agent;agent_info")
 endif()

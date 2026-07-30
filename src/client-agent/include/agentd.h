@@ -86,7 +86,7 @@ int buffer_append(const char *msg, ssize_t msg_len);
  *
  * Writes straight to send_msg(), bypassing every buffer, so a flood report
  * never queues behind the flood it reports. Called by the legacy leaky bucket
- * and by the https_client bridge for the /stateless accumulator (#37835).
+ * and by the https_client bridge for the /stateless accumulator.
  *
  * @param action One of "normal", "warning", "full", "flooded".
  * @param severity Matching severity, 0 to 3.
@@ -225,6 +225,12 @@ void * req_receiver(void * arg);
  * a fallback (e.g. release the startup hash gate directly). */
 bool reloadAgent(void);
 
+// Restart agent (the https_client bridge's agent_restart task_type). Same mechanism and
+// return-value contract as reloadAgent(), with wm_control dispatched
+// "restart" instead of "reload" (systemctl/wazuh-control restart on
+// Linux/macOS, a detached service restart on Windows).
+bool restartAgent(void);
+
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
@@ -240,7 +246,7 @@ void startup_gate_refresh_from_local_hash(void);
 // Release the startup gate from the HTTPS /control apply chain
 // (bridge_on_config_downloaded, once a downloaded config has been verified
 // and applied). There is no merged_sum handshake field to key a hash
-// comparison off over HTTPS (#37733), so this opens the gate directly on the
+// comparison off over HTTPS, so this opens the gate directly on the
 // strength of the module's own SHA-256 verification, rather than routing
 // through startup_gate_refresh_from_local_hash()'s (legacy-only, MD5-based)
 // comparison machinery.

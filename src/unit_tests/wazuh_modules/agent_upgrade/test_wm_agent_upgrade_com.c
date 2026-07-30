@@ -37,14 +37,8 @@ extern int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
 extern int _unsign(const char * source, char dest[PATH_MAX + 1]);
 extern int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
 
-extern char * wm_agent_upgrade_com_open(const cJSON* json_object);
-extern char * wm_agent_upgrade_com_write(const cJSON* json_object);
-extern char * wm_agent_upgrade_com_close(const cJSON* json_object);
-extern char * wm_agent_upgrade_com_sha1(const cJSON* json_object);
 extern char * wm_agent_upgrade_com_upgrade(const cJSON* json_object);
-extern char * wm_agent_upgrade_com_clear_result();
 
-extern struct {char path[PATH_MAX + 1]; FILE * fp;} file;
 extern const char * error_messages[];
 /* Internal methods tests */
 
@@ -84,16 +78,6 @@ int teardown_jailfile(void **state) {
     char *filename = *state;
     test_mode = 0;
     os_free(filename);
-    return 0;
-}
-
-int setup_clear_result(void **state) {
-    test_mode = 1;
-    return 0;
-}
-
-int teadown_clear_result(void **state) {
-    test_mode = 0;
     return 0;
 }
 
@@ -455,42 +439,6 @@ void test_uncompress_success(void **state) {
 }
 
 /* Commands tests */
-int setup_open1(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "mode", "r");
-    cJSON_AddStringToObject(command, "file", "test_file");
-    *state = command;
-    test_mode = 1;
-    return 0;
-}
-
-int setup_open2(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "mode", "w");
-    cJSON_AddStringToObject(command, "file", "test_file");
-    *state = command;
-    test_mode = 1;
-    return 0;
-}
-
-int setup_write(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "buffer", "ABCDABCD");
-    cJSON_AddStringToObject(command, "file", "test_file");
-    cJSON_AddNumberToObject(command, "length", 8);
-    *state = command;
-    test_mode = 1;
-    return 0;
-}
-
-int setup_sha1(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "file", "test_file");
-    *state = command;
-    test_mode = 1;
-    return 0;
-}
-
 int setup_upgrade(void **state) {
     cJSON * command = cJSON_CreateObject();
     cJSON_AddStringToObject(command, "file", "test_file");
@@ -505,333 +453,6 @@ int teardown_commands(void **state) {
     test_mode = 0;
     cJSON_Delete(command);
     return 0;
-}
-
-void test_wm_agent_upgrade_com_open_unsopported_mode(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "existent_path");
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtwarn, formatted_msg,  "(8124): At open: File 'existent_path' was opened. Closing.");
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, 0);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,  "(8125): At open: Unsupported mode.");
-
-    char *response = wm_agent_upgrade_com_open(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Unsupported file mode");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_open_invalid_file_name(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,  "(8126): At open: Invalid file name.");
-
-    char *response = wm_agent_upgrade_com_open(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 0);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,   "(1103): Could not open file 'test_file' due to [(2)-(No such file or directory)].");
-
-    errno = 2;
-
-    char *response = wm_agent_upgrade_com_open(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File Open Error: No such file or directory");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_open_success(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 4);
-
-    char *response = wm_agent_upgrade_com_open(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_write_file_closed(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "%s", "\0");
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,   "(8127): At write: File not opened. Agent might have been auto-restarted during upgrade.");
-
-    char *response = wm_agent_upgrade_com_write(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "File not opened. Agent might have been auto-restarted during upgrade");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_write_invalid_file_name(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "%s", "test_file");
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg,   "(8126): At write: Invalid file name.");
-
-    char *response = wm_agent_upgrade_com_write(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_write_different_file_name(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "%s", "test_file_different");
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8128): At write: The target file doesn't match the opened file 'test_file_different'");
-
-    char *response = wm_agent_upgrade_com_write(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_write_error(void **state) {
-    cJSON * command = *state;
-#ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_file");
-#else
-    sprintf(file.path, "var/incoming/test_file");
-#endif
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    will_return(__wrap_fwrite, -1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-#ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_file'");
-#else
-    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'var/incoming/test_file'");
-#endif
-
-    char *response = wm_agent_upgrade_com_write(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot write file");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_write_success(void **state) {
-    cJSON * command = *state;
-#ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_file");
-#else
-    sprintf(file.path, "var/incoming/test_file");
-#endif
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    will_return(__wrap_fwrite, 8);
-
-    char *response = wm_agent_upgrade_com_write(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_close_file_opened(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "%s", "\0");
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8130): At close: No file is opened.");
-
-    char *response = wm_agent_upgrade_com_close(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "No file opened");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_close_invalid_file_name(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "test_file");
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8126): At close: Invalid file name.");
-
-    char *response = wm_agent_upgrade_com_close(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_close_different_file_name(void **state) {
-    cJSON * command = *state;
-
-    sprintf(file.path, "%s", "test_file_different");
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8128): At close: The target file doesn't match the opened file 'test_file_different'");
-
-    char *response = wm_agent_upgrade_com_close(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "The target file doesn't match the opened file");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_close_failed(void **state) {
-    cJSON * command = *state;
-
-    #ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_file");
-    #else
-    sprintf(file.path, "var/incoming/test_file");
-    #endif
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, -1);
-
-    errno = EPERM;
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8131): At close: 'Operation not permitted'");
-
-    char *response = wm_agent_upgrade_com_close(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot close file");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_close_success(void **state) {
-    cJSON * command = *state;
-
-    #ifdef TEST_WINAGENT
-    sprintf(file.path, "incoming\\test_file");
-    #else
-    sprintf(file.path, "var/incoming/test_file");
-    #endif
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_fclose, _File);
-    will_return(__wrap_fclose, 0);
-
-    char *response = wm_agent_upgrade_com_close(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_sha1_invalid_file(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8126): At sha1: Invalid file name.");
-
-    char *response = wm_agent_upgrade_com_sha1(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Invalid file name");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_sha1_sha_error(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_OS_SHA1_File, fname);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_BINARY);
-    will_return(__wrap_OS_SHA1_File, "");
-    will_return(__wrap_OS_SHA1_File, -1);
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8132): At sha1: Error generating SHA1.");
-
-    char *response = wm_agent_upgrade_com_sha1(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Cannot generate SHA1");
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_sha1_sha_success(void **state) {
-    cJSON * command = *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-    will_return(__wrap_w_ref_parent_folder, 0);
-
-    expect_any(__wrap_OS_SHA1_File, fname);
-    expect_value(__wrap_OS_SHA1_File, mode, OS_BINARY);
-    will_return(__wrap_OS_SHA1_File, "2c312ada12ab321a253ad321af65983fa412e3a1");
-    will_return(__wrap_OS_SHA1_File, 0);
-
-    char *response = wm_agent_upgrade_com_sha1(command);
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "2c312ada12ab321a253ad321af65983fa412e3a1");
-    cJSON_Delete(response_object);
-    os_free(response);
 }
 
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
@@ -1423,66 +1044,7 @@ void test_wm_agent_upgrade_com_success(void **state) {
     os_free(response);
 }
 
-void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
-    allow_upgrades = false;
-
-    #ifndef TEST_WINAGENT
-        expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
-    #else
-        expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
-    #endif
-    will_return(__wrap_remove, -1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    #ifndef TEST_WINAGENT
-        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'var/upgrade/upgrade_result'");
-    #else
-        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'");
-    #endif
-
-    char *response = wm_agent_upgrade_com_clear_result();
-
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "Could not erase upgrade_result file");
-
-    assert_int_equal(allow_upgrades, false);
-
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
-void test_wm_agent_upgrade_com_clear_result_success(void **state) {
-    allow_upgrades = false;
-
-    #ifndef TEST_WINAGENT
-        expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
-    #else
-        expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
-    #endif
-    will_return(__wrap_remove, 0);
-
-    char *response = wm_agent_upgrade_com_clear_result();
-
-    cJSON *response_object = cJSON_Parse(response);
-    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
-
-    assert_int_equal(allow_upgrades, true);
-
-    cJSON_Delete(response_object);
-    os_free(response);
-}
-
 /* Process commands */
-int setup_process_clear_upgrade(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "clear_upgrade_result");
-    char *ptr = cJSON_PrintUnformatted(command);
-    *state = ptr;
-    cJSON_Delete(command);
-    test_mode = 1;
-    return 0;
-}
-
 int teardown_process(void **state) {
     char *buffer = *state;
     os_free(buffer);
@@ -1491,68 +1053,18 @@ int teardown_process(void **state) {
     return 0;
 }
 
-int setup_process_no_parameters(void **state) {
+int setup_process_upgrade_no_parameters(void **state) {
     cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "open");
+    cJSON_AddStringToObject(command, "command", "upgrade");
     char *ptr = cJSON_PrintUnformatted(command);
     *state = ptr;
     cJSON_Delete(command);
     test_mode = 1;
-    return 0;
-}
-
-int setup_process_open(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "open");
-    cJSON * parameters = cJSON_CreateObject();
-    cJSON_AddStringToObject(parameters, "mode", "w");
-    cJSON_AddStringToObject(parameters, "file", "test_file");
-    cJSON_AddItemToObject(command, "parameters", parameters);
-    char *ptr = cJSON_PrintUnformatted(command);
-    *state = ptr;
-    cJSON_Delete(command);
-    test_mode = 1;
-    return 0;
-}
-
-int setup_process_write(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "write");
-    cJSON * parameters = cJSON_CreateObject();
-    cJSON_AddStringToObject(parameters, "buffer", "ABCDABCD");
-    cJSON_AddStringToObject(parameters, "file", "test_file");
-    cJSON_AddNumberToObject(parameters, "length", 8);
-    cJSON_AddItemToObject(command, "parameters", parameters);
-    char *ptr = cJSON_PrintUnformatted(command);
-    *state = ptr;
-    cJSON_Delete(command);
-    test_mode = 1;
-    return 0;
-}
-
-int setup_process_close(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "close");
-    cJSON * parameters = cJSON_CreateObject();
-    cJSON_AddStringToObject(parameters, "file", "test_file");
-    cJSON_AddItemToObject(command, "parameters", parameters);
-    char *ptr = cJSON_PrintUnformatted(command);
-    *state = ptr;
-    cJSON_Delete(command);
-    test_mode = 1;
-    return 0;
-}
-
-int setup_process_sha1(void **state) {
-    cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "sha1");
-    cJSON * parameters = cJSON_CreateObject();
-    cJSON_AddStringToObject(parameters, "file", "test_file");
-    cJSON_AddItemToObject(command, "parameters", parameters);
-    char *ptr = cJSON_PrintUnformatted(command);
-    *state = ptr;
-    cJSON_Delete(command);
-    test_mode = 1;
+    // This test is about the missing-parameters error path specifically, not the
+    // allow_upgrades gate (covered separately by *_not_allowed below), and the com
+    // tests above never route through wm_agent_upgrade_process_command() so the
+    // module-level allow_upgrades flag is otherwise left at its initial false.
+    allow_upgrades = true;
     return 0;
 }
 
@@ -1572,7 +1084,11 @@ int setup_process_upgrade(void **state) {
 
 int setup_process_upgrade_not_allowed(void **state) {
     cJSON * command = cJSON_CreateObject();
-    cJSON_AddStringToObject(command, "command", "open");
+    cJSON_AddStringToObject(command, "command", "upgrade");
+    cJSON * parameters = cJSON_CreateObject();
+    cJSON_AddStringToObject(parameters, "file", "test_file");
+    cJSON_AddStringToObject(parameters, "installer", "install.sh");
+    cJSON_AddItemToObject(command, "parameters", parameters);
     char *ptr = cJSON_PrintUnformatted(command);
     *state = ptr;
     cJSON_Delete(command);
@@ -1594,28 +1110,7 @@ int setup_process_unknown(void **state) {
     return 0;
 }
 
-void test_wm_agent_upgrade_process_clear_command(void **state) {
-    char * buffer = *state;
-    char *output = NULL;
-
-    {
-        #ifndef TEST_WINAGENT
-            expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
-        #else
-            expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
-        #endif
-        will_return(__wrap_remove, 0);
-    }
-
-    size_t length = wm_agent_upgrade_process_command(buffer, &output);
-    cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "ok");
-    assert_int_equal(strlen(output), length);
-    cJSON_Delete(response);
-    os_free(output);
-}
-
-void test_wm_agent_upgrade_process_open_no_parameters(void **state) {
+void test_wm_agent_upgrade_process_upgrade_no_parameters(void **state) {
     char * buffer = *state;
     char *output = NULL;
 
@@ -1623,104 +1118,6 @@ void test_wm_agent_upgrade_process_open_no_parameters(void **state) {
     cJSON *response = cJSON_Parse(output);
     assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Required parameters were not found");
     assert_int_not_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
-    assert_int_equal(strlen(output), length);
-    cJSON_Delete(response);
-    os_free(output);
-}
-
-void test_wm_agent_upgrade_process_open_command(void **state) {
-    char * buffer = *state;
-    char *output = NULL;
-    // Open
-    {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "w");
-        will_return(__wrap_wfopen, 4);
-    }
-
-    size_t length = wm_agent_upgrade_process_command(buffer, &output);
-    cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "ok");
-    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
-    assert_int_equal(strlen(output), length);
-    cJSON_Delete(response);
-    os_free(output);
-}
-
-void test_wm_agent_upgrade_process_write_command(void **state) {
-    char * buffer = *state;
-    char *output = NULL;
-    // Write
-    {
-        #ifdef TEST_WINAGENT
-            sprintf(file.path, "incoming\\test_file");
-        #else
-            sprintf(file.path, "var/incoming/test_file");
-        #endif
-
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-
-        will_return(__wrap_fwrite, 8);
-    }
-
-    size_t length = wm_agent_upgrade_process_command(buffer, &output);
-    cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "ok");
-    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
-    assert_int_equal(strlen(output), length);
-    cJSON_Delete(response);
-    os_free(output);
-}
-
-void test_wm_agent_upgrade_process_close_command(void **state) {
-    char * buffer = *state;
-    char *output = NULL;
-    // Close
-    {
-        #ifdef TEST_WINAGENT
-        sprintf(file.path, "incoming\\test_file");
-        #else
-        sprintf(file.path, "var/incoming/test_file");
-        #endif
-
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-
-        expect_any(__wrap_fclose, _File);
-        will_return(__wrap_fclose, 0);
-    }
-
-    size_t length = wm_agent_upgrade_process_command(buffer, &output);
-    cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "ok");
-    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
-    assert_int_equal(strlen(output), length);
-    cJSON_Delete(response);
-    os_free(output);
-}
-
-void test_wm_agent_upgrade_process_sha1_command(void **state) {
-    char * buffer = *state;
-    char *output = NULL;
-    // sha1
-    {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-
-        expect_any(__wrap_OS_SHA1_File, fname);
-        expect_value(__wrap_OS_SHA1_File, mode, OS_BINARY);
-        will_return(__wrap_OS_SHA1_File, "2c312ada12ab321a253ad321af65983fa412e3a1");
-        will_return(__wrap_OS_SHA1_File, 0);
-    }
-
-    size_t length = wm_agent_upgrade_process_command(buffer, &output);
-    cJSON *response = cJSON_Parse(output);
-    assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "2c312ada12ab321a253ad321af65983fa412e3a1");
-    assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
     assert_int_equal(strlen(output), length);
     cJSON_Delete(response);
     os_free(output);
@@ -1876,23 +1273,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_uncompress_gzread_fail, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_success, setup_jailfile, teardown_jailfile),
         // Test commands
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_unsopported_mode, setup_open1, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_file_name, setup_open2, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_open, setup_open2, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_success, setup_open2, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_file_closed, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_invalid_file_name, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_different_file_name, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_error, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_success, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_file_opened, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_invalid_file_name, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_different_file_name, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_failed, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_close_success, setup_write, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_sha1_invalid_file, setup_sha1, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_sha1_sha_error, setup_sha1, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_sha1_sha_success, setup_sha1, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_upgrade_unsign_error, setup_upgrade, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_upgrade_uncompress_error, setup_upgrade, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_upgrade_clean_directory_error, setup_upgrade, teardown_commands),
@@ -1903,15 +1283,8 @@ int main(void) {
     #endif
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_execute_error, setup_upgrade, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_success, setup_upgrade, teardown_commands),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_clear_result_failed, setup_clear_result, teadown_clear_result),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_clear_result_success, setup_clear_result, teadown_clear_result),
         // Command dispatcher
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_clear_command, setup_process_clear_upgrade, teardown_process),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_open_no_parameters, setup_process_no_parameters, teardown_process),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_open_command, setup_process_open, teardown_process),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_write_command, setup_process_write, teardown_process),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_close_command, setup_process_close, teardown_process),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_sha1_command, setup_process_sha1, teardown_process),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_no_parameters, setup_process_upgrade_no_parameters, teardown_process),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_command, setup_process_upgrade, teardown_process),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_upgrade_not_allowed, setup_process_upgrade_not_allowed, teardown_process),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_process_unknown, setup_process_unknown, teardown_process)

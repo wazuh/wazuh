@@ -227,3 +227,101 @@ TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsCallbackWithData)
     // Verify that the callback was executed (which means selectRows was called)
     EXPECT_TRUE(callbackExecuted);
 }
+
+// Durable /control task_id dedup guard, backed by the `tasks` table in this same
+// DBSync-managed agent_info.db. See AgentInfoImpl::checkAndRecordTask/cleanupExpiredTasks.
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskNewTaskInsertsAndReturnsTrue)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json & query, ResultCallbackData)
+    {
+        // No callback invocation: simulates "not found".
+        EXPECT_EQ("tasks", query.at("table").get<std::string>());
+        EXPECT_EQ("WHERE task_id = ?", query.at("query").at("row_filter").get<std::string>());
+    }));
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json & jsInsert)
+    {
+        EXPECT_EQ("tasks", jsInsert.at("table").get<std::string>());
+        ASSERT_EQ(1u, jsInsert.at("data").size());
+        EXPECT_EQ("task-abc", jsInsert.at("data")[0].at("task_id").get<std::string>());
+        EXPECT_TRUE(jsInsert.at("data")[0].contains("recorded_at"));
+    }));
+
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("task-abc"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskDuplicateReturnsFalseWithoutInserting)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json&, ResultCallbackData callback)
+    {
+        nlohmann::json row;
+        row["task_id"] = "task-abc";
+        callback(SELECTED, row);
+    }));
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_)).Times(0);
+
+    m_logOutput.clear();
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("already recorded"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskFailsClosedWithoutDBSync)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
+
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("task-abc"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIssuesTtlThenCapDeletes)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    std::vector<std::string> filtersSeen;
+    EXPECT_CALL(*m_mockDBSync, deleteRows(::testing::_))
+    .Times(2)
+    .WillRepeatedly(::testing::Invoke([&filtersSeen](const nlohmann::json & jsDelete)
+    {
+        EXPECT_EQ("tasks", jsDelete.at("table").get<std::string>());
+        filtersSeen.push_back(jsDelete.at("query").at("where_filter_opt").get<std::string>());
+    }));
+
+    m_agentInfo->cleanupExpiredTasks(/*ttlSeconds=*/86400, /*maxEntries=*/4096);
+
+    ASSERT_EQ(2u, filtersSeen.size());
+    EXPECT_THAT(filtersSeen[0], ::testing::HasSubstr("recorded_at <"));
+    EXPECT_THAT(filtersSeen[1], ::testing::HasSubstr("NOT IN"));
+    EXPECT_THAT(filtersSeen[1], ::testing::HasSubstr("LIMIT 4096"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CleanupExpiredTasksIsNoOpWithoutDBSync)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+    m_agentInfo->stop();
+
+    EXPECT_NO_THROW(m_agentInfo->cleanupExpiredTasks(86400, 4096));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, CountTasksReturnsSelectedCount)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const nlohmann::json&, ResultCallbackData callback)
+    {
+        nlohmann::json row;
+        row["count"] = 5;
+        callback(SELECTED, row);
+    }));
+
+    EXPECT_EQ(5u, m_agentInfo->countTasks());
+}

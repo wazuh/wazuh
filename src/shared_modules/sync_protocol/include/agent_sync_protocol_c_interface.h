@@ -148,6 +148,16 @@ void asp_reset(AgentSyncProtocolHandle* handle);
 /// @return true if stop was requested, false otherwise.
 bool asp_should_stop(const AgentSyncProtocolHandle* handle);
 
+/// @brief Registers the in-process sender SyncSocketTransport's Windows stub uses to hand a
+/// session directly to https_client, since Windows has no local socket intake for it (see
+/// SyncSocketTransport's own class doc). Call with NULL to deregister (e.g. https_client is
+/// stopping). Process-global: this library is one instance per process regardless of how many
+/// modules (agent-info, SCA, syscollector, FIM) use it, and there is only ever one https_client
+/// to reach.
+///
+/// @param sender Function to call for each session, or NULL to deregister.
+void asp_set_session_sender(asp_sync_session_sender_fn sender);
+
 #ifdef __cplusplus
 }
 #endif

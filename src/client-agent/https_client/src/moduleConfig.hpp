@@ -51,10 +51,10 @@ struct ModuleConfig
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 
-        // TODO(#37833): interim in-memory dedup bounds; retired by the durable
-        // agent-info task_id registry.
-        uint32_t taskDedupMax {4096};
-        uint32_t taskDedupTtlS {3600};
+        /// Safety bound for a remote_upgrade WPK download: stops a
+        /// hostile or faulty manager exhausting disk. WPKs are tens of MB,
+        /// much larger than merged.mg, hence the bigger default than config's.
+        uint64_t wpkMaxDownloadBytes {200ULL * 1024 * 1024};
 
         std::string version;
         std::string configChecksum;

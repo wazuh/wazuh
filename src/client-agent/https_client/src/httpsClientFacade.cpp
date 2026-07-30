@@ -21,11 +21,12 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_performer(m_config, defaultCurlHandleFactory())
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
+    , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate)
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
                  m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
-                m_configHash, m_cluster, m_authGate)
+                m_configHash, m_cluster, m_authGate, m_taskStore)
 {
 }
 
@@ -150,6 +151,12 @@ void HttpsClientFacade::stop()
         m_controlThread.join();
     }
 
+    // Joins any in-flight remote_upgrade download/dispatch thread ControlStream may have
+    // spawned (dispatchUpgradeTask()). Must happen here, before member teardown begins --
+    // m_controlWaiter (destroyed before m_control, per this class's declaration order) is
+    // captured by reference in that thread's lambda, so it must finish first.
+    m_control.joinUpgradeWork();
+
     if (m_statelessThread.joinable())
     {
         m_statelessThread.join();
@@ -228,9 +235,9 @@ void HttpsClientFacade::statefulLoop()
 
 void HttpsClientFacade::drain()
 {
-    // Finding 3 (#37831 QA round): the manager was observed never receiving
-    // the /control shutdown message, with no failure log either -- pointing
-    // at this guard silently skipping the send. Neither branch had a log
+    // The manager was observed never receiving the /control shutdown message, with no
+    // failure log either -- pointing at this guard silently skipping the send. Neither
+    // branch had a log
     // statement at any verbosity before this, so raising debug logging could
     // not distinguish "guard tripped" from "never reached this code at all".
     // These two lines make that observable; see controlStream.cpp's

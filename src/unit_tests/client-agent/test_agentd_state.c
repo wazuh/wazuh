@@ -171,6 +171,36 @@ void test_w_agentd_state_update_msg_send(void ** state)
 
 }
 
+void test_w_agentd_state_update_task_dispatched(void ** state)
+{
+    w_agentd_state_update_t type = INCREMENT_TASK_DISPATCHED;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_agentd_state_update(type, NULL);
+}
+
+void test_w_agentd_state_update_task_discarded_duplicate(void ** state)
+{
+    w_agentd_state_update_t type = INCREMENT_TASK_DISCARDED_DUPLICATE;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_agentd_state_update(type, NULL);
+}
+
+void test_w_agentd_state_update_task_failed(void ** state)
+{
+    w_agentd_state_update_t type = INCREMENT_TASK_FAILED;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_agentd_state_update(type, NULL);
+}
+
 /* w_agentd_state_get */
 
 void test_w_agentd_state_get_last_keepalive(void ** state)
@@ -225,6 +255,18 @@ void test_w_agentd_state_get_last_keepalive(void ** state)
     will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
@@ -288,6 +330,18 @@ void test_w_agentd_state_get_last_ack(void ** state)
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
 
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -349,6 +403,18 @@ void test_w_agentd_state_get_buffer_disabled(void ** state)
     will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
@@ -412,6 +478,18 @@ void test_w_agentd_state_get_buffer_empty(void ** state)
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
 
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -473,6 +551,18 @@ void test_w_agentd_state_get_pending(void ** state)
     will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
@@ -536,6 +626,18 @@ void test_w_agentd_state_get_conected(void ** state)
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
 
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -597,6 +699,18 @@ void test_w_agentd_state_get_disconected(void ** state)
     will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
 
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
@@ -662,6 +776,18 @@ void test_w_agentd_state_get_unknown(void ** state)
 
     will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
 
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DISPATCHED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_DUPLICATE);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_TASK_FAILED);
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, (cJSON *)1);
+
     will_return(__wrap_cJSON_PrintUnformatted, "unknown");
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -697,7 +823,13 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_state_get_pending),
         cmocka_unit_test(test_w_agentd_state_get_conected),
         cmocka_unit_test(test_w_agentd_state_get_disconected),
-        cmocka_unit_test(test_w_agentd_state_get_unknown)
+        cmocka_unit_test(test_w_agentd_state_get_unknown),
+
+        // Tests w_agentd_state_update (task dispatch metrics) -- run
+        // after the get_* tests above, which assert the fields start at 0.
+        cmocka_unit_test(test_w_agentd_state_update_task_dispatched),
+        cmocka_unit_test(test_w_agentd_state_update_task_discarded_duplicate),
+        cmocka_unit_test(test_w_agentd_state_update_task_failed)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

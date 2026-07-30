@@ -22,10 +22,9 @@
  * ever throws into C. agentd links the module directly (see
  * src/client-agent/CMakeLists.txt).
  *
- * The transport contract implemented behind this ABI is the one proposed in
- * #37732 (AES-CMAC request signing, H/E stateless format, status codes) and
- * #37733 (task delivery via /control Notify, single-request /stateful
- * sessions), as consolidated in the #37738 spike.
+ * The transport contract implemented behind this ABI covers AES-CMAC request signing, the
+ * H/E stateless format, status codes, task delivery via /control Notify, and single-request
+ * /stateful sessions.
  */
 
 // Define EXPORTED for any platform
@@ -111,9 +110,7 @@ typedef struct hc_config_t
     char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
     uint16_t server_port;          ///< Manager HTTPS port.
     char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
-    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. The
-    ///< recipe (settled by the manager's
-    ///< resolver, PR #37821): decode verbatim,
+    char agent_key[HC_MAX_KEY];    ///< The raw client.keys key as hex. Decode verbatim,
     ///< AES-128/192/256-CMAC by byte length
     ///< (16/24/32; a real key is 64 hex = 32).
     int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
@@ -141,12 +138,8 @@ typedef struct hc_config_t
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
-    /// Interim task-dedup bounds (TODO #37833: replaced by the durable
-    /// agent-info task_id registry). Max ids kept; 0 -> 4096.
-    uint32_t task_dedup_max;
-    /// Interim task-dedup TTL in seconds; a duplicate re-delivered after this
-    /// is accepted again; 0 -> 3600 (TODO #37833).
-    uint32_t task_dedup_ttl_s;
+    /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB.
+    uint64_t wpk_max_download_bytes;
 
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
     char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg SHA-256 seed. Compared
@@ -177,6 +170,20 @@ typedef struct hc_config_t
  * remoted_module contract (agentd passes mtLoggingFunctionsWrapper) and
  * may fire from any module thread.
  */
+/// Synchronous check-and-record against the durable agent-info task_id
+/// registry. Called on the CONTROL thread (not the dispatcher),
+/// once per fresh task_id in a Notify batch, before batch planning and
+/// before any dispatch -- this ordering is what makes remote_upgrade
+/// idempotent across the restart it triggers. Must be fast and bounded (a
+/// local IPC round-trip with its own timeout): it briefly delays the next
+/// Notify, which is judged acceptable against agent-info (a local,
+/// normally-responsive process) -- unlike task EXECUTION, which stays off
+/// this thread via on_task/on_remote_upgrade_ready.
+/// @return 1 the id is new (now durably recorded); 0 it is a duplicate;
+///         -1 the registry could not be reached/confirmed (treat as
+///         non-dispatchable -- fail closed).
+typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data);
+
 typedef struct hc_callbacks_t
 {
     full_log_fnc_t log;
@@ -189,6 +196,29 @@ typedef struct hc_callbacks_t
     void (*on_reenroll_required)(void* user_data);
     void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
                     void* user_data);
+    /// See hc_check_and_record_task_fn. Mandatory in practice: a null value
+    /// makes every task look non-dispatchable (fail closed), same as an
+    /// error return.
+    hc_check_and_record_task_fn check_and_record_task;
+    /// A remote_upgrade task's WPK was downloaded via /download and its
+    /// wpk_sha1 verified: wpk_path is ready to hand to the upgrade
+    /// module together with installer. Fires from the dispatcher thread,
+    /// same as on_task; wpk_path is a module-owned temp file valid ONLY
+    /// until this callback returns (copy/move it inside the callback, same
+    /// convention as on_config_downloaded). The task_id was already durably
+    /// recorded (check_and_record_task) before this ever fires, so the
+    /// installer this callback goes on to run is safe to execute even though
+    /// it restarts the agent: a post-restart re-delivery is discarded
+    /// upstream and never reaches here again.
+    void (*on_remote_upgrade_ready)(const char* task_id, const char* wpk_file,
+                                    const char* wpk_path, const char* installer, void* user_data);
+    /// A task's durable record already happened (check_and_record_task), but it will NEVER
+    /// reach on_task/on_remote_upgrade_ready: its payload was malformed, or (remote_upgrade
+    /// only) the WPK download/sha1 verification failed. Distinct from a duplicate, so a
+    /// consumer can count it as a real failure. Optional: a null value just means this
+    /// category of failure goes uncounted.
+    void (*on_task_failed)(const char* task_id, const char* task_type, const char* reason,
+                           void* user_data);
     /// A Notify reported a merged-config hash differing from the local one;
     /// the module fetched the new configuration via POST /download and
     /// verified its SHA-256. file_path is a module-owned temp file valid ONLY

@@ -2,6 +2,8 @@
 #define _AGENT_INFO_H
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include "agent_sync_protocol_c_interface_types.h"
 #include "logging_helper.h"
 
@@ -121,6 +123,51 @@ EXPORTED const char* agent_info_get_agent_groups(void);
  */
 EXPORTED void agent_info_clear_agent_groups(void);
 
+/**
+ * @brief Configure the durable task_id registry: the `tasks` table in agent-info's
+ * own agent_info.db (not a private flat file -- see AgentInfoImpl::checkAndRecordTask/
+ * cleanupExpiredTasks/setTaskRegistryLimits).
+ *
+ * Constructs agent_info.db if needed (via agent_info_ensure_database()) and configures its
+ * ttl/max_entries bounds. Cleanup itself is NOT triggered by this call or any other exported
+ * function -- it runs automatically, once per iteration, from within AgentInfoImpl::start()'s
+ * own loop, instead of a dedicated cleanup thread that would otherwise have no synchronization
+ * against this same instance's destruction. Task dispatch is gated on agent_info.db being
+ * available (see agent_info_task_check_and_record), which in production becomes true as soon
+ * as this function runs -- an accepted trade-off for sharing agent-info's single database
+ * rather than keeping a registry independent of AgentInfoImpl's own lifecycle.
+ *
+ * @param max_entries Bound on remembered task_ids (oldest-first eviction).
+ * @param ttl_seconds How long a task_id is remembered before a re-delivery
+ *        is treated as new again.
+ */
+EXPORTED void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_seconds);
+
+/**
+ * @brief Atomically check-and-record a task_id against the durable `tasks` table.
+ *
+ * This is the whole point of the durable registry: agentd calls this (over IPC) before
+ * dispatching a /control task, and a remote_upgrade's task_id must be
+ * recorded here BEFORE its installer runs, so a post-restart re-delivery is
+ * discarded.
+ *
+ * @return 1 if `task_id` is new (now recorded); 0 if it is a duplicate;
+ *         -1 on error (including: agent_info.db not yet available, null/empty id).
+ */
+EXPORTED int agent_info_task_check_and_record(const char* task_id);
+
+/**
+ * @brief Ensure agent_info.db (and thus the `tasks` table) is constructed, without running
+ * the metadata sync loop that agent_info_start() would otherwise block on.
+ *
+ * Idempotent (a no-op if already constructed). Exists so tests that only exercise the task
+ * registry (not metadata sync) can make agent_info.db available without engaging
+ * AgentInfoImpl::start()'s blocking loop; production always goes through the full
+ * agent_info_start() instead, which constructs the same instance and additionally starts
+ * that loop.
+ */
+EXPORTED void agent_info_ensure_database(void);
+
 #ifdef __cplusplus
 }
 #endif
@@ -141,5 +188,7 @@ typedef const char* (*agent_info_get_cluster_node_func)(void);
 typedef void (*agent_info_set_agent_groups_func)(const char* agent_groups);
 typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);
+typedef void (*agent_info_task_registry_init_func)(uint32_t max_entries, uint32_t ttl_seconds);
+typedef int (*agent_info_task_check_and_record_func)(const char* task_id);
 
 #endif //_AGENT_INFO_H

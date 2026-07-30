@@ -25,6 +25,11 @@
 #define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Number of current buffered events
 #define W_AGENTD_FIELD_EN_BUFF    "buffer_enabled" ///< Anti-flooding mechanism (buffer) is enable
 
+/* /control task dispatch metrics */
+#define W_AGENTD_FIELD_TASK_DISPATCHED  "task_dispatched"          ///< Tasks routed to a handler
+#define W_AGENTD_FIELD_TASK_DUPLICATE   "task_discarded_duplicate" ///< Tasks discarded as duplicates
+#define W_AGENTD_FIELD_TASK_FAILED      "task_failed"              ///< Tasks that failed to dispatch/execute
+
 #include "shared.h"
 #include "read-agents.h"
 #include "agentd.h"
@@ -38,7 +43,10 @@ typedef enum {
     UPDATE_ACK,          ///< Update last ack represented by time_t
     INCREMENT_MSG_COUNT, ///< Increment number of messages sent to the buffer
     INCREMENT_MSG_SEND,   ///< Increment number of messages sent to the manager
-    RESET_MSG_COUNT_ON_SHRINK ///< Reset message counter due to buffer shrinking, taking into account new buffer capacity.
+    RESET_MSG_COUNT_ON_SHRINK, ///< Reset message counter due to buffer shrinking, taking into account new buffer capacity.
+    INCREMENT_TASK_DISPATCHED,         ///< A /control task was routed to a handler
+    INCREMENT_TASK_DISCARDED_DUPLICATE, ///< A /control task was discarded as a duplicate
+    INCREMENT_TASK_FAILED              ///< A /control task failed to dispatch/execute
 } w_agentd_state_update_t;
 
 /**
@@ -50,6 +58,9 @@ typedef struct agent_state_t {
     time_t last_ack;        ///< Last time a control message was received
     unsigned int msg_count; ///< Number of generated events
     unsigned int msg_sent;  ///< Number of messages (events + control messages) sent to the manager
+    unsigned int task_dispatched;         ///< /control tasks routed to a handler
+    unsigned int task_discarded_duplicate; ///< /control tasks discarded as duplicates
+    unsigned int task_failed;             ///< /control tasks that failed to dispatch/execute
 } agent_state_t;
 
 /**

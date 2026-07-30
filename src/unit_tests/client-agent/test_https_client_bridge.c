@@ -17,6 +17,7 @@
 #include "agentd.h"
 #include "https_client_bridge.h"
 #include "https_client.h"
+#include "task_registry_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "sha256_op.h"
@@ -107,13 +108,13 @@ void __wrap_startup_gate_release_from_https_apply(void)
     function_called();
 }
 
-/* Finding 2 (WAIT_FILE/os_setwait): no pre-existing wrapper for this ABI. */
+/* WAIT_FILE/os_setwait release path: no pre-existing wrapper for this ABI. */
 void __wrap_os_delwait(void)
 {
     function_called();
 }
 
-/* Bug 2 fix (real-package validation, 2026-07-28): config_checksum's seed must be a SHA-256 of
+/* Real-package validation fix: config_checksum's seed must be a SHA-256 of
  * SHAREDCFG_FILE (matching the module's own ConfigHashState/manager config_hash comparison
  * space), not the legacy MD5 getsharedfiles() used to seed it with. No pre-existing wrapper for
  * this ABI either. */
@@ -173,6 +174,45 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
  * called by the tests that invoke bridge_reenroll_thread directly. */
 extern void *bridge_reenroll_thread(void *arg);
 extern bool g_https_client_stopping;
+
+/* bridge_control_task_thread/bridge_upgrade_thread are
+ * likewise non-static so tests can call them directly, bypassing
+ * w_create_thread (whose shared __wrap_CreateThread mock never runs the
+ * function it's given -- see pthreads_op_wrappers.c). Their context structs
+ * are file-local to https_client_bridge.c (no header exposes them): these
+ * mirrors intentionally match that layout exactly (same member order/types)
+ * so a pointer built here is valid when the real code reads it as its own
+ * struct. Keep them in sync if the real structs change. */
+extern void *bridge_control_task_thread(void *arg);
+extern void *bridge_upgrade_thread(void *arg);
+
+struct bridge_control_task_ctx_mirror {
+    char *task_id;
+    bool restart;
+};
+
+struct bridge_upgrade_ctx_mirror {
+    char *task_id;
+    char *wpk_file;
+    char *installer;
+};
+
+/* __wrap_task_registry_check_and_record, __wrap_restartAgent: no shared
+ * wrapper exists for these yet (they are new). check_expected/
+ * mock() so each test controls the answer. (__wrap_reloadAgent is defined
+ * above, shared with the config-downloaded reload chain tests.) Returns
+ * task_registry_result_t, not a plain bool, so a genuine duplicate can be
+ * distinguished from a registry error -- see bridge_check_and_record_task(). */
+task_registry_result_t __wrap_task_registry_check_and_record(const char *task_id)
+{
+    check_expected(task_id);
+    return (task_registry_result_t)mock();
+}
+
+bool __wrap_restartAgent(void)
+{
+    return mock();
+}
 
 /* A fake, never-dereferenced handle: the bridge only compares it against
  * NULL and passes it back to hc_start/hc_destroy, both mocked here. */
@@ -765,7 +805,7 @@ static void test_rejected_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
-/* w_https_client_submit_event: the stateless intake seam (#37835) */
+/* w_https_client_submit_event: the stateless intake seam */
 
 static void test_submit_event_forwards_the_frame_to_the_module(void **state)
 {
@@ -853,8 +893,7 @@ static void test_auth_error_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
-/* bridge_on_config_downloaded: the /download apply chain + startup_gate
- * release (finding 1, #37832's unmet scope). */
+/* bridge_on_config_downloaded: the /download apply chain + startup_gate release. */
 
 static const char *const DOWNLOAD_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85";
 static const char *const DOWNLOAD_FILE = "/tmp/https-client-spool/download-xyz";
@@ -1068,8 +1107,7 @@ static void test_config_downloaded_null_file_path_is_a_noop(void **state)
     w_https_client_stop();
 }
 
-/* bridge_on_startup_result: module limits + cluster-name authority + agent
- * groups (finding 1b, #37830's unmet "In scope" text). */
+/* bridge_on_startup_result: module limits + cluster-name authority + agent groups. */
 
 #define FULL_LIMITS_JSON_FMT \
     "{\"limits\":{\"fim\":{\"file\":%d,\"registry_key\":2,\"registry_value\":3}," \
@@ -1253,7 +1291,7 @@ static void test_startup_result_missing_limits_object_leaves_limits_unchanged(vo
     w_https_client_stop();
 }
 
-/* #37830's own scope: overwrite cluster/groups unconditionally, even to
+/* Overwrite cluster/groups unconditionally, even to
  * empty, rather than leaving a stale value when the manager omits them. */
 static void test_startup_result_cluster_and_groups_cleared_when_absent(void **state)
 {
@@ -1281,6 +1319,511 @@ static void test_startup_result_cluster_and_groups_cleared_when_absent(void **st
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
+}
+
+
+/* check_and_record_task: the durable-dedup callback the C++ module
+ * calls synchronously before dispatch (ITaskIdStore/TaskIdStoreAdapter). */
+
+static void test_check_and_record_task_new_returns_one(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_NEW);
+
+    assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 1);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_check_and_record_task_duplicate_returns_zero_and_counts_it(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_DUPLICATE);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISCARDED_DUPLICATE);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 0);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* A registry ERROR (agent-info unreachable/malformed reply) must be
+ * counted as a real failure, not silently folded into the duplicate-discard metric --
+ * the two are otherwise indistinguishable (both were "false" as a plain bool). */
+static void test_check_and_record_task_error_returns_zero_and_counts_failed_not_duplicate(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_ERROR);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 0);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_check_and_record_task_null_id_returns_minus_one(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    /* No task_registry_check_and_record expectation: guarded before the call. */
+    assert_int_equal(g_captured_callbacks.check_and_record_task(NULL, g_captured_callbacks.user_data), -1);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* on_task routing: active_response forwards to execd inline; an
+ * unknown/unsupported type (including remote_upgrade reaching here by
+ * mistake) is rejected. */
+
+/* The manager's own contract confirms a payload without a top-level "wazuh"
+ * key is not a valid alternate shape -- it never happens in real traffic,
+ * so it's now treated as malformed, same as unparsable JSON. */
+static void test_on_task_active_response_missing_wazuh_key_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    /* No OS_SendUnix expectation: guarded before the call. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: active_response task t1 has a malformed payload; dropping.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", "{\"cmd\":\"x\"}", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_active_response_already_wrapped_payload_forwards_as_is(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    const char *payload = "{\"wazuh\":{\"active_response\":{\"executable\":\"x\"}}}";
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_value(__wrap_OS_SendUnix, socket, 5);
+    expect_string(__wrap_OS_SendUnix, msg, payload);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 0);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", payload, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* Locks in the confirmed contract's full example verbatim: a complete AR
+ * document with "rule"/"data"/"agent" siblings next
+ * to "wazuh" forwards to execd byte-for-byte unchanged, not just the
+ * minimal {"wazuh":{"active_response":{...}}} shape tested above. */
+static void test_on_task_active_response_full_confirmed_contract_forwards_unchanged(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    const char *payload =
+        "{\"wazuh\":{\"active_response\":{\"name\":\"firewall-drop\",\"executable\":\"firewall-drop\","
+        "\"extra_arguments\":\"192.168.1.100\",\"type\":\"stateless\",\"location\":\"local\","
+        "\"agent_id\":\"001\"},\"agent\":{\"id\":\"001\"}},"
+        "\"rule\":{\"id\":5503,\"description\":\"Brute force attack detected\"},"
+        "\"data\":{\"srcip\":\"192.168.1.100\"}}";
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_value(__wrap_OS_SendUnix, socket, 5);
+    expect_string(__wrap_OS_SendUnix, msg, payload);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 0);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", payload, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_active_response_malformed_payload_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    /* No OS_SendUnix expectation: guarded before the call. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: active_response task t1 has a malformed payload; dropping.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", "not-json{{", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_active_response_execd_send_failure_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = 5;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_value(__wrap_OS_SendUnix, socket, 5);
+    expect_string(__wrap_OS_SendUnix, msg, "{\"wazuh\":{\"active_response\":{}}}");
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, -1);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: active_response task t1: error communicating with execd.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", "{\"wazuh\":{\"active_response\":{}}}", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_no_execd_queue_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    agt->execdq = -1;
+
+    /* No OS_SendUnix expectation: guarded before the call. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=active_response");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: active_response task t1 dropped: execd queue not available.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_task("t1", "active_response", "{\"wazuh\":{\"active_response\":{}}}", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_unknown_type_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=t1 type=remote_upgrade");
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: task t1 has an unknown/unsupported task_type 'remote_upgrade'; dropping.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    /* remote_upgrade reaching on_task at all would mean ControlStream's own
+     * interception broke; either way this is the generic unknown-type path. */
+    g_captured_callbacks.on_task("t1", "remote_upgrade", "{}", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_task_missing_id_or_type_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client task received: id=? type=active_response");
+    expect_string(__wrap__merror, formatted_msg, "https_client: task missing id/type; dropping.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+    g_captured_callbacks.on_task(NULL, "active_response", "{}", g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* agent_restart/agent_reload: bridge_control_task_thread is called
+ * directly (see the mirrored-struct note above), exercising the actual
+ * restartAgent()/reloadAgent() dispatch and metric outcome that
+ * w_create_thread's mock would otherwise skip. */
+
+static void test_control_task_thread_restart_success_counts_dispatched(void **state)
+{
+    (void)state;
+    will_return(__wrap_restartAgent, true);
+    expect_string(__wrap__minfo, formatted_msg, "https_client: task t-restart (agent_restart) dispatched.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_control_task_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-restart", ctx->task_id);
+    ctx->restart = true;
+
+    bridge_control_task_thread(ctx); /* Frees ctx itself, matching the real thread. */
+}
+
+static void test_control_task_thread_reload_failure_counts_failed(void **state)
+{
+    (void)state;
+    will_return(__wrap_reloadAgent, false);
+    expect_string(__wrap__merror, formatted_msg, "https_client: task t-reload (agent_reload) failed to dispatch.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_control_task_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-reload", ctx->task_id);
+    ctx->restart = false;
+
+    bridge_control_task_thread(ctx);
+}
+
+/* remote_upgrade: bridge_on_remote_upgrade_ready's guard clauses run
+ * synchronously (they stage the file / validate before ever spawning a
+ * thread), so they are reachable via the captured callback directly. The
+ * dispatch-to-upgrade-module step itself (bridge_upgrade_thread) is called
+ * directly afterward, same convention as the control-task tests above. */
+
+static void test_on_remote_upgrade_ready_missing_fields_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade callback missing required fields; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", NULL, "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_remote_upgrade_ready_unsafe_wpk_file_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_w_ref_parent_folder, path, "../evil.wpk");
+    will_return(__wrap_w_ref_parent_folder, 1); /* Unsafe: contains a parent-folder reference. */
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade task t1: wpk_file '../evil.wpk' is not a safe "
+                  "filename; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "../evil.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_on_remote_upgrade_ready_stage_copy_failure_counts_failed(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_w_ref_parent_folder, path, "agent.wpk");
+    will_return(__wrap_w_ref_parent_folder, 0);
+    expect_string(__wrap_w_copy_file, src, "/tmp/wpk");
+    expect_string(__wrap_w_copy_file, dst, INCOMING_DIR "/agent.wpk");
+    expect_value(__wrap_w_copy_file, mode, 'b');
+    expect_value(__wrap_w_copy_file, silent, 0);
+    will_return(__wrap_w_copy_file, -1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: remote_upgrade task t1: could not stage the WPK at '" INCOMING_DIR
+                  "/agent.wpk'; aborting.");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    g_captured_callbacks.on_remote_upgrade_ready("t1", "agent.wpk", "/tmp/wpk", "upgrade.sh",
+                                                 g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* bridge_upgrade_thread now opens COM_LOCAL_SOCK first (lock_restart) before it ever
+ * touches AGENT_UPGRADE_SOCK; this helper queues a successful lock_restart round trip so tests
+ * that are really about the upgrade-dispatch step don't have to restate it every time. */
+static void expect_lock_restart_success(void)
+{
+    expect_string(__wrap_OS_ConnectUnixDomain, path, COM_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 3);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 3);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "lock_restart -1");
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+}
+
+static void test_upgrade_thread_socket_unreachable_counts_failed(void **state)
+{
+    (void)state;
+
+    expect_lock_restart_success();
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+    /* errno/strerror() content is not deterministic here (the mock doesn't
+     * set errno), so the log content itself is not asserted -- only that the
+     * failure path logs and counts it. */
+    expect_any(__wrap__merror, formatted_msg);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_upgrade_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-up", ctx->task_id);
+    os_strdup("agent.wpk", ctx->wpk_file);
+    os_strdup("upgrade.sh", ctx->installer);
+
+    bridge_upgrade_thread(ctx);
+}
+
+static void test_upgrade_thread_module_accepts_counts_dispatched(void **state)
+{
+    (void)state;
+
+    expect_lock_restart_success();
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 7);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 7);
+    expect_string(__wrap_OS_SendSecureTCP, msg,
+                  "{\"command\":\"upgrade\",\"parameters\":{\"file\":\"agent.wpk\","
+                  "\"installer\":\"upgrade.sh\"}}");
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 7);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, "{\"error\":0,\"message\":\"ok\",\"data\":[]}");
+    will_return(__wrap_OS_RecvSecureTCP, 38);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: remote_upgrade task t-up dispatched to the upgrade module "
+                  "(installer running; the agent may restart shortly). No /control response is "
+                  "sent (fire-and-forget, #37834).");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_upgrade_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-up", ctx->task_id);
+    os_strdup("agent.wpk", ctx->wpk_file);
+    os_strdup("upgrade.sh", ctx->installer);
+
+    bridge_upgrade_thread(ctx);
+}
+
+/* lock_restart: a failed connect/send to COM_LOCAL_SOCK only logs a warning -- it must
+ * not stop the upgrade dispatch that follows, since the lock is best-effort (mirroring the old
+ * manager-driven protocol's own tolerance for this step). */
+static void test_upgrade_thread_lock_restart_connect_failure_still_dispatches(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, COM_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+    expect_any(__wrap__mwarn, formatted_msg);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 7);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 7);
+    expect_string(__wrap_OS_SendSecureTCP, msg,
+                  "{\"command\":\"upgrade\",\"parameters\":{\"file\":\"agent.wpk\","
+                  "\"installer\":\"upgrade.sh\"}}");
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 7);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, "{\"error\":0,\"message\":\"ok\",\"data\":[]}");
+    will_return(__wrap_OS_RecvSecureTCP, 38);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: remote_upgrade task t-up dispatched to the upgrade module "
+                  "(installer running; the agent may restart shortly). No /control response is "
+                  "sent (fire-and-forget, #37834).");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_upgrade_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-up", ctx->task_id);
+    os_strdup("agent.wpk", ctx->wpk_file);
+    os_strdup("upgrade.sh", ctx->installer);
+
+    bridge_upgrade_thread(ctx);
+}
+
+static void test_upgrade_thread_lock_restart_send_failure_still_dispatches(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, COM_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 3);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 3);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "lock_restart -1");
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    will_return(__wrap_OS_SendSecureTCP, -1);
+    expect_any(__wrap__mwarn, formatted_msg);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, AGENT_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 7);
+    expect_value(__wrap_OS_SendSecureTCP, sock, 7);
+    expect_string(__wrap_OS_SendSecureTCP, msg,
+                  "{\"command\":\"upgrade\",\"parameters\":{\"file\":\"agent.wpk\","
+                  "\"installer\":\"upgrade.sh\"}}");
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+    expect_value(__wrap_OS_RecvSecureTCP, sock, 7);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, "{\"error\":0,\"message\":\"ok\",\"data\":[]}");
+    will_return(__wrap_OS_RecvSecureTCP, 38);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: remote_upgrade task t-up dispatched to the upgrade module "
+                  "(installer running; the agent may restart shortly). No /control response is "
+                  "sent (fire-and-forget, #37834).");
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    struct bridge_upgrade_ctx_mirror *ctx;
+    os_malloc(sizeof(*ctx), ctx);
+    os_strdup("t-up", ctx->task_id);
+    os_strdup("agent.wpk", ctx->wpk_file);
+    os_strdup("upgrade.sh", ctx->installer);
+
+    bridge_upgrade_thread(ctx);
 }
 
 int main(void)
@@ -1331,6 +1874,34 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_startup_result_limits_unchanged_no_reload, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_missing_limits_object_leaves_limits_unchanged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_cluster_and_groups_cleared_when_absent, setup_test, teardown_test),
+        // Durable check-and-record callback
+        cmocka_unit_test_setup_teardown(test_check_and_record_task_new_returns_one, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_check_and_record_task_duplicate_returns_zero_and_counts_it, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_check_and_record_task_error_returns_zero_and_counts_failed_not_duplicate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_check_and_record_task_null_id_returns_minus_one, setup_test, teardown_test),
+
+        // on_task routing
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_missing_wazuh_key_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_already_wrapped_payload_forwards_as_is, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_full_confirmed_contract_forwards_unchanged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_malformed_payload_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_active_response_execd_send_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_no_execd_queue_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_unknown_type_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_task_missing_id_or_type_counts_failed, setup_test, teardown_test),
+
+        // agent_restart/agent_reload worker thread body
+        cmocka_unit_test(test_control_task_thread_restart_success_counts_dispatched),
+        cmocka_unit_test(test_control_task_thread_reload_failure_counts_failed),
+
+        // remote_upgrade
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_missing_fields_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_unsafe_wpk_file_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_copy_failure_counts_failed, setup_test, teardown_test),
+        cmocka_unit_test(test_upgrade_thread_socket_unreachable_counts_failed),
+        cmocka_unit_test(test_upgrade_thread_module_accepts_counts_dispatched),
+        cmocka_unit_test(test_upgrade_thread_lock_restart_connect_failure_still_dispatches),
+        cmocka_unit_test(test_upgrade_thread_lock_restart_send_failure_still_dispatches),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
