@@ -38,6 +38,7 @@
 #include "endpoints/authGateway.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
+#include "endpoints/downloadEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "http_server/IHttpServer.hpp"
@@ -283,6 +284,19 @@ private:
             remoted::http::Method::Post,
             "/stateless",
             remoted::endpoints::stateless::makeHandler(*m_forwarder, eventsSocketPath));
+
+        // /download: streams merged.mg and WPK packages with chunked transfer encoding. Registered
+        // ResponseMode::Streamable because the transport fixes a response's output mode when the
+        // request is dispatched -- a Buffered registration would make every download answer 500.
+        //
+        // resource_id is the group (or WPK filename) the agent requests and the manager serves
+        // exactly that; there is no group lookup and no membership check (protocol decision on
+        // #38022). Containment therefore rests on the resource-id grammars plus O_NOFOLLOW.
+        m_authGateway->addAuthenticatedRoute(*m_httpServer,
+                                             remoted::http::Method::Post,
+                                             "/download",
+                                             remoted::endpoints::download::makeHandler(),
+                                             remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
