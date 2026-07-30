@@ -7,6 +7,29 @@
  * Foundation.
  */
 
+// time_op.h is small and self-contained (<stdio.h>/<time.h>/<sys/time.h>
+// only) but has no extern "C" guard of its own. Include it FIRST here,
+// wrapped, so get_iso8601_utc_time() claims C linkage before anything else
+// in this file's include chain can reach it unwrapped -- it otherwise
+// arrives transitively via syscheck.h -> syscheck-config.h -> shared.h a few
+// lines below. A real build on the wazuh_manager VM caught this exact
+// ordering trap: with shared.h's unwrapped #include "time_op.h" processed
+// first, this header's own include-guard made a *later* wrapped
+// #include "time_op.h" a silent no-op, leaving get_iso8601_utc_time() with
+// C++ linkage and a mangled undefined reference at final link time.
+//
+// file.h (which declares the other three C functions this file needs) can't
+// get the same treatment: it pulls in syscheck.h's entire chain, which
+// eventually reaches real C++ standard headers (e.g. <atomic>) -- wrapping
+// that whole chain in extern "C" doesn't compile (C++ templates cannot have
+// C linkage). Those three are hand-forward-declared instead, once
+// directory_t/fim_file_data/cJSON are already visible from the normal
+// #include "syscheck.h" below -- see the second extern "C" block.
+extern "C"
+{
+#include "time_op.h"
+}
+
 #include "container_live_fim.h"
 #include "container_baseline_fim_bridge.h"
 #include "container_instances_client.hpp"
@@ -15,15 +38,16 @@
 #include "md5_sha1_sha256_op.h"
 #include "syscheck.h"
 
-// Neither header has an extern "C" guard of its own (both are included only
-// from .c translation units elsewhere) -- wrap them here so
-// fim_attributes_json(), fim_calculate_dbsync_difference(), and
-// get_iso8601_utc_time() get C linkage, matching how their definitions in
-// file.c/events.c/time_op.c are actually compiled.
+// Declared here with C linkage rather than via #include "file.h" (see the
+// comment above) -- signatures copied as-is from src/file/file.h.
 extern "C"
 {
-#include "file.h"
-#include "time_op.h"
+cJSON* fim_attributes_json(const cJSON* dbsync_event, const fim_file_data* data, const directory_t* configuration);
+void fim_calculate_dbsync_difference(const directory_t* configuration,
+                                      const cJSON* old_data,
+                                      cJSON* changed_attributes,
+                                      cJSON* old_attributes);
+directory_t* fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list);
 }
 
 #include <json.hpp>

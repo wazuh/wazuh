@@ -10,12 +10,6 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ebpf/include/)
-# #37533: live container FIM's changed_fields alerting reuses host FIM's own
-# diff/attribute-building helpers (fim_attributes_json, fim_calculate_dbsync_difference)
-# declared in src/file/file.h, defined in src/file/file.c and src/file/events.c
-# (compiled into the main wazuh-syscheckd binary, resolved at fimebpf.so load time
-# the same way validate_and_persist_fim_event already is).
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../file/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include/)
 include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
