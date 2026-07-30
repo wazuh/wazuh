@@ -381,11 +381,9 @@ TEST(HttpServerTest, StopAcceptingIsIdempotentAndStopStillFullyTearsDown)
 }
 
 // NOTE: with a nonexistent certificate/key, start() throws while loading the server
-// certificate, before the verification_mode/ca check ever runs. This only proves start()
+// certificate, before the verification_mode/ca handling ever runs. This proves start()
 // still fails closed (no partial bind) when verificationMode is set alongside a missing
-// cert/key -- it does NOT exercise the "<verification_mode> requires <ca>" branch itself.
-// Doing that needs a real (even if throwaway self-signed) cert/key pair, which no
-// project-owned fixture currently provides; left as a documented, known gap.
+// cert/key.
 TEST(HttpServerTest, StartWithMissingCertificateAndVerificationModeStillThrows)
 {
     auto server = makeHttpServer();
@@ -395,7 +393,9 @@ TEST(HttpServerTest, StartWithMissingCertificateAndVerificationModeStillThrows)
     config.certificatePath = "/nonexistent/remoted-tests/server.crt";
     config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
     config.verificationMode = ClientVerificationMode::Certificate;
-    // caPath intentionally left empty.
+    // caPath intentionally left empty -- httpServerConfig.cpp would normally resolve this to
+    // DEFAULT_CA_PATH; this test exercises the HttpServerConfig struct directly, so it's testing
+    // start()'s cert/key check, not caPath resolution.
 
     EXPECT_THROW(server->start(config), std::exception);
     EXPECT_NO_THROW(server->stop());
