@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `aws-s3` wodle failing to parse configuration values that contain spaces, such as `discard_regex`, `discard_field`, `aws_profile`, `aws_account_alias`, `path` and `path_suffix`. ([#37929](https://github.com/wazuh/wazuh/pull/37929))
 - Fixed wazuh-db exiting the worker thread instead of closing the peer socket when an oversized message is received. ([#37850](https://github.com/wazuh/wazuh/pull/37850))
 - Improved SCA policy source validation to correctly enforce the `sca.remote_commands` restriction. ([#37953](https://github.com/wazuh/wazuh/pull/37953))
+- Added a minimum length check for legacy-format agent messages in `wazuh-remoted`. ([#38099](https://github.com/wazuh/wazuh/pull/38099))
 
 ### Agent
 

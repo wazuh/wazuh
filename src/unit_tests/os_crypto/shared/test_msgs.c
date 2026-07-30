@@ -389,6 +389,50 @@ void test_ReadSecMSG_final_size_validation(void **state){
     free(keys);
 }
 
+void test_ReadSecMSG_legacy_format_length_validation(void **state){
+    keystore *keys;
+
+    os_calloc(1, sizeof(keystore), keys);
+    os_calloc(1, sizeof(keyentry *), keys->keyentries);
+    keys->keysize = 1;
+    keys->flags.key_mode = W_ENCRYPTION_KEY;
+
+    os_calloc(1, sizeof(keyentry), keys->keyentries[0]);
+    keys->keyentries[0]->keyid = 0;
+    keys->keyentries[0]->id = "001";
+    keys->keyentries[0]->name = "agent1";
+    keys->keyentries[0]->encryption_key =
+        "778823d0b0886be37049bdf01cc703f72fa8dc7bb499303";
+    keys->keyentries[0]->crypto_method = W_METH_BLOWFISH;
+    w_mutex_init(&keys->keyentries[0]->mutex, NULL);
+
+    /* Plaintext for the legacy ("Old format") branch: starts with ':' and is
+     * far shorter than MSG_OVERHEAD, matching the undersized-message case
+     * the missing length guard was supposed to reject. */
+    const char plaintext[] = ":123456789";
+    const size_t plain_len = sizeof(plaintext) - 1;
+
+    char msg_buf[1 + sizeof(plaintext) - 1];
+    msg_buf[0] = ':';
+    assert_int_equal(doEncryptByMethod(plaintext, msg_buf + 1,
+                      keys->keyentries[0]->encryption_key, (long)plain_len,
+                      OS_ENCRYPT, W_METH_BLOWFISH), 1);
+
+    char cleartext[1024];
+    size_t final_size = 0;
+    char *output = NULL;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Message too short from agent '001'");
+
+    assert_int_equal(ReadSecMSG(keys, msg_buf, cleartext, 0,
+                                sizeof(msg_buf) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
+
+    w_mutex_destroy(&keys->keyentries[0]->mutex);
+    free(keys->keyentries[0]);
+    free(keys->keyentries);
+    free(keys);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -401,7 +445,8 @@ int main(void)
         cmocka_unit_test(test_encrypt_by_method_aes),
         cmocka_unit_test(test_encrypt_by_method_default),
         cmocka_unit_test(test_set_agent_crypto_method),
-        cmocka_unit_test(test_ReadSecMSG_final_size_validation)
+        cmocka_unit_test(test_ReadSecMSG_final_size_validation),
+        cmocka_unit_test(test_ReadSecMSG_legacy_format_length_validation)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
