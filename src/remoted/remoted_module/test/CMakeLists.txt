@@ -28,7 +28,14 @@ target_link_libraries(
   # shutdownRace_test.cpp drives a real TLS client (asio::ssl) against a live RestinioHttpServer;
   # remoted_module links ssl/crypto PRIVATE (via ext_restinio), so this target needs its own link.
   ssl
-  crypto)
+  crypto
+  # zstdDecoder_test.cpp's format-confusion test (a gzip stream fed to the zstd decoder) builds a
+  # gzip fixture via zlib's deflate() directly (gzipTestHelper.hpp) -- production no longer uses
+  # zlib at all (gzip support was removed), so this test-only need gets its own explicit link.
+  ext_zlib
+  # authGateway_test.cpp/zstdDecoder_test.cpp build zstd fixtures directly with ZSTD_compress();
+  # remoted_module links ext_zstd PRIVATE, so this target needs its own link too.
+  ext_zstd)
 
 target_include_directories(
   remoted_module_utest

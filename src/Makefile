@@ -504,7 +504,7 @@ endif
 # Manager-only dependencies.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio zstd
 endif
 endif
 

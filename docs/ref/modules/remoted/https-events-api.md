@@ -5,10 +5,9 @@ for agent-authenticated event ingestion, in addition to the classic AES-encrypte
 on port `1514`. The listener is built on RESTinio + OpenSSL and authenticates every request with a
 per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 
-> **Experimental / work in progress.** The endpoint today performs **authentication and request
-> validation only** — it does **not** parse the H/E payload or ingest events yet. A successful
-> request is authenticated and answered `200` with an empty body; nothing is forwarded downstream.
-> The listener **requires** a TLS certificate and key to be present (see
+> **Experimental / work in progress.** A successful request is authenticated, its H/E batch is
+> forwarded to the engine's event ingress, and the response reflects the downstream result (see
+> [Endpoints](#endpoints)). The listener **requires** a TLS certificate and key to be present (see
 > [Transport and TLS](#transport-and-tls)); a self-signed pair is generated automatically at
 > install time on manager packages, so this is satisfied on a default install.
 
@@ -121,6 +120,26 @@ The manager resolves the agent key by reading `etc/client.keys` directly (the sa
 format `OS_ReadKeys()` uses); the key column is lowercase hex and must decode to 16, 24 or 32 bytes.
 A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
 
+### Content-Encoding (zstd)
+
+The request body MAY optionally be compressed with `Content-Encoding: zstd` (case-insensitive). No
+other value is accepted — **`gzip` is not supported.**
+
+- Decompression happens **after** authentication succeeds, never before: the AES-CMAC always covers
+  the exact wire bytes (the compressed body, if `Content-Encoding: zstd` is set), so an
+  unauthenticated request never costs CPU/memory decompressing anything.
+- The decompressed size is bounded by the same `remoted.auth_max_body_size` cap (10 MiB default)
+  that applies to an uncompressed body — checked continuously while decompressing (not just at the
+  end), so a highly-compressed "decompression bomb" body is rejected the moment it would cross the
+  cap, before the full decompressed payload is ever materialized in memory.
+- A missing `Content-Encoding` header is treated exactly like today: the body is passed through
+  unchanged.
+- Any `Content-Encoding` value other than `zstd` — including `gzip`, which was intentionally dropped
+  in favor of zstd-only support — is rejected with `415`.
+- A `Content-Encoding: zstd` body that isn't a valid, complete zstd frame (bad magic, truncated,
+  or a frame whose header declares an unreasonably large decompression window) is rejected with
+  `400`.
+
 ### Error responses
 
 On rejection the body is `{"error":"<message>","code":<status>}`. Credential-related failures all
@@ -131,7 +150,9 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
-| Body exceeds the auth body limit (10 MiB) | `413` | `Request payload is too large` |
+| Body exceeds the auth body limit (10 MiB) — checked on the decompressed size when `Content-Encoding: zstd` is set | `413` | `Request payload is too large` |
+| `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
+| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
 | Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
 | Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
@@ -525,7 +546,7 @@ from repeated errors; see
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
 same way the manager verifies them (AES-CMAC over the canonical sequence, key read from
-`client.keys`). Requires `pip install requests cryptography`.
+`client.keys`). Requires `pip install -r requirements.txt` (in the same `tools/` directory).
 
 ```bash
 # one valid signed request -> 202
@@ -534,7 +555,8 @@ python3 send_stateless.py --agent-id 1001
 # tamper the body after signing -> 401 (invalid MAC)
 python3 send_stateless.py --agent-id 1001 --tamper
 
-# run every success/failure scenario and check the expected status codes
+# run every success/failure scenario and check the expected status codes, including
+# Content-Encoding: zstd (valid, malformed, decompressed-too-large) and the now-unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
 ```

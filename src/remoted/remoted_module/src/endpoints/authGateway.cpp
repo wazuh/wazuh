@@ -11,6 +11,7 @@
 
 #include "authGateway.hpp"
 
+#include "common/zstdDecoder.hpp"
 #include "loggerHelper.h"
 
 #include <cctype>
@@ -95,13 +96,32 @@ namespace
         }
         return {};
     }
+
+    // Case-insensitive value comparison (HTTP token values like "zstd" are conventionally
+    // lowercase, but nothing guarantees a client sends them that way).
+    bool ciEqualsAscii(std::string_view a, std::string_view b)
+    {
+        if (a.size() != b.size())
+        {
+            return false;
+        }
+        for (std::size_t i = 0; i < a.size(); ++i)
+        {
+            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i])))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 } // namespace
 
 namespace remoted::endpoints
 {
 
     AuthGateway::AuthGateway(remoted::auth::AuthConfig config, std::shared_ptr<remoted::auth::IAgentKeystore> keystore)
-        : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(std::move(config), std::move(keystore))}
+        : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(config, std::move(keystore))}
+        , m_maxBodySize {config.maxBodySize}
     {
     }
 
@@ -113,12 +133,13 @@ namespace remoted::endpoints
     {
         auto middleware = m_middleware;
         const char* methodStr = methodToCanonical(method);
+        const std::size_t maxBodySize = m_maxBodySize;
 
         server.addRoute(
             method,
             path,
-            [middleware, methodStr, handler = std::move(handler)](std::shared_ptr<const HttpRequest> request,
-                                                                  std::shared_ptr<IHttpResponder> responder)
+            [middleware, methodStr, maxBodySize, handler = std::move(handler)](
+                std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
             {
                 // Everything below -- the AES-CMAC auth pipeline (steps 1-7) AND the endpoint
                 // handler -- runs inside one try/catch. beginSession()/Session::update()/finish()
@@ -132,6 +153,9 @@ namespace remoted::endpoints
                 {
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
+                    // Read once, used only AFTER authentication succeeds (see below): the MAC
+                    // always covers the wire bytes exactly as sent, compressed or not.
+                    const std::string contentEncoding = headerValue(request->headers, "content-encoding");
 
                     // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
                     auto begin = middleware->beginSession(protocolVersion,
@@ -181,6 +205,55 @@ namespace remoted::endpoints
                     auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
+
+                    // Content-Encoding is handled here, AFTER authentication: the MAC already
+                    // covered the compressed wire bytes above, so an unauthenticated peer cannot
+                    // spend our CPU/memory decompressing anything -- only an authenticated agent's
+                    // request ever reaches inflate(). Empty header: pass the body through as-is
+                    // (current, uncompressed behavior).
+                    if (!contentEncoding.empty())
+                    {
+                        std::string decodedBody;
+                        bool malformed = false;
+                        bool tooLarge = false;
+
+                        if (ciEqualsAscii(contentEncoding, "zstd"))
+                        {
+                            auto result = remoted::common::zstdDecode(authRequest.payload.bytes(), maxBodySize);
+                            if (std::holds_alternative<remoted::common::ZstdDecodeError>(result))
+                            {
+                                tooLarge = std::get<remoted::common::ZstdDecodeError>(result) ==
+                                           remoted::common::ZstdDecodeError::TooLarge;
+                                malformed = !tooLarge;
+                            }
+                            else
+                            {
+                                decodedBody = std::move(std::get<std::string>(result));
+                            }
+                        }
+                        else
+                        {
+                            responder->send(errorResponseFor(remoted::auth::AuthError::UnsupportedContentEncoding));
+                            return;
+                        }
+
+                        if (malformed || tooLarge)
+                        {
+                            const auto authErr = tooLarge ? remoted::auth::AuthError::BodyTooLarge
+                                                          : remoted::auth::AuthError::MalformedContentEncoding;
+                            responder->send(errorResponseFor(authErr));
+                            return;
+                        }
+
+                        // Replace the (compressed) transport-buffer view with a new Payload over the
+                        // decompressed bytes, owned by their own keep-alive. This drops the original
+                        // request's keep-alive here -- its in-flight byte reservation (sized off the
+                        // compressed wire body) is released now; the decompressed copy is untracked
+                        // heap memory bounded only by maxBodySize above.
+                        auto decompressed = std::make_shared<std::string>(std::move(decodedBody));
+                        const std::string_view decompressedView {*decompressed};
+                        authRequest.payload = remoted::auth::Payload {decompressedView, std::move(decompressed)};
+                    }
 
                     // Hand the handler a shared_ptr<const> so it can retain the verified
                     // request across deferred pipeline stages without copying the payload.
