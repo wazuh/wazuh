@@ -34,7 +34,8 @@ inventory_sync_server/
 │   ├── inventorySyncServerFacade.hpp    # internal engine: worker thread, lifecycle, retry
 │   ├── inventorySyncServerTestHooks.cpp # TEST-ONLY hook implementations (see Tests)
 │   ├── common/
-│   │   └── logThrottle.hpp              # per-condition log rate limiter (decides, never logs)
+│   │   ├── logThrottle.hpp              # per-condition log rate limiter (decides, never logs)
+│   │   └── clusterIdentity.hpp          # ClusterIdentity + buildClusterIdentity() from the C-ABI config
 │   ├── endpoints/
 │   │   ├── syncEndpoint.{hpp,cpp}       # POST /inventory/sync policy (a stub today)
 │   │   ├── statsEndpoint.{hpp,cpp}      # POST /stats policy (dummy: enrich + echo + discard)
@@ -56,7 +57,7 @@ inventory_sync_server/
 │       └── asioUdsHttpServer.{hpp,cpp}  # asio + llhttp implementation (PImpl)
 ├── test/
 │   ├── CMakeLists.txt                   # builds inventory_sync_server_utest
-│   └── unit/                            # 161 tests
+│   └── unit/                            # 170 tests
 └── tools/
     └── send_sync.py                     # stdlib-only manual sender over the UDS
 ```
@@ -329,7 +330,7 @@ the response-phase timer (504); and shutdown force-closes whatever is left after
 |---|---|---|---|---|
 | GET | `/` | 200 | `{"status":"ok","module":"inventory_sync_server"}` | liveness probe; **exempt from the byte budget** so it keeps answering under memory pressure |
 | POST | `/inventory/sync` | 202 | `{"status":"accepted"}` | **STUB — accepts and DISCARDS the payload.** The path is **PROVISIONAL**: it must match the target remoted's downstream configuration will point at, which lands separately. `syncEndpoint_test.cpp` pins it so a silent drift fails. |
-| POST | `/stats` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Echoes the document back with `wazuh.agent.id` and `@timestamp` added, then **discards** it. 400 on a missing/empty agent-id header, malformed JSON, or a body that is not a JSON *object*; **503 when no indexer host is healthy** (or the module is shutting down). |
+| POST | `/stats` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Echoes the document back with `wazuh.agent.id`, `wazuh.cluster.name`, `wazuh.cluster.node` and `@timestamp` added, then **discards** it. 400 on a missing/empty agent-id header, malformed JSON, or a body that is not a JSON *object*; **503 when no indexer host is healthy** (or the module is shutting down). |
 | POST | `/config` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — identical behaviour to `/stats`, deliberately implemented as a separate unit. |
 
 Anything else is 404; a known path with the wrong verb is 405 with an `Allow` header.
@@ -373,6 +374,15 @@ indexed or stored. The pieces worth knowing:
 - **Nothing is indexed yet.** The dependency is injected and gated on, but neither `index()` nor
   `indexDataStream()` is called — a `NothingIsIndexedYet` test per endpoint pins that, so the day real
   processing lands it has to be updated deliberately.
+- **The cluster name and node name are injected too, the same way as the indexer connector: at
+  registration time, via `makeHandler()`'s `cluster` parameter** (`common/clusterIdentity.hpp`'s
+  `ClusterIdentity`, built once per attempt by `buildClusterIdentity()` from
+  `inventory_sync_server_config_t::cluster_name`/`node_name`). Unlike the connector there is no
+  background object to protect, so it is captured **by value** — two small strings, cheap to copy,
+  nothing to leak. Stamped at `/wazuh/cluster/name` and `/wazuh/cluster/node`, and like the agent id,
+  the module's own configured identity overrides anything the document already claims there. An
+  unconfigured cluster/node is stamped as an explicit empty string, not omitted — the C-ABI struct
+  documents an empty buffer as "no opinion", not "leave this field out".
 - They are **deliberate near-duplicates** rather than one handler registered on two paths — same
   reasoning as on the remoted side. Their real payloads will diverge; keep them in sync until then.
 
@@ -396,14 +406,15 @@ indexed or stored. The pieces worth knowing:
 
 ## Tests
 
-`inventory_sync_server_utest` — 161 tests.
+`inventory_sync_server_utest` — 170 tests.
 
 | File | What it covers |
 |---|---|
 | `requestParser_test.cpp` | The parser, with no sockets or threads. `ParsesPeerRequestSplitAtEveryOffset` is the highest-value one: it feeds the peer's exact bytes split at every offset, which covers header continuation across a read boundary, a request line cut mid-token, a body straddling two reads — and pins the resume-offset arithmetic at every alignment. Also the golden peer bytes, lower-casing, raw query retention, 411/413/414/431, malformed input, and the llhttp `on_headers_complete` return-value trap. |
 | `udsHttpServerConfig_test.cpp` | Every documented default from a zeroed struct, positive overrides, negative-means-default, and that the default socket path stays **relative** (a regression there silently breaks the chroot/chdir agreement). |
 | `syncEndpoint_test.cpp` | Route policy with a capturing responder, no socket. Pins the provisional path/verb and that the handler does not retain the payload. |
-| `statsEndpoint_test.cpp`, `configEndpoint_test.cpp` | The two dummies, one file each mirroring their duplicated implementations. Pin the path/verb (a wire contract with remoted, which lives in another binary), the lower-cased agent-id header name, that the enrichment lands at the documented JSON pointers, the ISO8601 timestamp *shape*, and the two overrides that make the enrichment trustworthy: **the authenticated agent id beats one claimed in the document**, and a pre-existing `@timestamp` is replaced. Plus the 400 paths (non-object bodies, malformed JSON, missing/empty header), null-request tolerance and no payload retention. Also the injected async connector: **503 when it is unavailable or already gone**, that the 400s still win over an outage (the check ordering), that nothing is indexed yet, and that the handler does **not** keep the connector alive after returning — the last one is what makes a strong capture a test failure instead of a silent shutdown-ordering change. |
+| `statsEndpoint_test.cpp`, `configEndpoint_test.cpp` | The two dummies, one file each mirroring their duplicated implementations. Pin the path/verb (a wire contract with remoted, which lives in another binary), the lower-cased agent-id header name, that the enrichment lands at the documented JSON pointers, the ISO8601 timestamp *shape*, and the overrides that make the enrichment trustworthy: **the authenticated agent id** and **the injected cluster identity** both beat whatever the document already claims there, and a pre-existing `@timestamp` is replaced. Plus the 400 paths (non-object bodies, malformed JSON, missing/empty header), null-request tolerance, no payload retention, and that an unconfigured cluster identity is stamped as explicit empty strings rather than omitted. Also the injected async connector: **503 when it is unavailable or already gone**, that the 400s still win over an outage (the check ordering), that nothing is indexed yet, and that the handler does **not** keep the connector alive after returning — the last one is what makes a strong capture a test failure instead of a silent shutdown-ordering change. |
+| `clusterIdentity_test.cpp` | `buildClusterIdentity()` in isolation: both buffers read, both empty stay empty, and one field set does not leak into the other. |
 | `inFlightBudget_test.cpp`, `logThrottle_test.cpp` | Accounting and rate-limiting, including under concurrency. |
 | `udsHttpServer_test.cpp` | The live server over a real UDS. Highlights: `DeferredReplyFromAnotherThreadArrivesAfterTheHandlerReturned` (the reason this design exists) and **`ThreeHundredConcurrentDeferralsOnTwoIoThreads`** — the requirement stated so it can fail, and the test a blocking thread-per-request server cannot pass. Plus socket mode under a hostile umask, stale-socket recovery, the non-socket refusal, budget/connection 503s, the 500-on-throw barrier *and that the reactor still serves afterwards*, and both never-answered backstops. |
 | `udsShutdown_test.cpp` | The shutdown protocol: S1, S2, S3 (including after the server is destroyed), the bounded drain, force-close, concurrent `send()`/`stop()` from 64 threads, and the whole protocol under 200 live deferrals. |

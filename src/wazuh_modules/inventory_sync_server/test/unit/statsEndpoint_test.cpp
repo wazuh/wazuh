@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "common/clusterIdentity.hpp"
 #include "endpoints/statsEndpoint.hpp"
 
 #include <gtest/gtest.h>
@@ -96,21 +97,35 @@ namespace
         bool m_available;
     };
 
+    /// A fixed, non-empty identity most tests use -- only the cluster-stamping tests need a
+    /// different one (and the empty-identity test needs the zeroed default).
+    invsync::common::ClusterIdentity testClusterIdentity()
+    {
+        return {"test-cluster", "test-node-01"};
+    }
+
     /// Sends one request through a fresh handler and returns what came back. The connector is available
     /// unless a test says otherwise.
     HttpResponse run(const std::shared_ptr<const HttpRequest>& request,
-                     const std::shared_ptr<FakeAsyncConnector>& connector)
+                     const std::shared_ptr<FakeAsyncConnector>& connector,
+                     invsync::common::ClusterIdentity cluster)
     {
-        auto handler = invsync::endpoints::stats::makeHandler(connector);
+        auto handler = invsync::endpoints::stats::makeHandler(connector, std::move(cluster));
         auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
         EXPECT_EQ(1, responder->sendCount) << "the transport's exactly-once contract requires one send";
         return responder->captured.value_or(HttpResponse {});
     }
 
+    HttpResponse run(const std::shared_ptr<const HttpRequest>& request,
+                     const std::shared_ptr<FakeAsyncConnector>& connector)
+    {
+        return run(request, connector, testClusterIdentity());
+    }
+
     HttpResponse run(const std::shared_ptr<const HttpRequest>& request)
     {
-        return run(request, std::make_shared<FakeAsyncConnector>());
+        return run(request, std::make_shared<FakeAsyncConnector>(), testClusterIdentity());
     }
 } // namespace
 
@@ -249,7 +264,7 @@ TEST(StatsEndpointTest, ResponseIsJson)
 TEST(StatsEndpointTest, NullRequestIsToleratedAndStillAnswered)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
     handler(nullptr, responder);
@@ -263,7 +278,7 @@ TEST(StatsEndpointTest, NullRequestIsToleratedAndStillAnswered)
 TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
     auto request = makeRequest(R"({"a":1})", "001");
@@ -296,7 +311,7 @@ TEST(StatsEndpointTest, UnavailableIndexerYields503)
 TEST(StatsEndpointTest, AnExpiredConnectorYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
     connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
@@ -346,7 +361,7 @@ TEST(StatsEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
     auto connector = std::make_shared<FakeAsyncConnector>();
     std::weak_ptr<FakeAsyncConnector> observer {connector};
 
-    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
     handler(makeRequest(R"({"cpu":42})", "001"), responder);
     ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
@@ -370,4 +385,61 @@ TEST(StatsEndpointTest, NothingIsIndexedYet)
 
     EXPECT_TRUE(connector->indexed.empty()) << "this endpoint does not index yet";
     EXPECT_TRUE(connector->dataStreamed.empty()) << "this endpoint does not index yet";
+}
+
+/**
+ * The cluster identity is injected at registration time (makeHandler()'s `cluster` parameter), not
+ * read from anything the caller sends -- unlike the agent id, there is no per-request source for it.
+ */
+TEST(StatsEndpointTest, StampsTheInjectedClusterNameAndNode)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
+
+    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, cluster);
+
+    ASSERT_EQ(200, response.status);
+    const auto document = nlohmann::json::parse(response.body, nullptr, false);
+    ASSERT_FALSE(document.is_discarded());
+    EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+    EXPECT_EQ("node-03", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
+}
+
+/**
+ * A document claiming its own cluster identity must not survive: this manager's configured identity
+ * is authoritative, mirroring the same override rule already pinned for the agent id.
+ */
+TEST(StatsEndpointTest, TheInjectedClusterIdentityOverridesOneClaimedInTheDocument)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    invsync::common::ClusterIdentity cluster {"real-cluster", "real-node"};
+
+    const auto response =
+        run(makeRequest(R"({"wazuh":{"cluster":{"name":"fake","node":"fake"}}})", "001"), connector, cluster);
+
+    ASSERT_EQ(200, response.status);
+    const auto document = nlohmann::json::parse(response.body, nullptr, false);
+    ASSERT_FALSE(document.is_discarded());
+    EXPECT_EQ("real-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+    EXPECT_EQ("real-node", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
+}
+
+/**
+ * inventory_sync_server_config_t documents an empty cluster_name/node_name buffer as "no opinion",
+ * not as "omit the field" -- so an unconfigured identity is stamped as an explicit empty string,
+ * exactly like buildClusterIdentity() reads it. Silently dropping the field on empty would leave an
+ * unclustered manager's documents impossible to tell apart from a stamping bug.
+ */
+TEST(StatsEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, invsync::common::ClusterIdentity {});
+
+    ASSERT_EQ(200, response.status);
+    const auto document = nlohmann::json::parse(response.body, nullptr, false);
+    ASSERT_FALSE(document.is_discarded());
+    ASSERT_TRUE(document.contains("wazuh"));
+    EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+    EXPECT_EQ("", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
