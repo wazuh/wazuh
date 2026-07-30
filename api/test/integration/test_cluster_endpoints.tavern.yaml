@@ -1407,7 +1407,7 @@ stages:
       method: GET
       params:
         section: "remote"
-        field: "port"
+        field: "legacy"
     response:
       status_code: 200
       json:
@@ -1415,7 +1415,10 @@ stages:
         data:
           affected_items:
             - remote:
-                - port: '1514'
+                - legacy:
+                    port: '1514'
+                    protocol:
+                      - tcp
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
