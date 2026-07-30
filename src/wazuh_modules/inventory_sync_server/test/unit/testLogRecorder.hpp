@@ -94,6 +94,23 @@ namespace invsync::test
             }
             return false;
         }
+
+        /// How many recorded messages contain @p needle. Needed to pin log CADENCE rather than mere
+        /// presence -- e.g. that the first-attempt ERROR is emitted exactly once per incident, which
+        /// is what keeps the escalation clock honest.
+        static std::size_t countMessagesContaining(const std::string& needle)
+        {
+            std::lock_guard<std::mutex> lock {mutex()};
+            std::size_t count {0};
+            for (const auto& line : lines())
+            {
+                if (line.find(needle) != std::string::npos)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
     };
 
     /// Shared count of every log callback invocation, process-wide (same reasoning as LogRecorder).

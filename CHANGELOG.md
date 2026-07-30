@@ -15,6 +15,7 @@
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
 - Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. ([#37706](https://github.com/wazuh/wazuh/issues/37706))
 - Added `inventory_sync_server`, a transitional `wazuh-manager-modulesd` module that exposes the inventory synchronization ingress over an HTTP/1.1 Unix domain socket. ([#38018](https://github.com/wazuh/wazuh/issues/38018))
+- Added `IndexerSession` to `indexer-connector`, a shareable handle that resolves the indexer credentials and host health monitoring once so several connectors in one process reuse a single health-check round and monitoring thread. ([#38018](https://github.com/wazuh/wazuh/issues/38018))
 
 #### Changed
 
@@ -29,6 +30,7 @@
 - Improved Wazuh server directory layout. ([#35479](https://github.com/wazuh/wazuh/issues/35479))
 - Updated manager index names to align with the new sync model. ([#35525](https://github.com/wazuh/wazuh/issues/35525))
 - Added caller module context to indexer-connector logs. ([#35905](https://github.com/wazuh/wazuh/issues/35905))
+- Changed `inventory_sync_server` to build both an asynchronous and a synchronous indexer connector over one shared session, exposing each connector's tunables as separate internal options and refusing to start until every one of them is constructed successfully. ([#38018](https://github.com/wazuh/wazuh/issues/38018))
 - Randomized the cluster key generated during manager installation instead of using a hardcoded default. ([#36805](https://github.com/wazuh/wazuh/issues/36805))
 - Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. ([#36311](https://github.com/wazuh/wazuh/issues/36311))
 - Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. ([#36705](https://github.com/wazuh/wazuh/issues/36705))

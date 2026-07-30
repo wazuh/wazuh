@@ -43,7 +43,9 @@ link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SHARED_MODULES}/keystore/build)
 
 set(INDEXER_CONNECTOR_SRC src/indexerConnectorAsync.cpp
-                          src/indexerConnectorSync.cpp)
+                          src/indexerConnectorSync.cpp
+                          src/indexerSession.cpp
+                          src/indexerTransport.cpp)
 
 add_library(indexer_connector SHARED ${INDEXER_CONNECTOR_SRC})
 

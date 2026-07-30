@@ -12,6 +12,7 @@
 #include "HTTPRequest.hpp"
 #include "indexerConnector.hpp"
 #include "indexerConnectorSyncImpl.hpp"
+#include "indexerSession.hpp"
 #include "loggerHelper.h"
 #include "serverSelector.hpp"
 
@@ -25,6 +26,18 @@ private:
 public:
     Impl(const nlohmann::json& config, LoggingContext logging)
         : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
+    {
+    }
+
+    /// Shared-session overload: adopts the session's monitor and transport settings, so this
+    /// connector performs no health check and no keystore read of its own.
+    Impl(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging)
+        : m_impl(config,
+                 std::move(logging.second),
+                 nullptr,
+                 makeSharedSelector(config, session),
+                 std::move(logging.first),
+                 sessionData(session).m_secureCommunication)
     {
     }
 
@@ -120,6 +133,13 @@ public:
 
 IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
     : m_impl(std::make_unique<Impl>(config, std::move(logging)))
+{
+}
+
+IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config,
+                                           const IndexerSession& session,
+                                           LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, session, std::move(logging)))
 {
 }
 
