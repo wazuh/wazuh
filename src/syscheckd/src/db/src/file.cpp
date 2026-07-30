@@ -568,6 +568,10 @@ int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_v
         updateData["table"] = table_name;
         updateData["data"] = nlohmann::json::array();
         updateData["data"].push_back(rowData);
+        // Partial row: primary key, sync and version only. These updates are flushed after
+        // the scan transaction closes, so the entry may be gone by now; without this the
+        // upsert would insert it and fail the checksum NOT NULL constraint.
+        updateData["options"]["update_only"] = true;
 
         // Execute update
         bool updateSucceeded = false;

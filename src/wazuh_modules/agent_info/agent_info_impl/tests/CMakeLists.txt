@@ -117,3 +117,10 @@ target_link_libraries(agent_info_cluster_coordination_test PRIVATE AGENT_INFO_IM
 add_test(NAME AgentInfoClusterCoordinationTest COMMAND agent_info_cluster_coordination_test)
 
 set_tests_properties(AgentInfoClusterCoordinationTest PROPERTIES LABELS "agent_info")
+
+# Agent Info Handshake Tests (live per-cycle re-query of cluster_name/cluster_node/agent_groups)
+add_executable(agent_info_handshake_test agent_info_handshake_test.cpp agent_info_mock.cpp)
+target_link_libraries(agent_info_handshake_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoHandshakeTest COMMAND agent_info_handshake_test)
+
+set_tests_properties(AgentInfoHandshakeTest PROPERTIES LABELS "agent_info")

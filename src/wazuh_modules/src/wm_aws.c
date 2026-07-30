@@ -365,6 +365,33 @@ void wm_aws_check() {
 
 }
 
+// Quote a value before appending it to the command line so it survives the
+// word-splitting that wm_exec() performs through w_strtok(). Otherwise a value with
+// spaces (for example a discard_regex like "Security Hub Insight Results") is broken
+// into several tokens and the AWS script rejects it with "unrecognized arguments".
+// Embedded quotes and backslashes are escaped so the value reaches the script intact.
+static void wm_aws_add_quoted_arg(char **command, const char *value) {
+    char *quoted = NULL;
+    const size_t len = strlen(value);
+    size_t j = 0;
+
+    // Room for the surrounding quotes, a backslash before every character and the '\0'.
+    os_calloc(len * 2 + 3, sizeof(char), quoted);
+
+    quoted[j++] = '"';
+    for (size_t i = 0; i < len; i++) {
+        if (value[i] == '"' || value[i] == '\\') {
+            quoted[j++] = '\\';
+        }
+        quoted[j++] = value[i];
+    }
+    quoted[j++] = '"';
+    quoted[j] = '\0';
+
+    wm_strcat(command, quoted, ' ');
+    os_free(quoted);
+}
+
 // Run a bucket parsing
 #ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
@@ -407,7 +434,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     }
     if (exec_bucket->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_bucket->aws_profile, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->aws_profile);
     }
     if (exec_bucket->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
@@ -427,15 +454,15 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     }
     if (exec_bucket->aws_account_alias) {
         wm_strcat(&command, "--aws_account_alias", ' ');
-        wm_strcat(&command, exec_bucket->aws_account_alias, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->aws_account_alias);
     }
     if (exec_bucket->trail_prefix) {
         wm_strcat(&command, "--trail_prefix", ' ');
-        wm_strcat(&command, exec_bucket->trail_prefix, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->trail_prefix);
     }
     if (exec_bucket->trail_suffix) {
         wm_strcat(&command, "--trail_suffix", ' ');
-        wm_strcat(&command, exec_bucket->trail_suffix, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->trail_suffix);
     }
     if (exec_bucket->only_logs_after) {
         wm_strcat(&command, "--only_logs_after", ' ');
@@ -447,11 +474,11 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     }
     if (exec_bucket->discard_field) {
         wm_strcat(&command, "--discard-field", ' ');
-        wm_strcat(&command, exec_bucket->discard_field, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->discard_field);
     }
     if (exec_bucket->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_bucket->discard_regex, ' ');
+        wm_aws_add_quoted_arg(&command, exec_bucket->discard_regex);
     }
     if (exec_bucket->sts_endpoint) {
         wm_strcat(&command, "--sts_endpoint", ' ');
@@ -583,7 +610,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
     if (exec_service->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_service->aws_profile, ' ');
+        wm_aws_add_quoted_arg(&command, exec_service->aws_profile);
     }
     if (exec_service->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
@@ -599,7 +626,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
     if (exec_service->aws_account_alias) {
         wm_strcat(&command, "--aws_account_alias", ' ');
-        wm_strcat(&command, exec_service->aws_account_alias, ' ');
+        wm_aws_add_quoted_arg(&command, exec_service->aws_account_alias);
     }
     if (exec_service->only_logs_after) {
         wm_strcat(&command, "--only_logs_after", ' ');
@@ -618,11 +645,11 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
     if (exec_service->discard_field) {
         wm_strcat(&command, "--discard-field", ' ');
-        wm_strcat(&command, exec_service->discard_field, ' ');
+        wm_aws_add_quoted_arg(&command, exec_service->discard_field);
     }
     if (exec_service->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_service->discard_regex, ' ');
+        wm_aws_add_quoted_arg(&command, exec_service->discard_regex);
     }
     if (exec_service->sts_endpoint) {
         wm_strcat(&command, "--sts_endpoint", ' ');
@@ -759,7 +786,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     }
     if (exec_subscriber->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_subscriber->aws_profile, ' ');
+        wm_aws_add_quoted_arg(&command, exec_subscriber->aws_profile);
     }
     if (exec_subscriber->sts_endpoint){
         wm_strcat(&command, "--sts_endpoint", ' ');
@@ -772,11 +799,11 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
 
     if (exec_subscriber->discard_field) {
         wm_strcat(&command, "--discard-field", ' ');
-        wm_strcat(&command, exec_subscriber->discard_field, ' ');
+        wm_aws_add_quoted_arg(&command, exec_subscriber->discard_field);
     }
     if (exec_subscriber->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_subscriber->discard_regex, ' ');
+        wm_aws_add_quoted_arg(&command, exec_subscriber->discard_regex);
     }
 
     if (isDebug()) {

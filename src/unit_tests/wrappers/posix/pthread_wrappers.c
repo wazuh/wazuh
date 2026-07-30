@@ -16,13 +16,19 @@
 
 void (*pthread_callback_ptr)(void) = NULL;
 
+unsigned int mutex_unlock_call_count = 0;
+pthread_mutex_t *mutex_unlock_watched_ptr = NULL;
+
 int __wrap_pthread_mutex_lock(__attribute__((unused)) pthread_mutex_t *x) {
     function_called();
     return 0;
 }
 
-int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
+int __wrap_pthread_mutex_unlock(pthread_mutex_t *x) {
     function_called();
+    if (mutex_unlock_watched_ptr == NULL || x == mutex_unlock_watched_ptr) {
+        mutex_unlock_call_count++;
+    }
     return 0;
 }
 
