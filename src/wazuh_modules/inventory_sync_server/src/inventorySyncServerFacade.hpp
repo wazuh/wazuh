@@ -22,6 +22,7 @@
 #include <thread>
 #include <utility>
 
+#include "common/clusterIdentity.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
@@ -308,13 +309,20 @@ namespace invsync
             // to the weak_ptr parameter implicitly) -- see stop()'s phase 2 for why that matters. Safe
             // to read the member here: buildAndPublish() publishes each slot as soon as it succeeds,
             // and this runs afterwards, in the same attempt.
+            //
+            // Both also take this manager's cluster identity, built fresh (two cheap string copies)
+            // rather than cached across retries -- m_config does not change within a start()/stop()
+            // cycle, so there is nothing stale to worry about, and this keeps startHttpServer() the
+            // only place that reads m_config for the routes it registers.
+            const auto clusterIdentity = invsync::common::buildClusterIdentity(m_config);
+
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
-                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync));
+                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity));
 
             m_httpServer->addRoute(invsync::endpoints::config::method(),
                                    invsync::endpoints::config::path(),
-                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync));
+                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity));
 
             m_httpServer->start(config);
 
