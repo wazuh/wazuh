@@ -130,6 +130,9 @@ case "$1" in
         ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
     fi
 
+    # Unlike sslmanager.cert/key (owned by authd, which never drops privileges), remoted
+    # drops to ${USER} before its HTTPS module loads these files.
+    chown ${USER}:${GROUP} ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
 
     if [ -z "$2" ]; then
