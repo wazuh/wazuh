@@ -234,7 +234,7 @@ namespace
         ASSERT_TRUE(std::holds_alternative<AuthenticatedRequest>(result));
     }
 
-    // toString() is what puts a human-readable reason in ossec.log for every rejected request
+    // toString() is what puts a human-readable reason in wazuh-manager.log for every rejected request
     // (endpoint.cpp's errorResponseFor()). A new AuthError enumerator added without extending the
     // switch would silently log "unknown", so pin every value here.
     TEST(AuthErrorToString, CoversEveryEnumerator)

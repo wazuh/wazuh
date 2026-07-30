@@ -34,7 +34,7 @@ namespace
      *
      * The distinction drives the log level, and it matters for more than tidiness: an
      * unauthenticated peer fully controls how many rejections it triggers, so logging every one of
-     * them at WARN would be a log-amplification vector against ossec.log -- and a bad MAC from an
+     * them at WARN would be a log-amplification vector against wazuh-manager.log -- and a bad MAC from an
      * internet scanner is noise, not a finding. Those go to DEBUG2 (visible with remoted.debug=2
      * when someone is actually diagnosing a client).
      *
