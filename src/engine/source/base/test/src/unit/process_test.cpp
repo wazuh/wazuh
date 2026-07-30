@@ -4,6 +4,8 @@
 #include <fstream>
 #include <string>
 
+#include <grp.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -100,5 +102,106 @@ TEST(GoDaemonFunctionalTest, ContinuesInGrandchild)
     int status;
     ASSERT_EQ(waitpid(pid, &status, 0), pid);
     EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+
+TEST(PrivSepGetUserTest, ResolvesCurrentUser)
+{
+    struct passwd* pwd = getpwuid(getuid());
+    ASSERT_NE(pwd, nullptr);
+    EXPECT_EQ(privSepGetUser(pwd->pw_name), getuid());
+}
+
+TEST(PrivSepGetUserTest, ThrowsOnUnknownUser)
+{
+    EXPECT_THROW(privSepGetUser("wazuh_test_nonexistent_user"), std::runtime_error);
+}
+
+TEST(PrivSepGetGroupTest, ResolvesCurrentGroup)
+{
+    struct group* grp = getgrgid(getgid());
+    ASSERT_NE(grp, nullptr);
+    EXPECT_EQ(privSepGetGroup(grp->gr_name), getgid());
+}
+
+TEST(PrivSepGetGroupTest, ThrowsOnUnknownGroup)
+{
+    EXPECT_THROW(privSepGetGroup("wazuh_test_nonexistent_group"), std::runtime_error);
+}
+
+TEST(PrivSepSetUserTest, SameUidSucceeds)
+{
+    EXPECT_NO_THROW(privSepSetUser(getuid()));
+}
+
+TEST(PrivSepSetUserTest, ThrowsWhenNotPermitted)
+{
+    if (getuid() == 0)
+    {
+        GTEST_SKIP() << "requires a non-root user";
+    }
+    EXPECT_THROW(privSepSetUser(getuid() + 1), std::runtime_error);
+}
+
+// Functional test: the drop is irreversible, so it runs in a forked child
+TEST(PrivSepSetUserTest, DropsPrivilegesInChild)
+{
+    if (getuid() != 0)
+    {
+        GTEST_SKIP() << "requires root";
+    }
+
+    struct passwd* pwd = getpwuid(65534); // nobody
+    if (pwd == nullptr)
+    {
+        GTEST_SKIP() << "uid 65534 (nobody) not available";
+    }
+    const uid_t targetUid = pwd->pw_uid;
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        try
+        {
+            privSepSetUser(targetUid);
+        }
+        catch (...)
+        {
+            _exit(EXIT_DAEMON_FAILURE);
+        }
+        _exit((getuid() == targetUid && geteuid() == targetUid) ? EXIT_SUCCESS : EXIT_WRITE_FAILURE);
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
+}
+
+// setgroups() mutates process-wide state, so it runs in a forked child.
+// Root must succeed; unprivileged processes lack CAP_SETGID and must throw.
+TEST(PrivSepSetGroupTest, SetGroupInChild)
+{
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0);
+    if (pid == 0)
+    {
+        bool threw = false;
+        try
+        {
+            privSepSetGroup(getgid());
+        }
+        catch (const std::runtime_error&)
+        {
+            threw = true;
+        }
+        const bool ok = (getuid() == 0) ? !threw : threw;
+        _exit(ok ? EXIT_SUCCESS : EXIT_FAILURE);
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    ASSERT_TRUE(WIFEXITED(status));
     EXPECT_EQ(WEXITSTATUS(status), EXIT_SUCCESS);
 }
