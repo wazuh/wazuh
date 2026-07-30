@@ -13,6 +13,9 @@
 #define _INVSYNC_ENDPOINTS_CONFIG_ENDPOINT_HPP
 
 #include "http_server/IUdsHttpServer.hpp"
+#include "indexer/IIndexerConnectorAsync.hpp"
+
+#include <memory>
 
 namespace invsync::endpoints::config
 {
@@ -62,12 +65,29 @@ namespace invsync::endpoints::config
     /**
      * @brief Build the endpoint's route handler.
      *
-     * The returned handler replies inline and holds no state. When real configuration handling lands
-     * it may instead move the responder onto a queue and return without answering -- which is what the
-     * transport's deferred-response contract exists to support, and why the signature already takes a
-     * responder rather than returning a response.
+     * The returned handler replies inline. When real configuration handling lands it may instead move the
+     * responder onto a queue and return without answering -- which is what the transport's
+     * deferred-response contract exists to support, and why the signature already takes a responder
+     * rather than returning a response.
+     *
+     * @param connector The async indexer connector, held WEAKLY and locked at each point of use.
+     *
+     * Weak, not a reference and not a shared_ptr, and the reason is not defensiveness:
+     *
+     *  - A reference would be safe *today* -- IUdsHttpServer::stopAccepting() guarantees no handler is
+     *    running or will run again, and the facade tears the connector down only after that returns.
+     *    It becomes a dangling reference the moment this handler defers its reply, because the
+     *    continuation then runs on another thread with no ordering against that teardown. Deferring is
+     *    exactly what this connector is being injected for.
+     *  - A strong shared_ptr would be safe but would move the teardown: handler closures are stored in
+     *    the transport's route table, which is co-owned by every outstanding responder, so the facade's
+     *    reset() would stop being destructive and the connector's destructor (with its background
+     *    threads) would run later, possibly on whatever thread releases the last responder.
+     *
+     * Weak keeps both properties: correct after deferral lands, and the facade's documented phase
+     * ordering stays true. The cost is one lock() per request and an explicit "it is gone" branch.
      */
-    http::RouteHandler makeHandler();
+    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector);
 
 } // namespace invsync::endpoints::config
 
