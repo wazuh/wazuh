@@ -346,12 +346,30 @@ public function config()
 End Function
 
 Private Function GetVersion()
-	Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
-	Set colItems = objWMIService.ExecQuery("Select * from Win32_OperatingSystem",,48)
+	Dim WshShell, majorVersion, currentVersion
+	Set WshShell = CreateObject("WScript.Shell")
 
-	For Each objItem in colItems
-		GetVersion = Split(objItem.Version,".")(0)
-	Next
+	On Error Resume Next
+
+	' Windows 10/11 and Server 2016+ expose the major version as a DWORD.
+	majorVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMajorVersionNumber")
+	If Err.Number = 0 And IsNumeric(majorVersion) Then
+		GetVersion = CStr(majorVersion)
+	Else
+		' Older systems: parse the "CurrentVersion" string value (e.g. "6.1", "6.3").
+		Err.Clear
+		currentVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentVersion")
+		If Err.Number = 0 And Len(currentVersion) > 0 Then
+			GetVersion = Split(currentVersion, ".")(0)
+		Else
+			' Last resort: don't abort the install if the version can't be read, and don't
+			' silently skip SetWazuhPermissions()'s ACL hardening either - every currently
+			' supported Windows version satisfies ">= 6", so assume one instead of "0".
+			GetVersion = "6"
+		End If
+	End If
+
+	On Error GoTo 0
 End Function
 
 Public Function CheckSvcRunning()
