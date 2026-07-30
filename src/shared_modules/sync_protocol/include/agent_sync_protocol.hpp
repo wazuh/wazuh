@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -180,6 +181,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @return True when the manager accepted it.
         bool runSession(const SessionContent& content);
 
+        /// @brief Whether this synchronization option must bypass FullSession size capping.
+        bool isUncappedSyncOption(Option option) const;
+
+        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue.
+        SyncModuleResult synchronizeDeltaByBlocks(Option option);
+
+        /// @brief Applies HTTP-result outcomes received from https_client callback routing.
+        bool applyHttpResultCode(int resultCode);
+
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry
         ///        reuses the same value so the manager can dedup on it.
@@ -187,10 +197,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         static uint64_t nextSessionId();
 
         /// @brief Serializes a whole session as one FullSession message.
-        /// @param session Session id, stamped on the message and on every item.
         /// @param content What the session carries.
         /// @return The serialized message, or an empty vector on failure.
-        std::vector<uint8_t> buildFullSessionMessage(uint64_t session, const SessionContent& content);
+        std::vector<uint8_t> buildFullSessionMessage(const SessionContent& content);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase
@@ -198,14 +207,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief The protocol is not in an active synchronization process.
             Idle,
             /// @brief The session has been sent, waiting for the manager's answer.
-            WaitingEndAck
+            WaitingResponse
         };
-
-        /// @brief Validate phase and session
-        /// @param receivedPhase Received synchronization phase
-        /// @param incomingSession Session received in message
-        /// @return True if current phase and session match the expected ones
-        bool validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession);
 
         /// @brief Safely resets the synchronization state by acquiring a lock.
         void clearSyncState();
@@ -234,17 +237,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Condition variable used to signal waiting threads.
             std::condition_variable cv;
 
-            /// @brief Indicates whether an EndAck response has been received.
-            bool endAckReceived = false;
+            /// @brief Indicates whether a terminal response has been received.
+            bool responseReceived = false;
 
             /// @brief Indicates that the manager reported a error, forcing the sync to fail.
             bool syncFailed = false;
 
             /// @brief Current phase of the synchronization process.
             SyncPhase phase = SyncPhase::Idle;
-
-            /// @brief Unique identifier for the current synchronization session, chosen by this agent.
-            uint64_t session = 0;
 
             /// @brief Last sync operation result for detailed error reporting.
             SyncResult lastSyncResult = SyncResult::SUCCESS;
@@ -254,6 +254,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// it (COMMUNICATION_ERROR is also used for a local send failure in the middle of an
             /// established session).
             bool lastSyncManagerNotReady = false;
+
+            /// @brief True when the in-flight session is an integrity check; non-200 means checksum mismatch.
+            bool expectingChecksumResult = false;
 
             /// @brief Destructor ensures all waiting threads are woken up before destruction.
             ///
@@ -270,12 +273,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// This should be called before starting a new synchronization cycle.
             void reset()
             {
-                endAckReceived = false;
+                responseReceived = false;
                 syncFailed = false;
                 phase = SyncPhase::Idle;
-                session = 0;
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
+                expectingChecksumResult = false;
             }
         };
 
@@ -308,6 +311,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
+
+        static constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+        static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
+        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
+        static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

@@ -12,6 +12,20 @@
 #include "logging_helper.hpp"
 #include <filesystem>
 
+namespace
+{
+    constexpr size_t SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES = 8U * 1024U;
+    constexpr size_t SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES = 512U;
+
+    size_t estimateSerializedItemBytes(const PersistedData& data)
+    {
+        return data.id.size()
+               + data.index.size()
+               + data.data.size()
+               + SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES;
+    }
+} // namespace
+
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
@@ -226,16 +240,17 @@ void PersistentQueueStorage::submitBatch(const std::vector<PersistedData>& batch
     // LCOV_EXCL_STOP
 }
 
-std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
+std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t maxBytes)
 {
     std::vector<PersistedData> result;
     std::vector<int64_t> idsToUpdate;
+    size_t estimatedBytes = SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES;
 
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
 
     try
     {
-        std::string selectQuery =
+        const std::string selectQuery =
             "SELECT rowid, id, idx, data, operation, version, is_data_context "
             "FROM persistent_queue "
             "WHERE sync_status = ? "
@@ -254,7 +269,19 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             data.operation = static_cast<Operation>(selectStmt.value<int>(4));
             data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
             data.is_data_context = selectStmt.value<int>(6) != 0;
+            const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
 
+            if (maxBytes > 0 && !result.empty() && estimatedBytes + estimatedItemBytes > maxBytes)
+            {
+                break;
+            }
+
+            if (maxBytes > 0 && result.empty() && estimatedBytes + estimatedItemBytes > maxBytes)
+            {
+                m_logger(LOG_DEBUG, "PersistentQueueStorage: A single pending item exceeds the fetch byte budget; selecting it alone.");
+            }
+
+            estimatedBytes += estimatedItemBytes;
             idsToUpdate.push_back(rowid);
             result.emplace_back(std::move(data));
         }

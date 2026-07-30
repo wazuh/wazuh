@@ -31,7 +31,6 @@ enum Option: byte {
 
 table DataValue {
     seq: ulong;
-    session: ulong;
     operation: Operation;
     id: string;
     index: string;
@@ -41,7 +40,6 @@ table DataValue {
 
 table DataContext {
     seq: ulong;
-    session: ulong;
     id: string;
     index: string;
     data: [byte];
@@ -70,16 +68,13 @@ table Start {
 
 table StartAck {
     status: Status;
-    session: ulong;
 }
 
 table End {
-    session: ulong;
 }
 
 table EndAck {
     status: Status;
-    session: ulong;
 }
 
 table Pair {
@@ -89,17 +84,14 @@ table Pair {
 
 table ReqRet {
     seq: [Pair];
-    session: ulong;
 }
 
 table DataClean {
     seq: ulong;
-    session: ulong;
     index: string;
 }
 
 table ChecksumModule {
-    session: ulong;
     index: string;
     checksum: string;
 }
@@ -119,7 +111,6 @@ table DataBatch {
 /// The session id is chosen by the AGENT here, not handed back by a StartAck,
 /// so a retried session keeps the same id and the manager can dedup it.
 table FullSession {
-    session: ulong;
     start: Start;
     batches: [DataBatch];
     contexts: [DataContext];

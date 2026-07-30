@@ -22,7 +22,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
     public:
         MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
         MOCK_METHOD(void, submitBatch, (const std::vector<PersistedData>& batch), (override));
-        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchPending, (bool onlyDataValues), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
@@ -150,7 +150,7 @@ TEST(PersistentQueueTest, FailedBatchIsRetainedAndRetriedOnNextFlushCycle)
     .WillOnce(Return())
     .WillOnce(SaveArg<0>(&retryBatch));
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
     .WillRepeatedly(Return(std::vector<PersistedData> {}));
 
     {
@@ -184,7 +184,7 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
         {0, "id2", "idx", "{}", Operation::MODIFY, 0}
     };
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
     .WillOnce(testing::Return(fakeData));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
@@ -198,7 +198,7 @@ TEST(PersistentQueueTest, FetchAndMarkForSyncThrowsOnStorageError)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_) )
     .WillOnce(testing::Throw(std::runtime_error("Simulated error obtaining items for sync")));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};

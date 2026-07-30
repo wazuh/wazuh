@@ -28,7 +28,6 @@ class LoopbackTransport final : public ISyncSessionTransport
             flatbuffers::FlatBufferBuilder builder;
             Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
             endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-            endAckBuilder.add_session(session);
             auto endAckOffset = endAckBuilder.Finish();
             auto message = Wazuh::SyncSchema::CreateMessage(
                                builder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
