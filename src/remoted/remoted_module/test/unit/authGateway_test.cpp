@@ -36,10 +36,21 @@ namespace
     class FakeHttpServer final : public IHttpServer
     {
     public:
-        void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool /*countAgainstBudget*/) override
+        void addRoute(Method method,
+                      const std::string& path,
+                      RouteHandler handler,
+                      bool /*countAgainstBudget*/,
+                      ResponseMode mode) override
         {
             m_routes[{method, path}] = std::move(handler);
+            m_modes[{method, path}] = mode;
+        }
+
+        /// @brief The response mode a route was registered with, for asserting the registration.
+        ResponseMode modeOf(Method method, const std::string& path) const
+        {
+            const auto it = m_modes.find({method, path});
+            return it == m_modes.end() ? ResponseMode::Buffered : it->second;
         }
         void start(const HttpServerConfig&) override {}
         void stopAccepting() noexcept override {}
@@ -61,6 +72,7 @@ namespace
 
     private:
         std::map<std::pair<Method, std::string>, RouteHandler> m_routes;
+        std::map<std::pair<Method, std::string>, ResponseMode> m_modes;
     };
 
     // Keystore stub: knows one agent (numeric id 1, i.e. "001" on the wire); anything else is unknown.
@@ -155,6 +167,23 @@ TEST(AuthGatewayTest, RegistersRouteOnTheServer)
         { responder->send(HttpResponse {200, "", {}}); });
 
     EXPECT_TRUE(server.hasRoute(Method::Post, "/stateless"));
+}
+
+TEST(AuthGatewayTest, ForwardsTheResponseModeToTheServer)
+{
+    // The mode cannot be chosen per response -- the transport fixes a builder's output mode when the
+    // request is dispatched -- so a streaming endpoint depends on the gateway passing it through at
+    // registration. A Buffered registration would make every /download answer 500.
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/buffered", [](auto, auto) {});
+    gateway.addAuthenticatedRoute(
+        server, Method::Post, "/streamed", [](auto, auto) {}, ResponseMode::Streamable);
+
+    EXPECT_EQ(server.modeOf(Method::Post, "/buffered"), ResponseMode::Buffered) << "default must stay buffered";
+    EXPECT_EQ(server.modeOf(Method::Post, "/streamed"), ResponseMode::Streamable);
 }
 
 TEST(AuthGatewayTest, MissingProtocolVersionYields400AndSkipsHandler)

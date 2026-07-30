@@ -36,6 +36,9 @@ namespace
     constexpr std::size_t DEFAULT_MAX_PIPELINED_REQUESTS {4};
     constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
+    // Bytes per chunk for a streamed response body. Agreed default; tunable through
+    // remoted.http_stream_chunk_size because the CPU cost per byte moves noticeably with it.
+    constexpr std::size_t DEFAULT_STREAM_CHUNK_SIZE {64U * 1024U};
 
     // Global cap on in-flight (unprocessed) request payload bytes. Bounds the worker-pool
     // queue + handlers + deferred responses so a burst can't grow memory without limit;
@@ -149,6 +152,7 @@ namespace remoted::http
             resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
         result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
+        result.streamChunkSize = resolveUnsigned(config.http_stream_chunk_size, DEFAULT_STREAM_CHUNK_SIZE);
 
         // Memory-management knobs come from remoted's config struct (a positive value wins),
         // otherwise the built-in default -- deliberately NOT env-driven. The transport clamps the

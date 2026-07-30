@@ -108,7 +108,8 @@ namespace remoted::endpoints
     void AuthGateway::addAuthenticatedRoute(remoted::http::IHttpServer& server,
                                             Method method,
                                             const std::string& path,
-                                            AuthenticatedHandler handler)
+                                            AuthenticatedHandler handler,
+                                            remoted::http::ResponseMode mode)
     {
         auto middleware = m_middleware;
         const char* methodStr = methodToCanonical(method);
@@ -198,7 +199,9 @@ namespace remoted::endpoints
                     LOGFN_ERROR(logFn(), "Auth pipeline threw a non-standard exception.");
                     sendInternalErrorNoThrow(responder);
                 }
-            });
+            },
+            /*countAgainstBudget=*/true,
+            mode);
     }
 
 } // namespace remoted::endpoints
