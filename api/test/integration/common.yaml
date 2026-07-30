@@ -118,6 +118,7 @@ variables:
         <legacy>
           <port>1514</port>
           <protocol>tcp</protocol>
+          <local_ip>0.0.0.0</local_ip>
         </legacy>
       </remote>
 
