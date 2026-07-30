@@ -202,9 +202,18 @@ GenerateHttpsManagerCert()
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
                     echo "Generating self-signed certificate for the HTTPS agent server..."
                     ${INSTALLDIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -K ${INSTALLDIR}/etc/https-manager.key -X ${INSTALLDIR}/etc/https-manager.cert -S "/C=US/ST=California/CN=wazuh/"
-                    chmod 640 ${INSTALLDIR}/etc/https-manager.key
-                    chmod 640 ${INSTALLDIR}/etc/https-manager.cert
             fi
+        fi
+
+        # Unlike sslmanager.cert/key (owned by authd, which never drops privileges), remoted
+        # drops to ${WAZUH_USER} before its HTTPS module loads these files. Re-applied
+        # unconditionally (not just on fresh generation) so upgrades from installs that
+        # left these root-owned also get corrected.
+        if [ -f "${INSTALLDIR}/etc/https-manager.key" ] && [ -f "${INSTALLDIR}/etc/https-manager.cert" ]; then
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.key
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.cert
+            chmod 640 ${INSTALLDIR}/etc/https-manager.key
+            chmod 640 ${INSTALLDIR}/etc/https-manager.cert
         fi
     fi
 }
