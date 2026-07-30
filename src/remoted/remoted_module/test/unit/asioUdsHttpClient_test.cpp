@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -87,6 +88,14 @@ namespace
             return m_path;
         }
 
+        /// Bytes of the request as they arrived on the wire, for asserting what the client serialized.
+        /// Only the FIRST read chunk: enough for a request head, which is all any test inspects.
+        std::string capturedRequest() const
+        {
+            std::lock_guard<std::mutex> lock {m_captureMutex};
+            return m_captured;
+        }
+
     private:
         void doAccept()
         {
@@ -107,11 +116,15 @@ namespace
                     }
                     auto buffer = std::make_shared<std::array<char, 4096>>();
                     conn->async_read_some(asio::buffer(*buffer),
-                                          [this, conn, buffer](const std::error_code& readEc, std::size_t)
+                                          [this, conn, buffer](const std::error_code& readEc, std::size_t bytesRead)
                                           {
                                               if (readEc)
                                               {
                                                   return;
+                                              }
+                                              {
+                                                  std::lock_guard<std::mutex> lock {m_captureMutex};
+                                                  m_captured.assign(buffer->data(), bytesRead);
                                               }
                                               if (m_silent)
                                               {
@@ -140,6 +153,8 @@ namespace
         stream_protocol::acceptor m_acceptor;
         std::shared_ptr<stream_protocol::socket> m_held; // keeps a silent connection open
         std::thread m_thread;
+        mutable std::mutex m_captureMutex;
+        std::string m_captured;
     };
 
     struct Result
@@ -374,4 +389,39 @@ TEST(AsioUdsHttpClientTest, ZeroResponseTimeoutFallsBackToTheConfiguredDefault)
 
     EXPECT_EQ(result.error, DownstreamError::ResponseTimeout);
     EXPECT_LT(elapsed, std::chrono::seconds {2});
+}
+
+TEST(AsioUdsHttpClientTest, CallerSuppliedHeadersAreSerializedOntoTheRequest)
+{
+    StubUdsServer server {uniqueSocketPath("headers"), "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", false};
+
+    DownstreamConfig config;
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    std::promise<Result> promise;
+    auto future = promise.get_future();
+
+    DownstreamRequest req;
+    req.socketPath = server.path();
+    req.method = remoted::http::Method::Post;
+    req.path = "/stats";
+    req.contentType = "application/json";
+    req.headers.emplace_back("X-Wazuh-Agent-Id", "042");
+    req.body = "{}";
+
+    client.sendAsync(std::move(req),
+                     std::make_shared<int>(0),
+                     [&promise](DownstreamError error, DownstreamResponse response)
+                     { promise.set_value(Result {error, std::move(response)}); });
+
+    ASSERT_EQ(future.get().error, DownstreamError::None);
+
+    // This is the assertion that the agent id actually reaches modulesd: without it the endpoint
+    // builds a header that is silently dropped on the floor and the downstream answers 400.
+    const auto request = server.capturedRequest();
+    EXPECT_NE(request.find("X-Wazuh-Agent-Id: 042\r\n"), std::string::npos) << "captured request:\n" << request;
+    // Caller headers must not displace the ones the client owns.
+    EXPECT_NE(request.find("Content-Type: application/json\r\n"), std::string::npos);
+    EXPECT_NE(request.find("Content-Length: 2\r\n"), std::string::npos);
 }
