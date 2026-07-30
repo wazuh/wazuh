@@ -132,6 +132,16 @@ void handle_event(const struct rt_file_event* ev, void* /*user*/)
     // resolution never runs here. Host events fall through unchanged below.
     if (matches_container_prefix(ev->filename))
     {
+        // TEMPORARY instrumentation added to root-cause #37533's "live path never
+        // produces a row" finding -- remove once that investigation is closed.
+        {
+            char trace[512];
+            snprintf(trace, sizeof(trace),
+                     "handle_event: container-candidate path=%s cgroup_id=%llu pid=%u -- routing to containerEventQueue",
+                     ev->filename, (unsigned long long)ev->cgroup_id, ev->pid);
+            logFn(LOG_DEBUG, trace);
+        }
+
         auto cevent = std::make_unique<container_file_event>(container_file_event
         {
             .filename  = std::string(ev->filename),

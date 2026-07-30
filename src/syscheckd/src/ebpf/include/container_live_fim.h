@@ -65,10 +65,15 @@ extern "C" {
  *    this against the host FIM path is an open question in #37533 itself;
  *    this slice always drops rather than falling back to host semantics,
  *    since the kernel-reported path can't be trusted as a host path.
- *  - the PID that triggered the hook has already exited by the time this
- *    runs, so /proc/<pid>/root can't be used to resolve the file — a known
- *    lifecycle race (#37533 "Enrichment join" angle); there is currently no
- *    fallback to another live PID in the same container.
+ *  - the PID that triggered the hook has already exited *and* no other live
+ *    PID exists in the same container anymore (falls back to
+ *    wazuh::container_baseline::ResolvePidsForContainer() first — the same
+ *    resolver the #37532 baseline uses — since any live PID in the container
+ *    shares its mount namespace and is equally valid for /proc/<pid>/root
+ *    purposes; only drops if that also comes up empty, meaning the container
+ *    itself is gone). The original PID being dead by processing time turned
+ *    out to be the dominant real-world case, not a rare race — see
+ *    container-fim-syscollector-test-plan-and-results.md finding #3.
  *
  * @param cgroup_id cgroup-v2 unified cgroup id from the eBPF event (0 or a
  *                  cgroup-v1-ambiguous constant on cgroup-v1 hosts — see the

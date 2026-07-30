@@ -25,9 +25,12 @@
 // C linkage). Those three are hand-forward-declared instead, once
 // directory_t/fim_file_data/cJSON are already visible from the normal
 // #include "syscheck.h" below -- see the second extern "C" block.
+// debug_op.h (mdebug2() and friends) has the same unwrapped-transitively
+// problem and is just as safe to wrap alone (only <stdarg.h>/<cJSON.h>).
 extern "C"
 {
 #include "time_op.h"
+#include "debug_op.h"
 }
 
 #include "container_live_fim.h"
@@ -53,11 +56,27 @@ directory_t* fim_configuration_directory(const char* key, bool notify_not_found,
 #include <json.hpp>
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
+
+// ResolvePidsForContainer() is a real, exported C++ symbol of
+// libcontainer_baseline.so (confirmed via `nm -D` on a built agent --
+// nothing hides it despite living under container_baseline_impl/, and
+// fimebpf already links container_baseline). Declared here directly instead
+// of pulling in container_baseline_impl/include/pid_resolver.hpp, since that
+// directory isn't part of container_baseline's public include path and this
+// is the one function from it this file needs, as a PID-liveness fallback
+// for the live path (see its use below, and
+// container-fim-syscollector-test-plan-and-results.md finding #3).
+namespace wazuh::container_baseline
+{
+std::vector<pid_t> ResolvePidsForContainer(const std::string& container_id);
+}
 
 namespace {
 
@@ -72,43 +91,49 @@ namespace {
 // re-exported) — unifying the two into one shared helper is a reasonable
 // follow-up once both call sites are stable, not attempted here.
 //
-// Field names are inferred from container_record.hpp's C++ struct and are
-// not independently verified against container_instances' wire format;
-// treat as a best-effort mapping to be confirmed against that module.
-std::string build_container_json(const std::string& container_id, const nlohmann::json& record)
+// `data` is the *nested* "data" object from a resolveByCgroupId() reply
+// ({"status":"resolved","data":{...}} -- see recordToJson() in
+// container_instances/ci_impl/src/ipc/wire_protocol.hpp for the authoritative
+// shape), not the reply's top level. Field names are the snake_case ones
+// recordToJson() actually serializes (container_id/container_name/image/
+// image_digest/labels/pod_name/pod_uid/namespace/node_name/runtime) --
+// verified against wire_protocol.hpp directly, not inferred, after the
+// original camelCase/top-level assumptions here turned out to never match
+// (see container-fim-syscollector-test-plan-and-results.md finding #3: every
+// live-path event was silently dropped because of exactly this mismatch).
+std::string build_container_json(const std::string& container_id, const nlohmann::json& data)
 {
     nlohmann::json out;
     nlohmann::json container;
 
     container["id"] = container_id;
-    if (record.contains("containerName") && record["containerName"].is_string())
+    if (data.contains("container_name") && data["container_name"].is_string())
     {
-        container["name"] = record["containerName"];
+        container["name"] = data["container_name"];
     }
-    if (record.contains("image") && record["image"].is_string())
+    if (data.contains("image") && data["image"].is_string())
     {
-        container["image"] = {{"name", record["image"]}};
-        if (record.contains("imageDigest") && record["imageDigest"].is_string())
+        container["image"] = {{"name", data["image"]}};
+        if (data.contains("image_digest") && data["image_digest"].is_string())
         {
-            container["image"]["digest"] = record["imageDigest"];
+            container["image"]["digest"] = data["image_digest"];
         }
     }
-    if (record.contains("labels") && record["labels"].is_object())
+    if (data.contains("labels") && data["labels"].is_object())
     {
-        container["labels"] = record["labels"];
+        container["labels"] = data["labels"];
     }
     out["container"] = container;
 
-    const bool is_kubernetes = record.contains("podName") && record["podName"].is_string() &&
-                               !record["podName"].get<std::string>().empty();
+    const bool is_kubernetes = data.value("runtime", "") == "kubernetes";
     if (is_kubernetes)
     {
         nlohmann::json kubernetes;
-        kubernetes["pod"] = {{"name", record.value("podName", "")}, {"uid", record.value("podUid", "")}};
-        kubernetes["namespace"] = record.value("podNamespace", "");
-        if (record.contains("nodeName") && record["nodeName"].is_string())
+        kubernetes["pod"] = {{"name", data.value("pod_name", "")}, {"uid", data.value("pod_uid", "")}};
+        kubernetes["namespace"] = data.value("namespace", "");
+        if (data.contains("node_name") && data["node_name"].is_string())
         {
-            kubernetes["node"] = {{"name", record["nodeName"]}};
+            kubernetes["node"] = {{"name", data["node_name"]}};
         }
         out["kubernetes"] = kubernetes;
     }
@@ -341,6 +366,22 @@ void delete_container_file_row(const std::string& container_id, const std::strin
 
 } // namespace
 
+namespace
+{
+// Debug-only: names LookupStatus for the trace log below. Not used for control flow.
+const char* lookup_status_name(wazuh::container_instances_client::LookupStatus status)
+{
+    switch (status)
+    {
+        case wazuh::container_instances_client::LookupStatus::resolved:     return "resolved";
+        case wazuh::container_instances_client::LookupStatus::pending:      return "pending";
+        case wazuh::container_instances_client::LookupStatus::notContainer: return "notContainer";
+        case wazuh::container_instances_client::LookupStatus::unavailable:  return "unavailable";
+    }
+    return "unknown";
+}
+} // namespace
+
 extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
                                                     uint32_t /*mnt_ns*/,
                                                     uint32_t pid,
@@ -348,13 +389,24 @@ extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
                                                     uint64_t /*inode*/,
                                                     uint64_t /*dev*/)
 {
+    // TEMPORARY instrumentation added to root-cause #37533's "live path never
+    // produces a row" finding (see container-fim-syscollector-test-plan-and-results.md) --
+    // remove once that investigation is closed.
+    mdebug2("fim_handle_container_whodata_event: cgroup_id=%llu pid=%u path=%s",
+            (unsigned long long)cgroup_id, pid, kernel_path ? kernel_path : "(null)");
+
     if (!syscheck.enable_synchronization || !kernel_path)
     {
+        mdebug2("fim_handle_container_whodata_event: dropped -- enable_synchronization=%d kernel_path=%s",
+                syscheck.enable_synchronization, kernel_path ? "set" : "null");
         return;
     }
 
     const wazuh::container_instances_client::ContainerInstancesClient client(CB_DEFAULT_CONNECTOR_SOCKET_PATH);
     const auto lookup = client.resolveByCgroupId(cgroup_id);
+
+    mdebug2("fim_handle_container_whodata_event: resolveByCgroupId(%llu) status=%s",
+            (unsigned long long)cgroup_id, lookup_status_name(lookup.status));
 
     // Cold cache / module unavailable / not a container: drop. See
     // container_live_fim.h's doc comment for why this never falls back to
@@ -364,13 +416,30 @@ extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
         return;
     }
 
+    // A "resolved" reply's shape is {"status":"resolved","data":{"container_id":...,
+    // "container_name":...,...}} -- snake_case, nested under "data" (see
+    // recordToJson() in container_instances/ci_impl/src/ipc/wire_protocol.hpp,
+    // the authoritative serializer). The top-level, camelCase "containerId"
+    // this used to look for never existed in a real reply, so every live-path
+    // event was silently dropped here regardless of container or runtime --
+    // see container-fim-syscollector-test-plan-and-results.md finding #3.
     const auto record = nlohmann::json::parse(lookup.json, nullptr, false);
-    if (record.is_discarded() || !record.is_object() || !record.contains("containerId") ||
-        !record["containerId"].is_string())
+    if (record.is_discarded() || !record.is_object())
     {
+        mdebug2("fim_handle_container_whodata_event: dropped -- resolved reply is not valid JSON: %s",
+                lookup.json.c_str());
         return;
     }
-    const std::string container_id = record["containerId"].get<std::string>();
+    const auto data_it = record.find("data");
+    if (data_it == record.end() || !data_it->is_object() || !data_it->contains("container_id") ||
+        !(*data_it)["container_id"].is_string())
+    {
+        mdebug2("fim_handle_container_whodata_event: dropped -- resolved reply missing/invalid data.container_id: %s",
+                lookup.json.c_str());
+        return;
+    }
+    const nlohmann::json& data = *data_it;
+    const std::string container_id = data["container_id"].get<std::string>();
     const std::string path(kernel_path);
 
     // Resolve the kernel-reported (writer's-mount-ns-view) path to a
@@ -379,19 +448,44 @@ extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
     // kernel does the mount-namespace resolution for us, so there is no
     // OCI-mount/overlay math to reimplement here.
     //
-    // Known limitation: if the pid has already exited by the time this
-    // runs, there is no fallback to another live pid in the same container
-    // (that requires container_baseline_impl's private
-    // ResolvePidsForContainer(), not linkable from here — see the header
-    // comment). The event is dropped in that case, a documented instance of
-    // #37533's own "lifecycle races" open question.
+    // The pid the eBPF event reports is a snapshot of whichever process
+    // triggered the hook -- for the extremely common case of a short-lived
+    // writer (`sh -c 'echo ... > file'`, a package-manager postinst script, a
+    // config-reload helper, ...) that process has usually already exited by
+    // the time this runs on the container-event worker thread. Empirically
+    // this was the dominant failure mode once the JSON-shape bug above was
+    // fixed (see container-fim-syscollector-test-plan-and-results.md finding
+    // #3) -- essentially every `docker exec` one-liner used to test this
+    // tripped it. Any other live process in the same container shares the
+    // same mount namespace, so falling back to ResolvePidsForContainer()
+    // (already proven correct -- it's the same resolver the #37532 baseline
+    // uses) is exactly as valid for /proc/<pid>/root purposes as the
+    // original pid would have been.
+    uint32_t resolved_pid = pid;
     if (access(("/proc/" + std::to_string(pid)).c_str(), F_OK) != 0)
     {
-        return;
+        mdebug2("fim_handle_container_whodata_event: pid %u no longer alive (container_id=%s path=%s) -- "
+                "falling back to ResolvePidsForContainer()",
+                pid, container_id.c_str(), path.c_str());
+
+        const auto fallback_pids = wazuh::container_baseline::ResolvePidsForContainer(container_id);
+        if (fallback_pids.empty())
+        {
+            mdebug2("fim_handle_container_whodata_event: dropped -- no live pid left for container_id=%s "
+                    "(container likely gone)",
+                    container_id.c_str());
+            return;
+        }
+        resolved_pid = static_cast<uint32_t>(fallback_pids.front());
+        mdebug2("fim_handle_container_whodata_event: using fallback pid=%u for container_id=%s",
+                resolved_pid, container_id.c_str());
     }
 
-    const std::string host_path = "/proc/" + std::to_string(pid) + "/root" + path;
-    const std::string container_json = build_container_json(container_id, record);
+    mdebug2("fim_handle_container_whodata_event: resolved container_id=%s path=%s pid=%u -- proceeding to stat/persist",
+            container_id.c_str(), path.c_str(), resolved_pid);
+
+    const std::string host_path = "/proc/" + std::to_string(resolved_pid) + "/root" + path;
+    const std::string container_json = build_container_json(container_id, data);
 
     struct stat st{};
     if (::lstat(host_path.c_str(), &st) != 0)
