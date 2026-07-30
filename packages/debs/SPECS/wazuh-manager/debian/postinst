@@ -211,6 +211,17 @@ case "$1" in
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
 
+    # The engine (wazuh-manager-analysisd) now drops privileges to wazuh-manager:
+    # runtime data created by root in previous versions must be reassigned.
+    # restore-permissions.sh only covers paths present in the package tree.
+    chown -R ${USER}:${GROUP} ${DIR}/data/ruleset > /dev/null 2>&1 || true
+    chown -R ${USER}:${GROUP} ${DIR}/data/kvdb-ioc > /dev/null 2>&1 || true
+    for YEAR_DIR in ${DIR}/logs/[0-9][0-9][0-9][0-9]; do
+        if [ -d "${YEAR_DIR}" ]; then
+            chown -R ${USER}:${GROUP} "${YEAR_DIR}" > /dev/null 2>&1 || true
+        fi
+    done
+
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
         rm -f /etc/systemd/system/wazuh-manager.service
