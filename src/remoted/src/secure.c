@@ -245,8 +245,9 @@ typedef struct {
 } rem_handler_args_t;
 
 /**
- * @brief Read the HTTPS agent server's advanced settings (`remoted.http_*` internal
- *        options) into the config struct passed to remoted_module_start().
+ * @brief Read the C++ module's tunable settings (`remoted.*` internal options: HTTP
+ *        transport, memory-management, downstream client, and auth middleware) into
+ *        the config struct passed to remoted_module_start().
  */
 STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // io_threads/http_worker_threads: min+default 0 (not 1) so an unset option flows through as a
@@ -263,6 +264,14 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
     rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
     rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+
+    // Memory-management (backpressure) tunables. These bound in-memory resource usage rather
+    // than tune the transport itself; the C++ side still clamps max_inflight_bytes up to at
+    // least one max-size request at start(), so a too-small value can't reject everything.
+    rm_config->max_inflight_bytes =
+        getDefine_Int_default("remoted", "max_inflight_bytes", 1048576, 1073741824, 268435456);
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -295,16 +304,9 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
-    // rm_config->max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
-    // request payload before it sheds load with 503. NOT logr->queue_size (that is an
-    // event COUNT, not bytes).
-    rm_config->max_inflight_bytes = (256 * 1024 * 1024); // 256 MiB
-    // rm_config->max_parallel_connections caps simultaneous HTTPS connections, bounding the
-    // read-phase memory peak (~ max_parallel_connections * max body size).
-    rm_config->max_parallel_connections = 512;
-    // rm_config->max_deferred_requests caps requests parked awaiting a downstream service (503
-    // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
-    rm_config->max_deferred_requests = 256;
+    // max_inflight_bytes, max_parallel_connections and max_deferred_requests are NOT set here:
+    // remoted_module_https_config() above reads them from the `remoted.*` internal options. They
+    // used to be hardcoded at this point, which would now silently overwrite the configured values.
     // rm_config->keystore_refresh_interval governs how often the C++ Keystore checks
     // client.keys for changes (hot-reload)
     rm_config->keystore_refresh_interval = keyupdate_interval;

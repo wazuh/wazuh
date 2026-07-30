@@ -3162,8 +3162,8 @@ void test_remoted_module_https_config_defaults(void** state)
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
     // as the getDefine_Int_default() calls in remoted_module_https_config(): 12 http_*, then
-    // 6 downstream_*, then 3 auth_*. Adding an option there without adding a value here makes
-    // the queue run dry and cmocka aborts the test.
+    // 3 memory-management, then 6 downstream_*, then 3 auth_*. Adding an option there without
+    // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
     will_return(__wrap_getDefine_Int_default, 0); // http_worker_threads (0 = auto)
@@ -3177,6 +3177,10 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
+    // memory-management
+    will_return(__wrap_getDefine_Int_default, 268435456);
+    will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 256);
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3207,6 +3211,9 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.http_max_pipelined_requests, 4);
     assert_int_equal(rm_config.http_concurrent_accepts, 2);
     assert_int_equal(rm_config.http_buffer_size, 8192);
+    assert_int_equal(rm_config.max_inflight_bytes, 268435456);
+    assert_int_equal(rm_config.max_parallel_connections, 512);
+    assert_int_equal(rm_config.max_deferred_requests, 256);
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
@@ -3239,6 +3246,10 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 8);
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 16384);
+    // memory-management
+    will_return(__wrap_getDefine_Int_default, 33554432);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 128);
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 7);
     will_return(__wrap_getDefine_Int_default, 11);
@@ -3269,6 +3280,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.http_max_pipelined_requests, 8);
     assert_int_equal(rm_config.http_concurrent_accepts, 4);
     assert_int_equal(rm_config.http_buffer_size, 16384);
+    assert_int_equal(rm_config.max_inflight_bytes, 33554432);
+    assert_int_equal(rm_config.max_parallel_connections, 256);
+    assert_int_equal(rm_config.max_deferred_requests, 128);
     assert_int_equal(rm_config.downstream_connect_timeout, 7);
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
