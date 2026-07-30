@@ -40,16 +40,16 @@ The engine provides internal options for:
 
 The engine daemon is launched as `root` and drops privileges at startup when
 running as part of wazuh-manager (it keeps the launcher's user and group when
-running standalone, e.g. inside wazuh-indexer):
+running standalone, e.g. inside wazuh-indexer). The target user and group are
+hardcoded to `wazuh-manager:wazuh-manager`; only the drop itself is
+configurable:
 
-- **`analysisd.owner_user`** - Runtime user the daemon switches to (default: `wazuh-manager`)
-- **`analysisd.owner_user_change_skip`** - Skip the user change (default: `false`)
-- **`analysisd.owner_group`** - Runtime group the daemon switches to (default: `wazuh-manager`)
-- **`analysisd.owner_group_change_skip`** - Skip the group change (default: `false`)
+- **`analysisd.drop_privileges`** - Switch to the `wazuh-manager` user and
+  group at startup (default: `true`). Set to `false` to keep running as the
+  launching user (debugging only). Has no effect in standalone mode.
 
 If the user or group change fails, the daemon logs the error and exits at
-startup. Note that skipping only the group change while the user change is
-enabled leaves the process with its original group after the user drop.
+startup.
 
 #### Event Queue Management
 
