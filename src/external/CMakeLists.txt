@@ -1029,25 +1029,6 @@ if(IS_LINUX AND IS_AGENT)
 endif()
 
 # ------------------------------------------------------------------------------
-# libbpf-bootstrap (Linux only, not server, not winagent)
-# ------------------------------------------------------------------------------
-
-if(IS_LINUX AND IS_AGENT)
-  if(EXISTS ${EXTERNAL_DIR}/libbpf-bootstrap/build/modern.bpf.o)
-    message(STATUS "Using precompiled libbpf-bootstrap")
-    add_custom_target(libbpf_external)
-  else()
-    ExternalProject_Add(
-      libbpf_external
-      SOURCE_DIR ${EXTERNAL_DIR}/libbpf-bootstrap
-      BINARY_DIR ${EXTERNAL_DIR}/libbpf-bootstrap/build
-      CMAKE_ARGS ""
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libbpf-bootstrap/build/modern.bpf.o)
-  endif()
-endif()
-
-# ------------------------------------------------------------------------------
 # GoogleTest (test builds only)
 # ------------------------------------------------------------------------------
 

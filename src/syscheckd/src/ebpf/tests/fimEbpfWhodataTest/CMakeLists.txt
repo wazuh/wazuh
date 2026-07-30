@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 include_directories(${SRC_FOLDER}/shared/include/)
+include_directories(${SRC_FOLDER}/syscheckd/include/)
+include_directories(${SRC_FOLDER}/syscheckd/src/db/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 # init_libbpf_test.cpp / init_bpf_obj_test.cpp / init_ring_buffer_test.cpp /
@@ -23,7 +26,17 @@ set(TEST_FILES
 # Create an executable for each test file
 foreach(TEST_FILE ${TEST_FILES})
   get_filename_component(TEST_NAME "${TEST_FILE}" NAME_WE)
-  add_executable("${TEST_NAME}" "${TEST_FILE}")
+  # link_stubs.cpp: fimebpf.so also contains container_baseline_fim.cpp/
+  # container_baseline_fim_bridge.c/container_live_fim.cpp, which call into
+  # syscheckd_lib/fimdb/agent_sync_protocol (validate_and_persist_fim_event,
+  # the `syscheck` global, fim_db_*). None of THESE tests exercise that code
+  # path, but the linker still needs those symbols resolved because they're
+  # in the same .so. Linking the real syscheckd_lib/fimdb/agent_sync_protocol
+  # turned out to be a genuine circular CMake target dependency (syscheckd_
+  # lib -> fimebpf -> ... -> wazuh_modulesd_lib/syscollector -> back to
+  # fimebpf) that CMake's own LINK_GROUP cycle validation refuses to build —
+  # narrow stubs sidestep that fight entirely.
+  add_executable("${TEST_NAME}" "${TEST_FILE}" link_stubs.cpp)
   target_link_libraries(
     ${TEST_NAME}
     PRIVATE debug

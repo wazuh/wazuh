@@ -66,6 +66,12 @@ target_include_directories(rt_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(rt_engine PUBLIC dl)
 add_dependencies(rt_engine rt_file_bpf_object)
 
+# This static library is linked into fimebpf, a SHARED library — without
+# PIC, the final link fails ("relocation ... can not be used when making a
+# shared object; recompile with -fPIC"), the same reason
+# container_baseline's CMakeLists sets this for CONTAINER_BASELINE_IMPL.
+set_target_properties(rt_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 if(UNIT_TEST)
   # No unit tests yet for this newly-extracted engine — see the parent
   # analysis doc (spike-37533/) for why a rt_open()/rt_poll() mock seam is

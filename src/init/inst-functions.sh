@@ -648,12 +648,16 @@ InstallCommon()
                   fi
           fi
 
-          if [ -f external/libbpf-bootstrap/build/modern.bpf.o ]
+          # #37396/#37533: FIM's eBPF hooks moved from modern.bpf.c (built by
+          # the now-removed libbpf_external CMake rule into external/libbpf-
+          # bootstrap/build/modern.bpf.o) to the standalone eBPF Module
+          # engine's rt_file.bpf.c, built into build/lib/rt_file.bpf.o.
+          if [ -f build/lib/rt_file.bpf.o ]
               then
-                  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/modern.bpf.o ${INSTALLDIR}/lib
+                  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/rt_file.bpf.o ${INSTALLDIR}/lib
 
                   if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                      chcon -t textrel_shlib_t ${INSTALLDIR}/lib/modern.bpf.o
+                      chcon -t textrel_shlib_t ${INSTALLDIR}/lib/rt_file.bpf.o
                   fi
           fi
       fi

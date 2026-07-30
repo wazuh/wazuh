@@ -352,6 +352,9 @@ void persist_syscheck_msg(const char* id, Operation_t operation, const char* ind
  *
  * @return true if validation passed and event was persisted (or schema validation is disabled), false if validation failed
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 bool validate_and_persist_fim_event(
     const cJSON* stateful_event,
     const char* id,
@@ -364,6 +367,9 @@ bool validate_and_persist_fim_event(
     void* failed_item_data,
     int sync_flag
 ) __attribute__((nonnull(1, 2, 4, 6)));
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * @brief Clean up files that failed schema validation by deleting them from DBSync

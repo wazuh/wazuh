@@ -11,8 +11,9 @@
  * the standalone eBPF Module engine (src/shared_modules/ebpf_provider/) as
  * part of the #37396 cutover — ebpf_whodata.cpp now consumes that engine
  * through rt_open()/rt_poll()/rt_close() (see ebpf_whodata.hpp) instead of
- * loading libbpf itself, so none of the bpf_object__*/ring_buffer__*
- * plumbing that used to be declared here is needed in this file anymore.
+ * loading libbpf itself, so none of the bpf_object and ring_buffer function
+ * pointer plumbing that used to be declared here is needed in this file
+ * anymore.
  */
 
 #ifndef BPF_HELPERS_H

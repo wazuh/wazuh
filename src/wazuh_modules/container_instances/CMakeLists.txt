@@ -69,5 +69,14 @@ set_target_properties(
 
 if(UNIT_TEST)
   enable_testing()
-  add_subdirectory(ci_impl/tests)
+  # Pre-existing gap, unrelated to #37396/#37533: this directory doesn't
+  # exist anywhere in the repo, so -DUNIT_TEST=ON has never been able to
+  # configure at all until now. Guarding it here is a workaround to unblock
+  # validating THIS branch's own tests, not a fix for container_instances'
+  # missing test suite.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ci_impl/tests/CMakeLists.txt")
+    add_subdirectory(ci_impl/tests)
+  else()
+    message(WARNING "container_instances: ci_impl/tests is missing; skipping (pre-existing gap, unrelated to this branch).")
+  endif()
 endif()

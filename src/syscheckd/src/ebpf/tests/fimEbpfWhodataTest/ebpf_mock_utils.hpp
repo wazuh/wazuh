@@ -1,12 +1,8 @@
 #ifndef BPF_HELPERS_TEST_H
 #define BPF_HELPERS_TEST_H
 #include <cstring>
-#include <future>
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
-
-inline std::shared_ptr<std::promise<void>> g_pop_started_promise;
-inline std::shared_future<void> g_pop_started_future;
 
 class MockFimebpf : public fimebpf
 {
@@ -126,26 +122,6 @@ void mock_ebpf_pop_events([[maybe_unused]] fim::BoundedQueue<std::unique_ptr<dyn
     return;
 }
 
-void reset_pop_barrier()
-{
-    g_pop_started_promise = std::make_shared<std::promise<void>>();
-    g_pop_started_future  = g_pop_started_promise->get_future().share();
-}
-
-void mock_ebpf_pop_events_barrier([[maybe_unused]] fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue)
-{
-    if (g_pop_started_promise)
-    {
-        try
-        {
-            g_pop_started_promise->set_value();
-        }
-        catch (...) {}
-    }
-
-    return;
-}
-
 /*
  * #37396/#37533 cutover: mocks for the rt_engine_api seam (rt_open/rt_poll/
  * rt_close via ebpf_whodata.hpp's `rt_engine_api` global), replacing the
@@ -192,26 +168,6 @@ int mock_rt_poll_healthcheck_success([[maybe_unused]] rt_handle_t handle, rt_sin
         sink(&ev, user);
     }
     return 1;
-}
-
-int mock_rt_poll_success_barrier([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
-                                 [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
-{
-    if (g_pop_started_future.valid())
-    {
-        g_pop_started_future.wait();
-    }
-    return 1;
-}
-
-int mock_rt_poll_failure_barrier([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
-                                 [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
-{
-    if (g_pop_started_future.valid())
-    {
-        g_pop_started_future.wait();
-    }
-    return -1;
 }
 
 void mock_rt_close([[maybe_unused]] rt_handle_t handle) {}
