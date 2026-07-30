@@ -12,32 +12,95 @@
 #ifndef _INVSYNC_TEST_INDEXER_CONNECTOR_FAKES_HPP
 #define _INVSYNC_TEST_INDEXER_CONNECTOR_FAKES_HPP
 
-#include "indexer/IIndexerConnector.hpp"
-#include "indexer/indexerConnectorAdapter.hpp"
+#include "indexer/IIndexerConnectorAsync.hpp"
+#include "indexer/IIndexerConnectorSync.hpp"
+#include "indexer/IIndexerSession.hpp"
+#include "indexer/indexerConnectorAsyncAdapter.hpp"
+#include "indexer/indexerConnectorSyncAdapter.hpp"
+#include "indexer/indexerSessionAdapter.hpp"
 #include "inventorySyncServerTestHooks.hpp"
 
 #include <atomic>
 #include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace invsync::test
 {
 
-    /// A trivially-successful IIndexerConnector: never throws to construct, always available.
-    /// Optionally reports its own destruction, so a test can pin the facade's teardown order.
-    class FakeIndexerConnector final : public invsync::indexer::IIndexerConnector
+    /**
+     * @brief Shared record of what the facade built and tore down, across all three indexer slots.
+     *
+     * A single record rather than three independent counters, because independent counters cannot
+     * express the RELATIVE teardown order that stop() now specifies (async, then sync, then session).
+     */
+    struct ConnectorEvents
+    {
+        std::mutex m_mutex;                   ///< Guards m_destroyed.
+        std::vector<std::string> m_destroyed; ///< "async"/"sync"/"session", in destruction order.
+        std::atomic<int> m_sessionBuilds {0}; ///< Times the session factory was invoked.
+        std::atomic<int> m_syncBuilds {0};    ///< Times the sync connector factory was invoked.
+        std::atomic<int> m_asyncBuilds {0};   ///< Times the async connector factory was invoked.
+
+        void recordDestruction(const char* what)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_destroyed.emplace_back(what);
+        }
+
+        std::vector<std::string> destroyed()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_destroyed;
+        }
+    };
+
+    /// Records its own destruction into the shared event record, so teardown order can be pinned.
+    template<typename TInterface>
+    class FakeIndexerObject final : public TInterface
     {
     public:
-        explicit FakeIndexerConnector(std::shared_ptr<std::atomic<int>> destructions = nullptr)
-            : m_destructions {std::move(destructions)}
+        FakeIndexerObject(std::shared_ptr<ConnectorEvents> events, const char* name)
+            : m_events {std::move(events)}
+            , m_name {name}
+        {
+        }
+
+        ~FakeIndexerObject() override
+        {
+            if (m_events)
+            {
+                m_events->recordDestruction(m_name);
+            }
+        }
+
+    private:
+        std::shared_ptr<ConnectorEvents> m_events;
+        const char* m_name;
+    };
+
+    /// Session fake: nothing to forward, its construction succeeding is the whole contract.
+    using FakeIndexerSession = FakeIndexerObject<invsync::indexer::IIndexerSession>;
+
+    /// Connector fakes: always available, never throw to construct.
+    template<typename TInterface>
+    class FakeIndexerConnector final : public TInterface
+    {
+    public:
+        FakeIndexerConnector(std::shared_ptr<ConnectorEvents> events, const char* name)
+            : m_events {std::move(events)}
+            , m_name {name}
         {
         }
 
         ~FakeIndexerConnector() override
         {
-            if (m_destructions)
+            if (m_events)
             {
-                m_destructions->fetch_add(1);
+                m_events->recordDestruction(m_name);
             }
         }
 
@@ -47,38 +110,137 @@ namespace invsync::test
         }
 
     private:
-        std::shared_ptr<std::atomic<int>> m_destructions;
+        std::shared_ptr<ConnectorEvents> m_events;
+        const char* m_name;
     };
 
+    using FakeIndexerConnectorSync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorSync>;
+    using FakeIndexerConnectorAsync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorAsync>;
+
     /**
-     * @brief Installs a factory that always succeeds instantly, bypassing IndexerConnectorSync's
-     *        real (synchronous, network-bound) construction entirely.
+     * @brief Installs fakes for all three slots that succeed instantly, bypassing the real objects'
+     *        synchronous, network-bound construction entirely.
      *
-     * @param destructions Optional shared counter, incremented when the fake is destroyed --
-     *                     lets a test pin stop()'s teardown.
-     * @return A shared counter of how many times the factory was actually invoked, so a test can
-     *         assert a successful construction is never repeated across retries.
+     * @return The shared event record: build counts per slot plus destruction order.
      */
-    inline std::shared_ptr<std::atomic<int>>
-    installAlwaysAvailableFakeIndexer(std::shared_ptr<std::atomic<int>> destructions = nullptr)
+    inline std::shared_ptr<ConnectorEvents> installAlwaysAvailableFakeIndexers()
     {
-        auto constructions = std::make_shared<std::atomic<int>>(0);
-        invsync::test_hooks::setIndexerConnectorFactoryForTests(
-            [constructions, destructions](const nlohmann::json&, LoggingContext)
+        auto events = std::make_shared<ConnectorEvents>();
+
+        invsync::test_hooks::setIndexerSessionFactoryForTests(
+            [events](const nlohmann::json&, LoggingContext)
             {
-                constructions->fetch_add(1);
-                return std::make_unique<FakeIndexerConnector>(destructions);
+                events->m_sessionBuilds.fetch_add(1);
+                return std::make_unique<FakeIndexerSession>(events, "session");
             });
-        return constructions;
+        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+            [events](const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)
+            {
+                events->m_syncBuilds.fetch_add(1);
+                return std::make_unique<FakeIndexerConnectorSync>(events, "sync");
+            });
+        invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
+            [events](const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)
+            {
+                events->m_asyncBuilds.fetch_add(1);
+                return std::make_unique<FakeIndexerConnectorAsync>(events, "async");
+            });
+
+        return events;
     }
 
-    /// Restores the real, production factory (constructs a real IndexerConnectorSync). Call this
-    /// from TearDown() so an override made by one test can never leak into the next.
-    inline void resetIndexerConnectorFactoryToProduction()
+    /// All three healthy except the session, which always throws @p reason.
+    inline std::shared_ptr<ConnectorEvents> installFakeIndexersWithFailingSession(std::string reason)
     {
-        invsync::test_hooks::setIndexerConnectorFactoryForTests(
+        auto events = installAlwaysAvailableFakeIndexers();
+        invsync::test_hooks::setIndexerSessionFactoryForTests(
+            [events, reason = std::move(reason)](const nlohmann::json&,
+                                                 LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerSession>
+            {
+                events->m_sessionBuilds.fetch_add(1);
+                throw std::runtime_error(reason);
+            });
+        return events;
+    }
+
+    /// All three healthy except the sync connector, which always throws @p reason.
+    inline std::shared_ptr<ConnectorEvents> installFakeIndexersWithFailingSync(std::string reason)
+    {
+        auto events = installAlwaysAvailableFakeIndexers();
+        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+            [events,
+             reason = std::move(reason)](const nlohmann::json&,
+                                         const invsync::indexer::IIndexerSession&,
+                                         LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+            {
+                events->m_syncBuilds.fetch_add(1);
+                throw std::runtime_error(reason);
+            });
+        return events;
+    }
+
+    /// All three healthy except the async connector, which always throws @p reason.
+    inline std::shared_ptr<ConnectorEvents> installFakeIndexersWithFailingAsync(std::string reason)
+    {
+        auto events = installAlwaysAvailableFakeIndexers();
+        invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
+            [events,
+             reason = std::move(reason)](const nlohmann::json&,
+                                         const invsync::indexer::IIndexerSession&,
+                                         LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>
+            {
+                events->m_asyncBuilds.fetch_add(1);
+                throw std::runtime_error(reason);
+            });
+        return events;
+    }
+
+    /// The async connector throws for its first @p failures invocations, then succeeds. Lets a test
+    /// pin that the slots which already succeeded are not rebuilt while another one keeps retrying.
+    inline std::shared_ptr<ConnectorEvents> installFakeIndexersWithAsyncFailingTimes(int failures)
+    {
+        auto events = installAlwaysAvailableFakeIndexers();
+        invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
+            [events, failures](const nlohmann::json&,
+                               const invsync::indexer::IIndexerSession&,
+                               LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>
+            {
+                const auto attempt = events->m_asyncBuilds.fetch_add(1);
+                if (attempt < failures)
+                {
+                    throw std::runtime_error("async connector not ready yet");
+                }
+                return std::make_unique<FakeIndexerConnectorAsync>(events, "async");
+            });
+        return events;
+    }
+
+    /**
+     * @brief Restores the real, production factories for all three slots.
+     *
+     * Call from TearDown(): an override made by one test must never leak into the next, and this is
+     * the only reset point. Resetting only some of them would leave the others faked for the rest of
+     * the process.
+     */
+    inline void resetIndexerConnectorFactoriesToProduction()
+    {
+        invsync::test_hooks::setIndexerSessionFactoryForTests(
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerConnectorAdapter>(config, std::move(logging)); });
+            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); });
+        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
+            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
+            {
+                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
+                return std::make_unique<invsync::indexer::IndexerConnectorSyncAdapter>(
+                    config, adapter.session(), std::move(logging));
+            });
+        invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
+            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
+            {
+                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
+                return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
+                    config, adapter.session(), std::move(logging));
+            });
     }
 
 } // namespace invsync::test
