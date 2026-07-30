@@ -3,8 +3,8 @@
 
 #include <cerrno>
 #include <cstring>
-#include <optional>
 #include <filesystem>
+#include <optional>
 #include <pthread.h>
 #include <stdexcept>
 #include <string>
@@ -99,6 +99,31 @@ gid_t privSepGetGroup(const std::string& groupname);
 void privSepSetGroup(gid_t gid);
 
 /**
+ * @brief Lookup a user’s UID by username.
+ *        Automatically grows the buffer on ERANGE.
+ * @param username  The name of the user to look up.
+ * @return UID if found.
+ * @throws std::runtime_error if the user is not found or on other errors.
+ */
+uid_t privSepGetUser(const std::string& username);
+
+/**
+ * @brief Sets the user ID of the current process for privilege separation.
+ *
+ * This function drops user privileges by setting both the real and effective
+ * user IDs to the given value. It must be called after privSepSetGroup(),
+ * since changing the group is no longer permitted once the process is not
+ * running as root.
+ *
+ * @param uid The user ID to set for the current process
+ *
+ * @throws std::runtime_error if any system call fails, with a descriptive error message.
+ * @warning This operation is irreversible: once the process drops to an
+ *          unprivileged user it cannot regain root privileges.
+ */
+void privSepSetUser(uid_t uid);
+
+/**
  * @brief Gets the Wazuh installation home directory path.
  *
  * It delegates the functionality to w_homedir() when manager is not standalone
@@ -138,7 +163,7 @@ bool isStandaloneModeEnable();
 
 /**
  * @brief Get environment variable as string with default value.
- * 
+ *
  * @param name Environment variable name
  * @param defaultValue Default value if variable not set
  * @return Value from environment or default
@@ -147,7 +172,7 @@ std::string getEnvOrDefault(const char* name, const std::string& defaultValue);
 
 /**
  * @brief Get environment variable as size_t with default value.
- * 
+ *
  * @param name Environment variable name
  * @param defaultValue Default value if variable not set or invalid
  * @return Value from environment or default
@@ -156,7 +181,7 @@ std::size_t getEnvSizeOrDefault(const char* name, std::size_t defaultValue);
 
 /**
  * @brief Get environment variable as int with default value.
- * 
+ *
  * @param name Environment variable name
  * @param defaultValue Default value if variable not set or invalid
  * @return Value from environment or default
@@ -165,9 +190,9 @@ int getEnvIntOrDefault(const char* name, int defaultValue);
 
 /**
  * @brief Get environment variable as bool with default value.
- * 
+ *
  * Recognizes: "true", "1", "yes" (case-insensitive) as true.
- * 
+ *
  * @param name Environment variable name
  * @param defaultValue Default value if variable not set
  * @return Value from environment or default
