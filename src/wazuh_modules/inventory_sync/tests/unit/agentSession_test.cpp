@@ -152,7 +152,6 @@ TEST_F(AgentSessionTest, HandleData_Success)
 
     Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
-    dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
@@ -182,7 +181,6 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
 
     Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
-    dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
@@ -215,7 +213,6 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
 
     Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
-    dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
@@ -260,7 +257,6 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
 
     Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
-    dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
@@ -294,7 +290,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_Success)
     auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
 
     Wazuh::SyncSchema::ChecksumModuleBuilder checksumModuleBuilder(checksumBuilder);
-    checksumModuleBuilder.add_session(sessionId);
     checksumModuleBuilder.add_checksum(checksumStr);
     checksumModuleBuilder.add_index(indexStr);
     auto checksumMsg = checksumModuleBuilder.Finish();
@@ -333,7 +328,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_EmptyChecksum)
     auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
 
     Wazuh::SyncSchema::ChecksumModuleBuilder checksumModuleBuilder(checksumBuilder);
-    checksumModuleBuilder.add_session(sessionId);
     checksumModuleBuilder.add_index(indexStr);
     auto checksumMsg = checksumModuleBuilder.Finish();
     checksumBuilder.Finish(checksumMsg);
@@ -358,7 +352,6 @@ TEST_F(AgentSessionTest, HandleDataClean_Success)
     auto indexStr = dataCleanBuilder.CreateString("wazuh-states-fim-files");
 
     Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
-    dataCleanMsgBuilder.add_session(sessionId);
     dataCleanMsgBuilder.add_seq(0);
     dataCleanMsgBuilder.add_index(indexStr);
     auto dataCleanMsg = dataCleanMsgBuilder.Finish();
@@ -389,7 +382,6 @@ TEST_F(AgentSessionTest, HandleDataClean_MultipleIndices)
         auto indexStr = dataCleanBuilder.CreateString(indices[i]);
 
         Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
-        dataCleanMsgBuilder.add_session(sessionId);
         dataCleanMsgBuilder.add_seq(i);
         dataCleanMsgBuilder.add_index(indexStr);
         auto dataCleanMsg = dataCleanMsgBuilder.Finish();
@@ -427,7 +419,6 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
     auto indexStr = dataCleanBuilder.CreateString("wazuh-states-fim-files");
 
     Wazuh::SyncSchema::DataCleanBuilder dataCleanMsgBuilder(dataCleanBuilder);
-    dataCleanMsgBuilder.add_session(sessionId);
     dataCleanMsgBuilder.add_seq(0);
     dataCleanMsgBuilder.add_index(indexStr);
     auto dataCleanMsg = dataCleanMsgBuilder.Finish();
@@ -441,7 +432,6 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
     // Create and handle End message
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
-    endMsgBuilder.add_session(sessionId);
     auto endMsg = endMsgBuilder.Finish();
     endBuilder.Finish(endMsg);
 
@@ -471,7 +461,6 @@ TEST_F(AgentSessionTest, HandleDataContext_Success)
     auto dataVec = dataContextBuilder.CreateVector(contextData);
 
     Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
-    dataContextMsgBuilder.add_session(sessionId);
     dataContextMsgBuilder.add_seq(0);
     dataContextMsgBuilder.add_id(idStr);
     dataContextMsgBuilder.add_index(indexStr);
@@ -511,7 +500,6 @@ TEST_F(AgentSessionTest, HandleDataContext_MultipleMessages)
         auto dataVec = dataContextBuilder.CreateVector(contextData);
 
         Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
-        dataContextMsgBuilder.add_session(sessionId);
         dataContextMsgBuilder.add_seq(i);
         dataContextMsgBuilder.add_id(idStr);
         dataContextMsgBuilder.add_index(indexStr);
@@ -558,7 +546,6 @@ TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
     auto dataVec = dataContextBuilder.CreateVector(contextData);
 
     Wazuh::SyncSchema::DataContextBuilder dataContextMsgBuilder(dataContextBuilder);
-    dataContextMsgBuilder.add_session(sessionId);
     dataContextMsgBuilder.add_seq(0);
     dataContextMsgBuilder.add_id(idStr);
     dataContextMsgBuilder.add_index(indexStr);
@@ -577,7 +564,6 @@ TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
     // Create and handle End message
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
-    endMsgBuilder.add_session(sessionId);
     auto endMsg = endMsgBuilder.Finish();
     endBuilder.Finish(endMsg);
 
@@ -643,7 +629,6 @@ TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
 
         Wazuh::SyncSchema::DataValueBuilder dvBuilder(batchBuilder);
         dvBuilder.add_seq(i);
-        dvBuilder.add_session(sessionId);
         dvBuilder.add_id(idStr);
         dvBuilder.add_index(idxStr);
         dvBuilder.add_data(dataVec);
@@ -678,7 +663,6 @@ TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
 
         Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
         dataValueBuilder.add_seq(dv->seq());
-        dataValueBuilder.add_session(dv->session());
         dataValueBuilder.add_id(idStr);
         dataValueBuilder.add_index(idxStr);
         dataValueBuilder.add_version(dv->version());
@@ -694,7 +678,6 @@ TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
         auto reserialized = reserializedMsg->content_as<Wazuh::SyncSchema::DataValue>();
         ASSERT_NE(reserialized, nullptr);
         EXPECT_EQ(reserialized->seq(), dv->seq());
-        EXPECT_EQ(reserialized->session(), sessionId);
 
         ASSERT_NO_THROW({ session.handleData(reserialized, dvBuilder.GetBufferPointer(), dvBuilder.GetSize()); });
     }
@@ -858,7 +841,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_NonStateIndex_Ignored)
     auto indexStr = checksumBuilder.CreateString("wazuh-other-foo");
 
     Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
-    cmBuilder.add_session(sessionId);
     cmBuilder.add_checksum(checksumStr);
     cmBuilder.add_index(indexStr);
     auto cmMsg = cmBuilder.Finish();
@@ -888,7 +870,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_StateIndex_Stored)
     auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
 
     Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
-    cmBuilder.add_session(sessionId);
     cmBuilder.add_checksum(checksumStr);
     cmBuilder.add_index(indexStr);
     auto cmMsg = cmBuilder.Finish();
@@ -913,7 +894,6 @@ TEST_F(AgentSessionTest, HandleDataClean_NonStateIndex_Ignored)
     auto indexStr = dcBuilder.CreateString("wazuh-not-states");
 
     Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
-    b.add_session(sessionId);
     b.add_seq(0);
     b.add_index(indexStr);
     auto msg = b.Finish();
@@ -943,7 +923,6 @@ TEST_F(AgentSessionTest, HandleData_SeqOutOfRange_DoesNotStore)
     auto dataVector = dataBuilder.CreateVector(testData);
     Wazuh::SyncSchema::DataValueBuilder dvb(dataBuilder);
     dvb.add_seq(1); // OUT OF RANGE
-    dvb.add_session(sessionId);
     dvb.add_data(dataVector);
     auto dvOff = dvb.Finish();
     dataBuilder.Finish(dvOff);
@@ -972,7 +951,6 @@ TEST_F(AgentSessionTest, HandleDataContext_SeqOutOfRange_DoesNotStore)
     auto dataVec = dcBuilder.CreateVector(raw);
     Wazuh::SyncSchema::DataContextBuilder b(dcBuilder);
     b.add_seq(1); // OUT OF RANGE
-    b.add_session(sessionId);
     b.add_data(dataVec);
     auto off = b.Finish();
     dcBuilder.Finish(off);
@@ -999,7 +977,6 @@ TEST_F(AgentSessionTest, HandleDataClean_SeqOutOfRange_DoesNotInsertIndex)
     flatbuffers::FlatBufferBuilder dcBuilder;
     auto indexStr = dcBuilder.CreateString("wazuh-states-fim-files");
     Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
-    b.add_session(sessionId);
     b.add_seq(1); // OUT OF RANGE (declared size is 1)
     b.add_index(indexStr);
     auto msg = b.Finish();
@@ -1027,7 +1004,6 @@ TEST_F(AgentSessionTest, HandleData_DuplicateAfterEnd_DoesNotRePush)
     auto dataVector = dataBuilder.CreateVector(testData);
     Wazuh::SyncSchema::DataValueBuilder dvb(dataBuilder);
     dvb.add_seq(0);
-    dvb.add_session(sessionId);
     dvb.add_data(dataVector);
     auto dvOff = dvb.Finish();
     dataBuilder.Finish(dvOff);
@@ -1061,7 +1037,6 @@ TEST_F(AgentSessionTest, HandleDataContext_DuplicateAfterEnd_DoesNotRePush)
     auto dataVec = dcBuilder.CreateVector(raw);
     Wazuh::SyncSchema::DataContextBuilder b(dcBuilder);
     b.add_seq(0);
-    b.add_session(sessionId);
     b.add_data(dataVec);
     auto off = b.Finish();
     dcBuilder.Finish(off);
@@ -1089,7 +1064,6 @@ TEST_F(AgentSessionTest, HandleDataClean_DuplicateAfterEnd_DoesNotRePush)
     flatbuffers::FlatBufferBuilder dcBuilder;
     auto indexStr = dcBuilder.CreateString("wazuh-states-fim-files");
     Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
-    b.add_session(sessionId);
     b.add_seq(0);
     b.add_index(indexStr);
     auto msg = b.Finish();
@@ -1130,7 +1104,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_AfterEnd_IsIgnored)
     auto checksumStr = checksumBuilder.CreateString("late-checksum");
     auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
     Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
-    cmBuilder.add_session(sessionId);
     cmBuilder.add_checksum(checksumStr);
     cmBuilder.add_index(indexStr);
     auto cmMsg = cmBuilder.Finish();

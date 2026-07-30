@@ -460,10 +460,11 @@ private:
 
     void handleStartAck(const Wazuh::SyncSchema::StartAck* startAck)
     {
-        m_sessionId = startAck->session();
+        // TODO(#38117): session field removed from agent FlatBuffer schema; m_sessionId always 0 now
+        m_sessionId = 0; // was: startAck->session()
 
         std::cout << "[INFO] ✓ StartAck received" << std::endl;
-        std::cout << "       Session: " << m_sessionId << std::endl;
+        std::cout << "       Session: " << m_sessionId << " (deprecated field)" << std::endl;
         std::cout << "       Status: " << static_cast<int>(startAck->status()) << std::endl;
 
         if (!m_receivedStartAck.exchange(true))
@@ -481,7 +482,7 @@ private:
     void handleEndAck(const Wazuh::SyncSchema::EndAck* endAck)
     {
         std::cout << "[INFO] ✓ EndAck received" << std::endl;
-        std::cout << "       Session: " << endAck->session() << std::endl;
+        // TODO(#38117): session field removed from agent FlatBuffer schema
         std::cout << "       Status: " << static_cast<int>(endAck->status()) << std::endl;
 
         if (!m_receivedEndAck.exchange(true))
@@ -498,7 +499,8 @@ private:
 
     void handleReqRet(const Wazuh::SyncSchema::ReqRet* reqRet)
     {
-        std::cout << "[INFO] ✓ ReqRet received - Session: " << reqRet->session();
+        // TODO(#38117): session field removed from agent FlatBuffer schema
+        std::cout << "[INFO] ✓ ReqRet received";
         if (reqRet->seq())
         {
             std::cout << ", Missing ranges: " << reqRet->seq()->size();
@@ -727,7 +729,7 @@ public:
         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
-        dataBuilder.add_session(session);
+        // TODO(#38117): session field removed from agent FlatBuffer schema
         dataBuilder.add_seq(seq);
         dataBuilder.add_operation(operation);
         dataBuilder.add_index(indexStr);
@@ -763,7 +765,7 @@ public:
         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
-        dataBuilder.add_session(session);
+        // TODO(#38117): session field removed from agent FlatBuffer schema
         dataBuilder.add_seq(seq);
         dataBuilder.add_index(indexStr);
         dataBuilder.add_id(idStr);
@@ -785,7 +787,7 @@ public:
         flatbuffers::FlatBufferBuilder builder;
 
         Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        endBuilder.add_session(session);
+        // TODO(#38117): session field removed from agent FlatBuffer schema
         auto endOffset = endBuilder.Finish();
 
         auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_End, endOffset.Union());

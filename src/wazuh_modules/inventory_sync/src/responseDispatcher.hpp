@@ -122,7 +122,8 @@ public:
         responseMessage.builder.Clear();
         responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
-        auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status, sessionId);
+        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
+        auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status);
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
@@ -140,7 +141,8 @@ public:
         responseMessage.builder.Clear();
         responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
-        auto startAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status, sessionId);
+        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
+        auto startAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status);
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
@@ -166,7 +168,8 @@ public:
             convertedRanges.push_back(offset);
         }
 
-        auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(responseMessage.builder, &convertedRanges, sessionId);
+        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
+        auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(responseMessage.builder, &convertedRanges);
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_ReqRet, endOffset.Union());
         responseMessage.builder.Finish(messageOffset);
