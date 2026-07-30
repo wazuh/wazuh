@@ -372,11 +372,6 @@ namespace
         // additionally checks the peer IP against the certificate.
         if (config.verificationMode != remoted::http::ClientVerificationMode::None)
         {
-            if (config.caPath.empty())
-            {
-                throw std::runtime_error("verification_mode requires a CA certificate (ca) to be configured");
-            }
-
             context.load_verify_file(config.caPath);
             context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
 
