@@ -15,6 +15,7 @@
 #include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
+#include <cstring>
 #include <memory>
 #include <set>
 
@@ -36,11 +37,11 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             break;
 
         case SyncResult::END_TIMEOUT_ERROR:
-            failureReason = "Timed out waiting for manager response to End message.";
+            failureReason = "Timed out waiting for manager response.";
             break;
 
         case SyncResult::PROTOCOL_ERROR:
-            failureReason = "Manager sent an unexpected or invalid response.";
+            failureReason = "Manager reported synchronization failure.";
             break;
 
         case SyncResult::NO_GROUPS_ERROR:
@@ -190,37 +191,17 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    std::vector<PersistedData> dataToSync;
-
-    if (mode == Mode::FULL)
+    if (mode == Mode::DELTA)
     {
-        // For FULL mode, use in-memory data for recovery scenarios
-        dataToSync = m_inMemoryData;
+        return synchronizeDeltaByBlocks(option);
     }
-    else
-    {
-        // For DELTA mode, use traditional database persistence
-        try
-        {
-            if (!m_persistentQueue)
-            {
-                throw std::runtime_error("DELTA mode requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
-            }
 
-            dataToSync = m_persistentQueue->fetchAndMarkForSync();
-        }
-        catch (const std::exception& e)
-        {
-            const std::string reason = std::string("Failed to fetch items for sync: ") + e.what();
-            m_logger(LOG_ERROR, reason);
-            return {false, {}};
-        }
-    }
+    // For FULL mode, use in-memory data for recovery scenarios
+    std::vector<PersistedData> dataToSync = m_inMemoryData;
 
     if (dataToSync.empty())
     {
-        const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
-        m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
+        m_logger(LOG_DEBUG, "No items to synchronize in FULL mode");
         return {true, {}};
     }
 
@@ -229,7 +210,6 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         dataToSync[i].seq = i;
     }
 
-    // Separate DataValue and DataContext items
     std::vector<PersistedData> dataValueItems;
     std::vector<PersistedData> dataContextItems;
 
@@ -245,7 +225,6 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         }
     }
 
-    // Extract unique indices from the DataValue items
     std::set<std::string> uniqueIndicesSet;
 
     for (const auto& item : dataValueItems)
@@ -261,46 +240,144 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     content.dataContexts = std::move(dataContextItems);
     const bool success = runSession(content);
 
+    if (success)
+    {
+        m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
+        m_inMemoryData.clear();
+    }
+
+    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    const bool stopped = shouldStop();
+    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
+    clearSyncState();
+    return {success, failureReason, stopped, managerNotReady, consecutiveFailures};
+}
+
+bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
+{
+    return option == Option::VDFIRST || option == Option::VDSYNC;
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
+{
     try
     {
-        if (success)
+        if (!m_persistentQueue)
         {
-            m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
-
-            if (mode == Mode::FULL)
-            {
-                // For FULL mode, clear the in-memory data after successful sync
-                m_inMemoryData.clear();
-            }
-            else
-            {
-                // No need to check m_persistentQueue for nullptr here as it was validated earlier
-                // For DELTA mode, clear database synced items
-                m_persistentQueue->clearSyncedItems();
-            }
-        }
-        else
-        {
-            if (mode == Mode::FULL)
-            {
-                m_inMemoryData.clear();
-            }
-            else
-            {
-                // No need to check m_persistentQueue for nullptr here as it was validated earlier
-                m_persistentQueue->resetSyncingItems();
-            }
+            throw std::runtime_error("DELTA mode requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
         }
     }
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("Failed to finalize sync state: ") + e.what());
+        const std::string reason = std::string("Failed to initialize DELTA sync: ") + e.what();
+        m_logger(LOG_ERROR, reason);
+        return {false, {}};
     }
 
-    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
-    // Report whether a stop was requested so the caller can demote an expected
-    // shutdown-time failure from WARNING to INFO/DEBUG.
-    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
+    const bool uncapped = isUncappedSyncOption(option);
+    const size_t fetchMaxBytes =
+        uncapped
+        ? 0
+        : (FULLSESSION_MAX_BYTES > FULLSESSION_PREFILTER_GRACE_BYTES
+           ? FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES
+           : FULLSESSION_MAX_BYTES);
+    bool success = true;
+    bool sentAny = false;
+    size_t blocksSent = 0;
+
+    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    {
+        std::vector<PersistedData> dataToSync;
+
+        try
+        {
+            dataToSync = m_persistentQueue->fetchAndMarkForSync(fetchMaxBytes);
+        }
+        catch (const std::exception& e)
+        {
+            const std::string reason = std::string("Failed to fetch items for sync: ") + e.what();
+            m_logger(LOG_ERROR, reason);
+            success = false;
+            break;
+        }
+
+        if (dataToSync.empty())
+        {
+            if (!sentAny)
+            {
+                m_logger(LOG_DEBUG, "No items to synchronize in DELTA mode");
+            }
+
+            break;
+        }
+
+        for (size_t i = 0; i < dataToSync.size(); ++i)
+        {
+            dataToSync[i].seq = i;
+        }
+
+        std::vector<PersistedData> dataValueItems;
+        std::vector<PersistedData> dataContextItems;
+        dataValueItems.reserve(dataToSync.size());
+        dataContextItems.reserve(dataToSync.size());
+
+        for (auto& item : dataToSync)
+        {
+            if (item.is_data_context)
+            {
+                dataContextItems.push_back(std::move(item));
+            }
+            else
+            {
+                dataValueItems.push_back(std::move(item));
+            }
+        }
+
+        std::set<std::string> uniqueIndicesSet;
+
+        for (const auto& item : dataValueItems)
+        {
+            uniqueIndicesSet.insert(item.index);
+        }
+
+        SessionContent content;
+        content.mode = Mode::DELTA;
+        content.indices.assign(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
+        content.option = option;
+        content.dataValues = std::move(dataValueItems);
+        content.dataContexts = std::move(dataContextItems);
+
+        success = runSession(content);
+
+        try
+        {
+            if (success)
+            {
+                sentAny = true;
+                ++blocksSent;
+                m_persistentQueue->clearSyncedItems();
+            }
+            else
+            {
+                m_persistentQueue->resetSyncingItems();
+                break;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            m_logger(LOG_ERROR, std::string("Failed to finalize DELTA sync block: ") + e.what());
+            success = false;
+            break;
+        }
+    }
+
+    if (shouldStop() && !sentAny)
+    {
+        success = false;
+    }
+
+    const std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
     const bool stopped = shouldStop();
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
@@ -656,8 +733,7 @@ uint64_t AgentSyncProtocol::nextSessionId()
     return (static_cast<uint64_t>(now) << 12) | (counter.fetch_add(1) & 0xFFF);
 }
 
-std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session,
-                                                                const SessionContent& content)
+std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionContent& content)
 {
     try
     {
@@ -697,7 +773,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session
 
             Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
             dataValueBuilder.add_seq(item.seq);
-            dataValueBuilder.add_session(session);
             dataValueBuilder.add_id(idStr);
             dataValueBuilder.add_index(idxStr);
             dataValueBuilder.add_version(item.version);
@@ -730,7 +805,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session
 
             Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
             dataContextBuilder.add_seq(item.seq);
-            dataContextBuilder.add_session(session);
             dataContextBuilder.add_id(idStr);
             dataContextBuilder.add_index(idxStr);
             dataContextBuilder.add_data(dataVec);
@@ -746,7 +820,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session
 
             Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
             dataCleanBuilder.add_seq(item.seq);
-            dataCleanBuilder.add_session(session);
             dataCleanBuilder.add_index(idxStr);
             cleanOffsets.push_back(dataCleanBuilder.Finish());
         }
@@ -760,14 +833,12 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session
             auto checksumStr = builder.CreateString(entry.checksum);
 
             Wazuh::SyncSchema::ChecksumModuleBuilder checksumBuilder(builder);
-            checksumBuilder.add_session(session);
             checksumBuilder.add_index(idxStr);
             checksumBuilder.add_checksum(checksumStr);
             checksumOffsets.push_back(checksumBuilder.Finish());
         }
 
         Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        endBuilder.add_session(session);
         const auto endOffset = endBuilder.Finish();
 
         auto batchesVec = builder.CreateVector(batchOffsets);
@@ -776,7 +847,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(uint64_t session
         auto checksumsVec = builder.CreateVector(checksumOffsets);
 
         Wazuh::SyncSchema::FullSessionBuilder fullSessionBuilder(builder);
-        fullSessionBuilder.add_session(session);
         fullSessionBuilder.add_start(startOffset);
         fullSessionBuilder.add_batches(batchesVec);
         fullSessionBuilder.add_contexts(contextsVec);
@@ -806,13 +876,13 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
 
     {
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        m_syncState.session = session;
-        // The whole session is in flight from the moment it is sent, so the only
-        // thing left to wait for is the manager's verdict.
-        m_syncState.phase = SyncPhase::WaitingEndAck;
+        m_syncState.phase = SyncPhase::WaitingResponse;
+        m_syncState.responseReceived = false;
+        m_syncState.syncFailed = false;
+        m_syncState.expectingChecksumResult = !content.checksums.empty();
     }
 
-    const auto message = buildFullSessionMessage(session, content);
+    const auto message = buildFullSessionMessage(content);
 
     if (message.empty())
     {
@@ -854,7 +924,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
 
         if (m_syncState.cv.wait_for(lock, m_timeout, [&]
     {
-        return m_syncState.endAckReceived || m_syncState.syncFailed || shouldStop();
+        return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
         }))
         {
             if (m_syncState.syncFailed)
@@ -863,7 +933,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
                 return false;
             }
 
-            if (m_syncState.endAckReceived)
+            if (m_syncState.responseReceived)
             {
                 return true;
             }
@@ -897,6 +967,15 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
 
     try
     {
+        if (length >= HTTP_RESULT_PREFIX.size() &&
+                std::memcmp(data, HTTP_RESULT_PREFIX.data(), HTTP_RESULT_PREFIX.size()) == 0)
+        {
+            const std::string resultCodeStr(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
+                                            length - HTTP_RESULT_PREFIX.size());
+            const int resultCode = std::stoi(resultCodeStr);
+            return applyHttpResultCode(resultCode);
+        }
+
         flatbuffers::Verifier verifier(data, length);
 
         if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
@@ -915,12 +994,11 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
             case Wazuh::SyncSchema::MessageType::EndAck:
                 {
                     const auto* endAck = message->content_as_EndAck();
-                    const uint64_t incomingSession = endAck->session();
 
-                    if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
+                    if (m_syncState.phase != SyncPhase::WaitingResponse)
                     {
-                        m_logger(LOG_DEBUG, "Parsing EndAck, invalid phase or session.");
-                        break;
+                        m_logger(LOG_DEBUG, "Discarded response: protocol is not waiting for a sync answer.");
+                        return true;
                     }
 
                     if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
@@ -953,10 +1031,10 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                     }
 
                     m_syncState.lastSyncResult = SyncResult::SUCCESS;
-                    m_syncState.endAckReceived = true;
+                    m_syncState.responseReceived = true;
                     m_syncState.cv.notify_all();
 
-                    m_logger(LOG_DEBUG, "EndAck session '" + std::to_string(incomingSession) + "' ended" );
+                    m_logger(LOG_DEBUG, "Sync response received with success status.");
                     break;
                 }
 
@@ -976,22 +1054,36 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 }
 
-bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession)
+bool AgentSyncProtocol::applyHttpResultCode(int resultCode)
 {
-    if (m_syncState.phase != receivedPhase)
+    std::lock_guard<std::mutex> lock(m_syncState.mtx);
+
+    if (m_syncState.phase != SyncPhase::WaitingResponse)
     {
-        m_logger(LOG_DEBUG, "Discarded. Received phase '" + std::to_string(static_cast<int>(receivedPhase)) + "' but current phase is '" + std::to_string(static_cast<int>
-                 (m_syncState.phase)) + "'.");
+        m_logger(LOG_DEBUG, "Discarded response code: protocol is not waiting for a sync answer.");
         return false;
     }
 
-    if (m_syncState.session != incomingSession)
+    if (resultCode == 0)
     {
-        m_logger(LOG_DEBUG, "Discarded. Session mismatch. Expected session '" + std::to_string(m_syncState.session) + "' but session received is '" + std::to_string(
-                     incomingSession) + "'.");
-        return false;
+        m_syncState.lastSyncResult = SyncResult::SUCCESS;
+        m_syncState.responseReceived = true;
+        m_syncState.cv.notify_all();
+        return true;
     }
 
+    m_syncState.syncFailed = true;
+
+    if (m_syncState.expectingChecksumResult)
+    {
+        m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+    }
+    else
+    {
+        m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
+    }
+
+    m_syncState.cv.notify_all();
     return true;
 }
 

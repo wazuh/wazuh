@@ -45,7 +45,7 @@ class MockPersistentQueue : public IPersistentQueue
                      uint64_t version,
                      bool isDataContext),
                     (override));
-        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
@@ -125,7 +125,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
         {1, "id_2", "processes", "proc_data_1", Operation::CREATE, 1, false}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread(
@@ -146,7 +147,6 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -178,7 +178,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
         {1, "ctx_id_2", "vd_system", "os_data", Operation::CREATE, 1, true}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread(
@@ -199,7 +200,6 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -240,7 +240,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
         {3, "ctx_id_2", "vd_system", "os_data", Operation::CREATE, 1, true}           // DataContext
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread(
@@ -261,7 +262,6 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -304,7 +304,7 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
         {1, "ctx_id_1", "vd_packages", "package_data_1", Operation::CREATE, 1, true}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
     EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1); // Should reset due to DataContext failure
 
     std::thread syncThread(
@@ -357,7 +357,8 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
         {2, "id_3", "packages", "pkg_data_1", Operation::CREATE, 1, false}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread(
@@ -375,7 +376,6 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
@@ -418,7 +418,8 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
         {1, "host_id_2", "packages", "pkg_data", Operation::CREATE, 1, false}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread(
@@ -436,7 +437,6 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage =
         Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());

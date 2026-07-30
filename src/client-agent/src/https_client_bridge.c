@@ -1055,12 +1055,10 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
                                     size_t body_len, void *user_data)
 {
     (void)user_data;
+    (void)body;
+    (void)body_len;
     mdebug1("https_client /stateful session=%s result=%d (%zu byte answer)",
             session_id ? session_id : "?", result, body_len);
-
-    if (body == NULL || body_len == 0) {
-        return;
-    }
 
     size_t module_len = 0;
     const char *module = bridge_module_of_session(session_id, &module_len);
@@ -1077,27 +1075,28 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             continue;
         }
 
-        /* Hand it back exactly as the legacy path does: the manager answers a
-         * session with the same EndAck it always has, so the module parses it
-         * unchanged - only the transport that carried it here is different. */
+        /* ACK-less flow: route the HTTP outcome code. The receiving module maps
+         * "HCRESULT:0" to success (200 path) and non-zero values to failure. */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
+        char payload[64];
+        int payload_len = snprintf(payload, sizeof(payload), "HCRESULT:%d", result);
 
-        if (body_len > SIZE_MAX - header_len - 1) {
-            mdebug2("https_client: sync answer for session '%s' is too large to frame; dropping it.",
-                    session_id);
+        if (payload_len <= 0 || (size_t)payload_len >= sizeof(payload)) {
+            mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
+                    session_id ? session_id : "?");
             return;
         }
 
         char *framed = NULL;
-        os_malloc(header_len + body_len + 1, framed);
+        os_malloc(header_len + (size_t)payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
-        memcpy(framed + header_len, body, body_len);
-        framed[header_len + body_len] = '\0';
+        memcpy(framed + header_len, payload, (size_t)payload_len);
+        framed[header_len + (size_t)payload_len] = '\0';
 
         if (SYNC_ROUTES[i].syscheck) {
-            ag_send_syscheck(framed, header_len + body_len);
+            ag_send_syscheck(framed, header_len + (size_t)payload_len);
         } else {
-            wmcom_send(framed, header_len + body_len);
+            wmcom_send(framed, header_len + (size_t)payload_len);
         }
 
         os_free(framed);
