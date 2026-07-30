@@ -176,6 +176,29 @@ namespace
         return std::string(buffer);
     }
 
+    /// agent-info logs through a C callback; without one its own failures are
+    /// silent, which is what hid this test's missing setup. Route it to stderr so
+    /// a future breakage says why.
+    void testLogCallback(modules_log_level_t level, const char* msg, const char* tag)
+    {
+        if (level == LOG_ERROR || level == LOG_WARNING)
+        {
+            fprintf(stderr, "[%s] %s\n", tag ? tag : "agent-info", msg ? msg : "");
+        }
+    }
+
+    /// agent-info can query sibling modules; nothing in this test's path does, but
+    /// the constructor requires the function to be present.
+    int testQueryModuleCallback(const char*, const char*, char** response)
+    {
+        if (response)
+        {
+            *response = nullptr;
+        }
+
+        return -1;
+    }
+
     class TaskRegistryIpcComponentTest : public ::testing::Test
     {
         protected:
@@ -199,6 +222,16 @@ namespace
                 m_module.data = nullptr;
                 m_module.next = nullptr;
                 wmodules = &m_module;
+
+                // AgentInfoImpl's constructor requires both a log and a query-module
+                // function and throws std::invalid_argument without them. It builds its
+                // DBSync member first, so agent_info.db and its schema appear on disk
+                // either way; the throw then leaves g_agent_info_impl null and
+                // agent_info_ensure_database() reports it through the log callback that
+                // is not set yet, so skipping these two reads as "the database is there
+                // but every task query answers MQ_ERR_INTERNAL".
+                agent_info_set_log_function(testLogCallback);
+                agent_info_set_query_module_function(testQueryModuleCallback);
 
                 // agent_info_task_registry_init() constructs agent_info.db as a side effect
                 // (see its own comment) -- no separate agent_info_start()/blocking sync loop
