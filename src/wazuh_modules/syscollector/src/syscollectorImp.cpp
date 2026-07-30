@@ -186,7 +186,7 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
-// Monotonic counters excluded from dbsync's diff 
+// Monotonic counters excluded from dbsync's diff
 // NOTE: dbsync's "ignore" only suppresses the diff/callback when ignored fields
 // are the *only* thing that changed; it also skips persisting their new value in
 // that case (see SQLiteDBEngine::syncTableRowData). These fields will hold whatever
@@ -1462,10 +1462,12 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
 
                 auto ifaceChecksumInput = ifaceTableData;
+
                 for (const auto& field : NET_IFACE_IGNORED_FIELDS)
                 {
                     ifaceChecksumInput.erase(field);
                 }
+
                 ifaceTableData["checksum"] = getItemChecksum(ifaceChecksumInput);
                 ifaceTableDataList.push_back(std::move(ifaceTableData));
 

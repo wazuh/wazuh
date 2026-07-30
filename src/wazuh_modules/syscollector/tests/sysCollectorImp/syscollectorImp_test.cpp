@@ -350,7 +350,7 @@ static bool waitUntil(const std::function<bool()>& predicate,
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
 {
-    R"({"checksum":{"hash":{"sha1":"0288831cec1334e0d67eb2f7b83e0c96d2abb9be"}},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":2257872,"total":4972208,"used":54},"serial_number":"Intel Corporation"}})"
+    R"({"checksum":{"hash":{"sha1":"06e5046d8e8b1605f81b648e1289a2cb2ad6e7b3"}},"host":{"cpu":{"cores":2,"name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","speed":2904},"memory":{"free":2257872,"total":4972208,"used":54},"serial_number":"Intel Corporation"}})"
 };
 static const auto expectedPersistOS
 {
@@ -358,7 +358,7 @@ static const auto expectedPersistOS
 };
 static const auto expectedPersistNetIface
 {
-    R"({"checksum":{"hash":{"sha1":"712c4c9e6d65a48bc8fb0e99f8ce9238d88bbca4"}},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}})"
+    R"({"checksum":{"hash":{"sha1":"81571a9a6ac1018501f851021ac837fd205bdc57"}},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}})"
 };
 static const auto expectedPersistNetProtoIPv4
 {
@@ -386,7 +386,7 @@ static const auto expectedPersistPortsUdp
 };
 static const auto expectedPersistProcess
 {
-    R"({"checksum":{"hash":{"sha1":"78e4e090e42f88d949428eb56836287f99de9f4f"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}})"
+    R"({"checksum":{"hash":{"sha1":"e4f22515111f6059c067d8602289786e90855a1e"}},"process":{"args":null,"args_count":null,"command_line":null,"name":"kworker/u256:2-","parent":{"pid":2},"pid":431625,"start":9302261,"state":"I","stime":3,"utime":0}})"
 };
 static const auto expectedPersistPackage
 {
@@ -4951,6 +4951,117 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 
     // Reset factory after test
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// End-to-end check that the per-table "ignore" lists (HW_IGNORED_FIELDS, PROCESSES_IGNORED_FIELDS,
+// NET_IFACE_IGNORED_FIELDS) actually suppress dbsync MODIFIED events across several scan cycles.
+// Hardware memory, process CPU times and network byte/packet counters change on every scan below
+// (as real monotonic counters do), while every other field stays constant: each collector must
+// still persist exactly once (the initial insert), never again on the following cycles.
+TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    int hwCallCount{0};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(testing::Invoke(
+                                                               [&hwCallCount]()
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+        data["memory_free"] = 2257872 + (hwCallCount * 4096);
+        data["memory_used"] = 54 + hwCallCount;
+        // dbsync_hwinfo.cpu_speed is a DOUBLE column; the shared fixture's plain "2904"
+        // literal parses as a JSON integer, which permanently mismatches the DB-stored
+        // value on every diff comparison. Force it to the float type the column expects.
+        data["cpu_speed"] = data["cpu_speed"].get<double>();
+        ++hwCallCount;
+        return data;
+    }));
+
+    int procCallCount{0};
+    EXPECT_CALL(*spInfoWrapper, processes(_)).WillRepeatedly(testing::Invoke(
+                                                                 [&procCallCount](std::function<void(nlohmann::json&)> callback)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        data["utime"] = procCallCount;
+        data["stime"] = procCallCount + 1;
+        // dbsync_processes.start is a TEXT column (real providers always report an ISO8601
+        // string); the shared fixture's plain "9302261" literal parses as a JSON integer,
+        // which permanently mismatches the DB-stored value on every diff comparison.
+        data["start"] = std::to_string(data["start"].get<int64_t>());
+        ++procCallCount;
+        callback(data);
+    }));
+
+    int netCallCount{0};
+    const auto networksJsonTemplate
+    {
+        R"({"iface":[{"host_mac":"d4:5d:64:51:07:5d", "interface_mtu":1500, "interface_name":"eth0", )"
+        R"("interface_alias":" ", "interface_type":"ethernet", "interface_state":"up",)"
+        R"("host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,)"
+        R"("host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,)"
+        R"("host_network_egress_errors":0,"host_network_egress_packages":0}]})"
+    };
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(testing::Invoke(
+                                                               [&netCallCount, networksJsonTemplate]()
+    {
+        auto data = nlohmann::json::parse(networksJsonTemplate);
+        data["iface"][0]["host_network_ingress_bytes"]    = 100000 + (netCallCount * 1024);
+        data["iface"][0]["host_network_egress_bytes"]     = 200000 + (netCallCount * 2048);
+        data["iface"][0]["host_network_ingress_packages"] = 1000 + netCallCount;
+        data["iface"][0]["host_network_egress_packages"]  = 2000 + netCallCount;
+        ++netCallCount;
+        return data;
+    }));
+
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, users()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, services()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    // Exactly one persisted event per collector: the initial insert. None of the following
+    // scan cycles - which only ever change ignored fields - may produce a second (MODIFIED) event.
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-processes"), testing::_, testing::_)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-interfaces"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, true, false, true, false, false, false, true, false, false, false, false, false, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // interval=1s: initial scan at t=0, second (noise-only-change) scan at ~t=1s.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
 }
 
 // Windows reports interface_mtu as 4294967295 (UINT32_MAX) when the MTU is not available;
