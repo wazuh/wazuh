@@ -91,6 +91,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
+    cfg->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
     cfg->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
 
     // Initialize all internal options
