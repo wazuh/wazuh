@@ -15,6 +15,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdarg>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,9 +26,13 @@
 #include "http_server/IUdsHttpServer.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
 #include "http_server/udsHttpServerFactory.hpp"
-#include "indexer/IIndexerConnector.hpp"
-#include "indexer/indexerConnectorAdapter.hpp"
+#include "indexer/IIndexerConnectorAsync.hpp"
+#include "indexer/IIndexerConnectorSync.hpp"
+#include "indexer/IIndexerSession.hpp"
+#include "indexer/indexerConnectorAsyncAdapter.hpp"
 #include "indexer/indexerConnectorConfig.hpp"
+#include "indexer/indexerConnectorSyncAdapter.hpp"
+#include "indexer/indexerSessionAdapter.hpp"
 #include "inventory_sync_server.h"
 #include "loggerHelper.h"
 #include "singleton.hpp"
@@ -41,6 +46,19 @@ namespace invsync
     /// inventory_sync's C++ side does it -- and deliberately distinct from `:inventory-sync` so an
     /// operator can tell the two modules apart in wazuh-manager.log while both are running.
     constexpr auto INVENTORY_SYNC_SERVER_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server"};
+
+    /*
+     * Distinct tags for the three indexer objects, so their own log lines can be told apart. Passing
+     * one shared tag would make the session's, the sync connector's and the async connector's output
+     * indistinguishable, which matters most exactly when one of them is misbehaving.
+     *
+     * The `:suffix` form is load-bearing: LogFn::compose() truncates from the first '(', so a
+     * parenthesised suffix would be discarded, while a colon survives. These end up rendered as
+     * "...:inventory-sync-server:indexer(indexer-connector)" and so on.
+     */
+    constexpr auto INVENTORY_SYNC_SERVER_SESSION_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:indexer"};
+    constexpr auto INVENTORY_SYNC_SERVER_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:sync"};
+    constexpr auto INVENTORY_SYNC_SERVER_ASYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:async"};
 
     /// Not a member: LogFn has hidden ELF visibility (loggerHelper.h wraps everything in a
     /// visibility pragma), so holding one as a field of a default-visibility class trips
@@ -104,7 +122,12 @@ namespace invsync
             // Fresh escalation state for this run: a stale count carried over from a previous
             // start()/stop() cycle would desync reportFailedStart()'s "first attempt" ERROR branch
             // from what is actually the first failure THIS time.
+            //
+            // Safe to touch without m_attemptMutex, which the attempt path holds: the worker thread
+            // does not exist yet at this point, and the previous cycle's worker was joined by stop().
+            // Taking m_attemptMutex here would invert the documented lock order and could deadlock.
             m_failedStartAttempts = 0;
+            ++m_startGeneration;
 
             LOGFN_INFO(moduleLogFn(),
                        "Starting inventory sync server (cluster='%s', node='%s').",
@@ -160,12 +183,20 @@ namespace invsync
                     m_httpServer->stopAccepting();
                 }
 
-                // Phase 2: tear down the indexer connector. Unconditional -- NOT gated on
-                // m_httpServer being set -- because construction can succeed (and its background
-                // threads start running) even when the HTTP server never came up afterward (e.g.
-                // valid indexer config, unbindable socket path). Leaving it gated here would leak
-                // those threads on every stop() in that scenario.
-                m_indexerConnector.reset();
+                // Phase 2: tear down the connectors and the session, in REVERSE construction order.
+                //
+                // All three unconditional -- NOT gated on m_httpServer, nor on each other -- because
+                // the gate can legitimately leave only some of them built: the session alone, or the
+                // session plus the sync connector (valid <indexer>, unbindable socket path, or a bad
+                // max_retry_delay_seconds in just one family). Each carries live background threads
+                // from the moment it is constructed, so gating one reset on another's pointer would
+                // leak those threads on every stop() in that scenario.
+                //
+                // The monitoring thread belongs to the session and is reference-counted, so it dies
+                // with whichever of the three goes last.
+                m_indexerConnectorAsync.reset();
+                m_indexerConnectorSync.reset();
+                m_indexerSession.reset();
 
                 // Phase 3: now it is safe to release the I/O runtime. Any responder still
                 // outstanding is force-closed, and a late send() becomes a well-defined no-op.
@@ -190,23 +221,46 @@ namespace invsync
             LOGFN_INFO(moduleLogFn(), "inventory sync server stopped.");
         }
 
-        /// Builds an IIndexerConnector from a fully-resolved config + logging context. The default,
-        /// production value constructs the real IndexerConnectorSync adapter; tests substitute a
-        /// fake so the startup gate can be exercised without real network I/O.
-        using IndexerConnectorFactory =
-            std::function<std::unique_ptr<invsync::indexer::IIndexerConnector>(const nlohmann::json&, LoggingContext)>;
+        /*
+         * Factories for the three indexer objects the gate builds, in order. The default, production
+         * values construct the real adapters; tests substitute fakes so the gate can be exercised
+         * without the real per-host health-check I/O.
+         *
+         * Three separate factories rather than one bundle: a gate test needs to fail exactly one of
+         * the three while leaving the others healthy, which requires overriding them independently.
+         */
+        using IndexerSessionFactory =
+            std::function<std::unique_ptr<invsync::indexer::IIndexerSession>(const nlohmann::json&, LoggingContext)>;
+        using IndexerConnectorSyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorSync>(
+            const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
+        using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
+            const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
 
         /**
-         * @brief TEST-ONLY. Overrides how the indexer connector is constructed.
+         * @brief TEST-ONLY. Override how the shared indexer session is constructed.
          *
-         * Never called in production -- modulesd only ever calls start()/stop(). Exists so a test
-         * can gate/unblock the startup gate deterministically, without waiting on
-         * IndexerConnectorSync's real per-host health-check I/O.
+         * Never called in production -- modulesd only ever calls start()/stop(). Exists so a test can
+         * drive the startup gate deterministically, without waiting on the real session's per-host
+         * health checks (5 s timeout each).
          */
-        void setIndexerConnectorFactoryForTests(IndexerConnectorFactory factory)
+        void setIndexerSessionFactoryForTests(IndexerSessionFactory factory)
         {
             std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-            m_indexerConnectorFactory = std::move(factory);
+            m_indexerSessionFactory = std::move(factory);
+        }
+
+        /// TEST-ONLY. Override how the sync indexer connector is constructed. See above.
+        void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory)
+        {
+            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+            m_indexerConnectorSyncFactory = std::move(factory);
+        }
+
+        /// TEST-ONLY. Override how the async indexer connector is constructed. See above.
+        void setIndexerConnectorAsyncFactoryForTests(IndexerConnectorAsyncFactory factory)
+        {
+            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+            m_indexerConnectorAsyncFactory = std::move(factory);
         }
 
         /// TEST-ONLY. Forces one retry attempt synchronously instead of waiting out the real 60 s
@@ -248,9 +302,9 @@ namespace invsync
         /**
          * @brief Report what arrived in the <indexer> block, without its secrets.
          *
-         * Runs once, right before the indexer connector is first constructed (see
-         * ensureIndexerReady()) -- a misconfigured <indexer> shows up here as `hosts=0` alongside
-         * whatever construction-failure reason follows, rather than as a silent mismatch later.
+         * Runs on any attempt that still has something to build, immediately before it tries -- so a
+         * misconfigured <indexer> shows up here as `hosts=0` alongside whatever construction-failure
+         * reason follows, rather than as a silent mismatch later.
          *
          * Counts and set/unset only -- never values. The hosts can contain credentials in the URL
          * and the certificate paths are not useful in a log line.
@@ -288,96 +342,278 @@ namespace invsync
                          hasKey ? "<set>" : "<unset>");
         }
 
-        /// Which half of tryStartHttpServer()'s work a failure belongs to, so reportFailedStart()
-        /// can name the actual setting to check instead of always blaming the socket.
+        /// Which part of tryStartHttpServer()'s work a failure belongs to. Four stages, not two,
+        /// because the ERROR must name WHICH object failed: each has its own, independently tunable
+        /// option family, and pointing an operator at the wrong one costs a debugging session.
         enum class FailureStage
         {
-            Indexer,
+            IndexerSession,
+            SyncIndexerConnector,
+            AsyncIndexerConnector,
             HttpServer
         };
 
-        /**
-         * @brief Ensures the indexer connector exists, constructing it at most once.
-         *
-         * The gate is deliberately just "did construction throw", not "is it currently reachable":
-         * IndexerConnectorSync's constructor already validates config synchronously (hosts present,
-         * referenced CA files exist, max_retry_delay_seconds sane) and throws on failure -- a host
-         * that is merely unreachable does NOT throw, it only leaves isAvailable() false. Since a
-         * successful construction is a "config is valid" signal that cannot change without a
-         * restart, it is never redone: once m_indexerConnector exists, this returns immediately.
-         *
-         * @return false if this attempt must not proceed to the HTTP server (already reported via
-         *         reportFailedStart()).
-         */
-        bool ensureIndexerReady()
+        /// Diagnostic text for a stage. `label` appears in EVERY escalation branch; `settingHint`
+        /// only in the first-attempt ERROR. One switch so a new stage cannot be half-added.
+        struct StageDiagnostics
         {
-            if (m_indexerConnector)
-            {
-                return true;
-            }
+            const char* m_label;
+            const char* m_settingHint;
+        };
 
-            logIndexerSummary();
-
-            try
+        static StageDiagnostics stageDiagnostics(FailureStage stage)
+        {
+            switch (stage)
             {
-                m_indexerConnector =
-                    m_indexerConnectorFactory(invsync::indexer::buildConnectorConfig(m_indexerConfig, m_config),
-                                              LoggingContext {moduleLogFn().m_tag, m_logFunction});
-                return true;
+                case FailureStage::IndexerSession:
+                    return {"indexer session", "the <indexer> configuration block (hosts, ssl.*)"};
+                case FailureStage::SyncIndexerConnector:
+                    return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
+                case FailureStage::AsyncIndexerConnector:
+                    return {"async indexer connector", "the 'inventory_sync_server_indexer_async_*' settings"};
+                case FailureStage::HttpServer: return {"UDS socket", "the 'inventory_sync_server_socket_path' setting"};
             }
-            catch (const std::exception& e)
-            {
-                reportFailedStart(FailureStage::Indexer, e.what());
-                return false;
-            }
-            catch (...)
-            {
-                reportFailedStart(FailureStage::Indexer, "non-standard exception");
-                return false;
-            }
+            return {"unknown stage", "the module configuration"};
         }
 
-        void tryStartHttpServer()
+        /**
+         * @brief Builds ONE indexer object outside the lifecycle lock, then publishes it into @p slot.
+         *
+         * The only try/catch around indexer construction in this class, used for all three slots.
+         *
+         * The gate each of them feeds is deliberately just "did construction throw", never "is the
+         * indexer currently reachable": the constructors validate configuration synchronously (hosts
+         * present, referenced CA files exist, max_retry_delay_seconds sane) and throw on failure,
+         * while a host that is merely unreachable does NOT throw -- it only stays unavailable until
+         * the monitor sees it come up. The indexer is allowed to start after modulesd.
+         *
+         * Publishing happens immediately on success rather than once at the end of the attempt. That
+         * is load-bearing: a successful construction is a "configuration is valid" signal that cannot
+         * change without a restart, so it must never be repeated -- and if the object were held as a
+         * local until every stage succeeded, a persistently failing LATER stage would discard it and
+         * rebuild it on the next heartbeat. For the session that would mean another full round of
+         * per-host health checks every minute, which is exactly the cost sharing it removes.
+         * `TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries` pins this.
+         *
+         * Construction runs WITHOUT m_lifecycleMutex so stop() is never queued behind the health
+         * checks; the lock is taken only for the publish, and the generation re-check there is what
+         * keeps a stale attempt from publishing into a newer start()/stop() cycle.
+         *
+         * @return false if this attempt must not continue -- either the build failed (already reported
+         *         via reportFailedStart()) or the cycle moved on, in which case the freshly built
+         *         object is dropped here.
+         */
+        template<typename TSlot, typename TBuild>
+        bool buildAndPublish(TSlot& slot, FailureStage stage, std::uint64_t generation, TBuild&& build)
         {
-            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-
-            if (m_stopping || m_httpServer)
-            {
-                return;
-            }
-
-            // Resolved once per attempt and kept, so the failure path can name the actual path
-            // without rebuilding the configuration (and so the two can never disagree).
-            const auto config = invsync::http::buildServerConfig(m_config);
-            m_resolvedSocketPath = config.socketPath;
-
-            // The indexer gates the HTTP server: it must not start accepting connections on a
-            // manager whose indexer connector configuration is invalid.
-            if (!ensureIndexerReady())
-            {
-                return;
-            }
+            TSlot built;
 
             try
             {
-                startHttpServer(config);
-                if (m_failedStartAttempts > 0)
+                built = build();
+                if (!built)
                 {
-                    LOGFN_INFO(moduleLogFn(),
-                               "inventory sync server started after %d failed attempt(s).",
-                               m_failedStartAttempts);
+                    // A factory returning null without throwing would otherwise pass the gate with
+                    // nothing constructed, and never be retried.
+                    reportFailedStart(stage, "the factory returned nothing");
+                    return false;
                 }
-                m_failedStartAttempts = 0;
             }
             catch (const std::exception& e)
             {
-                reportFailedStart(FailureStage::HttpServer, e.what());
-                m_httpServer.reset();
+                reportFailedStart(stage, e.what());
+                return false;
             }
             catch (...)
             {
-                reportFailedStart(FailureStage::HttpServer, "non-standard exception");
-                m_httpServer.reset();
+                reportFailedStart(stage, "non-standard exception");
+                return false;
+            }
+
+            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+            if (m_stopping || generation != m_startGeneration)
+            {
+                return false; // drops `built`, tearing down exactly what this attempt just made
+            }
+            slot = std::move(built);
+            return true;
+        }
+
+        /**
+         * @brief One startup attempt: resolve configuration, build what is missing, open the socket.
+         *
+         * Three phases, so that the slow part does NOT hold the mutex stop() needs. Building the
+         * session performs a synchronous `GET /_cat/health` per configured host (5 s timeout each);
+         * with that inside m_lifecycleMutex, a stop() arriving from modulesd's signal handler would
+         * queue behind it, and modulesd shares one 30 s budget across every module.
+         *
+         * Note what this does and does not buy: stop() joins the worker thread, so moving the
+         * construction out of the lock does not by itself shorten the wait when the worker is already
+         * inside a constructor. What it does is let stop() SET m_stopping immediately instead of
+         * queueing, which is what makes the m_stopping checks in phase B able to bail early. The two
+         * are complementary. Combined with the connectors sharing the session's single health-check
+         * round, the worst case stays at ONE round -- adding the async connector costs nothing here.
+         */
+        void tryStartHttpServer()
+        {
+            // Serialises ATTEMPTS against each other (the worker's heartbeat vs. forceRetryForTests())
+            // without being the mutex stop() needs. Phase B runs without m_lifecycleMutex, so without
+            // this a second attempt could build duplicate objects and race m_failedStartAttempts.
+            //
+            // LOCK ORDER INVARIANT: m_attemptMutex is ALWAYS taken before m_lifecycleMutex, never the
+            // other way round. start() resets m_failedStartAttempts before the worker thread exists,
+            // so it does not need this mutex -- and must not take it, or the order inverts and
+            // deadlocks.
+            std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
+
+            invsync::http::UdsHttpServerConfig serverConfig;
+            nlohmann::json rawIndexerConfig;
+            nlohmann::json syncConnectorConfig;
+            nlohmann::json asyncConnectorConfig;
+            IndexerSessionFactory sessionFactory;
+            IndexerConnectorSyncFactory syncFactory;
+            IndexerConnectorAsyncFactory asyncFactory;
+            std::uint64_t generation {0};
+            bool needSession {false};
+            bool needSync {false};
+            bool needAsync {false};
+
+            // ---- Phase A: snapshot under the lifecycle lock. No I/O, so stop() never waits. ----
+            {
+                std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
+                if (m_stopping || m_httpServer)
+                {
+                    return;
+                }
+
+                generation = m_startGeneration;
+
+                // Resolved once per attempt and kept, so the failure path can name the actual path
+                // without rebuilding the configuration (and so the two can never disagree).
+                serverConfig = invsync::http::buildServerConfig(m_config);
+                m_resolvedSocketPath = serverConfig.socketPath;
+
+                needSession = !m_indexerSession;
+                needSync = !m_indexerConnectorSync;
+                needAsync = !m_indexerConnectorAsync;
+
+                sessionFactory = m_indexerSessionFactory;
+                syncFactory = m_indexerConnectorSyncFactory;
+                asyncFactory = m_indexerConnectorAsyncFactory;
+
+                if (needSession || needSync || needAsync)
+                {
+                    logIndexerSummary();
+                    rawIndexerConfig = m_indexerConfig;
+                    syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
+                    asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+                }
+            }
+
+            // ---- Phase B: construct WITHOUT the lifecycle lock. The health checks happen here. ----
+            //
+            // Chained so the first failure stops the attempt, for three reasons: reportFailedStart()
+            // increments the shared attempt counter, so reporting twice per heartbeat would halve the
+            // escalation clock and break the "60 attempts is about an hour" contract; the session
+            // validates the configuration the connectors depend on, so on a bad <indexer> block all
+            // three would fail and emit three messages for one root cause; and there is no point
+            // building connectors against a session that does not exist.
+            //
+            // Each stage publishes as soon as it succeeds -- see buildAndPublish() for why holding
+            // them as locals until the end would silently undo the shared session's whole benefit.
+            if (needSession &&
+                !buildAndPublish(m_indexerSession,
+                                 FailureStage::IndexerSession,
+                                 generation,
+                                 [&] {
+                                     return sessionFactory(
+                                         rawIndexerConfig,
+                                         LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
+                                 }))
+            {
+                return;
+            }
+
+            // Own a reference for the rest of this attempt. Taking a copy of the shared_ptr rather
+            // than reading the member again is what makes the connector constructions below safe
+            // outside the lock: stop() may clear the member at any moment, and a bare pointer into it
+            // would dangle while a connector's constructor is still running on it.
+            std::shared_ptr<invsync::indexer::IIndexerSession> session;
+            {
+                std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+                if (m_stopping || generation != m_startGeneration)
+                {
+                    return;
+                }
+                session = m_indexerSession;
+            }
+
+            if (!session)
+            {
+                return; // stop() raced us; nothing to build connectors on
+            }
+
+            if (needSync && !buildAndPublish(m_indexerConnectorSync,
+                                             FailureStage::SyncIndexerConnector,
+                                             generation,
+                                             [&]
+                                             {
+                                                 return syncFactory(
+                                                     syncConnectorConfig,
+                                                     *session,
+                                                     LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction});
+                                             }))
+            {
+                return;
+            }
+
+            if (needAsync &&
+                !buildAndPublish(m_indexerConnectorAsync,
+                                 FailureStage::AsyncIndexerConnector,
+                                 generation,
+                                 [&]
+                                 {
+                                     return asyncFactory(
+                                         asyncConnectorConfig,
+                                         *session,
+                                         LoggingContext {INVENTORY_SYNC_SERVER_ASYNC_LOGTAG, m_logFunction});
+                                 }))
+            {
+                return;
+            }
+
+            // ---- Phase C: open the socket, back under the lifecycle lock. ----
+            {
+                std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
+                // Re-check: stop() -- and even a later start() -- can have run during phase B.
+                if (m_stopping || m_httpServer || generation != m_startGeneration)
+                {
+                    return;
+                }
+
+                try
+                {
+                    startHttpServer(serverConfig);
+                    if (m_failedStartAttempts > 0)
+                    {
+                        LOGFN_INFO(moduleLogFn(),
+                                   "inventory sync server started after %d failed attempt(s).",
+                                   m_failedStartAttempts);
+                    }
+                    m_failedStartAttempts = 0;
+                }
+                catch (const std::exception& e)
+                {
+                    reportFailedStart(FailureStage::HttpServer, e.what());
+                    m_httpServer.reset();
+                }
+                catch (...)
+                {
+                    reportFailedStart(FailureStage::HttpServer, "non-standard exception");
+                    m_httpServer.reset();
+                }
             }
         }
 
@@ -397,18 +633,11 @@ namespace invsync
             // 60 attempts at one per heartbeat (60 s) == roughly one hour.
             constexpr int ATTEMPTS_PER_ESCALATION {60};
 
+            const auto diagnostics = stageDiagnostics(stage);
+
             if (m_failedStartAttempts == 1)
             {
-                if (stage == FailureStage::Indexer)
-                {
-                    LOGFN_ERROR(moduleLogFn(),
-                                "The inventory sync server could not start: the indexer connector "
-                                "configuration is invalid (%s). Retrying every %d s. Check the <indexer> "
-                                "configuration block (hosts, ssl.certificate_authorities/certificate/key).",
-                                reason,
-                                INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
-                }
-                else
+                if (stage == FailureStage::HttpServer)
                 {
                     LOGFN_ERROR(
                         moduleLogFn(),
@@ -418,19 +647,37 @@ namespace invsync
                         reason,
                         INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
                 }
+                else
+                {
+                    LOGFN_ERROR(moduleLogFn(),
+                                "The inventory sync server could not start: the %s configuration is invalid (%s). "
+                                "Retrying every %d s. Check %s.",
+                                diagnostics.m_label,
+                                reason,
+                                INVENTORY_SYNC_SERVER_HEARTBEAT_SECS,
+                                diagnostics.m_settingHint);
+                }
             }
             else if (m_failedStartAttempts % ATTEMPTS_PER_ESCALATION == 0)
             {
+                // The label matters here, not just in the ERROR: with four stages the failing one can
+                // ALTERNATE between heartbeats, while the first-attempt ERROR is emitted only once per
+                // incident. Without it, an hour of log lines cannot say which part is stuck.
                 LOGFN_WARN(moduleLogFn(),
-                           "The inventory sync server is still not running after %d attempt(s) (~%d minute(s)): %s",
+                           "The inventory sync server is still not running after %d attempt(s) (~%d minute(s)); "
+                           "currently blocked on the %s: %s",
                            m_failedStartAttempts,
                            m_failedStartAttempts * INVENTORY_SYNC_SERVER_HEARTBEAT_SECS / 60,
+                           diagnostics.m_label,
                            reason);
             }
             else
             {
-                LOGFN_DEBUG1(
-                    moduleLogFn(), "inventory sync server start attempt %d failed: %s", m_failedStartAttempts, reason);
+                LOGFN_DEBUG1(moduleLogFn(),
+                             "inventory sync server start attempt %d failed on the %s: %s",
+                             m_failedStartAttempts,
+                             diagnostics.m_label,
+                             reason);
             }
         }
 
@@ -488,7 +735,15 @@ namespace invsync
             LOGFN_INFO(moduleLogFn(), "inventory sync server worker thread finished.");
         }
 
-        std::mutex m_lifecycleMutex;         ///< Serializes start()/stop().
+        std::mutex m_lifecycleMutex; ///< Serializes start()/stop().
+        /// Serialises startup ATTEMPTS against each other without being the mutex stop() needs.
+        /// LOCK ORDER: always taken BEFORE m_lifecycleMutex -- see tryStartHttpServer().
+        std::mutex m_attemptMutex;
+        /// Bumped by every start(). An attempt captures it in phase A and re-checks it in phase C, so
+        /// a stale attempt from a previous start()/stop() cycle cannot publish into the current one.
+        /// Only reachable via forceRetryForTests(), which runs on the test's thread rather than the
+        /// worker's; stop() joins the worker, so the worker itself can never straddle two cycles.
+        std::uint64_t m_startGeneration {0};
         std::mutex m_waitMutex;              ///< Guards the heartbeat wait.
         std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
         std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
@@ -507,12 +762,48 @@ namespace invsync
 
         std::unique_ptr<invsync::http::IUdsHttpServer> m_httpServer; ///< HTTP-over-UDS transport.
 
-        /// Constructed at most once per start()/stop() cycle -- see ensureIndexerReady().
-        std::unique_ptr<invsync::indexer::IIndexerConnector> m_indexerConnector;
-        IndexerConnectorFactory m_indexerConnectorFactory {
+        /*
+         * The three indexer slots, each constructed at most once per start()/stop() cycle and memoised
+         * independently -- see constructOnce(). The session is retained even though the library does
+         * not require it (a connector holds a counted reference to the monitor and copies the transport
+         * settings, so the session could be dropped): keeping it means a retry of one connector does
+         * not pay for another round of host health checks.
+         */
+        /// shared_ptr, not unique_ptr: an in-flight attempt takes a counted reference so it can keep
+        /// building connectors on the session outside the lifecycle lock even if stop() clears this
+        /// member meanwhile. With a unique_ptr that would be a dangling reference inside a running
+        /// connector constructor.
+        std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
+        std::unique_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
+        std::unique_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
+
+        IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
             {
-                return std::make_unique<invsync::indexer::IndexerConnectorAdapter>(config, std::move(logging));
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
+
+        /*
+         * The production connector factories are the only place that knows the seam it is handed wraps
+         * a real IndexerSession, so the unwrapping happens here. dynamic_cast on a reference rather
+         * than static_cast on purpose: a test that installs a fake session but leaves a production
+         * connector factory in place then gets a std::bad_cast, which constructOnce() catches and
+         * reports as a normal gate failure, instead of undefined behaviour.
+         */
+        IndexerConnectorSyncFactory m_indexerConnectorSyncFactory {
+            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
+            {
+                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
+                return std::make_unique<invsync::indexer::IndexerConnectorSyncAdapter>(
+                    config, adapter.session(), std::move(logging));
+            }};
+
+        IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
+            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
+            {
+                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
+                return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
+                    config, adapter.session(), std::move(logging));
             }};
     };
 
