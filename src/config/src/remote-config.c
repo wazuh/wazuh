@@ -134,8 +134,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 }
 
 STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
-    const int DEFAULT_RIDS_CLOSING_TIME = 300;
-
     const char *xml_remote_port = "port";
     const char *xml_remote_proto = "protocol";
     const char *xml_remote_ipv6 = "ipv6";
@@ -147,7 +145,7 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
     int i = 0;
 
     logr->lip = NULL;
-    logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
+    logr->rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
 
     while (node[i]) {
         if (!node[i]->element) {
