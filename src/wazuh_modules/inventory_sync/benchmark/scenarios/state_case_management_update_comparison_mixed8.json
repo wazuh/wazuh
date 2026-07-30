@@ -1,0 +1,56 @@
+{
+  "name": "state_case_management_update_comparison_mixed8",
+  "description": "Reduced performance workload with four Windows and four Linux agents. Each agent replays 20 FIM documents 25 times: 160 creates followed by 3,840 existing-document updates.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 5,
+    "use_databatch": true,
+    "retransmit": true,
+    "offline_retry": 3,
+    "offline_retry_delay": 2.0,
+    "start_ack_timeout": 5,
+    "end_ack_processing_timeout": 5,
+    "end_ack_timeout": 60,
+    "ack_timeout_retry": 3,
+    "ack_timeout_retry_delay": 3,
+    "post_data_delay": 1
+  },
+  "lanes": {
+    "fim_windows_repeated_updates": [
+      {
+        "dump": "sample_payloads/fim/windows11_fim_delta_modify.json",
+        "sync_mode": 1,
+        "repeat_count": 25,
+        "repeat_delay": 0
+      }
+    ],
+    "fim_linux_repeated_updates": [
+      {
+        "dump": "sample_payloads/fim/ubuntu22_fim_delta_modify.json",
+        "sync_mode": 1,
+        "repeat_count": 25,
+        "repeat_delay": 0
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "windows",
+      "agents": 4,
+      "lanes": [
+        "fim_windows_repeated_updates"
+      ]
+    },
+    {
+      "name": "linux",
+      "agents": 4,
+      "lanes": [
+        "fim_linux_repeated_updates"
+      ]
+    }
+  ],
+  "parallel_agents": 4,
+  "repeat_until": 0,
+  "drain_timeout": 15,
+  "post_run_grace": 5
+}
