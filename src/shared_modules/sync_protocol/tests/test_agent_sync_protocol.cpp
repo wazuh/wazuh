@@ -18,6 +18,7 @@
 #include "metadata_provider.h"
 
 #include <future>
+#include <atomic>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -38,7 +39,7 @@ class MockPersistentQueue : public IPersistentQueue
                                    Operation operation,
                                    uint64_t version,
                                    bool isDataContext), (override));
-        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
@@ -247,7 +248,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(min_timeout), retries, mockQueue, mockSyncTransport);
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     SyncModuleResult result = protocol->synchronizeModule(
@@ -263,7 +264,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(min_timeout), retries, mockQueue, mockSyncTransport);
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(std::vector<PersistedData> {}));
 
     SyncModuleResult result = protocol->synchronizeModule(
@@ -281,7 +282,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithEmptyInMemoryData)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(min_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to fetchAndMarkForSync since FULL mode uses in-memory data
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     SyncModuleResult result = protocol->synchronizeModule(
@@ -302,7 +303,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
     protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
 
     // Expect NO calls to fetchAndMarkForSync since FULL mode uses in-memory data
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Expect NO calls to clearSyncedItems or resetSyncingItems since FULL mode clears in-memory data
@@ -331,7 +332,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -356,7 +356,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
     protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
 
     // Expect NO calls to database methods since FULL mode uses in-memory data
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
     EXPECT_CALL(*mockQueue, resetSyncingItems())
     .Times(0);
@@ -367,7 +367,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
                               );
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
-    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
     // The manager did not answer the handshake.
     EXPECT_TRUE(result.managerNotReady);
     // First failure of the streak: the module reports it at INFO and retries.
@@ -392,7 +392,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleCountsConsecutiveFailures)
                                                    mockQueue,
                                                    mockSyncTransport);
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
     EXPECT_CALL(*mockQueue, resetSyncingItems())
     .Times(0);
@@ -434,7 +434,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineStartAckReportsManagerNotR
         {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
         .WillOnce(Return(testData));
 
         result = protocol->synchronizeModule(Mode::DELTA);
@@ -465,7 +465,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineEndAckReportsManagerNotRea
         {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
         .WillOnce(Return(testData));
 
         result = protocol->synchronizeModule(Mode::DELTA);
@@ -481,7 +481,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineEndAckReportsManagerNotRea
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
                           endBuilder,
@@ -512,7 +511,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndTimeoutReportsManagerNotReady)
         {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
         .WillOnce(Return(testData));
 
         result = protocol->synchronizeModule(Mode::DELTA);
@@ -585,7 +584,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessResetsConsecutiveFailures)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
                           endBuilder,
@@ -607,7 +605,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(min_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to any queue methods since validation should fail early
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(0);
@@ -638,7 +636,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendSessionFails)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -649,7 +647,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendSessionFails)
                               );
 
     EXPECT_FALSE(result.success);
-    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
 }
 
 TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
@@ -754,7 +752,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSessionTimeout)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -765,7 +763,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSessionTimeout)
                               );
 
     EXPECT_FALSE(result.success);
-    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
@@ -784,7 +782,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -806,6 +804,322 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     syncThread.join();
 }
 
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger,
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+    .Times(10)
+    .WillRepeatedly(Return(testData));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(10);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+    {
+        auto result = protocol->synchronizeModule(Mode::DELTA);
+        syncDone.store(true, std::memory_order_release);
+        return result;
+    });
+
+    std::thread ackThread([this, &syncDone]()
+    {
+        int handled = 0;
+        int lastSendCount = 0;
+
+        while (handled < 10)
+        {
+            const int currentSendCount = mockSyncTransport->sendCount();
+
+            if (currentSendCount > lastSendCount)
+            {
+                lastSendCount = currentSendCount;
+
+                flatbuffers::FlatBufferBuilder endBuilder;
+                Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+                endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+                auto endAckOffset = endAckBuilder.Finish();
+                auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                                      endBuilder,
+                                      Wazuh::SyncSchema::MessageType::EndAck,
+                                      endAckOffset.Union());
+                endBuilder.Finish(endMessage);
+                protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+                ++handled;
+                continue;
+            }
+
+            if (syncDone.load(std::memory_order_acquire) && currentSendCount == lastSendCount)
+            {
+                break;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+    {
+        syncDone.store(true, std::memory_order_release);
+        ackThread.join();
+        FAIL() << "Sync thread did not finish in time; block limit may be broken";
+    }
+
+    const SyncModuleResult result = syncFuture.get();
+    syncDone.store(true, std::memory_order_release);
+    ackThread.join();
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 10);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger,
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, mockQueue, mockSyncTransport);
+
+    constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+    constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
+    constexpr size_t EXPECTED_BUDGET = FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES;
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(EXPECTED_BUDGET))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+    EXPECT_TRUE(result.success);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetForVDOptions)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger,
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(0))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(2);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    auto runAndAck = [this](Option option)
+    {
+        SyncModuleResult result;
+        const int sendCountBefore = mockSyncTransport->sendCount();
+        std::thread syncThread([this, option, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA, option);
+        });
+
+        auto waitDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+        while (mockSyncTransport->sendCount() <= sendCountBefore &&
+                std::chrono::steady_clock::now() < waitDeadline)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        EXPECT_GT(mockSyncTransport->sendCount(), sendCountBefore);
+
+        flatbuffers::FlatBufferBuilder endBuilder;
+        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+        auto endAckOffset = endAckBuilder.Finish();
+        auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                              endBuilder,
+                              Wazuh::SyncSchema::MessageType::EndAck,
+                              endAckOffset.Union());
+        endBuilder.Finish(endMessage);
+        protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+        syncThread.join();
+        EXPECT_TRUE(result.success);
+    };
+
+    runAndAck(Option::VDFIRST);
+    runAndAck(Option::VDSYNC);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWhenPrefilterSelectedIt)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger,
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> oversizedBlock =
+    {
+        {0, "test_id_1", "test_index_1", std::string(6U * 1024U * 1024U, 'x'), Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(oversizedBlock))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAbortsRemainingBlocksAfterSecondBlockFailure)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger,
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(2)
+    .WillOnce(Return(testData))
+    .WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(1);
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+    {
+        auto result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+        syncDone.store(true, std::memory_order_release);
+        return result;
+    });
+
+    std::thread ackThread([this, &syncDone]()
+    {
+        int handled = 0;
+        int lastSendCount = 0;
+
+        while (handled < 2)
+        {
+            const int currentSendCount = mockSyncTransport->sendCount();
+
+            if (currentSendCount > lastSendCount)
+            {
+                lastSendCount = currentSendCount;
+                ++handled;
+
+                flatbuffers::FlatBufferBuilder endBuilder;
+                Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+                endAckBuilder.add_status(handled == 1 ? Wazuh::SyncSchema::Status::Ok : Wazuh::SyncSchema::Status::Error);
+                auto endAckOffset = endAckBuilder.Finish();
+                auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                                      endBuilder,
+                                      Wazuh::SyncSchema::MessageType::EndAck,
+                                      endAckOffset.Union());
+                endBuilder.Finish(endMessage);
+                protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+                continue;
+            }
+
+            if (syncDone.load(std::memory_order_acquire) && currentSendCount == lastSendCount)
+            {
+                break;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+    {
+        syncDone.store(true, std::memory_order_release);
+        ackThread.join();
+        FAIL() << "Sync thread did not finish in time while validating block-failure abort behavior";
+    }
+
+    const SyncModuleResult result = syncFuture.get();
+    syncDone.store(true, std::memory_order_release);
+    ackThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(result.failureReason, "Manager reported synchronization failure.");
+    EXPECT_EQ(mockSyncTransport->sendCount(), 2);
+}
+
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStopWakesEndAckWait)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -819,7 +1133,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStopWakesEndAckWait)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -866,7 +1180,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -879,7 +1193,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
                                       Mode::DELTA
                                   );
         EXPECT_FALSE(result.success);
-        EXPECT_EQ(result.failureReason, "Manager sent an unexpected or invalid response.");
+        EXPECT_EQ(result.failureReason, "Manager reported synchronization failure.");
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -894,7 +1208,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // syncFailed = true
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -922,7 +1235,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -935,7 +1248,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
                                       Mode::DELTA
                                   );
         EXPECT_FALSE(result.success);
-        EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+        EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -958,8 +1271,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-    .WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+    .WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
 
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(1);
@@ -985,7 +1299,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1013,8 +1326,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-    .WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+    .WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
 
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(1);
@@ -1047,7 +1361,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     auto seqRangesVector = reqRetBuilder.CreateVector(seqRanges);
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
-    reqRetBuilderObj.add_session(session);
     reqRetBuilderObj.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -1068,7 +1381,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1091,7 +1403,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     std::string loggedMessage;
     LoggerFunc testLogger = [&loggedMessage](modules_log_level_t level, const std::string & message)
     {
-        if (level == LOG_ERROR && message.find("Failed to finalize sync state") != std::string::npos)
+        if (level == LOG_ERROR && message.find("Failed to finalize DELTA sync block") != std::string::npos)
         {
             loggedMessage = message;
         }
@@ -1106,7 +1418,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     };
 
     // Set up mock expectations for successful sync until the finalization phase
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(testing::Return(testData));
 
     // The clearSyncedItems call will throw an exception
@@ -1117,7 +1429,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result.success); // Should still return true despite the exception in finalization
+        EXPECT_FALSE(result.success); // Finalization failed and must abort the DELTA cycle
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
@@ -1131,7 +1443,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1146,7 +1457,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     syncThread.join();
 
     // Verify that the error was logged
-    EXPECT_TRUE(loggedMessage.find("Failed to finalize sync state") != std::string::npos);
+    EXPECT_TRUE(loggedMessage.find("Failed to finalize DELTA sync block") != std::string::npos);
     EXPECT_TRUE(loggedMessage.find("Simulated clearSyncedItems exception") != std::string::npos);
 }
 
@@ -1208,7 +1519,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1238,7 +1548,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
@@ -1259,7 +1569,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1295,7 +1604,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
@@ -1316,7 +1625,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline); // Status Offline
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1350,8 +1658,9 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+        .WillOnce(Return(testData))
+        .WillRepeatedly(Return(std::vector<PersistedData>{}));
 
         protocol->synchronizeModule(
             Mode::DELTA
@@ -1371,7 +1680,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok); // Status Ok
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1417,7 +1725,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     const std::string testChecksum = "matching_checksum";
 
     // Expect NO calls to database methods since no data needs to be sent
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start requiresFullSync in a separate thread
@@ -1442,7 +1750,6 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1467,7 +1774,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     const std::string testChecksum = "non_matching_checksum";
 
     // Expect NO calls to database methods since no data needs to be sent
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start requiresFullSync in a separate thread
@@ -1492,7 +1799,6 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1600,7 +1906,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
     protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
 
     // Expect NO calls to database methods since FULL mode uses in-memory data
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
     EXPECT_CALL(*mockQueue, resetSyncingItems())
     .Times(0);
@@ -1611,7 +1917,7 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
                               );
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
-    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
 
     // Clear in-memory data after failed sync
     EXPECT_NO_THROW(protocol->clearInMemoryData());
@@ -1651,7 +1957,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(max_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start synchronizeMetadataOrGroups in a separate thread
@@ -1678,7 +1984,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1700,7 +2005,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(max_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start synchronizeMetadataOrGroups in a separate thread
@@ -1727,7 +2032,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1749,7 +2053,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(max_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start synchronizeMetadataOrGroups in a separate thread
@@ -1776,7 +2080,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1798,7 +2101,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, std::chrono::seconds(max_timeout), retries, mockQueue, mockSyncTransport);
 
     // Expect NO calls to fetchAndMarkForSync since metadata/groups mode doesn't send data items
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
     // Start synchronizeMetadataOrGroups in a separate thread
@@ -1825,7 +2128,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1895,7 +2197,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsSessionTimeout)
                               );
 
     EXPECT_FALSE(result.success);
-    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+    EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
@@ -1914,7 +2216,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
                                       12345 // globalVersion
                                   );
         EXPECT_FALSE(result.success);
-        EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
+        EXPECT_EQ(result.failureReason, "Timed out waiting for manager response.");
     });
 
     // Wait for start message
@@ -1957,7 +2259,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2169,7 +2470,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2214,7 +2514,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2259,7 +2558,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2308,7 +2606,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2413,7 +2710,7 @@ TEST_F(AgentSyncProtocolTest, DeltaModeSyncLogsErrorWithoutQueue)
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(loggedLevel, LOG_ERROR);
-    EXPECT_TRUE(loggedMessage.find("Failed to fetch items for sync") != std::string::npos);
+    EXPECT_TRUE(loggedMessage.find("Failed to initialize DELTA sync") != std::string::npos);
     EXPECT_TRUE(loggedMessage.find("requires a persistent queue") != std::string::npos);
 }
 
@@ -2451,7 +2748,6 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     flatbuffers::FlatBufferBuilder endBuilder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -2528,7 +2824,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
 
         SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
         EXPECT_FALSE(syncResult.success);
@@ -2547,7 +2843,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder2(endBuilder2);
     endAckBuilder2.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch); // Status ChecksumMismatch
-    endAckBuilder2.add_session(session);
     auto endAckOffset2 = endAckBuilder2.Finish();
 
     auto endMessage2 =
@@ -2585,7 +2880,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
         };
 
-        EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
 
         SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
         EXPECT_FALSE(syncResult.success);
@@ -2604,7 +2899,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
-    endAckBuilder.add_session(mockSyncTransport->session());
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage =
@@ -3440,7 +3734,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckProcessing)
     {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
     };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread([this]()
@@ -3460,7 +3755,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckProcessing)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         bool response = protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3473,7 +3767,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckProcessing)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3497,7 +3790,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckSuccess)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2},
     };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread([this]()
@@ -3517,7 +3811,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckSuccess)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3529,7 +3822,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckSuccess)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3559,7 +3851,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckDoesNotConsumeRetry)
     {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
     };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
+    .WillRepeatedly(Return(std::vector<PersistedData>{}));
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
     std::thread syncThread([this]()
@@ -3579,7 +3872,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckDoesNotConsumeRetry)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3593,7 +3885,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckDoesNotConsumeRetry)
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
@@ -3670,7 +3961,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleConcurrentCallIsSkippedAndDoesNot
 
     // First call fetches data and runs a full sync; second concurrent call finds an
     // empty queue (or is blocked by the guard before reaching the queue).
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .WillOnce(Return(testData))     // first (in-flight) call
     .WillRepeatedly(Return(std::vector<PersistedData> {})); // any subsequent call
     EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
@@ -3706,7 +3997,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleConcurrentCallIsSkippedAndDoesNot
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
         endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        endAckBuilder.add_session(mockSyncTransport->session());
         auto offset = endAckBuilder.Finish();
         builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
