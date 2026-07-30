@@ -58,6 +58,12 @@
  * its exact legacy write, just triggered from a /control task instead of the
  * legacy TCP receiver. */
 extern w_queue_t *winexec_queue;
+
+/* asp_set_session_sender: registers this bridge's in-process /stateful session sender with
+ * agent_sync_protocol, since Windows has no local socket for it to connect to (see
+ * SyncSocketTransport's own class doc and bridge_build_config()'s comment on
+ * sync_socket_path above). */
+#include "agent_sync_protocol_c_interface.h"
 #endif
 
 static hc_handle *g_https_client = NULL;
@@ -1307,12 +1313,46 @@ static bool bridge_build_config(hc_config_t *config)
     /* Stateful sync sessions arrive on a separate STREAM socket so a whole
      * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module
      * streams it to disk and then to /stateful. Stateless events keep using
-     * the DGRAM queue. Producers connect via sendSyncSession() (the eventual
-     * agent_sync_protocol transport swap). */
+     * the DGRAM queue. Producers connect via sendSyncSession().
+     *
+     * Windows has no local socket intake at all (modules run in-process and
+     * deliver a session directly via bridge_submit_sync_session() below,
+     * registered as agent_sync_protocol's in-process sender) -- leaving this
+     * path empty here skips SyncIntake::start() entirely, instead of always
+     * attempting and always failing it (SyncIntake's own Windows stub is an
+     * intentional no-op, not a real bind failure). */
+#ifndef WIN32
     strncpy(config->sync_socket_path, SYNCQUEUE, sizeof(config->sync_socket_path) - 1);
+#endif
 
     return true;
 }
+
+#ifdef WIN32
+/* In-process /stateful session sender for agent_sync_protocol's Windows stub
+ * (SyncSocketTransport has no local socket to connect to there). Registered via
+ * asp_set_session_sender() right after hc_start() succeeds below, deregistered before
+ * hc_destroy() in w_https_client_stop() -- same lock discipline as
+ * w_https_client_submit_event(), since both submit into the same running instance. */
+static bool bridge_submit_sync_session(const char *session_id, const uint8_t *buffer, size_t length)
+{
+    if (session_id == NULL) {
+        return false;
+    }
+
+    bool ok = false;
+
+    w_mutex_lock(&g_https_client_lock);
+
+    if (g_https_client != NULL && !g_https_client_stopping) {
+        ok = hc_submit_sync_session(g_https_client, session_id, buffer, length);
+    }
+
+    w_mutex_unlock(&g_https_client_lock);
+
+    return ok;
+}
+#endif
 
 /* No internal-option gate: by the time AgentdStart() (and so this) runs,
  * client-agent/src/main.c has already refused to start the daemon at all
@@ -1357,7 +1397,12 @@ void w_https_client_start(void)
         merror("https_client: failed to start (configuration rejected).");
         hc_destroy(g_https_client);
         g_https_client = NULL;
+        return;
     }
+
+#ifdef WIN32
+    asp_set_session_sender(bridge_submit_sync_session);
+#endif
 }
 
 void w_https_client_stop(void)
@@ -1370,6 +1415,13 @@ void w_https_client_stop(void)
     w_mutex_lock(&g_https_client_lock);
     g_https_client_stopping = true;
     w_mutex_unlock(&g_https_client_lock);
+
+#ifdef WIN32
+    /* Deregister before destroying the handle: any sender call already past this point but
+     * still waiting on g_https_client_lock will see g_https_client_stopping above and bail
+     * without touching a (possibly by-then-destroyed) handle. */
+    asp_set_session_sender(NULL);
+#endif
 
     if (g_https_client) {
         hc_destroy(g_https_client); /* Implies stop + join. */
