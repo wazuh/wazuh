@@ -109,32 +109,84 @@ extern "C"
                                       ///< One deferred response costs one fd, so this is the
                                       ///< knob that bounds fd usage. <=0 -> default.
 
-        /* ---- Indexer connector tuning: overlaid onto the <indexer> block below before it is
-         *      handed to IndexerConnectorSync -- the same connector class inventory_sync (the
-         *      module this one will eventually replace) already uses, so these mirror its own
-         *      tunables exactly. <=0 -> module default. ---- */
-        int indexer_bulk_size_bytes; ///< Bulk-request size threshold, bytes, before a flush is
-                                     ///< forced. Maps to `max_bulk_size` -- the same key
-                                     ///< inventory_sync overlays via its own `indexerBulkSize`
-                                     ///< option. <=0 -> 10 MiB.
-        int indexer_flush_interval;  ///< Periodic flush interval, seconds, forced even if the
-                                     ///< bulk-size threshold has not been reached. Maps to
-                                     ///< `flush_interval_seconds`. <=0 -> 20 s.
+        /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
+         *      block below by buildSyncConnectorConfig() before construction. This is the same
+         *      connector class inventory_sync (the module this one will eventually replace) uses,
+         *      so these mirror its own tunables exactly.
+         *
+         *      Each field is named `indexer_sync_<the connector's own key name>`, so comparing this
+         *      block against the builder shows the mapping 1:1 and crossing the two families
+         *      produces a visible name mismatch instead of a silent no-op. <=0 -> connector
+         *      default. ---- */
+        int indexer_sync_max_bulk_size;           ///< Bulk size threshold, bytes, before a flush is
+                                                  ///< forced. -> `max_bulk_size`. <=0 -> 10 MiB.
+        int indexer_sync_flush_interval_seconds;  ///< Periodic flush interval, seconds, forced even if
+                                                  ///< the size threshold was not reached.
+                                                  ///< -> `flush_interval_seconds`. <=0 -> 20 s.
+        int indexer_sync_max_retry_delay_seconds; ///< Ceiling for the exponential retry backoff.
+                                                  ///< -> `max_retry_delay_seconds`. <=0 -> 15 s.
+                                                  ///< The connector's constructor REJECTS a value
+                                                  ///< below its base retry delay of 1, so modulesd
+                                                  ///< also enforces a minimum of 1 on the option.
+                                                  ///< Between that and the <=0 sentinel above, a
+                                                  ///< rejecting value cannot reach the connector
+                                                  ///< from configuration at all.
+
+        /* ---- ASYNC indexer connector (IndexerConnectorAsync) tuning. Overlaid by
+         *      buildAsyncConnectorConfig().
+         *
+         *      CAUTION: `bulk_max_bytes` below is THE SAME CONCEPT as the sync connector's
+         *      `max_bulk_size` above, under a DIFFERENT key name. Handing either connector the
+         *      other's key is IGNORED SILENTLY -- no throw, no log, the built-in default applies
+         *      instead. That is exactly why the two families are separate fields fed by separate
+         *      internal options, and why each builder emits only the keys its own connector reads.
+         *      <=0 -> connector default. ---- */
+        int indexer_async_bulk_max_bytes;          ///< Bulk size threshold, bytes.
+                                                   ///< -> `bulk_max_bytes`. <=0 -> 4 MiB.
+        int indexer_async_flush_interval_seconds;  ///< Periodic flush interval, seconds.
+                                                   ///< -> `flush_interval_seconds`. <=0 -> 20 s.
+        int indexer_async_max_retry_delay_seconds; ///< Ceiling for the exponential retry backoff.
+                                                   ///< -> `max_retry_delay_seconds`. <=0 -> 15 s.
+                                                   ///< Same minimum-of-1 story as the sync one.
+        int indexer_async_logger_queue_size;       ///< Bounded queue, in elements, for the async
+                                                   ///< error logger. -> `logger_queue_size`.
+                                                   ///< <=0 -> 8.
+        int indexer_async_logger_threads;          ///< Threads draining that error-logger queue.
+                                                   ///< -> `logger_threads`. <=0 -> 1.
+
+        /**
+         * @brief Cap on the async connector's in-memory pending-bulk queue, bytes.
+         *
+         * Maps to `max_queue_bytes`. THE ONE EXCEPTION to this header's sentinel rule: `0` here
+         * means the connector's own documented "unlimited", not "use the module default". modulesd
+         * therefore ships a real bounded default (64 MiB, matching what the engine uses for the
+         * same key) rather than a 0 placeholder, and an operator who genuinely wants an unbounded
+         * queue has to write `0` explicitly.
+         *
+         * The reason it cannot follow the usual `min=1` convention: getDefine_Int_default() calls
+         * merror_exit() on an out-of-range value, so a minimum of 1 would turn a documented, legal
+         * setting into a fatal modulesd abort.
+         *
+         * An unbounded queue is the only unbounded allocation this module can be configured to make
+         * -- see max_inflight_bytes above for how the transport side is bounded.
+         */
+        long long indexer_async_max_queue_bytes;
 
         /* ---- Nested, opaque ---- */
         /**
          * @brief The <indexer> configuration block, verbatim, as nested cJSON.
          *
          * NOT a POD field, on purpose. The indexer connector consumes nested JSON with
-         * arrays -- hosts[], ssl.certificate_authorities[], plus ssl.certificate,
-         * ssl.key, max_bulk_size, flush_interval_seconds, max_retry_delay_seconds -- which
-         * a fixed-size C struct cannot express without flattening it here and re-nesting
-         * it on the other side. Passing the subtree through untouched keeps this header
-         * from having to track the indexer connector's schema at all.
+         * arrays -- hosts[], ssl.certificate_authorities[], plus ssl.certificate and
+         * ssl.key -- which a fixed-size C struct cannot express without flattening it here
+         * and re-nesting it on the other side. Passing the subtree through untouched keeps
+         * this header from having to track the indexer connector's schema at all.
          *
-         * `indexer_bulk_size_bytes`/`indexer_flush_interval` above are overlaid onto this
-         * subtree by the module before construction; they are not expected to already be
-         * present in it.
+         * The `indexer_sync_*`/`indexer_async_*` fields above are overlaid onto a COPY of
+         * this subtree by the module before construction -- once per connector, each with
+         * only the keys its own connector reads. They are not expected to already be
+         * present in it. `hosts` and `ssl.*` are shared by both connectors and by the
+         * IndexerSession they are built from.
          *
          * OWNERSHIP: BORROWED for the duration of the start() call only. The module
          * deep-copies whatever it needs before returning, so the caller may free it as

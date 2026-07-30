@@ -32,6 +32,7 @@ private:
     std::string m_host;
     std::string m_health;
     std::string m_indexName;
+    std::atomic<int> m_healthRequests {0};
     std::atomic<bool> m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
@@ -91,6 +92,19 @@ public:
     void setHealth(std::string health)
     {
         m_health = std::move(health);
+    }
+
+    /**
+     * @brief Number of `GET /_cat/health` requests served since this server started.
+     *
+     * Lets a test assert how many health-check ROUNDS happened, which is the observable difference
+     * between connectors that each build their own monitor and connectors sharing one IndexerSession.
+     *
+     * @return The request count.
+     */
+    int healthRequests() const
+    {
+        return m_healthRequests.load();
     }
 
     /**
@@ -166,6 +180,7 @@ public:
         m_server.Get("/_cat/health",
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
+                         ++m_healthRequests;
                          const auto response = nlohmann::json::array({{{"epoch", "1726271464"},
                                                                        {"timestamp", "23:51:04"},
                                                                        {"cluster", "wazuh-cluster"},

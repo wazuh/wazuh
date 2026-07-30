@@ -40,17 +40,31 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 {
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "socket_path='%s', io_threads=%d, max_body_size=%d, max_parallel_connections=%d, "
-             "max_inflight_bytes=%lld, indexer_bulk_size_bytes=%d, indexer_flush_interval=%d, "
-             "cluster='%s', node='%s'",
+             "max_inflight_bytes=%lld, cluster='%s', node='%s'",
              config->socket_path,
              config->io_threads,
              config->max_body_size,
              config->max_parallel_connections,
              config->max_inflight_bytes,
-             config->indexer_bulk_size_bytes,
-             config->indexer_flush_interval,
              config->cluster_name,
              config->node_name);
+
+    /* Split from the line above so the two indexer families stay visually distinct in the log, the
+     * same way they are in the configuration: their key names are NOT interchangeable. */
+    mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+             "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d",
+             config->indexer_sync_max_bulk_size,
+             config->indexer_sync_flush_interval_seconds,
+             config->indexer_sync_max_retry_delay_seconds);
+    mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+             "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
+             "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d",
+             config->indexer_async_bulk_max_bytes,
+             config->indexer_async_flush_interval_seconds,
+             config->indexer_async_max_retry_delay_seconds,
+             config->indexer_async_max_queue_bytes,
+             config->indexer_async_logger_queue_size,
+             config->indexer_async_logger_threads);
 }
 
 void* wm_inventory_sync_server_main(__attribute__((unused)) wm_inventory_sync_server_t* data)
@@ -116,17 +130,81 @@ void* wm_inventory_sync_server_main(__attribute__((unused)) wm_inventory_sync_se
                 "wazuh_modules", "inventory_sync_server_max_inflight_bytes", 0, 2147483647, 0);
             config.socket_mode = getDefine_Int_default("wazuh_modules", "inventory_sync_server_socket_mode", 0, 511, 0);
 
-            /* Same range/default as inventory_sync's own indexerBulkSize/indexerFlushInterval
-             * (wm_inventory_sync.c), just under this module's own option-naming convention. Mapped
-             * onto the <indexer> block's `max_bulk_size`/`flush_interval_seconds` keys inside the
-             * C++ module -- IndexerConnectorSync is the same connector class inventory_sync uses. */
-            config.indexer_bulk_size_bytes = getDefine_Int_default("wazuh_modules",
-                                                                   "inventory_sync_server_indexer_bulk_size_bytes",
-                                                                   4096,
-                                                                   100 * 1024 * 1024,
-                                                                   10 * 1024 * 1024);
-            config.indexer_flush_interval =
-                getDefine_Int_default("wazuh_modules", "inventory_sync_server_indexer_flush_interval", 1, 3600, 20);
+            /* ---- Indexer connector tunables. Unlike the transport options above these carry real
+             * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
+             * library whose own defaults we mirror here so `wazuh-modulesd -t` can reject a bad value
+             * up front. Each one names the connector key it maps to.
+             *
+             * The two families are deliberately separate: IndexerConnectorSync reads `max_bulk_size`
+             * while IndexerConnectorAsync reads `bulk_max_bytes` for the same concept, and handing
+             * either the other's key is ignored silently. Keep the `indexer_sync_`/`indexer_async_`
+             * prefixes intact.
+             *
+             * Note the minimum of 1 on both `max_retry_delay_seconds`: the connector constructors reject
+             * anything below their base retry delay of 1. Combined with the module's `<=0 means use the
+             * connector default` sentinel, that makes a rejecting value unreachable from configuration
+             * -- the minimum here turns an operator's 0 into a startup-time complaint instead of a
+             * silent fallback to the default. ---- */
+            config.indexer_sync_max_bulk_size =
+                getDefine_Int_default("wazuh_modules",
+                                      "inventory_sync_server_indexer_sync_max_bulk_size", /* -> max_bulk_size */
+                                      4096,
+                                      100 * 1024 * 1024,
+                                      10 * 1024 * 1024);
+            config.indexer_sync_flush_interval_seconds = getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_sync_flush_interval_seconds", /* -> flush_interval_seconds */
+                1,
+                3600,
+                20);
+            config.indexer_sync_max_retry_delay_seconds = getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_sync_max_retry_delay_seconds", /* -> max_retry_delay_seconds */
+                1,
+                3600,
+                15);
+
+            config.indexer_async_bulk_max_bytes =
+                getDefine_Int_default("wazuh_modules",
+                                      "inventory_sync_server_indexer_async_bulk_max_bytes", /* -> bulk_max_bytes */
+                                      4096,
+                                      100 * 1024 * 1024,
+                                      4 * 1024 * 1024);
+            config.indexer_async_flush_interval_seconds = getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_async_flush_interval_seconds", /* -> flush_interval_seconds */
+                1,
+                3600,
+                20);
+            config.indexer_async_max_retry_delay_seconds = getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_async_max_retry_delay_seconds", /* -> max_retry_delay_seconds */
+                1,
+                3600,
+                15);
+            config.indexer_async_logger_queue_size = getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_async_logger_queue_size", /* -> logger_queue_size */
+                1,
+                65536,
+                8);
+            config.indexer_async_logger_threads =
+                getDefine_Int_default("wazuh_modules",
+                                      "inventory_sync_server_indexer_async_logger_threads", /* -> logger_threads */
+                                      1,
+                                      64,
+                                      1);
+            /* Minimum 0, NOT 1: 0 is the connector's own legitimate "unlimited", and
+             * getDefine_Int_default() calls merror_exit() on an out-of-range value, so a minimum of 1
+             * would turn that documented setting into a fatal abort. The shipped default is bounded
+             * (64 MiB, the same value the engine uses for this key) because an unbounded queue is the
+             * only unbounded allocation this module can be configured to make. */
+            config.indexer_async_max_queue_bytes = (long long)getDefine_Int_default(
+                "wazuh_modules",
+                "inventory_sync_server_indexer_async_max_queue_bytes", /* -> max_queue_bytes */
+                0,
+                2147483647,
+                64 * 1024 * 1024);
 
             /* Borrowed for the call only: the module deep-copies what it needs, and
              * inventory_sync_server.h documents that contract, so this duplicate can be freed as
