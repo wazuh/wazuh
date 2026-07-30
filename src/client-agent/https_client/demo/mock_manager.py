@@ -84,13 +84,34 @@ class Handler(BaseHTTPRequestHandler):
 
     # Exact startup-response bytes, kept verbatim: settings_hash is the SHA256
     # of precisely what goes on the wire (#37733 5.1.1).
+    #
+    # Every field the bridge's parser marks required has to be here: it takes
+    # the limits all-or-nothing, and a partial block is silently discarded.
+    # syscheckd then waits on limits that never arrive (fim_initialize()'s
+    # fetch_document_limits_from_agentd() loop) and never finishes starting.
     STARTUP_V1 = json.dumps(
-        {"limits": {"fim": {"file": 100000}, "syscollector": {"packages": 50000},
+        {"limits": {"fim": {"file": 100000, "registry_key": 100000,
+                            "registry_value": 100000},
+                    "syscollector": {"hotfixes": 10000, "packages": 50000,
+                                     "processes": 10000, "ports": 10000,
+                                     "network_iface": 10000, "network_protocol": 10000,
+                                     "network_address": 10000, "hardware": 10000,
+                                     "os_info": 10000, "users": 10000,
+                                     "groups": 10000, "services": 10000,
+                                     "browser_extensions": 10000},
                     "sca": {"checks": 10000}},
          "cluster": {"name": "demo", "node": "node01"},
          "agent": {"groups": ["default"]}}).encode()
     STARTUP_V2 = json.dumps(
-        {"limits": {"fim": {"file": 200000}, "syscollector": {"packages": 50000},
+        {"limits": {"fim": {"file": 200000, "registry_key": 100000,
+                            "registry_value": 100000},
+                    "syscollector": {"hotfixes": 10000, "packages": 50000,
+                                     "processes": 10000, "ports": 10000,
+                                     "network_iface": 10000, "network_protocol": 10000,
+                                     "network_address": 10000, "hardware": 10000,
+                                     "os_info": 10000, "users": 10000,
+                                     "groups": 10000, "services": 10000,
+                                     "browser_extensions": 10000},
                     "sca": {"checks": 20000}},
          "cluster": {"name": "demo", "node": "node01"},
          "agent": {"groups": ["default"]}}).encode()
