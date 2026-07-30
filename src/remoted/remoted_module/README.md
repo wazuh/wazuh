@@ -26,7 +26,8 @@ remoted_module/
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
-    └── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
+    ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
+    └── send_agent_json.py          # CLI to sign + POST /stats and /config, and verify the echo
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
@@ -591,3 +592,38 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys
 ```
+
+### Manual / end-to-end (`tools/send_agent_json.py`)
+
+Same signing, for the two dummy endpoints — `POST /stats` and `POST /config`. This one is the
+end-to-end check of the *whole* forwarding path, because those endpoints echo the document back: a
+successful run prints it with `wazuh.agent.id` and `@timestamp` added, which only happens if the UDS
+hop and the `X-Wazuh-Agent-Id` header propagation both worked.
+
+**It verifies that, not just the status code.** A `200` whose body is missing either stamp, or whose
+`wazuh.agent.id` is not the authenticated agent, is reported as a FAIL — otherwise a server that
+answered `200` without enriching anything would look like a pass.
+
+Requires `wazuh-manager-modulesd` running with the `inventory_sync_server` module; without it every
+forwarded request answers `503` and the tool says so explicitly (distinct from remoted itself being
+unreachable, which it also reports separately).
+
+```bash
+python3 tools/send_agent_json.py                          # one signed /stats -> 200 + enriched echo
+python3 tools/send_agent_json.py --endpoint config        # same, against /config
+python3 tools/send_agent_json.py --body '{"cpu":42}'      # must be a JSON OBJECT for a 200
+python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
+python3 tools/send_agent_json.py --all                    # 13 scenarios x BOTH endpoints
+# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
+```
+
+`--all` runs every scenario against **both** endpoints on purpose: they are deliberate near-duplicates
+in the C++, so covering both is what proves the duplication is actually wired up on each path. It
+covers the endpoint-specific rejections (empty body → 400 short-circuited by remoted before any UDS
+round trip; non-object and malformed JSON → 400 from modulesd) plus every auth-layer failure. It does
+**not** repeat the transport-level limits (oversized URL/header/count → dropped connection) — those are
+endpoint-independent and already covered by `send_stateless.py --all`.
+
+> The signing helpers are duplicated between the two scripts rather than shared, so each stays a
+> single file you can copy onto a manager and run. If the canonical string ever changes on the C++
+> side, both copies fail loudly with `401 InvalidMac` rather than silently mis-signing.
