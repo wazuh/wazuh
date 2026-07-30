@@ -17,12 +17,19 @@
 #include <cJSON.h>
 
 #include "agentd.h"
-#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#ifndef TEST_WINAGENT
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#endif
 
-/* The aggregator asks each daemon in turn. These stubs stand in for the
- * component sockets so a test can decide, per component, whether it answers,
- * refuses, or is not there at all. */
+/* The aggregator asks each daemon in turn. These stubs stand in for whatever it
+ * asks THROUGH, so a test can decide, per component, whether it answers,
+ * refuses, or is not there at all.
+ *
+ * The two platforms reach the daemons differently and both need covering: on
+ * POSIX each one is a separate process behind a socket, while a Windows agent
+ * runs them all in-process and calls their dispatchers directly. The stubs
+ * below switch; every assertion further down is shared. */
 
 typedef struct answer_t {
     const char* target;     ///< Component the answer belongs to.
@@ -47,6 +54,8 @@ static const answer_t* answer_for(const char* target)
 
     return NULL;
 }
+
+#ifndef TEST_WINAGENT
 
 int __wrap_OS_ConnectUnixDomain(const char* path, __attribute__((unused)) int type,
                                 __attribute__((unused)) int max_msg_size)
@@ -85,6 +94,58 @@ int __wrap_OS_RecvSecureTCP(__attribute__((unused)) int sock, char* ret,
     strcpy(ret, answer->reply);
     return (int)strlen(answer->reply);
 }
+
+#else /* TEST_WINAGENT */
+
+/**
+ * @brief Stand in for one component's dispatcher.
+ *
+ * A component that is "not there" answers 0 with no output, which is what a
+ * dispatcher that does not recognise the command does; the aggregator has to
+ * treat that the same way it treats an unreachable socket on POSIX.
+ */
+static size_t dispatch_as(const char* target, char** output)
+{
+    const answer_t* answer = answer_for(target);
+
+    g_connect_calls++;
+
+    if (!answer || !answer->reply) {
+        return 0;
+    }
+
+    os_strdup(answer->reply, *output);
+    return strlen(*output);
+}
+
+size_t __wrap_agcom_dispatch(__attribute__((unused)) char* command, char** output)
+{
+    return dispatch_as("agent", output);
+}
+
+size_t __wrap_syscom_dispatch(__attribute__((unused)) char* command,
+                              __attribute__((unused)) size_t command_len, char** output)
+{
+    return dispatch_as("syscheck", output);
+}
+
+size_t __wrap_lccom_dispatch(__attribute__((unused)) char* command, char** output)
+{
+    return dispatch_as("logcollector", output);
+}
+
+size_t __wrap_wmcom_dispatch(__attribute__((unused)) char* command,
+                             __attribute__((unused)) size_t command_len, char** output)
+{
+    return dispatch_as("wmodules", output);
+}
+
+size_t __wrap_wcom_dispatch(__attribute__((unused)) char* command, char** output)
+{
+    return dispatch_as("com", output);
+}
+
+#endif /* TEST_WINAGENT */
 
 /* --- Helpers --- */
 static void given(const answer_t* answers, size_t count)
