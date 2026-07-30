@@ -1021,7 +1021,10 @@ installEngineStore()
     find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
     # Create /var/wazuh-manager/data/ruleset
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
+    # Owned by ${WAZUH_USER}: the engine drops root privileges at startup and
+    # the CM store verifies write access to this directory.
+    install -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
 
     echo "Engine output configuration files installed successfully."
 }
@@ -1147,7 +1150,19 @@ InstallLocal()
     installTZDB
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
+    # Contents created by root in previous versions must remain writable after
+    # the engine drops privileges (RocksDB requires owner write access).
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
+
+    # Engine streamlog trees (logs/<YYYY>/...) created by root in previous
+    # versions must remain writable after the engine drops privileges. Scoped
+    # to year-pattern directories so other daemons' files are untouched.
+    for YEAR_DIR in ${INSTALLDIR}/logs/[0-9][0-9][0-9][0-9]; do
+        if [ -d "${YEAR_DIR}" ]; then
+            chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${YEAR_DIR}"
+        fi
+    done
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
