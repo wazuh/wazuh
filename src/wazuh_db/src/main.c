@@ -367,7 +367,8 @@ void * run_worker(__attribute__((unused)) void * args) {
         if(count == OS_SOCKTERR){
             mwarn("at run_worker(): received string size is bigger than %d bytes",
                     OS_MAXSTR);
-            break;
+            close(peer);
+            continue;
         }
         length+=count;
 

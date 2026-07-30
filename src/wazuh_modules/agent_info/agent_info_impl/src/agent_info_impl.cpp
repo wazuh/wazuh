@@ -128,7 +128,8 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
                              std::shared_ptr<IFileIOUtils> fileIO,
-                             std::shared_ptr<IFileSystemWrapper> fileSystem)
+                             std::shared_ptr<IFileSystemWrapper> fileSystem,
+                             handshake_query_callback_t handshakeQueryFunction)
     : m_dBSync(
           dbSync ? std::move(dbSync)
           : std::make_shared<DBSync>(
@@ -139,6 +140,7 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_reportDiffFunction(std::move(reportDiffFunction))
     , m_logFunction(std::move(logFunction))
     , m_queryModuleFunction(std::move(queryModuleFunction))
+    , m_handshakeQueryFunction(std::move(handshakeQueryFunction))
 {
     if (!m_logFunction)
     {
@@ -460,18 +462,64 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Get cluster_name from handshake (set by agentd during connection via agent_info_set_cluster_name)
-    const char* cluster_name = agent_info_get_cluster_name();
+    // Re-query agentd for fresh handshake data on every cycle instead of relying on a
+    // one-time cached copy (see #37543): a manager-side cluster_name change is picked up
+    // by agentd on reconnect, but was never re-read here, so it stayed stale until the
+    // agent process restarted.
+    //
+    // Scoped to cluster_name/cluster_node only. agent_groups is intentionally NOT taken
+    // from this live query (see the groups block below for why) - the callback still
+    // reports it, since agentd's gethandshake returns all three fields together, but the
+    // value is discarded here rather than tracked across cycles.
+    if (m_handshakeQueryFunction)
+    {
+        char clusterNameBuf[256] = {0};
+        char clusterNodeBuf[256] = {0};
+        char agentGroupsBuf[65536] = {0};
 
-    agentMetadata["cluster_name"] = std::string(cluster_name);
+        if (m_handshakeQueryFunction(clusterNameBuf,
+                                     sizeof(clusterNameBuf),
+                                     clusterNodeBuf,
+                                     sizeof(clusterNodeBuf),
+                                     agentGroupsBuf,
+                                     sizeof(agentGroupsBuf)))
+        {
+            m_lastLiveClusterName = clusterNameBuf;
+            m_lastLiveClusterNode = clusterNodeBuf;
+            m_hasLiveHandshakeSucceededOnce = true;
+        }
+        else
+        {
+            // Transient failure (e.g. agentd unreachable): fall back to the last
+            // successfully live-queried values below, NOT the one-time startup cache,
+            // so a single missed cycle doesn't revert cluster_name to a stale value.
+            m_logFunction(LOG_DEBUG, "Live handshake query failed, falling back to last known values");
+        }
+    }
 
-    // Get cluster_node from handshake (set by agentd during connection via agent_info_set_cluster_node)
-    const char* cluster_node = agent_info_get_cluster_node();
+    // Once a live query has succeeded at least once, always prefer those last-known-good
+    // values. Only before the first success (or when no callback is registered at all,
+    // e.g. in unit tests) do we fall back to the C-side cache seeded once at module startup.
+    std::string cluster_name =
+        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
+    std::string cluster_node =
+        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterNode : agent_info_get_cluster_node();
 
-    agentMetadata["cluster_node"] = std::string(cluster_node);
+    agentMetadata["cluster_name"] = cluster_name;
+    agentMetadata["cluster_node"] = cluster_node;
 
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
+    //
+    // Deliberately out of scope for #37543 (which is about cluster_name/cluster_node
+    // staying live): group reassignments are pushed by remoted via merged.mg without
+    // necessarily forcing a reconnect, whereas agentd's handshake-sourced group list is
+    // only refreshed on (re)connect. Preferring the live handshake groups on every cycle
+    // (as cluster_name/cluster_node now do) would freeze group membership at the last
+    // handshake value and ignore merged.mg-driven changes until the next reconnect - a
+    // regression from the pre-existing behavior below. So groups keep the original
+    // one-shot-at-startup consumption, independent of the live cluster_name/cluster_node
+    // re-query above.
     std::vector<std::string> groups;
 
     // First, try to get groups from handshake (received from manager)
