@@ -23,7 +23,7 @@ currently enrolled -- no need to copy/paste keys by hand.
 Requires: pip install requests cryptography
 
 Examples:
-  python3 send_stateless.py                       # one valid signed request -> 200
+  python3 send_stateless.py                       # one valid signed request -> 202
   python3 send_stateless.py --agent-id 1001 --body 'hello'
   python3 send_stateless.py --tamper              # modified body -> 401 InvalidMac
   python3 send_stateless.py --all                 # run every success/failure scenario below
@@ -47,7 +47,7 @@ DEFAULT_BODY = b'H {"wazuh":{"agent":{"id":"1001"}}}\nE 1:/var/log/syslog:hello 
 # side of each window.
 MAX_REQUEST_AGE_SECONDS = 300
 MAX_FUTURE_SKEW_SECONDS = 30
-MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (16 MiB) sits above it on purpose.
+MAX_BODY_SIZE = 10 * 1024 * 1024  # AuthConfig default; transport cap (20 MiB) sits above it on purpose.
 
 # Hardcoded in RestinioHttpServer.cpp's incoming_http_msg_limits(); not exposed
 # through HttpServerConfig, so these are fixed regardless of manager config.
@@ -55,7 +55,7 @@ MAX_URL_SIZE = 2048
 MAX_FIELD_NAME_SIZE = 256
 MAX_FIELD_VALUE_SIZE = 8192
 MAX_FIELD_COUNT = 64
-TRANSPORT_MAX_BODY_SIZE = 16 * 1024 * 1024
+TRANSPORT_MAX_BODY_SIZE = 20 * 1024 * 1024  # httpServerConfig.cpp's DEFAULT_MAX_BODY_SIZE
 
 # Sentinel "expected status": these violations make RESTinio's HTTP parser
 # abort and close the connection outright (see RestinioHttpServer.cpp /
@@ -240,7 +240,7 @@ def scenario_payload_agent_mismatch(agent_id, agent_key):
 
 
 def scenario_transport_body_too_large(agent_id, agent_key):
-    # The transport's own hard cap (16 MiB) rather than AuthConfig's (10 MiB,
+    # The transport's own hard cap (20 MiB) rather than AuthConfig's (10 MiB,
     # see scenario_body_too_large): this one must never reach AuthMiddleware
     # at all, so it gets no clean 413 -- RESTinio drops the connection as
     # soon as it sees a too-large Content-Length, before any body is read.
@@ -251,7 +251,7 @@ def scenario_transport_body_too_large(agent_id, agent_key):
 
 
 SCENARIOS = [
-    ("valid_request", 200, scenario_valid),
+    ("valid_request", 202, scenario_valid),
     ("missing_protocol_version", 400, scenario_missing_protocol_version),
     ("unsupported_protocol_version", 400, scenario_unsupported_protocol_version),
     ("missing_authorization", 401, scenario_missing_authorization),
