@@ -23,15 +23,25 @@ namespace remoted::downstream
     /**
      * @brief Tunables for the deferred-forwarding subsystem.
      *
-     * The events socket path mirrors remoted's C forwarder (ANLSYS_ENRICH_SOCK, relative to the
-     * chroot) and is not C-ABI driven -- it is an installation detail, not an ops tuning knob.
-     * Every other field is populated from the C-ABI struct by buildDownstreamConfig() below; the
-     * in-struct defaults here only apply to a default-constructed DownstreamConfig (e.g. in tests).
+     * The socket paths mirror the services they reach (relative to the chroot) and are not C-ABI
+     * driven -- they are installation details, not ops tuning knobs. Every other field is populated
+     * from the C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply
+     * to a default-constructed DownstreamConfig (e.g. in tests).
      */
     struct DownstreamConfig
     {
         /// Default UDS for the engine event ingress; the facade builds the /stateless target from it.
         std::string eventsSocketPath {"queue/sockets/queue-http.sock"};
+        /**
+         * @brief Default UDS for modulesd's inventory sync server; /stat and /config target it.
+         *
+         * Must stay in step with that module's own default (see
+         * wazuh_modules/inventory_sync_server/src/http_server/udsHttpServerConfig.hpp). Both sides
+         * hardcode the literal rather than sharing a constant, because the two live in different
+         * binaries with no common header -- downstreamConfig_test.cpp pins this value so a drift
+         * fails a test instead of silently producing connect failures at runtime.
+         */
+        std::string inventorySyncSocketPath {"queue/sockets/inventory-sync.sock"};
         int connectTimeoutMs {2000};                           ///< Connect timeout per request.
         int writeTimeoutMs {5000};                             ///< Write (request body send) timeout per request.
         int responseTimeoutMs {5000};                          ///< Response (post-send) timeout per request.
