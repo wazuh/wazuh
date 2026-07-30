@@ -36,6 +36,21 @@ All engine settings are configured through internal options prefixed with `analy
 
 The engine provides internal options for:
 
+#### Process Privileges
+
+The engine daemon is launched as `root` and drops privileges at startup when
+running as part of wazuh-manager (it keeps the launcher's user and group when
+running standalone, e.g. inside wazuh-indexer):
+
+- **`analysisd.owner_user`** - Runtime user the daemon switches to (default: `wazuh-manager`)
+- **`analysisd.owner_user_change_skip`** - Skip the user change (default: `false`)
+- **`analysisd.owner_group`** - Runtime group the daemon switches to (default: `wazuh-manager`)
+- **`analysisd.owner_group_change_skip`** - Skip the group change (default: `false`)
+
+If the user or group change fails, the daemon logs the error and exits at
+startup. Note that skipping only the group change while the user change is
+enabled leaves the process with its original group after the user drop.
+
 #### Event Queue Management
 
 Control event queue sizing and processing rate limiting:
