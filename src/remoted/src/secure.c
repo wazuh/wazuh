@@ -270,6 +270,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
     rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
     rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+    // Bytes per chunk when streaming a response body (POST /download). Bounded at 1 MiB because
+    // this is per IN-FLIGHT TRANSFER: the worst case is roughly this times the number of
+    // simultaneous downloads, so a large value trades memory for fewer read/write round trips.
+    rm_config->http_stream_chunk_size = getDefine_Int_default("remoted", "http_stream_chunk_size", 4096, 1048576, 65536);
 
     // Memory-management (backpressure) tunables. These bound in-memory resource usage rather
     // than tune the transport itself; the C++ side still clamps max_inflight_bytes up to at
@@ -310,6 +314,25 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
+    // rm_config->max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
+    // request payload before it sheds load with 503. NOT logr->queue_size (that is an
+    // event COUNT, not bytes).
+    rm_config->max_inflight_bytes = (256 * 1024 * 1024); // 256 MiB
+    // rm_config->max_parallel_connections caps simultaneous HTTPS connections, bounding the
+    // read-phase memory peak (~ max_parallel_connections * max body size).
+    //
+    // It is also the ONLY bound on concurrent streamed responses (POST /download): chunked output
+    // rearms http_write_timeout per chunk, so a client that keeps reading slowly can hold a
+    // transfer open indefinitely, and there is no per-stream limiter. A mass upgrade -- the whole
+    // fleet fetching a WPK at once, many over slow links -- is therefore bounded only by this
+    // value, which is why it is settable rather than fixed.
+    rm_config->max_parallel_connections =
+        getDefine_Int_default("remoted", "http_max_parallel_connections", 1, 8192, 512);
+    // rm_config->max_deferred_requests caps requests parked awaiting a downstream service (503
+    // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+    rm_config->max_deferred_requests = 256;
+    // rm_config->keystore_refresh_interval governs how often the C++ Keystore checks
+    // client.keys for changes (hot-reload)
     rm_config->keystore_refresh_interval = keyupdate_interval;
     rm_config->worker_node = logr->worker_node;
     rm_config->verification_mode = logr->https.verification_mode;

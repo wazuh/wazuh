@@ -571,6 +571,28 @@ Socket read buffer size for the HTTPS agent server, in bytes.
 - **Default value:** `8192`
 - **Allowed values:** Integer from `1` to `1048576` (1 MiB)
 
+#### remoted.http_max_parallel_connections
+
+Maximum simultaneous HTTPS connections.
+
+- **Default value:** `512`
+- **Allowed values:** Integer from `1` to `8192`
+- **Note:** Also the only bound on concurrent streamed responses (`POST /download`). Chunked
+  output rearms `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a
+  transfer open indefinitely and there is no per-stream limiter. Lower this if a mass upgrade over
+  slow links needs capping.
+
+#### remoted.http_stream_chunk_size
+
+Bytes per chunk when streaming a response body (`POST /download`).
+
+- **Default value:** `65536` (64 KiB)
+- **Allowed values:** Integer from `4096` to `1048576` (1 MiB)
+- **Note:** Charged per *in-flight transfer*, so the worst case is roughly this value times the
+  number of simultaneous downloads. A larger chunk buys fewer read/write round trips (less CPU per
+  byte) at the cost of more memory while transfers are running. It does not change the bytes
+  delivered -- only how they are framed on the wire.
+
 > **The three timeouts below are sequential phases of one request, and the sum matters.**
 > `remoted.http_request_timeout` bounds the *whole* request and its clock starts before the
 > downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request

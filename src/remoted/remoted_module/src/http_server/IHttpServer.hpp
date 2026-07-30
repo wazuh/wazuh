@@ -76,6 +76,69 @@ namespace remoted::http
     };
 
     /**
+     * @brief Pull-based byte source for a streamed (chunked) response body.
+     *
+     * The transport drives this, not the endpoint: it owns both the connection's I/O strand and
+     * the handler worker pool, so it is the only layer that can read on a worker, write on the
+     * strand, and wait for each write to complete before pulling again. That is what keeps a
+     * transfer's memory flat (one chunk resident) and its worker-pool cost to a single slot held
+     * only for the duration of one read -- neither of which an endpoint driving a push-style
+     * writeChunk()/finish() API could achieve without blocking a worker for the whole transfer.
+     *
+     * It also keeps the source itself free of any HTTP concept, which is what makes a concrete
+     * source (see FileByteSource) directly unit-testable.
+     */
+    class IByteSource
+    {
+    public:
+        virtual ~IByteSource() = default;
+
+        /**
+         * @brief Produce the next slice of the body.
+         *
+         * Called on the server's worker pool -- never on an I/O thread, and never concurrently
+         * with itself -- so a blocking read is expected and safe here.
+         *
+         * @param buffer   Destination.
+         * @param capacity Maximum number of bytes to write into @p buffer.
+         * @return Bytes written; 0 means end-of-stream. Throwing aborts the transfer: no
+         *         terminating chunk is emitted, so the peer sees a truncated body and retries.
+         */
+        virtual std::size_t read(char* buffer, std::size_t capacity) = 0;
+    };
+
+    /**
+     * @brief A response whose body is streamed with chunked transfer encoding.
+     *
+     * The transport emits `Transfer-Encoding: chunked` itself; do not put it in @ref headers.
+     */
+    struct StreamResponse
+    {
+        int status {200};                                         ///< HTTP status code.
+        std::vector<std::pair<std::string, std::string>> headers; ///< Extra headers (verbatim order).
+        std::shared_ptr<IByteSource> source;                      ///< Body producer; must not be null.
+        /// Bytes pulled per chunk. 0 (the default) means "use the server's configured
+        /// streamChunkSize", so an endpoint does not have to know about the tunable at all.
+        std::size_t chunkSize {0};
+    };
+
+    /**
+     * @brief Whether a route may answer with a streamed body.
+     *
+     * Not a per-response choice: the transport creates the underlying response builder when the
+     * request is dispatched (which is what lets it release the received body before the request
+     * is queued), and that builder's output mode is fixed at creation. So the mode has to be
+     * declared at registration time. `Streamable` routes pay a slightly later release of the
+     * received request in exchange -- negligible for a route whose requests are small, which is
+     * the only kind that should be streaming a response anyway.
+     */
+    enum class ResponseMode
+    {
+        Buffered,  ///< Single in-memory body via IHttpResponder::send(). The default.
+        Streamable ///< May additionally answer via IHttpResponder::stream().
+    };
+
+    /**
      * @brief Sink used by a handler to deliver its response, possibly later.
      *
      * The server hands one responder per request. A handler may either respond
@@ -98,6 +161,24 @@ namespace remoted::http
          * @param response The response to send.
          */
         virtual void send(HttpResponse response) = 0;
+
+        /**
+         * @brief Deliver the response as a chunked stream, pulling from @p response.source.
+         *
+         * Shares send()'s exactly-once guarantee: send() and stream() together may be called once
+         * per request, from any thread. Returns immediately -- the transfer proceeds asynchronously
+         * and the source is drained on the worker pool.
+         *
+         * Only meaningful on a route registered with ResponseMode::Streamable. The default below
+         * exists so that responders which never stream (and every test double) need no override;
+         * it fails loudly rather than silently buffering the whole body, because a route that
+         * reaches it is misregistered, and quietly materializing a multi-megabyte payload in
+         * memory is the exact failure streaming exists to prevent.
+         */
+        virtual void stream(StreamResponse /*response*/)
+        {
+            send(HttpResponse::json(500, R"({"error":"Internal server error","code":500})"));
+        }
     };
 
     /**
@@ -170,6 +251,9 @@ namespace remoted::http
         std::size_t maxPipelinedRequests {4};          ///< Max in-flight unanswered requests per connection.
         std::size_t concurrentAccepts {2};             ///< Max concurrent in-progress TCP accepts.
         std::size_t bufferSize {8192};                 ///< Socket read buffer size, bytes.
+        /// Bytes per chunk for a streamed response body. Per in-flight transfer, so the worst-case
+        /// cost is this times the number of simultaneous streams. See remoted.http_stream_chunk_size.
+        std::size_t streamChunkSize {64U * 1024U};
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
@@ -197,9 +281,15 @@ namespace remoted::http
          * @param countAgainstBudget When false, the route is exempt from the in-flight byte budget
          *                           (no reservation, never shed with 503). Use for tiny liveness
          *                           probes so they stay available under memory pressure.
+         * @param mode               Whether the route's handler may answer with a streamed body.
+         *                           See ResponseMode: this cannot be decided per response, so a
+         *                           route that ever streams must say so here.
          */
-        virtual void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) = 0;
+        virtual void addRoute(Method method,
+                              const std::string& path,
+                              RouteHandler handler,
+                              bool countAgainstBudget = true,
+                              ResponseMode mode = ResponseMode::Buffered) = 0;
 
         /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.

@@ -456,6 +456,234 @@ namespace
         std::string path;
         remoted::http::RouteHandler handler;
         bool countAgainstBudget {true}; ///< When false, exempt from the in-flight byte budget (never 503'd).
+        remoted::http::ResponseMode mode {remoted::http::ResponseMode::Buffered};
+    };
+
+    using ChunkedBuilder = restinio::response_builder_t<restinio::chunked_output_t>;
+
+    /**
+     * @brief Reports an aborted streamed transfer, throttled, at WARN.
+     *
+     * WARN rather than ERROR: an aborted transfer is a peer going away or a transient I/O problem,
+     * not the manager being broken (this module reserves ERROR for that). Throttled for the same
+     * reason as the byte-budget rejection above: the volume is client-driven, so one line per
+     * aborted transfer would let a peer failing in a loop flood wazuh-manager.log.
+     *
+     * @param reason Exception text; passed as an ARGUMENT, never as the format string.
+     */
+    void warnStreamAborted(const char* reason)
+    {
+        static remoted::common::LogThrottle throttle;
+
+        if (const auto aborted = throttle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "Aborted %llu streamed response(s) in the last %d s. No terminating chunk is sent, so the "
+                       "peer sees a truncated body and retries. Last reason: %s",
+                       static_cast<unsigned long long>(aborted.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       reason);
+        }
+    }
+
+    /**
+     * @brief Drives a chunked transfer: read a chunk on a worker, write it, repeat.
+     *
+     * The alternation is the whole point. read() blocks on disk, so it must not run on an I/O
+     * thread; the write completion fires ON the connection's strand, so it must not read. Bouncing
+     * between the two keeps exactly one chunk resident and holds a worker slot only for the
+     * duration of a single read, rather than for the whole transfer.
+     *
+     * Lifetime: each step keeps the pump alive by capturing a shared_ptr into the callback it
+     * hands off, so the object lives exactly as long as the transfer. RESTinio guarantees the
+     * write callback always fires -- with an error if the connection died before the write could
+     * run (see response_coordinator's cleanup and write_response_parts_impl) -- so the chain
+     * always terminates and the source's descriptor is always released.
+     */
+    class StreamPump final : public std::enable_shared_from_this<StreamPump>
+    {
+    public:
+        StreamPump(ChunkedBuilder builder,
+                   std::shared_ptr<remoted::http::IByteSource> source,
+                   std::size_t chunkSize,
+                   asio::thread_pool& pool)
+            : m_builder {std::move(builder)}
+            , m_source {std::move(source)}
+            , m_chunkSize {chunkSize}
+            , m_pool {&pool}
+        {
+        }
+
+        /// Kick the transfer off on a worker thread.
+        void start()
+        {
+            schedule();
+        }
+
+    private:
+        void schedule()
+        {
+            asio::post(*m_pool, [self = shared_from_this()]() { self->pumpOnce(); });
+        }
+
+        void pumpOnce()
+        {
+            std::string chunk;
+
+            try
+            {
+                chunk.resize(m_chunkSize);
+                const auto bytesRead = m_source->read(chunk.data(), m_chunkSize);
+
+                if (bytesRead == 0)
+                {
+                    // End of stream: done() emits the terminating zero-length chunk, which is what
+                    // tells the peer the body is COMPLETE. Reaching it is the only way a transfer
+                    // is allowed to look successful.
+                    m_builder.done();
+                    return;
+                }
+
+                chunk.resize(bytesRead);
+            }
+            catch (const std::exception& e)
+            {
+                // Deliberately no done(): dropping the builder leaves the chunked body without its
+                // terminator, so the peer sees a truncated transfer and retries. Emitting the
+                // terminator here would hand it a short file that looks complete.
+                warnStreamAborted(e.what());
+                return;
+            }
+            catch (...)
+            {
+                warnStreamAborted("non-standard exception while reading the resource");
+                return;
+            }
+
+            try
+            {
+                m_builder.append_chunk(std::move(chunk))
+                    .flush(
+                        [self = shared_from_this()](const asio::error_code& ec)
+                        {
+                            if (ec)
+                            {
+                                // The peer went away or the connection was torn down. Nothing to
+                                // clean up beyond letting this pump die: `self` is the last owner
+                                // once this callback returns, so the source (and its descriptor)
+                                // is released here.
+                                LOGFN_DEBUG2(logFn(), "A streamed response ended early: %s", ec.message().c_str());
+                                return;
+                            }
+                            self->schedule();
+                        });
+            }
+            catch (const std::exception& e)
+            {
+                warnStreamAborted(e.what());
+            }
+            catch (...)
+            {
+                warnStreamAborted("non-standard exception while writing to the connection");
+            }
+        }
+
+        ChunkedBuilder m_builder;
+        std::shared_ptr<remoted::http::IByteSource> m_source;
+        std::size_t m_chunkSize;
+        asio::thread_pool* m_pool;
+    };
+
+    /**
+     * @brief Responder for a route registered ResponseMode::Streamable.
+     *
+     * Unlike RestinioResponder, this one holds the request handle and creates the response builder
+     * only once the handler has decided how to answer -- because the builder's output mode is fixed
+     * at creation and the two modes are different types. The cost is that the received request
+     * survives into the worker queue instead of being released on the I/O thread; that is why
+     * streaming is opt-in per route rather than available everywhere.
+     */
+    class RestinioStreamableResponder final : public remoted::http::IHttpResponder
+    {
+    public:
+        RestinioStreamableResponder(restinio::request_handle_t request,
+                                    asio::thread_pool& pool,
+                                    std::size_t defaultChunkSize)
+            : m_request {std::move(request)}
+            , m_pool {&pool}
+            , m_defaultChunkSize {defaultChunkSize}
+        {
+        }
+
+        void send(remoted::http::HttpResponse response) override
+        {
+            if (m_answered.test_and_set())
+            {
+                return;
+            }
+
+            auto builder = m_request->create_response(
+                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                                              reasonPhrase(response.status)});
+            m_request.reset();
+
+            builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
+            builder.append_header_date_field();
+
+            for (const auto& [name, value] : response.headers)
+            {
+                builder.append_header(name, value);
+            }
+
+            builder.set_body(std::move(response.body));
+            builder.done();
+        }
+
+        void stream(remoted::http::StreamResponse response) override
+        {
+            if (!response.source)
+            {
+                // A streamed response with nothing to stream is a programming error, not something
+                // the peer can provoke. Answer 500 rather than emitting an empty 200 that would
+                // look to an agent like a legitimately empty resource.
+                LOGFN_ERROR(logFn(), "A streamed response was requested without a byte source.");
+                send(remoted::http::HttpResponse::json(500, R"({"error":"Internal server error","code":500})"));
+                return;
+            }
+
+            if (m_answered.test_and_set())
+            {
+                return;
+            }
+
+            auto builder = m_request->create_response<restinio::chunked_output_t>(
+                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                                              reasonPhrase(response.status)});
+            m_request.reset();
+
+            builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
+            builder.append_header_date_field();
+
+            for (const auto& [name, value] : response.headers)
+            {
+                // Transfer-Encoding is RESTinio's to emit for a chunked builder; a caller-supplied
+                // one would be a duplicate header.
+                builder.append_header(name, value);
+            }
+
+            // A response that names no size gets the server's configured one
+            // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
+            const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
+
+            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)
+                ->start();
+        }
+
+    private:
+        restinio::request_handle_t m_request;
+        asio::thread_pool* m_pool;
+        std::size_t m_defaultChunkSize;
+        std::atomic_flag m_answered = ATOMIC_FLAG_INIT;
     };
 
     // Last-resort 500 for the transport-level exception barriers below. Never throws: it is called
@@ -511,11 +739,13 @@ namespace remoted::http
                 auto handler = route.handler;
                 const auto method = route.method;
                 const auto countAgainstBudget = route.countAgainstBudget;
+                const auto responseMode = route.mode;
+                const auto streamChunkSize = m_config.streamChunkSize;
 
                 requestRouter->add_handler(
                     toRestinioMethod(method),
                     route.path,
-                    [pool, budget, budgetThrottle, handler, method, countAgainstBudget](
+                    [pool, budget, budgetThrottle, handler, method, countAgainstBudget, responseMode, streamChunkSize](
                         auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -524,7 +754,7 @@ namespace remoted::http
                         // std::exception and closes the connection, so the only exposure left is a
                         // non-std::exception, which would reach a noexcept frame and terminate the
                         // whole daemon. Everything here runs on a RESTinio I/O thread.
-                        std::shared_ptr<RestinioResponder> responder;
+                        std::shared_ptr<remoted::http::IHttpResponder> responder;
                         try
                         {
                             // Reserve the request's payload against the global in-flight budget
@@ -567,11 +797,25 @@ namespace remoted::http
                             auto context = std::make_shared<RequestContext>(
                                 RequestContext {makeHttpRequest(method, request), std::move(reservation)});
 
-                            // Create the response builder up-front (moves the connection out of
-                            // the request), then drop the RESTinio handle right here -- freeing
-                            // its body buffer on the I/O thread, before the request ever waits in
-                            // the worker queue. Only our single copy remains.
-                            responder = std::make_shared<RestinioResponder>(request);
+                            if (responseMode == remoted::http::ResponseMode::Streamable)
+                            {
+                                // A streamable route cannot have its builder created here: the
+                                // output mode (buffered vs chunked) is fixed at creation and only
+                                // the handler knows which it needs -- an error is buffered, a
+                                // transfer is chunked. So the responder keeps the request handle
+                                // and creates the builder when it answers, which means RESTinio's
+                                // body buffer survives into the worker queue. Bounded by design:
+                                // only routes whose requests are tiny should ever stream.
+                                responder = std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+                            }
+                            else
+                            {
+                                // Create the response builder up-front (moves the connection out of
+                                // the request), then drop the RESTinio handle right here -- freeing
+                                // its body buffer on the I/O thread, before the request ever waits
+                                // in the worker queue. Only our single copy remains.
+                                responder = std::make_shared<RestinioResponder>(request);
+                            }
                             request.reset();
 
                             // Hand off to a worker thread (deferred response) and cede SOLE
@@ -655,7 +899,11 @@ namespace remoted::http
     }
 
     void
-    RestinioHttpServer::addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget)
+    RestinioHttpServer::addRoute(Method method,
+                                 const std::string& path,
+                                 RouteHandler handler,
+                                 bool countAgainstBudget,
+                                 ResponseMode mode)
     {
         std::lock_guard<std::mutex> lock {m_impl->m_mutex};
 
@@ -664,7 +912,7 @@ namespace remoted::http
             throw std::logic_error("Cannot register a route while the HTTP server is running");
         }
 
-        m_impl->m_routes.push_back(Route {method, path, std::move(handler), countAgainstBudget});
+        m_impl->m_routes.push_back(Route {method, path, std::move(handler), countAgainstBudget, mode});
     }
 
     void RestinioHttpServer::start(const HttpServerConfig& config)
