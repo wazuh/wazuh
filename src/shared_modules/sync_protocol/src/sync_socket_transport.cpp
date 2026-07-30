@@ -143,6 +143,12 @@ namespace
     }
 } // namespace
 
+void setInProcessSyncSessionSender(asp_sync_session_sender_fn)
+{
+    // No-op here: POSIX uses the real AF_UNIX socket above. Exists so
+    // asp_set_session_sender() -- one C ABI symbol shared by every platform -- links everywhere.
+}
+
 bool SyncSocketTransport::checkStatus()
 {
     const int fd = connectTo(m_socketPath);
@@ -214,16 +220,43 @@ bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_
     return ok;
 }
 
-#else // _WIN32 — modules run in-process, so there is no socket in the path.
+#else // _WIN32 — modules run in-process; sessions go to an in-process sender instead of a
+// socket that would never have a listener (see the class doc above).
+
+#include <atomic>
+
+namespace
+{
+    // Process-global: this library is one instance per process on Windows, shared by every
+    // module (agent-info, SCA, syscollector, FIM) -- there is only ever one https_client to
+    // reach, so one slot is enough. Unregistered (nullptr) before https_client has started, or
+    // once it is stopping; both read as an honest "not available" below, same as the POSIX
+    // socket being down.
+    std::atomic<asp_sync_session_sender_fn> g_sessionSender {nullptr};
+}
+
+void setInProcessSyncSessionSender(asp_sync_session_sender_fn sender)
+{
+    g_sessionSender.store(sender);
+}
 
 bool SyncSocketTransport::checkStatus()
 {
-    return false;
+    return g_sessionSender.load() != nullptr;
 }
 
-bool SyncSocketTransport::sendSession(uint64_t, const std::vector<uint8_t>&)
+bool SyncSocketTransport::sendSession(uint64_t session, const std::vector<uint8_t>& message)
 {
-    return false;
+    const auto sender = g_sessionSender.load();
+
+    if (!sender)
+    {
+        m_logger(LOG_DEBUG, "No in-process sync session sender registered (https_client not running?).");
+        return false;
+    }
+
+    const std::string sessionId = frameSessionId(session);
+    return sender(sessionId.c_str(), message.data(), message.size());
 }
 
 #endif // _WIN32

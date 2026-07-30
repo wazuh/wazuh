@@ -109,6 +109,18 @@ typedef int (*mq_send_binary_fn)(int queue, const void* message, size_t message_
 /// @param log   Null-terminated string containing the log message.
 typedef void (*asp_logger_t)(modules_log_level_t level, const char* log);
 
+/// @brief Function pointer type for delivering one whole sync session in-process instead of
+/// over a local socket (Windows only -- POSIX's SyncSocketTransport uses its own AF_UNIX socket
+/// and never calls this). The id already carries the "<module>-<session>" prefix
+/// (SyncSocketTransport::frameSessionId()); the receiving side is expected to be https_client's
+/// own hc_submit_sync_session().
+/// @param session_id Null-terminated frame id.
+/// @param buffer Serialized FullSession message bytes.
+/// @param length Length of buffer in bytes.
+/// @return true once the receiving client queued the session; false if it is not running, or
+///         its queue is full.
+typedef bool (*asp_sync_session_sender_fn)(const char* session_id, const uint8_t* buffer, size_t length);
+
 /// @brief Struct containing function pointers for MQ operations.
 ///
 /// This structure provides the implementation of MQ start and send operations.

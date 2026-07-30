@@ -162,8 +162,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleTransportUnavailable)
     mockSyncTransport->setAvailable(false);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Failed to reach the sync intake socket.");
@@ -185,8 +185,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
     protocol->stop();
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
     // The failure happened while a stop was in progress: the module can demote its log.
@@ -206,8 +206,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnTransport
     mockSyncTransport->setAvailable(false);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_FALSE(result.managerNotReady);
@@ -223,8 +223,8 @@ TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
 
     auto* handle = asp_create("test_module",
                               ":memory:",
-                              +[](modules_log_level_t, const char*) {},
-                              max_timeout, retries);
+    +[](modules_log_level_t, const char*) {},
+    max_timeout, retries);
     ASSERT_NE(handle, nullptr);
 
     // No stop requested: a real failure must not be flagged as shutdown-induced.
@@ -251,8 +251,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
 }
@@ -267,8 +267,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
     .WillOnce(Return(std::vector<PersistedData> {}));
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_TRUE(result.success);
 }
@@ -285,8 +285,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithEmptyInMemoryData)
     .Times(0);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::FULL
-                  );
+                                  Mode::FULL
+                              );
 
     EXPECT_TRUE(result.success);  // Should return true for empty in-memory data
 }
@@ -315,8 +315,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeWithInMemoryData)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::FULL
-                      );
+                                      Mode::FULL
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -363,8 +363,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 
     // Simulate synchronization failure (timeout)
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::FULL
-                  );
+                                  Mode::FULL
+                              );
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
@@ -618,8 +618,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
     Mode invalidMode = static_cast<Mode>(999);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      invalidMode
-                  );
+                                  invalidMode
+                              );
 
     EXPECT_FALSE(result.success);  // Should fail due to invalid mode validation
 }
@@ -645,8 +645,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendSessionFails)
     .Times(1);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
@@ -761,8 +761,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSessionTimeout)
     .Times(1);
 
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::DELTA
-                  );
+                                  Mode::DELTA
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
@@ -794,8 +794,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::DELTA
-                      );
+                                      Mode::DELTA
+                                  );
         EXPECT_FALSE(result.success);
     });
 
@@ -876,8 +876,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::DELTA
-                      );
+                                      Mode::DELTA
+                                  );
         EXPECT_FALSE(result.success);
         EXPECT_EQ(result.failureReason, "Manager sent an unexpected or invalid response.");
     });
@@ -932,8 +932,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::DELTA
-                      );
+                                      Mode::DELTA
+                                  );
         EXPECT_FALSE(result.success);
         EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
     });
@@ -968,8 +968,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::DELTA
-                      );
+                                      Mode::DELTA
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1023,8 +1023,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     std::thread syncThread([this]()
     {
         SyncModuleResult result = protocol->synchronizeModule(
-                          Mode::DELTA
-                      );
+                                      Mode::DELTA
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1607,8 +1607,8 @@ TEST_F(AgentSyncProtocolTest, ClearInMemoryDataAfterFailedFullSync)
 
     // Simulate synchronization failure (timeout)
     SyncModuleResult result = protocol->synchronizeModule(
-                      Mode::FULL
-                  );
+                                  Mode::FULL
+                              );
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
@@ -1659,10 +1659,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::METADATA_DELTA,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::METADATA_DELTA,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1708,10 +1708,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::METADATA_CHECK,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::METADATA_CHECK,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1757,10 +1757,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::GROUP_DELTA,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::GROUP_DELTA,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1806,10 +1806,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::GROUP_CHECK,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::GROUP_CHECK,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_TRUE(result.success);
     });
 
@@ -1849,10 +1849,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithInvalidMode)
     // Try with Mode::DELTA (not allowed for synchronizeMetadataOrGroups)
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                      Mode::DELTA,
-                      testIndices,
-                      12345 // globalVersion
-                  );
+                                  Mode::DELTA,
+                                  testIndices,
+                                  12345 // globalVersion
+                              );
 
     EXPECT_FALSE(result.success);
 }
@@ -1869,10 +1869,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsTransportUnavailable)
 
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                      Mode::METADATA_DELTA,
-                      testIndices,
-                      12345 // globalVersion
-                  );
+                                  Mode::METADATA_DELTA,
+                                  testIndices,
+                                  12345 // globalVersion
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Failed to reach the sync intake socket.");
@@ -1889,10 +1889,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsSessionTimeout)
     // Don't send any response, causing timeout
     std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
     SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                      Mode::METADATA_CHECK,
-                      testIndices,
-                      12345 // globalVersion
-                  );
+                                  Mode::METADATA_CHECK,
+                                  testIndices,
+                                  12345 // globalVersion
+                              );
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
@@ -1909,10 +1909,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsEndAckTimeout)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::GROUP_DELTA,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::GROUP_DELTA,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_FALSE(result.success);
         EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to End message.");
     });
@@ -1938,10 +1938,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
     {
         std::vector<std::string> testIndices = {"test-index-1", "test-index-2"};
         SyncModuleResult result = protocol->synchronizeMetadataOrGroups(
-                          Mode::GROUP_CHECK,
-                          testIndices,
-                          12345 // globalVersion
-                      );
+                                      Mode::GROUP_CHECK,
+                                      testIndices,
+                                      12345 // globalVersion
+                                  );
         EXPECT_FALSE(result.success);
     });
 
@@ -2441,7 +2441,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
         EXPECT_FALSE(result); // Should fail due to clearItemsByIndex exception
     });
 
-    
+
     // Send StartAck with OK status
 
     // Wait for DataClean to be sent
@@ -2659,10 +2659,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_WithNullPersistentQueue)
                    "test_module",
                    std::nullopt,  // No dbPath - persistent queue will be null
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    nullptr  // No persistent queue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // fetchPendingItems should catch exception and return empty vector
     auto result = protocol->fetchPendingItems(true);
@@ -2686,10 +2686,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_True)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare test data - DataValue items only
     std::vector<PersistedData> expectedData;
@@ -2745,10 +2745,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_OnlyDataValues_False)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare test data - Mix of DataValue and DataContext
     std::vector<PersistedData> expectedData;
@@ -2800,10 +2800,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_EmptyQueue)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Mock fetchPendingItems to return empty vector
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
@@ -2833,10 +2833,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_MultipleIndices)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare test data from multiple indices
     std::vector<PersistedData> expectedData;
@@ -2896,10 +2896,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_DifferentOperations)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare test data with different operations
     std::vector<PersistedData> expectedData;
@@ -2966,10 +2966,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_ExceptionHandling)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Mock fetchPendingItems to throw exception
     EXPECT_CALL(*mockQueue, fetchPendingItems(true))
@@ -3000,10 +3000,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_LargeDataSet)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare large dataset (1000 items)
     std::vector<PersistedData> expectedData;
@@ -3051,10 +3051,10 @@ TEST_F(AgentSyncProtocolTest, fetchPendingItems_SequenceNumberOrdering)
                    "test_module",
                    ":memory:",
                    testLogger,
-                                      std::chrono::seconds(1),
+                   std::chrono::seconds(1),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Prepare test data with specific sequence numbers
     std::vector<PersistedData> expectedData;
@@ -3119,7 +3119,7 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithValidQueue)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Expect clearAllDataContext to be called once
     EXPECT_CALL(*mockQueue, clearAllDataContext())
@@ -3145,7 +3145,7 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_WithNullQueue)
                    std::chrono::seconds(max_timeout),
                    retries,
                    nullptr
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Should not throw when queue is null
     EXPECT_NO_THROW(protocol->clearAllDataContext());
@@ -3168,7 +3168,7 @@ TEST_F(AgentSyncProtocolTest, clearAllDataContext_ExceptionHandling)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Make clearAllDataContext throw an exception
     EXPECT_CALL(*mockQueue, clearAllDataContext())
@@ -3200,7 +3200,7 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_EmptyIndices)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     std::vector<std::string> emptyIndices;
 
@@ -3226,7 +3226,7 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithSyncOption_MultipleIndices)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     std::vector<std::string> indices =
     {
@@ -3256,7 +3256,7 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_DefaultOption)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     std::vector<std::string> indices = {"wazuh-states-inventory-hardware"};
 
@@ -3280,7 +3280,7 @@ TEST_F(AgentSyncProtocolTest, notifyDataClean_WithNullQueue)
                    std::chrono::seconds(max_timeout),
                    retries,
                    nullptr
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     std::vector<std::string> indices = {"wazuh-states-inventory-hardware"};
 
@@ -3341,7 +3341,7 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_ClearDataContextBeforeSync)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Step 1: Clear all DataContext
     EXPECT_CALL(*mockQueue, clearAllDataContext())
@@ -3387,7 +3387,7 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_FetchOnlyDataValues)
                    std::chrono::seconds(max_timeout),
                    retries,
                    mockQueue
-               , mockSyncTransport);
+                   , mockSyncTransport);
 
     // Create mixed data (DataValue and DataContext)
     std::vector<PersistedData> allData;
