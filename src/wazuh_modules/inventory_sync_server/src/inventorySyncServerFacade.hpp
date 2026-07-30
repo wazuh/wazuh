@@ -22,6 +22,8 @@
 #include <thread>
 #include <utility>
 
+#include "endpoints/configEndpoint.hpp"
+#include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
 #include "http_server/IUdsHttpServer.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
@@ -291,12 +293,24 @@ namespace invsync
                                    invsync::endpoints::sync::path(),
                                    invsync::endpoints::sync::makeHandler());
 
+            // Reached through remoted's authenticated /stats and /config routes. Registered separately
+            // rather than sharing one handler because their real payloads will diverge.
+            m_httpServer->addRoute(invsync::endpoints::stats::method(),
+                                   invsync::endpoints::stats::path(),
+                                   invsync::endpoints::stats::makeHandler());
+
+            m_httpServer->addRoute(invsync::endpoints::config::method(),
+                                   invsync::endpoints::config::path(),
+                                   invsync::endpoints::config::makeHandler());
+
             m_httpServer->start(config);
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET / and %s).",
+                       "inventory sync server listening on '%s' (routes: GET /, %s, %s and %s).",
                        config.socketPath.c_str(),
-                       invsync::endpoints::sync::path());
+                       invsync::endpoints::sync::path(),
+                       invsync::endpoints::stats::path(),
+                       invsync::endpoints::config::path());
         }
 
         /**

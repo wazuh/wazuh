@@ -20,6 +20,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace remoted::downstream
 {
@@ -31,6 +33,21 @@ namespace remoted::downstream
         remoted::http::Method method {remoted::http::Method::Post};
         std::string path;
         std::string contentType;
+        /// Extra request headers, forwarded verbatim. See DownstreamRequest::headers.
+        std::vector<std::pair<std::string, std::string>> headers;
+        /**
+         * @brief Short, stable name of the downstream service, used ONLY in failure logs.
+         *
+         * Deliberately a `const char*` pointing at a string literal rather than a std::string: the
+         * failure-log lambda captures it by value on EVERY request, and this pipeline's logging is
+         * documented as allocation-free on the hot path. A literal has static storage, so capturing
+         * it costs nothing and can never dangle.
+         *
+         * Exists because remoted now talks to more than one downstream service (the engine's event
+         * ingress and modulesd's inventory sync server), and a WARN that says only "the downstream
+         * service failed" no longer identifies which one.
+         */
+        const char* serviceName {"downstream service"};
         /// How long this endpoint is willing to wait for the downstream answer, ms. <=0 -> the
         /// client's configured default (remoted.downstream_response_timeout). This is where an
         /// endpoint whose handler legitimately takes minutes declares that, without relaxing the
