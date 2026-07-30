@@ -243,10 +243,8 @@ typedef struct hc_callbacks_t
     /// agent's startup hash gate) can reconcile it even when nothing needs
     /// downloading. Empty when the manager reported none.
     void (*on_manager_config_hash)(const char* config_hash, void* user_data);
-    /// The manager's verdict for a /stateful session. `body` is the response
-    /// payload and is NOT a C string: a session is answered with an EndAck
-    /// FlatBuffer, which is binary and contains NUL bytes, so `body_len` is the
-    /// only reliable length.
+    /// The HTTP outcome for a /stateful session. `result` carries the verdict
+    /// (200 path => HC_RESULT_OK, non-200 path => non-zero). `body` may be empty.
     void (*on_sync_response)(const char* session_id, int result, const char* body,
                              size_t body_len, void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t

@@ -386,6 +386,45 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
     EXPECT_EQ(remainingItems[0].index, "index2");
 }
 
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetSelectsPrefixOnly)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::CREATE, 1});
+
+    const auto firstBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(firstBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(firstBlock[0].id, "id1");
+
+    storage->removeAllSynced();
+
+    const auto secondBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(secondBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(secondBlock[0].id, "id2");
+}
+
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtLeastOneItem)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+
+    const auto block = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(block.size(), static_cast<size_t>(1));
+    EXPECT_EQ(block[0].id, "id1");
+}
+
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAllPendingRows)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::MODIFY, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "payload3", Operation::DELETE_, 1});
+
+    const auto rows = storage->fetchAndMarkForSync(0);
+    ASSERT_EQ(rows.size(), static_cast<size_t>(3));
+    EXPECT_EQ(rows[0].id, "id1");
+    EXPECT_EQ(rows[1].id, "id2");
+    EXPECT_EQ(rows[2].id, "id3");
+}
+
 // Test class for testing deleteDatabase method with mock filesystem wrapper
 class PersistentQueueStorageDeleteDatabaseTest : public ::testing::Test
 {

@@ -103,7 +103,6 @@ inline void answerSession(const std::shared_ptr<MockSyncTransport>& transport,
     flatbuffers::FlatBufferBuilder builder;
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
     endAckBuilder.add_status(status);
-    endAckBuilder.add_session(transport->session());
     auto endAckOffset = endAckBuilder.Finish();
     auto message = Wazuh::SyncSchema::CreateMessage(
                        builder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
