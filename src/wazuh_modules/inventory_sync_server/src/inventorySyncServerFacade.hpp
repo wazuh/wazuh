@@ -196,6 +196,14 @@ namespace invsync
                 //
                 // The monitoring thread belongs to the session and is reference-counted, so it dies
                 // with whichever of the three goes last.
+                //
+                // These resets are still DESTRUCTIVE even though the /stats and /config handlers hold
+                // the async connector: they hold it WEAKLY (see their makeHandler()). That is
+                // deliberate -- the handler closures live in the transport's route table, which is
+                // co-owned by every outstanding responder, so a strong capture would turn this reset
+                // into "drop one of two references" and move the connector's destructor (and its
+                // background threads) to phase 3, or later still, onto whatever thread releases the
+                // last responder. Weak captures keep the teardown ordered here, where it is written.
                 m_indexerConnectorAsync.reset();
                 m_indexerConnectorSync.reset();
                 m_indexerSession.reset();
@@ -295,13 +303,18 @@ namespace invsync
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
             // rather than sharing one handler because their real payloads will diverge.
+            //
+            // Both take the async indexer connector, which they hold WEAKLY (the shared_ptr converts
+            // to the weak_ptr parameter implicitly) -- see stop()'s phase 2 for why that matters. Safe
+            // to read the member here: buildAndPublish() publishes each slot as soon as it succeeds,
+            // and this runs afterwards, in the same attempt.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
-                                   invsync::endpoints::stats::makeHandler());
+                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync));
 
             m_httpServer->addRoute(invsync::endpoints::config::method(),
                                    invsync::endpoints::config::path(),
-                                   invsync::endpoints::config::makeHandler());
+                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync));
 
             m_httpServer->start(config);
 
@@ -778,7 +791,7 @@ namespace invsync
 
         /*
          * The three indexer slots, each constructed at most once per start()/stop() cycle and memoised
-         * independently -- see constructOnce(). The session is retained even though the library does
+         * independently -- see buildAndPublish(). The session is retained even though the library does
          * not require it (a connector holds a counted reference to the monitor and copies the transport
          * settings, so the session could be dropped): keeping it means a retry of one connector does
          * not pay for another round of host health checks.
@@ -789,7 +802,12 @@ namespace invsync
         /// connector constructor.
         std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
         std::unique_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
-        std::unique_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
+        /// shared_ptr, not unique_ptr, for a different reason than the session above: the /stats and
+        /// /config handlers need a reference to it, and the only kind that keeps stop()'s phase-2 reset
+        /// destructive is a WEAK one -- which requires a shared owner here. See stop() and the
+        /// endpoints' makeHandler(). The factory still returns a unique_ptr; the conversion happens on
+        /// assignment in buildAndPublish().
+        std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
@@ -801,7 +819,7 @@ namespace invsync
          * The production connector factories are the only place that knows the seam it is handed wraps
          * a real IndexerSession, so the unwrapping happens here. dynamic_cast on a reference rather
          * than static_cast on purpose: a test that installs a fake session but leaves a production
-         * connector factory in place then gets a std::bad_cast, which constructOnce() catches and
+         * connector factory in place then gets a std::bad_cast, which buildAndPublish() catches and
          * reports as a normal gate failure, instead of undefined behaviour.
          */
         IndexerConnectorSyncFactory m_indexerConnectorSyncFactory {

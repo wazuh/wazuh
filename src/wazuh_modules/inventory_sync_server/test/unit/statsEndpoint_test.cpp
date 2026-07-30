@@ -17,6 +17,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 using invsync::http::HttpRequest;
 using invsync::http::HttpResponse;
@@ -53,14 +57,60 @@ namespace
         return request;
     }
 
-    /// Sends one request through a fresh handler and returns what came back.
-    HttpResponse run(const std::shared_ptr<const HttpRequest>& request)
+    /**
+     * @brief Stand-in for the async indexer connector.
+     *
+     * Local to this file rather than reused from testIndexerConnectorFakes.hpp on purpose: those fakes
+     * exist to drive the facade's startup gate and carry its teardown bookkeeping, none of which an
+     * endpoint test needs. Same reasoning as CapturingResponder above.
+     */
+    class FakeAsyncConnector final : public invsync::indexer::IIndexerConnectorAsync
     {
-        auto handler = invsync::endpoints::stats::makeHandler();
+    public:
+        explicit FakeAsyncConnector(bool available = true)
+            : m_available {available}
+        {
+        }
+
+        bool isAvailable() const override
+        {
+            return m_available;
+        }
+
+        void index(std::string_view id, std::string_view index, std::string_view data) override
+        {
+            indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
+        }
+
+        void indexDataStream(std::string_view index, std::string_view data) override
+        {
+            dataStreamed.emplace_back(std::string {index}, std::string {data});
+        }
+
+        /// Recorded writes. Empty today -- the endpoints do not write yet -- which is exactly what the
+        /// NothingIsIndexedYet test pins, so the day someone starts writing, the test says so.
+        std::vector<std::tuple<std::string, std::string, std::string>> indexed;
+        std::vector<std::pair<std::string, std::string>> dataStreamed;
+
+    private:
+        bool m_available;
+    };
+
+    /// Sends one request through a fresh handler and returns what came back. The connector is available
+    /// unless a test says otherwise.
+    HttpResponse run(const std::shared_ptr<const HttpRequest>& request,
+                     const std::shared_ptr<FakeAsyncConnector>& connector)
+    {
+        auto handler = invsync::endpoints::stats::makeHandler(connector);
         auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
         EXPECT_EQ(1, responder->sendCount) << "the transport's exactly-once contract requires one send";
         return responder->captured.value_or(HttpResponse {});
+    }
+
+    HttpResponse run(const std::shared_ptr<const HttpRequest>& request)
+    {
+        return run(request, std::make_shared<FakeAsyncConnector>());
     }
 } // namespace
 
@@ -198,7 +248,8 @@ TEST(StatsEndpointTest, ResponseIsJson)
 // here would be a daemon crash.
 TEST(StatsEndpointTest, NullRequestIsToleratedAndStillAnswered)
 {
-    auto handler = invsync::endpoints::stats::makeHandler();
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto handler = invsync::endpoints::stats::makeHandler(connector);
     auto responder = std::make_shared<CapturingResponder>();
 
     handler(nullptr, responder);
@@ -211,7 +262,8 @@ TEST(StatsEndpointTest, NullRequestIsToleratedAndStillAnswered)
 // silently pin the transport's in-flight byte reservation.
 TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 {
-    auto handler = invsync::endpoints::stats::makeHandler();
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto handler = invsync::endpoints::stats::makeHandler(connector);
     auto responder = std::make_shared<CapturingResponder>();
 
     auto request = makeRequest(R"({"a":1})", "001");
@@ -221,4 +273,101 @@ TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
     request.reset();
 
     EXPECT_TRUE(observer.expired()) << "the handler must not keep the payload alive";
+}
+
+/**
+ * The indexer gate. An unreachable indexer is a transient, server-side condition, so the caller gets a
+ * 503 to retry rather than a 200 that pretends the document was handled.
+ */
+TEST(StatsEndpointTest, UnavailableIndexerYields503)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+
+    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+}
+
+/**
+ * The weak capture's other branch: stop() has already cleared the facade's connector, so lock() fails.
+ * Same 503 to the caller (retry later is the same advice), distinguished only in the logs.
+ */
+TEST(StatsEndpointTest, AnExpiredConnectorYields503)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto responder = std::make_shared<CapturingResponder>();
+
+    connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
+
+    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(503, responder->captured->status);
+}
+
+/**
+ * Pins the ORDER of the checks, which is a deliberate design decision rather than an accident: a
+ * malformed document is the caller's fault and stays a 400 even while the indexer is down. With the
+ * checks reversed the agent would get a 503 and retry forever a payload that can never work.
+ */
+TEST(StatsEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+
+    for (const auto* body : {"", "{", "[]", R"("a string")", "not json at all"})
+    {
+        const auto response = run(makeRequest(body, "001"), connector);
+        EXPECT_EQ(400, response.status) << "body: " << body;
+    }
+}
+
+TEST(StatsEndpointTest, AMissingAgentIdHeaderIsRejectedEvenWhenTheIndexerIsDown)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+
+    const auto response = run(makeRequest("{}", "", /*withAgentHeader=*/false), connector);
+
+    EXPECT_EQ(400, response.status);
+    EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
+}
+
+/**
+ * The load-bearing property of the whole injection: the handler holds the connector WEAKLY.
+ *
+ * If it ever captured a strong reference, the facade's stop() would stop destroying the connector at
+ * the point its phase-2 comment claims -- the transport's route table would keep it alive, and its
+ * destructor (with its background threads) would run later, on whatever thread released the last
+ * responder. This test is what makes that regression a failure instead of a subtle shutdown change.
+ */
+TEST(StatsEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    std::weak_ptr<FakeAsyncConnector> observer {connector};
+
+    auto handler = invsync::endpoints::stats::makeHandler(connector);
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+    ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
+
+    connector.reset();
+
+    EXPECT_TRUE(observer.expired())
+        << "the handler (still alive) must not keep the connector alive -- see stop()'s phase 2";
+}
+
+/**
+ * The endpoints are still dummies: the connector is injected and gated on, but nothing writes through
+ * it yet. Pinned so that the day real processing lands, this test fails and has to be updated
+ * deliberately rather than the behaviour changing silently.
+ */
+TEST(StatsEndpointTest, NothingIsIndexedYet)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"({"cpu":42})", "001"), connector).status);
+
+    EXPECT_TRUE(connector->indexed.empty()) << "this endpoint does not index yet";
+    EXPECT_TRUE(connector->dataStreamed.empty()) << "this endpoint does not index yet";
 }
