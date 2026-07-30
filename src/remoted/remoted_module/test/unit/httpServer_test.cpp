@@ -19,9 +19,15 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "testTlsServer.hpp"
+
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <chrono>
+#include <cctype>
+#include <atomic>
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -137,6 +143,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxPipelinedRequests, 4U);
     EXPECT_EQ(config.concurrentAccepts, 2U);
     EXPECT_EQ(config.bufferSize, 8192U);
+    EXPECT_EQ(config.streamChunkSize, 64U * 1024U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 512U);
     EXPECT_EQ(config.certificatePath, "etc/https-manager.cert");
@@ -193,6 +200,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     raw.http_max_pipelined_requests = 8;
     raw.http_concurrent_accepts = 4;
     raw.http_buffer_size = 16384;
+    raw.http_stream_chunk_size = 262144;
     raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE;
     std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
     std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
@@ -216,6 +224,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.maxPipelinedRequests, 8U);
     EXPECT_EQ(config.concurrentAccepts, 4U);
     EXPECT_EQ(config.bufferSize, 16384U);
+    EXPECT_EQ(config.streamChunkSize, 262144U);
     EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
     EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
     EXPECT_EQ(config.bindAddress, "0.0.0.0");
@@ -531,4 +540,413 @@ TEST(HttpResponderContractTest, SecondSendIsIgnored)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(responder->captured->body, "first");
+}
+
+// ---------------------------------------------------------------------------
+// Streamed responses over a REAL TLS server
+//
+// StreamPump and RestinioStreamableResponder live in RestinioHttpServer.cpp's anonymous namespace,
+// so the only way to exercise them is through an actual server on a socket. These cover the three
+// things the manual tooling used to be the only evidence for: the chunked framing, the configured
+// chunk size actually reaching the pump, and an aborted transfer not emitting a terminator.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// Serves a fixed buffer, one read at a time. Records when it is destroyed so a test can prove
+    /// an aborted transfer still releases the source (and with it, a real endpoint's file handle).
+    class BufferByteSource final : public IByteSource
+    {
+    public:
+        BufferByteSource(std::string payload, std::shared_ptr<std::atomic_bool> destroyed = nullptr)
+            : m_payload {std::move(payload)}
+            , m_destroyed {std::move(destroyed)}
+        {
+        }
+
+        ~BufferByteSource() override
+        {
+            if (m_destroyed)
+            {
+                m_destroyed->store(true);
+            }
+        }
+
+        std::size_t read(char* buffer, std::size_t capacity) override
+        {
+            const auto remaining = m_payload.size() - m_offset;
+            const auto count = std::min(capacity, remaining);
+            std::memcpy(buffer, m_payload.data() + m_offset, count);
+            m_offset += count;
+            return count;
+        }
+
+    private:
+        std::string m_payload;
+        std::shared_ptr<std::atomic_bool> m_destroyed;
+        std::size_t m_offset {0};
+    };
+
+    std::string patternPayload(std::size_t size)
+    {
+        std::string payload;
+        payload.reserve(size);
+        for (std::size_t i = 0; i < size; ++i)
+        {
+            payload.push_back(static_cast<char>('A' + (i % 26)));
+        }
+        return payload;
+    }
+
+    /// A server wired the way the facade wires a streaming route, on a free-ish port.
+    struct StreamingFixture
+    {
+        std::unique_ptr<IHttpServer> server;
+        HttpServerConfig config;
+    };
+
+    bool headerPresent(const std::string& head, const std::string& needle)
+    {
+        std::string lowered;
+        lowered.resize(head.size());
+        std::transform(head.begin(), head.end(), lowered.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::string target = needle;
+        std::transform(target.begin(), target.end(), target.begin(), [](unsigned char c) { return std::tolower(c); });
+        return lowered.find(target) != std::string::npos;
+    }
+} // namespace
+
+TEST(HttpServerStreamingTest, StreamsAMultiChunkBodyByteExactly)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_happy");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    // Deliberately not a multiple of the chunk size: the final short chunk is the case most likely
+    // to be mishandled.
+    const std::string payload = patternPayload(70000);
+
+    auto server = makeHttpServer();
+    server->addRoute(
+        Method::Post,
+        "/stream",
+        [&payload](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.headers.emplace_back("Content-Type", "application/octet-stream");
+            response.source = std::make_shared<BufferByteSource>(payload);
+            responder->stream(std::move(response));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(21000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}");
+    server->stop();
+
+    ASSERT_FALSE(raw.empty()) << "no response from the streaming server";
+    const auto [head, body] = remoted::test::splitResponse(raw);
+
+    EXPECT_TRUE(headerPresent(head, "transfer-encoding: chunked")) << head;
+    // Chunked and Content-Length are mutually exclusive; a Content-Length here would mean the body
+    // was buffered after all.
+    EXPECT_FALSE(headerPresent(head, "content-length:")) << head;
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    const auto decoded = remoted::test::decodeChunked(body, sizes, complete);
+
+    EXPECT_TRUE(complete) << "the terminating 0-length chunk is missing";
+    EXPECT_EQ(decoded.size(), payload.size());
+    EXPECT_EQ(decoded, payload);
+    EXPECT_GT(sizes.size(), 1U) << "expected the body to span several chunks";
+}
+
+TEST(HttpServerStreamingTest, ChunkSizeFollowsTheConfiguredValue)
+{
+    // The knob is remoted.http_stream_chunk_size -> HttpServerConfig::streamChunkSize. Asserting on
+    // the chunk sizes ON THE WIRE is what proves it reaches the pump; a decoded-body comparison
+    // would pass even if the value were ignored.
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_size");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    constexpr std::size_t kChunk = 8192;
+    const std::string payload = patternPayload(kChunk * 3 + 100); // 3 full chunks + a short one
+
+    auto server = makeHttpServer();
+    server->addRoute(
+        Method::Post,
+        "/stream",
+        [&payload](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<BufferByteSource>(payload);
+            // chunkSize left at 0 on purpose: the server's configured value must be applied.
+            responder->stream(std::move(response));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(22000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.streamChunkSize = kChunk;
+    server->start(config);
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}");
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    (void)head;
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    const auto decoded = remoted::test::decodeChunked(body, sizes, complete);
+
+    EXPECT_TRUE(complete);
+    EXPECT_EQ(decoded, payload);
+    ASSERT_GE(sizes.size(), 4U);
+    // Every chunk but the last carries exactly the configured size.
+    for (std::size_t i = 0; i + 1 < sizes.size(); ++i)
+    {
+        EXPECT_EQ(sizes[i], kChunk) << "chunk " << i << " did not use the configured size";
+    }
+    EXPECT_EQ(sizes.back(), 100U);
+}
+
+TEST(HttpServerStreamingTest, AbortedTransferSendsNoTerminatorAndReleasesTheSource)
+{
+    // An agent that walks away mid-transfer must NOT receive a terminating 0-length chunk: that
+    // would mark a truncated body as complete. The source must still be released, which is what
+    // frees a real endpoint's file descriptor.
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_abort");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    // Large enough that the client can close long before the server finishes writing.
+    const std::string payload = patternPayload(16 * 1024 * 1024);
+    auto destroyed = std::make_shared<std::atomic_bool>(false);
+
+    auto server = makeHttpServer();
+    server->addRoute(
+        Method::Post,
+        "/stream",
+        [&payload, destroyed](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<BufferByteSource>(payload, destroyed);
+            responder->stream(std::move(response));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(23000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    // Read only the first 64 KiB, then drop the connection.
+    const auto raw =
+        remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}", 64 * 1024);
+
+    ASSERT_FALSE(raw.empty());
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_TRUE(headerPresent(head, "transfer-encoding: chunked")) << head;
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    remoted::test::decodeChunked(body, sizes, complete);
+    EXPECT_FALSE(complete) << "an aborted transfer must not carry the terminating 0-length chunk";
+
+    // The pump notices the failed write and drops the source. Give it a moment: the abort is
+    // observed on the connection's strand, not on this thread.
+    for (int i = 0; i < 100 && !destroyed->load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    }
+    EXPECT_TRUE(destroyed->load()) << "the byte source outlived an aborted transfer (descriptor leak)";
+
+    // The server must still be healthy for the next request.
+    const auto second = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}",
+                                                         16 * 1024);
+    EXPECT_FALSE(second.empty()) << "the server stopped serving after an aborted transfer";
+
+    server->stop();
+}
+
+namespace
+{
+    /// Yields a fixed payload but sleeps before each chunk, so a transfer takes a controllable
+    /// amount of wall-clock time regardless of how fast the link is.
+    class SlowByteSource final : public IByteSource
+    {
+    public:
+        SlowByteSource(std::string payload, std::chrono::milliseconds perChunk)
+            : m_payload {std::move(payload)}
+            , m_perChunk {perChunk}
+        {
+        }
+
+        std::size_t read(char* buffer, std::size_t capacity) override
+        {
+            const auto remaining = m_payload.size() - m_offset;
+            if (remaining == 0)
+            {
+                return 0;
+            }
+            std::this_thread::sleep_for(m_perChunk);
+            const auto count = std::min(capacity, remaining);
+            std::memcpy(buffer, m_payload.data() + m_offset, count);
+            m_offset += count;
+            return count;
+        }
+
+    private:
+        std::string m_payload;
+        std::chrono::milliseconds m_perChunk;
+        std::size_t m_offset {0};
+    };
+} // namespace
+
+TEST(HttpServerStreamingTest, HealthyTransferOutlastingTheRequestTimeoutIsNotCut)
+{
+    // http_request_timeout bounds a request end to end and defaults to 30 s, while a real 100 MB
+    // WPK over a 1 MiB/s WAN link takes ~2 minutes. All the throughput evidence so far is loopback
+    // at hundreds of MiB/s, which never approaches that timer -- so this drives a transfer that
+    // deliberately outlasts it (scaled down: a 1 s cap against a ~2.5 s transfer) and asserts it
+    // still completes. The timer must rearm between chunks rather than bound the whole response.
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_slow");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    constexpr std::size_t kChunk = 4096;
+    const std::string payload = patternPayload(kChunk * 10); // 10 chunks
+    const auto perChunk = std::chrono::milliseconds {250};   // ~2.5 s total
+
+    auto server = makeHttpServer();
+    server->addRoute(
+        Method::Post,
+        "/slow",
+        [&payload, perChunk](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<SlowByteSource>(payload, perChunk);
+            responder->stream(std::move(response));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(25000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.streamChunkSize = kChunk;
+    config.requestTimeoutSec = 1; // deliberately shorter than the transfer
+    config.writeTimeoutSec = 1;
+    server->start(config);
+
+    const auto started = std::chrono::steady_clock::now();
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/slow", "{}");
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    const auto parts = remoted::test::splitResponse(raw);
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    const auto decoded = remoted::test::decodeChunked(parts.second, sizes, complete);
+
+    EXPECT_GT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(), 1000)
+        << "the transfer finished too fast to have outlasted the request timeout";
+    EXPECT_TRUE(complete) << "a healthy but slow transfer was cut short";
+    EXPECT_EQ(decoded, payload);
+}
+
+TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTimeout)
+{
+    // Documents the exposure raised in review: with chunked output every flush is its own write
+    // group, so http_write_timeout rearms PER CHUNK. It kills a client that stops reading entirely
+    // (covered by the abort test), but a client that keeps reading a trickle renews the timer
+    // indefinitely and can hold a stream open for as long as it likes.
+    //
+    // There is no per-stream concurrency limit today -- the only bound is maxParallelConnections --
+    // so this pins the CURRENT behaviour and will need revisiting if a stream limiter is added.
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_trickle");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    constexpr std::size_t kChunk = 2048;
+    const std::string payload = patternPayload(kChunk * 8);
+
+    auto server = makeHttpServer();
+    server->addRoute(
+        Method::Post,
+        "/trickle",
+        [&payload](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<BufferByteSource>(payload);
+            responder->stream(std::move(response));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.streamChunkSize = kChunk;
+    config.writeTimeoutSec = 1;   // one second per write group...
+    config.requestTimeoutSec = 1; // ...and per gap between them
+    server->start(config);
+
+    // 512 bytes every 150 ms: several seconds in total, many times the 1 s timers, but no single
+    // gap ever exceeds them.
+    const auto started = std::chrono::steady_clock::now();
+    const auto raw = remoted::test::sendSignedRequestTrickle(config.port,
+                                                             remoted::test::testAgentKey(),
+                                                             "/trickle",
+                                                             "{}",
+                                                             512,
+                                                             std::chrono::milliseconds {150},
+                                                             std::chrono::seconds {30});
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    const auto parts = remoted::test::splitResponse(raw);
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    const auto decoded = remoted::test::decodeChunked(parts.second, sizes, complete);
+
+    EXPECT_GT(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(), 2000)
+        << "the trickle was not slow enough to outlast the configured timers";
+    EXPECT_TRUE(complete) << "a trickling reader was cut off; the per-write timer did not rearm";
+    EXPECT_EQ(decoded, payload);
 }
