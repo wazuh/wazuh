@@ -320,7 +320,15 @@ def main():
     print(f"    Authorization: {headers['Authorization']}")
     print(f"    body sent ({len(sent_body)} bytes): {sent_body!r}")
 
-    response = requests.post(url, headers=headers, data=sent_body, verify=False, timeout=30)
+    try:
+        response = requests.post(url, headers=headers, data=sent_body, verify=False, timeout=30)
+    except requests.exceptions.RequestException as e:
+        # Distinct from a 503: this means remoted itself is unreachable, not that remoted could
+        # not reach modulesd. A raw traceback here would bury that difference.
+        print(f"<-- request failed: {type(e).__name__}: {e}")
+        print(f"\n    Could not reach remoted at {args.url}. Is wazuh-manager-remoted running and "
+              f"listening on that port?")
+        return 1
 
     print(f"<-- {response.status_code} {response.reason}")
     try:
