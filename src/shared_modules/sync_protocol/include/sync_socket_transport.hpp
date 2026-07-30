@@ -9,12 +9,21 @@
 
 #pragma once
 
+#include "agent_sync_protocol_c_interface_types.h" // asp_sync_session_sender_fn
 #include "agent_sync_protocol_types.hpp"
 
 #include <chrono>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+/// @brief Registers the in-process sender used by SyncSocketTransport's Windows stub (see the
+/// class doc below) to hand a session directly to https_client, bypassing the local socket that
+/// has no listener there. NULL deregisters. No-op on platforms where SyncSocketTransport uses a
+/// real socket (POSIX) -- exists there only so asp_set_session_sender(), a single cross-platform
+/// C ABI symbol, links on every platform. Process-global to match this library's
+/// one-instance-per-process reality.
+void setInProcessSyncSessionSender(asp_sync_session_sender_fn sender);
 
 /**
  * @brief What AgentSyncProtocol needs from whatever carries a session.
@@ -54,8 +63,12 @@ class ISyncSessionTransport
  * manager accepted it. The manager's verdict arrives asynchronously on the
  * HTTPS response and is routed separately.
  *
- * Unix-only: the Windows agent runs its modules in-process, so there is no
- * socket in the path and sendSession() always fails there.
+ * POSIX only for the socket itself: the Windows agent runs its modules
+ * in-process, so there is no socket to connect to there. On Windows this
+ * class instead hands the session to whatever sender is registered via
+ * setInProcessSyncSessionSender() (https_client's own bridge, while it is
+ * running) -- checkStatus()/sendSession() honestly report "not available"
+ * when nothing is registered yet, same as a down socket would on POSIX.
  */
 class SyncSocketTransport final : public ISyncSessionTransport
 {

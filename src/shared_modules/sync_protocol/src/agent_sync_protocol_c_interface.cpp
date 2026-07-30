@@ -2,6 +2,7 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_wrapper.hpp"
+#include "sync_socket_transport.hpp"
 #include <cstring>
 #include <memory>
 #include <string>
@@ -367,6 +368,11 @@ extern "C" {
         {
             return false;
         }
+    }
+
+    void asp_set_session_sender(asp_sync_session_sender_fn sender)
+    {
+        setInProcessSyncSessionSender(sender);
     }
 
 } // extern "C"
