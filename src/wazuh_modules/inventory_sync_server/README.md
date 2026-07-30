@@ -37,12 +37,12 @@ inventory_sync_server/
 │   │   └── logThrottle.hpp              # per-condition log rate limiter (decides, never logs)
 │   ├── endpoints/
 │   │   ├── syncEndpoint.{hpp,cpp}       # POST /inventory/sync policy (a stub today)
-│   │   ├── statsEndpoint.{hpp,cpp}       # POST /stats policy (a dummy: enrich + echo + discard)
+│   │   ├── statsEndpoint.{hpp,cpp}      # POST /stats policy (dummy: enrich + echo + discard)
 │   │   └── configEndpoint.{hpp,cpp}     # POST /config policy (dummy, duplicate of stats on purpose)
 │   ├── indexer/
 │   │   ├── IIndexerSession.hpp          # seam over the shared session (construction IS the contract)
 │   │   ├── IIndexerConnectorSync.hpp    # seam, isAvailable() only -- deliberately NOT a shared base
-│   │   ├── IIndexerConnectorAsync.hpp   # seam, ditto (see the header for why they stay apart)
+│   │   ├── IIndexerConnectorAsync.hpp   # seam: isAvailable() + the two fire-and-forget writes
 │   │   ├── indexerSessionAdapter.hpp    # wraps the real IndexerSession
 │   │   ├── indexerConnectorSyncAdapter.hpp   # wraps IndexerConnectorSync, built on the session
 │   │   ├── indexerConnectorAsyncAdapter.hpp  # wraps IndexerConnectorAsync, built on the session
@@ -56,7 +56,7 @@ inventory_sync_server/
 │       └── asioUdsHttpServer.{hpp,cpp}  # asio + llhttp implementation (PImpl)
 ├── test/
 │   ├── CMakeLists.txt                   # builds inventory_sync_server_utest
-│   └── unit/                            # 149 tests
+│   └── unit/                            # 161 tests
 └── tools/
     └── send_sync.py                     # stdlib-only manual sender over the UDS
 ```
@@ -329,8 +329,8 @@ the response-phase timer (504); and shutdown force-closes whatever is left after
 |---|---|---|---|---|
 | GET | `/` | 200 | `{"status":"ok","module":"inventory_sync_server"}` | liveness probe; **exempt from the byte budget** so it keeps answering under memory pressure |
 | POST | `/inventory/sync` | 202 | `{"status":"accepted"}` | **STUB — accepts and DISCARDS the payload.** The path is **PROVISIONAL**: it must match the target remoted's downstream configuration will point at, which lands separately. `syncEndpoint_test.cpp` pins it so a silent drift fails. |
-| POST | `/stats` | 200 | the request document, enriched | **DUMMY** — reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Echoes the document back with `wazuh.agent.id` and `@timestamp` added, then **discards** it. 400 on a missing/empty agent-id header, malformed JSON, or a body that is not a JSON *object*. |
-| POST | `/config` | 200 | the request document, enriched | **DUMMY** — identical behaviour to `/stats`, deliberately implemented as a separate unit. |
+| POST | `/stats` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Echoes the document back with `wazuh.agent.id` and `@timestamp` added, then **discards** it. 400 on a missing/empty agent-id header, malformed JSON, or a body that is not a JSON *object*; **503 when no indexer host is healthy** (or the module is shutting down). |
+| POST | `/config` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — identical behaviour to `/stats`, deliberately implemented as a separate unit. |
 
 Anything else is 404; a known path with the wrong verb is 405 with an `Allow` header.
 
@@ -353,6 +353,26 @@ indexed or stored. The pieces worth knowing:
   document is ordinary input here, not an error condition, so it must not cost an exception per request.
   Serialization back out is still wrapped, because `dump()` can fail on input `parse()` accepted (e.g. a
   string holding invalid UTF-8).
+- **They take the async indexer connector, and gate on it.** `makeHandler()` receives a
+  `std::weak_ptr<IIndexerConnectorAsync>`; a valid document is answered **503** when the connector is
+  gone (the module is stopping) or when `isAvailable()` is false (no configured host is healthy). The
+  two share the 503 body — the caller's advice is "retry later" either way, and distinguishing them
+  would leak internal state — but log differently: a throttled DEBUG1 for the shutdown case, a
+  throttled **WARN** for the outage, since that one is operator-actionable.
+- **The gate runs AFTER every 400.** A malformed document is the caller's fault and does not depend on
+  the indexer, so it stays a 400 during an outage. With the checks reversed, an agent sending a bad
+  payload would get a 503 and retry forever something that can never work. Both endpoint test suites
+  and the e2e pin this ordering.
+- **The connector is held weakly, and that is load-bearing.** Handler closures are stored in the
+  transport's route table, which is co-owned by every outstanding responder — so a strong capture would
+  stop `stop()`'s phase-2 `reset()` from actually destroying the connector, moving its destructor (and
+  its background threads) to phase 3 or later, onto whatever thread released the last responder. A weak
+  hold keeps the documented teardown ordering true, and stays correct once these handlers start
+  deferring their replies. `IndexerGatingTest.StopTearsDownEverythingInReverseOrder` plus two
+  per-endpoint tests fail if it is ever made strong (verified by mutation).
+- **Nothing is indexed yet.** The dependency is injected and gated on, but neither `index()` nor
+  `indexDataStream()` is called — a `NothingIsIndexedYet` test per endpoint pins that, so the day real
+  processing lands it has to be updated deliberately.
 - They are **deliberate near-duplicates** rather than one handler registered on two paths — same
   reasoning as on the remoted side. Their real payloads will diverge; keep them in sync until then.
 
@@ -376,14 +396,14 @@ indexed or stored. The pieces worth knowing:
 
 ## Tests
 
-`inventory_sync_server_utest` — 149 tests.
+`inventory_sync_server_utest` — 161 tests.
 
 | File | What it covers |
 |---|---|
 | `requestParser_test.cpp` | The parser, with no sockets or threads. `ParsesPeerRequestSplitAtEveryOffset` is the highest-value one: it feeds the peer's exact bytes split at every offset, which covers header continuation across a read boundary, a request line cut mid-token, a body straddling two reads — and pins the resume-offset arithmetic at every alignment. Also the golden peer bytes, lower-casing, raw query retention, 411/413/414/431, malformed input, and the llhttp `on_headers_complete` return-value trap. |
 | `udsHttpServerConfig_test.cpp` | Every documented default from a zeroed struct, positive overrides, negative-means-default, and that the default socket path stays **relative** (a regression there silently breaks the chroot/chdir agreement). |
 | `syncEndpoint_test.cpp` | Route policy with a capturing responder, no socket. Pins the provisional path/verb and that the handler does not retain the payload. |
-| `statsEndpoint_test.cpp`, `configEndpoint_test.cpp` | The two dummies, one file each mirroring their duplicated implementations. Pin the path/verb (a wire contract with remoted, which lives in another binary), the lower-cased agent-id header name, that the enrichment lands at the documented JSON pointers, the ISO8601 timestamp *shape*, and the two overrides that make the enrichment trustworthy: **the authenticated agent id beats one claimed in the document**, and a pre-existing `@timestamp` is replaced. Plus the 400 paths (non-object bodies, malformed JSON, missing/empty header), null-request tolerance and no payload retention. |
+| `statsEndpoint_test.cpp`, `configEndpoint_test.cpp` | The two dummies, one file each mirroring their duplicated implementations. Pin the path/verb (a wire contract with remoted, which lives in another binary), the lower-cased agent-id header name, that the enrichment lands at the documented JSON pointers, the ISO8601 timestamp *shape*, and the two overrides that make the enrichment trustworthy: **the authenticated agent id beats one claimed in the document**, and a pre-existing `@timestamp` is replaced. Plus the 400 paths (non-object bodies, malformed JSON, missing/empty header), null-request tolerance and no payload retention. Also the injected async connector: **503 when it is unavailable or already gone**, that the 400s still win over an outage (the check ordering), that nothing is indexed yet, and that the handler does **not** keep the connector alive after returning — the last one is what makes a strong capture a test failure instead of a silent shutdown-ordering change. |
 | `inFlightBudget_test.cpp`, `logThrottle_test.cpp` | Accounting and rate-limiting, including under concurrency. |
 | `udsHttpServer_test.cpp` | The live server over a real UDS. Highlights: `DeferredReplyFromAnotherThreadArrivesAfterTheHandlerReturned` (the reason this design exists) and **`ThreeHundredConcurrentDeferralsOnTwoIoThreads`** — the requirement stated so it can fail, and the test a blocking thread-per-request server cannot pass. Plus socket mode under a hostile umask, stale-socket recovery, the non-socket refusal, budget/connection 503s, the 500-on-throw barrier *and that the reactor still serves afterwards*, and both never-answered backstops. |
 | `udsShutdown_test.cpp` | The shutdown protocol: S1, S2, S3 (including after the server is destroyed), the bounded drain, force-close, concurrent `send()`/`stop()` from 64 threads, and the whole protocol under 200 live deferrals. |
