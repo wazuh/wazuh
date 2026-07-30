@@ -76,6 +76,17 @@ namespace
             head += req.contentType;
             head += "\r\n";
         }
+        // Caller-supplied headers, verbatim and in order. Names/values are produced by our own
+        // endpoint code (never by the agent), so there is nothing to sanitize here -- but that is
+        // exactly why nothing else may be routed through: a CRLF in either half would let the caller
+        // inject arbitrary headers into this request.
+        for (const auto& [name, value] : req.headers)
+        {
+            head += name;
+            head += ": ";
+            head += value;
+            head += "\r\n";
+        }
         head += "Content-Length: ";
         head += std::to_string(bodyLen);
         head += "\r\nConnection: close\r\n\r\n";

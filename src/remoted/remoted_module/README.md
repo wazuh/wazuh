@@ -154,7 +154,9 @@ src/endpoints/
 │                            #   plus errorResponseFor(AuthError) (the {"error","code"} response shape)
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler
-└── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statsEndpoint.hpp/.cpp    # /stats policy (DUMMY): forwards to modulesd's inventory sync server
+└── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
 ```
 
 - **Endpoint handler (async):**
@@ -189,6 +191,28 @@ src/endpoints/
   `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
   `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
+- **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`) — DUMMIES.** Same authenticated
+  pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
+  (`queue/sockets/inventory-sync.sock`) instead of the engine. Everything around them is real —
+  AES-CMAC auth, admission control, deferred forwarding, the UDS round trip, the response mapping —
+  but neither side interprets the document yet: modulesd only checks it is a JSON object and stamps
+  `wazuh.agent.id` and `@timestamp` onto it. Three things differ from `/stateless`:
+  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
+    these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
+    That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
+    Authorization header the gateway already verified, never from the body, so a document claiming a
+    different agent cannot override it.
+  - **`postProcess` passes the downstream body through on success** (`200` + modulesd's JSON), unlike
+    `/stateless` which discards it. Failure statuses are still collapsed to fixed local messages, so an
+    arbitrary downstream string is never reflected back to an agent.
+  - **The only endpoint-level validation is "body is not empty" → `400`.** Parsing is modulesd's job;
+    doing it on both sides would walk the payload twice on the hot path. Rejecting an empty body here
+    still saves a deferred-work slot and a UDS round trip.
+
+  They are **deliberate near-duplicates** rather than one shared unit registered on two paths. They are
+  the same shape only because both are dummies; their real payloads, validation and downstream
+  semantics will diverge, and separating them now makes that divergence a change to one file. Keep them
+  in sync until they must not be.
 - **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
   warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
@@ -535,8 +559,15 @@ target/body forwarded, post-processor result delivered + slot released, keep-ali
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
 `validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
 `makeHandler()` short-circuits before `forward()` on a validation failure and still forwards +
-post-processes on success), `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse,
-connect/timeout errors, keep-alive), `payload_test.cpp` (zero-copy `Payload`: view validity,
+post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two dummy
+endpoints, one file each mirroring their duplicated implementations: the target's socket/path/
+content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the full
+`postProcess` mapping table, **that a success passes the enriched body through and a downstream error
+body is NOT reflected**, and that an empty body answers 400 without ever reaching `forward()`),
+`asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
+**and that caller-supplied headers are actually serialized onto the wire without displacing
+Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
+`payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
 core `cmac_test.cpp`, `authMiddleware_test.cpp` (incl. a non-numeric `Authorization` agent-id →
