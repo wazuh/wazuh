@@ -262,6 +262,14 @@ TEST_F(IndexerGatingTest, TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries)
     EXPECT_TRUE(std::filesystem::exists(path));
 }
 
+/**
+ * Also guards the /stats and /config handlers' WEAK hold on the async connector, which is not obvious
+ * from the assertion. This test waits for "listening on", so the routes are registered and their
+ * captures are live inside the transport's route table by the time stop() runs. If a handler captured
+ * the connector strongly, phase 2's reset would no longer destroy it -- the route table would keep it
+ * alive until phase 3 -- and the recorded order would come out {"sync", "session", "async"} instead.
+ * Verified by mutation: making the capture strong fails exactly this test plus two endpoint ones.
+ */
 TEST_F(IndexerGatingTest, StopTearsDownEverythingInReverseOrder)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
