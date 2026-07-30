@@ -150,10 +150,18 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 
-# Unix only: on Windows the aggregator dispatches in-process instead of going
-# through the component sockets these wrappers stand in for.
-if(NOT ${TARGET} STREQUAL "winagent")
+# The aggregator reaches the daemons differently per platform, so each side
+# wraps what it actually calls: sockets on POSIX, the dispatchers in-process on
+# Windows. The assertions in the test are shared.
 list(APPEND client-agent_names "test_agent_report")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,agcom_dispatch -Wl,--wrap,syscom_dispatch \
+                                -Wl,--wrap,lccom_dispatch -Wl,--wrap,wmcom_dispatch \
+                                -Wl,--wrap,wcom_dispatch \
+                                -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize ${DEBUG_OP_WRAPPERS}")
+else()
 list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                                 -Wl,--wrap,OS_RecvSecureTCP ${DEBUG_OP_WRAPPERS}")
 endif()
