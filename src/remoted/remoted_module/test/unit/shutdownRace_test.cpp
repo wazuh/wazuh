@@ -29,6 +29,8 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
 
+#include "testTlsServer.hpp"
+
 #include <gtest/gtest.h>
 
 #include <asio/connect.hpp>
@@ -41,6 +43,8 @@
 
 #include <array>
 #include <chrono>
+#include <cstring>
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -347,4 +351,115 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
     }
 
     SUCCEED();
+}
+
+// A streamed response is the one path that bounces worker-pool <-> connection-strand OUTSIDE the
+// DeferredForwarder that the four-phase shutdown drains. stopAccepting() drains the handler pool,
+// but a StreamPump that has already handed a chunk to the strand has its continuation queued
+// somewhere neither phase 1 nor phase 3 knows about -- so teardown with a live transfer is exactly
+// the use-after-free shape this file exists to catch. Until now it was only argued for in a comment
+// ("RESTinio guarantees the write callback always fires"), never executed under ASan.
+namespace
+{
+    /// Never-ending source: guarantees the transfer is still mid-flight when shutdown begins.
+    ///
+    /// Progress and destruction are reported through SHARED counters rather than by the test
+    /// holding the source: the pump must be its only owner, or "was it released?" would really be
+    /// measuring the test's own reference.
+    class EndlessByteSource final : public IByteSource
+    {
+    public:
+        EndlessByteSource(std::shared_ptr<std::atomic_int> reads, std::shared_ptr<std::atomic_bool> destroyed)
+            : m_reads {std::move(reads)}
+            , m_destroyed {std::move(destroyed)}
+        {
+        }
+
+        ~EndlessByteSource() override
+        {
+            m_destroyed->store(true);
+        }
+
+        std::size_t read(char* buffer, std::size_t capacity) override
+        {
+            m_reads->fetch_add(1);
+            std::memset(buffer, 'Z', capacity);
+            return capacity; // never EOF
+        }
+
+    private:
+        std::shared_ptr<std::atomic_int> m_reads;
+        std::shared_ptr<std::atomic_bool> m_destroyed;
+    };
+} // namespace
+
+TEST(ShutdownRace, StopSequenceSurvivesAnInFlightStream)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_shutdown_stream");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup certCleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    auto destroyed = std::make_shared<std::atomic_bool>(false);
+    auto reads = std::make_shared<std::atomic_int>(0);
+
+    auto server = makeHttpServer();
+    AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<remoted::test::FakeKeystore>()};
+
+    gateway.addAuthenticatedRoute(
+        *server,
+        Method::Post,
+        "/stream",
+        [reads, destroyed](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                           std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            // Built here and handed straight over, so the pump ends up the sole owner.
+            response.source = std::make_shared<EndlessByteSource>(reads, destroyed);
+            responder->stream(std::move(response));
+        },
+        remoted::http::ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(24000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    // Read a little and then hold the connection open, so the pump keeps cycling
+    // pool -> strand -> pool while the teardown below runs.
+    std::thread clientThread(
+        [&]
+        {
+            remoted::test::sendSignedRequest(
+                config.port, remoted::test::testAgentKey(), "/stream", "{}", 256 * 1024);
+        });
+
+    // Wait until the pump has genuinely started cycling: that is the mid-flight window.
+    for (int i = 0; i < 200 && reads->load() < 2; ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+    }
+    ASSERT_GE(reads->load(), 2) << "the stream never started; the test would prove nothing";
+
+    // The exact facade sequence, run against a transfer that is still advancing.
+    server->stopAccepting();
+    server->stop();
+
+    if (clientThread.joinable())
+    {
+        clientThread.join();
+    }
+
+    // Success is the absence of a crash/hang under ASan. Additionally, releasing the server must
+    // release the source rather than strand it in a queued continuation -- the route table (and any
+    // handler-captured state) only goes away when the server object itself does.
+    server.reset();
+    for (int i = 0; i < 100 && !destroyed->load(); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    }
+    EXPECT_TRUE(destroyed->load()) << "the byte source outlived server teardown";
 }

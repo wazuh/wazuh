@@ -114,6 +114,12 @@ extern "C"
                                          ///< default (see remoted.http_concurrent_accepts).
         int http_buffer_size;            ///< Socket read buffer size, bytes. <=0 -> module default
                                          ///< (see remoted.http_buffer_size).
+        int http_stream_chunk_size;      ///< Bytes per chunk when streaming a response body
+                                         ///< (POST /download). <=0 -> module default, 64 KiB
+                                         ///< (see remoted.http_stream_chunk_size). Larger chunks
+                                         ///< trade memory per in-flight transfer for fewer
+                                         ///< read/write round trips, which is where the CPU per
+                                         ///< byte goes.
         long long max_inflight_bytes;    ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections;    ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
