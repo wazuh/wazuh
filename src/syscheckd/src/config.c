@@ -121,6 +121,15 @@ void free_whodata_event(whodata_evt *w_evt) {
 }
 
 cJSON *getSyscheckConfig(void) {
+    /* directories_lock is only pthread_rwlock_init'd partway through
+     * Start_Syscheck(). A caller reaching here first -- e.g. the Windows
+     * in-process report dispatch (agent_report.c), which runs on its own
+     * thread with no socket to make it wait its turn -- would otherwise lock
+     * memory nothing has initialized yet. */
+    if (!atomic_int_get(&syscheck.directories_lock_ready)) {
+        return NULL;
+    }
+
 #ifndef WIN32
     w_rwlock_rdlock(&syscheck.directories_lock);
     if (OSList_GetFirstNode(syscheck.directories) == NULL) {
