@@ -122,6 +122,31 @@ EXPORTED const char* agent_info_get_agent_groups(void);
  */
 EXPORTED void agent_info_clear_agent_groups(void);
 
+/**
+ * @brief Callback type used to query agentd for fresh handshake data (cluster_name,
+ * cluster_node, agent_groups) on demand, instead of relying on a one-time cached copy.
+ *
+ * Matches the signature of wm_agent_info_query_agentd_handshake() in wm_agent_info.c,
+ * so it can be registered directly with no adapter function.
+ *
+ * @return true if the query succeeded (output buffers may still be empty if the
+ * corresponding value is legitimately unset), false if the query itself failed.
+ */
+typedef bool (*query_handshake_callback_t)(char* cluster_name,
+                                           size_t cluster_name_size,
+                                           char* cluster_node,
+                                           size_t cluster_node_size,
+                                           char* agent_groups,
+                                           size_t agent_groups_size);
+
+/**
+ * @brief Set the function used to query agentd for fresh handshake data on every
+ * agent metadata population cycle (instead of only once at module startup).
+ *
+ * @param callback The handshake query callback
+ */
+EXPORTED void agent_info_set_query_handshake_function(query_handshake_callback_t callback);
+
 #ifdef __cplusplus
 }
 #endif
@@ -143,5 +168,6 @@ typedef const char* (*agent_info_get_cluster_node_func)(void);
 typedef void (*agent_info_set_agent_groups_func)(const char* agent_groups);
 typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);
+typedef void (*agent_info_set_query_handshake_function_func)(query_handshake_callback_t callback);
 
 #endif //_AGENT_INFO_H

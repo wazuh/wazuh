@@ -326,7 +326,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, failureReason, stopped, managerNotReady, consecutiveFailures};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -469,7 +469,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, failureReason, stopped, managerNotReady, consecutiveFailures};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
