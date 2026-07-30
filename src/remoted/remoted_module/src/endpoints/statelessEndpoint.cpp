@@ -24,7 +24,10 @@ namespace remoted::endpoints::stateless
 
     remoted::downstream::DownstreamTarget target(const std::string& socketPath)
     {
-        return {socketPath, remoted::http::Method::Post, "/events/enriched", "application/x-ndjson"};
+        remoted::downstream::DownstreamTarget result {
+            socketPath, remoted::http::Method::Post, "/events/enriched", "application/x-ndjson"};
+        result.serviceName = "engine event ingress";
+        return result;
     }
 
     remoted::http::HttpResponse postProcess(remoted::downstream::DownstreamError error,

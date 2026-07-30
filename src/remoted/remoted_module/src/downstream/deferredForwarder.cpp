@@ -166,16 +166,19 @@ namespace remoted::downstream
         downstreamRequest.method = target.method;
         downstreamRequest.path = std::move(target.path);
         downstreamRequest.contentType = std::move(target.contentType);
+        downstreamRequest.headers = std::move(target.headers);
         downstreamRequest.body = body;
         downstreamRequest.responseTimeoutMs = target.responseTimeoutMs;
 
         auto* postPool = &m_impl->postPool;
         auto* errorThrottles = &m_impl->downstreamErrorThrottles;
+        // A string LITERAL, so capturing it below stays allocation-free (see DownstreamTarget).
+        const char* const serviceName = target.serviceName;
         m_impl->client->sendAsync(
             std::move(downstreamRequest),
             /*bodyKeepAlive=*/std::move(req),
-            [responder, slotPtr, postProcess, postPool, errorThrottles](DownstreamError error,
-                                                                        DownstreamResponse response)
+            [responder, slotPtr, postProcess, postPool, errorThrottles, serviceName](DownstreamError error,
+                                                                                     DownstreamResponse response)
             {
                 // Diagnose the failure HERE, where the raw DownstreamError is still available: the
                 // endpoint's PostProcessor collapses all of them into one 503, so by the time the
@@ -186,16 +189,20 @@ namespace remoted::downstream
                 // Deliberately allocation-free: every argument is a literal or an integer. The
                 // socket path is not included because it lives in the DownstreamRequest that was
                 // just moved into the client, and capturing a copy would cost an allocation on
-                // every request just to serve a rare log line. There is exactly one downstream
-                // service today; whoever adds a second one should thread its identity through here.
+                // every request just to serve a rare log line. `serviceName` identifies WHICH
+                // downstream failed without that cost -- it is a string literal, so capturing it is
+                // free. Note the throttle slots are still shared across services (one per error
+                // kind, not per service x error), so with several services failing at once only the
+                // first one to hit a slot names itself until the window rolls over.
                 if (error != DownstreamError::None)
                 {
                     auto& throttle = (*errorThrottles)[static_cast<std::size_t>(error)];
                     if (const auto failed = throttle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Downstream call failed (%s) for %llu request(s) in the last %d s; answering 503. "
-                                   "%s",
+                                   "Downstream call to the %s failed (%s) for %llu request(s) in the last %d s; "
+                                   "answering 503. %s",
+                                   serviceName,
                                    toString(error),
                                    static_cast<unsigned long long>(failed.total),
                                    remoted::common::LogThrottle::kDefaultWindowSeconds,
@@ -204,14 +211,14 @@ namespace remoted::downstream
                 }
                 else if (response.status >= 500)
                 {
-                    // The engine answered, but with a server error. Distinct from a transport
+                    // The service answered, but with a server error. Distinct from a transport
                     // failure and worth surfacing, since the endpoint also turns it into a 503.
                     auto& throttle = (*errorThrottles)[static_cast<std::size_t>(DownstreamError::None)];
                     if (const auto failed = throttle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "The downstream service answered HTTP %d for %llu request(s) in the last %d s; "
-                                   "answering 503.",
+                                   "The %s answered HTTP %d for %llu request(s) in the last %d s; answering 503.",
+                                   serviceName,
                                    response.status,
                                    static_cast<unsigned long long>(failed.total),
                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
