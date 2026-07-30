@@ -16,11 +16,22 @@
 
 /**
  * Windows-specific block-ip implementation
- * Fallback chain: netsh → route
+ *
+ * ENABLE: method chain (first success wins) netsh (Windows Firewall) -> route (null-route).
+ * netsh provides true bidirectional (inbound + outbound) blocking, but its rules are only
+ * enforced while a firewall profile is enabled. try_netsh checks the EFFECTIVE firewall
+ * state; when the firewall is off it defers to the route fallback, which null-routes the
+ * target to loopback (dropping the attacker's reverse path). netsh.exe being unavailable
+ * also falls through to route.
+ *
+ * DISABLE: not a fallback chain - the netsh rule AND any null-route are removed
+ * unconditionally (best-effort), since either may exist depending on how the block was
+ * applied.
  */
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0);
+static bool firewall_is_effectively_on(const char *argv0);
 
 int main(int argc, char **argv) {
     // This must always be the first instruction on Windows
@@ -66,18 +77,112 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Define Windows method chain
-    const firewall_method_t methods[] = {
-        {"netsh", try_netsh, false},
-        {"route", try_route_windows, false},
-        {NULL, NULL, false}  // Sentinel
-    };
+    // Validate IP and get version (mirrors block-ip-unix.c / block-ip-macos.c)
+    int ip_version = validate_srcip(srcip);
+    if (ip_version == OS_INVALID) {
+        char log_msg[OS_MAXSTR];
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Invalid IP address: '%s'", srcip);
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
 
-    // Execute firewall chain with fallback
-    int result = execute_firewall_chain(methods, srcip, action, 0, argv[0]);
+    int result;
+    if (action == DISABLE_COMMAND) {
+        // Removal is NOT a fallback chain: the block may have been applied by netsh
+        // (firewall enabled) OR by the null-route (firewall off) - or, across re-blocks with
+        // a firewall state change, BOTH - so we unconditionally attempt to remove BOTH.
+        // Each is best-effort: a missing rule/route is the expected case (not a failure), so
+        // cleanup never depends on netsh's (undocumented) exit code for "no rule matched".
+        // The unblock counts as successful if EITHER removal actually took effect.
+        firewall_result_t netsh_res = try_netsh(srcip, DISABLE_COMMAND, ip_version, argv[0]);
+        firewall_result_t route_res = try_route_windows(srcip, DISABLE_COMMAND, ip_version, argv[0]);
+        if (netsh_res == FIREWALL_SUCCESS || route_res == FIREWALL_SUCCESS) {
+            char unblock_msg[OS_MAXSTR];
+            memset(unblock_msg, '\0', OS_MAXSTR);
+            snprintf(unblock_msg, OS_MAXSTR - 1, "IP %s successfully unblocked", srcip);
+            log_firewall_action(argv[0], LOG_LEVEL_INFO, "block-ip", "unblock", unblock_msg);
+        } else {
+            // Neither a rule nor a route was actually removed. Usually benign (the IP was
+            // not blocked, or was blocked by the artifact that is now gone), but surface it
+            // so a genuine removal failure is not silent.
+            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "block-ip", "unblock",
+                              "Nothing was removed (no matching firewall rule or null-route) - "
+                              "the IP may already be unblocked, or removal failed");
+        }
+        write_debug_file(argv[0], "Ended");
+        result = OS_SUCCESS;
+    } else {
+        // ENABLE: netsh -> route fallback (first success wins).
+        const firewall_method_t methods[] = {
+            {"netsh", try_netsh, false},
+            {"route", try_route_windows, false},
+            {NULL, NULL, false}  // Sentinel
+        };
+        result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
+    }
 
     cJSON_Delete(input_json);
     return result;
+}
+
+// ============================================================================
+// WINDOWS: effective firewall-state detection
+// ============================================================================
+
+// Reads the EnableFirewall DWORD under HKLM\<subkey>. Returns 1 (enabled), 0 (disabled),
+// or -1 (key/value absent). Forces the 64-bit view (KEY_WOW64_64KEY) because block-ip may
+// run as a 32-bit process and these keys live in the native hive.
+static int read_enable_firewall(const char *subkey) {
+    HKEY hkey;
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hkey) != ERROR_SUCCESS) {
+        return -1;
+    }
+
+    DWORD value = 0;
+    DWORD size = sizeof(value);
+    DWORD type = 0;
+    LONG rc = RegQueryValueEx(hkey, "EnableFirewall", NULL, &type, (LPBYTE)&value, &size);
+    RegCloseKey(hkey);
+
+    if (rc != ERROR_SUCCESS || type != REG_DWORD) {
+        return -1;
+    }
+    return value != 0 ? 1 : 0;
+}
+
+// Returns true if ANY firewall profile is effectively enabled (enforcing). Reads the
+// EnableFirewall DWORD directly from the registry.
+// Per profile: the GPO policy value wins if present, else the local SharedAccess value,
+// else it defaults to ENABLED (the Windows default). Defaulting an ABSENT value to enabled
+// is the fix for the #37388 misfire (the old check treated absent as "disabled").
+static bool firewall_is_effectively_on(const char *argv0) {
+    static const char *profiles[] = {"DomainProfile", "StandardProfile", "PublicProfile"};
+    char gpo_key[OS_MAXSTR];
+    char local_key[OS_MAXSTR];
+    bool any_on = false;
+
+    for (int i = 0; i < 3; i++) {
+        snprintf(gpo_key, OS_MAXSTR - 1,
+                 "SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\%s", profiles[i]);
+        snprintf(local_key, OS_MAXSTR - 1,
+                 "SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\%s",
+                 profiles[i]);
+
+        int gpo = read_enable_firewall(gpo_key);
+        int state = (gpo != -1) ? gpo : read_enable_firewall(local_key);
+        bool enabled = (state == -1) ? true : (state == 1);  // both absent -> Windows default ON
+        if (enabled) {
+            any_on = true;
+            break;
+        }
+    }
+
+    if (!any_on) {
+        write_debug_file(argv0, "No firewall profile is effectively enabled (registry check)");
+    }
+    return any_on;
 }
 
 // ============================================================================
@@ -85,72 +190,39 @@ int main(int argc, char **argv) {
 // ============================================================================
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // netsh handles both IPv4 and IPv6
     static const char rule_name[] = "name=\"WAZUH ACTIVE RESPONSE BLOCKED IP\"";
     char log_msg[OS_MAXSTR];
     char *netsh_path = NULL;
-    char *reg_path = NULL;
 
     // Check if netsh.exe is available
     if (check_binary_available("netsh.exe", &netsh_path, argv0) != FIREWALL_SUCCESS) {
         return FIREWALL_NOT_AVAILABLE;
     }
 
-    // Check if reg.exe is available (for profile checking)
-    if (get_binary_path("reg.exe", &reg_path) < 0) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Binary 'reg.exe' not found - skipping firewall profile check");
-        write_debug_file(argv0, log_msg);
-        // Continue without profile check
+    // A netsh block rule is only enforced while a firewall profile is enabled. On ENABLE,
+    // if the firewall is effectively OFF, defer to the route fallback instead of adding a
+    // dormant rule. The effective state is read from the registry (see
+    // firewall_is_effectively_on), which is locale-independent. This is ENABLE-only: on
+    // DISABLE we must always try to remove the rule, which may have been added while the
+    // firewall was enabled.
+    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(argv0)) {
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
+                          "Windows Firewall is effectively disabled - deferring to route fallback");
+        os_free(netsh_path);
+        return FIREWALL_INVALID_STATE;
     }
 
-    // Check Windows Firewall profiles if reg.exe is available
-    if (reg_path) {
-        const char *profiles[] = {
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile",
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile",
-            "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile"
-        };
-        const char *profile_names[] = {"Domain", "Private", "Public"};
-        bool any_enabled = false;
-
-        for (int i = 0; i < 3; i++) {
-            char *exec_cmd[] = {reg_path, "query", (char *)profiles[i], "/v", "EnableFirewall", NULL};
-            wfd_t *wfd = wpopenv(reg_path, exec_cmd, W_BIND_STDOUT);
-
-            if (wfd) {
-                char output_buf[OS_MAXSTR];
-                while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-                    if (strstr(output_buf, "0x1") != NULL) {
-                        any_enabled = true;
-                        memset(log_msg, '\0', OS_MAXSTR);
-                        snprintf(log_msg, OS_MAXSTR - 1, "Windows Firewall %s profile: Enabled", profile_names[i]);
-                        write_debug_file(argv0, log_msg);
-                        break;
-                    }
-                }
-                wpclose(wfd);
-            }
-        }
-
-        os_free(reg_path);
-
-        if (!any_enabled) {
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
-                              "No Windows Firewall profiles are enabled");
-            os_free(netsh_path);
-            return FIREWALL_INVALID_STATE;
-        }
-    }
+    // Single-host prefix for netsh remoteip: /32 for IPv4, /128 for IPv6.
+    const char *host_prefix = (ip_version == 6) ? "128" : "32";
 
     // Build netsh command
     wfd_t *wfd = NULL;
 
     if (action == ENABLE_COMMAND) {
-        // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/32
+        // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/<prefix>
         char remote_ip_arg[OS_MAXSTR];
         memset(remote_ip_arg, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
+        snprintf(remote_ip_arg, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
 
         char *exec_cmd_in[] = {
             netsh_path,
@@ -188,7 +260,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         // Add outbound rule (from PR #34675 fix for bidirectional blocking)
         char remote_ip_arg_out[OS_MAXSTR];
         memset(remote_ip_arg_out, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg_out, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
+        snprintf(remote_ip_arg_out, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
 
         char *exec_cmd_out[] = {
             netsh_path,
@@ -216,39 +288,56 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         }
 
     } else {
-        // DELETE: netsh advfirewall firewall delete rule name="..." remoteip=<IP>/32
-        char remote_ip_arg_del[OS_MAXSTR];
-        memset(remote_ip_arg_del, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
-
-        char *exec_cmd[] = {
-            netsh_path,
-            "advfirewall",
-            "firewall",
-            "delete",
-            "rule",
-            (char *)rule_name,
-            remote_ip_arg_del,
-            NULL
-        };
-
-        wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDERR);
-        if (!wfd) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Unable to execute netsh delete rule");
-            write_debug_file(argv0, log_msg);
-            os_free(netsh_path);
-            return FIREWALL_EXECUTION_FAILED;
+        // DELETE (best-effort): the rule may not exist - e.g. the block was applied via the
+        // route fallback while the firewall was off - so a non-zero "no rule matched" exit
+        // is expected and is NOT treated as a failure. The caller removes the null-route
+        // unconditionally, independently of this result.
+        //
+        // netsh matches the rule by its exact remoteip prefix. For IPv6 we also try the
+        // legacy "/32" prefix: an agent upgraded from a version that wrote every rule as
+        // remoteip=<ip>/32 may still carry such a rule, which a "/128" delete would not match.
+        const char *del_prefixes[2];
+        int del_prefix_count = 0;
+        del_prefixes[del_prefix_count++] = host_prefix;
+        if (ip_version == 6) {
+            del_prefixes[del_prefix_count++] = "32";  // pre-upgrade IPv6 rules used /32
         }
 
-        int result_del = wpclose(wfd);
-        if (result_del != 0) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "netsh delete rule failed with exit code %d", result_del);
-            write_debug_file(argv0, log_msg);
-            os_free(netsh_path);
-            return FIREWALL_EXECUTION_FAILED;
+        firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
+        for (int p = 0; p < del_prefix_count; p++) {
+            char remote_ip_arg_del[OS_MAXSTR];
+            memset(remote_ip_arg_del, '\0', OS_MAXSTR);
+            snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, del_prefixes[p]);
+
+            char *exec_cmd[] = {
+                netsh_path,
+                "advfirewall",
+                "firewall",
+                "delete",
+                "rule",
+                (char *)rule_name,
+                remote_ip_arg_del,
+                NULL
+            };
+
+            wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDERR);
+            if (wfd) {
+                int result_del = wpclose(wfd);
+                if (result_del == 0) {
+                    del_res = FIREWALL_SUCCESS;  // a matching rule was actually removed
+                } else {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR - 1,
+                             "netsh delete rule (remoteip=%s/%s) returned %d (no matching rule is expected if the block used the route fallback)",
+                             srcip, del_prefixes[p], result_del);
+                    write_debug_file(argv0, log_msg);
+                }
+            } else {
+                write_debug_file(argv0, "Unable to execute netsh delete rule");
+            }
         }
+        os_free(netsh_path);
+        return del_res;
     }
 
     os_free(netsh_path);
@@ -260,11 +349,32 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 // ============================================================================
 
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // route works for both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
     char *route_path = NULL;
-    char *ipconfig_path = NULL;
-    char gateway[OS_MAXSTR] = {0};
+
+    // Reached when netsh is unavailable, or (via try_netsh) when the firewall is
+    // effectively OFF. BEST-EFFORT: null-routes the target to loopback so the host drops
+    // packets destined to it, which in principle also breaks the reverse path of inbound
+    // TCP sessions to a routed/remote attacker.
+    // LIMITATION: this does NOT block a target on a directly-connected
+    // subnet - on-link hosts are reached via ARP and the /32-via-loopback route does not
+    // redirect that egress. Effectiveness against routed/remote attackers was not verified.
+    // netsh (Windows Firewall) remains the only comprehensive blocking mechanism.
+
+    // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
+    if (ip_version == 6) {
+        // On ENABLE this is a genuine limitation worth flagging. On DISABLE, skipping IPv6
+        // here is the expected path (the route fallback never creates an IPv6 null-route, so
+        // there is nothing to remove), so keep it at debug to avoid a warning on every
+        // routine IPv6 unblock.
+        if (action == ENABLE_COMMAND) {
+            log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
+                              "route fallback supports IPv4 only - skipping IPv6 target");
+        } else {
+            write_debug_file(argv0, "route fallback is IPv4-only - no null-route to remove for IPv6 target");
+        }
+        return FIREWALL_NOT_AVAILABLE;
+    }
 
     // Check if route.exe is available
     if (check_binary_available("route.exe", &route_path, argv0) != FIREWALL_SUCCESS) {
@@ -272,96 +382,47 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
     }
 
     if (action == ENABLE_COMMAND) {
-        // Need to find default gateway using ipconfig
-        if (check_binary_available("ipconfig.exe", &ipconfig_path, argv0) != FIREWALL_SUCCESS) {
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
-                              "ipconfig.exe not found - cannot determine gateway");
-            os_free(route_path);
-            return FIREWALL_NOT_AVAILABLE;
-        }
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "best_effort",
+                          "Applying best-effort null-route (firewall off or netsh unavailable): "
+                          "blocks routed/remote attackers but NOT same-subnet hosts - enable "
+                          "Windows Firewall for comprehensive blocking");
 
-        // Query default gateway
-        char *ipconfig_cmd[] = {ipconfig_path, NULL};
-        wfd_t *wfd = wpopenv(ipconfig_path, ipconfig_cmd, W_BIND_STDOUT);
-
+        // Null-route to the loopback so packets to the target are discarded.
+        char *add_cmd[] = {route_path, "-p", "ADD", (char *)srcip,
+                           "MASK", "255.255.255.255", "127.0.0.1", NULL};
+        wfd_t *wfd = wpopenv(route_path, add_cmd, W_BIND_STDERR);
         if (!wfd) {
-            os_free(ipconfig_path);
             os_free(route_path);
             return FIREWALL_EXECUTION_FAILED;
         }
-
-        // Parse ipconfig output to find default gateway
-        char output_buf[OS_MAXSTR];
-        bool found_gateway = false;
-
-        while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-            if (strstr(output_buf, "Default Gateway") != NULL ||
-                strstr(output_buf, "Puerta de enlace predeterminada") != NULL) {
-                // Extract IP address from line
-                char *ip_start = strchr(output_buf, ':');
-                if (ip_start) {
-                    ip_start++;
-                    // Skip whitespace
-                    while (*ip_start == ' ' || *ip_start == '\t') ip_start++;
-
-                    // Copy IP address
-                    int i = 0;
-                    while (ip_start[i] != '\0' && ip_start[i] != '\n' && ip_start[i] != '\r' && i < OS_MAXSTR - 1) {
-                        gateway[i] = ip_start[i];
-                        i++;
-                    }
-                    gateway[i] = '\0';
-
-                    if (strlen(gateway) > 0) {
-                        found_gateway = true;
-                        break;
-                    }
-                }
+        int rc = wpclose(wfd);
+        if (rc != 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "route add failed with exit code %d", rc);
+            write_debug_file(argv0, log_msg);
+            os_free(route_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
+    } else {
+        // DELETE (best-effort): a null-route may not exist - e.g. the block was applied via
+        // netsh while the firewall was on - so a non-zero "element not found" is expected
+        // and is NOT treated as a failure.
+        char *del_cmd[] = {route_path, "DELETE", (char *)srcip, NULL};
+        wfd_t *wfd = wpopenv(route_path, del_cmd, W_BIND_STDERR);
+        firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
+        if (wfd) {
+            int rc = wpclose(wfd);
+            if (rc == 0) {
+                del_res = FIREWALL_SUCCESS;  // a route was actually removed
+            } else {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1,
+                         "route delete returned %d (no route is expected if the block used netsh)", rc);
+                write_debug_file(argv0, log_msg);
             }
         }
-        wpclose(wfd);
-        os_free(ipconfig_path);
-
-        if (!found_gateway) {
-            log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "gateway",
-                              "Unable to determine default gateway");
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Using gateway: %s", gateway);
-        write_debug_file(argv0, log_msg);
-
-        // Add persistent route: route -p ADD <IP> MASK 255.255.255.255 <gateway>
-        char *exec_cmd[] = {
-            route_path,
-            "-p",
-            "ADD",
-            (char *)srcip,
-            "MASK",
-            "255.255.255.255",
-            gateway,
-            NULL
-        };
-
-        wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
-        if (!wfd) {
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-        wpclose(wfd);
-
-    } else {
-        // DELETE: route DELETE <IP>
-        char *exec_cmd[] = {route_path, "DELETE", (char *)srcip, NULL};
-
-        wfd_t *wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
-        if (!wfd) {
-            os_free(route_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
-        wpclose(wfd);
+        os_free(route_path);
+        return del_res;
     }
 
     os_free(route_path);

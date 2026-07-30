@@ -23,6 +23,11 @@ runs:
   using: "composite"
   steps:
       - name: build_target_cpp
+        env:
+          INPUT_TEST: ${{ inputs.test }}
+          INPUT_FLAGS: ${{ inputs.flags }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_ASAN: ${{ inputs.asan }}
         run: |
           SRC_FOLDER=$(pwd)/src
 
@@ -35,11 +40,11 @@ runs:
           cd $SRC_FOLDER
           mkdir -p build && cd build
 
-          if [[ ${{ inputs.test }} == "false" ]]; then
+          if [[ "$INPUT_TEST" == "false" ]]; then
             echo "Compiling without tests"
-            cmake -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && cmake --build . --target ${{ inputs.target }}
+            cmake -DVERSION="$VERSION" -DREVISION="$REVISION" $INPUT_FLAGS .. && cmake --build . --target "$INPUT_TARGET"
           else
-            if [[ "${{ inputs.asan }}" != "false" ]]; then
+            if [[ "$INPUT_ASAN" != "false" ]]; then
               # Compile for ASAN
               echo "Compiling for ASAN"
               export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"

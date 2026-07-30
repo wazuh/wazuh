@@ -152,6 +152,8 @@ void * wm_office365_main(wm_office365* office365_config) {
                 break;
             #endif
         }
+
+        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
     } else {
         mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled.");
     }
@@ -164,7 +166,6 @@ void * wm_office365_main(wm_office365* office365_config) {
 }
 
 void wm_office365_destroy(wm_office365* office365_config) {
-    mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
     wm_office365_auth_destroy(office365_config->auth);
     wm_office365_subscription_destroy(office365_config->subscription);
     wm_office365_fail_destroy(office365_config->fails);

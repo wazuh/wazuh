@@ -12,6 +12,8 @@ TestAgentFieldMapping                        – all normalized agent fields pre
 TestMetadataInjection                        – @timestamp, wazuh.cluster.node, wazuh.cluster.name in every document
 TestRunMetricsSnapshot                       – frequency=0 early-exit; frequency<600 clamped to 600
 TestDisconnectionTimeOmission                – wazuh.agent.disconnected_at absent when disconnection_time is 0
+TestDatetimeFieldsSerialization              – datetime date fields normalized to ISO strings
+TestDisconnectedAgentPassesSchemaValidation  – disconnected agent doc passes schema validation
 TestBulkActionShape                          – _op_type: create on every action sent to async_bulk
 TestBuildJsonschemaProperties                – nested property schema building
 TestOpensearchTemplateToJsonschema           – OpenSearch template to JSON Schema conversion
@@ -22,7 +24,7 @@ TestValidateDocuments                        – per-document validation and inv
 import asyncio
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
@@ -419,12 +421,14 @@ AGENT_DOC_FULL = {
     },
     "version": "Wazuh v4.9.0",
     "manager": "node01",
-    "dateAdd": "2026-01-01T00:00:00Z",
+    # WazuhDBQueryAgents returns dateAdd, lastKeepAlive and disconnection_time
+    # as tz-aware datetime objects.
+    "dateAdd": datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
     "group": ["default"],
     "mergedSum": "abcdef1234567890",
     "node_name": "node01",
-    "lastKeepAlive": "2026-03-17T10:00:00Z",
-    "disconnection_time": 12345,
+    "lastKeepAlive": datetime(2026, 3, 17, 10, 0, 0, tzinfo=timezone.utc),
+    "disconnection_time": datetime(2026, 3, 17, 10, 5, 0, tzinfo=timezone.utc),
     "registerIP": "10.0.1.5",
     "group_config_status": "synced",
     "status_code": 0,
@@ -919,14 +923,16 @@ class TestDisconnectionTimeOmission:
     async def test_nonzero_disconnection_time_is_preserved(
         self, mock_wazuh_db_query_agents
     ):
-        """A non-zero disconnection_time maps to wazuh.agent.disconnected_at."""
+        """A non-zero disconnection_time maps to wazuh.agent.disconnected_at as ISO 8601."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [
                 {
                     "id": "002",
                     "name": "agent-disconnected",
                     "status": "disconnected",
-                    "disconnection_time": 19345809,
+                    "disconnection_time": datetime(
+                        1970, 8, 12, 21, 50, 9, tzinfo=timezone.utc
+                    ),
                 }
             ]
         }
@@ -934,7 +940,7 @@ class TestDisconnectionTimeOmission:
         tasks = _make_tasks()
         docs = await tasks._collect_agents(TIMESTAMP)
 
-        assert docs[0]["wazuh"]["agent"]["disconnected_at"] == 19345809
+        assert docs[0]["wazuh"]["agent"]["disconnected_at"] == "1970-08-12T21:50:09Z"
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
@@ -945,7 +951,13 @@ class TestDisconnectionTimeOmission:
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [
                 {"id": "001", "status": "active"},
-                {"id": "002", "status": "disconnected", "disconnection_time": 5000},
+                {
+                    "id": "002",
+                    "status": "disconnected",
+                    "disconnection_time": datetime(
+                        1970, 1, 1, 1, 23, 20, tzinfo=timezone.utc
+                    ),
+                },
             ]
         }
 
@@ -960,7 +972,118 @@ class TestDisconnectionTimeOmission:
         )
 
         assert "disconnected_at" not in active_doc.get("wazuh", {}).get("agent", {})
-        assert disconnected_doc["wazuh"]["agent"]["disconnected_at"] == 5000
+        assert disconnected_doc["wazuh"]["agent"]["disconnected_at"] == "1970-01-01T01:23:20Z"
+
+
+# ---------------------------------------------------------------------------
+# datetime serialization of agent date fields
+# ---------------------------------------------------------------------------
+
+
+class TestDatetimeFieldsSerialization:
+    """Regression – datetime objects from WazuhDBQueryAgents must never leak
+    into the normalized document (they fail schema validation and are not
+    JSON-serializable)."""
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_datetime_inputs_become_iso_strings(self, mock_wazuh_db_query_agents):
+        """dateAdd, lastKeepAlive and disconnection_time datetimes map to ISO strings."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [
+                {
+                    "id": "003",
+                    "name": "agent-disconnected",
+                    "status": "disconnected",
+                    "dateAdd": datetime(2026, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+                    "lastKeepAlive": datetime(
+                        2026, 7, 14, 15, 13, 36, tzinfo=timezone.utc
+                    ),
+                    "disconnection_time": datetime(
+                        2026, 7, 14, 15, 13, 46, tzinfo=timezone.utc
+                    ),
+                }
+            ]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+        agent = docs[0]["wazuh"]["agent"]
+
+        assert agent["registered_at"] == "2026-07-01T10:00:00Z"
+        assert agent["last_seen"] == "2026-07-14T15:13:36Z"
+        assert agent["disconnected_at"] == "2026-07-14T15:13:46Z"
+        # The whole document must survive JSON round-tripping (bulk indexing).
+        json.dumps(docs[0])
+
+
+# ---------------------------------------------------------------------------
+# disconnected agent passes schema validation
+# ---------------------------------------------------------------------------
+
+
+class TestDisconnectedAgentPassesSchemaValidation:
+    """Regression – a disconnected agent's document must not be dropped by
+    schema validation (it previously failed with
+    'datetime.datetime(...) is not valid under any of the given schemas')."""
+
+    MINIMAL_TEMPLATE = {
+        "template": {
+            "mappings": {
+                "dynamic": "strict",
+                "properties": {
+                    "@timestamp": {"type": "date"},
+                    "wazuh": {
+                        "properties": {
+                            "agent": {
+                                "properties": {
+                                    "id": {"type": "keyword"},
+                                    "name": {"type": "keyword"},
+                                    "status": {"type": "keyword"},
+                                    "disconnected_at": {"type": "date"},
+                                }
+                            },
+                            "cluster": {
+                                "properties": {
+                                    "name": {"type": "keyword"},
+                                    "node": {"type": "keyword"},
+                                }
+                            },
+                            "schema": {
+                                "properties": {"version": {"type": "keyword"}}
+                            },
+                        }
+                    },
+                },
+            }
+        }
+    }
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_disconnected_agent_doc_is_valid(self, mock_wazuh_db_query_agents):
+        """A document with a datetime disconnection_time survives _validate_documents."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [
+                {
+                    "id": "003",
+                    "name": "agent-disconnected",
+                    "status": "disconnected",
+                    "disconnection_time": datetime(
+                        2026, 7, 14, 15, 13, 46, tzinfo=timezone.utc
+                    ),
+                }
+            ]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+        schema = _opensearch_template_to_jsonschema(self.MINIMAL_TEMPLATE)
+
+        valid = tasks._validate_documents(docs, schema, "wazuh-metrics-agents")
+
+        assert len(valid) == 1  # was 0 before the fix
+        tasks.logger.error.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

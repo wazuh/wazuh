@@ -3,7 +3,7 @@ name: 5.X - Check changelog
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize, ready_for_review, labeled]
 
 permissions:
   contents: read
@@ -24,5 +24,5 @@ jobs:
         uses: dangoslen/changelog-enforcer@v3
         id: verify-changelog
         with:
-          skipLabels: "autocut,skip-changelog"
+          skipLabels: "no-changelog"
           changeLogPath: "CHANGELOG.md"

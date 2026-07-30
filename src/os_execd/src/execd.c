@@ -41,6 +41,28 @@ extern w_queue_t * winexec_queue;
 DWORD WINAPI win_exec_main(void * args);
 #endif
 
+/* Log a warning if an active response command reported failure or terminated abnormally.
+ * wstatus must be the value returned by wpclose(): a wait()-encoded status on POSIX
+ * (or a bare -1 if waitpid() itself failed, which never occurs as a real encoded status),
+ * or the already-resolved exit code on Windows.
+ */
+static void LogArExitStatus(const char *name, int wstatus) {
+#ifndef WIN32
+    if (wstatus == -1) {
+        mwarn("Could not determine exit status of active response command '%s'.", name);
+    } else if (WIFEXITED(wstatus)) {
+        if (WEXITSTATUS(wstatus) != 0) {
+            mwarn("Active response command '%s' reported failure (exit code %d).", name, WEXITSTATUS(wstatus));
+        }
+    } else {
+        mwarn("Active response command '%s' terminated abnormally.", name);
+    }
+#else
+    if (wstatus != 0) {
+        mwarn("Active response command '%s' reported failure (exit code %d).", name, wstatus);
+    }
+#endif
+}
 
 /* Free the timeout entry
  * Must be called after popping it from the timeout list
@@ -115,7 +137,7 @@ void ExecdShutdown(int sig)
             /* Send alert to AR script */
             fprintf(wfd->file_in, "%s\n", list_entry->parameters);
             fflush(wfd->file_in);
-            wpclose(wfd);
+            LogArExitStatus(list_entry->command[0], wpclose(wfd));
         } else {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);
         }
@@ -177,7 +199,7 @@ void ExecdTimeoutRun(int *childcount)
                 /* Send alert to AR script */
                 fprintf(wfd->file_in, "%s\n", list_entry->parameters);
                 fflush(wfd->file_in);
-                wpclose(wfd);
+                LogArExitStatus(list_entry->command[0], wpclose(wfd));
             } else {
                 merror(EXEC_CMD_FAIL, strerror(errno), errno);
             }
@@ -260,7 +282,12 @@ void ExecdRun(char *exec_msg, int *childcount)
 
     /* Build full command path */
     static char cmd_path[OS_FLSIZE];
-    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s", AR_BINDIR, name) >= (int)sizeof(cmd_path)) {
+#ifdef WIN32
+    const char *exe_suffix = strchr(name, '.') ? "" : ".exe";
+#else
+    const char *exe_suffix = "";
+#endif
+    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s%s", AR_BINDIR, name, exe_suffix) >= (int)sizeof(cmd_path)) {
         merror("Active response command path too long for '%s'. Ignoring.", name);
         cJSON_Delete(json_root);
         return;
@@ -311,7 +338,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         if (fgets(response, sizeof(response), wfd->file_out) == NULL) {
             mdebug1("Active response won't be added to timeout list. "
                     "Message not received with alert keys from script '%s'", cmd[0]);
-            wpclose(wfd);
+            LogArExitStatus(cmd[0], wpclose(wfd));
             os_free(cmd_parameters);
             cJSON_Delete(json_root);
             return;
@@ -321,7 +348,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         os_strdup(cmd[0], cmd_copy);
         if (cmd_copy == NULL) {
             merror("Active response command is null");
-            wpclose(wfd);
+            LogArExitStatus(cmd[0], wpclose(wfd));
             os_free(cmd_parameters);
             cJSON_Delete(json_root);
             return;
@@ -487,7 +514,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         fprintf(wfd->file_in, "%s\n", cmd_parameters);
         fflush(wfd->file_in);
 
-        wpclose(wfd);
+        LogArExitStatus(cmd[0], wpclose(wfd));
         os_free(cmd_copy);
 #ifndef WIN32
         (*childcount)++;

@@ -51,6 +51,56 @@ func TestLoadAllCommittedScenarios(t *testing.T) {
 	t.Logf("loaded %d committed scenarios OK", loaded)
 }
 
+func TestLoadClusterNameDefaultsToWazuh(t *testing.T) {
+	dir := t.TempDir()
+	scn := `{
+  "lanes": { "l": [{"kind":"fim_file"}] },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if s.ClusterName != "wazuh" {
+		t.Fatalf("ClusterName = %q, want wazuh", s.ClusterName)
+	}
+}
+
+func TestLoadClusterNameFromScenario(t *testing.T) {
+	dir := t.TempDir()
+	scn := `{
+  "cluster_name": "undefined",
+  "lanes": { "l": [{"kind":"fim_file"}] },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if s.ClusterName != "undefined" {
+		t.Fatalf("ClusterName = %q, want undefined", s.ClusterName)
+	}
+}
+
+func TestLoadClusterNameRejectsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	scn := `{
+  "cluster_name": "",
+  "lanes": { "l": [{"kind":"fim_file"}] },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	_, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err == nil || !strings.Contains(err.Error(), "cluster_name") {
+		t.Fatalf("expected rejection mentioning cluster_name, got: %v", err)
+	}
+}
+
 // TestLoadEngineSiblingsRequiresNonEngineLane covers the negative
 // scenario shipped at scenarios/engine_invalid_all_engine.json: a
 // fleet with only engine lanes (one of which has

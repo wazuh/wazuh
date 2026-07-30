@@ -100,7 +100,7 @@ w_err_t w_auth_parse_data(const char* buf,
         }
 
         if (parseok == 0) {
-            merror("Invalid password provided by %s. Closing connection.", ip);
+            minfo("Invalid password provided by %s. Closing connection.", ip);
             snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
@@ -248,7 +248,8 @@ w_err_t w_auth_parse_data(const char* buf,
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
                              authd_force_options_t *force_options,
-                             char** str_result) {
+                             char** str_result,
+                             bool *warn) {
 
     cJSON *j_agent_info = NULL;
     cJSON *j_date_add = NULL;
@@ -256,6 +257,10 @@ w_err_t w_auth_replace_agent(keyentry *key,
     cJSON *j_connection_status = NULL;
     bool replace_agent = true;
     char message[OS_SIZE_128] = {0};
+
+    if (warn) {
+        *warn = false;
+    }
 
     /* Check if the agent replacement is allowed */
     if (!force_options->enabled) {
@@ -290,6 +295,9 @@ w_err_t w_auth_replace_agent(keyentry *key,
                 snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", key->id);
                 os_strdup(message, *str_result);
                 replace_agent = false;
+                if (warn) {
+                    *warn = true;
+                }
             }
         }
     }
@@ -336,6 +344,7 @@ w_err_t w_auth_validate_data(char *response,
     int index = 0;
     char* str_result = NULL;
     w_err_t result = OS_SUCCESS;
+    bool warn = false;
 
     /* Validate the group(s) name(s) */
     if (groups) {
@@ -344,10 +353,14 @@ w_err_t w_auth_validate_data(char *response,
 
     /* Check for duplicate IP */
     if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result, &warn)) {
             minfo("Duplicate IP '%s'. %s", ip, str_result);
         } else {
-            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            if (warn) {
+                mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            } else {
+                minfo("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            }
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
         }
@@ -355,10 +368,14 @@ w_err_t w_auth_validate_data(char *response,
 
     /* Check for duplicate name */
     if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result, &warn)) {
             minfo("Duplicate name. %s", str_result);
         } else {
-            mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
+            if (warn) {
+                mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
+            } else {
+                minfo("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
+            }
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
         }

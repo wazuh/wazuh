@@ -43,6 +43,11 @@ const (
 	// from CStartRetries which still counts Start-side retries (offline
 	// + timeout).
 	CEndRetries
+	// CEngineLinesTooLong counts lines silently skipped because their
+	// resulting inner_event would exceed Wazuh remoted's decompression
+	// buffer (OS_MAXSTR = 65536). Sending such a frame causes ReadSecMSG
+	// to return KS_CORRUPT and remoted closes the TCP connection.
+	CEngineLinesTooLong
 
 	counterCount // sentinel; keep last
 )
@@ -78,6 +83,7 @@ var EngineHeader = []string{
 	"shutdowns_sent",
 	"merged_sum_updates",
 	"end_retries",
+	"engine_lines_too_long",
 }
 
 // LatencyKind identifies a latency series.

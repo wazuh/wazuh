@@ -9,6 +9,10 @@ services:
     hostname: wazuh-indexer
     container_name: wazuh-indexer
     entrypoint: ["/entrypoint.sh"]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
       - ./wazuh-indexer/entrypoint.sh:/entrypoint.sh:ro
       - ./certs:/certs:ro

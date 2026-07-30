@@ -114,11 +114,6 @@ else()
        "${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent/*.c")
 endif()
 
-# Remove agent-only modules from server build
-if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
-  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_sca.c")
-endif()
-
 # Build static library (without main.c)
 list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/main.c")
 add_library(wazuh_modulesd_lib STATIC ${WAZUH_MODULES_SRC})
@@ -141,16 +136,6 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
            wazuh
            schema_validator)
 
-  # Link jemalloc for server builds (unless explicitly disabled)
-  if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
-    find_library(
-      JEMALLOC_LIB jemalloc
-      PATHS ${SRC_FOLDER}/external/jemalloc/lib
-      NO_DEFAULT_PATH)
-    if(JEMALLOC_LIB)
-      target_link_libraries(wazuh_modulesd_lib PUBLIC ${JEMALLOC_LIB})
-    endif()
-  endif()
 else()
   # Agent build
   target_link_libraries(
@@ -205,6 +190,7 @@ elseif(NOT UNIT_TEST)
                                  ${SRC_FOLDER}/build/bin)
   target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
                         PRIVATE wazuh_modulesd_lib)
+  wazuh_link_jemalloc(${WAZUH_MODULESD_DAEMON_NAME})
 
   wazuh_set_runtime_rpath(${WAZUH_MODULESD_DAEMON_NAME})
 endif()

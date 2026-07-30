@@ -624,3 +624,64 @@ static void BM_FullPipeline_ScalingWithDups(benchmark::State& state)
     state.SetLabel(std::to_string(numKeys) + " keys + " + std::to_string(numDups) + " dups");
 }
 BENCHMARK(BM_FullPipeline_ScalingWithDups)->RangeMultiplier(2)->Range(8, 1024);
+
+// =============================================================================
+// Compact documents (small allocator): parse cost and memory footprint
+// =============================================================================
+
+static const std::string AGENT_HEADER_JSON =
+    R"({"wazuh":{"agent":{"id":"001","name":"agent-one","version":"5.0.0","host":{"hostname":"host1","os":{"name":"Ubuntu","platform":"linux","version":"24.04"}}}}})";
+
+/**
+ * Baseline: standard parse (default 64 KB-chunk allocator).
+ */
+static void BM_Parse_Default(benchmark::State& state)
+{
+    size_t allocated = 0;
+    for (auto _ : state)
+    {
+        Json doc {std::string_view {AGENT_HEADER_JSON}};
+        benchmark::DoNotOptimize(doc);
+        allocated = doc.getAllocatedMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+    state.counters["alloc_bytes_per_doc"] = static_cast<double>(allocated);
+}
+BENCHMARK(BM_Parse_Default);
+
+/**
+ * Compact parse: small initial block (COMPACT_INITIAL_CAPACITY) growing in
+ * COMPACT_CHUNK_CAPACITY steps. Measures the time overhead and the memory win.
+ */
+static void BM_Parse_Compact(benchmark::State& state)
+{
+    size_t allocated = 0;
+    for (auto _ : state)
+    {
+        Json doc = Json::compact(AGENT_HEADER_JSON);
+        benchmark::DoNotOptimize(doc);
+        allocated = doc.getAllocatedMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+    state.counters["alloc_bytes_per_doc"] = static_cast<double>(allocated);
+}
+BENCHMARK(BM_Parse_Compact);
+
+/**
+ * Compact deep copy of an already-parsed document (the agentcache flow:
+ * parse once, store a compact copy).
+ */
+static void BM_CompactCopy(benchmark::State& state)
+{
+    const Json original {std::string_view {AGENT_HEADER_JSON}};
+    size_t allocated = 0;
+    for (auto _ : state)
+    {
+        Json doc = original.compact();
+        benchmark::DoNotOptimize(doc);
+        allocated = doc.getAllocatedMemory();
+    }
+    state.SetItemsProcessed(state.iterations());
+    state.counters["alloc_bytes_per_doc"] = static_cast<double>(allocated);
+}
+BENCHMARK(BM_CompactCopy);

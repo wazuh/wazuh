@@ -165,6 +165,11 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
                   "AgentInfo module started with interval: " + std::to_string(interval) +
                   " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
+    {
+        std::lock_guard<std::mutex> lock(m_shutdownMutex);
+        m_runLoopActive = true;
+    }
+
     // Load sync flags from database at startup
     loadSyncFlags();
 
@@ -252,6 +257,14 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     while (!m_stopped && (shouldContinue ? shouldContinue() : true));
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
+
+    // Publish that the run loop has fully exited so stop() can tear down the sync
+    // protocol without racing synchronizeMetadataOrGroups().
+    {
+        std::lock_guard<std::mutex> shutdownLock(m_shutdownMutex);
+        m_runLoopActive = false;
+    }
+    m_shutdownCv.notify_all();
 }
 
 void AgentInfoImpl::stop()
@@ -269,6 +282,37 @@ void AgentInfoImpl::stop()
 
     m_cv.notify_one(); // Wake up the sleeping thread immediately
 
+    // Unblock any in-flight synchronizeModule() so the run loop returns promptly.
+    {
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+
+        if (m_spSyncProtocol)
+        {
+            m_spSyncProtocol->stop();
+        }
+    }
+
+    // Wait for the run loop to exit before freeing shared resources, so we don't
+    // free m_dBSync / the sync protocol while synchronizeMetadataOrGroups() is
+    // still using them. Time-bounded so a stuck loop can't hang shutdown.
+    constexpr auto SHUTDOWN_WAIT_SECONDS = std::chrono::seconds(10);  // max wait for the run loop to finish teardown
+    bool runLoopExited = false;
+    {
+        std::unique_lock<std::mutex> lock(m_shutdownMutex);
+        runLoopExited = m_shutdownCv.wait_for(lock, SHUTDOWN_WAIT_SECONDS, [this] { return !m_runLoopActive; });
+    }
+
+    if (!runLoopExited)
+    {
+        // The run loop is still active. Freeing m_dBSync / the sync protocol now
+        // would be a use-after-free (the loop can still call synchronizeMetadataOrGroups()),
+        // so skip the teardown and let process exit reclaim the handles instead.
+        m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit; skipping database teardown.");
+        m_logFunction(LOG_INFO, "AgentInfo module stopped.");
+        return;
+    }
+
+    // Close the main DB connection.
     {
         std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
 
@@ -280,11 +324,12 @@ void AgentInfoImpl::stop()
         }
     }
 
-    // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
-    // This ensures no new sync operations are started from DBSync callbacks
-    if (m_spSyncProtocol)
+    // Destroy the sync protocol so its SQLite connection to the persistent-queue
+    // db is closed BEFORE stop() returns. Guarded against parseResponseBuffer(),
+    // which runs on another thread.
     {
-        m_spSyncProtocol->stop();
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+        m_spSyncProtocol.reset();
     }
 
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
@@ -331,14 +376,23 @@ void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, u
                   ", maxEps=" + std::to_string(maxEps));
 }
 
+void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)
+{
+    m_isShuttingDown = std::move(isShuttingDown);
+}
+
 bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+
     if (m_spSyncProtocol && data)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    m_logFunction(LOG_WARNING, "Sync protocol not initialized or invalid data");
+    // A late manager response can arrive after stop() has torn the sync protocol
+    // down; that is expected during shutdown, so don't raise it to WARNING then.
+    m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -752,7 +806,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
             return false;
         }
 
@@ -1178,7 +1232,10 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            }
         }
     }
 }
@@ -1243,11 +1300,10 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 if (moduleName == FIM_NAME && !firstSyncCompleted)
                 {
-                    if (!m_deferralLogged)
+                    if (m_deferralLoggedModules.insert(moduleName).second)
                     {
                         m_logFunction(LOG_INFO,
                                       "Deferring coordination until FIM first sync completes, will retry next cycle");
-                        m_deferralLogged = true;
                     }
                     else
                     {
@@ -1260,11 +1316,11 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 // FIM first sync is no longer in progress: the deferral episode (if any)
                 // has ended. Clear the throttle here rather than only on full coordination
-                // success, so a failure later in the cycle does not leave it stuck true and
+                // success, so a failure later in the cycle does not leave it stuck and
                 // suppress the operator-visible INFO on a future deferral episode.
                 if (moduleName == FIM_NAME)
                 {
-                    m_deferralLogged = false;
+                    m_deferralLoggedModules.erase(moduleName);
                 }
 
                 std::string status = pollJson["data"]["status"].get<std::string>();
@@ -1318,7 +1374,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     // deferral episode logs its INFO marker again instead of being stuck at DEBUG.
     if (moduleName == FIM_NAME)
     {
-        m_deferralLogged = false;
+        m_deferralLoggedModules.erase(moduleName);
     }
 
     m_logFunction(LOG_WARNING,
@@ -1447,6 +1503,56 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
     return false;
 }
 
+bool AgentInfoImpl::isModuleFirstSyncCompleted(const std::string& moduleName)
+{
+    // Ask the module whether its one-shot first synchronization has completed. SCA and syscollector
+    // answer get_first_sync_completed with a first_sync_completed field (1/0); while the first sync
+    // is still in progress the metadata is unset and the field is absent. When synchronization is
+    // disabled the module reports completed (see wm_sca.c / wm_syscollector.c), so we never defer
+    // forever on a sync that will not run.
+    const std::string message = createJsonCommand("get_first_sync_completed");
+    const ModuleResponse response = queryModuleWithRetry(moduleName, message);
+
+    try
+    {
+        const nlohmann::json parsed = nlohmann::json::parse(response.response);
+
+        if (parsed.contains("data") && parsed["data"].contains("first_sync_completed"))
+        {
+            const auto& value = parsed["data"]["first_sync_completed"];
+
+            if (value.is_number())
+            {
+                return value.get<int>() != 0;
+            }
+
+            if (value.is_boolean())
+            {
+                return value.get<bool>();
+            }
+        }
+
+        // No first_sync_completed field. SCA/syscollector answer get_first_sync_completed with an
+        // error while their first-sync marker is not set yet (metadata unset) — that is exactly the
+        // "first sync still in progress" state, so defer. A successful response without the field
+        // means the module has nothing to defer on, so treat it as completed and do not wedge
+        // coordination.
+        if (parsed.contains("error") && parsed["error"].is_number() && parsed["error"].get<int>() != 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        // No / unparseable response (module unreachable): do not wedge coordination, treat as done.
+        m_logFunction(LOG_DEBUG,
+                      "Could not read first_sync_completed from " + moduleName + ": " + std::string(e.what()));
+        return true;
+    }
+}
+
 AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
     for (const auto& module : COORDINATION_MODULES)
@@ -1492,7 +1598,29 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
             }
             else
             {
-                // Other modules: pause is synchronous, already completed
+                // SCA/syscollector pause synchronously, but like FIM they deliver their initial
+                // state via a one-shot first sync. Defer coordination until that completes so we do
+                // not pause/flush and advance the group/metadata version mid-first-sync (extends the
+                // FIM guard from #36762 to these modules).
+                if (!isModuleFirstSyncCompleted(module))
+                {
+                    if (m_deferralLoggedModules.insert(module).second)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Deferring coordination until " + module +
+                                      " first sync completes, will retry next cycle");
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG, "Still deferring coordination until " + module + " first sync completes");
+                    }
+
+                    pausedModules.insert(module);
+                    resumePausedModules(pausedModules);
+                    return PauseCoordinationResult::Deferred;
+                }
+
+                m_deferralLoggedModules.erase(module);
                 m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
 
@@ -1578,9 +1706,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
-                          "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
@@ -1639,9 +1771,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
-                          "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
@@ -1728,9 +1864,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         // documents that have not yet arrived at the indexer.
         if (!pollFlushCompletion(pausedModules))
         {
-            m_logFunction(LOG_INFO,
-                          "One or more module flushes did not complete; aborting version sync to avoid "
-                          "indexer inconsistency — coordination will be retried in the next cycle");
+            if (isShutdownInProgress())
+            {
+                // No "next cycle": the module is stopping, so version sync is simply not handed over.
+                m_logFunction(LOG_INFO,
+                              "Module flush aborted: the module is stopping.");
+            }
+            else
+            {
+                m_logFunction(LOG_INFO,
+                              "One or more module flushes did not complete; aborting version sync to avoid "
+                              "indexer inconsistency — coordination will be retried in the next cycle");
+            }
+
             return CoordinationResult::Failed;
         }
 
@@ -1751,12 +1897,38 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
         if (m_spSyncProtocol)
         {
-            bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                                   TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
+            SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                                              TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
 
-            if (!syncSuccess)
+            if (!syncResult.success)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table);
+                if (isShutdownInProgress() || syncResult.stopped)
+                {
+                    // Not a real failure: the sync was aborted because the module is stopping.
+                    m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
+                }
+                else if (syncResult.managerNotReady
+                         && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+                {
+                    // The manager is not ready for this agent yet, mostly right after a restart, and the
+                    // sync has not failed enough times in a row to suspect it will not clear. Agent-info
+                    // retries this table on the next coordination cycle.
+                    m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
+                                  syncResult.failureReason + " Will retry next cycle.");
+                }
+                else if (syncResult.managerNotReady)
+                {
+                    // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
+                                  std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
+                                  syncResult.failureReason);
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
+                                  (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                }
+
                 return CoordinationResult::Failed;
             }
 
@@ -1854,7 +2026,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -1891,7 +2063,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2071,7 +2243,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2133,6 +2305,12 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
             m_logFunction(LOG_DEBUG, "Coordination of " + table + " deferred, sync flag retained for retry");
             return false;
         }
+        else if (isShutdownInProgress())
+        {
+            // Not a real failure and there is no "next cycle": the module is stopping.
+            m_logFunction(LOG_INFO, "Coordination of " + table + " aborted: the module is stopping.");
+            return false;
+        }
         else
         {
             m_logFunction(LOG_INFO, "Failed to coordinate " + table + ", will retry in next cycle");
@@ -2179,22 +2357,44 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
 
         // Perform integrity check - no globalVersion needed for CHECK modes
-        bool success = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
+        SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
         // Update the last sync time regardless of the synchronization result
         // This ensures we always wait for integrity_interval before trying again
         updateLastIntegrityTime(table);
 
-        if (success)
+        if (syncResult.success)
         {
             m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
         }
+        else if (isShutdownInProgress() || syncResult.stopped)
+        {
+            // Not a real failure: the integrity check was aborted because the module is stopping.
+            m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
+        }
+        else if (syncResult.managerNotReady
+                 && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        {
+            // The manager is not ready for this agent yet, mostly right after a restart, and the
+            // sync has not failed enough times in a row to suspect it will not clear. Agent-info
+            // retries this table on the next integrity cycle.
+            m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
+                          syncResult.failureReason + " Will retry next cycle.");
+        }
+        else if (syncResult.managerNotReady)
+        {
+            // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
+                          std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
+                          syncResult.failureReason);
+        }
         else
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table);
+            m_logFunction(LOG_WARNING, "Failed integrity check for " + table +
+                          (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 
-        return success;
+        return syncResult.success;
     }
     catch (const std::exception& e)
     {

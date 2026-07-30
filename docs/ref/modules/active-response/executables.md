@@ -145,12 +145,14 @@ block in quick from <wazuh_fwtable>
 
 **Type**: Stateful (supports timeout-based reversion)
 
-**Firewall Methods** (tried in order):
+**Firewall Methods** (ENABLE tries them in order; DISABLE removes **both** — see Removal below):
 
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
-| 1 | netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="Wazuh AR: 192.168.1.100" dir=in action=block remoteip=192.168.1.100` |
-| 2 | route | `route.exe` | `route add 192.168.1.100 mask 255.255.255.255 <gateway> metric 1` |
+| 1 | netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
+| 2 | route | `route.exe` | `route -p ADD 192.168.1.100 MASK 255.255.255.255 127.0.0.1` (null-route to loopback) |
+
+The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for IPv6.
 
 **Input Fields**:
 ```json
@@ -170,16 +172,24 @@ block in quick from <wazuh_fwtable>
 ```
 
 **Windows-Specific Details**:
-- **Firewall Rules**: Creates named rules: `"Wazuh AR: <IP>"`
-- **Rule Direction**: Inbound blocking only (`dir=in`)
-- **Route Fallback**: Adds blackhole route if netsh fails
-- **Gateway Detection**: Uses `ipconfig` to find default gateway for route method
-- **IPv6 Support**: Automatically detects IPv6 addresses and uses appropriate commands
+- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"` — one inbound (`dir=in`) and one outbound (`dir=out`) for bidirectional blocking.
+- **Effective firewall-state detection**: On **ENABLE only**, netsh is used only if the Windows Firewall is *effectively* enabled. The state is read directly from the registry `EnableFirewall` DWORD (locale-independent), evaluated per profile (Domain/Standard/Public):
+  - The GPO policy value (`HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<profile>`) wins if present;
+  - otherwise the local SharedAccess value (`HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\<profile>`);
+  - otherwise, an **absent** value defaults to **enabled** (the Windows default).
+
+  If any profile is effectively enabled, netsh is used; if the firewall is effectively off, netsh is skipped and the chain defers to the `route` fallback (adding a rule that would sit dormant is avoided). This check is **not** applied on DISABLE, so an unblock always attempts to remove the rule.
+- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **null-routed to loopback** (`route -p ADD <IP> MASK 255.255.255.255 127.0.0.1`) so the host discards packets destined to it. This is **best-effort**: it can break routed/remote attackers but does **not** block a host on a directly-connected subnet (on-link traffic is delivered via ARP, which the loopback route does not redirect). The `route add` exit code is checked, so the method no longer reports a false success. **Windows Firewall (netsh) remains the only comprehensive blocking mechanism.**
+- **IPv4-only fallback**: The `route` fallback applies to **IPv4 targets only**; IPv6 targets are skipped (netsh already covers IPv6).
 - **Permissions**: Requires Administrator privileges
 
 **Removal**:
-- Enable: `netsh advfirewall firewall delete rule name="Wazuh AR: 192.168.1.100"`
-- Route: `route delete 192.168.1.100`
+
+DISABLE is **not** a fallback chain — because a block may have been applied by *either* netsh (firewall on) *or* the null-route (firewall off), unblock unconditionally attempts to remove **both**, each best-effort (a missing rule/route is the expected, non-failure case):
+- netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`
+- route: `route DELETE 192.168.1.100`
+
+The unblock is reported successful if **either** removal actually took effect; if nothing matched, a warning is logged (the IP may already be unblocked).
 
 **Return Codes**:
 - `0`: Success (IP blocked/unblocked)
@@ -255,14 +265,14 @@ block in quick from <wazuh_fwtable>
 
 ## Agent Restart and Reload
 
-Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/README.md).
+Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/index.html).
 
 **Control Operations**:
 - Agent restart via `PUT /agents/{agent_id}/restart` API endpoint
 - Agent reload via `PUT /agents/{agent_id}/reload` API endpoint
 - Handled through dedicated control channel, not Active Response
 
-**See**: [Control Module Documentation](../control/README.md) for details on agent control operations.
+**See**: [Control Module Documentation](../control/index.html) for details on agent control operations.
 
 ---
 
@@ -739,7 +749,7 @@ pfctl -t wazuh_fwtable -T show
 
 **Windows (netsh)**:
 ```powershell
-netsh advfirewall firewall show rule name="Wazuh AR: 192.168.1.100"
+netsh advfirewall firewall show rule name="WAZUH ACTIVE RESPONSE BLOCKED IP"
 ```
 
 ### Check Logs
@@ -783,4 +793,4 @@ tail -f /var/ossec/logs/active-responses.log
 
 - [Active Response README](README.md) - Module overview and features
 - [Architecture](architecture.md) - Technical implementation details
-- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)

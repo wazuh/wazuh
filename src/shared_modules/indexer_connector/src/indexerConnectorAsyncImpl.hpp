@@ -12,6 +12,7 @@
 #include "IURLRequest.hpp"
 #include "asyncValueDispatcher.hpp"
 #include "external/nlohmann/json.hpp"
+#include "indexerBulkQueue.hpp"
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -19,16 +20,13 @@
 #include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
 #include "simdjson.h"
-#include "threadEventDispatcher.hpp"
 #include <filesystem>
 #include <mutex>
-#include <queue>
 #include <string>
 #include <string_view>
 #include <vector>
 
 static std::mutex G_CREDENTIAL_MUTEX;
-constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
 constexpr auto INDEXER_COLUMN {"indexer"};
@@ -54,10 +52,9 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     }
 }
 
-constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
+constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
-constexpr auto MINIMAL_ELEMENTS_PER_BULK {1};
 
 // Overhead is the fixed JSON scaffolding for one bulk item:
 // {"index":{"_index":"<index>","id":"<id>"}}
@@ -69,13 +66,20 @@ public:
     std::string m_payload;
     std::vector<uint64_t> m_boundaries;
     std::string m_response;
+    // Send attempt's sequence id (see IndexerBulkQueue::Processor), tagging the classification's
+    // requestBackoff()/reportHealthyResponse() verdict.
+    uint64_t m_sequence {0};
 
     IndexerResponse() = default;
 
-    explicit IndexerResponse(std::string&& payload, std::vector<uint64_t>&& boundaries, std::string&& response)
+    explicit IndexerResponse(std::string&& payload,
+                             std::vector<uint64_t>&& boundaries,
+                             std::string&& response,
+                             uint64_t sequence)
         : m_payload(std::move(payload))
         , m_boundaries(std::move(boundaries))
         , m_response(std::move(response))
+        , m_sequence(sequence)
     {
     }
 
@@ -88,77 +92,108 @@ public:
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
+        m_sequence = data.m_sequence;
     }
     IndexerResponse& operator=(IndexerResponse&& data) noexcept
     {
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
+        m_sequence = data.m_sequence;
         return *this;
     }
 };
 
-using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 using ThreadLoggerQueue = Utils::AsyncValueDispatcher<IndexerResponse, std::function<void(IndexerResponse&&)>>;
 
 template<typename TSelector,
          typename THttpRequest,
-         size_t ElementsPerBulk = 25000,
+         size_t BulkMaxBytes = (size_t {0x1} << 22),
          size_t FlushInterval = 20,
          size_t RetryDelay = 1,
-         size_t MaxSuccessCount = 5>
+         size_t MaxSuccessCount = 5,
+         size_t MaxRetryDelay = 15>
 class IndexerConnectorAsyncImpl final
 {
+    static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
+
     SecureCommunication m_secureCommunication;
     std::unique_ptr<TSelector> m_selector;
     THttpRequest* m_httpRequest;
     std::atomic<bool> m_stopping {false};
-    std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
-    const std::string m_queueId;
-    const std::string m_dbPath;
     LogFn m_logFn;
+    std::atomic<size_t> m_clusterBlockedItemCount {0};
+    std::unique_ptr<IndexerBulkQueue> m_queue;
+    std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     bool m_error413Logged {false};
+    bool m_loggerDropLogged {false};
     size_t m_successCount {0};
-    size_t m_maxQueueSize {0};
+    size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
-    size_t m_elementsPerBulk {ElementsPerBulk};
-    std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
+    size_t m_bulkMaxBytes {BulkMaxBytes};
+    size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
+    size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
+    size_t m_maxRetryDelay {MaxRetryDelay};
 
 public:
-    ~IndexerConnectorAsyncImpl() = default;
+    static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
+    static constexpr size_t DEFAULT_LOGGER_THREADS {1};    ///< Default number of error-logger threads.
+
+    /**
+     * @brief Cheap check of the "errors" field in the head of an OpenSearch _bulk response.
+     *
+     * A bulk response starts with {"took":N,"errors":false,...}. This scans the first bytes
+     * for the "errors" key and inspects its value token, so the happy path can skip the
+     * logger queue entirely (avoiding a second life of the full payload + response).
+     * Conservative: if the field cannot be found or recognized in the head, reports true so
+     * the logger's full parse decides.
+     *
+     * @param response Raw HTTP _bulk response body.
+     * @return false only when the response head contains "errors": false; true otherwise.
+     */
+    static bool bulkResponseHasErrors(std::string_view response)
+    {
+        constexpr std::string_view KEY {"\"errors\""};
+        constexpr size_t HEAD_BYTES {256};
+
+        const auto keyPos = response.substr(0, HEAD_BYTES).find(KEY);
+        if (keyPos == std::string_view::npos)
+        {
+            return true; // conservative: let the logger parse it
+        }
+
+        auto pos = keyPos + KEY.size();
+        while (pos < response.size() && (response[pos] == ':' || response[pos] == ' ' || response[pos] == '\t' ||
+                                         response[pos] == '\n' || response[pos] == '\r'))
+        {
+            ++pos;
+        }
+        return !(pos < response.size() && response[pos] == 'f');
+    }
+
+    ~IndexerConnectorAsyncImpl()
+    {
+        m_stopping.store(true);
+        if (m_queue)
+        {
+            m_queue->stop();
+        }
+    }
 
     explicit IndexerConnectorAsyncImpl(
         const nlohmann::json& config,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
-        std::string queueId,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string basePath = DATABASE_BASE_PATH,
         std::string callerName = "")
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
-        , m_queueId(std::move(queueId))
-        , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
         , m_logFn {}
     {
         m_logFn = LogFn {callerName}.compose("indexer-connector");
-        // Install caller context so sub-objects (RocksDB queues, dispatchers) pick up the right base tag
+        // Install caller context so sub-objects (queues, dispatchers) pick up the right base tag
         // via makeLibLogFn(). Restores the previous TL value when the constructor exits.
         const Log::ScopedModuleLogFn guard {callerName.empty() ? LogFn {"indexer-connector"} : LogFn {callerName}};
-
-        if (m_queueId.empty())
-        {
-            throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
-                                            "must have a unique identifier (e.g. \"engine\", \"inventory-sync\").");
-        }
-
-        if (m_queueId.find('/') != std::string::npos || m_queueId.find('\\') != std::string::npos ||
-            m_queueId.find("..") != std::string::npos)
-        {
-            throw IndexerConnectorException(
-                "queueId must not contain path separators ('/', '\\') or traversal sequences ('..'): \"" + m_queueId +
-                "\".");
-        }
 
         if (logFunction)
         {
@@ -212,14 +247,14 @@ public:
         static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
-            username = "admin";
-            password = "admin";
-            LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
+            username = "wazuh-manager";
+            password = "wazuh-manager";
+            LOGFN_WARN(m_logFn, "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
-            username = "admin";
-            LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
+            username = "wazuh-manager";
+            LOGFN_WARN(m_logFn, "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
         m_secureCommunication.basicAuth(username + ":" + password)
@@ -230,10 +265,10 @@ public:
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
 
-        // Read max queue size from config, default to unlimited if not specified
-        m_maxQueueSize = config.contains("max_queue_size") && config.at("max_queue_size").is_number_unsigned()
-                             ? config.at("max_queue_size").get<size_t>()
-                             : 0; // 0 means unlimited
+        // Read max queue size (in bytes) from config, default to unlimited if not specified
+        m_maxQueueBytes = config.contains("max_queue_bytes") && config.at("max_queue_bytes").is_number_unsigned()
+                              ? config.at("max_queue_bytes").get<size_t>()
+                              : 0; // 0 means unlimited
 
         // Read flush interval from config; the template parameter acts as a fallback default.
         // Accept both signed and unsigned JSON integers (nlohmann stores bare literals as signed).
@@ -242,9 +277,35 @@ public:
                 ? config.at("flush_interval_seconds").get<size_t>()
                 : FlushInterval;
 
-        m_elementsPerBulk = config.contains("elements_per_bulk") && config.at("elements_per_bulk").is_number_integer()
-                                ? config.at("elements_per_bulk").get<size_t>()
-                                : ElementsPerBulk;
+        m_bulkMaxBytes = config.contains("bulk_max_bytes") && config.at("bulk_max_bytes").is_number_integer()
+                             ? config.at("bulk_max_bytes").get<size_t>()
+                             : BulkMaxBytes;
+
+        m_maxRetryDelay =
+            config.contains("max_retry_delay_seconds") && config.at("max_retry_delay_seconds").is_number_integer()
+                ? config.at("max_retry_delay_seconds").get<size_t>()
+                : MaxRetryDelay;
+        if (m_maxRetryDelay < RetryDelay)
+        {
+            throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
+        // bulk reported errors are enqueued (see onSuccess), so small defaults suffice.
+        m_loggerQueueSize = config.contains("logger_queue_size") && config.at("logger_queue_size").is_number_integer()
+                                ? config.at("logger_queue_size").get<size_t>()
+                                : DEFAULT_LOGGER_QUEUE_SIZE;
+        m_loggerThreads = config.contains("logger_threads") && config.at("logger_threads").is_number_integer()
+                              ? config.at("logger_threads").get<size_t>()
+                              : DEFAULT_LOGGER_THREADS;
+        if (m_loggerQueueSize == 0)
+        {
+            m_loggerQueueSize = DEFAULT_LOGGER_QUEUE_SIZE;
+        }
+        if (m_loggerThreads == 0)
+        {
+            m_loggerThreads = DEFAULT_LOGGER_THREADS;
+        }
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -256,7 +317,7 @@ public:
                 if (auto parseResult = parser.parse(data.m_response).get(parsedResponse);
                     parseResult != simdjson::SUCCESS)
                 {
-                    LOG_DEBUG2(m_logFn, "Failed to parse the indexer response %s", data.m_response.c_str());
+                    LOGFN_DEBUG2(m_logFn, "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
 
@@ -265,6 +326,7 @@ public:
                     parsedResponse["errors"].get(errorsElement) != simdjson::SUCCESS ||
                     !errorsElement.get_bool().value_unsafe())
                 {
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -272,16 +334,18 @@ public:
                 simdjson::dom::array itemsArray;
                 if (parsedResponse["items"].get_array().get(itemsArray) != simdjson::SUCCESS)
                 {
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
                 const size_t itemsSize = itemsArray.size();
                 if (data.m_boundaries.size() != itemsSize)
                 {
-                    LOG_WARN(m_logFn,
-                             "Mismatch between the number of events (%zu) and response items (%zu)",
-                             data.m_boundaries.size(),
-                             itemsSize);
+                    LOGFN_WARN(m_logFn,
+                               "Mismatch between the number of events (%zu) and response items (%zu)",
+                               data.m_boundaries.size(),
+                               itemsSize);
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -291,6 +355,7 @@ public:
 
                 // Process items with optimized iteration
                 size_t itemIndex = 0;
+                size_t clusterBlockedCount = 0;
                 for (const auto& item : itemsArray)
                 {
                     // Try to find the operation element (could be "index", "create")
@@ -336,6 +401,15 @@ public:
                         errorType = typeElement.get_string().value_unsafe();
                     }
 
+                    // Expected, recoverable condition (cluster refusing writes) - tally instead of
+                    // logging per document; back off once per batch below.
+                    if (errorType == "cluster_block_exception")
+                    {
+                        ++clusterBlockedCount;
+                        ++itemIndex;
+                        continue;
+                    }
+
                     // Extract caused_by information if available
                     simdjson::dom::element causedByElement;
                     if (errorElement["caused_by"].get(causedByElement) == simdjson::SUCCESS)
@@ -363,42 +437,63 @@ public:
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
-                        LOG_WARN(m_logFn,
-                                 "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
-                                 "Associated event: %.*s",
-                                 static_cast<int>(errorType.size()),
-                                 errorType.data(),
-                                 static_cast<int>(errorReason.size()),
-                                 errorReason.data(),
-                                 static_cast<int>(causedByType.size()),
-                                 causedByType.data(),
-                                 static_cast<int>(causedByReason.size()),
-                                 causedByReason.data(),
-                                 static_cast<int>(payload.size()),
-                                 payload.data());
+                        LOGFN_WARN(m_logFn,
+                                   "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                   "Associated event: %.*s",
+                                   static_cast<int>(errorType.size()),
+                                   errorType.data(),
+                                   static_cast<int>(errorReason.size()),
+                                   errorReason.data(),
+                                   static_cast<int>(causedByType.size()),
+                                   causedByType.data(),
+                                   static_cast<int>(causedByReason.size()),
+                                   causedByReason.data(),
+                                   static_cast<int>(payload.size()),
+                                   payload.data());
                     }
                     else
                     {
-                        LOG_WARN(m_logFn,
-                                 "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
-                                 static_cast<int>(errorType.size()),
-                                 errorType.data(),
-                                 static_cast<int>(errorReason.size()),
-                                 errorReason.data(),
-                                 static_cast<int>(payload.size()),
-                                 payload.data());
+                        LOGFN_WARN(m_logFn,
+                                   "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   static_cast<int>(errorType.size()),
+                                   errorType.data(),
+                                   static_cast<int>(errorReason.size()),
+                                   errorReason.data(),
+                                   static_cast<int>(payload.size()),
+                                   payload.data());
                     }
 
                     ++itemIndex;
                 }
-            });
 
-        m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-            [this](std::queue<std::string>& dataQueue)
+                if (clusterBlockedCount > 0)
+                {
+                    const auto totalBlocked =
+                        m_clusterBlockedItemCount.fetch_add(clusterBlockedCount, std::memory_order_relaxed) +
+                        clusterBlockedCount;
+                    LOGFN_WARN(m_logFn,
+                               "Index write(s) blocked by the cluster (cluster_block_exception) - %zu document(s) "
+                               "in this batch (%zu total) not indexed due to this expected condition. Backing off "
+                               "future sends.",
+                               clusterBlockedCount,
+                               totalBlocked);
+                    m_queue->requestBackoff(data.m_sequence);
+                }
+                else
+                {
+                    // Errors present but none were cluster_block_exception.
+                    m_queue->reportHealthyResponse(data.m_sequence);
+                }
+            },
+            static_cast<unsigned int>(m_loggerThreads),
+            m_loggerQueueSize);
+
+        m_queue = std::make_unique<IndexerBulkQueue>(
+            [this](uint64_t sequence, std::vector<std::string>& dataQueue)
             {
                 if (m_stopping.load())
                 {
-                    LOG_DEBUG2(m_logFn, "IndexerConnector is stopping, event processing will be skipped.");
+                    LOGFN_DEBUG2(m_logFn, "IndexerConnector is stopping, event processing will be skipped.");
                     throw IndexerConnectorException("IndexerConnector is stopping, event processing will be skipped.");
                 }
 
@@ -409,20 +504,18 @@ public:
                 const auto bulkSize = dataQueue.size();
                 boundaries.reserve(bulkSize);
 
-                while (!dataQueue.empty())
+                for (auto& item : dataQueue)
                 {
                     boundaries.push_back(bulkData.size());
-                    bulkData.append(dataQueue.front());
-
-                    dataQueue.pop();
+                    bulkData.append(item);
                 }
 
-                const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
+                const auto onSuccess = [this, &bulkData, &boundaries, sequence](std::string&& response)
                 {
-                    if (m_dispatcher->bulkSize() != m_elementsPerBulk && m_successCount == MaxSuccessCount)
+                    if (m_queue->bulkMaxBytes() != m_bulkMaxBytes && m_successCount == MaxSuccessCount)
                     {
-                        LOG_DEBUG2(m_logFn, "Resetting bulk size to %zu.", m_elementsPerBulk);
-                        m_dispatcher->bulkSize(m_elementsPerBulk);
+                        LOGFN_DEBUG2(m_logFn, "Resetting bulk max bytes to %zu.", m_bulkMaxBytes);
+                        m_queue->bulkMaxBytes(m_bulkMaxBytes);
                         m_error413Logged = false;
                     }
 
@@ -430,81 +523,93 @@ public:
                     {
                         m_successCount++;
                     }
-                    IndexerResponse responseData(std::move(bulkData), std::move(boundaries), std::move(response));
-                    m_loggerProcessor->push(std::move(responseData));
-                    // Dispatch to error logger.
+
+                    // Fast path: when the bulk head reports "errors":false there is nothing to
+                    // log — drop payload and response right here instead of parking a full copy
+                    // of both in the logger queue (the main RSS driver under sustained load).
+                    if (!bulkResponseHasErrors(response))
+                    {
+                        m_queue->reportHealthyResponse(sequence);
+                        return;
+                    }
+
+                    // Dispatch to error logger (bounded queue: drop + warn when it is full).
+                    IndexerResponse responseData(
+                        std::move(bulkData), std::move(boundaries), std::move(response), sequence);
+                    if (m_loggerProcessor->push(std::move(responseData)))
+                    {
+                        m_loggerDropLogged = false;
+                    }
+                    else if (!m_loggerDropLogged)
+                    {
+                        m_loggerDropLogged = true;
+                        LOGFN_WARN(m_logFn,
+                                   "Indexer error-logger queue is full (%zu elements): bulk error details dropped. "
+                                   "Increase 'logger_queue_size' to keep them.",
+                                   m_loggerQueueSize);
+                    }
                 };
 
-                const auto onError = [this, &bulkData, bulkSize](const std::string& error,
-                                                                 const long statusCode,
-                                                                 const std::string& responseBody)
+                const auto onError =
+                    [this, &bulkData](const std::string& error, const long statusCode, const std::string& responseBody)
                 {
-                    LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
-                        LOG_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
-                        if (const size_t currentOperations = bulkData.size(); currentOperations <= 1)
+                        constexpr size_t MINIMAL_BULK_BYTES {4096};
+                        LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Reducing bulk threshold.");
+                        const auto currentBulkMax = m_queue->bulkMaxBytes();
+                        const auto halved = currentBulkMax / 2;
+
+                        if (halved < MINIMAL_BULK_BYTES)
                         {
-                            LOG_ERROR(m_logFn,
-                                      "Unable to send data even with single operation. "
-                                      "Consider increasing http.max_content_length in OpenSearch settings. "
-                                      "Current data size: %zu bytes.",
-                                      bulkData.size());
+                            // The batch cannot be shrunk any further without going below a sane minimum,
+                            // so it can never fit. Log loudly (once) and drop it instead of throwing:
+                            // throwing here would make the queue requeue and retry this same batch
+                            // forever, since it will never become small enough to succeed.
+                            if (!m_error413Logged)
+                            {
+                                m_error413Logged = true;
+                                LOGFN_WARN(m_logFn,
+                                           "Bulk threshold too small to halve further (%zu bytes). "
+                                           "Review 'http.max_content_length' in wazuh-indexer settings. "
+                                           "Current payload size: %zu bytes. Discarding this batch.",
+                                           currentBulkMax,
+                                           bulkData.size());
+                            }
+                            // Do not throw, avoid infinite retry loop. Drop this batch and continue with the next.
+                            return;
                         }
                         else
                         {
-                            if (bulkSize / 2 < MINIMAL_ELEMENTS_PER_BULK)
-                            {
-                                // If the bulk size is too small, log an error and throw an exception.
-                                // This error will be fixed by the user by increasing the http.max_content_length
-                                // value in the wazuh-indexer settings.
-                                if (m_error413Logged == false)
-                                {
-                                    m_error413Logged = true;
-                                    LOG_ERROR(m_logFn,
-                                              "The amount of elements to process is too small, review the "
-                                              "'http.max_content_length' value in "
-                                              "the wazuh-indexer settings. Current data size: %llu.",
-                                              bulkData.size());
-                                }
-
-                                throw IndexerConnectorException(
-                                    "The amount of elements to process is too small, review the "
-                                    "'http.max_content_length' value in "
-                                    "the wazuh-indexer settings.");
-                            }
-                            else
-                            {
-                                LOG_DEBUG2(
-                                    m_logFn, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
-                                this->m_dispatcher->bulkSize(bulkSize / 2);
-                                m_successCount = 0;
-                                throw IndexerConnectorException(
-                                    "Bulk size is too large, reducing the elements to be sent to the "
-                                    "indexer.");
-                            }
+                            LOGFN_DEBUG2(m_logFn, "Reducing bulk max bytes from %zu to %zu.", currentBulkMax, halved);
+                            this->m_queue->bulkMaxBytes(halved);
+                            m_successCount = 0;
+                            throw IndexerConnectorException("Bulk payload too large, reducing threshold.");
                         }
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
-                        LOG_DEBUG2(m_logFn, "Document version conflict, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Document version conflict, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
-                        LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
-                        LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                        LOGFN_WARN(m_logFn,
+                                   "%s, status code: %ld. Discarding event(s) in this batch.",
+                                   error.c_str(),
+                                   statusCode);
                     }
                 };
 
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
-                LOG_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
+                LOGFN_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,
@@ -512,11 +617,11 @@ public:
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
                                     {});
             },
-            m_dbPath,
-            m_elementsPerBulk,
-            m_maxQueueSize,
+            m_maxQueueBytes,
+            m_bulkMaxBytes,
+            m_flushInterval,
             RetryDelay,
-            m_flushInterval);
+            m_maxRetryDelay);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
@@ -533,18 +638,19 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            LOG_ERROR(m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            LOGFN_ERROR(
+                m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
-            LOG_WARN(m_logFn,
-                     "Empty data provided for document %.*s in index %.*s",
-                     static_cast<int>(id.size()),
-                     id.data(),
-                     static_cast<int>(index.size()),
-                     index.data());
+            LOGFN_WARN(m_logFn,
+                       "Empty data provided for document %.*s in index %.*s",
+                       static_cast<int>(id.size()),
+                       id.data(),
+                       static_cast<int>(index.size()),
+                       index.data());
         }
 
         std::string bulkData;
@@ -562,19 +668,19 @@ public:
             }
             else
             {
-                LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
+                LOGFN_ERROR(m_logFn, "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
             bulkData.append(R"(","version":")");
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
-            LOG_DEBUG2(m_logFn,
-                       "Using external version %.*s for document %.*s",
-                       static_cast<int>(version.size()),
-                       version.data(),
-                       static_cast<int>(id.size()),
-                       id.data());
+            LOGFN_DEBUG2(m_logFn,
+                         "Using external version %.*s for document %.*s",
+                         static_cast<int>(version.size()),
+                         version.data(),
+                         static_cast<int>(id.size()),
+                         id.data());
         }
         else
         {
@@ -583,16 +689,16 @@ public:
                 bulkData.append(R"(","_id":")");
                 appendEscapedId(bulkData, id);
             }
-            LOG_DEBUG2(m_logFn,
-                       "No version specified for document %.*s, using default versioning",
-                       static_cast<int>(id.size()),
-                       id.data());
+            LOGFN_DEBUG2(m_logFn,
+                         "No version specified for document %.*s, using default versioning",
+                         static_cast<int>(id.size()),
+                         id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
         bulkData.append("\n");
-        m_dispatcher->push(bulkData);
+        m_queue->push(std::move(bulkData));
     }
 
     void bulkIndexDataStream(std::string_view index, std::string_view data)
@@ -619,7 +725,7 @@ public:
         bulkData.append("\n");
         bulkData.append(data);
         bulkData.append("\n");
-        m_dispatcher->push(bulkData);
+        m_queue->push(std::move(bulkData));
     }
 
     bool isAvailable() const
@@ -629,12 +735,12 @@ public:
 
     uint64_t getQueueSize() const
     {
-        return m_dispatcher->size();
+        return m_queue->byteSize();
     }
 
     uint64_t getDroppedEvents() const
     {
-        return m_dispatcher->getDroppedEvents();
+        return m_queue->droppedEvents();
     }
 
     PointInTime
@@ -717,13 +823,13 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                LOG_DEBUG2(
+                LOGFN_DEBUG2(
                     m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {
                 errorMessage = std::string("Failed to parse PIT response: ") + e.what();
-                LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+                LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
             }
         };
 
@@ -732,7 +838,7 @@ public:
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
-            LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+            LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
 
         // Execute the POST request synchronously
@@ -770,7 +876,7 @@ public:
 
             const auto onSuccess = [this](const std::string& response)
             {
-                LOG_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
+                LOGFN_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
             };
 
             const auto onError =

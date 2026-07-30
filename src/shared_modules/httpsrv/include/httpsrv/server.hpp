@@ -15,12 +15,11 @@
 #include <memory>
 #include <thread>
 
-// Clamp httplib worker threads to the [4, 16] range.
+#include <proc.hpp>
+
+// Clamp httplib worker threads to a minimum of 2 based on available hardware.
 #ifndef CPPHTTPLIB_THREAD_POOL_COUNT
-#define CPPHTTPLIB_THREAD_POOL_COUNT                                                                                   \
-    ((std::min)(16u,                                                                                                   \
-                (std::max)(4u,                                                                                         \
-                           std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() - 1 : 4u)))
+#define CPPHTTPLIB_THREAD_POOL_COUNT ((std::max)(2u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u))
 #endif
 
 #include <httplib.h>

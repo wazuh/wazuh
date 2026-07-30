@@ -27,6 +27,14 @@ def setup_engine(engine_src_dir, environment_dir):
     for directory in dirs_to_create:
         os.makedirs(directory, exist_ok=True)
 
+    # Copy timezone database
+    tzdb_path = Path(engine_src_dir) / '..' / 'external' / 'tzdata'
+    tzdb_dest = Path(environment_dir) / 'tzdb' / 'iana'
+    print(f"Copying timezone database from {tzdb_path} to {tzdb_dest}")
+    if not tzdb_path.exists():
+        print(f"Error: TZDB in {tzdb_path} does not exist, download the dependencies first")
+        exit(1)
+    shutil.copytree(tzdb_path, tzdb_dest)
 
     # Copy engine binary
     engine_bin = Path(engine_src_dir) / '..' / 'build' / 'engine' / 'wazuh-engine'

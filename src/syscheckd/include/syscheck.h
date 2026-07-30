@@ -330,6 +330,16 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
 void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
 
 /**
+ * @brief Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334).
+ *
+ * The sync protocol users that are not joined before the handle is destroyed (event
+ * persistence, syscom's fim_sync responses, the DataClean paths and the scheduled-scan
+ * asp_reset) take it for reading around each asp_* call, and the shutdown path destroys
+ * the handle and resets it to NULL under the write lock.
+ */
+extern pthread_rwlock_t fim_sync_handle_rwlock;
+
+/**
  * @brief Validate and persist a FIM event with schema validation
  *
  * Validates the event against the schema and persists it if valid.

@@ -8,6 +8,7 @@ import sys
 import subprocess
 import os
 import sqlite3
+import time
 from pathlib import Path
 
 from wazuh_testing.tools.monitors import file_monitor
@@ -457,6 +458,17 @@ def custom_daemons_handler(request: pytest.FixtureRequest) -> None:
         if not ignore_errors:
             raise called_process_error
 
+    # `control_service('stop')` only waits for the OS to acknowledge the stop request
+    # (e.g. Windows SCM confirming "net stop"), not for the process to have actually
+    # exited and released its handles. `populate_syscollector_db()` below opens the same
+    # local.db the daemon was just using, and the restart further down can then race a
+    # still-shutting-down previous process for that file and for the sync protocol's
+    # persistent queue/socket. Wait for the process to actually be gone first.
+    try:
+        services.wait_expected_daemon_status(running_condition=False, timeout=30)
+    except TimeoutError as timeout_error:
+        logger.warning(str(timeout_error))
+
     # Ensures at least one entry in each syscollector table
     populate_syscollector_db()
 
@@ -477,6 +489,17 @@ def custom_daemons_handler(request: pytest.FixtureRequest) -> None:
         logger.error(f"{str(called_process_error)}")
         if not ignore_errors:
             raise called_process_error
+
+    # Same rationale as the fix already applied to the generic `daemons_handler_implementation`
+    # (tests/integration/conftest.py): on a restart the service can report running before the
+    # logger has (re)created ossec.log, and monitors built right after this fixture require the
+    # file to exist. Wait for it instead of racing the first log write.
+    for _ in range(30):
+        if os.path.isfile(WAZUH_LOG_PATH):
+            break
+        time.sleep(1)
+    else:
+        logger.warning(f"{WAZUH_LOG_PATH} was not created after starting the daemons")
 
     yield
 

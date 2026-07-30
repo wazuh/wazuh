@@ -43,6 +43,7 @@ file(
   "pipelineNodes_test.cpp"
   "stringHelper_test.cpp"
   "numericHelper_test.cpp"
+  "proc_test.cpp"
   "threadDispatcher_test.cpp"
   "threadSafeQueue_test.cpp"
   "timeHelper_test.cpp"

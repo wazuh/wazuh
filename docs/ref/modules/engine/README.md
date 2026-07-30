@@ -2326,7 +2326,7 @@ The following metric names are defined by the module.
 
 ##### `indexer.queue.size`
 
-Current number of elements in the indexer queue.
+Current number of bytes buffered in the indexer output queue.
 
 **Used for:** monitoring queue growth and backpressure.
 
@@ -2334,7 +2334,7 @@ Current number of elements in the indexer queue.
 
 ##### `indexer.queue.usage.percent`
 
-Current indexer queue utilization as a percentage of its capacity.
+Current indexer output queue byte utilization as a percentage of the configured `analysisd.indexer_queue_max_bytes` limit.
 
 **Used for:** identifying queue saturation risk.
 
@@ -2352,7 +2352,7 @@ Total number of events dropped in the indexer path.
 
 ##### `router.queue.size`
 
-Current number of elements waiting in the router queue.
+Current number of events waiting in the router input queue.
 
 **Used for:** monitoring queue pressure.
 
@@ -2360,7 +2360,7 @@ Current number of elements waiting in the router queue.
 
 ##### `router.queue.usage.percent`
 
-Current router queue utilization as a percentage.
+Current router input queue utilization as a percentage of its event-count capacity.
 
 **Used for:** early detection of congestion.
 
@@ -2387,6 +2387,22 @@ Average events per second during the last 5 minutes.
 Average events per second during the last 30 minutes.
 
 **Used for:** longer trend analysis and capacity observation.
+
+---
+
+##### `router.queue.bytes.used`
+
+Current number of bytes occupied in the router input queue.
+
+**Used for:** monitoring memory pressure from pending events.
+
+---
+
+##### `router.queue.bytes.usage.percent`
+
+Current router input queue byte utilization as a percentage of the configured `analysisd.event_queue_max_bytes` limit. Returns `0` when no byte limit is set.
+
+**Used for:** early detection of byte-quota saturation.
 
 ---
 
@@ -2421,6 +2437,50 @@ Total number of bytes received by the server.
 Total number of events received by the server.
 
 **Used for:** input traffic accounting.
+
+---
+
+#### Agent cache metrics
+
+These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON so it is parsed only once per agent instead of once per batch.
+
+##### `agent.cache.entries`
+
+Current number of agent metadata entries held in the cache (one per agent).
+
+**Used for:** observing cache footprint and how many distinct agents are active.
+
+---
+
+##### `agent.cache.hits`
+
+Total number of header lookups served from the cache without re-parsing.
+
+**Used for:** measuring cache effectiveness (hit rate) and parsing avoided.
+
+---
+
+##### `agent.cache.insertions`
+
+Total number of new agent headers parsed and added to the cache.
+
+**Used for:** accounting first-seen agents and cold-cache parsing cost.
+
+---
+
+##### `agent.cache.updates`
+
+Total number of cache entries replaced because the agent's header changed.
+
+**Used for:** detecting agents whose metadata changes frequently.
+
+---
+
+##### `agent.cache.evictions`
+
+Total number of entries removed by the periodic TTL cleanup.
+
+**Used for:** tracking cache turnover and TTL/interval tuning.
 
 ---
 
@@ -2701,14 +2761,26 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 |:--------|:------------|:-------:|
 | `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
 | `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
+| `analysisd.event_queue_max_bytes` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `32 MB` |
+
+## Agent metadata cache
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.agent_metadata_cache_ttl` | Time-to-live in seconds for cached agent metadata. | `300` |
+| `analysisd.agent_metadata_cache_clean_interval` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` |
+
 
 ### Indexer connector
 
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
-| `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
-| `analysisd.indexer_bulk_size` | Maximum number of **documents** accumulated in the asynchronous indexer bulk buffer before a `_bulk` request is dispatched to `wazuh-indexer`. Counts documents, not bytes (the byte-oriented threshold used by `wazuh-modulesd` lives under different keys). Allowed range: `1` to `1000000`. | `25000` |
-| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the document-count threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
+| `analysisd.indexer_queue_max_bytes` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `64MB` |
+| `analysisd.indexer_bulk_max_bytes` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8MB` |
+| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
+| `analysisd.indexer_logger_queue_size` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` |
+| `analysisd.indexer_logger_threads` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` |
+| `analysisd.indexer_max_retry_delay` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` |
 
 ### Synchronization settings
 
@@ -2724,7 +2796,7 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
 | `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
 | `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
+| `analysisd.ioc_indexer_connector_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
 | `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ## F.A.Q

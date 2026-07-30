@@ -22,6 +22,7 @@ target_link_libraries(
   iphlpapi
   ws2_32
   shell32
+  version
   debug
   gtestd
   debug

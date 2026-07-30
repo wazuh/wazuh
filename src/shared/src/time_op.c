@@ -93,10 +93,13 @@ time_t w_get_monotonic_time(void) {
     clock_get_time(cclock, &mts);
     mach_port_deallocate(mach_task_self(), cclock);
     return (time_t)mts.tv_sec;
-#else
+#elif defined(CLOCK_MONOTONIC)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec;
+#else
+    // Platforms without CLOCK_MONOTONIC (e.g. HP-UX 11.31): use the native monotonic high-resolution timer.
+    return (time_t)(gethrtime() / 1000000000LL);
 #endif
 }
 

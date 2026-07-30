@@ -86,7 +86,7 @@ jobs:
           prev_issue: ${{ inputs.prev_ut }}
           assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
+          project_token: ${{ secrets.WAZUH_AGENT_BOT_TOKEN }}
 
   create-coverity-issue:
     name: "Create Coverity Analysis Issue"
@@ -109,7 +109,7 @@ jobs:
           prev_issue: ${{ inputs.prev_cov }}
           assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
+          project_token: ${{ secrets.WAZUH_AGENT_BOT_TOKEN }}
 
   create-integration-tests-issue:
     name: "Create Integration Tests Issue"
@@ -132,7 +132,7 @@ jobs:
           prev_issue: ${{ inputs.prev_it }}
           assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
+          project_token: ${{ secrets.WAZUH_AGENT_BOT_TOKEN }}
 
   create-wpk-tests-issue:
     name: "Create WPK Tests Issue"
@@ -155,7 +155,7 @@ jobs:
           prev_issue: ${{ inputs.prev_wpk }}
           assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
+          project_token: ${{ secrets.WAZUH_AGENT_BOT_TOKEN }}
 
   summary:
     name: "Workflow Result"

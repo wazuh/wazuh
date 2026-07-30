@@ -10,7 +10,7 @@ with patch("wazuh.core.common.wazuh_uid", "wazuh"), patch(
     "wazuh.core.common.wazuh_gid", "wazuh"
 ):
     from wazuh.core.cluster.master import DisconnectedAgentSyncTasks
-    from wazuh.core.indexer.max_version_components import MaxVersionIndex
+    from wazuh.core.indexer.states_components import StatesIndex
 
 
 # =============================
@@ -53,16 +53,16 @@ def task_with_indexer(manager, logger):
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS_WITH_CLUSTER_NAME_SYNC,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
     )
     return task, indexer
 
 
 @pytest.fixture
 def max_version_index():
-    """Create a MaxVersionIndex instance with mock client."""
+    """Create a StatesIndex instance with mock client."""
     client = AsyncMock()
-    return MaxVersionIndex(client=client), client
+    return StatesIndex(client=client), client
 
 
 # ============================================================
@@ -91,26 +91,18 @@ class TestRunClusterNameSync:
             ]
         )
 
-        task._get_max_versions_batch_from_indexer = AsyncMock(
-            return_value={"001": 10, "002": 20}
-        )
-
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={"001": "old-cluster", "002": "old-cluster"}
         )
 
-        indexer.max_version_components = MagicMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         mock_sleep.assert_called_once_with(5)
         task._get_disconnected_agents.assert_called_once()
-        task._get_max_versions_batch_from_indexer.assert_called_once_with(
-            ["001", "002"]
-        )
         task._get_cluster_name_from_indexer.assert_called_once()
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 2
+        assert indexer.states.update_agent_cluster_name.call_count == 2
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
@@ -205,21 +197,18 @@ class TestRunClusterNameSync:
             ]
         )
 
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value={"001": 10})
-
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={"001": "wazuh-cluster"}
         )
 
-        indexer.max_version_components = MagicMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         task.logger.info.assert_any_call(
             "All disconnected agents already have correct cluster name"
         )
-        indexer.max_version_components.update_agent_cluster_name.assert_not_called()
+        indexer.states.update_agent_cluster_name.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)
@@ -239,24 +228,19 @@ class TestRunClusterNameSync:
             ]
         )
 
-        task._get_max_versions_batch_from_indexer = AsyncMock(
-            return_value={"001": 10, "002": 20}
-        )
-
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={"001": "old-cluster", "002": "old-cluster"}
         )
 
-        indexer.max_version_components = MagicMock()
         update_side_effects = [None, Exception("Update failed")]
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock(
+        indexer.states.update_agent_cluster_name = AsyncMock(
             side_effect=update_side_effects
         )
 
         await task.run_cluster_name_sync()
 
         task.logger.error.assert_called()
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 2
+        assert indexer.states.update_agent_cluster_name.call_count == 2
 
     @pytest.mark.asyncio
     @patch("wazuh.core.cluster.master.asyncio.sleep", new_callable=AsyncMock)

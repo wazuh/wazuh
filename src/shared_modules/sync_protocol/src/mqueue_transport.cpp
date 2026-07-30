@@ -24,7 +24,11 @@ bool MQueueTransport::checkStatus()
 {
     if (!ensureQueueAvailable())
     {
-        m_logger(LOG_WARNING, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        // Internal transport detail: the failure is returned to the caller, which reports the
+        // contextualized outcome (e.g. "... synchronization aborted: the module is stopping" during
+        // shutdown, or a WARNING on a genuine failure). Keep this at debug to avoid duplicate noise,
+        // consistent with sendMessage() below.
+        m_logger(LOG_DEBUG, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 

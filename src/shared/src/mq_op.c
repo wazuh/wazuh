@@ -285,6 +285,13 @@ int SendBinaryMSG(int queue, const void *message, size_t message_len, const char
     return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
+/* Send a binary message with a predicate to break out of the manager-disconnected wait */
+int SendBinaryMSGPredicated(int queue, const void *message, size_t message_len, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    /* Check for global locks */
+    os_wait_predicate(fn_ptr);
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
+}
+
 /* Send a message to socket */
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) char loc, logtarget * target)
 {
