@@ -1291,6 +1291,7 @@ void fim_file_scan() {
     // teardown guards, and the shutdown waiter (fim_shutdown_waiter(), main.c) relies on this
     // mutex to know no scan (including its trailing writes) is in flight before it tears the
     // database down.
+    // commnet added to change the file hash
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
