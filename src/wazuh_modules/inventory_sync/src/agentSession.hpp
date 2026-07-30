@@ -251,7 +251,9 @@ public:
         std::lock_guard lock(m_mutex);
 
         const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
@@ -372,7 +374,9 @@ public:
         std::lock_guard lock(m_mutex);
 
         const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
 
@@ -436,7 +440,9 @@ public:
         std::lock_guard lock(m_mutex);
 
         const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
 
