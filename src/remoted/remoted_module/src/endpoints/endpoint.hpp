@@ -57,7 +57,7 @@ namespace remoted::endpoints
      * publicErrorFor() collapses it (see endpoint.cpp): operator-actionable causes -- clock skew,
      * body-cap, unusable key, agent-id mismatch -- become throttled warnings naming the relevant
      * setting, while client-fault rejections stay at debug so an unauthenticated peer cannot flood
-     * ossec.log.
+     * wazuh-manager.log.
      *
      * @param err          The rejection reason.
      * @param agentContext Optional authenticated agent id, included in the agent-id-mismatch
