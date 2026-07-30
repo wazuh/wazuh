@@ -225,12 +225,14 @@ jobs:
         env:
           AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
           AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
+          AWS_IT_CLEANUP_MANIFEST: ${{ github.workspace }}/aws_it_uploaded_keys.txt
         run: |
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
             AWS_VPC_ID="${AWS_VPC_ID}" \
             AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
+            AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" \
             python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} \
             --html=results.html --self-contained-html
           EXIT_CODE=$?
@@ -240,6 +242,35 @@ jobs:
             exit 0
           fi
           exit $EXIT_CODE
+
+      - name: Clean up uploaded S3 test artifacts
+        # always() so this runs even when the job is CANCELLED - the dominant source of orphan
+        # objects, since pytest teardown does not run on a hard cancel. The manifest lists every key
+        # the tests uploaded (recorded at upload time); we delete each one, skipping permanent seeds.
+        if: always() && (inputs.setup_aws_credentials == true || inputs.setup_aws_credentials == 'true')
+        env:
+          AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
+          AWS_IT_CLEANUP_MANIFEST: ${{ github.workspace }}/aws_it_uploaded_keys.txt
+        run: |
+          MANIFEST="${AWS_IT_CLEANUP_MANIFEST}"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "No cleanup manifest found; nothing to delete."
+            exit 0
+          fi
+          # Permanent DevOps seeds that must never be deleted (belt-and-suspenders; the manifest never
+          # records them, but guard here in case a future test key ever matches one).
+          SEED_CLOUDTRAIL="AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json"
+          SEED_ELB="AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/819751203818_elasticloadbalancing_us-east-1_net.qatests_20221120T0000Z_1412953514070675864_29.145.39.119.log"
+          sudo sort -u "$MANIFEST" | while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            if [ "$key" = "$SEED_CLOUDTRAIL" ] || [ "$key" = "$SEED_ELB" ]; then
+              echo "Skipping permanent seed: $key"
+              continue
+            fi
+            echo "Deleting s3://${AWS_BUCKET_NAME}/${key}"
+            sudo aws s3 rm "s3://${AWS_BUCKET_NAME}/${key}" --profile default || true
+          done
+          sudo rm -f "$MANIFEST" || true
 
       - name: Dump wazuh-agent logs on failure
         if: failure()
