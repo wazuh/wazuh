@@ -529,7 +529,7 @@ void fim_initialize() {
 
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
-    atomic_int_set(&syscheck.directories_lock_ready, 1);
+    syscheck_directories_lock_ready = 1;
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
