@@ -744,13 +744,13 @@ static void test_registered_state_twice_clears_wait_file_each_time(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> registered (2)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
     expect_function_call(__wrap_os_delwait);
     g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> registered (2)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
     expect_function_call(__wrap_os_delwait);
