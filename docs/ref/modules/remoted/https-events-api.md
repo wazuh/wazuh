@@ -33,8 +33,13 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 - **TLS file paths (evaluated after `remoted` enters its chroot):**
   `etc/https-manager.cert`, `etc/https-manager.key`, and `etc/https-manager-ca.pem` — i.e. host paths
   `/var/wazuh-manager/etc/https-manager.cert`, `/var/wazuh-manager/etc/https-manager.key`, and
-  `/var/wazuh-manager/etc/https-manager-ca.pem`. The private key must be readable by the
-  `wazuh` user that `remoted` runs as.
+  `/var/wazuh-manager/etc/https-manager-ca.pem`. These paths are opened by the module itself,
+  **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
+  key (and the CA bundle, when `verification_mode` requires one) must be readable by the
+  `wazuh-manager` user `remoted` runs as. Packaging generates and owns the auto-signed pair as
+  `wazuh-manager:wazuh-manager`, mode `640`; an administrator-provided pair must match that
+  ownership, or the module fails to start (see
+  [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
@@ -68,18 +73,22 @@ with no extra configuration). A few things to know before choosing one:
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
 `authd` uses for `sslmanager.cert`/`sslmanager.key` — now shared code, invoked through remoted's
-own binary:
+own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read it once
+`remoted` drops privileges:
 
 ```bash
 wazuh-manager-remoted -C 365 -B 2048 \
   -K /var/wazuh-manager/etc/https-manager.key \
   -X /var/wazuh-manager/etc/https-manager.cert \
   -S "/C=US/ST=California/CN=Wazuh/"
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
+chmod 640 /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
 ```
 
 Generation is skipped if a certificate/key pair already exists at those paths, so an
 administrator-provided certificate is never overwritten. To force regeneration, remove both files
-and re-run the command above (or reinstall).
+and re-run the command above (or reinstall). An administrator-provided pair must be readable by
+the `wazuh-manager` user (e.g. via the same ownership/mode) or the module fails to start.
 
 ## Authentication (AES-CMAC)
 
@@ -309,9 +318,10 @@ Three more that are not about tuning:
   certificate or the private key). There is no retry: remoted must not start without the HTTPS
   transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
   this module — the certificate is expected to already be in place by then (auto-generated at
-  install time, see [Transport and TLS](#transport-and-tls)). remoted reads both files itself while
-  still root and hands the PEM content to the module directly (not a path), so the module never
-  opens a certificate file as an unprivileged user.
+  install time, see [Transport and TLS](#transport-and-tls)). The module opens the configured
+  `certificate`/`key`/`ca` paths itself, after `remoted` has already dropped root privileges, so
+  "unreadable" most often means a permission/ownership mismatch against the `wazuh-manager` user,
+  not a missing file.
 
 Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
 visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
