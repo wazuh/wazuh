@@ -142,6 +142,16 @@ extern "C"
                                        ///< empty -> library default).
         int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
+
+        // Control endpoint configuration. Defaults apply when <=0 or empty.
+        char manager_version[64];        ///< Manager version string.
+        bool allow_higher_versions;      ///< Allow agents with version > manager version.
+        char limits_json[4096];          ///< Limits JSON (rendered from <remote><limits> in manager conf).
+        int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
+        int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
+        int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 2000).
+        int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
+        int keepalive_batch_cap;         ///< Keepalive batch capacity per drain (<=0 -> 1000).
     } remoted_module_config_t;
 
     /**

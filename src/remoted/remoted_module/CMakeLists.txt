@@ -21,7 +21,8 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
-          ${SRC_FOLDER}/external/cJSON) # cJSON.h (pulled by commonDefs.h)
+          ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
+          ${SRC_FOLDER}/external/nlohmann) # nlohmann/json.hpp
 
 # ext_restinio pulls in pthread and ssl/crypto transitively (cmac.cpp's EVP_MAC), so no explicit
 # pthread/OpenSSL link is needed here. ext_rapidjson: header-only, used to parse the /stateless payload's H line.
