@@ -17,6 +17,13 @@ int __wrap_pthread_mutex_lock(pthread_mutex_t *x);
 
 int __wrap_pthread_mutex_unlock(pthread_mutex_t *x);
 
+// Monotonic count of pthread_mutex_unlock calls on mutex_unlock_watched_ptr, usable by
+// tests that need to assert ordering relative to another wrapped call (e.g. "was this
+// specific mutex still held when X ran?"). When mutex_unlock_watched_ptr is NULL (the
+// default), every unlock call is counted, same as before this was added.
+extern unsigned int mutex_unlock_call_count;
+extern pthread_mutex_t *mutex_unlock_watched_ptr;
+
 int __wrap_pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
 
 int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
