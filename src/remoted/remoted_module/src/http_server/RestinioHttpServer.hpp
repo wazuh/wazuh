@@ -17,6 +17,7 @@
 #include <openssl/x509.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace remoted::http
@@ -59,6 +60,7 @@ namespace remoted::http
                  RouteHandler handler,
                  bool countAgainstBudget = true,
                  ResponseMode mode = ResponseMode::Buffered) override;
+        std::optional<InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) override;
         void start(const HttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;

@@ -620,6 +620,20 @@ Bytes per chunk when streaming a response body (`POST /download`).
 > is the case. Each phase has its own log message naming its own setting, so the log tells you which
 > one elapsed.
 
+#### remoted.http_content_encoding_enabled
+
+Whether the HTTPS listener accepts request bodies compressed with `Content-Encoding: zstd`. When
+disabled, a request carrying that header is rejected with `415 Unsupported Content-Encoding`, the
+same as any unrecognized encoding. Bodies sent without a `Content-Encoding` header are unaffected
+either way.
+
+Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
+from the configuration file resolves to the default (enabled) on the C side before it reaches the
+module.
+
+- **Default value:** `1` (enabled)
+- **Allowed values:** `0` (disabled) or `1` (enabled)
+
 #### remoted.downstream_connect_timeout
 
 Seconds to wait for the downstream UDS connect (to the engine's event ingress) to complete.
@@ -692,6 +706,10 @@ it.
 Hard cap on the authenticated request body size, in bytes (checked by the auth middleware,
 independent of the transport's own body cap -- `http_max_body_size`, a regular `<remote>` setting,
 not an internal option).
+
+Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
+once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
+see [HTTPS Events API](https-events-api.md#content-encoding-zstd).
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)

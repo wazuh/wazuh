@@ -23,15 +23,14 @@ namespace remoted::testutil
 {
 
     /**
-     * @brief Test-only gzip compressor: the inverse of production's gzipDecode(), used to build
-     *        valid `Content-Encoding: gzip` fixtures. Not used by any production code path -- the
-     *        manager only ever decompresses agent-sent bodies, never compresses its own.
+     * @brief Test-only gzip compressor: used to build `Content-Encoding: gzip` fixtures for tests
+     *        that confirm the zstd decoder rejects a mislabeled (non-zstd) stream. Not used by any
+     *        production code path -- gzip support itself was removed; only zstd is decoded now.
      */
     inline std::string gzipCompress(std::string_view plain)
     {
         z_stream strm {};
-        // 15 + 16: emit a gzip-formatted stream (header + CRC32/size trailer), matching what
-        // gzipDecode() (windowBits 15 + 16 on the inflate side) expects to parse.
+        // 15 + 16: emit a gzip-formatted stream (header + CRC32/size trailer).
         if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK)
         {
             throw std::runtime_error("deflateInit2 failed");

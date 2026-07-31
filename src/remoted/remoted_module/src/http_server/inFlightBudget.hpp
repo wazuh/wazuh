@@ -89,6 +89,48 @@ namespace remoted::http
                 return m_owner != nullptr;
             }
 
+            /**
+             * @brief Try to grow this reservation by @p additionalBytes more, atomically, against
+             *        the same owning budget.
+             *
+             * Lets a caller that doesn't know its final size upfront (e.g. streaming decompression)
+             * reserve incrementally as more bytes materialize, instead of either over-reserving a
+             * worst-case bound before starting or not tracking the bytes at all.
+             *
+             * @return true if granted -- bytes() increases by @p additionalBytes. false if the
+             *         budget doesn't have that much room right now (this reservation is
+             *         unchanged), or if this token holds no active reservation (moved-from/released).
+             */
+            bool grow(std::size_t additionalBytes) noexcept
+            {
+                if (additionalBytes == 0)
+                {
+                    return true;
+                }
+                if (m_owner == nullptr)
+                {
+                    return false;
+                }
+                if (!m_owner->enabled())
+                {
+                    // Same "admit unconditionally, still not tracked" semantics as tryReserve().
+                    return true;
+                }
+
+                std::size_t current = m_owner->m_availableBytes.load(std::memory_order_relaxed);
+                do
+                {
+                    if (additionalBytes > current)
+                    {
+                        return false; // would exceed the budget
+                    }
+                } while (!m_owner->m_availableBytes.compare_exchange_weak(
+                    current, current - additionalBytes, std::memory_order_acq_rel, std::memory_order_relaxed));
+
+                m_bytes += additionalBytes;
+                return true;
+            }
+
         private:
             friend class InFlightBudget;
 

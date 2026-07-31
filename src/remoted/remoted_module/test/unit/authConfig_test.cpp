@@ -67,3 +67,4 @@ TEST(AuthConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(config.maxRequestAgeSeconds, 300);
     EXPECT_EQ(config.maxBodySize, 10U * 1024U * 1024U);
 }
+

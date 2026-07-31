@@ -3178,6 +3178,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
+    will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
     // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
@@ -3224,6 +3225,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.auth_max_request_age, 300);
     assert_int_equal(rm_config.auth_max_future_skew, 30);
     assert_int_equal(rm_config.auth_max_body_size, 10485760);
+    assert_true(rm_config.http_content_encoding_enabled);
 }
 
 void test_remoted_module_https_config_custom_values(void** state)
@@ -3248,6 +3250,9 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 16384);
     will_return(__wrap_getDefine_Int_default, 131072); // http_stream_chunk_size
+    will_return(__wrap_getDefine_Int_default, 0);       // http_content_encoding_enabled: 0 = disabled, the
+                                                       // opposite of its default, so a field wired to the
+                                                       // wrong queue slot fails the assert below
     // memory-management
     will_return(__wrap_getDefine_Int_default, 33554432);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -3294,6 +3299,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.auth_max_request_age, 600);
     assert_int_equal(rm_config.auth_max_future_skew, 45);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
+    assert_false(rm_config.http_content_encoding_enabled);
 }
 
 /* Tests w_remoted_build_module_config */
@@ -3333,8 +3339,9 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
-    // memory-management
     will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
+    will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled (1 = enabled)
+    // memory-management
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
@@ -3388,9 +3395,10 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
+    will_return(__wrap_getDefine_Int_default, 1);      // http_content_encoding_enabled
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
-    will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
