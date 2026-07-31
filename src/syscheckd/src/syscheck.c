@@ -476,7 +476,7 @@ void fim_initialize() {
 
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
-    syscheck_directories_lock_ready = 1;
+    syscheck_set_directories_lock_ready();
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32

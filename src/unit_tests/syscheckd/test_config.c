@@ -632,11 +632,11 @@ void test_getSyscheckConfig_lock_not_ready(void **state)
 
     /* Windows reaches this in-process and can beat fim_initialize() to it.
      * Declining is what keeps it off an rwlock nothing has initialized. */
-    syscheck_directories_lock_ready = 0;
+    __atomic_store_n(&syscheck_directories_lock_ready, 0, __ATOMIC_RELEASE);
 
     assert_null(getSyscheckConfig());
 
-    syscheck_directories_lock_ready = 1;
+    syscheck_set_directories_lock_ready();
 }
 
 void test_getSyscheckInternalOptions(void **state)
@@ -879,7 +879,7 @@ void test_fim_adjust_path_convert_system32 (void **state) {
 int main(void) {
     /* getSyscheckConfig() declines until fim_initialize() publishes this.
      * fim_initialize() does this once directories_lock is real. */
-    syscheck_directories_lock_ready = 1;
+    syscheck_set_directories_lock_ready();
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
