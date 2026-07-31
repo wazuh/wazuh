@@ -47,11 +47,15 @@ def mock_req(request, request_info):
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip(mock_req):
     """Test check_blocked_ip function.
-       Check if the ip_block is emptied when the blocking period has finished."""
+       Check if the ip_block is emptied when the blocking period has finished, and that the
+       current attempt is then counted."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 50}}
     with patch("api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
-         patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block:
+         patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
         await check_blocked_ip(mock_req)
-        assert not mock_ip_stats and not mock_ip_block
+        assert "ip" not in mock_ip_block
+        assert mock_ip_stats == {'ip': {'attempts': 1, 'timestamp': 10.0}}
 
 
 @patch("api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
@@ -71,6 +75,52 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
         "to a high number of login attempts"
     )
     assert exc_info.value.ext == {'code': 6000}
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('stats, expected_attempts, expect_blocked', [
+    ({}, 1, False),
+    ({'ip': {'attempts': 3, 'timestamp': 10}}, 4, False),
+    ({'ip': {'attempts': 4, 'timestamp': 10}}, 5, True),
+])
+async def test_middlewares_check_blocked_ip_counts_attempt(
+        stats, expected_attempts, expect_blocked, mock_req):
+    """Test that `check_blocked_ip` counts the current attempt atomically with the block
+       check (before authentication runs), and blocks the IP once max_login_attempts is
+       reached."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 5}}
+    with patch("api.middlewares.ip_stats", new=dict(stats)) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        await check_blocked_ip(mock_req)
+
+        assert mock_ip_stats['ip']['attempts'] == expected_attempts
+        assert mock_ip_stats['ip']['timestamp'] == datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        assert ('ip' in mock_ip_block) == expect_blocked
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(mock_req):
+    """Regression test for the check-then-count race: the block must trigger purely from
+       attempts counted at the gate, without any request having reached credential
+       validation or the (now removed) post-auth counter. This closes the window that
+       concurrent requests previously used to bypass max_login_attempts."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        await check_blocked_ip(mock_req)
+        await check_blocked_ip(mock_req)
+        await check_blocked_ip(mock_req)
+
+        assert mock_ip_stats['ip']['attempts'] == 3
+        assert "ip" in mock_ip_block
+
+        with pytest.raises(ProblemException) as exc_info:
+            await check_blocked_ip(mock_req)
+        assert exc_info.value.status == 403
 
 
 @freeze_time(datetime(1970, 1, 1))
