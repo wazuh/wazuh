@@ -367,12 +367,23 @@ void SecurityConfigurationAssessment::releaseResources()
     // destroy it outside of it: its destructor joins the flush worker, which runs
     // executeFlushSync() -> m_spSyncProtocol->synchronizeModule() without taking
     // m_resourcesMutex. The protocol must outlive that join, so it is reset after it.
+    // DIAGNOSTIC ONLY -- issue #38069, do not merge. Measured on Windows Server 2012 R2 with
+    // the ownership fix in place, the sca.db lock is released ~1.1 s after "SCA module stopped"
+    // reaches the log. That line is emitted at the END of quiesce(), before this function is
+    // entered, so the delay is not evidence of anything surviving releaseResources(); the
+    // candidates are all inside it, and the first is right below -- destroying the flush
+    // controller joins the flush worker, which runs synchronizeModule(). These lines apportion
+    // that second between the join, the reset, and whatever follows.
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG releaseResources: entered");
+
     std::unique_ptr<Utils::AsyncFlushController> flushController;
     {
         std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
         flushController = std::move(m_asyncFlushController);
     }
     flushController.reset();
+
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG releaseResources: flush controller released");
 
     std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
 
@@ -399,7 +410,22 @@ void SecurityConfigurationAssessment::releaseResources()
             " other owner(s); it will not be closed until the process exits.");
     }
 
+    // DIAGNOSTIC ONLY -- issue #38069, do not merge. A weak_ptr is the only way to tell from
+    // here whether ~DBSync actually ran: after reset() the shared_ptr's own use_count is
+    // meaningless, so "expired" is what distinguishes "the object was destroyed" from "another
+    // owner kept it alive". If it reports destroyed=yes and sca.db is still locked after this
+    // line, the connection is not being closed by ~DBSync and the blocker is inside dbsync
+    // (releaseContext() skipped because DBSyncImplementation::isShuttingDown()).
+    const std::weak_ptr<IDBSync> weakDbSync {m_dBSync};
+    LoggingHelper::getInstance().log(
+        LOG_INFO, "DIAG releaseResources: about to reset m_dBSync, use_count=" +
+        std::to_string(m_dBSync.use_count()));
+
     m_dBSync.reset();
+
+    LoggingHelper::getInstance().log(
+        LOG_INFO, std::string("DIAG releaseResources: m_dBSync reset, dbsync destroyed=") +
+        (weakDbSync.expired() ? "yes" : "no"));
 
     // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
     // (sqlite3_close_v2 on last close checkpoints the WAL and removes the -wal/-shm
@@ -412,12 +438,21 @@ void SecurityConfigurationAssessment::releaseResources()
     // setSyncLimit(), which takes no lock because it runs on the module thread before the
     // run loop starts (its only caller is wm_sca_start).
     m_spSyncProtocol.reset();
+
+    // DIAGNOSTIC ONLY -- issue #38069, do not merge.
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG releaseResources: done");
 }
 
 void SecurityConfigurationAssessment::Stop()
 {
+    // DIAGNOSTIC ONLY -- issue #38069, do not merge. Stop() is one of two ways in: the other is
+    // wm_sca_release_and_signal() calling releaseResources() directly, so logging both entry
+    // points shows which path a real Windows service stop actually takes.
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG Stop: entered");
     quiesce();
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG Stop: quiesce returned");
     releaseResources();
+    LoggingHelper::getInstance().log(LOG_INFO, "DIAG Stop: releaseResources returned");
 }
 
 const std::string& SecurityConfigurationAssessment::Name() const
