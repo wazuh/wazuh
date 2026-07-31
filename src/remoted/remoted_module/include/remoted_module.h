@@ -38,7 +38,38 @@ extern "C"
 
 #include "commonDefs.h" // full_log_fnc_t
 
-#define REMOTED_MODULE_PEM_MAX_SIZE 8192
+    /**
+     * @brief <remote><https><verification_mode> values.
+     *
+     * Kept in sync by hand with the config-parser mirror in
+     * src/config/include/remote-config.h (REMOTED_HTTPS_VERIFY_*), since the value
+     * crosses the C-ABI boundary as a plain int.
+     */
+    enum
+    {
+        REMOTED_MODULE_HTTPS_VERIFY_UNSET = -1,
+        REMOTED_MODULE_HTTPS_VERIFY_NONE = 0,
+        REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE = 1,
+        REMOTED_MODULE_HTTPS_VERIFY_FULL = 2
+    };
+
+    /**
+     * @brief <remote><https><dual_stack> values.
+     *
+     * Only meaningful when the listener binds to an IPv6 address: controls the
+     * IPV6_V6ONLY socket option, i.e. whether the same socket also accepts IPv4
+     * clients. Kept in sync by hand with the config-parser mirror in
+     * src/config/include/remote-config.h (REMOTED_HTTPS_DUAL_STACK_*).
+     */
+    enum
+    {
+        REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET = 0, ///< Not configured -> module defaults to IPv6-only. Kept distinct
+                                                   ///< from _NO so the "dual_stack only applies to an IPv6
+                                                   ///< bind_addr" warning doesn't fire when unconfigured
+                                                   ///< (see resolveDualStackMode()/RestinioHttpServer.cpp).
+        REMOTED_MODULE_HTTPS_DUAL_STACK_YES = 1,   ///< Force dual-stack on (also accept IPv4).
+        REMOTED_MODULE_HTTPS_DUAL_STACK_NO = 2     ///< Force IPv6-only.
+    };
 
     /**
      * @brief Configuration passed from remoted (C) to the C++ module.
@@ -54,18 +85,14 @@ extern "C"
         bool worker_node;                ///< true if this manager is a cluster worker node.
         char cluster_name[256];          ///< Cluster name.
         char node_name[256];             ///< Cluster node name.
-        /// TLS certificate chain, PEM-encoded content (NOT a path). remoted reads the file
-        /// itself, while still root and before Privsep_SetUser() drops privileges, so the
-        /// on-disk file can stay root:root like sslmanager.cert/.key -- the module never
-        /// opens a certificate file post-privilege-drop. Empty -> start() fails.
-        char certificate_pem[REMOTED_MODULE_PEM_MAX_SIZE];
-        /// TLS private key, PEM-encoded content. Same rationale as certificate_pem.
-        char private_key_pem[REMOTED_MODULE_PEM_MAX_SIZE];
+        char certificate_path[512];      ///< TLS certificate chain (PEM) path (empty -> module default).
+        char private_key_path[512];      ///< TLS private key (PEM) path (empty -> module default).
         int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
         int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
                                          ///< (see remoted.http_worker_threads).
-        int http_max_body_size;          ///< Transport body cap, bytes. Regular <remote> setting
-                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module default.
+        long http_max_body_size;         ///< Transport body cap, bytes. Regular <remote><https> setting
+                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module
+                                         ///< default.
         int http_read_timeout;           ///< Seconds to wait for a full request on a connection (also covers
                                          ///< the TLS handshake window). <=0 -> module default
                                          ///< (see remoted.http_read_timeout).
@@ -109,6 +136,12 @@ extern "C"
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
+        char bind_address[256];        ///< HTTPS listen address (empty -> module default).
+        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
+        char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
+                                       ///< empty -> library default).
+        int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
+        int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
     } remoted_module_config_t;
 
     /**

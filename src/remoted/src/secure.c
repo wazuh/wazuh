@@ -23,6 +23,32 @@
 #include "batch_queue_op.h"
 #include "http_op.h"
 
+// REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
+// (remoted_module.h) are two independently-maintained mirrors of the same values, since
+// the config parser and the C++ module don't share a header. rm_config.verification_mode
+// below copies one directly into the other with no translation, so a silent reorder of
+// either enum would misconfigure TLS client-certificate verification without any build
+// failure to catch it -- this is the only place both headers are already included together.
+_Static_assert(REMOTED_HTTPS_VERIFY_UNSET == REMOTED_MODULE_HTTPS_VERIFY_UNSET,
+               "REMOTED_HTTPS_VERIFY_UNSET must match REMOTED_MODULE_HTTPS_VERIFY_UNSET");
+_Static_assert(REMOTED_HTTPS_VERIFY_NONE == REMOTED_MODULE_HTTPS_VERIFY_NONE,
+               "REMOTED_HTTPS_VERIFY_NONE must match REMOTED_MODULE_HTTPS_VERIFY_NONE");
+_Static_assert(REMOTED_HTTPS_VERIFY_CERTIFICATE == REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE,
+               "REMOTED_HTTPS_VERIFY_CERTIFICATE must match REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE");
+_Static_assert(REMOTED_HTTPS_VERIFY_FULL == REMOTED_MODULE_HTTPS_VERIFY_FULL,
+               "REMOTED_HTTPS_VERIFY_FULL must match REMOTED_MODULE_HTTPS_VERIFY_FULL");
+
+// Same reasoning as above, for REMOTED_HTTPS_DUAL_STACK_* / REMOTED_MODULE_HTTPS_DUAL_STACK_*:
+// rm_config.dual_stack copies one directly into the other with no translation, so a silent
+// reorder of either enum would misconfigure the IPV6_V6ONLY socket option without any build
+// failure to catch it.
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_UNSET == REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET,
+               "REMOTED_HTTPS_DUAL_STACK_UNSET must match REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_YES,
+               "REMOTED_HTTPS_DUAL_STACK_YES must match REMOTED_MODULE_HTTPS_DUAL_STACK_YES");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
+               "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -100,6 +126,17 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
+
+/**
+ * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
+ *        and the memory-management constants onto the C-ABI struct handed to the C++
+ *        remoted_module, so this mapping is testable without the socket/router/cluster
+ *        setup the rest of HandleSecure() depends on
+ *
+ * @param logr remoted configuration structure (source)
+ * @param rm_config destination struct; fully zeroed and populated on return
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -242,10 +279,63 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
 }
 
-/* Handle secure connections. https_cert_pem/https_key_pem: PEM-encoded certificate/key
- * content read by HandleRemote() before dropping root privileges (may be NULL if
- * unreadable). Ownership passes in -- freed below once copied into rm_config. */
-void HandleSecure(char *https_cert_pem, char *https_key_pem)
+/**
+ * @brief Build the config struct passed to remoted_module_start(), combining the
+ *        `remoted.http_*` internal options (see remoted_module_https_config()) with
+ *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
+ *        constants that are deliberately not internal options. Extracted out of
+ *        HandleSecure() so it's unit-testable without starting the module.
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config) {
+    memset(rm_config, 0, sizeof(*rm_config));
+
+    // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
+    // own classic TCP/UDP port, already bound by the time we get here). Populated
+    // from <remote><https> when configured; otherwise left at 0 so the module falls
+    // back to its own default.
+    rm_config->port = logr->https.port;
+    remoted_module_https_config(rm_config);
+    // rm_config->max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
+    // request payload before it sheds load with 503. NOT logr->queue_size (that is an
+    // event COUNT, not bytes).
+    rm_config->max_inflight_bytes = (256 * 1024 * 1024); // 256 MiB
+    // rm_config->max_parallel_connections caps simultaneous HTTPS connections, bounding the
+    // read-phase memory peak (~ max_parallel_connections * max body size).
+    rm_config->max_parallel_connections = 512;
+    // rm_config->max_deferred_requests caps requests parked awaiting a downstream service (503
+    // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+    rm_config->max_deferred_requests = 256;
+    // rm_config->keystore_refresh_interval governs how often the C++ Keystore checks
+    // client.keys for changes (hot-reload)
+    rm_config->keystore_refresh_interval = keyupdate_interval;
+    rm_config->worker_node = logr->worker_node;
+    rm_config->verification_mode = logr->https.verification_mode;
+    rm_config->http_max_body_size = logr->https.max_body_size;
+    rm_config->dual_stack = logr->https.dual_stack;
+
+    if (logr->https.bind_addr) {
+        snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
+    }
+
+    if (logr->https.certificate) {
+        snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", logr->https.certificate);
+    }
+
+    if (logr->https.key) {
+        snprintf(rm_config->private_key_path, sizeof(rm_config->private_key_path), "%s", logr->https.key);
+    }
+
+    if (logr->https.ca) {
+        snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
+    }
+
+    if (logr->https.ciphers) {
+        snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
+    }
+}
+
+/* Handle secure connections */
+void HandleSecure()
 {
     const int protocol = logr.proto;
     int n_events = 0;
@@ -331,26 +421,8 @@ void HandleSecure(char *https_cert_pem, char *https_key_pem)
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
-        remoted_module_config_t rm_config = {0};
-        // rm_config.port is the HTTPS listening port -- unrelated to logr.port (remoted's
-        // own classic TCP/UDP port, already bound by the time we get here). Left at 0 so
-        // the module falls back to its own built-in default (it's a regular <remote>
-        // setting, not an internal option -- see remoted_module_https_config() below).
-        remoted_module_https_config(&rm_config);
-        // rm_config.max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
-        // request payload before it sheds load with 503. NOT logr.queue_size (that is an
-        // event COUNT, not bytes).
-        rm_config.max_inflight_bytes = (256 * 1024 * 1024); // 256 MiB
-        // rm_config.max_parallel_connections caps simultaneous HTTPS connections, bounding the
-        // read-phase memory peak (~ max_parallel_connections * max body size).
-        rm_config.max_parallel_connections = 512;
-        // rm_config.max_deferred_requests caps requests parked awaiting a downstream service (503
-        // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
-        rm_config.max_deferred_requests = 256;
-        // rm_config.keystore_refresh_interval governs how often the C++ Keystore checks
-        // client.keys for changes (hot-reload)
-        rm_config.keystore_refresh_interval = keyupdate_interval;
-        rm_config.worker_node = logr.worker_node;
+        remoted_module_config_t rm_config;
+        w_remoted_build_module_config(&logr, &rm_config);
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {
@@ -363,15 +435,6 @@ void HandleSecure(char *https_cert_pem, char *https_key_pem)
             snprintf(rm_config.node_name, sizeof(rm_config.node_name), "%s", rm_node_name);
             os_free(rm_node_name);
         }
-
-        if (https_cert_pem) {
-            snprintf(rm_config.certificate_pem, sizeof(rm_config.certificate_pem), "%s", https_cert_pem);
-        }
-        if (https_key_pem) {
-            snprintf(rm_config.private_key_pem, sizeof(rm_config.private_key_pem), "%s", https_key_pem);
-        }
-        os_free(https_cert_pem);
-        os_free(https_key_pem);
 
         remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
         atexit(remoted_module_stop);

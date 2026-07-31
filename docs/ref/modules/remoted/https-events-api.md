@@ -26,32 +26,69 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 
 ## Transport and TLS
 
-- **Bind address / port:** `127.0.0.1:9443` by default.
-- **TLS:** minimum version TLS 1.2; the server loads a PEM certificate chain and private key and
+- **Bind address / port:** `127.0.0.1:1517` by default. Both IPv4 and IPv6 literals are accepted
+  (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
+- **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
-  mode `640` — same scheme as `sslmanager.cert`/`.key`. `remoted` reads both files itself,
-  while still root, **before** it calls change of user.
+- **TLS file paths (evaluated after `remoted` enters its chroot):**
+  `etc/https-manager.cert`, `etc/https-manager.key`, and `etc/https-manager-ca.pem` — i.e. host paths
+  `/var/wazuh-manager/etc/https-manager.cert`, `/var/wazuh-manager/etc/https-manager.key`, and
+  `/var/wazuh-manager/etc/https-manager-ca.pem`. These paths are opened by the module itself,
+  **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
+  key (and the CA bundle, when `verification_mode` requires one) must be readable by the
+  `wazuh-manager` user `remoted` runs as. Packaging generates and owns the auto-signed pair as
+  `wazuh-manager:wazuh-manager`, mode `640`; an administrator-provided pair must match that
+  ownership, or the module fails to start (see
+  [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems)).
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
-  max 64 header fields, and a transport body cap of 16 MiB by default; read/handshake timeout 10 s,
-  write timeout 10 s, request timeout 30 s. All tunable via `remoted.http_*` internal options -- see
-  [Configuration](#configuration) below.
+  max 64 header fields, and a transport body cap of 20 MiB by default (`<remote><https><max_body_size>`);
+  read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
+  limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
+  below.
+
+### Bind address: IPv4, IPv6 and dual-stack
+
+`<remote><https><bind_addr>` accepts any literal IPv4 or IPv6 address (validated with the same
+`OS_IsValidIP()` check used for the classic `<remote><legacy><local_ip>`, so both families work
+with no extra configuration). A few things to know before choosing one:
+
+- **`0.0.0.0`** binds an IPv4-only socket. Only IPv4 clients can connect; there is no way for an
+  IPv6 client to reach it.
+- **`::`** binds an IPv6 socket that listens on every local address. Whether IPv4 clients can also
+  reach it depends on the **`IPV6_V6ONLY`** socket option, which the server sets to `1` (IPv6-only)
+  by default -- `::` alone does **not** accept IPv4 connections unless
+  `<remote><https><dual_stack>yes</dual_stack>` is explicitly configured -- see
+  [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when `bind_addr` is IPv6;
+  an explicit `yes` or `no` is ignored (with a warning) for an IPv4 `bind_addr`. Leaving
+  `<dual_stack>` unset never warns, even on an IPv4 `bind_addr` -- it produces the same effective
+  behavior as an explicit `no`, just without the warning.
+- **A specific literal** (`10.0.0.5`, `2001:db8::1`, ...) binds only that address/family, same as
+  today.
+- Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
+  an "IPv4-mapped IPv6" address (`::ffff:10.0.0.5`), not the plain `10.0.0.5` form. `remoted_module`
+  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), so any
+  future code comparing it against a plain IPv4 address (such as the IP column in `client.keys`)
+  doesn't need to handle the mapped form itself.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
 `authd` uses for `sslmanager.cert`/`sslmanager.key` — now shared code, invoked through remoted's
-own binary:
+own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read it once
+`remoted` drops privileges:
 
 ```bash
 wazuh-manager-remoted -C 365 -B 2048 \
   -K /var/wazuh-manager/etc/https-manager.key \
   -X /var/wazuh-manager/etc/https-manager.cert \
   -S "/C=US/ST=California/CN=Wazuh/"
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
+chmod 640 /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
 ```
 
 Generation is skipped if a certificate/key pair already exists at those paths, so an
 administrator-provided certificate is never overwritten. To force regeneration, remove both files
-and re-run the command above (or reinstall).
+and re-run the command above (or reinstall). An administrator-provided pair must be readable by
+the `wazuh-manager` user (e.g. via the same ownership/mode) or the module fails to start.
 
 ## Authentication (AES-CMAC)
 
@@ -104,7 +141,7 @@ The payload-identity check runs **before** the batch is forwarded: a mismatch ne
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
 
-Requests larger than the 16 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
+Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
 The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
@@ -131,9 +168,9 @@ The machine-readable contract is published as OpenAPI — see the
 
 ## Configuration
 
-Advanced RESTinio settings resolve as **caller value → built-in default**. `remoted` populates the
-caller value by reading the `remoted.http_*` internal options
-(`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
+Advanced RESTinio tuning knobs (threading, timeouts, message limits) resolve as **caller value →
+built-in default**. `remoted` populates the caller value by reading the `remoted.http_*` internal
+options (`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
 `remoted_module` through its C-ABI struct; an option present in the file but out of range (or
 non-numeric) prevents `remoted` from starting, same as every other internal option. See
 [Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
@@ -161,21 +198,30 @@ sizes track the host/container's available CPUs. The handler worker pool is over
 because that work can block (AES-CMAC verification, `client.keys` file I/O), unlike the purely
 async I/O threads.
 
-Bind address, port, max body size and the certificate/private key paths are **not** internal
-options -- these belong in the regular `<remote>` configuration (`wazuh-manager.conf`), not
-`wazuh-manager-internal-options.conf` (bind address/port/max body size are regular, user-facing
-settings; the certificate/private key paths have no string-valued internal-option mechanism to use
-even if they were advanced tuning). That `<remote>` wiring doesn't exist yet, so all five resolve as
-**caller value (C-ABI struct) → built-in default**, and `remoted` currently leaves those C-ABI
-fields unset -- in practice the built-in defaults below apply.
+Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
+ciphers, client verification mode) are **not** internal options -- they are regular, user-facing
+`<remote><https>` settings (`wazuh-manager.conf`). All resolve as **`<https>` tag value → built-in
+default**; an absent `<https>` block, or an absent individual option within it, falls back to the
+built-in default below. See
+[Configuration Reference — HTTPS Configuration](configuration.md#https-configuration) for the full
+`<https>` tag reference and examples (including mutual TLS). Threading (`io_threads`,
+`http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
+above).
 
-| Setting | Default |
-|---|---|
-| Bind address | `127.0.0.1` |
-| Port | `9443` |
-| Transport max body size | `16 MiB` |
-| TLS certificate chain | `etc/https-manager.cert` |
-| TLS private key | `etc/https-manager.key` |
+| Setting | `<https>` tag | Default |
+|---|---|---|
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
+| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
+| Port | `port` | `1517` |
+| Transport max body size | `max_body_size` | `20 MiB` |
+| TLS certificate chain | `certificate` | `etc/https-manager.cert` |
+| TLS private key | `key` | `etc/https-manager.key` |
+| Client CA bundle | `ca` | `etc/https-manager-ca.pem` |
+| Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
+| TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+
+> There is no `enabled` toggle: the listener always attempts to start and self-gates on the
+> presence of a valid certificate/key, same as before this configuration surface existed.
 
 The **memory-management / capacity** settings are a separate, third group: `remoted` sets them
 directly on the C-ABI struct in `secure.c` (→ built-in default when unset) and they are
@@ -195,10 +241,6 @@ caps how many bodies can be read at once (peak ≈ max connections × max body s
 budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
 caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
 `503` (the agent retries; the liveness `GET /` is exempt from the byte budget).
-
-> There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
-> limited to the internal options above, the memory-management settings, and the certificate
-> files on disk (auto-generated at install time, see [Transport and TLS](#transport-and-tls)).
 
 ### Downstream client and auth middleware
 
@@ -276,9 +318,10 @@ Three more that are not about tuning:
   certificate or the private key). There is no retry: remoted must not start without the HTTPS
   transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
   this module — the certificate is expected to already be in place by then (auto-generated at
-  install time, see [Transport and TLS](#transport-and-tls)). remoted reads both files itself while
-  still root and hands the PEM content to the module directly (not a path), so the module never
-  opens a certificate file as an unprivileged user.
+  install time, see [Transport and TLS](#transport-and-tls)). The module opens the configured
+  `certificate`/`key`/`ca` paths itself, after `remoted` has already dropped root privileges, so
+  "unreadable" most often means a permission/ownership mismatch against the `wazuh-manager` user,
+  not a missing file.
 
 Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
 visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
@@ -297,7 +340,7 @@ same way the manager verifies them (AES-CMAC over the canonical sequence, key re
 `client.keys`). Requires `pip install requests cryptography`.
 
 ```bash
-# one valid signed request -> 200
+# one valid signed request -> 202
 python3 send_stateless.py --agent-id 1001
 
 # tamper the body after signing -> 401 (invalid MAC)
@@ -305,7 +348,7 @@ python3 send_stateless.py --agent-id 1001 --tamper
 
 # run every success/failure scenario and check the expected status codes
 python3 send_stateless.py --all
-# options: --url (default https://127.0.0.1:9443), --body, --client-keys
+# options: --url (default https://127.0.0.1:1517), --body, --client-keys
 ```
 
 ## References

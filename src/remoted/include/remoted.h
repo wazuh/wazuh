@@ -74,11 +74,8 @@ int RemotedConfig(const char* cfgfile, remoted* cfg);
 /* Handle Remote connections */
 void HandleRemote(int uid) __attribute__((noreturn));
 
-/* Handle Secure connections. https_cert_pem/https_key_pem are the HTTPS agent server's
- * certificate/key, PEM-encoded content read by HandleRemote() while still root (before
- * Privsep_SetUser()); may be NULL if unreadable. Ownership passes in: HandleSecure() frees
- * them once consumed. */
-void HandleSecure(char *https_cert_pem, char *https_key_pem) __attribute__((noreturn));
+/* Handle Secure connections */
+void HandleSecure() __attribute__((noreturn));
 
 /* Forward active response events */
 void* AR_Forward(void* arg) __attribute__((noreturn));

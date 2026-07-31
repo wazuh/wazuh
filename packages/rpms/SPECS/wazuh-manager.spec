@@ -350,9 +350,14 @@ fi
 # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
 if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedir}/etc/https-manager.cert" ]; then
   %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
-  chmod 640 %{_localstatedir}/etc/https-manager.key
-  chmod 640 %{_localstatedir}/etc/https-manager.cert
 fi
+
+# Unlike sslmanager.cert/key (owned by authd, which never drops privileges), remoted drops
+# to wazuh-manager before its HTTPS module loads these files. Re-applied unconditionally
+# (not just on fresh generation) so upgrades from packages that shipped these root-owned
+# also get corrected.
+chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
+chmod 640 %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
 
 rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 
@@ -547,8 +552,8 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(640, root, root) %ghost %{_localstatedir}/etc/https-manager.cert
-%attr(640, root, root) %ghost %{_localstatedir}/etc/https-manager.key
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.cert
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.key
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime

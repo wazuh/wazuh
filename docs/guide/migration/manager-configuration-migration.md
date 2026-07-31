@@ -138,7 +138,25 @@ In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<ag
 
 ### `<remote>` section
 
-The `<connection>` element has been removed. Leaving it in the configuration **causes a startup error** in 5.0. All agent-manager communication uses the secure protocol by default.
+The `<connection>`, `<allowed-ips>`, and `<denied-ips>` elements have been removed. Leaving any of
+them in the configuration **causes a startup error** in 5.0. All agent-manager communication uses
+the secure protocol by default.
+
+In addition, `<remote>`'s options are now grouped under nested blocks: the classic TCP/UDP listener
+options (`port`, `protocol`, `queue_size`, `ipv6`, `local_ip`, `rids_closing_time`,
+`connection_overtake_time`) move under a new `<legacy>` block, and a new `<https>` block configures
+the RESTinio-based HTTPS listener (see
+[Remoted Configuration Reference](../../ref/modules/remoted/configuration.md#https-configuration)).
+`<agents>` is unchanged. Options placed directly under `<remote>` (the pre-5.0 flat layout) are
+rejected and the manager will not start; there is no automatic migration.
+
+> **Breaking change:** `local_ip`'s default also changed, not just its location. In 4.x, leaving
+> `local_ip` unset meant "accept agent connections from any interface." In 5.0, an absent
+> `<local_ip>` defaults to `127.0.0.1` (loopback-only) -- the manager will not accept connections
+> from agents on other hosts. **If your 4.x configuration did not set `<local_ip>`, add
+> `<local_ip>0.0.0.0</local_ip>` under `<legacy>` to keep accepting agents from other hosts**; if
+> it already set `<local_ip>`, just move that value under `<legacy>` as shown below. See
+> [`legacy.local_ip`](../../ref/modules/remoted/configuration.md#legacylocal_ip) for details.
 
 **4.x:**
 ```xml
@@ -152,8 +170,11 @@ The `<connection>` element has been removed. Leaving it in the configuration **c
 **5.0:**
 ```xml
 <remote>
-  <port>1514</port>
-  <protocol>tcp</protocol>
+  <legacy>
+    <port>1514</port>
+    <protocol>tcp</protocol>
+    <local_ip>127.0.0.1</local_ip>
+  </legacy>
 </remote>
 ```
 

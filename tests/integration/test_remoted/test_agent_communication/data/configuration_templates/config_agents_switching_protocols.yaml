@@ -1,10 +1,12 @@
 - sections:
     - section: remote
       elements:
-        - port:
-            value: 'PORT'
-        - protocol:
-            value: 'PROTOCOL'
+        - legacy:
+            elements:
+              - port:
+                  value: 'PORT'
+              - protocol:
+                  value: 'PROTOCOL'
     - section: global
       elements:
         - agents_disconnection_time:

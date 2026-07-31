@@ -103,6 +103,37 @@ def test_read_option():
                                                                     EXPECTED_VALUES[section.tag])
 
 
+def test_read_option_remote_legacy():
+    """<remote><legacy> must expose 'protocol' as a list, matching the former flat <remote><protocol>."""
+    xml_conf = fromstring(
+        '<remote><legacy><port>1514</port><protocol>tcp,udp</protocol></legacy></remote>'
+    )
+
+    for section in xml_conf:
+        name, value = configuration._read_option('remote', section)
+        assert name == 'legacy'
+        assert value == {'port': '1514', 'protocol': ['tcp', 'udp']}
+
+
+def test_read_option_remote_https():
+    """<remote><https> options must be exposed as scalars, not wrapped in single-element lists."""
+    xml_conf = fromstring(
+        '<remote><https><port>9443</port><bind_addr>0.0.0.0</bind_addr>'
+        '<certificate>etc/remoted-https/server.crt</certificate>'
+        '<verification_mode>full</verification_mode></https></remote>'
+    )
+
+    for section in xml_conf:
+        name, value = configuration._read_option('remote', section)
+        assert name == 'https'
+        assert value == {
+            'port': '9443',
+            'bind_addr': '0.0.0.0',
+            'certificate': 'etc/remoted-https/server.crt',
+            'verification_mode': 'full',
+        }
+
+
 @pytest.mark.parametrize("configuration_file, expected_values", [
     ('journald.conf', MappingProxyType({
             "location": "journald",

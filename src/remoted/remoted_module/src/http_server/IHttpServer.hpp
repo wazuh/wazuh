@@ -48,6 +48,9 @@ namespace remoted::http
         std::string target;                                   ///< Request path (without query).
         std::string body;                                     ///< Raw request body.
         std::unordered_map<std::string, std::string> headers; ///< Lower-cased header name -> value.
+        std::string remoteIp; ///< Client's connection IP (textual form; IPv4-mapped-IPv6 addresses
+                              ///< are unmapped to plain IPv4 first). Not currently used by any
+                              ///< handler; available for a future cross-check against client.keys.
     };
 
     /**
@@ -111,17 +114,51 @@ namespace remoted::http
     using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
+     * @brief Client-certificate verification strictness for the HTTPS listener.
+     *
+     * Mirrors REMOTED_MODULE_HTTPS_VERIFY_* in remoted_module.h (the C-ABI) and
+     * REMOTED_HTTPS_VERIFY_* in the config parser (src/config/include/remote-config.h).
+     */
+    enum class ClientVerificationMode
+    {
+        None,        ///< No client certificate is requested/verified.
+        Certificate, ///< Client certificate chain is verified against the configured CA.
+        Full         ///< Certificate chain verified, plus the peer IP must match the certificate.
+    };
+
+    /**
+     * @brief Whether an IPv6 listener also accepts IPv4 clients on the same socket.
+     *
+     * Only meaningful when the listener binds to an IPv6 address; a no-op otherwise.
+     * Mirrors REMOTED_MODULE_HTTPS_DUAL_STACK_* in remoted_module.h (the C-ABI) and
+     * REMOTED_HTTPS_DUAL_STACK_* in the config parser (src/config/include/remote-config.h).
+     */
+    enum class DualStackMode
+    {
+        Unset,   ///< Not configured anywhere (XML/env). Kept distinct from Disabled so the
+                 ///< "dual_stack only applies to IPv6" warning doesn't fire for an IPv4
+                 ///< bind_addr; RestinioHttpServer.cpp treats it the same as Disabled
+                 ///< (IPv6-only) when actually setting the socket option.
+        Enabled, ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4.
+        Disabled ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket.
+    };
+
+    /**
      * @brief Configuration for the HTTP(S) server, decoupled from the C ABI struct.
      */
     struct HttpServerConfig
     {
-        std::string bindAddress {"127.0.0.1"};         ///< Listen address.
-        std::uint16_t port {9443};                     ///< Listen port.
-        std::string certificatePem;                    ///< TLS certificate chain, PEM-encoded content (not a path).
-        std::string privateKeyPem;                     ///< TLS private key, PEM-encoded content (not a path).
-        std::size_t ioThreads {2};                     ///< RESTinio/asio I/O threads (accept + read/write).
-        std::size_t workerThreads {4};                 ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {16U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::string bindAddress {"127.0.0.1"}; ///< Listen address.
+        std::uint16_t port {1517};             ///< Listen port.
+        std::string certificatePath;           ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;            ///< TLS private key (PEM) path.
+        std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
+        std::string ciphers;                   ///< TLS 1.3 ciphersuite override
+        ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
+        DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
+        std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
+        std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
+        std::size_t maxBodySize {20U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.

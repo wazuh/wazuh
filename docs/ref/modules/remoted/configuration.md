@@ -20,7 +20,8 @@ For module overview and architecture, see [Remoted Module](index.html).
 
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
-### port
+
+### legacy.port
 
 Listening port for agent connections.
 
@@ -28,7 +29,7 @@ Listening port for agent connections.
 - **Allowed values:** Integer from `1` to `65535`
 - **Note:** Standard port for Wazuh agent-manager communication
 
-### protocol
+### legacy.protocol
 
 Communication protocol(s) to accept from agents.
 
@@ -36,7 +37,7 @@ Communication protocol(s) to accept from agents.
 - **Allowed values:** `tcp`, `udp`, or `tcp,udp`
 - **Note:** TCP is recommended for reliable delivery; UDP may be used for low-latency environments
 
-### queue_size
+### legacy.queue_size
 
 Message queue size for incoming agent messages.
 
@@ -44,7 +45,7 @@ Message queue size for incoming agent messages.
 - **Allowed values:** Positive integer
 - **Note:** Values greater than `262144` will generate a warning; adjust based on agent count and event rate
 
-### allow_higher_versions
+### agents.allow_higher_versions
 
 Accept connections from agents running a Wazuh version higher than the manager.
 
@@ -52,7 +53,7 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Allowed values:** `yes`, `no`
 - **Note:** Enable when upgrading agents before the manager
 
-### ipv6
+### legacy.ipv6
 
 Enable IPv6 support for agent connections.
 
@@ -60,15 +61,19 @@ Enable IPv6 support for agent connections.
 - **Allowed values:** `yes`, `no`
 - **Note:** Allows agents to connect using IPv6 addresses
 
-### local_ip
+### legacy.local_ip
 
 Bind remoted to a specific local IP address.
 
-- **Default value:** All interfaces (`0.0.0.0` for IPv4, `::` for IPv6)
+- **Default value:** `127.0.0.1` (loopback-only) when `ipv6` is `no`; all IPv6 interfaces (`::`)
+  when `ipv6` is `yes` (the `127.0.0.1` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on specified interface
+- **Note:** Restricts remoted to listen only on the specified interface. Set to `0.0.0.0` to
+  accept agent connections from any IPv4 interface. The shipped `wazuh-manager.conf` and
+  install-time template ship the loopback-only default as-is; an operator who wants
+  remote agents must add `<local_ip>0.0.0.0</local_ip>` after install.
 
-### rids_closing_time
+### legacy.rids_closing_time
 
 Time to keep agent session IDs (RIDs) cached after agent disconnects.
 
@@ -77,13 +82,96 @@ Time to keep agent session IDs (RIDs) cached after agent disconnects.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 - **Note:** Prevents rapid reconnection issues; agent must wait this period before reusing same ID
 
-### connection_overtake_time
+### legacy.connection_overtake_time
 
 Time in seconds before allowing a new connection to overtake an existing agent connection with the same ID.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
 - **Note:** Set to `0` to disable overtake protection (allows immediate reconnection); higher values provide more protection against connection hijacking while requiring longer wait for legitimate agent restarts
+
+---
+
+## HTTPS Configuration
+
+**XML Section:** `<remote><https>`
+
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always attempts to start, and self-gates on the presence of a valid certificate/key.
+
+### https.port
+
+HTTPS listening port.
+
+- **Default value:** `1517`
+- **Allowed values:** Integer from `1` to `65535`
+
+### https.bind_addr
+
+Address the HTTPS listener binds to.
+
+- **Default value:** `127.0.0.1`
+- **Allowed values:** Valid IPv4 or IPv6 address
+- **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
+  accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
+  [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
+  for the full explanation.
+
+### https.dual_stack
+
+Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
+(the `IPV6_V6ONLY` socket option).
+
+- **Default value:** `no` (force IPv6-only)
+- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
+- **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
+  `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
+
+### https.certificate
+
+Path to the TLS certificate chain (PEM) presented by the server.
+
+- **Default value:** `etc/https-manager.cert` (relative to the manager's chroot)
+
+### https.key
+
+Path to the TLS private key (PEM) matching `certificate`.
+
+- **Default value:** `etc/https-manager.key` (relative to the manager's chroot)
+
+### https.ca
+
+Path to a CA bundle (PEM) used to verify client (agent) certificates.
+
+- **Default value:** `etc/https-manager-ca.pem` (relative to the manager's chroot)
+- **Note:** Only actually read when `verification_mode` is `certificate` or `full`; harmless
+  if left at its default and `verification_mode` stays `none`. See the special case below.
+
+### https.verification_mode
+
+Client-certificate verification strictness.
+
+- **Default value:** `none`
+- **Allowed values:**
+  - `none` — the client certificate is not verified.
+  - `certificate` — the client certificate chain is validated against `ca`, but the connecting IP is not checked against the certificate.
+  - `full` — same as `certificate`, plus the connecting agent's IP address must match an IP entry in the certificate's Subject Alternative Name.
+- **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
+
+### https.ciphers
+
+TLS 1.3 ciphersuite override for the HTTPS listener (`SSL_CTX_set_ciphersuites()` naming
+scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its minimum
+protocol version.
+
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string
+
+### https.max_body_size
+
+Maximum accepted HTTP request body size.
+
+- **Default value:** `20MB`
+- **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
 
 ---
 
@@ -577,9 +665,11 @@ Standard settings for most deployments:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>no</allow_higher_versions>
     </agents>
@@ -594,9 +684,11 @@ Accept agent connections via both TCP and UDP protocols:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp,udp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp,udp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -608,9 +700,11 @@ Optimized for high agent counts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -630,9 +724,11 @@ Optimized for high event rates:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -653,9 +749,11 @@ Reduced memory footprint for resource-constrained systems:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>65536</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>65536</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -676,9 +774,11 @@ Optimized for ephemeral or containerized agents with frequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -701,9 +801,11 @@ Optimized for stable, long-running agents with infrequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -726,12 +828,40 @@ Allow agents with newer Wazuh versions to connect during rolling upgrades:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>yes</allow_higher_versions>
     </agents>
+  </remote>
+</wazuh_config>
+```
+
+### HTTPS with Mutual TLS
+
+Require and validate agent client certificates, including a full IP-to-certificate match:
+
+```xml
+<wazuh_config>
+  <remote>
+    <https>
+      <port>1517</port>
+      <bind_addr>0.0.0.0</bind_addr>
+      <certificate>etc/https-manager.cert</certificate>
+      <key>etc/https-manager.key</key>
+      <ca>etc/https-manager-ca.pem</ca>
+      <verification_mode>full</verification_mode>
+      <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
+      <max_body_size>20MB</max_body_size>
+    </https>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -743,9 +873,11 @@ Limit memory consumption with byte caps regardless of event count:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```

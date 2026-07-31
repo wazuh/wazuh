@@ -22,9 +22,15 @@
 #include <restinio/tls.hpp>
 
 #include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include <atomic>
 #include <chrono>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -86,8 +92,8 @@ namespace
      * the same "client fault" bucket as an auth rejection, just one layer lower in the stack. The one
      * event here that IS a genuine, rare, operator-facing problem -- the acceptor failing to bind
      * (port in use, TLS context rejected) -- is already surfaced distinctly and more clearly by our
-     * own createTlsContext() checks and RemotedModuleFacade::start()'s catch block (which logs and
-     * rethrows), so demoting RESTinio's own duplicate report of it costs nothing.
+     * own checkTlsFileReadable() pre-check and RemotedModuleFacade::reportFailedStart(), so demoting
+     * RESTinio's own duplicate report of it costs nothing.
      *
      * Four things here are load-bearing:
      *
@@ -214,6 +220,37 @@ namespace
         }
     }
 
+    // TODO: Do we need to perform this transformation here? Or will the data already be in client.keys?
+    std::string normalizeRemoteAddress(asio::ip::address address)
+    {
+        if (address.is_v6() && address.to_v6().is_v4_mapped())
+        {
+            address = asio::ip::make_address_v4(asio::ip::v4_mapped, address.to_v6());
+        }
+
+        return address.to_string();
+    }
+
+    // Bracket an IPv6 literal for URL-style display (RFC 3986); IPv4 and hostnames
+    // pass through unchanged.
+    std::string formatHostForDisplay(const std::string& address)
+    {
+        if (address.find(':') != std::string::npos)
+        {
+            return "[" + address + "]";
+        }
+
+        return address;
+    }
+
+    // Whether a bind address string is IPv6 -- parsed the same way RESTinio itself
+    bool isIpv6Address(const std::string& address)
+    {
+        asio::error_code ec;
+        const auto parsed = asio::ip::make_address(address, ec);
+        return !ec && parsed.is_v6();
+    }
+
     // Build the neutral request view from a RESTinio request handle.
     remoted::http::HttpRequest makeHttpRequest(remoted::http::Method method, const restinio::request_handle_t& req)
     {
@@ -223,6 +260,7 @@ namespace
         // signs it verbatim, so it must not be path-only or normalized.
         request.target = req->header().request_target();
         request.body = req->body();
+        request.remoteIp = normalizeRemoteAddress(req->remote_endpoint().address());
 
         req->header().for_each_field(
             [&request](const restinio::http_header_field_t& field)
@@ -231,40 +269,116 @@ namespace
         return request;
     }
 
+    // Pre-check cert/key readability so the failure names the offending FILE. Asio's own exception
+    // for a missing PEM is an opaque OpenSSL error string ("no start line", "system library"), which
+    // gave the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
+    // all surfaced as the same generic retry warning.
+    void checkTlsFileReadable(const std::string& path, const char* what)
+    {
+        std::ifstream file {path};
+        if (!file.is_open())
+        {
+            throw std::runtime_error("The configured TLS " + std::string {what} + " '" + path +
+                                     "' is missing or unreadable");
+        }
+    }
+
+    // Client-certificate verify callback for ClientVerificationMode::Full: on top of the
+    // standard chain-of-trust check (preverified), the peer's connection IP must also
+    // match an IP entry in the leaf certificate's subjectAltName.
+    bool verifyClientCertificateIp(bool preverified, asio::ssl::verify_context& verifyCtx)
+    {
+        if (!preverified)
+        {
+            return false;
+        }
+
+        X509_STORE_CTX* storeCtx = verifyCtx.native_handle();
+
+        // Only the leaf (peer) certificate carries the IP the client connected from;
+        // intermediate/CA certificates in the chain are only chain-validated.
+        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
+        {
+            return true;
+        }
+
+        auto* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx()));
+
+        if (ssl == nullptr)
+        {
+            return false;
+        }
+
+        const int fd = SSL_get_fd(ssl);
+        sockaddr_storage peerAddress {};
+        socklen_t peerAddressLen = sizeof(peerAddress);
+
+        if (fd < 0 || getpeername(fd, reinterpret_cast<sockaddr*>(&peerAddress), &peerAddressLen) != 0)
+        {
+            return false;
+        }
+
+        char peerIp[INET6_ADDRSTRLEN] {};
+
+        if (peerAddress.ss_family == AF_INET)
+        {
+            inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(&peerAddress)->sin_addr, peerIp, sizeof(peerIp));
+        }
+        else if (peerAddress.ss_family == AF_INET6)
+        {
+            inet_ntop(AF_INET6, &reinterpret_cast<sockaddr_in6*>(&peerAddress)->sin6_addr, peerIp, sizeof(peerIp));
+        }
+        else
+        {
+            return false;
+        }
+
+        X509* peerCertificate = X509_STORE_CTX_get_current_cert(storeCtx);
+
+        return remoted::http::certificateMatchesPeerIp(peerCertificate, peerIp);
+    }
+
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
     {
-        // Named separately (not one combined check) so the failure names the offending ONE: an
-        // opaque OpenSSL error from Asio's own PEM parsing ("no start line", "system library") gave
-        // the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
-        // all surfaced as the same generic retry warning. remoted.c reads both files while still
-        // root and hands us the PEM content directly (not a path); empty here means that read
-        // failed or nothing was ever generated/configured.
-        if (config.certificatePem.empty())
-        {
-            throw std::runtime_error("The configured TLS certificate is missing or unreadable");
-        }
-        if (config.privateKeyPem.empty())
-        {
-            throw std::runtime_error("The configured TLS private key is missing or unreadable");
-        }
+        checkTlsFileReadable(config.certificatePath, "certificate");
+        checkTlsFileReadable(config.privateKeyPath, "private key");
 
         asio::ssl::context context {asio::ssl::context::tls_server};
 
         context.set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2 |
                             asio::ssl::context::no_sslv3);
 
-        // Accept TLS 1.2 and, when available, TLS 1.3.
-        if (SSL_CTX_set_min_proto_version(context.native_handle(), TLS1_2_VERSION) != 1)
+        // Require TLS 1.3 as the minimum protocol version.
+        if (SSL_CTX_set_min_proto_version(context.native_handle(), TLS1_3_VERSION) != 1)
         {
-            throw std::runtime_error("Unable to configure TLS 1.2 as the minimum protocol version");
+            throw std::runtime_error("Unable to configure TLS 1.3 as the minimum protocol version");
         }
 
-        context.use_certificate_chain(asio::buffer(config.certificatePem));
-        context.use_private_key(asio::buffer(config.privateKeyPem), asio::ssl::context::pem);
+        if (!config.ciphers.empty() && SSL_CTX_set_ciphersuites(context.native_handle(), config.ciphers.c_str()) != 1)
+        {
+            throw std::runtime_error("Unable to configure the requested TLS 1.3 ciphersuite list");
+        }
+
+        context.use_certificate_chain_file(config.certificatePath);
+        context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {
             throw std::runtime_error("The configured TLS private key does not match the certificate");
+        }
+
+        // Client-certificate verification (mTLS). Both Certificate and Full modes
+        // require a CA to validate the presented client certificate against; Full
+        // additionally checks the peer IP against the certificate.
+        if (config.verificationMode != remoted::http::ClientVerificationMode::None)
+        {
+            context.load_verify_file(config.caPath);
+            context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
+
+            if (config.verificationMode == remoted::http::ClientVerificationMode::Full)
+            {
+                context.set_verify_callback(&verifyClientCertificateIp);
+            }
         }
 
         return context;
@@ -366,6 +480,10 @@ namespace
 
 namespace remoted::http
 {
+    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
+    {
+        return certificate != nullptr && X509_check_ip_asc(certificate, peerIp.c_str(), 0) == 1;
+    }
 
     struct RestinioHttpServer::Impl
     {
@@ -582,16 +700,45 @@ namespace remoted::http
 
         auto requestRouter = m_impl->buildRouter();
 
+        const bool bindsIpv6 = isIpv6Address(config.bindAddress);
+
+        if (config.dualStackMode != DualStackMode::Unset && !bindsIpv6)
+        {
+            LOGFN_WARN(logFn(),
+                       "dual_stack is only meaningful for an IPv6 bind address; ignoring it for '%s'.",
+                       config.bindAddress.c_str());
+        }
+
         restinio::server_settings_t<ServerTraits> settings;
 
         settings.address(config.bindAddress)
             .port(config.port)
-            .protocol(asio::ip::tcp::v4())
-            // Set SO_REUSEADDR on the listening socket so a restart can rebind the port
-            // immediately instead of failing with EADDRINUSE while a previous socket lingers
-            // in TIME_WAIT. (RESTinio enables this by default; kept explicit for intent.)
-            .acceptor_options_setter([](auto& options)
-                                     { options.set_option(asio::ip::tcp::acceptor::reuse_address(true)); })
+            // No .protocol() call: RESTinio derives the actual socket family from the
+            // address itself (asio::ip::make_address() autodetects IPv4 vs IPv6), so
+            // config.bindAddress works for either -- a literal .protocol(tcp::v4())
+            // here would only matter if no address were ever set, which never happens.
+            .acceptor_options_setter(
+                [dualStackMode = config.dualStackMode, bindsIpv6](auto& options)
+                {
+                    // Set SO_REUSEADDR on the listening socket so a restart can rebind the
+                    // port immediately instead of failing with EADDRINUSE while a previous
+                    // socket lingers in TIME_WAIT. (RESTinio enables this by default; kept
+                    // explicit for intent.)
+                    options.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+
+                    // IPV6_V6ONLY only applies to an IPv6 socket; a no-op (and possibly an
+                    // error) on IPv4, so only touch it when the bind address is IPv6.
+                    // Unset (never configured) is treated the same as an explicit "no": only
+                    // an explicit "yes" opts into dual-stack. Unset stays a distinct value up
+                    // to this point (rather than defaulting to Disabled in
+                    // resolveDualStackMode) specifically so the "only meaningful for an IPv6
+                    // bind_addr" warning above doesn't fire for the common case of an IPv4
+                    // bind_addr with dual_stack never configured.
+                    if (bindsIpv6)
+                    {
+                        options.set_option(asio::ip::v6_only(dualStackMode != DualStackMode::Enabled));
+                    }
+                })
             .request_handler(std::move(requestRouter))
             .tls_context(std::move(tlsContext))
             .buffer_size(config.bufferSize)
@@ -630,10 +777,11 @@ namespace remoted::http
             throw;
         }
 
+        const auto displayAddress = formatHostForDisplay(config.bindAddress);
         LOGFN_INFO(logFn(),
                    "HTTP server listening on https://%s:%u (%zu I/O thread(s), %zu worker thread(s), max body %zu "
                    "bytes, in-flight budget %zu bytes%s, max %zu connection(s)).",
-                   config.bindAddress.c_str(),
+                   displayAddress.c_str(),
                    static_cast<unsigned int>(config.port),
                    config.ioThreads,
                    config.workerThreads,

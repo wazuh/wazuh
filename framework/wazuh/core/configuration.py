@@ -201,6 +201,27 @@ def _read_option(section_name: str, opt: str) -> tuple:
                                     ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
+    elif section_name == 'remote' and opt_name == 'legacy':
+        # <remote><legacy> nests the classic TCP/UDP options (including <protocol>, a
+        # comma-separated list). The generic branch below would recurse with the
+        # child's own tag as section_name, losing the fact that it's inside 'legacy',
+        # so 'protocol' is special-cased here instead of relying on that recursion.
+        opt_value = {}
+        for child in opt:
+            child_name = child.tag.lower()
+            if child_name == 'protocol':
+                opt_value[child_name] = [elem.strip() for elem in child.text.split(',')]
+            else:
+                _, opt_value[child_name] = _read_option(child_name, child)
+    elif section_name == 'remote' and opt_name == 'https':
+        # <remote><https> only has scalar leaf options (port, bind_addr, certificate,
+        # key, ca, verification_mode, ciphers, max_body_size). The generic branch below
+        # wraps every child value in a list, which is meant for repeatable elements, so
+        # it's bypassed here the same way as <legacy>.
+        opt_value = {}
+        for child in opt:
+            child_name = child.tag.lower()
+            _, opt_value[child_name] = _read_option(child_name, child)
     else:
         if opt.attrib or list(opt):
             opt_value = {}

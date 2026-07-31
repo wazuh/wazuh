@@ -7069,10 +7069,16 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        port: 1514
-                        protocol:
-                          - tcp
-                        queue_size: 131072
+                        legacy:
+                          port: 1514
+                          protocol:
+                            - tcp
+                          queue_size: 131072
+                        https:
+                          port: 1517
+                          bind_addr: "127.0.0.1"
+                          certificate: "etc/remoted-https/server.crt"
+                          key: "etc/remoted-https/server.key"
                       syscollector:
                         disabled: no
                         interval: "1h"

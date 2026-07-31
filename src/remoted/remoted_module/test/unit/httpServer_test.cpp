@@ -10,15 +10,21 @@
  */
 
 #include "http_server/IHttpServer.hpp"
+#include "http_server/RestinioHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "proc.hpp"
+
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include <gtest/gtest.h>
 
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -41,12 +47,70 @@ namespace
         std::optional<HttpResponse> captured;
     };
 
-    // Zero-initialized C-ABI config, like remoted's `= {0}`.
+    // Zero-initialized C-ABI config, like remoted's `= {0}`. verification_mode is set to
+    // UNSET (not left at the memset 0) because that's what remoted actually sends when
+    // <https><verification_mode> was never configured -- RemotedConfig() pre-initializes
+    // it to REMOTED_HTTPS_VERIFY_UNSET before parsing, and secure.c copies it through
+    // unconditionally. 0 is reserved for an explicit <verification_mode>none</verification_mode>.
     remoted_module_config_t zeroedConfig()
     {
         remoted_module_config_t config;
         std::memset(&config, 0, sizeof(config));
+        config.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_UNSET;
         return config;
+    }
+
+    using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+    using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+
+    // Builds a minimal self-signed certificate with the given comma-separated
+    // subjectAltName value (e.g. "IP:203.0.113.5" or "IP:203.0.113.5,IP:2001:db8::1"), so
+    // certificateMatchesPeerIp() can be exercised with just an X509* and a string -- no
+    // live socket, TLS handshake, or on-disk fixture required.
+    X509Ptr makeSelfSignedCertificate(const char* subjectAltName)
+    {
+        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
+        if (!pkey)
+        {
+            throw std::runtime_error("Failed to generate test EC key pair");
+        }
+
+        X509Ptr certificate {X509_new(), &X509_free};
+        if (!certificate)
+        {
+            throw std::runtime_error("Failed to allocate test X509 certificate");
+        }
+
+        X509_set_version(certificate.get(), 2); // X509v3
+        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
+        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
+        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
+
+        X509_NAME* name = X509_get_subject_name(certificate.get());
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test"), -1, -1, 0);
+        X509_set_issuer_name(certificate.get(), name);
+
+        X509_set_pubkey(certificate.get(), pkey.get());
+
+        X509V3_CTX ctx;
+        X509V3_set_ctx_nodb(&ctx);
+        X509V3_set_ctx(&ctx, certificate.get(), certificate.get(), nullptr, nullptr, 0);
+
+        X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_alt_name, subjectAltName);
+        if (extension == nullptr)
+        {
+            throw std::runtime_error("Failed to build test subjectAltName extension");
+        }
+        X509_add_ext(certificate.get(), extension, -1);
+        X509_EXTENSION_free(extension);
+
+        if (X509_sign(certificate.get(), pkey.get(), EVP_sha256()) == 0)
+        {
+            throw std::runtime_error("Failed to sign test certificate");
+        }
+
+        return certificate;
     }
 } // namespace
 
@@ -59,10 +123,10 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     const auto config = buildHttpServerConfig(zeroedConfig());
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
-    EXPECT_EQ(config.port, 9443);
+    EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxBodySize, 16U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 20U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
     EXPECT_EQ(config.requestTimeoutSec, 30U);
@@ -75,10 +139,18 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 512U);
-    // No built-in default: remoted always reads the PEM content itself (before dropping
-    // privileges) and hands it over. Empty here just means "nothing was provided".
-    EXPECT_EQ(config.certificatePem, "");
-    EXPECT_EQ(config.privateKeyPem, "");
+    EXPECT_EQ(config.certificatePath, "etc/https-manager.cert");
+    EXPECT_EQ(config.privateKeyPath, "etc/https-manager.key");
+    EXPECT_EQ(config.caPath, "etc/https-manager-ca.pem");
+    EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
+    // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
+    // from an explicit "no" so RestinioHttpServer::start()'s "dual_stack only applies to
+    // an IPv6 bind_addr" warning doesn't fire for this (the default, IPv4) bind_addr.
+    // RestinioHttpServer::start() treats Unset the same as Disabled when actually
+    // setting the IPV6_V6ONLY socket option, so the effective behavior is still
+    // IPv6-only by default -- see DualStackYesFromStructOverridesDefault and friends.
+    EXPECT_EQ(config.dualStackMode, DualStackMode::Unset);
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
@@ -121,8 +193,12 @@ TEST(HttpServerConfigTest, StructValuesWin)
     raw.http_max_pipelined_requests = 8;
     raw.http_concurrent_accepts = 4;
     raw.http_buffer_size = 16384;
-    std::snprintf(raw.certificate_pem, sizeof(raw.certificate_pem), "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
-    std::snprintf(raw.private_key_pem, sizeof(raw.private_key_pem), "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE;
+    std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
+    std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
+    std::snprintf(raw.bind_address, sizeof(raw.bind_address), "0.0.0.0");
+    std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
+    std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
 
     const auto config = buildHttpServerConfig(raw);
 
@@ -140,8 +216,12 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.maxPipelinedRequests, 8U);
     EXPECT_EQ(config.concurrentAccepts, 4U);
     EXPECT_EQ(config.bufferSize, 16384U);
-    EXPECT_EQ(config.certificatePem, "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
-    EXPECT_EQ(config.privateKeyPem, "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
+    EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
+    EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
+    EXPECT_EQ(config.bindAddress, "0.0.0.0");
+    EXPECT_EQ(config.caPath, "/custom/ca.pem");
+    EXPECT_EQ(config.ciphers, "HIGH:!ADH");
+    EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
 }
 
 // Negative values can't come from remoted (getDefine_Int_default's own min bound
@@ -157,9 +237,44 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
 
     const auto config = buildHttpServerConfig(raw);
 
-    EXPECT_EQ(config.port, 9443);
+    EXPECT_EQ(config.port, 1517);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxUrlSize, 2048U);
+}
+
+TEST(HttpServerConfigTest, VerificationModeFullFromStruct)
+{
+    auto raw = zeroedConfig();
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_FULL;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Full);
+}
+
+TEST(HttpServerConfigTest, VerificationModeExplicitNoneStaysNone)
+{
+    // An explicit <verification_mode>none</verification_mode> (REMOTED_MODULE_HTTPS_VERIFY_NONE,
+    // which is 0) must resolve to None via the same "configValue != UNSET" branch as
+    // Certificate/Full, not be misread as REMOTED_MODULE_HTTPS_VERIFY_UNSET (-1).
+    auto raw = zeroedConfig();
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_NONE;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::None);
+}
+
+TEST(HttpServerConfigTest, DualStackYesFromStruct)
+{
+    auto raw = zeroedConfig();
+    raw.dual_stack = REMOTED_MODULE_HTTPS_DUAL_STACK_YES;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).dualStackMode, DualStackMode::Enabled);
+}
+
+TEST(HttpServerConfigTest, DualStackExplicitNoFromStruct)
+{
+    auto raw = zeroedConfig();
+    raw.dual_stack = REMOTED_MODULE_HTTPS_DUAL_STACK_NO;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).dualStackMode, DualStackMode::Disabled);
 }
 
 // ---------------------------------------------------------------------------
@@ -183,13 +298,14 @@ TEST(HttpServerTest, RegisterRoutesDoesNotThrow)
     });
 }
 
-TEST(HttpServerTest, StartWithoutCertificateThrowsAndStaysStopped)
+TEST(HttpServerTest, StartWithMissingCertificateThrowsAndStaysStopped)
 {
     auto server = makeHttpServer();
 
     HttpServerConfig config;
     config.port = 0; // ask the OS for a free port (never actually bound: TLS fails first)
-    // certificatePem/privateKeyPem left empty -- nothing was provided.
+    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
+    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
 
     EXPECT_THROW(server->start(config), std::exception);
 
@@ -199,16 +315,43 @@ TEST(HttpServerTest, StartWithoutCertificateThrowsAndStaysStopped)
     EXPECT_NO_THROW(server->stop());
 }
 
-TEST(HttpServerTest, StartWithMalformedCertificateThrowsAndStaysStopped)
+TEST(HttpServerTest, StartWithInvalidCiphersThrows)
 {
     auto server = makeHttpServer();
 
     HttpServerConfig config;
     config.port = 0;
-    config.certificatePem = "not a real certificate";
-    config.privateKeyPem = "not a real key";
+    // SSL_CTX_set_ciphersuites() is checked before the certificate/key are loaded, so this
+    // throws regardless of certificatePath/privateKeyPath being unset/nonexistent.
+    config.ciphers = "NOT-A-REAL-CIPHERSUITE-STRING";
 
     EXPECT_THROW(server->start(config), std::exception);
+    EXPECT_NO_THROW(server->stop());
+}
+
+TEST(HttpServerTest, StartWithValidTls13CiphersuitesDoesNotThrowFromCipherSetup)
+{
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
+    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
+    config.ciphers = "TLS_AES_256_GCM_SHA384";
+
+    // A syntactically valid TLS 1.3 ciphersuite name must be accepted by
+    // SSL_CTX_set_ciphersuites(): start() should fail later, on the missing
+    // certificate/key, not on cipher setup.
+    try
+    {
+        server->start(config);
+        FAIL() << "Expected start() to throw on the missing certificate/key";
+    }
+    catch (const std::exception& e)
+    {
+        EXPECT_EQ(std::string {e.what()}.find("cipher"), std::string::npos)
+            << "start() threw from cipher setup instead of the missing certificate/key: " << e.what();
+    }
 
     EXPECT_NO_THROW(server->stop());
 }
@@ -235,6 +378,90 @@ TEST(HttpServerTest, StopAcceptingIsIdempotentAndStopStillFullyTearsDown)
     EXPECT_NO_THROW(server->stopAccepting());
     EXPECT_NO_THROW(server->stop());
     EXPECT_NO_THROW(server->stop());
+}
+
+// NOTE: with a nonexistent certificate/key, start() throws while loading the server
+// certificate, before the verification_mode/ca handling ever runs. This proves start()
+// still fails closed (no partial bind) when verificationMode is set alongside a missing
+// cert/key.
+TEST(HttpServerTest, StartWithMissingCertificateAndVerificationModeStillThrows)
+{
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
+    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
+    config.verificationMode = ClientVerificationMode::Certificate;
+    // caPath intentionally left empty -- httpServerConfig.cpp would normally resolve this to
+    // DEFAULT_CA_PATH; this test exercises the HttpServerConfig struct directly, so it's testing
+    // start()'s cert/key check, not caPath resolution.
+
+    EXPECT_THROW(server->start(config), std::exception);
+    EXPECT_NO_THROW(server->stop());
+}
+
+// ---------------------------------------------------------------------------
+// Certificate verification (ClientVerificationMode::Full peer-IP-vs-SAN check)
+// ---------------------------------------------------------------------------
+
+TEST(CertificateVerificationTest, MatchingIpv4AddressReturnsTrue)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+}
+
+TEST(CertificateVerificationTest, NonMatchingIpv4AddressReturnsFalse)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
+
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.6"));
+}
+
+TEST(CertificateVerificationTest, MatchingIpv6AddressReturnsTrue)
+{
+    auto certificate = makeSelfSignedCertificate("IP:2001:db8::1");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
+}
+
+TEST(CertificateVerificationTest, MultipleSanEntriesMatchesAnyOfThem)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5,IP:2001:db8::1");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.9"));
+}
+
+TEST(CertificateVerificationTest, NoSanExtensionReturnsFalse)
+{
+    // No IP SAN present at all -- a certificate with only a CN and no subjectAltName.
+    EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
+    ASSERT_TRUE(pkey);
+
+    X509Ptr certificate {X509_new(), &X509_free};
+    ASSERT_TRUE(certificate);
+
+    X509_set_version(certificate.get(), 2);
+    ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
+    X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
+    X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
+
+    X509_NAME* name = X509_get_subject_name(certificate.get());
+    X509_NAME_add_entry_by_txt(
+        name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test-no-san"), -1, -1, 0);
+    X509_set_issuer_name(certificate.get(), name);
+    X509_set_pubkey(certificate.get(), pkey.get());
+    ASSERT_NE(X509_sign(certificate.get(), pkey.get(), EVP_sha256()), 0);
+
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+}
+
+TEST(CertificateVerificationTest, NullCertificateReturnsFalse)
+{
+    EXPECT_FALSE(certificateMatchesPeerIp(nullptr, "203.0.113.5"));
 }
 
 // ---------------------------------------------------------------------------

@@ -15,10 +15,13 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
+#include <filesystem>
 #include <gtest/gtest.h>
+#include <memory>
 #include <mutex>
-#include <sstream>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -117,69 +120,153 @@ namespace
         LogRecorder::lines().push_back({level, tag != nullptr ? tag : "", buffer});
     }
 
-    // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
-    // build/runtime dependency) so start() can be exercised for real instead of only against
-    // the missing-certificate failure path. remoted itself would read these files while still
-    // root, before dropping privileges -- here we just read them straight from the test
-    // process, since the point under test is the module's in-memory PEM handling, not the
-    // privilege-drop timing (that lives in remoted.c/secure.c, outside this module).
-    class TempCert
-    {
-    public:
-        TempCert()
-        {
-            char dirTemplate[] = "/tmp/remotedModuleTestXXXXXX";
-            m_dir = mkdtemp(dirTemplate);
-            const std::string certPath = m_dir + "/cert.pem";
-            const std::string keyPath = m_dir + "/key.pem";
-
-            const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
-                                     keyPath + " -out " + certPath + " >/dev/null 2>&1";
-            if (std::system(cmd.c_str()) != 0)
-            {
-                ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
-            }
-
-            m_certPem = readFile(certPath);
-            m_keyPem = readFile(keyPath);
-
-            std::remove(certPath.c_str());
-            std::remove(keyPath.c_str());
-            rmdir(m_dir.c_str());
-        }
-
-        const std::string& certPem() const { return m_certPem; }
-        const std::string& keyPem() const { return m_keyPem; }
-
-    private:
-        static std::string readFile(const std::string& path)
-        {
-            std::ifstream file(path);
-            std::ostringstream contents;
-            contents << file.rdbuf();
-            return contents.str();
-        }
-
-        std::string m_dir;
-        std::string m_certPem;
-        std::string m_keyPem;
-    };
-
-    remoted_module_config_t makeConfig(const std::string& certPem = "", const std::string& keyPem = "")
+    remoted_module_config_t makeConfig()
     {
         remoted_module_config_t cfg {};
-        cfg.port = 0; // ephemeral: avoid colliding with a real listener or another test run
+        cfg.port = 1514;
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.node_name, sizeof(cfg.node_name), "%s", "test-node");
-        if (!certPem.empty())
+        return cfg;
+    }
+
+    // remoted_module_start() brings up its HTTPS transport synchronously and fails fast (throws)
+    // when the configured certificate/key is missing or unreadable -- see
+    // RemotedModuleFacade::start(). The tests below that need a module which actually starts must
+    // therefore hand it a real, readable self-signed certificate/key pair; there is no built-in
+    // fallback that works outside of remoted's own chroot (the module default,
+    // "etc/https-manager.cert", only resolves once Privsep_Chroot() has chdir()'d to "/").
+    void writeSelfSignedTls(const std::string& certificatePath, const std::string& privateKeyPath)
+    {
+        using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+        using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+        using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+
+        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
+        if (!pkey)
         {
-            std::snprintf(cfg.certificate_pem, sizeof(cfg.certificate_pem), "%s", certPem.c_str());
+            throw std::runtime_error("Failed to generate test EC key");
         }
-        if (!keyPem.empty())
+
+        X509Ptr certificate {X509_new(), &X509_free};
+        if (!certificate)
         {
-            std::snprintf(cfg.private_key_pem, sizeof(cfg.private_key_pem), "%s", keyPem.c_str());
+            throw std::runtime_error("Failed to allocate test X509 certificate");
         }
+
+        X509_set_version(certificate.get(), 2); // X509v3
+        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
+        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
+        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
+
+        X509_NAME* name = X509_get_subject_name(certificate.get());
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-module-utest"), -1, -1, 0);
+        X509_set_issuer_name(certificate.get(), name);
+        X509_set_pubkey(certificate.get(), pkey.get());
+
+        if (X509_sign(certificate.get(), pkey.get(), EVP_sha256()) == 0)
+        {
+            throw std::runtime_error("Failed to sign test certificate");
+        }
+
+        BioPtr certBio {BIO_new_file(certificatePath.c_str(), "w"), &BIO_free};
+        if (!certBio || PEM_write_bio_X509(certBio.get(), certificate.get()) == 0)
+        {
+            throw std::runtime_error("Failed to write test certificate: " + certificatePath);
+        }
+
+        BioPtr keyBio {BIO_new_file(privateKeyPath.c_str(), "w"), &BIO_free};
+        if (!keyBio || PEM_write_bio_PrivateKey(keyBio.get(), pkey.get(), nullptr, nullptr, 0, nullptr, nullptr) == 0)
+        {
+            throw std::runtime_error("Failed to write test private key: " + privateKeyPath);
+        }
+    }
+
+    std::string makeTempPath(const char* prefix)
+    {
+        std::string pattern = std::string {"/tmp/"} + prefix + "-XXXXXX";
+        const int fd = mkstemp(pattern.data());
+        if (fd == -1)
+        {
+            throw std::runtime_error(std::string {"Failed to create temp file for "} + prefix);
+        }
+        close(fd);
+        return pattern;
+    }
+
+    /// RAII throwaway TLS identity under /tmp, for tests that pass an explicit certificate_path/
+    /// private_key_path and just need it to exist and be valid.
+    class TempTlsFiles
+    {
+    public:
+        TempTlsFiles()
+            : m_certificatePath(makeTempPath("rmt-utest-cert"))
+            , m_privateKeyPath(makeTempPath("rmt-utest-key"))
+        {
+            writeSelfSignedTls(m_certificatePath, m_privateKeyPath);
+        }
+
+        ~TempTlsFiles()
+        {
+            std::remove(m_certificatePath.c_str());
+            std::remove(m_privateKeyPath.c_str());
+        }
+
+        TempTlsFiles(const TempTlsFiles&) = delete;
+        TempTlsFiles& operator=(const TempTlsFiles&) = delete;
+
+        const std::string& certificatePath() const
+        {
+            return m_certificatePath;
+        }
+
+        const std::string& privateKeyPath() const
+        {
+            return m_privateKeyPath;
+        }
+
+    private:
+        std::string m_certificatePath;
+        std::string m_privateKeyPath;
+    };
+
+    /// RAII throwaway TLS identity at the module's own built-in default path
+    /// ("etc/https-manager.cert"/"etc/https-manager.key", relative to the test process's cwd) --
+    /// only for the one test that exercises the nullptr-configuration default-path fallback itself.
+    class DefaultPathTlsFiles
+    {
+    public:
+        DefaultPathTlsFiles()
+            : m_createdEtcDir(!std::filesystem::exists("etc"))
+        {
+            std::filesystem::create_directories("etc");
+            writeSelfSignedTls("etc/https-manager.cert", "etc/https-manager.key");
+        }
+
+        ~DefaultPathTlsFiles()
+        {
+            std::error_code ec;
+            std::filesystem::remove("etc/https-manager.cert", ec);
+            std::filesystem::remove("etc/https-manager.key", ec);
+            if (m_createdEtcDir)
+            {
+                std::filesystem::remove("etc", ec); // no-op if anything else landed in it meanwhile
+            }
+        }
+
+        DefaultPathTlsFiles(const DefaultPathTlsFiles&) = delete;
+        DefaultPathTlsFiles& operator=(const DefaultPathTlsFiles&) = delete;
+
+    private:
+        bool m_createdEtcDir;
+    };
+
+    remoted_module_config_t makeConfig(const TempTlsFiles& tls)
+    {
+        auto cfg = makeConfig();
+        std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", tls.certificatePath().c_str());
+        std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", tls.privateKeyPath().c_str());
         return cfg;
     }
 } // namespace
@@ -203,9 +290,9 @@ protected:
 // start() must launch the worker and log, and stop() must return promptly (join succeeds).
 TEST_F(RemotedModuleTest, StartAndStop)
 {
-    TempCert cert;
-    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
-    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
+    TempTlsFiles tls;
+    const auto cfg = makeConfig(tls);
+    remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
 }
@@ -217,34 +304,55 @@ TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
     SUCCEED();
 }
 
-// No certificate/key PEM content supplied is fatal: there is no retry/recovery anymore, so
-// start() must propagate the failure instead of starting anyway. In production this content
-// comes from remoted.c reading etc/https-manager.{cert,key} before dropping privileges; an
-// empty config here stands in for that read having found nothing.
-TEST_F(RemotedModuleTest, StartWithoutCertificateThrows)
+// A NULL configuration must fall back to defaults -- including the default certificate/key
+// path -- without crashing.
+TEST_F(RemotedModuleTest, StartWithNullConfig)
 {
-    const auto cfg = makeConfig();
-    EXPECT_THROW(remoted_module_start(testLogCallback, &cfg), std::exception);
-    EXPECT_GT(g_logCalls.load(), 0); // the "Starting remoted module..." log still happened
-}
-
-// A NULL configuration falls back to defaults, which carry no PEM content -- so this must
-// throw for the same reason as StartWithoutCertificateThrows.
-TEST_F(RemotedModuleTest, StartWithNullConfigThrows)
-{
-    EXPECT_THROW(remoted_module_start(testLogCallback, nullptr), std::exception);
+    DefaultPathTlsFiles defaultTls;
+    remoted_module_start(testLogCallback, nullptr);
+    remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
 }
 
 // A second start() while running is ignored; a single stop() tears everything down.
 TEST_F(RemotedModuleTest, DoubleStartIsIgnored)
 {
-    TempCert cert;
-    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
-    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
-    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
+    TempTlsFiles tls;
+    const auto cfg = makeConfig(tls);
+    remoted_module_start(testLogCallback, &cfg);
+    remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
     SUCCEED();
+}
+
+// End-to-end proof that a permanent misconfiguration fails fast and loudly: start() rethrows
+// (RemotedModuleFacade::start() -- "a missing certificate is fatal to the module, and thus to
+// remoted -- it must not start without it") but not before the failure reaches ossec.log naming
+// the offending file. Before this work, a missing certificate produced only a generic "not
+// started yet, will retry" WARN with an opaque OpenSSL string, repeated every 60 s forever and
+// indistinguishable from a bad key, a port clash, or a fresh install that simply hadn't been
+// provisioned yet.
+TEST_F(RemotedModuleTest, MissingCertificateIsReportedAsAnErrorNamingTheFile)
+{
+    auto cfg = makeConfig();
+    std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", "/tmp/rmt-does-not-exist.crt");
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", "/tmp/rmt-does-not-exist.key");
+
+    EXPECT_THROW(remoted_module_start(testLogCallback, &cfg), std::exception);
+
+    // The message must name the actual path, which is what makes it actionable.
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("/tmp/rmt-does-not-exist.crt"))
+        << "the startup failure did not name the missing certificate";
+
+    // A failed start must not leave the module wedged: stop() stays a safe no-op...
+    remoted_module_stop();
+
+    // ...and a later start() with a valid certificate must still succeed.
+    TempTlsFiles tls;
+    const auto validCfg = makeConfig(tls);
+    remoted_module_start(testLogCallback, &validCfg);
+    EXPECT_GT(g_logCalls.load(), 0);
+    remoted_module_stop();
 }
 
 // The wedge regression: start() used to set m_running BEFORE creating the worker thread, so a
@@ -253,14 +361,14 @@ TEST_F(RemotedModuleTest, DoubleStartIsIgnored)
 // direction (a clean stop must leave the module startable again).
 TEST_F(RemotedModuleTest, StartStopStartAgainWorks)
 {
-    TempCert cert;
-    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
+    TempTlsFiles tls;
+    const auto cfg = makeConfig(tls);
 
-    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
+    remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
 
     LogRecorder::clear();
-    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
+    remoted_module_start(testLogCallback, &cfg);
 
     // A second, healthy start must actually run -- not be refused as "already started".
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("worker thread running"))
