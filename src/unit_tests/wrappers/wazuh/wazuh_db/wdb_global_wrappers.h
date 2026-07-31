@@ -25,12 +25,10 @@ int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            const char* os_platform,
                                            const char* os_arch,
                                            const char* version,
-                                           const char* merged_sum,
                                            const char* node_name,
                                            const char* agent_ip,
                                            const char* connection_status,
-                                           const char* sync_status,
-                                           const char* group_config_status);
+                                           const char* sync_status);
 
 int __wrap_wdb_global_update_agent_keepalive(wdb_t* wdb, int id, char* connection_status, char* status);
 
