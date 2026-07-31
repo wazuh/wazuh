@@ -47,7 +47,11 @@ def callback_detect_aws_module_called(parameters):
     """
     pattern = fr'{AWS_MODULE_STARTED_PARAMETRIZED}{" ".join(parameters)}\n*'
     regex = re.compile(pattern)
-    return lambda line: regex.match(line)
+    # The module wraps some CLI arguments in double quotes (e.g. --trail_prefix "value") so their
+    # values survive the word-splitting wm_exec() performs; the expected parameters are unquoted,
+    # so strip the quotes from the logged command before matching. Backward compatible: lines
+    # without quotes are unchanged.
+    return lambda line: regex.match(line.replace('"', ''))
 
 
 def callback_detect_aws_error_for_missing_type(line):
