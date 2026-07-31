@@ -12,10 +12,13 @@
 #ifndef _REMOTED_HTTP_SERVER_INTERFACE_HPP
 #define _REMOTED_HTTP_SERVER_INTERFACE_HPP
 
+#include "inFlightBudget.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -290,6 +293,27 @@ namespace remoted::http
                               RouteHandler handler,
                               bool countAgainstBudget = true,
                               ResponseMode mode = ResponseMode::Buffered) = 0;
+
+        /**
+         * @brief Try to reserve @p bytes against the in-flight byte budget, independent of any
+         * request's own wire-body reservation.
+         *
+         * Lets a route handler charge memory it allocates itself (e.g. a decompressed request body)
+         * against the same pool that bounds unprocessed request payloads, so concurrent handlers
+         * genuinely contend for it instead of each independently reading a "free" figure and all
+         * proceeding at once. For a size that isn't known upfront, reserve 0 bytes to obtain a
+         * handle and grow it via InFlightBudget::Reservation::grow() as bytes materialize.
+         *
+         * The bytes stay charged for as long as the returned reservation is kept alive, so tie its
+         * lifetime to whatever the reserved bytes actually back -- bundle it into that data's own
+         * keep-alive to hold it, or let it fall out of scope to release it.
+         *
+         * @param bytes Bytes to reserve up front (0 is always granted).
+         * @return An engaged reservation on success, `std::nullopt` if the budget doesn't have
+         *         that much room right now, or if there is no live budget to reserve against (the
+         *         server hasn't been started yet).
+         */
+        virtual std::optional<InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) = 0;
 
         /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.

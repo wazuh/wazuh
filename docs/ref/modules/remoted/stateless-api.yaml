@@ -82,12 +82,14 @@ paths:
         The timestamp must be within 300 s in the past and 30 s in the future.
 
         The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
-        only **after** authentication succeeds (so an unauthenticated request never spends CPU/memory
-        decompressing anything), and the decompressed size is bounded by the same body-size cap that
-        applies to an uncompressed request (`413` if exceeded, checked continuously during
-        decompression so a highly-compressed body can never balloon past the cap in memory first).
-        Any `Content-Encoding` value other than `zstd` is rejected with `415`; a missing header is
-        treated as an uncompressed body, unchanged from today.
+        only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
+        decompressing anything. Both the decoder's own buffers (sized from the frame header, so each
+        frame accounts for exactly what it needs) and the decompressed output (tracked incrementally
+        as it is produced) are charged against the server's live in-flight memory capacity -- so a
+        `413` here means the frame didn't fit in the capacity free at that moment, and a
+        highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
+        value other than `zstd` is rejected with `415`; a missing header is treated as an
+        uncompressed body, unchanged from today.
 
         Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
         (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
@@ -154,8 +156,11 @@ paths:
                   value: { error: "Invalid client authentication", code: 401 }
         "413":
           description: |
-            The request body exceeds the configured auth body limit (10 MiB) -- checked on the
-            decompressed size when `Content-Encoding: zstd` is set, same cap either way.
+            The request body exceeds the configured auth body limit (10 MiB). For
+            `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
+            in-flight memory capacity -- either the decoder's buffers (refused up front, from the
+            frame header) or the decompressed output as it was produced. Retryable: the same request
+            may succeed once the server is less loaded.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }

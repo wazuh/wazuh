@@ -11,9 +11,18 @@
 
 #include "zstdDecoder.hpp"
 
+// ZSTD_getFrameHeader() and ZSTD_decodingBufferSize_min() -- which expose how much memory a frame
+// will actually make the decoder allocate -- live behind this opt-in. We rely on them to reserve
+// exactly that much against the shared in-flight budget instead of a blanket worst-case bound;
+// capping alone would leave the window buffer as real memory nothing accounts for. It is nominally
+// zstd's "experimental" surface, but the risk here is contained: we vendor and statically link a
+// pinned zstd (src/external/zstd), so any signature change surfaces at build time on a version
+// bump rather than silently at runtime.
+#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 #include <array>
+#include <limits>
 
 namespace remoted::common
 {
@@ -21,35 +30,43 @@ namespace remoted::common
     namespace
     {
         constexpr std::size_t kChunkSize = 64U * 1024U;
-
-        // Mirrors zstd's own ZSTD_WINDOWLOG_MIN / ZSTD_WINDOWLOG_LIMIT_DEFAULT. Both are documented,
-        // stable-value constants, but zstd.h only exposes their names behind
-        // ZSTD_STATIC_LINKING_ONLY (its "experimental API" opt-in) -- not worth pulling in that
-        // whole experimental surface for two numbers that don't change.
-        constexpr int kWindowLogMin = 10;
-        constexpr int kWindowLogLimitDefault = 27;
-
-        // Smallest power-of-two window (as a log2) that could hold maxOutputSize, clamped to
-        // [kWindowLogMin, kWindowLogLimitDefault]. Used to tell the decoder to refuse any frame
-        // asking for more upfront memory than we could ever accept anyway -- see the comment at
-        // the call site in zstdDecode() for why this matters.
-        int windowLogFor(std::size_t maxOutputSize)
-        {
-            int log = kWindowLogMin;
-            while (log < kWindowLogLimitDefault && (std::size_t {1} << log) < maxOutputSize)
-            {
-                ++log;
-            }
-            return log;
-        }
     } // namespace
 
-    std::variant<std::string, ZstdDecodeError> zstdDecode(std::string_view compressed, std::size_t maxOutputSize)
+    std::variant<std::string, ZstdDecodeError>
+    zstdDecode(std::string_view compressed, const ReserveWindowFn& reserveWindow, const ReserveMoreFn& reserveMore)
     {
         // Zero bytes is not a valid (empty) frame, it is simply not a frame at all.
         if (compressed.empty())
         {
             return ZstdDecodeError::Malformed;
+        }
+
+        // Read the frame header FIRST, before allocating any decoder state: it tells us how much
+        // memory this specific frame will make the decoder reserve up front, which is what we hand
+        // to reserveWindow(). A truncated/garbage header (>0 means "need more input", or an error
+        // code) is rejected here without touching the budget at all.
+        ZSTD_FrameHeader header {};
+        const std::size_t headerResult = ZSTD_getFrameHeader(&header, compressed.data(), compressed.size());
+        if (headerResult != 0 || header.frameType != ZSTD_frame)
+        {
+            return ZstdDecodeError::Malformed;
+        }
+
+        // What the decoder will really allocate for its window/output buffers, per zstd's own
+        // sizing helper -- not just header.windowSize, which is only part of that total. Guard the
+        // 64-bit -> size_t narrowing: on a 32-bit build a frame could legitimately declare more
+        // than size_t can hold, which we can't satisfy regardless.
+        const unsigned long long bufferSize =
+            ZSTD_decodingBufferSize_min(header.windowSize, header.frameContentSize);
+        if (ZSTD_isError(static_cast<std::size_t>(bufferSize)) ||
+            bufferSize > std::numeric_limits<std::size_t>::max())
+        {
+            return ZstdDecodeError::TooLarge;
+        }
+
+        if (!reserveWindow(static_cast<std::size_t>(bufferSize)))
+        {
+            return ZstdDecodeError::TooLarge;
         }
 
         ZSTD_DStream* dstream = ZSTD_createDStream();
@@ -68,18 +85,7 @@ namespace remoted::common
             }
         } guard {dstream};
 
-        // Unlike gzip/DEFLATE (fixed 32 KiB window by spec), a zstd frame's header can itself
-        // declare an arbitrarily large window, forcing the decoder to allocate that much memory
-        // up front -- before a single byte of output exists for our maxOutputSize check below to
-        // catch. ZSTD_initDStream() alone would only cap that at ZSTD_WINDOWLOG_LIMIT_DEFAULT (128
-        // MiB), which is far more than we'd ever actually allow through maxOutputSize. Instead, we
-        // explicitly cap it to whatever window could possibly hold maxOutputSize: a frame that
-        // needs more than that is guaranteed to fail our size check anyway, so there is no reason
-        // to let the decoder allocate for it. ZSTD_DCtx_setParameter() must be called before
-        // ZSTD_initDStream(): the latter only resets session state (buffers/counters), not
-        // parameters set this way.
-        if (ZSTD_isError(ZSTD_DCtx_setParameter(dstream, ZSTD_d_windowLogMax, windowLogFor(maxOutputSize)))
-            || ZSTD_isError(ZSTD_initDStream(dstream)))
+        if (ZSTD_isError(ZSTD_initDStream(dstream)))
         {
             return ZstdDecodeError::Malformed;
         }
@@ -88,6 +94,39 @@ namespace remoted::common
         std::string output;
         std::array<char, kChunkSize> chunk {};
         std::size_t frameRemaining = 0;
+
+        // Bytes reserved for `output`'s capacity so far. Kept equal to output.capacity() by
+        // growOutputCapacity() below, so the caller's budget tracks memory really taken from the
+        // allocator -- not the smaller "bytes written" figure, which the buffer's own
+        // over-allocation would leave the budget systematically under-counting.
+        std::size_t reservedCapacity = 0;
+
+        // Reserve, then grow capacity to exactly the reserved amount. Reserving first is what keeps
+        // the budget honest: capacity never exceeds what was granted.
+        const auto growOutputCapacity = [&output, &reservedCapacity, &reserveMore](std::size_t target)
+        {
+            if (target <= reservedCapacity)
+            {
+                return true;
+            }
+            if (!reserveMore(target - reservedCapacity))
+            {
+                return false;
+            }
+            reservedCapacity = target;
+            output.reserve(reservedCapacity);
+            return true;
+        };
+
+        // The frame normally declares its decompressed size: charge and size the buffer to exactly
+        // that, once. One allocation, no over-allocation, and nothing to copy as it fills. A frame
+        // that omits the size falls back to the block growth in the loop below.
+        if (header.frameContentSize != ZSTD_CONTENTSIZE_UNKNOWN &&
+            header.frameContentSize <= std::numeric_limits<std::size_t>::max() &&
+            !growOutputCapacity(static_cast<std::size_t>(header.frameContentSize)))
+        {
+            return ZstdDecodeError::TooLarge;
+        }
 
         while (input.pos < input.size)
         {
@@ -101,9 +140,30 @@ namespace remoted::common
 
             if (out.pos > 0)
             {
-                if (output.size() + out.pos > maxOutputSize)
+                // Only reached for a frame that declares NO decompressed size (streaming
+                // compression with no pledged size); a declared size was already covered above.
+                // Grow in doubling blocks rather than per chunk, so this doesn't mean a reservation
+                // call -- and a reallocation -- for every 64 KiB.
+                const std::size_t needed = output.size() + out.pos;
+                if (needed > reservedCapacity)
                 {
-                    return ZstdDecodeError::TooLarge;
+                    std::size_t target = reservedCapacity < kChunkSize ? kChunkSize : reservedCapacity;
+                    while (target < needed)
+                    {
+                        // Guard the doubling: past this point grow to exactly what's needed instead.
+                        if (target > std::numeric_limits<std::size_t>::max() / 2)
+                        {
+                            target = needed;
+                            break;
+                        }
+                        target *= 2;
+                    }
+                    // The caller's budget may also be shrinking concurrently (other requests
+                    // reserving bytes of their own), so this is a live contention point.
+                    if (!growOutputCapacity(target))
+                    {
+                        return ZstdDecodeError::TooLarge;
+                    }
                 }
                 output.append(chunk.data(), out.pos);
             }

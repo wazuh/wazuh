@@ -281,12 +281,21 @@ def scenario_malformed_zstd(agent_id, agent_key):
     return headers, body, target
 
 
-def scenario_zstd_decompressed_too_large(agent_id, agent_key):
-    # Highly repetitive plaintext that compresses far below the wire cap, but decompresses well
-    # past AuthConfig's 10 MiB body cap -- must be rejected with 413, without ever reaching the
-    # endpoint handler.
+def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
+    # auth_max_body_size (10 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
+    # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
+    # that decompresses well past 10 MiB is accepted -- that is the behavior change zstd support
+    # introduced, and what this scenario pins down.
+    #
+    # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the
+    # default 256 MiB budget a single request cannot realistically reach it, and forcing it would
+    # mean making the manager allocate hundreds of MiB. Both 413 paths (the decoder's buffers and
+    # the growing output) are covered by bodyDecoder_test.cpp, and the concurrent-pressure case by
+    # authGateway_test.cpp's 50-request test.
     target = "/stateless"
-    plain = b"A" * (MAX_BODY_SIZE + 1024 * 1024)
+    event = b"E 1:/var/log/syslog:" + b"x" * 1000 + b"\n"
+    header = b'H {"wazuh":{"agent":{"id":"1001"}}}\n'
+    plain = header + event * ((MAX_BODY_SIZE + 1024 * 1024) // len(event) + 1)
     compressed = zstandard.ZstdCompressor().compress(plain)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
     headers["Content-Encoding"] = "zstd"
@@ -313,7 +322,7 @@ SCENARIOS = [
     ("zstd_encoded_valid_request", 202, scenario_zstd_encoded),
     ("unsupported_content_encoding_gzip", 415, scenario_unsupported_content_encoding),
     ("malformed_zstd_body", 400, scenario_malformed_zstd),
-    ("zstd_decompressed_body_too_large", 413, scenario_zstd_decompressed_too_large),
+    ("zstd_body_beyond_the_auth_cap", 202, scenario_zstd_body_beyond_the_auth_cap),
 ]
 
 
