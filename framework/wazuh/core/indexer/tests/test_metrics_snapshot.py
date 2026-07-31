@@ -424,12 +424,10 @@ AGENT_DOC_FULL = {
     # as tz-aware datetime objects.
     "dateAdd": datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
     "group": ["default"],
-    "mergedSum": "abcdef1234567890",
     "node_name": "node01",
     "lastKeepAlive": datetime(2026, 3, 17, 10, 0, 0, tzinfo=timezone.utc),
     "disconnection_time": datetime(2026, 3, 17, 10, 5, 0, tzinfo=timezone.utc),
     "registerIP": "10.0.1.5",
-    "group_config_status": "synced",
     "status_code": 0,
 }
 
@@ -447,8 +445,6 @@ EXPECTED_AGENT_FIELDS = {
     "wazuh.agent.registered_at",
     "wazuh.agent.last_seen",
     "wazuh.agent.disconnected_at",
-    "wazuh.agent.config.group.synced",
-    "wazuh.agent.config.group.hash.md5",
     "wazuh.agent.host.architecture",
     "wazuh.agent.host.os.name",
     "wazuh.agent.host.os.version",
@@ -494,7 +490,6 @@ class TestAgentFieldMapping:
         assert isinstance(doc["wazuh"]["agent"]["id"], str)
         assert isinstance(doc["wazuh"]["agent"]["name"], str)
         assert isinstance(doc["wazuh"]["agent"]["status"], str)
-        assert isinstance(doc["wazuh"]["agent"]["config"]["group"]["synced"], bool)
         assert isinstance(doc["wazuh"]["agent"]["groups"], list)
         assert isinstance(doc["@timestamp"], str)
         assert isinstance(doc["wazuh"]["cluster"]["node"], str)
@@ -568,36 +563,6 @@ class TestAgentFieldMapping:
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_group_config_status_synced_maps_to_true(
-        self, mock_wazuh_db_query_agents
-    ):
-        """group_config_status='synced' maps to boolean True."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "group_config_status": "synced"}]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
-
-        assert docs[0]["wazuh"]["agent"]["config"]["group"]["synced"] is True
-
-    @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_group_config_status_not_synced_maps_to_false(
-        self, mock_wazuh_db_query_agents
-    ):
-        """group_config_status='not synced' maps to boolean False."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "group_config_status": "not synced"}]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
-
-        assert docs[0]["wazuh"]["agent"]["config"]["group"]["synced"] is False
-
-    @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_redundant_raw_fields_dropped(self, mock_wazuh_db_query_agents):
         """Raw fields (manager, node_name, id, etc.) are absent after normalization."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
@@ -617,10 +582,8 @@ class TestAgentFieldMapping:
             "ip",
             "status",
             "group",
-            "mergedSum",
             "dateAdd",
             "lastKeepAlive",
-            "group_config_status",
             "status_code",
         ):
             assert dropped not in doc, (

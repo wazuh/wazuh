@@ -21,7 +21,6 @@ static pthread_mutex_t wdb_global_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 // The ":" is used for parameter binding
 static const char *global_db_agent_fields[] = {
     ":ip",
-    ":merged_sum",
     ":name",
     ":node_name",
     ":os_arch",
@@ -35,7 +34,6 @@ static const char *global_db_agent_fields[] = {
     ":last_keepalive",
     ":connection_status",
     ":disconnection_time",
-    ":group_config_status",
     ":status_code",
     ":id",
     NULL
@@ -119,12 +117,10 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *merged_sum,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status,
-                                    const char *group_config_status)
+                                    const char *sync_status)
 {
     sqlite3_stmt *stmt = NULL;
     int index = 1;
@@ -174,10 +170,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, merged_sum, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
     if (sqlite3_bind_text(stmt, index++, node_name, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -193,10 +185,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         return OS_INVALID;
     }
     if (sqlite3_bind_text(stmt, index++, sync_status, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, group_config_status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

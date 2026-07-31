@@ -83,7 +83,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindStringView).Times(14 * 2); // 14 string fields * 2 agents
+    EXPECT_CALL(*stmt, bindStringView).Times(12 * 2); // 12 string fields * 2 agents
     EXPECT_CALL(*stmt, bindInt64).Times(4 * 2); // last_keepalive + disconnection_time + status_code + id, per agent
     EXPECT_CALL(*stmt, step()).Times(2);        // 2 updates
     EXPECT_CALL(*stmt, reset()).Times(2);       // 2 updates
@@ -93,13 +93,11 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
         "syncreq": [
             {
             "id": 1,
-            "merged_sum": "y",
             "name": "Alice",
             "version": "4.7.0"
             },
             {
             "id": 2,
-            "merged_sum": "y2",
             "name": "Bob",
             "version": "4.8.0"
             }
@@ -111,9 +109,9 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
     ASSERT_EQ(qdump->size(), 1);
     EXPECT_EQ(
         (*qdump)[0],
-        "UPDATE agent SET ip = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_major = ?, "
+        "UPDATE agent SET ip = ?, name = ?, node_name = ?, os_arch = ?, os_major = ?, "
         "os_minor = ?, os_name = ?, os_type = ?, os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
-        "connection_status = ?, disconnection_time = ?, group_config_status = ?, status_code= ?, "
+        "connection_status = ?, disconnection_time = ?, status_code= ?, "
         "sync_status = 'synced' WHERE id = ?;");
 }
 

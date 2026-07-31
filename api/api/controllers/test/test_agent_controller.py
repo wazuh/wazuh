@@ -105,7 +105,6 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                     'name': None,
                     'ip': None,
                     'registerIP': mock_request.query_params.get('registerIP', None),
-                    'group_config_status': None
                 },
                 'q': None,
                 'distinct': False
