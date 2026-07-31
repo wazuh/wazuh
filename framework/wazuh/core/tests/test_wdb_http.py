@@ -145,7 +145,6 @@ class TestWazuhDBHTTPClient:
                     'last_keepalive': 1745892111,
                     'connection_status': 'active',
                     'disconnection_time': 0,
-                    'group_config_status': 'synced',
                     'status_code': 0
                 }
             ],
@@ -180,7 +179,7 @@ class TestWazuhDBHTTPClient:
                     'last_keepalive': 1745892111,
                     'connection_status': 'active',
                     'disconnection_time': 0,
-                    'group_config_status': 'synced',
+
                     'status_code': 0
                 }
             ],

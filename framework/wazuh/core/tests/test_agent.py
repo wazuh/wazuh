@@ -59,10 +59,10 @@ class InitAgent:
             self.cur.executescript(f.read())
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
-                                       'group_config_status', 'status_code'}
+                                       'status_code'}
         self.pending_fields = self.never_connected_fields | {'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
-        self.active_fields = self.manager_fields | {'group', 'mergedSum'}
+        self.active_fields = self.manager_fields | {'group'}
         self.disconnected_fields = self.active_fields | {'disconnection_time'}
         self.manager_fields -= {'registerIP'}
 

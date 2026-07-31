@@ -104,7 +104,7 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                      offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
                      search: str = None, status: str = None, q: str = None, older_than: str = None,
                      version: str = None, group: str = None, node_name: str = None, name: str = None, ip: str = None,
-                     group_config_status: str = None, distinct: bool = False) -> ConnexionResponse:
+                     distinct: bool = False) -> ConnexionResponse:
     """Get information about all agents or a list of them.
 
     Parameters
@@ -143,8 +143,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
         Filter by agent name.
     ip : str
         Filter by agent IP.
-    group_config_status : str
-        Filter by agent groups configuration sync status.
     distinct : bool
         Look for distinct values.
 
@@ -168,7 +166,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                     'name': name,
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None),
-                    'group_config_status': group_config_status
                 },
                 'q': q,
                 'distinct': distinct
