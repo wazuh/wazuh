@@ -32,10 +32,16 @@ enum class TransportStatus
 };
 
 /// D9 outcome classes for a completed attempt.
+///
+/// Each value names what was OBSERVED, not what policy applies to it: three of
+/// them are retried (Unreachable, ServerError, BackPressure).
+
 enum class OutcomeClass
 {
     Ok,
-    Retryable,
+    Unreachable,     ///< Transport failed; no HTTP status ever arrived.
+    ServerError,     ///< Answered, unhappily, and worth retrying: 5xx other than
+    ///< 503, plus the 403/426 an intermediary can inject.
     BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
     AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
@@ -52,7 +58,11 @@ inline int toHcResult(OutcomeClass outcome)
         case OutcomeClass::Ok:
             return HC_RESULT_OK;
 
-        case OutcomeClass::Retryable:
+        // Both cross the ABI as RETRYABLE: the C core only needs the policy,
+        // and the arm/disarm decision that needs the finer fact never leaves
+        // the module (ControlStream owns it), so hc_result_t is unchanged.
+        case OutcomeClass::Unreachable:
+        case OutcomeClass::ServerError:
             return HC_RESULT_RETRYABLE;
 
         case OutcomeClass::BackPressure:

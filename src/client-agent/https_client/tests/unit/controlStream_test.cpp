@@ -841,3 +841,227 @@ TEST_F(ControlStreamTest, MalformedNotifyBodyIsIgnored)
     m_stream.step(m_waiter); // No crash, no dispatch.
 }
 
+TEST_F(ControlStreamTest, ASingleUnreachableStepDoesNotPauseProducers)
+{
+    // One transport failure is a blip. The threshold is deliberately above 1.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+    m_waiter.script({true, true, true});
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // 1/2: counted, no pause.
+}
+
+TEST_F(ControlStreamTest, ThresholdPausesOnceAndRecoveryReleasesWithoutAStateChange)
+{
+    // The whole lifecycle, and the reason this callback has to exist: losing the
+    // manager while Registered changes no state, so both the arm and the release
+    // are invisible to onStateChange -- only the initial registration emits one.
+    int attempt = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        attempt++;
+
+        if (attempt == 1)
+        {
+            return response(TransportStatus::Ok, 200, "{}"); // Startup.
+        }
+
+        // Attempts 2-13: three failing steps of four attempts each.
+        return attempt <= 13 ? response(TransportStatus::Timeout, 0)
+               : response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    // Counted through the expectations as well as by gmock, so the assertions
+    // between steps can pin WHICH step causes each transition. Totals and order
+    // alone would not: a threshold that regressed to 1 would arm on the step
+    // before and still satisfy them.
+    int pauses = 0;
+    int resumes = 0;
+
+    ::testing::InSequence sequence;
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
+    .WillOnce(Invoke([&](bool)
+    {
+        pauses++;
+    }));
+    EXPECT_CALL(m_sink, onProducerPause(false)).Times(1)
+    .WillOnce(Invoke([&](bool)
+    {
+        resumes++;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup -> REGISTERED: the only state change.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(0, pauses); // 1/2: counted, not armed yet.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // 2/2: armed here, and not before.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses);  // Still unreachable: no second announcement.
+    EXPECT_EQ(0, resumes);
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, resumes); // The successful notify releases it.
+}
+
+TEST_F(ControlStreamTest, SelfClearingFailuresNeverPauseProducers)
+{
+    // A 500 is answered and clears on its own, so it breaks the run rather than
+    // counting toward it. ServerError IS retryable, so each step spends four
+    // attempts and three waiter answers; unscripted they would come back
+    // Interrupted and the test would pass having proved nothing.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 500)));
+    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+    m_waiter.script({true, true, true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // Three answered failures, still no pause.
+}
+
+TEST_F(ControlStreamTest, VersionRejectionPausesProducers)
+{
+    // Beyond what the issue asks for: 409 cannot succeed until one side is
+    // upgraded, so events would drop for the whole duration. Not retryable, so a
+    // step is one attempt and no script is needed.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 409)));
+    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 409: 1/2.
+    m_stream.step(m_waiter); // 409: 2/2 -> pause.
+    m_stream.step(m_waiter); // Still rejected: announced once only.
+}
+
+TEST_F(ControlStreamTest, LatchedAuthFailurePausesProducersAcrossGatedCycles)
+{
+    // WillRepeatedly, so the one-shot fresh-timestamp retry gets a 401 too and
+    // escalates. That is the only AuthFail ever observed through a send: from the
+    // next cycle on nothing is sent at all, and runStep() reports the gated cycle
+    // as AuthFail so the condition keeps being counted while it lasts.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    // Counted so the assertions below can pin the pause to the GATED cycle. That
+    // is the whole claim: without counting gated cycles the streak would freeze
+    // at 1 and never arm, and a total of one would not distinguish the two.
+    int pauses = 0;
+    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
+    .WillOnce(Invoke([&](bool)
+    {
+        pauses++;
+    }));
+    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+
+    m_stream.step(m_waiter); // Startup accepted.
+
+    m_stream.step(m_waiter); // 401 twice -> gate latches, 1/2.
+    EXPECT_TRUE(m_authGate.paused());
+    EXPECT_EQ(0, pauses); // The 401 itself does not arm.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // The gated cycle, sending nothing, is what arms it.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // Still gated: announced once only.
+}
+
+TEST_F(ControlStreamTest, ANewKeyClearsTheAuthPauseAndResumesProducers)
+{
+    // The grace period matters because of this path: re-enrollment supplies a new
+    // key, the gate clears and producers resume.
+    //
+    // TWO 401s, not one: a 401 gets a one-shot retry with a fresh timestamp, so a
+    // single one is absorbed by the sender and never surfaces as AuthFail. Only
+    // the second escalates, which is what latches the gate.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    int resumes = 0;
+
+    ::testing::InSequence sequence;
+    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1);
+    EXPECT_CALL(m_sink, onProducerPause(false)).Times(1)
+    .WillOnce(Invoke([&](bool)
+    {
+        resumes++;
+    }));
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 401, retried, 401 again -> gate latches, 1/2.
+    m_stream.step(m_waiter); // Gated cycle -> 2/2 -> pause.
+
+    m_authGate.release();  // What hc_set_agent_key() does after re-enrolling.
+    EXPECT_EQ(0, resumes); // Clearing the gate alone does not resume.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, resumes); // The successful startup that follows does.
+}
+
+TEST_F(ControlStreamTest, AnInterruptedAttemptIsNotAConfirmedDisconnect)
+{
+    // Shutdown cut the attempt short, so it proves nothing -- and the response
+    // still carries the PREVIOUS attempt's transport status, which is why the
+    // Interrupted check has to come before anything reads that field. No script:
+    // the waiter answers false, which is what makes the outcome Interrupted.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_sink, onProducerPause(_)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Interrupted.
+    m_stream.step(m_waiter); // Interrupted again: two would have been enough.
+}
+
+TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
+{
+    // drainStep is excluded on purpose: one best-effort attempt at a possibly
+    // dead manager, and arming there would leave WAIT_FILE on disk after a clean
+    // stop, blocking the next boot's producers. Only a successful registration
+    // clears it, so an agent whose manager is still down when it restarts would
+    // come up with its modules parked.
+    //
+    // One shutdown, which is all a real drain does, then two real failing steps.
+    // Had the shutdown been counted the arm would land on the first of them
+    // instead of the second, which is what the assertions below pin down.
+    int pauses = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    EXPECT_CALL(m_sink, onProducerPause(true)).Times(1)
+    .WillOnce(Invoke([&](bool)
+    {
+        pauses++;
+    }));
+    EXPECT_CALL(m_sink, onProducerPause(false)).Times(0);
+    m_waiter.script({true, true, true, true, true, true});
+
+    m_stream.step(m_waiter);      // Startup accepted.
+    m_stream.drainStep(m_waiter); // Fails, and must contribute nothing.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(0, pauses); // 1/2, not 2/2: the shutdown was not counted.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // Two real steps are still what arms it.
+}
+
