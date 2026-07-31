@@ -23,6 +23,7 @@
 #include <fstream>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -710,4 +711,336 @@ TEST(UdsHttpServerTest, ATooSmallInFlightBudgetIsClampedRatherThanRejectingEvery
 
     const auto response = sendRaw(path, peerRequest("POST", "/inventory/sync", "small"));
     EXPECT_EQ(200, response.status);
+}
+
+/**
+ * @brief One blocked handler must not stall the other connections.
+ *
+ * This is the test that fails when a Session's socket handlers are not bound to its own strand. An
+ * accepted socket inherits the acceptor's executor, and the acceptor lives on ONE shared strand, so
+ * without asio::bind_executor every connection's read handler -- and therefore every route handler,
+ * which is invoked from it -- serializes onto that single strand no matter how many I/O threads are
+ * configured. A dependency that blocks inside a handler then freezes the whole transport, including
+ * the liveness route.
+ *
+ * A blocking handler is not hypothetical: the /stats and /config handlers call the indexer's
+ * isAvailable(), which takes a lock the monitoring thread holds for the whole health-check round.
+ */
+TEST(UdsHttpServerTest, ASlowHandlerOnOneConnectionDoesNotStallAnother)
+{
+    constexpr auto SLOW_HANDLER_BLOCK = std::chrono::milliseconds {2000};
+
+    const auto path = uniqueSocketPath("strand");
+    auto config = configFor(path);
+    config.ioThreads = 2;
+    config.responseTimeoutSec = 30;
+
+    std::atomic_bool insideSlowHandler {false};
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/slow",
+                     [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         insideSlowHandler.store(true);
+                         // Blocks the I/O thread on purpose, exactly like a lock held elsewhere.
+                         std::this_thread::sleep_for(SLOW_HANDLER_BLOCK);
+                         responder->send(HttpResponse::json(200, R"({"slow":true})"));
+                     });
+    server->addRoute(Method::Get, "/", echoHandler(R"({"status":"ok"})"));
+    server->start(config);
+
+    auto slow =
+        std::async(std::launch::async,
+                   [&path] { return sendRaw(path, peerRequest("POST", "/slow", "x"), std::chrono::seconds {30}); });
+
+    // Only measure once the slow handler is genuinely occupying an I/O thread.
+    const auto entered = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+    while (!insideSlowHandler.load() && std::chrono::steady_clock::now() < entered)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_TRUE(insideSlowHandler.load()) << "the slow handler never ran";
+
+    const auto before = std::chrono::steady_clock::now();
+    const auto liveness = sendRaw(path, peerRequest("GET", "/", ""), std::chrono::seconds {30});
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - before);
+
+    EXPECT_EQ(200, liveness.status);
+    // Generous: the point is "not serialized behind the 2 s block", not a latency budget.
+    EXPECT_LT(elapsed, SLOW_HANDLER_BLOCK / 2)
+        << "the liveness route waited " << elapsed.count()
+        << " ms behind a blocked handler on another connection; its socket handlers are running on the "
+           "shared acceptor strand instead of the session's own";
+
+    EXPECT_EQ(200, slow.get().status);
+}
+
+/**
+ * @brief A request the handler keeps past the server's own lifetime must still release cleanly.
+ *
+ * The contract lets a handler hold the request "so it can travel across deferred queues", and the
+ * reservation that travels with it holds a RAW pointer into ServerState::budget. Without the
+ * RequestContext co-owning the ServerState, releasing the request after the server is gone runs
+ * ~Reservation against a destroyed budget.
+ *
+ * Reaches for the defect rather than proving its absence: it is a use-after-free, so the ASAN job is
+ * what turns this into a real check. Without a sanitizer it usually passes either way.
+ */
+TEST(UdsHttpServerTest, ARequestOutlivingTheServerReleasesItsReservationSafely)
+{
+    const auto path = uniqueSocketPath("outlive");
+
+    std::shared_ptr<const HttpRequest> escaped;
+    {
+        auto server = makeUdsHttpServer();
+        server->addRoute(
+            Method::Post,
+            "/inventory/sync",
+            [&escaped](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+            {
+                escaped = std::move(request); // deliberately outlives the server
+                responder->send(HttpResponse::json(200, "{}"));
+            });
+        server->start(configFor(path));
+
+        ASSERT_EQ(200, sendRaw(path, peerRequest("POST", "/inventory/sync", std::string(4096, 'z'))).status);
+        ASSERT_NE(nullptr, escaped);
+
+        server->stop();
+    } // the server, its ServerState and its budget are gone here
+
+    EXPECT_EQ(4096U, escaped->body.size()) << "the payload must still be readable";
+    EXPECT_NO_THROW(escaped.reset()) << "releasing it must not touch the destroyed budget";
+}
+
+// Two concurrent shutdowns must not race on the thread pool: the loser of the lifecycle CAS used to
+// walk into joinThreads() while the winner was still reading threads.size() and clearing the vector.
+// The facade calls stop() and then destroys the server, so both really can overlap.
+TEST(UdsHttpServerTest, ConcurrentStopCallsDoNotRaceOnTheThreadPool)
+{
+    constexpr int STOPPERS {4};
+
+    const auto path = uniqueSocketPath("racestop");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(configFor(path));
+
+    ASSERT_EQ(200, sendRaw(path, peerRequest("POST", "/inventory/sync", "x")).status);
+
+    std::vector<std::thread> stoppers;
+    stoppers.reserve(STOPPERS);
+    for (int i = 0; i < STOPPERS; ++i)
+    {
+        stoppers.emplace_back([&server, i] { (i % 2 == 0) ? server->stop() : server->stopAccepting(); });
+    }
+    for (auto& thread : stoppers)
+    {
+        thread.join();
+    }
+
+    // Destroying afterwards runs doStop() one more time, from yet another path.
+    EXPECT_NO_THROW(server.reset());
+}
+
+// Teardown unlinks only the socket this server bound. bindAcceptor() removes any stale socket it
+// finds at the path, so two servers racing for one path can swap inodes -- and unconditionally
+// unlinking on the way out would silently take down whoever bound it second.
+TEST(UdsHttpServerTest, StopDoesNotUnlinkAFileThatReplacedItsSocket)
+{
+    const auto path = uniqueSocketPath("inode");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Get, "/", echoHandler());
+    server->start(configFor(path));
+
+    ASSERT_TRUE(std::filesystem::exists(path));
+
+    // Stand in for "another process rebound this path": a different inode, same name.
+    std::filesystem::remove(path);
+    {
+        std::ofstream replacement {path};
+        replacement << "not ours";
+    }
+    ASSERT_TRUE(std::filesystem::exists(path));
+
+    server->stop();
+
+    EXPECT_TRUE(std::filesystem::exists(path)) << "teardown removed a file it did not create";
+    std::filesystem::remove(path);
+}
+
+// The rejections decided at headers-complete must produce their real status line, not a default "OK".
+// The parser already gets these right in isolation; nothing checked them end to end through the
+// transport's own status-line and body serialization.
+TEST(UdsHttpServerTest, AnOverlongTargetAnswers414AndOversizedHeadersAnswer431)
+{
+    const auto path = uniqueSocketPath("limits");
+    auto config = configFor(path);
+    config.maxUrlSize = 64;
+    config.maxHeaderValueSize = 64;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(config);
+
+    const std::string longTarget = "/inventory/sync?" + std::string(200, 'q');
+    const auto tooLongUrl = sendRaw(path, "POST " + longTarget + " HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n");
+    EXPECT_EQ(414, tooLongUrl.status) << tooLongUrl.body;
+
+    const auto bigHeader = sendRaw(path,
+                                   "POST /inventory/sync HTTP/1.1\r\nHost: x\r\nX-Big: " + std::string(200, 'v') +
+                                       "\r\nContent-Length: 0\r\n\r\n");
+    EXPECT_EQ(431, bigHeader.status) << bigHeader.body;
+}
+
+// The Allow header has to list the verbs registered on THAT path only -- listing another path's verbs
+// would send the peer to retry with a method this endpoint does not accept.
+TEST(UdsHttpServerTest, The405AllowHeaderListsEveryVerbRegisteredOnThatPathOnly)
+{
+    const auto path = uniqueSocketPath("allow");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Get, "/multi", echoHandler());
+    server->addRoute(Method::Post, "/multi", echoHandler());
+    server->addRoute(Method::Delete, "/other", echoHandler());
+    server->start(configFor(path));
+
+    const auto response = sendRaw(path, peerRequest("PUT", "/multi", ""));
+
+    ASSERT_EQ(405, response.status);
+    const auto allow = response.header("Allow");
+    EXPECT_NE(std::string::npos, allow.find("GET")) << allow;
+    EXPECT_NE(std::string::npos, allow.find("POST")) << allow;
+    EXPECT_EQ(std::string::npos, allow.find("DELETE")) << "another path's verb leaked into Allow: " << allow;
+}
+
+// The std::exception half of the handler exception barrier -- the one that logs e.what(), which is the
+// only text an operator gets. Only the non-standard half was covered.
+TEST(UdsHttpServerTest, HandlerThrowingAStandardExceptionAnswers500AndTheServerKeepsServing)
+{
+    const auto path = uniqueSocketPath("throwstd");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/inventory/sync",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)
+                     { throw std::runtime_error {"handler blew up"}; });
+    server->addRoute(Method::Get, "/", echoHandler());
+    server->start(configFor(path));
+
+    EXPECT_EQ(500, sendRaw(path, peerRequest("POST", "/inventory/sync", "x")).status);
+    EXPECT_EQ(200, sendRaw(path, peerRequest("GET", "/", "")).status) << "one bad handler must not end the server";
+}
+
+// 0 means "size the reactor from the host/cgroup", which is the production default. Pinned through the
+// transport, not just the config builder.
+TEST(UdsHttpServerTest, ZeroIoThreadsStillServes)
+{
+    const auto path = uniqueSocketPath("zerothreads");
+    auto config = configFor(path);
+    config.ioThreads = 0;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Get, "/", echoHandler());
+    server->start(config);
+
+    EXPECT_EQ(200, sendRaw(path, peerRequest("GET", "/", "")).status);
+}
+
+// A peer that disappears mid-head must release its session immediately rather than pinning a
+// descriptor until the header deadline expires. Uses a raw socket so the close is unambiguous, rather
+// than relying on a client-side timeout.
+TEST(UdsHttpServerTest, APeerThatClosesMidRequestReleasesItsSessionPromptly)
+{
+    const auto path = uniqueSocketPath("midclose");
+    auto config = configFor(path);
+    config.headerTimeoutSec = 30; // long, so a prompt stop() cannot be the header timeout doing the work
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/inventory/sync", echoHandler());
+    server->start(config);
+
+    for (int i = 0; i < 5; ++i)
+    {
+        asio::io_context ioc;
+        invsync::test::stream_protocol::socket socket {ioc};
+        socket.connect(invsync::test::stream_protocol::endpoint {path});
+        const std::string partial {"POST /inventory/sync HTTP/1.1\r\nHost: local"};
+        asio::write(socket, asio::buffer(partial));
+        socket.close(); // EOF, mid-head
+    }
+
+    // If those sessions were still resident, stop() would sit out its whole drain window instead.
+    const auto before = std::chrono::steady_clock::now();
+    server->stop();
+    const auto elapsed = std::chrono::steady_clock::now() - before;
+
+    EXPECT_LT(elapsed, std::chrono::seconds {3}) << "abandoned sessions were not released on EOF";
+}
+
+/**
+ * @brief The overload brake: a second request while the budget is held is shed with an explicit 503.
+ *
+ * inFlightBudget_test covers the accounting class; this is the transport actually applying it, which was
+ * never exercised -- the existing budget test proves a reservation is RELEASED, not that exhausting one
+ * rejects anything.
+ *
+ * The budget is deliberately set to 1: start() clamps it up to exactly one maximum-size request, so a
+ * first request of maxBodySize consumes all of it and a second has nowhere to go.
+ */
+TEST(UdsHttpServerTest, ASecondRequestIsShedWith503WhileTheBudgetIsHeldByADeferral)
+{
+    const auto path = uniqueSocketPath("shed");
+    auto config = configFor(path);
+    config.maxBodySize = 32 * 1024;
+    config.maxInFlightBytes = 1;
+    config.responseTimeoutSec = 30;
+
+    std::mutex parkedMutex;
+    std::vector<std::shared_ptr<IHttpResponder>> parked;
+    std::vector<std::shared_ptr<const HttpRequest>> held;
+    std::atomic<int> dispatched {0};
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/inventory/sync",
+                     [&](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         {
+                             std::lock_guard<std::mutex> lock {parkedMutex};
+                             parked.push_back(std::move(responder));
+                             // Holding the request is what keeps its reservation outstanding.
+                             held.push_back(std::move(request));
+                         }
+                         dispatched.fetch_add(1);
+                     });
+    server->start(config);
+
+    const std::string body(32 * 1024, 'x');
+    auto first =
+        std::async(std::launch::async,
+                   [&path, &body]
+                   { return sendRaw(path, peerRequest("POST", "/inventory/sync", body), std::chrono::seconds {30}); });
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (dispatched.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+    }
+    ASSERT_EQ(1, dispatched.load()) << "the first request never reached the handler";
+
+    const auto shed = sendRaw(path, peerRequest("POST", "/inventory/sync", body), std::chrono::seconds {10});
+    EXPECT_EQ(503, shed.status) << "the second request must be shed explicitly, not queued: " << shed.body;
+    EXPECT_EQ(1, dispatched.load()) << "the shed request must never reach the handler";
+
+    {
+        std::lock_guard<std::mutex> lock {parkedMutex};
+        for (auto& responder : parked)
+        {
+            responder->send(HttpResponse::json(202, R"({"released":true})"));
+        }
+        parked.clear();
+        held.clear();
+    }
+
+    EXPECT_EQ(202, first.get().status);
 }

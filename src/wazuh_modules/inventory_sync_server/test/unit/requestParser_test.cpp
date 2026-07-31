@@ -417,3 +417,33 @@ TEST(RequestParserTest, BytesArrivingWhilePausedAreRetained)
     ASSERT_EQ(Feed::Complete, parser.resume());
     EXPECT_EQ("retained", parser.request().body);
 }
+
+/**
+ * @brief The header limit counts LINES, not distinct names.
+ *
+ * It used to be compared against the size of the header map, which is keyed by lowercased name and
+ * filled with insert_or_assign -- so repeating one name never grew it and the limit bounded nothing at
+ * all. A peer could send `x-a: <8 KiB>` without end, held back only by the header timeout, while the
+ * in-flight byte budget charged a per-request overhead computed from that very limit.
+ *
+ * The existing RejectsTooManyHeadersWith431 uses distinct names, so it never covered this.
+ */
+TEST(RequestParserTest, RepeatedHeaderNamesConsumeTheHeaderCountQuota)
+{
+    RequestParser::Limits limits;
+    limits.maxHeaderCount = 4;
+    RequestParser parser {limits};
+
+    std::string request {"POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\n"};
+    // One name, repeated well past the limit.
+    for (int i = 0; i < 40; ++i)
+    {
+        request += "x-repeated: filler\r\n";
+    }
+    request += "Content-Length: 0\r\n\r\n";
+
+    const auto verdict = parser.feed(request.data(), request.size());
+
+    EXPECT_EQ(RequestParser::Feed::Reject, verdict) << "repeating one header name must still exhaust the quota";
+    EXPECT_EQ(431, parser.rejectStatus());
+}

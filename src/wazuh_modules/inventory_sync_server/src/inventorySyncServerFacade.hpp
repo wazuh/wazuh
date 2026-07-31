@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "common/clusterIdentity.hpp"
+#include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
@@ -102,7 +103,7 @@ namespace invsync
     class InventorySyncServerFacade final : public Singleton<InventorySyncServerFacade>
     {
     public:
-        void start(const std::function<void(
+        bool start(const std::function<void(
                        const int, const char*, const char*, const int, const char*, const char*, va_list)>& logFunction,
                    const inventory_sync_server_config_t& configuration,
                    nlohmann::json indexerConfig)
@@ -115,7 +116,23 @@ namespace invsync
             if (m_running)
             {
                 LOGFN_WARN(moduleLogFn(), "inventory sync server already started, ignoring start request.");
-                return;
+                return true;
+            }
+
+            {
+                // Before anything is allocated or spawned: an unusable socket path means this module can
+                // never serve, and modulesd must not come up pretending inventory ingress exists.
+                const auto resolved = invsync::http::buildServerConfig(configuration);
+                std::string reason;
+                if (!invsync::common::socketPathIsUsable(resolved.socketPath, reason))
+                {
+                    LOGFN_ERROR(moduleLogFn(),
+                                "The inventory sync server cannot use its socket path '%s': %s. This path is fixed, "
+                                "not configurable.",
+                                resolved.socketPath.c_str(),
+                                reason.c_str());
+                    return false;
+                }
             }
 
             m_config = configuration;
@@ -158,6 +175,7 @@ namespace invsync
             }
 
             m_running = true;
+            return true;
         }
 
         void stop()
@@ -315,6 +333,16 @@ namespace invsync
             // cycle, so there is nothing stale to worry about, and this keeps startHttpServer() the
             // only place that reads m_config for the routes it registers.
             const auto clusterIdentity = invsync::common::buildClusterIdentity(m_config);
+            if (clusterIdentity.sanitized)
+            {
+                // Once, here, instead of once per request: these names are stamped onto every enriched
+                // document, and invalid UTF-8 in them used to make the serialization of every single
+                // request fail with a 400 that blamed the agent.
+                LOGFN_WARN(moduleLogFn(),
+                           "The configured cluster name or node name contains bytes that are not valid UTF-8; they "
+                           "have been replaced with '?' so documents can still be serialized. Fix <cluster><name> "
+                           "and <cluster><node_name> in the manager configuration.");
+            }
 
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
@@ -382,6 +410,7 @@ namespace invsync
         /// option family, and pointing an operator at the wrong one costs a debugging session.
         enum class FailureStage
         {
+            Configuration,
             IndexerSession,
             SyncIndexerConnector,
             AsyncIndexerConnector,
@@ -400,13 +429,19 @@ namespace invsync
         {
             switch (stage)
             {
+                case FailureStage::Configuration:
+                    return {"module configuration", "the 'wazuh_modules.inventory_sync_server_*' settings"};
                 case FailureStage::IndexerSession:
                     return {"indexer session", "the <indexer> configuration block (hosts, ssl.*)"};
                 case FailureStage::SyncIndexerConnector:
                     return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
                 case FailureStage::AsyncIndexerConnector:
                     return {"async indexer connector", "the 'inventory_sync_server_indexer_async_*' settings"};
-                case FailureStage::HttpServer: return {"UDS socket", "the 'inventory_sync_server_socket_path' setting"};
+                    // NOT a setting: the socket path is fixed (internal options cannot carry strings),
+                    // so pointing an operator at one would send them looking for something that does
+                    // not exist. Name what they can actually act on -- the directory.
+                case FailureStage::HttpServer:
+                    return {"UDS socket", "that the socket's parent directory exists and is writable"};
             }
             return {"unknown stage", "the module configuration"};
         }
@@ -513,7 +548,18 @@ namespace invsync
             bool needSync {false};
             bool needAsync {false};
 
-            // ---- Phase A: snapshot under the lifecycle lock. No I/O, so stop() never waits. ----
+            /*
+             * ---- Phase A: snapshot under the lifecycle lock. No I/O, so stop() never waits. ----
+             *
+             * Wrapped in try/catch like the other two phases. It was the one stretch of this function
+             * without a handler, and the consequence was disproportionate: it copies the <indexer> JSON
+             * and builds two overlays, so a bad_alloc under memory pressure escaped to runLoop(), was
+             * caught by run()'s barrier -- which deliberately does not re-enter the loop -- and killed
+             * the worker. That removed the 60 s retry, and because m_running stays true, every later
+             * start() hit the "already started" guard: the module stayed marked as running with no
+             * worker and no socket, unrecoverable short of restarting modulesd.
+             */
+            try
             {
                 std::lock_guard<std::mutex> lock(m_lifecycleMutex);
 
@@ -545,6 +591,18 @@ namespace invsync
                     asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
                 }
             }
+            catch (const std::exception& e)
+            {
+                reportFailedStart(FailureStage::Configuration, e.what());
+                return;
+            }
+            // LCOV_EXCL_START -- no non-std type is thrown by anything reachable here
+            catch (...)
+            {
+                reportFailedStart(FailureStage::Configuration, "non-standard exception");
+                return;
+            }
+            // LCOV_EXCL_STOP
 
             // ---- Phase B: construct WITHOUT the lifecycle lock. The health checks happen here. ----
             //
@@ -644,11 +702,13 @@ namespace invsync
                     reportFailedStart(FailureStage::HttpServer, e.what());
                     m_httpServer.reset();
                 }
+                // LCOV_EXCL_START -- asio and the standard library only throw std types
                 catch (...)
                 {
                     reportFailedStart(FailureStage::HttpServer, "non-standard exception");
                     m_httpServer.reset();
                 }
+                // LCOV_EXCL_STOP
             }
         }
 
@@ -674,13 +734,11 @@ namespace invsync
             {
                 if (stage == FailureStage::HttpServer)
                 {
-                    LOGFN_ERROR(
-                        moduleLogFn(),
-                        "The inventory sync server could not start on '%s': %s. Retrying every %d s. Check the "
-                        "'inventory_sync_server_socket_path' setting and that the directory exists and is writable.",
-                        m_resolvedSocketPath.c_str(),
-                        reason,
-                        INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
+                    LOGFN_ERROR(moduleLogFn(),
+                                "The inventory sync server could not bind '%s': %s. That path is fixed, not "
+                                "configurable; check that its parent directory exists and is writable.",
+                                m_resolvedSocketPath.c_str(),
+                                reason);
                 }
                 else
                 {
@@ -735,11 +793,13 @@ namespace invsync
                             "The inventory sync server worker thread stopped on an unexpected exception: %s.",
                             e.what());
             }
+            // LCOV_EXCL_START -- the barrier of last resort; unreachable without a non-std throw
             catch (...)
             {
                 LOGFN_ERROR(moduleLogFn(),
                             "The inventory sync server worker thread stopped on a non-standard exception.");
             }
+            // LCOV_EXCL_STOP
         }
 
         void runLoop()
