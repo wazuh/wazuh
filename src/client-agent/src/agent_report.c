@@ -216,6 +216,12 @@ static char *report_collect(const report_source_t *sources, size_t count) {
     char *document = NULL;
     size_t i;
 
+    if (!root || !report) {
+        cJSON_Delete(root);
+        cJSON_Delete(report);
+        return NULL; /* Out of memory: skip the cycle, same as nothing answering. */
+    }
+
     for (i = 0; i < count; i++) {
         report_absorb(report, report_entries(sources[i].target,
                                              report_query(sources[i].target,
