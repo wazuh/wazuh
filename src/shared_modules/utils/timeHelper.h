@@ -17,16 +17,16 @@
 #include <cmath>
 #include <ctime>
 #include <iomanip>
+#include <regex>
 #include <sstream>
 #include <string>
-#include <regex>
 #if __cplusplus >= 201703L
 #include <charconv>
 #include <string_view>
 #endif
 
 #define ISO8601_LENGTH_WITH_MS 24
-#define ISO8601_LENGTH_NO_MS 20
+#define ISO8601_LENGTH_NO_MS   20
 
 #ifdef WIN32
 
@@ -59,9 +59,7 @@ namespace Utils
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
 
         // gmtime: result expressed as a UTC time
         tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
@@ -106,9 +104,7 @@ namespace Utils
     static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
 
         // gmtime: result expressed as a UTC time
         tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
@@ -139,9 +135,7 @@ namespace Utils
         auto itt = std::chrono::system_clock::to_time_t(now);
 
         std::ostringstream ss;
-        struct tm buf
-        {
-        };
+        struct tm buf {};
         tm const* localTime = gmtime_r(&itt, &buf);
 
         if (localTime == nullptr)
@@ -293,9 +287,7 @@ namespace Utils
         {
             std::time_t time = timestamp;
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
@@ -309,9 +301,7 @@ namespace Utils
         {
             std::time_t time = timestamp;
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
@@ -341,9 +331,7 @@ namespace Utils
             }
             std::time_t time = std::stoi(timestamp);
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
@@ -360,7 +348,8 @@ namespace Utils
                 // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
                 // if not, check if it is already ISO8601.
                 auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : std::move(ISO8601Timestamp);
+                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp))
+                                                : std::move(ISO8601Timestamp);
             }
             std::time_t time;
             auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);
@@ -369,9 +358,7 @@ namespace Utils
                 return "";
             }
             std::ostringstream output;
-            struct tm buf
-            {
-            };
+            struct tm buf {};
             tm const* localTime = gmtime_r(&time, &buf);
             if (localTime == nullptr)
             {
