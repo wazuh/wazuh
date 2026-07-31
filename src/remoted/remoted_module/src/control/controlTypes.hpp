@@ -12,16 +12,23 @@
 #ifndef _REMOTED_CONTROL_TYPES_HPP
 #define _REMOTED_CONTROL_TYPES_HPP
 
+#include "json.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <regex>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 namespace remoted::control
 {
     using AgentId = std::uint32_t;
+
+    inline constexpr size_t kMaxHostnameLength = 255;
+    inline constexpr size_t kMaxIpLength = 45; // IPv6 max
+    inline constexpr size_t kMaxOsFieldLength = 128;
+    inline constexpr size_t kMaxVersionLength = 64;
 
     enum class SocketError
     {
@@ -30,7 +37,8 @@ namespace remoted::control
         ClosedByPeer,
         ProtocolError,
         ConnectRefused,
-        Io
+        Io,
+        QueueFull
     };
 
     struct HostInfo
@@ -51,12 +59,32 @@ namespace remoted::control
 
     struct NotifyData
     {
+        std::string version;
         std::optional<HostInfo> host;
     };
 
     struct ShutdownData
     {
     };
+
+    inline bool isValidHostInfo(const HostInfo& h)
+    {
+        return h.hostname.size() <= kMaxHostnameLength && h.ip.size() <= kMaxIpLength &&
+               h.osName.size() <= kMaxOsFieldLength && h.osVersion.size() <= kMaxOsFieldLength &&
+               h.architecture.size() <= kMaxOsFieldLength && h.osPlatform.size() <= kMaxOsFieldLength &&
+               h.osType.size() <= kMaxOsFieldLength;
+    }
+
+    inline bool isValidVersion(const std::string& version)
+    {
+        if (version.empty() || version.size() > kMaxVersionLength)
+        {
+            return false;
+        }
+
+        static const std::regex versionRegex(R"(^\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$)");
+        return std::regex_match(version, versionRegex);
+    }
 
     struct Task
     {
@@ -68,10 +96,7 @@ namespace remoted::control
     enum class AgentStatusCode : int
     {
         InvalidVersion = 1,
-        ErrVersionRecv = 2,
         HcShutdownRecv = 3,
-        NoKeepalive = 4,
-        ResetByManager = 5,
     };
 
     struct HttpResponse
@@ -81,15 +106,6 @@ namespace remoted::control
     };
 
     using ResponseCallback = std::function<void(const HttpResponse&)>;
-
-    class SocketConnection
-    {
-    public:
-        virtual ~SocketConnection() = default;
-
-        virtual void roundTripFramed(const std::string& payload,
-                                      std::function<void(SocketError, const std::string&)> cb) = 0;
-    };
 
 } // namespace remoted::control
 
