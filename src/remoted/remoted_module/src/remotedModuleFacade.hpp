@@ -24,12 +24,20 @@
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "control/agentRegistry.hpp"
+#include "control/controlConfig.hpp"
+#include "control/controlHandler.hpp"
+#include "control/hashCache.hpp"
+#include "control/metrics.hpp"
+#include "control/taskClient.hpp"
+#include "control/wazuhDBClient.hpp"
 #include "downstream/asioUdsHttpClient.hpp"
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
 #include "endpoints/authGateway.hpp"
 #include "endpoints/configEndpoint.hpp"
+#include "endpoints/controlEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "http_server/IHttpServer.hpp"
@@ -163,6 +171,15 @@ public:
                 m_httpServer->stopAccepting();
             }
 
+            // Phase 1b: tear down the /control state. Its dtor stops the eviction thread, then
+            // drops the wdb/task async clients -- their dtors join workers and fail any pending
+            // callbacks, which invoke the endpoint's responder->send() with a 500 body. The
+            // HTTP server's I/O runtime is still alive (phase 4 hasn't run), so those late
+            // sends are safe. This runs BEFORE the downstream client stop so that its own
+            // stop() does not race with wdb-worker joins that touch the same io_context runtime
+            // via the response send path.
+            m_controlHandler.reset();
+
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
             if (m_downstreamClient)
             {
@@ -294,6 +311,42 @@ private:
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/config", downstreamConfig, config, remoted::endpoints::config::target(inventorySyncSocketPath, "0"));
 
+        // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
+        // -- the gateway runs the full AES-CMAC validation and only calls this handler once auth
+        // succeeds. controlEndpoint::makeHandler() parses the JSON body's "type" field and
+        // dispatches to ControlHandler::handleStartup/handleNotify/handleShutdown; ControlHandler
+        // then talks to wazuh-db and the task manager over UDS (its own async clients, NOT the
+        // /stateless forwarder), so this endpoint's replies do not compete with H/E ingestion for
+        // deferred-work slots. Registered AFTER /stateless so a startup failure here (e.g. bad
+        // control_ define) unwinds via resetHttpServerStack() with the same state discipline.
+        //
+        // Lifetime: m_controlHandler outlives the route (see stop()/resetHttpServerStack()):
+        // stopAccepting() drains the HTTP worker pool BEFORE m_controlHandler.reset(), so no
+        // in-flight endpoint lambda can touch a destroyed handler. ControlMetrics is a value
+        // member on this facade, so its address stays stable across HTTP-server retries and
+        // counters carry over -- desirable for observability.
+        const auto controlConfig = remoted::control::buildControlConfig(m_config);
+        m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
+            std::make_shared<remoted::control::AgentRegistry>(),
+            std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
+                                                              controlConfig.wdbRequestConnections,
+                                                              controlConfig.wdbRoundtripDeadlineMs,
+                                                              controlConfig.wdbMaxQueueSize,
+                                                              m_controlMetrics),
+            std::make_shared<remoted::control::TaskClient>(controlConfig.taskSocketPath,
+                                                           controlConfig.tmConcurrency,
+                                                           controlConfig.tmDeadlineMs,
+                                                           controlConfig.tmMaxQueueSize,
+                                                           m_controlMetrics),
+            std::make_shared<remoted::control::HashCache>(controlConfig),
+            m_controlMetrics,
+            controlConfig);
+
+        m_authGateway->addAuthenticatedRoute(*m_httpServer,
+                                             remoted::http::Method::Post,
+                                             "/control",
+                                             remoted::endpoints::control::makeHandler(*m_controlHandler));
+
         m_httpServer->start(config);
     }
 
@@ -336,6 +389,10 @@ private:
     void resetHttpServerStack()
     {
         m_httpServer.reset();
+        // The control handler may have been partially built (its ctor spins up an eviction
+        // thread and the wdb/task client workers) before startHttpServer() threw further down.
+        // Reset it here so those threads join before the next retry constructs a fresh one.
+        m_controlHandler.reset();
         if (m_downstreamClient)
         {
             m_downstreamClient->stop();
@@ -410,6 +467,13 @@ private:
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
     std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).
     std::unique_ptr<remoted::downstream::DeferredForwarder> m_forwarder; ///< Forwards to the downstream service.
+
+    // /control lifecycle: counters live on the facade (stable address across HTTP-server
+    // retries; ControlHandler holds a reference). m_controlHandler owns the AgentRegistry,
+    // HashCache, WazuhDBClient and TaskClient it was constructed with; resetting it joins
+    // their threads in the right order (see ControlHandler::Impl's dtor).
+    remoted::control::ControlMetrics m_controlMetrics {};               ///< /control counters.
+    std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
