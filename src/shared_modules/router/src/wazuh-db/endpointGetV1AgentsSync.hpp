@@ -37,12 +37,10 @@ class TEndpointGetV1AgentsSync final
         std::string osPlatform;
         std::string osArch;
         std::string version;
-        std::string mergedSum;
         std::string nodeName;
         int64_t lastKeepalive = DEFAULT_INT_VALUE;
         std::string connectionStatus;
         int64_t disconnectionTime = DEFAULT_INT_VALUE;
-        std::string groupConfigStatus;
         int64_t statusCode = DEFAULT_INT_VALUE;
 
         REFLECTABLE(MAKE_FIELD("id", &SyncReq::id),
@@ -56,12 +54,10 @@ class TEndpointGetV1AgentsSync final
                     MAKE_FIELD("os_platform", &SyncReq::osPlatform),
                     MAKE_FIELD("os_arch", &SyncReq::osArch),
                     MAKE_FIELD("version", &SyncReq::version),
-                    MAKE_FIELD("merged_sum", &SyncReq::mergedSum),
                     MAKE_FIELD("node_name", &SyncReq::nodeName),
                     MAKE_FIELD("last_keepalive", &SyncReq::lastKeepalive),
                     MAKE_FIELD("connection_status", &SyncReq::connectionStatus),
                     MAKE_FIELD("disconnection_time", &SyncReq::disconnectionTime),
-                    MAKE_FIELD("group_config_status", &SyncReq::groupConfigStatus),
                     MAKE_FIELD("status_code", &SyncReq::statusCode))
     };
     struct Response final
@@ -102,8 +98,8 @@ public:
             DBStatement stmtSyncReq( // LCOV_EXCL_LINE
                 db,
                 "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, "
-                "version, merged_sum, node_name, last_keepalive, connection_status, disconnection_time, "
-                "group_config_status, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';");
+                "version, node_name, last_keepalive, connection_status, disconnection_time, "
+                "status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';");
 
             while (stmtSyncReq.step() == SQLITE_ROW)
             {
@@ -120,13 +116,11 @@ public:
                                                 .osPlatform = stmtSyncReq.template value<std::string>(8),
                                                 .osArch = stmtSyncReq.template value<std::string>(9),
                                                 .version = stmtSyncReq.template value<std::string>(10),
-                                                .mergedSum = stmtSyncReq.template value<std::string>(11),
-                                                .nodeName = stmtSyncReq.template value<std::string>(12),
-                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(13),
-                                                .connectionStatus = stmtSyncReq.template value<std::string>(14),
-                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(15),
-                                                .groupConfigStatus = stmtSyncReq.template value<std::string>(16),
-                                                .statusCode = stmtSyncReq.template value<int64_t>(17)});
+                                                .nodeName = stmtSyncReq.template value<std::string>(11),
+                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(12),
+                                                .connectionStatus = stmtSyncReq.template value<std::string>(13),
+                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(14),
+                                                .statusCode = stmtSyncReq.template value<int64_t>(15)});
             }
         }
 

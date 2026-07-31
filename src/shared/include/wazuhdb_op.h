@@ -53,7 +53,6 @@ typedef struct agent_info_data
     char* agent_ip;
     char* connection_status;
     char* sync_status;
-    char* group_config_status;
     agent_status_code_t status_code;
 } agent_info_data;
 

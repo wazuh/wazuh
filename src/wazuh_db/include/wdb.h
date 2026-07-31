@@ -927,12 +927,10 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
  * @param [in] os_platform The agent's operating system platform.
  * @param [in] os_arch The agent's operating system architecture.
  * @param [in] version The agent's version.
- * @param [in] merged_sum The agent's merged sum.
  * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
- * @param [in] group_config_status The agent's shared configuration synchronization status.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_version(wdb_t *wdb,
@@ -945,12 +943,10 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *merged_sum,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status,
-                                    const char *group_config_status);
+                                    const char *sync_status);
 
 /**
  * @brief Function to update an agent keepalive and the synchronization status.
