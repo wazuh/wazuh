@@ -121,8 +121,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     start_agent(1);
 
-    os_delwait();
-
     // Ignore SIGPIPE signal to prevent the process from crashing
     struct sigaction act;
     memset(&act, 0, sizeof(act));

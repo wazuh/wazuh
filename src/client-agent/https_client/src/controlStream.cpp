@@ -20,6 +20,9 @@ namespace
 {
     constexpr uint32_t CONTROL_MAX_ATTEMPTS = 4;
 
+    // Consecutive undeliverable `/control` outcomes before producers are paused.
+    constexpr uint32_t CONTROL_UNDELIVERABLE_THRESHOLD = 2;
+
     HttpRequestSpec controlSpec(const std::string& body, uint32_t timeoutMs)
     {
         HttpRequestSpec spec;
@@ -140,13 +143,22 @@ ControlStream::~ControlStream()
 
 bool ControlStream::step(Waiter& waiter)
 {
+    const OutcomeClass outcome = runStep(waiter);
+    updateProducerPause(outcome);
+    return isRegistered();
+}
+
+OutcomeClass ControlStream::runStep(Waiter& waiter)
+{
     // The 401 pause converges the machine to AUTH_ERROR from the control
     // thread only (whichever stream saw the first 401 woke this loop); once a
     // new key clears the pause, recover and re-register.
     if (m_authGate.paused())
     {
         applyEffects(m_machine.onEvent(ControlStateMachine::Event::AuthFailed), {});
-        return isRegistered();
+        // Nothing is sent while the gate is latched, so the cycle itself is what
+        // gets observed: the credential is still rejected.
+        return OutcomeClass::AuthFail;
     }
 
     if (m_machine.state() == ControlStateMachine::State::AuthError)
@@ -157,18 +169,16 @@ bool ControlStream::step(Waiter& waiter)
     switch (m_machine.nextAction())
     {
         case ControlStateMachine::ActionKind::Startup:
-            sendStartup(waiter);
-            break;
+            return sendStartup(waiter);
 
         case ControlStateMachine::ActionKind::Notify:
-            sendNotify(waiter);
-            break;
+            return sendNotify(waiter);
 
         default:
-            break; // LCOV_EXCL_LINE: Idle only when Stopping, never driven here.
+            // LCOV_EXCL_START: Idle only when Stopping, never driven here.
+            return OutcomeClass::Interrupted;
+            // LCOV_EXCL_STOP
     }
-
-    return isRegistered();
 }
 
 void ControlStream::drainStep(Waiter& waiter)
@@ -426,6 +436,74 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_refreshedForSettingsHash = incoming;
     m_settingsLoopWarned = false;
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
+}
+
+/* Turns one iteration's outcome into the producer-pause decision. Fed only from
+ * step(): drainStep() is one best-effort attempt during drain, and arming there
+ * would leave WAIT_FILE behind after a clean stop. */
+void ControlStream::updateProducerPause(OutcomeClass outcome)
+{
+    if (outcome == OutcomeClass::Interrupted)
+    {
+        // Shutdown cut the attempt short, or there was nothing to send: no
+        // evidence either way, so the streak is left alone rather than reset.
+        return;
+    }
+
+    if (outcome == OutcomeClass::Ok)
+    {
+        m_undeliverableStreak = 0;
+
+        if (m_producersPaused)
+        {
+            m_producersPaused = false;
+            // Debug: the consumer emits the operator-facing line, so logging
+            // louder here would double every transition.
+            LOGFN_DEBUG1(m_logFn, "/control deliverable again; releasing the producer pause.");
+            m_sink.onProducerPause(false);
+        }
+
+        return;
+    }
+
+    // Undeliverable with nothing already in motion to change it. AuthFail only
+    // surfaces once the timestamp-corrected retry has also failed, so the key is
+    // genuinely bad and only re-enrollment can recover it; VersionRejected needs
+    // one side upgraded. Excluded: answers that clear on their own (5xx,
+    // 429/503, 413) and a plain 400.
+    const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
+                                outcome == OutcomeClass::AuthFail ||
+                                outcome == OutcomeClass::VersionRejected;
+
+    if (!blocksDelivery)
+    {
+        // Clears on its own, so it breaks the run. It does not lift an existing
+        // pause: only a success does.
+        m_undeliverableStreak = 0;
+        return;
+    }
+
+    if (m_producersPaused)
+    {
+        // Already paused: nothing to report, and the streak has served its
+        // purpose until a success resets it.
+        LOGFN_DEBUG1(m_logFn, "/control still undeliverable; event production stays paused.");
+        return;
+    }
+
+    if (++m_undeliverableStreak < CONTROL_UNDELIVERABLE_THRESHOLD)
+    {
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u).",
+                     static_cast<int>(outcome), m_undeliverableStreak,
+                     CONTROL_UNDELIVERABLE_THRESHOLD);
+        return;
+    }
+
+    m_producersPaused = true;
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u); pausing event production.",
+                 static_cast<int>(outcome), m_undeliverableStreak,
+                 CONTROL_UNDELIVERABLE_THRESHOLD);
+    m_sink.onProducerPause(true);
 }
 
 void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter)

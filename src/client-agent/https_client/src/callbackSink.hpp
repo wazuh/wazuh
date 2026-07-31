@@ -53,6 +53,9 @@ class ICallbackSink
         virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
         virtual void onStateChange(hc_conn_state_t state) = 0;
         virtual void onBufferLevel(hc_buffer_level_t level) = 0;
+        /// /control is confirmed unreachable (true) or reachable again (false);
+        /// the core arms/disarms its producer lock. Emitted on transitions only.
+        virtual void onProducerPause(bool paused) = 0;
 };
 
 #endif // _HC_CALLBACK_SINK_HPP
