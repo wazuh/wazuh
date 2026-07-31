@@ -31,6 +31,7 @@
 #include "control/metrics.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
+#include "decoding/bodyDecoder.hpp"
 #include "downstream/asioUdsHttpClient.hpp"
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
@@ -238,8 +239,15 @@ private:
                                                 : remoted::auth::Keystore::kDefaultRefreshIntervalSeconds;
         m_keystore =
             std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
-        m_authGateway =
-            std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::buildAuthConfig(m_config), m_keystore);
+        // The Content-Encoding contract is composed in here rather than built into the gateway, so
+        // the auth layer stays about authentication only. Configured once on the gateway (not per
+        // route), so every authenticated endpoint gets it and none can accidentally opt out.
+        const auto authConfig = remoted::auth::buildAuthConfig(m_config);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
+            authConfig,
+            m_keystore,
+            std::make_shared<const remoted::decoding::BodyDecoder>(
+                *m_httpServer, m_config.http_content_encoding_enabled));
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;

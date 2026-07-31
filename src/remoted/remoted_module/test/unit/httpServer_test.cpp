@@ -23,11 +23,14 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <chrono>
-#include <cctype>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
+#include <cctype>
+#include <chrono>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -118,6 +121,44 @@ namespace
 
         return certificate;
     }
+    // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
+    // build/runtime dependency) so start() can be exercised for real instead of only against the
+    // missing/malformed-certificate failure paths above. HttpServerConfig takes paths (not PEM
+    // content), so the files must stay on disk for the duration of the test -- only cleaned up
+    // once this object goes out of scope.
+    class TempCert
+    {
+    public:
+        TempCert()
+        {
+            char dirTemplate[] = "/tmp/httpServerTestXXXXXX";
+            m_dir = mkdtemp(dirTemplate);
+            m_certPath = m_dir + "/cert.pem";
+            m_keyPath = m_dir + "/key.pem";
+
+            const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
+                                     m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+            if (std::system(cmd.c_str()) != 0)
+            {
+                ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
+            }
+        }
+
+        ~TempCert()
+        {
+            std::remove(m_certPath.c_str());
+            std::remove(m_keyPath.c_str());
+            rmdir(m_dir.c_str());
+        }
+
+        const std::string& certPath() const { return m_certPath; }
+        const std::string& keyPath() const { return m_keyPath; }
+
+    private:
+        std::string m_dir;
+        std::string m_certPath;
+        std::string m_keyPath;
+    };
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -471,6 +512,72 @@ TEST(CertificateVerificationTest, NoSanExtensionReturnsFalse)
 TEST(CertificateVerificationTest, NullCertificateReturnsFalse)
 {
     EXPECT_FALSE(certificateMatchesPeerIp(nullptr, "203.0.113.5"));
+}
+
+// ---------------------------------------------------------------------------
+// In-flight budget reservations (tryReserveInFlightBytes())
+// ---------------------------------------------------------------------------
+
+TEST(HttpServerTest, ReserveInFlightBytesFailsBeforeStart)
+{
+    auto server = makeHttpServer();
+
+    // No budget exists until start() builds it, so there is nothing to reserve against. Fails
+    // closed rather than silently granting untracked memory.
+    EXPECT_FALSE(server->tryReserveInFlightBytes(1024).has_value());
+}
+
+TEST(HttpServerTest, ReserveInFlightBytesAlwaysGrantsWhenBudgetDisabled)
+{
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0; // ephemeral
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.maxInFlightBytes = 0; // explicitly disabled
+
+    ASSERT_NO_THROW(server->start(config));
+
+    // Granted, but tracking nothing: a disabled budget admits unconditionally (bytes() == 0).
+    auto reservation = server->tryReserveInFlightBytes(64U * 1024U * 1024U);
+    ASSERT_TRUE(reservation.has_value());
+    EXPECT_EQ(reservation->bytes(), 0U);
+
+    server->stop();
+}
+
+TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
+{
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0; // ephemeral
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    // Comfortably above maxBodySize + the transport's per-request overhead, so start()'s own
+    // "raise it to at least one max-size request" clamp never kicks in and the configured capacity
+    // is what actually applies here.
+    config.maxBodySize = 1U * 1024U * 1024U;
+    config.maxInFlightBytes = 50U * 1024U * 1024U;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    {
+        // Nothing else is in flight (no request has been dispatched), so the whole configured
+        // capacity is reservable -- exactly, and not a byte more.
+        auto whole = server->tryReserveInFlightBytes(50U * 1024U * 1024U);
+        ASSERT_TRUE(whole.has_value());
+        EXPECT_EQ(whole->bytes(), 50U * 1024U * 1024U);
+        EXPECT_FALSE(server->tryReserveInFlightBytes(1).has_value()); // exhausted
+    }
+
+    // `whole` released at the end of the scope above: capacity is back.
+    EXPECT_TRUE(server->tryReserveInFlightBytes(50U * 1024U * 1024U).has_value());
+
+    server->stop();
 }
 
 // ---------------------------------------------------------------------------

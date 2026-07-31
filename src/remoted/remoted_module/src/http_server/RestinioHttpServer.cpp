@@ -31,6 +31,7 @@
 #include <atomic>
 #include <chrono>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -913,6 +914,20 @@ namespace remoted::http
         }
 
         m_impl->m_routes.push_back(Route {method, path, std::move(handler), countAgainstBudget, mode});
+    }
+
+    std::optional<InFlightBudget::Reservation> RestinioHttpServer::tryReserveInFlightBytes(std::size_t bytes)
+    {
+        // No mutex: by the time any route handler could call this, start() has already returned
+        // successfully (requests can't arrive before the listener is up) and m_budget is never
+        // reset again until this object is destroyed -- the same lifetime guarantee buildRouter()'s
+        // own captured `budget` raw pointer already relies on.
+        auto* budget = m_impl->m_budget.get();
+        if (budget == nullptr)
+        {
+            return std::nullopt;
+        }
+        return budget->tryReserve(bytes);
     }
 
     void RestinioHttpServer::start(const HttpServerConfig& config)

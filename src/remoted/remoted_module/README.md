@@ -21,6 +21,9 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
+│   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
+│   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp
+│   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
@@ -32,8 +35,8 @@ remoted_module/
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
-`"auth/...`", `"http_server/...`", `"endpoints/...`", `"downstream/...`" — since `src/` is on the
-include path). New endpoints get their own folder under `src/endpoints/<name>/`.
+`"auth/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`", `"control/...`",
+`"downstream/...`" — since `src/` is on the include path). New endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -77,6 +80,13 @@ src/http_server/
        buffer (see *Single-copy payload*). Configured via remoted (`max_inflight_bytes`). Routes
        registered with `countAgainstBudget=false` (the liveness `GET /`) are **exempt**, so the probe
        stays `200` under memory pressure instead of being shed (which would make an LB pull the node).
+       The same budget also backs **body decoding** (`decoding/bodyDecoder.hpp`): a
+       `Content-Encoding: zstd` request additionally reserves the decoder's own buffers (briefly) and
+       its decompressed output (for as long as the payload lives), via
+       `IHttpServer::tryReserveInFlightBytes()` and `Reservation::grow()`. So a compressed request
+       holds up to three concurrent reservations — wire body, decoder buffers, decoded output — which
+       is correct: all three are genuinely in memory at that moment. Exhausting the budget there
+       answers **`413`** (the request is too big for the capacity free *right now*), not `503`.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
        early by closing the connection). *Note:* RESTinio 0.7.9 has no dynamic pre-body hook, so the
        budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
@@ -156,7 +166,8 @@ src/endpoints/
 │                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef,
 │                            #   plus errorResponseFor(AuthError) (the {"error","code"} response shape)
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
-│                            #   to the endpoint handler
+│                            #   to the endpoint handler. Authentication only — body decoding is an
+│                            #   injected IBodyDecoder it knows nothing about
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
@@ -175,7 +186,10 @@ src/endpoints/
   async route whose worker-thread body runs the full validation (`beginSession → update → finish`,
   always synchronous — AES-CMAC over CPU, off the I/O threads), maps any `AuthError` through
   `errorResponseFor()` (which wraps `publicErrorFor()`) to the client status/message on failure, and
-  on success calls the handler with the verified `AuthenticatedRequest` and the responder. The
+  on success calls the handler with the verified `AuthenticatedRequest` and the responder. It is
+  **authentication only**: body decoding is an `IBodyDecoder` handed to its constructor, so the gateway
+  never learns which encodings exist, how one is decoded, or how the memory that costs is accounted
+  for — only that the step can fail with an `AuthError`. The
   facade registers **`POST /stateless`** with `stateless::makeHandler(forwarder, socketPath)`: once
   auth succeeds it cross-checks the payload's identity, then forwards the H/E batch to the engine
   over UDS (see *Deferred forwarding*) and replies from the downstream result
@@ -532,6 +546,48 @@ chunks) and memory that does not grow with file size.
   `.wpk` suffix. With no separator admitted, the joined path has exactly one component below the
   base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component being a symlink.
   Loosening either grammar would break that and require a `realpath()` containment check instead.
+
+## Body decoding (`src/decoding/`)
+
+```
+src/decoding/
+├── iBodyDecoder.hpp     # ContentEncoding enum + parseContentEncoding() + the IBodyDecoder interface
+└── bodyDecoder.hpp/.cpp # BodyDecoder: the ONLY place in the module that knows compression exists
+```
+
+Split interface/implementation the same way `auth/` does (`IAgentKeystore` + `Keystore`), so the
+gateway depends on the abstraction and the concrete decoder stays swappable and separately testable.
+It is its own layer rather than part of `endpoints/` because it is not an endpoint: it is one
+cross-cutting step every authenticated route runs.
+
+The facade composes a `BodyDecoder` into the gateway's constructor as a **required** dependency, so
+it is configured **once per gateway rather than per route**: every authenticated endpoint gets
+decoding and none can accidentally opt out. `zstd` is the only accepted encoding (**gzip is not
+supported** — see the benchmark note in
+[HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd));
+anything else, including `zstd` when `remoted.http_content_encoding_enabled` is off, is `415`. A body
+that isn't a valid/complete zstd frame is `400`.
+- **Runs strictly AFTER the MAC is verified.** The AES-CMAC covers the exact wire bytes (the
+  compressed body), which is what lets the signature be checked without decoding anything — so an
+  unauthenticated peer never reaches the decoder and cannot spend our CPU or memory on it.
+- **Both of the decoder's memory costs are charged to the in-flight byte budget as real
+  reservations, not merely capped** (see *Memory management* above). (1) The buffers zstd allocates
+  before producing any output, reserved at exactly what *this* frame's header declares it needs
+  (`ZSTD_getFrameHeader` + `ZSTD_decodingBufferSize_min`) and released as soon as decoding returns,
+  since zstd frees them by then. (2) The output buffer, charged for the memory it really takes from
+  the allocator and always reserved *before* it grows, then bundled into the new payload's
+  keep-alive so it stays charged for exactly as long as the payload is held. Reserving rather than
+  checking a figure is what stops N concurrent requests from each reading the same "free" number
+  and together overshooting the budget; a frame that doesn't fit is `413` (retryable, unlike the
+  `400`/`415` above).
+- **Why the output is charged by capacity, not by bytes written.** `std::string` grows by doubling,
+  so charging what was written let the buffer over-allocate uncharged — measured at **45% under**
+  for an 11 MiB body (11 MiB charged, 16 MiB actually held), which pushed the effective memory
+  ceiling that much above the configured one. Now: a frame's header normally declares its
+  decompressed size, so that is charged once and the buffer sized to it exactly — one allocation,
+  no over-allocation, nothing to copy as it fills. A frame that omits the size (streaming
+  compression with no pledged size) grows in doubling blocks, each charged before being allocated,
+  so the over-allocation is charged rather than hidden.
 
 ## Deferred forwarding (async UDS) — `src/downstream/`
 

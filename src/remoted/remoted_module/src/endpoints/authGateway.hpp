@@ -15,6 +15,7 @@
 #include "auth/authMiddleware.hpp"     // remoted::auth::AuthMiddleware
 #include "auth/authTypes.hpp"          // remoted::auth::AuthConfig
 #include "auth/iAgentKeystore.hpp"     // remoted::auth::IAgentKeystore
+#include "decoding/iBodyDecoder.hpp"   // remoted::decoding::IBodyDecoder
 #include "endpoint.hpp"                // AuthenticatedHandler + shared type aliases
 #include "http_server/IHttpServer.hpp" // remoted::http::IHttpServer
 
@@ -35,11 +36,17 @@ namespace remoted::endpoints
      *      window + key lookup + AES-CMAC over the exact wire body bytes -- the MAC
      *      always covers what was actually sent, compressed or not),
      *   2. on failure, answers with publicErrorFor()'s status/message,
-     *   3. if authenticated and Content-Encoding: zstd is set, decompresses the body
-     *      (bounded to the configured max body size) before the handler ever sees it,
-     *      answering directly on a bad/oversized/unsupported encoding, and
-     *   4. on success, hands the verified (and, if applicable, decompressed) request
-     *      and the responder to the handler.
+     *   3. on success, runs the injected IBodyDecoder over the verified body and
+     *      answers with publicErrorFor() if it rejects, then
+     *   4. hands the verified (and, if applicable, decoded) request and the responder to
+     *      the handler.
+     *
+     * Step 3 is a plain dependency on purpose: the gateway does not know which
+     * `Content-Encoding` values exist, how a body is decoded, or how the memory that costs
+     * is accounted for -- only that the step can fail with an AuthError. That keeps this
+     * class about authentication alone, and keeps decoding independently testable (it lives in
+     * its own layer, `src/decoding/`). Because the decoder is configured once here rather than per route,
+     * a new endpoint cannot accidentally opt out of it.
      *
      * The gateway is the only adapter between remoted::auth (framework-agnostic) and
      * remoted::http (our transport); swapping the HTTP library never touches it.
@@ -48,10 +55,17 @@ namespace remoted::endpoints
     {
     public:
         /**
-         * @param config   Auth-protocol tunables (protocol version, timestamp window, max body size).
-         * @param keystore Agent-key lookup; must outlive the routes registered through this gateway.
+         * @param config      Auth-protocol tunables (protocol version, timestamp window, max body size).
+         * @param keystore    Agent-key lookup; must outlive the routes registered through this gateway.
+         * @param bodyDecoder Post-authentication body-decoding step (see IBodyDecoder). Required, and
+         *                    must be non-null: every authenticated route runs it, and it owns the
+         *                    whole `Content-Encoding` policy -- including deciding that an absent
+         *                    header means "pass the body through untouched". Making it optional would
+         *                    mean a second copy of that policy here, free to drift from the real one.
          */
-        AuthGateway(remoted::auth::AuthConfig config, std::shared_ptr<remoted::auth::IAgentKeystore> keystore);
+        AuthGateway(remoted::auth::AuthConfig config,
+                    std::shared_ptr<remoted::auth::IAgentKeystore> keystore,
+                    std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder);
 
         /**
          * @brief Register an authenticated endpoint. Call before IHttpServer::start().
@@ -72,9 +86,7 @@ namespace remoted::endpoints
 
     private:
         std::shared_ptr<remoted::auth::AuthMiddleware> m_middleware;
-        // Captured from AuthConfig before it's moved into m_middleware: also the cap applied to a
-        // zstd-decompressed body (see addAuthenticatedRoute()'s Content-Encoding handling).
-        std::size_t m_maxBodySize;
+        std::shared_ptr<const remoted::decoding::IBodyDecoder> m_bodyDecoder; ///< Post-auth body decoding; never null.
     };
 
 } // namespace remoted::endpoints

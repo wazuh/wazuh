@@ -123,22 +123,60 @@ A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknow
 ### Content-Encoding (zstd)
 
 The request body MAY optionally be compressed with `Content-Encoding: zstd` (case-insensitive). No
-other value is accepted — **`gzip` is not supported.**
+other value is accepted — **`gzip` is not supported.** Support can be turned off entirely with
+`remoted.http_content_encoding_enabled` (default: enabled) — see [Configuration](#configuration).
+
+**Why zstd and not gzip.** Both were measured on a real 48 MB FIM sync payload before choosing. At
+its default level zstd beats gzip's default on all three axes at once, so there is no trade-off to
+weigh — and decompression speed is the side that matters here, since agents compress while the
+manager decompresses:
+
+| Codec | Compressed | Compress | Decompress |
+|---|---|---|---|
+| `gzip-6` (default) | 4.25 MB | 224 ms | 44.2 ms |
+| `gzip-9` (max) | 4.10 MB | 429 ms | 43.1 ms |
+| **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
+| `zstd-9` | 3.44 MB | 157 ms | 24.3 ms |
+
+Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
+two test matrices for a codec that is dominated on this workload.
 
 - Decompression happens **after** authentication succeeds, never before: the AES-CMAC always covers
   the exact wire bytes (the compressed body, if `Content-Encoding: zstd` is set), so an
   unauthenticated request never costs CPU/memory decompressing anything.
-- The decompressed size is bounded by the same `remoted.auth_max_body_size` cap (10 MiB default)
-  that applies to an uncompressed body — checked continuously while decompressing (not just at the
-  end), so a highly-compressed "decompression bomb" body is rejected the moment it would cross the
-  cap, before the full decompressed payload is ever materialized in memory.
+- `remoted.auth_max_body_size` (the 10 MiB cap that bounds an *uncompressed* body) plays **no part**
+  in the zstd path at all. Instead, **both** of the decoder's memory costs are charged as real
+  reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
+  [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
+  mostly-idle server admits requests one already near its memory ceiling refuses, and concurrent
+  zstd requests genuinely compete for that pool rather than each reading the same "free" figure and
+  all proceeding at once:
+  - **The decoder's own buffers**, which zstd allocates *before* producing any output. Unlike
+    gzip/DEFLATE (fixed 32 KiB window by spec), a zstd frame's header declares its own window size,
+    so the amount needed is read straight off that header — each frame reserves exactly what it
+    needs, not a blanket worst case. A frame is refused with `413` if that doesn't fit, before
+    anything is decoded; a frame whose header can't even be read is rejected without consulting the
+    budget at all. This reservation is released as soon as decompression finishes, since zstd frees
+    those buffers then.
+  - **The decompressed output buffer.** What is charged is the memory the buffer actually takes from
+    the allocator, always reserved *before* it grows — so the figure can never lag behind real usage.
+    A frame header normally declares its decompressed size, in which case that is charged once and
+    the buffer sized to it exactly (one allocation, nothing to copy as it fills, and such a frame is
+    refused up front if the declaration alone doesn't fit). A frame that omits the size — streaming
+    compression with no pledged size — grows in doubling blocks instead, each block charged before it
+    is allocated; that over-allocates relative to the data, but the over-allocation is charged rather
+    than hidden. Either way a highly-compressed "decompression bomb" is rejected the moment a
+    reservation is refused, before the full payload is ever materialized in memory. These bytes stay
+    charged for as long as the decompressed body is held (released once the handler is done with it),
+    the same way the compressed wire body's own reservation already works.
 - A missing `Content-Encoding` header is treated exactly like today: the body is passed through
   unchanged.
 - Any `Content-Encoding` value other than `zstd` — including `gzip`, which was intentionally dropped
-  in favor of zstd-only support — is rejected with `415`.
+  in favor of zstd-only support — is rejected with `415`. The same happens to `zstd` itself when
+  `remoted.http_content_encoding_enabled` is disabled.
 - A `Content-Encoding: zstd` body that isn't a valid, complete zstd frame (bad magic, truncated,
-  or a frame whose header declares an unreasonably large decompression window) is rejected with
-  `400`.
+  unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
+  frame itself is bad, `413` means the frame is fine but there isn't capacity for it right now.
 
 ### Error responses
 
@@ -150,7 +188,7 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
-| Body exceeds the auth body limit (10 MiB) — checked on the decompressed size when `Content-Encoding: zstd` is set | `413` | `Request payload is too large` |
+| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
 | `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
@@ -220,6 +258,7 @@ notes).
 | Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
 | Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
+| Accept `Content-Encoding: zstd` | enabled | `remoted.http_content_encoding_enabled` |
 
 I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
 set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
@@ -333,7 +372,7 @@ investigate why the downstream service is not keeping up.
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
 | Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
 
 Three more that are not about tuning:
@@ -556,7 +595,8 @@ python3 send_stateless.py --agent-id 1001
 python3 send_stateless.py --agent-id 1001 --tamper
 
 # run every success/failure scenario and check the expected status codes, including
-# Content-Encoding: zstd (valid, malformed, decompressed-too-large) and the now-unsupported gzip
+# Content-Encoding: zstd (valid, malformed, and a body decompressing past the 10 MiB auth cap --
+# which is accepted, since that cap does not apply to decompressed bodies) and the unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
 ```
