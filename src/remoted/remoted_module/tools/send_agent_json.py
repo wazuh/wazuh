@@ -289,7 +289,7 @@ def run_all(base_url, agent_id, agent_key):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
     parser.add_argument("--agent-id", default="1001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--endpoint", default="stats", choices=("stats", "config"),
