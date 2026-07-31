@@ -21,7 +21,8 @@ Configuration reference for Wazuh manager components.
 | [Database Sync](../../modules/database-sync/configuration.md) | - | - | `wazuh_database.*` |
 | [Engine](../../modules/engine/configuration.md) | - | - | `analysisd.*` |
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `<indexer>` | - | - |
-| [Inventory Sync](../../modules/inventory-sync/configuration.md) | - | - | `wazuh_modules.inventory_sync_*`, `wazuh_modules.max_sessions` |
+| [Inventory Sync](../../modules/inventory-sync/configuration.md) | - | - | `wazuh_modules.inventory_sync_queue_size`, `wazuh_modules.inventory_sync_data_value_quota`, `wazuh_modules.inventory_sync_indexer_*`, `wazuh_modules.max_sessions` |
+| [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | - | - | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `<logging>` | - | - |
 | [Monitord](../../modules/monitord/configuration.md) | `<global>` | - | `monitord.*` |
 | [Remoted](../../modules/remoted/configuration.md) | `<remote>` | - | `remoted.*` |

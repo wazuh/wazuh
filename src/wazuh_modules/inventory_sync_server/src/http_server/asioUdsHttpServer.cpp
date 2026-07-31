@@ -20,7 +20,6 @@
 
 #include <asio.hpp>
 
-#include <grp.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -61,14 +60,54 @@ namespace
     using stream_protocol = asio::local::stream_protocol;
 
     /**
-     * @brief Bytes charged to a request on top of its payload.
+     * @brief Fixed part of the per-request memory charge: llhttp state, timer, socket, strand, the
+     *        Session object and the response buffers.
      *
-     * Larger than remoted's equivalent (4 KiB) on purpose: our per-connection state -- read buffer,
-     * llhttp state, timer, socket, header map -- stays resident for the WHOLE deferral, whereas
-     * RESTinio frees its per-connection state as soon as the handler is posted. Charging for it keeps
-     * the byte budget an honest proxy for real memory when hundreds of replies are outstanding.
+     * The VARIABLE part -- the header map and the read buffer -- is derived from the configured limits
+     * instead, by perRequestOverhead() below.
      */
-    constexpr std::size_t PER_REQUEST_OVERHEAD {16U * 1024U};
+    constexpr std::size_t SESSION_FIXED_OVERHEAD {4U * 1024U};
+
+    /**
+     * @brief Bytes charged to a request on top of its declared payload.
+     *
+     * Derived from the limits rather than a constant, and that is the whole point. Per-connection state
+     * stays resident for the WHOLE deferral (unlike RESTinio, which frees it as soon as the handler is
+     * posted), so the budget has to charge for it to be an honest proxy for memory when hundreds of
+     * replies are outstanding -- and the dominant term, the header map, is bounded by three CONFIGURABLE
+     * limits.
+     *
+     * It used to be a flat 16 KiB while the worst-case head alone was 64 * (256 + 8192) == 528 KiB: a
+     * ~33x under-charge, and one that got worse every time an operator raised a header limit. With the
+     * header count now fixed at 32 the worst case is 264 KiB, and computing it here means the charge
+     * cannot drift from the limits again.
+     */
+    std::size_t perRequestOverhead(const invsync::http::UdsHttpServerConfig& config)
+    {
+        const auto headBound = config.maxHeaderCount * (config.maxHeaderNameSize + config.maxHeaderValueSize);
+        return headBound + config.bufferSize + SESSION_FIXED_OVERHEAD;
+    }
+
+    /*
+     * The shutdown budget, split into named pieces.
+     *
+     * modulesd runs every module's stop() sequentially and the init script gives the WHOLE daemon
+     * 30 s before SIGKILL (init/wazuh-server.sh, MAX_KILL_TRIES), so these have to add up to
+     * comfortably less than that on their own: 2 + 10 + drainTimeoutSec (2 by default) + 5 + 2 = 21 s
+     * worst case. They were unnamed literals before, and the largest of them was 30 s -- the entire
+     * budget, spent by one module.
+     */
+
+    /// Waiting for closeAcceptor() to have run on the acceptor strand. Bounded because the strand is
+    /// drained by the I/O threads, and a handler that never returns would otherwise hang stop()
+    /// forever -- with the facade's lifecycle mutex held, inside modulesd's signal handler.
+    constexpr auto ACCEPTOR_CLOSE_TIMEOUT = std::chrono::seconds {2};
+
+    /// Waiting for in-flight dispatches to finish and pre-handler connections to clear.
+    constexpr auto DISPATCH_DRAIN_TIMEOUT = std::chrono::seconds {10};
+
+    /// Waiting for force-closed sessions to leave the registry.
+    constexpr auto FORCE_CLOSE_TIMEOUT = std::chrono::seconds {5};
 
     /// How long stop() waits for the I/O threads to drain naturally before forcing the issue.
     constexpr auto THREAD_EXIT_GRACE = std::chrono::seconds {2};
@@ -184,6 +223,8 @@ namespace invsync::http
             bool countAgainstBudget;
         };
 
+        struct ServerState;
+
         /**
          * @brief Payload plus its byte reservation, owned together.
          *
@@ -193,6 +234,16 @@ namespace invsync::http
          */
         struct RequestContext
         {
+            /*
+             * Co-owns the ServerState, and MUST stay the first member so it is destroyed LAST.
+             *
+             * `reservation` holds a raw InFlightBudget* into ServerState::budget, and the contract
+             * explicitly lets a handler keep the request "so it can travel across deferred queues" --
+             * outliving the responder, and therefore able to outlive the server itself. Without this
+             * reference ~Reservation would call release() on a destroyed budget. It bites even when the
+             * budget is disabled: tryReserve() still hands back a Reservation whose owner is non-null.
+             */
+            std::shared_ptr<ServerState> state;
             HttpRequest request;
             InFlightBudget::Reservation reservation;
         };
@@ -230,8 +281,12 @@ namespace invsync::http
             common::LogThrottle malformedThrottle;
             common::LogThrottle abandonedThrottle;
             common::LogThrottle responseTimeoutThrottle;
+            common::LogThrottle acceptErrorThrottle;
 
             std::atomic_bool accepting {false};
+
+            /// Resolved once in start() from the configured limits; see perRequestOverhead().
+            std::size_t perRequestOverhead {0};
 
             void noteProgress()
             {
@@ -244,8 +299,18 @@ namespace invsync::http
 
         /**
          * @brief One accepted connection. Kept alive by the shared_ptr captured in every async
-         *        handler plus the registry entry; every handler runs on its strand, so its members
-         *        need no locking.
+         *        handler plus the registry entry.
+         *
+         * Every handler runs on m_strand, so the members need no locking -- but that is only true
+         * because each completion handler is explicitly bound to it with asio::bind_executor().
+         * An accepted socket inherits the executor of the acceptor that produced it, and this
+         * server's acceptor lives on ONE shared strand, so without those binds the socket handlers
+         * of every connection would run serialized on that shared strand while the timer ran on
+         * m_strand: two executors touching the same members (a real race on m_finished, which is the
+         * only guard against answering twice), and io_threads > 1 buying no parallelism at all
+         * because all request handling is invoked from the read handler.
+         *
+         * If you add an async operation on m_socket, bind its handler to m_strand too.
          */
         class Session final : public std::enable_shared_from_this<Session>
         {
@@ -398,8 +463,6 @@ namespace invsync::http
                     return;
                 }
 
-                m_timedOut = true;
-
                 if (m_phase == Phase::Response)
                 {
                     // Synthesize a status rather than just dropping the connection: the peer gets a
@@ -427,8 +490,12 @@ namespace invsync::http
             void doRead()
             {
                 auto self = shared_from_this();
+                // bind_executor, not a bare lambda: see the class comment. The socket carries the
+                // acceptor's shared strand, so an unbound handler would run there instead of here.
                 m_socket.async_read_some(asio::buffer(m_readBuffer.data(), m_readBuffer.size()),
-                                         [self](const std::error_code& ec, std::size_t n) { self->onRead(ec, n); });
+                                         asio::bind_executor(m_strand,
+                                                             [self](const std::error_code& ec, std::size_t n)
+                                                             { self->onRead(ec, n); }));
             }
 
             void onRead(const std::error_code& ec, std::size_t bytes)
@@ -510,7 +577,7 @@ namespace invsync::http
                 if (route->countAgainstBudget && m_state->budget)
                 {
                     const auto declared = static_cast<std::size_t>(m_parser.declaredContentLength());
-                    auto reserved = m_state->budget->tryReserve(declared + PER_REQUEST_OVERHEAD);
+                    auto reserved = m_state->budget->tryReserve(declared + m_state->perRequestOverhead);
                     if (!reserved)
                     {
                         if (const auto decision = m_state->budgetThrottle.record())
@@ -604,6 +671,7 @@ namespace invsync::http
                 // The payload and its reservation move into a jointly-owned context; the handler
                 // gets a view aliased into it, so dropping that view frees both at once.
                 auto context = std::make_shared<RequestContext>();
+                context->state = m_state; // keeps the budget alive if the handler outlives us
                 context->request = std::move(m_parser.request());
                 context->reservation = std::move(m_reservation);
                 std::shared_ptr<const HttpRequest> request {context, &context->request};
@@ -659,13 +727,14 @@ namespace invsync::http
                 auto self = shared_from_this();
                 asio::async_write(m_socket,
                                   m_writeBuffers,
-                                  [self](const std::error_code&, std::size_t)
-                                  {
-                                      self->m_timer.cancel();
-                                      self->closeSocket();
-                                      self->unregisterSelf();
-                                      return;
-                                  });
+                                  asio::bind_executor(m_strand,
+                                                      [self](const std::error_code&, std::size_t)
+                                                      {
+                                                          self->m_timer.cancel();
+                                                          self->closeSocket();
+                                                          self->unregisterSelf();
+                                                          return;
+                                                      }));
             }
 
             /*
@@ -706,7 +775,6 @@ namespace invsync::http
                         {
                             return;
                         }
-                        self->m_timedOut = true;
                         self->closeSocket();
                     });
             }
@@ -807,7 +875,6 @@ namespace invsync::http
 
             std::uint64_t m_id {0};
             Phase m_phase {Phase::Header};
-            bool m_timedOut {false};
             bool m_finished {false};
             bool m_dispatched {false};
             bool m_unregistered {false};
@@ -818,6 +885,10 @@ namespace invsync::http
         };
 
         /// Writes a canned response on a socket we are refusing to turn into a Session.
+        ///
+        /// Deliberately NOT bound to a per-connection strand, unlike Session's handlers: this socket
+        /// belongs to no Session, nothing else ever touches it, and the one-shot write-then-close is
+        /// already serialized by the acceptor strand it was accepted on.
         void writeAndClose(std::shared_ptr<stream_protocol::socket> socket, const HttpResponse& response)
         {
             auto payload = std::make_shared<std::string>(serializeHead(response) + response.body);
@@ -856,6 +927,18 @@ namespace invsync::http
 
         std::atomic<State> lifecycle {State::Idle};
         std::string socketPath;
+        /// Inode of the socket this server bound, so teardown never unlinks someone else's.
+        ::ino_t boundInode {0};
+
+        /**
+         * @brief Serialises the shutdown phases against each other.
+         *
+         * The lifecycle CAS alone is not enough: the loser of the CAS in doStop() goes straight to
+         * joinThreads() while the winner is still reading threads.size() and joinThreads() is
+         * clear()ing the vector. The facade's stop() and this class's destructor can genuinely both
+         * run -- stop() then ~AsioUdsHttpServer -- so that race is reachable, not theoretical.
+         */
+        std::mutex shutdownMutex;
 
         /// Bind, permission and listen, in an order where any failure leaves nothing running.
         void bindAcceptor()
@@ -907,39 +990,22 @@ namespace invsync::http
                            std::strerror(errno));
             }
 
-            if (!state->config.socketGroup.empty())
+            // Remembered so closeAcceptor() can tell OUR socket from one another process rebound at
+            // the same path in the meantime, and unlink only its own.
+            struct stat bound
             {
-                applySocketGroup();
-            }
+            };
+            boundInode = (::stat(socketPath.c_str(), &bound) == 0) ? bound.st_ino : 0;
         }
 
-        void applySocketGroup()
-        {
-            std::array<char, 4096> buffer {};
-            ::group groupEntry {};
-            ::group* result {nullptr};
-
-            if (::getgrnam_r(state->config.socketGroup.c_str(), &groupEntry, buffer.data(), buffer.size(), &result) !=
-                    0 ||
-                result == nullptr)
-            {
-                LOGFN_WARN(logFn(),
-                           "Could not resolve group '%s' for '%s'; leaving the socket's group unchanged.",
-                           state->config.socketGroup.c_str(),
-                           socketPath.c_str());
-                return;
-            }
-
-            if (::chown(socketPath.c_str(), static_cast<::uid_t>(-1), result->gr_gid) != 0)
-            {
-                LOGFN_WARN(logFn(),
-                           "Could not set group '%s' on '%s': %s.",
-                           state->config.socketGroup.c_str(),
-                           socketPath.c_str(),
-                           std::strerror(errno));
-            }
-        }
-
+        /**
+         * @brief Arms one accept chain.
+         *
+         * There are `concurrentAccepts` of these outstanding at once, all on the acceptor strand.
+         * Every one of them must keep re-arming itself for as long as the server is accepting: the
+         * count of live chains is the server's capacity to notice new connections at all, and a chain
+         * that returns without re-arming is gone until the module restarts.
+         */
         void doAccept()
         {
             acceptor->async_accept(
@@ -948,6 +1014,35 @@ namespace invsync::http
                     if (ec)
                     {
                         // operation_aborted is the normal path: stopAccepting() closed the acceptor.
+                        // Checking `accepting` too covers the close racing ahead of the cancel.
+                        if (ec == asio::error::operation_aborted || !state->accepting.load(std::memory_order_acquire))
+                        {
+                            return;
+                        }
+
+                        /*
+                         * Any OTHER error is transient and MUST NOT end the chain. This used to be a
+                         * bare `return`, which meant two EMFILE completions -- one per chain, with the
+                         * default of 2 -- left the socket bound, the process healthy and the listener
+                         * permanently deaf, with not one line in the log. The descriptor budget is
+                         * shared by all of modulesd, so a spike in any other module could trigger it.
+                         */
+                        if (const auto decision = state->acceptErrorThrottle.record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Failed to accept %llu inventory sync connection(s) in the last %d s: %s. The "
+                                       "listener is still accepting; peers will retry.",
+                                       static_cast<unsigned long long>(decision.total),
+                                       common::LogThrottle::kDefaultWindowSeconds,
+                                       ec.message().c_str());
+                        }
+
+                        // Re-arm through the strand instead of recursing here. On a persistent
+                        // condition async_accept can complete immediately, and recursion would grow
+                        // the stack; posting yields the thread between attempts. It does spin the
+                        // acceptor strand while the condition lasts -- accepted as the cheaper
+                        // failure, since per-session strands keep that off the request path.
+                        asio::post(*acceptorStrand, [this]() { doAccept(); });
                         return;
                     }
 
@@ -969,6 +1064,9 @@ namespace invsync::http
             if (live > state->config.maxConnections)
             {
                 state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
+                // A rollback is progress too: stop() waits on this counter, and without the wake it
+                // sits out its whole window whenever the cap was hit as the server was going down.
+                state->noteProgress();
                 if (const auto decision = state->connectionCapThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
@@ -986,21 +1084,81 @@ namespace invsync::http
                 return;
             }
 
-            auto session = std::make_shared<Session>(runtime, state, std::move(socket));
-            state->undispatched.fetch_add(1, std::memory_order_relaxed);
+            /*
+             * From here both counters are bumped, so every failure path has to put them back.
+             *
+             * Everything below can throw std::bad_alloc -- the Session allocates its read buffer and
+             * llhttp state, the registry allocates a node, asio::post allocates the handler. A throw
+             * used to escape into the accept handler, which both killed the chain (see doAccept) and
+             * leaked the counters; a leaked counter is permanent, and it makes EVERY later shutdown
+             * sit out its drain window and then log a spurious "requests had not been answered".
+             */
+            bool bumpedUndispatched {false};
+            bool registered {false};
+            std::uint64_t id {0};
 
+            try
             {
-                std::lock_guard<std::mutex> lock {state->registryMutex};
-                const auto id = state->nextSessionId++;
-                session->setId(id);
-                state->sessions.emplace(id, session);
-            }
+                auto session = std::make_shared<Session>(runtime, state, std::move(socket));
 
-            asio::post(session->strand(), [session]() { session->start(); });
+                state->undispatched.fetch_add(1, std::memory_order_relaxed);
+                bumpedUndispatched = true;
+
+                {
+                    std::lock_guard<std::mutex> lock {state->registryMutex};
+                    id = state->nextSessionId++;
+                    session->setId(id);
+                    state->sessions.emplace(id, session);
+                }
+                registered = true;
+
+                asio::post(session->strand(), [session]() { session->start(); });
+            }
+            catch (const std::exception& e)
+            {
+                LOGFN_ERROR(logFn(), "Could not bring up an accepted inventory sync connection: %s.", e.what());
+                rollbackFailedAccept(bumpedUndispatched, registered, id);
+            }
+            catch (...)
+            {
+                LOGFN_ERROR(logFn(),
+                            "Could not bring up an accepted inventory sync connection: non-standard exception.");
+                rollbackFailedAccept(bumpedUndispatched, registered, id);
+            }
+        }
+
+        /// Undoes onAccepted()'s bookkeeping when bringing a connection up threw part-way, so the
+        /// shutdown counters stay exact. Never throws: it runs from a catch block.
+        void rollbackFailedAccept(bool bumpedUndispatched, bool registered, std::uint64_t id) noexcept
+        {
+            try
+            {
+                if (registered)
+                {
+                    std::lock_guard<std::mutex> lock {state->registryMutex};
+                    state->sessions.erase(id);
+                }
+                if (bumpedUndispatched)
+                {
+                    state->undispatched.fetch_sub(1, std::memory_order_relaxed);
+                }
+                state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
+                state->noteProgress();
+            }
+            catch (...) // NOLINT(bugprone-empty-catch) -- nothing useful left to do on this path
+            {
+            }
         }
 
         /// Phase 1. See IUdsHttpServer::stopAccepting() for the guarantees this establishes.
         void doStopAccepting() noexcept
+        {
+            std::lock_guard<std::mutex> lock {shutdownMutex};
+            doStopAcceptingLocked();
+        }
+
+        /// Body of phase 1. Callers must hold shutdownMutex.
+        void doStopAcceptingLocked() noexcept
         {
             auto expected = State::Running;
             if (!lifecycle.compare_exchange_strong(expected, State::Draining))
@@ -1017,15 +1175,33 @@ namespace invsync::http
                 // than true, which a test can observe by connecting successfully afterwards.
                 if (acceptorStrand && !threads.empty())
                 {
-                    std::promise<void> closed;
-                    auto done = closed.get_future();
+                    // Bounded, unlike the plain wait() this replaces. The post only runs when an I/O
+                    // thread picks up the acceptor strand, so a handler that never returns used to
+                    // hang here forever -- and this runs with the facade's lifecycle mutex held,
+                    // inside modulesd's signal handler, so "forever" meant the daemon could not exit.
+                    // shared_ptr, not a local: giving up on the wait has to be SAFE. A local promise
+                    // whose address the queued lambda holds would be destroyed under it the moment we
+                    // stopped waiting, so the bounded wait would have traded a hang for a
+                    // use-after-free. The handler keeps the promise alive for as long as it exists.
+                    auto closed = std::make_shared<std::promise<void>>();
+                    auto done = closed->get_future();
                     asio::post(*acceptorStrand,
-                               [this, &closed]()
+                               [this, closed]()
                                {
                                    closeAcceptor();
-                                   closed.set_value();
+                                   closed->set_value();
                                });
-                    done.wait();
+
+                    if (done.wait_for(ACCEPTOR_CLOSE_TIMEOUT) != std::future_status::ready)
+                    {
+                        // Deliberately does NOT close the acceptor from this thread: it belongs to the
+                        // strand, and racing the queued handler for it is worse than a socket that
+                        // stays bound a moment longer. Phase 2 force-closes everything regardless.
+                        LOGFN_ERROR(logFn(),
+                                    "The inventory sync server's acceptor did not close within %lld s; a request "
+                                    "handler is not returning. Continuing to shut down.",
+                                    static_cast<long long>(ACCEPTOR_CLOSE_TIMEOUT.count()));
+                    }
                 }
                 else
                 {
@@ -1055,7 +1231,7 @@ namespace invsync::http
                 {
                     std::unique_lock<std::mutex> lock {state->progressMutex};
                     state->progressCv.wait_for(lock,
-                                               std::chrono::seconds {30},
+                                               DISPATCH_DRAIN_TIMEOUT,
                                                [this]
                                                {
                                                    return state->undispatched.load(std::memory_order_relaxed) == 0 &&
@@ -1090,7 +1266,19 @@ namespace invsync::http
             std::error_code ignore;
             acceptor->cancel(ignore);
             acceptor->close(ignore);
-            if (!socketPath.empty())
+
+            // Only unlink the socket if the path still refers to the inode we bound. Between our bind
+            // and this teardown another process can have unlinked ours and bound its own at the same
+            // path (bindAcceptor() unlinks any stale socket it finds, so the reverse is possible too);
+            // unlinking unconditionally would silently take down that server's listener.
+            if (socketPath.empty() || boundInode == 0)
+            {
+                return;
+            }
+            struct stat current
+            {
+            };
+            if (::stat(socketPath.c_str(), &current) == 0 && current.st_ino == boundInode)
             {
                 ::unlink(socketPath.c_str());
             }
@@ -1099,7 +1287,9 @@ namespace invsync::http
         /// Phase 2. See IUdsHttpServer::stop() for the guarantees this establishes.
         void doStop() noexcept
         {
-            doStopAccepting();
+            std::lock_guard<std::mutex> lock {shutdownMutex};
+
+            doStopAcceptingLocked();
 
             auto expected = State::Draining;
             if (!lifecycle.compare_exchange_strong(expected, State::Stopped))
@@ -1192,7 +1382,7 @@ namespace invsync::http
             {
                 std::unique_lock<std::mutex> lock {state->progressMutex};
                 state->progressCv.wait_for(lock,
-                                           std::chrono::seconds {5},
+                                           FORCE_CLOSE_TIMEOUT,
                                            [this]
                                            {
                                                std::lock_guard<std::mutex> registryLock {state->registryMutex};
@@ -1249,9 +1439,11 @@ namespace invsync::http
 
         // A budget below one maximum-size body would reject every request, so clamp it up and say so
         // rather than silently serving nothing.
+        m_impl->state->perRequestOverhead = perRequestOverhead(m_impl->state->config);
+
         if (m_impl->state->config.maxInFlightBytes > 0)
         {
-            const auto floorBytes = m_impl->state->config.maxBodySize + PER_REQUEST_OVERHEAD;
+            const auto floorBytes = m_impl->state->config.maxBodySize + m_impl->state->perRequestOverhead;
             if (m_impl->state->config.maxInFlightBytes < floorBytes)
             {
                 LOGFN_WARN(logFn(),
@@ -1320,13 +1512,14 @@ namespace invsync::http
 
         LOGFN_INFO(logFn(),
                    "inventory sync server bound to '%s' (mode %04o, %zu I/O thread(s), max %zu connection(s), "
-                   "%zu byte in-flight budget, %zu byte body cap).",
+                   "%zu byte in-flight budget, %zu byte body cap, %zu byte per-request overhead).",
                    m_impl->socketPath.c_str(),
                    m_impl->state->config.socketMode,
                    threadCount,
                    m_impl->state->config.maxConnections,
                    m_impl->state->config.maxInFlightBytes,
-                   m_impl->state->config.maxBodySize);
+                   m_impl->state->config.maxBodySize,
+                   m_impl->state->perRequestOverhead);
     }
 
     void AsioUdsHttpServer::stopAccepting() noexcept

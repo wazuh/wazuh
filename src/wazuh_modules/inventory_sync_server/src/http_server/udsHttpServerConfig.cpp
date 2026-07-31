@@ -13,6 +13,7 @@
 
 #include "proc.hpp"
 
+#include <limits>
 #include <string>
 
 namespace
@@ -39,7 +40,16 @@ namespace
     constexpr std::size_t DEFAULT_MAX_URL_SIZE {2048};
     constexpr std::size_t DEFAULT_MAX_HEADER_NAME_SIZE {256};
     constexpr std::size_t DEFAULT_MAX_HEADER_VALUE_SIZE {8192};
-    constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {64};
+    /*
+     * 32, and NOT configurable (see inventory_sync_server.h).
+     *
+     * It is a term of the memory ceiling the in-flight byte budget charges for: the worst-case head is
+     * count * (nameSize + valueSize), and the transport derives its per-request overhead from that
+     * product. Halving the old 64 halves that ceiling, which is what makes the derived overhead a
+     * number the default budget can actually accommodate. 32 header lines is still far more than the
+     * peer sends (it sends five).
+     */
+    constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {32};
 
     constexpr std::size_t DEFAULT_HEADER_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_BODY_TIMEOUT_SEC {30};
@@ -97,9 +107,6 @@ namespace invsync::http
         result.socketPath = config.socket_path[0] != '\0' ? std::string {config.socket_path} : DEFAULT_SOCKET_PATH;
         result.socketMode =
             config.socket_mode > 0 ? static_cast<std::uint32_t>(config.socket_mode) : DEFAULT_SOCKET_MODE;
-        // Not C-ABI driven: empty is correct while modulesd's effective group already owns the
-        // socket. See UdsHttpServerConfig::socketGroup.
-        result.socketGroup.clear();
 
         result.ioThreads = resolveThreadCount(config.io_threads);
         result.concurrentAccepts = resolveUnsigned(config.concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
@@ -122,8 +129,32 @@ namespace invsync::http
         // long long rather than int, so it cannot be resolved with resolveUnsigned(). The transport
         // clamps this up to at least one max-size body at start(), so a too-small value cannot
         // reject everything.
-        result.maxInFlightBytes = config.max_inflight_bytes > 0 ? static_cast<std::size_t>(config.max_inflight_bytes)
-                                                                : DEFAULT_MAX_INFLIGHT_BYTES;
+        /*
+         * Three-way, and 0 still means "no opinion" so a zero-filled struct keeps yielding every
+         * default -- the invariant the whole C-ABI is written around.
+         *
+         * The interface documents "disable the byte limit" and InFlightBudget implements it, but that
+         * branch was unreachable from configuration: modulesd's absent-value fallback was 0, so an
+         * operator writing 0 was indistinguishable from not setting the option at all. The distinction
+         * is made in the shim now, which translates an explicit 0 into a NEGATIVE here:
+         *   > 0  -> the caller's value
+         *   == 0 -> the module default (an absent option, or a zero-filled struct)
+         *   < 0  -> effectively unlimited. Expressed as the largest representable budget rather than
+         *           InFlightBudget's own 0-means-disabled mode, so the accounting and the observability
+         *           counters keep working exactly as they do with a finite budget.
+         */
+        if (config.max_inflight_bytes < 0)
+        {
+            result.maxInFlightBytes = std::numeric_limits<std::size_t>::max() - 1;
+        }
+        else if (config.max_inflight_bytes == 0)
+        {
+            result.maxInFlightBytes = DEFAULT_MAX_INFLIGHT_BYTES;
+        }
+        else
+        {
+            result.maxInFlightBytes = static_cast<std::size_t>(config.max_inflight_bytes);
+        }
 
         return result;
     }
