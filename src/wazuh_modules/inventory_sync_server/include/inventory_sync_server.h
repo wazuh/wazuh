@@ -52,10 +52,17 @@ extern "C"
      * below is a scalar or a path, so a struct costs no parse step and cannot carry a
      * silent typo in a key name. The one exception is `indexer` -- see its comment.
      *
-     * Sentinel convention, uniform across every field: an int/long long <= 0 or an
-     * empty string means "the caller has no opinion, use the module default". modulesd
-     * fills the numeric fields from getDefine_Int_default() with a 0 fallback precisely
-     * so the defaults live in ONE place: this module.
+     * Sentinel convention: an int <= 0 or an empty string means "the caller has no
+     * opinion, use the module default", and modulesd passes a 0 fallback for those
+     * precisely so their defaults live in ONE place, this module. Two exceptions, both
+     * documented on the field itself: `max_inflight_bytes` (where 0 is a real setting,
+     * so absent is signalled with a negative) and the nine indexer fields (where the
+     * default belongs to the shared connector library, not here, and modulesd mirrors it).
+     *
+     * The ALLOWED RANGE of each field is enforced by modulesd, not here, and it is stated
+     * per field below. That is not documentation for its own sake: an out-of-range internal
+     * option makes getDefine_Int_default() abort the daemon, so an operator needs the bound
+     * from somewhere. Ranges live in wm_inventory_sync_server_read_tunables().
      */
     typedef struct inventory_sync_server_config_t
     {
@@ -64,50 +71,102 @@ extern "C"
         char node_name[256];    ///< Cluster node name (empty -> "").
 
         /* ---- Transport: the listening socket ---- */
-        char socket_path[512]; ///< UDS path to listen on, RELATIVE to the install dir (modulesd
-                               ///< chdir()s there and remoted chroot()s into it, so a relative
-                               ///< path is the only form both resolve identically).
-                               ///< empty -> module default.
-        int socket_mode;       ///< Octal mode applied to the socket file after bind(), which
-                               ///< applies the umask and so cannot be relied on. <=0 -> 0660.
+        /**
+         * UDS path to listen on, RELATIVE to the install dir (modulesd chdir()s there and remoted
+         * chroot()s into it, so a relative path is the only form both resolve identically).
+         *
+         * NOT CONFIGURABLE, and modulesd always leaves it empty: internal options can only carry
+         * ints, so there is no mechanism to set a path. The field stays because it is how a test --
+         * or a future caller with a real string source -- points the server somewhere else.
+         * empty -> module default ("queue/sockets/inventory-sync.sock").
+         */
+        char socket_path[512];
+        /**
+         * Mode applied to the socket file after bind(), which applies the umask and so cannot be
+         * relied on.
+         *
+         * NOT CONFIGURABLE, and modulesd always leaves it 0 -> the module's 0660.
+         *
+         * It used to be an internal option, and that was a trap: this field is a raw mode_t, but
+         * internal options are parsed with atoi(), i.e. DECIMAL. An operator writing the documented
+         * `0660` produced decimal 660, which exceeded the permitted range and killed the daemon; and
+         * a value that did fit, say 440, was applied as decimal 440 == 0670, quietly granting the
+         * group write and execute on a socket the operator was trying to restrict.
+         */
+        int socket_mode;
 
         /* ---- Transport: threads and buffers ---- */
-        int io_threads;         ///< Threads running the server's io_context. These never block
-                                ///< (handlers are non-blocking by contract), so there is nothing
-                                ///< to oversubscribe. <=0 -> cpp_get_nproc().
-        int concurrent_accepts; ///< Accept operations kept in flight. <=0 -> module default.
-        int buffer_size;        ///< Per-connection read buffer, bytes. <=0 -> module default.
+        int io_threads;         ///< Threads running the server's io_context. Each connection's I/O
+                                ///< runs on its own strand, so these do parallelise -- but a handler
+                                ///< that blocks still occupies one. Range 0..128.
+                                ///< <=0 -> cpp_get_nproc().
+        int concurrent_accepts; ///< Accept operations kept in flight. Range 0..64. <=0 -> 2.
+        int buffer_size;        ///< Per-connection read buffer, bytes. Range 0..1048576. <=0 -> 8192.
 
         /* ---- Transport: request limits (llhttp has none of its own) ---- */
-        int max_body_size;         ///< Request body cap, bytes; over it -> 413. <=0 -> default.
-        int max_url_size;          ///< Max request-target size, bytes; over it -> 414. <=0 -> default.
-        int max_header_name_size;  ///< Max header name size, bytes; over it -> 431. <=0 -> default.
-        int max_header_value_size; ///< Max header value size, bytes; over it -> 431. <=0 -> default.
-        int max_header_count;      ///< Max headers per request; over it -> 431. <=0 -> default.
+        int max_body_size;         ///< Request body cap, bytes; over it -> 413.
+                                   ///< Range 0..536870912. <=0 -> 16 MiB.
+        int max_url_size;          ///< Max request-target size, bytes; over it -> 414.
+                                   ///< Range 0..65536. <=0 -> 2048.
+        int max_header_name_size;  ///< Max header name size, bytes; over it -> 431.
+                                   ///< Range 0..65536. <=0 -> 256.
+        int max_header_value_size; ///< Max header value size, bytes; over it -> 431.
+                                   ///< Range 0..1048576. <=0 -> 8192.
+        /**
+         * Max header LINES per request; over it -> 431.
+         *
+         * NOT CONFIGURABLE, and modulesd always leaves it 0 -> the module's 32.
+         *
+         * Fixed because it is a term of the memory ceiling the in-flight byte budget charges for:
+         * the worst-case head is `max_header_count * (max_header_name_size + max_header_value_size)`,
+         * and the budget derives its per-request overhead from exactly that product. Letting an
+         * operator raise the count while the overhead stayed a constant is what made the budget
+         * under-charge by more than an order of magnitude.
+         */
+        int max_header_count;
 
         /* ---- Transport: timeouts, seconds. One timer per phase, so no phase can hold an fd
          *      forever. <=0 -> module default for each. ---- */
-        int header_timeout;   ///< Accept -> full request head received.
-        int body_timeout;     ///< Head received -> full body received.
+        int header_timeout;   ///< Accept -> full request head received. Range 0..3600. <=0 -> 10.
+        int body_timeout;     ///< Head received -> full body received. Range 0..3600. <=0 -> 30.
         int response_timeout; ///< Handler dispatch -> response delivered. This is a LEAK BACKSTOP,
                               ///< not a quality-of-service deadline: the caller sets its own,
                               ///< shorter, per-target deadline and gives up first.
-        int write_timeout;    ///< Time allowed to write one response.
+                              ///< Range 0..3600. <=0 -> 300.
+        int write_timeout;    ///< Time allowed to write one response. Range 0..3600. <=0 -> 10.
         int drain_timeout;    ///< stop(): how long to wait for already-dispatched requests to
                               ///< answer before their connections are force-closed. Keep it
                               ///< SHORT -- modulesd calls every module's stop() sequentially
                               ///< before joining them under one shared budget, so a long drain
-                              ///< here delays every other module's teardown.
+                              ///< here delays every other module's teardown. Its range is capped
+                              ///< at 10 for that reason. Range 0..10. <=0 -> 2.
 
         /* ---- Transport: admission control. Both reject explicitly rather than queueing
          *      silently, so the caller sees a status instead of a stalled socket. ---- */
-        long long max_inflight_bytes; ///< Total in-flight request payload bytes; over it -> 503.
-                                      ///< Reserved from the declared Content-Length at
-                                      ///< headers-complete, BEFORE the body is read, so this
-                                      ///< bounds the read-phase peak too. <=0 -> default.
+        /**
+         * Total in-flight request payload bytes; over it -> 503. Reserved from the declared
+         * Content-Length at headers-complete, BEFORE the body is read, so this bounds the read-phase
+         * peak too.
+         *
+         * Follows the usual sentinel, plus one extra state:
+         *   > 0  -> that many bytes, clamped up to at least one maximum-size request so a too-small
+         *           value cannot reject everything.
+         *   == 0 -> no opinion, use the module default (256 MiB).
+         *   < 0  -> effectively unlimited (admit regardless of size).
+         *
+         * The negative exists because the internal option's own range starts at 0, where 0 means
+         * "unlimited" to an operator -- indistinguishable from the option being absent. modulesd makes
+         * that distinction and passes a negative for the unlimited case, so that 0 keeps meaning "no
+         * opinion" here and a zero-filled struct still resolves to every default.
+         * Range 0..2147483647 as an internal option.
+         */
+        long long max_inflight_bytes;
         int max_parallel_connections; ///< Max simultaneous connections; over it -> 503 and close.
                                       ///< One deferred response costs one fd, so this is the
-                                      ///< knob that bounds fd usage. <=0 -> default.
+                                      ///< knob that bounds fd usage -- out of a limit shared with
+                                      ///< every other module ('wazuh_modules.rlimit_nofile'), which
+                                      ///< modulesd warns about if this exceeds it.
+                                      ///< Range 0..65536. <=0 -> 1024.
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same
@@ -203,15 +262,26 @@ extern "C"
      *
      * @param callbackLog   Logging callback (modulesd passes mtLoggingFunctionsWrapper).
      * @param configuration Module configuration (may be NULL -> defaults are used).
+     *
+     * @return 0 when the module started, non-zero when it CANNOT start and retrying would be
+     *         pointless -- today, only a socket path the server could never bind (missing or
+     *         unwritable parent directory, or a non-socket file already sitting there). modulesd
+     *         treats non-zero as fatal and refuses to run without inventory ingress.
+     *
+     * @note An unreachable INDEXER is deliberately not fatal and returns 0: the indexer is allowed to
+     *       start after modulesd, and the module retries on its own heartbeat. Only the socket, which
+     *       nothing else can fix, aborts the daemon.
      */
-    EXPORTED void inventory_sync_server_start(full_log_fnc_t callbackLog,
-                                              const inventory_sync_server_config_t* configuration);
+    EXPORTED int inventory_sync_server_start(full_log_fnc_t callbackLog,
+                                             const inventory_sync_server_config_t* configuration);
 
     /**
      * @brief Stop the C++ module. Signals the worker thread and joins it.
      *        Safe to call even if the module was never started, and idempotent.
      *
-     * Runs from modulesd's signal handler, so it returns promptly and never blocks on I/O.
+     * Runs from modulesd's signal handler. Every wait it performs is BOUNDED, but it does block: it
+     * joins the worker (which may be inside the indexer's synchronous per-host health checks) and
+     * drains the transport. The ceilings are sized to fit the daemon's shared shutdown budget.
      */
     EXPORTED void inventory_sync_server_stop(void);
 
@@ -221,8 +291,8 @@ extern "C"
 
 // Function-pointer typedefs. REQUIRED: modulesd loads this module via dlopen and resolves
 // both symbols with dlsym (see wazuh_modules/src/wm_inventory_sync_server.c).
-typedef void (*inventory_sync_server_start_func)(full_log_fnc_t callbackLog,
-                                                 const inventory_sync_server_config_t* configuration);
+typedef int (*inventory_sync_server_start_func)(full_log_fnc_t callbackLog,
+                                                const inventory_sync_server_config_t* configuration);
 typedef void (*inventory_sync_server_stop_func)(void);
 
 #endif // _INVENTORY_SYNC_SERVER_H

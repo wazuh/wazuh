@@ -22,13 +22,13 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 } // namespace Log
 
-void InventorySyncServer::start(
+bool InventorySyncServer::start(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
     const inventory_sync_server_config_t& configuration,
     nlohmann::json indexerConfig) const
 {
-    invsync::InventorySyncServerFacade::instance().start(logFunction, configuration, std::move(indexerConfig));
+    return invsync::InventorySyncServerFacade::instance().start(logFunction, configuration, std::move(indexerConfig));
 }
 
 void InventorySyncServer::stop() const
@@ -41,7 +41,7 @@ extern "C"
 {
 #endif
 
-    void inventory_sync_server_start(full_log_fnc_t callbackLog, const inventory_sync_server_config_t* configuration)
+    int inventory_sync_server_start(full_log_fnc_t callbackLog, const inventory_sync_server_config_t* configuration)
     {
         try
         {
@@ -71,7 +71,7 @@ extern "C"
             // dereference a pointer the caller has already freed.
             config.indexer = nullptr;
 
-            InventorySyncServer::instance().start(
+            const bool started = InventorySyncServer::instance().start(
                 [callbackLog](const int logLevel,
                               const char* tag,
                               const char* file,
@@ -87,20 +87,39 @@ extern "C"
                 },
                 config,
                 std::move(indexerConfig));
+
+            return started ? 0 : 1;
         }
         catch (const std::exception& e)
         {
             LOGFN_ERROR(
                 LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error starting inventory sync server: %s", e.what());
         }
+        // LCOV_EXCL_START
         catch (...)
         {
             // inventory_sync_server.h promises this never throws into C. A non-std::exception
             // escaping here would cross the extern "C" boundary into modulesd's C code, where
             // there is no handler -- std::terminate, taking the whole daemon down.
+            //
+            // Excluded from coverage rather than tested: nothing in this module or the libraries it
+            // calls throws a non-std type, so there is no way to reach it without adding a throw for
+            // the test's benefit. It stays because the guarantee has to hold if that ever changes.
             LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
                         "Error starting inventory sync server: non-standard exception.");
         }
+        // LCOV_EXCL_STOP
+
+        /*
+         * An exception escaping start() is NOT reported as fatal.
+         *
+         * It is reached for a thread that could not be spawned or an allocation that failed -- pressure
+         * that a restart is unlikely to fix and that says nothing about whether the module is
+         * misconfigured. Killing the daemon on it would turn a transient resource problem into an
+         * outage of every other module. The reserved fatal answer is for a socket path that can never
+         * work, which is decided before this point.
+         */
+        return 0;
     }
 
     void inventory_sync_server_stop(void)
@@ -114,14 +133,17 @@ extern "C"
             LOGFN_ERROR(
                 LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error stopping inventory sync server: %s", e.what());
         }
+        // LCOV_EXCL_START
         catch (...)
         {
             // Same reasoning as inventory_sync_server_start(): nothing may cross back into C.
             // This one runs from modulesd's signal handler (wazuh_modules/src/main.c), where a
-            // terminate would turn a clean shutdown into a crash.
+            // terminate would turn a clean shutdown into a crash. Unreachable for the same reason,
+            // and excluded for the same reason.
             LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
                         "Error stopping inventory sync server: non-standard exception.");
         }
+        // LCOV_EXCL_STOP
     }
 
 #ifdef __cplusplus

@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdio>
+#include <limits>
 
 using invsync::http::buildServerConfig;
 
@@ -35,7 +36,6 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 
     EXPECT_EQ("queue/sockets/inventory-sync.sock", config.socketPath);
     EXPECT_EQ(0660U, config.socketMode);
-    EXPECT_TRUE(config.socketGroup.empty());
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
     EXPECT_EQ(2U, config.concurrentAccepts);
@@ -45,7 +45,7 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
     EXPECT_EQ(2048U, config.maxUrlSize);
     EXPECT_EQ(256U, config.maxHeaderNameSize);
     EXPECT_EQ(8192U, config.maxHeaderValueSize);
-    EXPECT_EQ(64U, config.maxHeaderCount);
+    EXPECT_EQ(32U, config.maxHeaderCount);
 
     EXPECT_EQ(10U, config.headerTimeoutSec);
     EXPECT_EQ(30U, config.bodyTimeoutSec);
@@ -111,6 +111,9 @@ TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)
 
 // Negative is treated exactly like zero: "the caller has no opinion". Anything else would let a
 // mis-set internal option produce a nonsensical size_t.
+//
+// `max_inflight_bytes` is deliberately absent: it is the one field where negative carries meaning
+// (see the test below), because its internal option's own range starts at 0.
 TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
 {
     auto input = zeroedConfig();
@@ -118,7 +121,6 @@ TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
     input.max_body_size = -4096;
     input.header_timeout = -10;
     input.max_parallel_connections = -5;
-    input.max_inflight_bytes = -1;
     input.socket_mode = -1;
 
     const auto config = buildServerConfig(input);
@@ -127,8 +129,26 @@ TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(16U * 1024U * 1024U, config.maxBodySize);
     EXPECT_EQ(10U, config.headerTimeoutSec);
     EXPECT_EQ(1024U, config.maxConnections);
-    EXPECT_EQ(256U * 1024U * 1024U, config.maxInFlightBytes);
     EXPECT_EQ(0660U, config.socketMode);
+}
+
+/**
+ * @brief The documented "disable the byte budget" setting has to be reachable.
+ *
+ * It was not: the internal option's range starts at 0, and modulesd's absent-value fallback was also
+ * 0, so an operator asking for unlimited was indistinguishable from not setting the option -- and the
+ * builder resolved 0 to the default. modulesd now translates an explicit 0 into a negative here, which
+ * keeps 0 meaning "no opinion" across the C-ABI (see the test above) while making the off switch work.
+ */
+TEST(UdsHttpServerConfigTest, ANegativeInFlightBudgetMeansEffectivelyUnlimited)
+{
+    auto input = zeroedConfig();
+    input.max_inflight_bytes = -1;
+
+    const auto config = buildServerConfig(input);
+
+    EXPECT_GT(config.maxInFlightBytes, 256U * 1024U * 1024U) << "unlimited must not resolve to the default";
+    EXPECT_EQ(std::numeric_limits<std::size_t>::max() - 1, config.maxInFlightBytes);
 }
 
 TEST(UdsHttpServerConfigTest, EmptySocketPathFallsBackToTheDefault)

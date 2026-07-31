@@ -167,10 +167,20 @@ namespace invsync::http
         std::string socketPath {"queue/sockets/inventory-sync.sock"};
         /// bind() applies the umask, so an explicit chmod after bind is mandatory, not belt-and-braces.
         std::uint32_t socketMode {0660};
-        /// Optional group to chown the socket to. EMPTY is correct today: modulesd runs as root
-        /// with its effective group set to the wazuh group, so the socket is already owned by that
-        /// group and 0660 suffices. The field exists so a future privilege change is config, not code.
-        std::string socketGroup;
+
+        /*
+         * There is deliberately no socketGroup here.
+         *
+         * There used to be one, together with a getgrnam_r/chown implementation -- but the builder
+         * cleared the field unconditionally and the transport only acted on it when non-empty, so
+         * those 26 lines could not run in production or in any test. It was aspirational config for a
+         * privilege change that has not happened: modulesd runs as root with its effective group set
+         * to the wazuh group, so the socket already belongs to that group and 0660 suffices.
+         *
+         * If the privilege model does change, note that reinstating this needs more than the field:
+         * internal options can only carry ints (there is no string reader), so the group would have to
+         * arrive some other way.
+         */
 
         std::size_t ioThreads {0}; ///< 0 -> cpp_get_nproc(). Reactor threads; they never block.
         std::size_t concurrentAccepts {2};

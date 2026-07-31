@@ -10,15 +10,22 @@
  */
 
 #include "inventory_sync_server.h"
+
 #include "testIndexerConnectorFakes.hpp"
 #include "testLogRecorder.hpp"
+#include <cJSON.h>
 
 #include <gtest/gtest.h>
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -48,6 +55,75 @@ namespace
         config.io_threads = 1;
         config.drain_timeout = 1;
         return config;
+    }
+
+    /// Minimal HTTP/1.1 client for the module's own socket. The transport tests have udsTestClient for
+    /// their own server; this exists so these tests can reach the socket the MODULE opens.
+    struct ModuleResponse
+    {
+        int status {0};
+        std::string body;
+    };
+
+    ModuleResponse sendModuleRequest(const std::string& socketPath,
+                                     const std::string& method,
+                                     const std::string& target,
+                                     const std::string& body,
+                                     const std::string& agentId)
+    {
+        ModuleResponse result;
+
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd < 0)
+        {
+            return result;
+        }
+
+        ::sockaddr_un address {};
+        address.sun_family = AF_UNIX;
+        std::snprintf(address.sun_path, sizeof(address.sun_path), "%s", socketPath.c_str());
+        if (::connect(fd, reinterpret_cast<::sockaddr*>(&address), sizeof(address)) != 0)
+        {
+            ::close(fd);
+            return result;
+        }
+
+        std::string request = method + " " + target + " HTTP/1.1\r\nHost: localhost\r\n";
+        if (!agentId.empty())
+        {
+            request += "X-Wazuh-Agent-Id: " + agentId + "\r\n";
+        }
+        request += "Content-Length: " + std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+
+        if (::write(fd, request.data(), request.size()) < 0)
+        {
+            ::close(fd);
+            return result;
+        }
+
+        std::string raw;
+        std::array<char, 4096> buffer {};
+        for (;;)
+        {
+            const auto read = ::read(fd, buffer.data(), buffer.size());
+            if (read <= 0)
+            {
+                break;
+            }
+            raw.append(buffer.data(), static_cast<std::size_t>(read));
+        }
+        ::close(fd);
+
+        if (raw.size() > 12)
+        {
+            result.status = std::atoi(raw.substr(9, 3).c_str());
+        }
+        const auto split = raw.find("\r\n\r\n");
+        if (split != std::string::npos)
+        {
+            result.body = raw.substr(split + 4);
+        }
+        return result;
     }
 } // namespace
 
@@ -173,10 +249,19 @@ TEST_F(InventorySyncServerModuleTest, StartCreatesTheConfiguredSocket)
 }
 
 /**
- * A permanent misconfiguration must be reported as an ERROR that names both the offending path and
- * the setting to change -- not as an opaque retry message repeated forever.
+ * @brief A socket path that can never work is FATAL, reported up front, and names the path.
+ *
+ * Two changes from what this used to assert, both deliberate:
+ *
+ *  - start() now returns non-zero instead of entering the retry loop. Nothing an operator does at
+ *    runtime fixes a missing parent directory, so retrying every 60 s forever only produced log noise
+ *    while modulesd ran on looking healthy with no inventory ingress. modulesd treats non-zero as
+ *    fatal and refuses to run.
+ *  - the message must NOT name a setting. It used to point at
+ *    'inventory_sync_server_socket_path', which does not exist and cannot: internal options carry only
+ *    ints, so the path is fixed. Sending an operator to look for it wasted their time.
  */
-TEST_F(InventorySyncServerModuleTest, UnbindableSocketPathIsReportedNamingThePathAndTheSetting)
+TEST_F(InventorySyncServerModuleTest, AnUnusableSocketPathIsFatalAndNamesThePathNotASetting)
 {
     // Without this, the indexer gate would fail first (no <indexer> configured), and the failure
     // reported would be about the indexer rather than the socket this test means to exercise.
@@ -184,12 +269,25 @@ TEST_F(InventorySyncServerModuleTest, UnbindableSocketPathIsReportedNamingThePat
 
     auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
 
-    inventory_sync_server_start(testLogCallback, &config);
+    EXPECT_NE(0, inventory_sync_server_start(testLogCallback, &config))
+        << "an unusable socket path must be reported as fatal, not retried";
 
-    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
     EXPECT_TRUE(LogRecorder::sawMessageContaining("/proc/self/does-not-exist/inventory-sync.sock"))
-        << "the failure must name the path that could not be bound";
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("socket_path")) << "the failure must name the setting to change";
+        << "the failure must name the path";
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("inventory_sync_server_socket_path"))
+        << "it must not send the operator after a setting that does not exist";
+
+    inventory_sync_server_stop();
+}
+
+/// The happy path still returns success, so "non-zero" cannot pass by accident.
+TEST_F(InventorySyncServerModuleTest, AUsableSocketPathStartsSuccessfully)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    auto config = makeConfig(uniqueSocketPath("usable"));
+
+    EXPECT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
 
     inventory_sync_server_stop();
 }
@@ -265,5 +363,83 @@ TEST_F(InventorySyncServerModuleTest, IndexerSummaryLogsCountsNotSecrets)
     EXPECT_TRUE(LogRecorder::sawMessageContaining("ssl.key=<set>"));
 
     cJSON_Delete(indexer);
+    inventory_sync_server_stop();
+}
+
+/**
+ * @brief The routes the facade registers are actually reachable, on the socket it actually opens.
+ *
+ * Nothing exercised this before: no test sent a single byte to the socket the MODULE opens (the
+ * transport tests drive their own server with their own routes). So the wiring in startHttpServer()
+ * was unverified end to end -- swapping the /stats and /config handlers, or dropping the liveness
+ * route, would have passed the entire suite.
+ *
+ * The liveness handler in particular had never run once.
+ */
+TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModulesOwnSocket)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    const auto path = uniqueSocketPath("routes");
+    auto config = makeConfig(path);
+
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    // GET / -- the liveness probe, exempt from the byte budget.
+    const auto liveness = sendModuleRequest(path, "GET", "/", "", "");
+    EXPECT_EQ(200, liveness.status) << liveness.body;
+    EXPECT_NE(std::string::npos, liveness.body.find("inventory_sync_server"))
+        << "the liveness body must identify this module: " << liveness.body;
+
+    // POST /inventory/sync -- accepts and discards, so 202.
+    EXPECT_EQ(202, sendModuleRequest(path, "POST", "/inventory/sync", "payload", "007").status);
+
+    // POST /stats and /config -- enriched echo, so the agent id and this manager's identity come back.
+    for (const auto* target : {"/stats", "/config"})
+    {
+        const auto response = sendModuleRequest(path, "POST", target, R"({"cpu":42})", "007");
+        ASSERT_EQ(200, response.status) << target << " -> " << response.body;
+        EXPECT_NE(std::string::npos, response.body.find(R"("id":"007")")) << target << " -> " << response.body;
+        EXPECT_NE(std::string::npos, response.body.find("test-cluster")) << target << " -> " << response.body;
+        EXPECT_NE(std::string::npos, response.body.find("test-node")) << target << " -> " << response.body;
+    }
+
+    // An unknown path is a 404, which proves routing is matching rather than answering everything.
+    EXPECT_EQ(404, sendModuleRequest(path, "POST", "/nope", "x", "007").status);
+
+    inventory_sync_server_stop();
+}
+
+/**
+ * @brief An agent id that is not valid UTF-8 is rejected instead of crashing the serialization.
+ *
+ * The agent id is stamped into the document straight from the request header, and headers are raw
+ * bytes -- nothing validates them as UTF-8. nlohmann only checks at dump() time, so this is the
+ * reachable route into the serialization failure the endpoints' catch block exists for. It answers 400,
+ * which is right here: unlike the cluster name (a manager-side value, sanitized at startup), a bad
+ * agent id really is the caller's fault.
+ */
+TEST_F(InventorySyncServerModuleTest, AnAgentIdThatIsNotUtf8IsRejectedRatherThanBreakingSerialization)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    const auto path = uniqueSocketPath("badid");
+    auto config = makeConfig(path);
+
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    const std::string invalidId = "00\xff"
+                                  "7";
+    for (const auto* target : {"/stats", "/config"})
+    {
+        const auto response = sendModuleRequest(path, "POST", target, R"({"cpu":42})", invalidId);
+        EXPECT_EQ(400, response.status) << target << " must not answer 200 with an unserializable id";
+    }
+
+    // And the server is still serving afterwards.
+    EXPECT_EQ(200, sendModuleRequest(path, "GET", "/", "", "").status);
+
     inventory_sync_server_stop();
 }
