@@ -11,9 +11,9 @@ UDS conversation is too large a change to graft onto the existing module, so thi
 to it. When it is complete, `inventory_sync` is removed and this becomes the only inventory sync
 module.
 
-**Scope today: scaffolding plus a live UDS server, gated on real indexer connectors, with a stub
-route.** There is no FlatBuffer decoding or agent session handling yet — `POST /inventory/sync`
-accepts a request, counts its bytes and **discards** it. The module DOES already construct a real
+**Scope today: a live UDS server, gated on real indexer connectors, serving four routes of which the
+ingestion one is still a stub.** There is no FlatBuffer decoding or agent session handling yet —
+`POST /inventory/sync` accepts a request, counts its bytes and **discards** it. The module DOES already construct a real
 shared `IndexerSession` plus **both** an `IndexerConnectorSync` and an `IndexerConnectorAsync`, and
 will not start accepting UDS connections unless all three construct successfully (see
 [Indexer connectors](#indexer-connectors-srcindexer) below). The point is to have the module
@@ -57,7 +57,7 @@ inventory_sync_server/
 │       └── asioUdsHttpServer.{hpp,cpp}  # asio + llhttp implementation (PImpl)
 ├── test/
 │   ├── CMakeLists.txt                   # builds inventory_sync_server_utest
-│   └── unit/                            # 170 tests
+│   └── unit/                            # 196 tests
 └── tools/
     └── send_sync.py                     # stdlib-only manual sender over the UDS
 ```
@@ -107,7 +107,11 @@ EXPORTED void inventory_sync_server_stop(void);
 - **start()** launches the worker thread and returns immediately; the module owns the thread. Safe
   with a `NULL` configuration (every default applies).
 - **stop()** signals and joins. Safe if never started, and idempotent. It runs from modulesd's signal
-  handler, so it never blocks on I/O.
+  handler, so every wait it performs is BOUNDED and named -- but it does block: it joins the worker,
+  which may be inside the indexer session's synchronous per-host health checks, and it drains the
+  transport. With several unreachable indexer hosts this has been measured in the tens of seconds, which
+  is why every one of those waits has a ceiling and why they are sized to fit the daemon's shutdown
+  budget together.
 - **Exceptions never cross into C.** Both shims catch `std::exception` *and* `...` — a non-standard
   exception escaping into modulesd's C code would be `std::terminate`, taking the whole daemon down.
 - modulesd resolves both symbols with `dlopen`/`dlsym`, so the function-pointer typedefs at the
@@ -117,7 +121,17 @@ EXPORTED void inventory_sync_server_stop(void);
 with fixed-size buffers, so there is no parse step and no key name that can be silently misspelled.
 Every numeric field follows one sentinel rule: **`<= 0` (or an empty string) means "the caller has no
 opinion, use the module default"**. modulesd fills them from `getDefine_Int_default(...)` with a `0`
-fallback precisely so each default lives in exactly one place — this module.
+fallback precisely so each transport default lives in exactly one place — this module.
+
+Two documented exceptions, both on the field itself in the header:
+
+- **The nine indexer fields** carry real defaults from modulesd, not the `0` sentinel, because the
+  default belongs to the shared Indexer Connector rather than to this module. modulesd mirrors the
+  library's values so an out-of-range setting is rejected at configuration time. They are therefore
+  duplicated across the `.so` boundary, and nothing pins the two copies together.
+- **`max_inflight_bytes`** treats a NEGATIVE value as "unlimited", because `0` is a real setting for it
+  (the documented off switch) and had to be distinguishable from an absent option. modulesd makes that
+  distinction and translates, so `0` still means "no opinion" across the ABI.
 
 **The one exception is `indexer`**, which is `const cJSON*`. The indexer connector consumes nested
 JSON with arrays (`hosts[]`, `ssl.certificate_authorities[]`, …), which a fixed-size C struct cannot
@@ -148,13 +162,16 @@ freeing the tree while the module is still running (meaningful under ASan).
   thread constructor leaves the facade claiming to run with no worker, and every later `start()` is
   then refused as "already started" — permanently wedged, doing nothing.
 - `stop()` tears down in order and **joins outside the lifecycle lock**, so a concurrent `start()`
-  cannot deadlock. Note the phase-2 gap where the ingestion pipeline's shutdown will go: it has to
-  happen *between* the transport's two phases, so its in-flight responders are still deliverable.
+  cannot deadlock. Phase 2 tears down the three indexer objects, between the transport's two phases --
+  which is where the ingestion pipeline's own shutdown will go too, so its in-flight responders stay
+  deliverable.
 - `run()` is an exception barrier that deliberately does **not** re-enter the loop: an exception that
   repeats every iteration would spin forever writing to `wazuh-manager.log`, which is worse than a
   dead worker.
-- A failed server start escalates: the first attempt is an **ERROR** naming both the path and the
-  setting to change, the next hour of retries stays at debug, then one WARN per hour.
+- A failed *indexer* start escalates: the first attempt is an **ERROR** naming the stage that is
+  blocking and what to check, the next hour of retries stays at debug, then one WARN per hour. A socket
+  path that could never be bound is not retried at all -- it is validated up front and reported as
+  fatal, because nothing an operator does at runtime fixes it.
 - `stop()` runs from modulesd's signal handler, which calls **every** module's `stop()` sequentially
   before joining them under one shared 30 s budget. That is why the transport's drain window is 2 s
   by default: a long drain here delays every other module's teardown.
@@ -406,7 +423,7 @@ indexed or stored. The pieces worth knowing:
 
 ## Tests
 
-`inventory_sync_server_utest` — 170 tests.
+`inventory_sync_server_utest` — 196 tests.
 
 | File | What it covers |
 |---|---|
@@ -503,5 +520,7 @@ Named so none of it is mistaken for an oversight:
 - The RocksDB store. Its path constant is already reserved (`queue/inventory-sync-server`) because
   choosing it wrongly is destructive, not merely broken.
 - Removing the router subscription from `inventory_sync`, and deleting that module.
-- remoted's side: the HTTPS endpoint, the downstream socket path, and the per-endpoint response
-  timeout it will need for an ingestion path that can defer for minutes.
+- remoted's side of `/inventory/sync`. Its HTTPS endpoint, downstream socket path and per-endpoint
+  response timeout already exist and are used for `/stats` and `/config`; what is still missing is a
+  downstream target for the ingestion route, and the longer response timeout an ingestion path that can
+  defer for minutes will need.

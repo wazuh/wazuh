@@ -15,6 +15,7 @@
 - [Indexer Connector](indexer_connector/index.html) - OpenSearch indexing library (Filebeat replacement)
 - [Integrations](integrations/index.html) - Cloud services and third-party platform integrations
 - [Inventory Sync](inventory-sync/index.html) - Manager-side synchronization service for agent inventory and context data
+- [Inventory Sync Server](inventory-sync-server/index.html) - Manager-side HTTP-over-UDS ingress for agent inventory synchronization
 - [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB)
 - [Logcollector](logcollector/index.html) - Log ingestion
 - [Logging](logging/index.html) - Log format configuration (plain text, JSON, or dual output)

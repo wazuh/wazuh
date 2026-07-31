@@ -52,6 +52,17 @@ namespace invsync::http
         std::string pendingValue;
         bool inValue {false};
 
+        /**
+         * @brief Header LINES received, which is what maxHeaderCount bounds.
+         *
+         * Not the size of the header map. The map is keyed by lowercased name and committed with
+         * insert_or_assign, so a peer repeating one name never grew it -- and the limit, which was
+         * compared against that size, bounded nothing at all: `x-a: <8 KiB>` could be sent without end
+         * for as long as the header timeout allowed. This counter is what the limit is really about,
+         * and it is also the term the transport's per-request memory charge is derived from.
+         */
+        std::size_t headerLines {0};
+
         bool chunked {false};
         bool headersReported {false};
         bool messageComplete {false};
@@ -85,6 +96,21 @@ namespace invsync::http
                 }
             }
 
+            ++headerLines;
+
+            /*
+             * shrink_to_fit before the move, so the stored strings do not carry the spare capacity
+             * that repeated append() left behind.
+             *
+             * append() grows geometrically and the move preserves whatever capacity it reached, so the
+             * head could hold up to ~2x its own size in slack. The transport charges the byte budget a
+             * per-request overhead derived from count * (nameSize + valueSize); leaving the slack in
+             * would make that derivation understate real memory by a factor of two, which is the class
+             * of mistake the derivation exists to remove.
+             */
+            pendingName.shrink_to_fit();
+            pendingValue.shrink_to_fit();
+
             owner->m_request.headers.insert_or_assign(std::move(pendingName), std::move(pendingValue));
             pendingName.clear();
             pendingValue.clear();
@@ -114,7 +140,7 @@ namespace invsync::http
                 inValue = false;
             }
 
-            if (owner->m_request.headers.size() >= owner->m_limits.maxHeaderCount)
+            if (headerLines >= owner->m_limits.maxHeaderCount)
             {
                 owner->m_rejectStatus = 431;
                 return HPE_USER;

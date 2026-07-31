@@ -216,17 +216,21 @@ TEST_F(IndexerGatingTest, OneHeartbeatProducesExactlyOneFailedAttempt)
 
 /**
  * Once an object is built, it is a "configuration is valid" signal that cannot change without a
- * restart, so it must never be rebuilt -- not even across many retries of a LATER stage. An
- * unbindable socket path keeps the HTTP stage failing while all three indexer slots stay put.
+ * restart, so it must never be rebuilt -- not on the heartbeat, not on a forced retry.
+ *
+ * Driven from a SUCCESSFUL start rather than the unbindable path this used to use: an unusable socket
+ * path is now rejected before the worker is even spawned (it is fatal, see
+ * InventorySyncServerModuleTest), so it can no longer be used to hold a later stage failing. The
+ * invariant is the same one, and it now also covers the early-out that makes a retry a no-op once the
+ * server is up.
  */
 TEST_F(IndexerGatingTest, EachSlotIsConstructedOnlyOnceAcrossRetries)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
-    auto config = makeConfig("/proc/self/does-not-exist/inventory-sync.sock");
+    auto config = makeConfig(uniqueSocketPath("memo"));
 
-    inventory_sync_server_start(testLogCallback, &config);
-    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
     ASSERT_TRUE(waitForCount(events->m_asyncBuilds, 1));
 
     // Two more full retries, forced synchronously instead of waiting out the real 60 s heartbeat.
@@ -306,4 +310,53 @@ TEST_F(IndexerGatingTest, StopTearsDownWhatExistsEvenWhenLaterStagesNeverRan)
 
     const std::vector<std::string> expected {"session"};
     EXPECT_EQ(expected, events->destroyed()) << "the session was built and must be torn down";
+}
+
+/**
+ * @brief The escalation ladder: one ERROR, then debug, then one WARN per hour.
+ *
+ * Pure logging logic with no test at all until now, which is exactly the kind of code that rots: the
+ * ladder is what stops a permanent misconfiguration from either being invisible (all debug) or flooding
+ * wazuh-manager.log (all ERROR), and it is what an operator's incident timeline is built from.
+ *
+ * Driven with forceRetryForTests() rather than the real 60 s heartbeat, so 60 attempts take
+ * milliseconds instead of an hour.
+ */
+TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDebugsInBetween)
+{
+    // ATTEMPTS_PER_ESCALATION in the facade. The 60th failure is the one that must escalate.
+    constexpr int ATTEMPTS_PER_ESCALATION {60};
+
+    auto events = invsync::test::installFakeIndexersWithFailingAsync("permanently broken");
+
+    auto config = makeConfig(uniqueSocketPath("ladder"));
+
+    // Attempt 1: the ERROR that names the stage and what to check.
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config))
+        << "an indexer failure must NOT be fatal: the indexer may come up after modulesd";
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("async indexer connector"))
+        << "the first failure must name which stage is blocking";
+    EXPECT_EQ(0U, LogRecorder::countMessagesContaining("still not running after"))
+        << "the hourly WARN must not fire on the first attempt";
+
+    // Attempts 2..60, forced synchronously.
+    for (int attempt = 2; attempt <= ATTEMPTS_PER_ESCALATION; ++attempt)
+    {
+        invsync::test_hooks::forceRetryForTests();
+    }
+
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("still not running after"))
+        << "attempt " << ATTEMPTS_PER_ESCALATION << " must escalate to exactly one WARN";
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("60 attempt(s)"));
+
+    // The intervening attempts stayed at debug rather than repeating the ERROR.
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("could not start"))
+        << "the ERROR is emitted once per incident, not once per attempt";
+
+    // A successful construction is still never repeated, even across 60 failures of a later stage.
+    EXPECT_EQ(1, events->m_sessionBuilds.load());
+    EXPECT_EQ(1, events->m_syncBuilds.load());
+
+    inventory_sync_server_stop();
 }

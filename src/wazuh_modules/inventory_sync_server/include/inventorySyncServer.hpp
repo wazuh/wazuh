@@ -50,8 +50,11 @@ public:
      *                      `indexer` field is cleared by the caller) so that no cJSON type
      *                      reaches the facade and no borrowed pointer outlives the start()
      *                      call -- the conversion happens once, in the extern "C" shim.
+     *
+     * @return false when the module cannot start and retrying would never help (see
+     *         inventory_sync_server_start()). An unreachable indexer returns true.
      */
-    void
+    bool
     start(const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
               logFunction,
           const inventory_sync_server_config_t& configuration,
