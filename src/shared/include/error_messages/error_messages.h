@@ -541,8 +541,8 @@
 /* Wait operations */
 #define WAITING_MSG     "Process locked due to agent is offline. Waiting for connection..."
 #define WAITING_FREE    "Agent is now online. Process unlocked, continuing..."
-#define SERVER_UNAV     "Server unavailable. Setting lock."
-#define SERVER_UP       "Server responded. Releasing lock."
+#define SERVER_UNAV     "Manager unreachable. Pausing module event production."
+#define SERVER_UP       "Manager reachable again. Resuming module event production."
 #define LOCK_RES        "Agent auto-restart locked for %ld seconds."
 
 /* Buffer alerts */

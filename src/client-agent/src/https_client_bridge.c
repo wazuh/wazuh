@@ -24,8 +24,10 @@
  * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
  * start_agent.c) and hc_set_agent_key(); on_state_change feeds the .state file
  * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
- * release path either, also clears that producer lock on REGISTERED.
- * on_startup_result applies module limits and cluster-name authority, and
+ * release path either, also clears a stale producer lock on REGISTERED.
+ * on_producer_pause arms and releases that same lock while running, so a
+ * sustained manager outage stops modules generating events the agent could only
+ * drop. on_startup_result applies module limits and cluster-name authority, and
  * on_config_downloaded writes/applies merged.mg and releases the startup_gate.
  *
  * Since #38030 this is the agent's only transport, so every manager-visible
@@ -1132,17 +1134,12 @@ static void bridge_on_state_change(int state, void *user_data)
     mdebug1("https_client connection state -> %s (%d)", bridge_str_conn_state(state), state);
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 
-    /* Interim fix for the WAIT_FILE/os_setwait() producer lock (armed
-     * unconditionally at agent startup, see agentd.c's AgentdStart()): it is
-     * otherwise only ever cleared by a successful LEGACY plaintext handshake,
-     * which permanently blocks every module's SendMSG/SendBinaryMSG against a
-     * pure-HTTPS manager even though /control is fully connected and healthy.
-     * A successful HTTPS registration is the equivalent "the manager
-     * acknowledged us" signal, so clear the lock here too. os_delwait() is
-     * idempotent (unlink() on an already-absent WAIT_FILE is a harmless
-     * no-op, and __wait_lock is just reset to 0), so it is safe to call
-     * unconditionally on every REGISTERED transition, including a later one
-     * after a reconnect. */
+    /* Clears a producer lock that outlived whatever armed it: a successful
+     * registration means the manager just acknowledged us, so anything still on
+     * disk is stale. That covers the boot-time arm in AgentdStart() and a lock
+     * left behind by an unclean exit -- on_producer_pause below cannot clear
+     * the latter, since it only fires on a paused->running transition and each
+     * run starts believing it has paused nothing. os_delwait() is idempotent. */
     if (state == HC_STATE_REGISTERED) {
         os_delwait();
     }
@@ -1163,6 +1160,21 @@ static char *bridge_collect_stats(void *user_data)
 {
     (void)user_data;
     return w_agent_collect_stats();
+}
+
+static void bridge_on_producer_pause(bool paused, void *user_data)
+{
+    (void)user_data;
+
+    if (paused) {
+        mwarn(SERVER_UNAV);
+        os_setwait();
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+    } else {
+        minfo(SERVER_UP);
+        os_delwait();
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+    }
 }
 
 /* Occupancy thresholds the module reports against, so the log lines can quote
@@ -1517,6 +1529,7 @@ void w_https_client_start(void)
     callbacks.collect_stats = bridge_collect_stats;
     callbacks.collect_config = bridge_collect_config;
     callbacks.on_collect_host = bridge_on_collect_host;
+    callbacks.on_producer_pause = bridge_on_producer_pause;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {

@@ -106,7 +106,7 @@ TEST_F(RetrySenderTest, EveryRetryIsFreshlySigned)
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 2);
 
-    EXPECT_EQ(OutcomeClass::Retryable, result.outcome);
+    EXPECT_EQ(OutcomeClass::ServerError, result.outcome); // 500: the manager answered.
     ASSERT_EQ(2u, authorizations.size());
     // Different timestamp -> different ts field AND different MAC.
     EXPECT_NE(authorizations[0], authorizations[1]);
@@ -248,7 +248,7 @@ TEST_F(RetrySenderTest, MaxAttemptsBoundsTheLoop)
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 3);
 
-    EXPECT_EQ(OutcomeClass::Retryable, result.outcome);
+    EXPECT_EQ(OutcomeClass::Unreachable, result.outcome); // Timeout: no answer at all.
     EXPECT_EQ(2u, m_waiter.requestedDelays().size()); // No delay after the last attempt.
 }
 
