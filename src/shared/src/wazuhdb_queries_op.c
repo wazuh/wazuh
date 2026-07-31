@@ -165,12 +165,10 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
 
     cJSON_AddNumberToObject(data_in, "id", agent_data->id);
     cJSON_AddStringToObject(data_in, "version", agent_data->version);
-    cJSON_AddStringToObject(data_in, "merged_sum", agent_data->merged_sum);
     cJSON_AddStringToObject(data_in, "node_name", agent_data->node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_data->agent_ip);
     cJSON_AddStringToObject(data_in, "connection_status", agent_data->connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", agent_data->sync_status);
-    cJSON_AddStringToObject(data_in, "group_config_status", agent_data->group_config_status);
 
     if (agent_data->osd) {
         cJSON_AddStringToObject(data_in, "os_name", agent_data->osd->os_name);

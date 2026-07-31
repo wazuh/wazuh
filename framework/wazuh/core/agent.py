@@ -604,7 +604,6 @@ class Agent:
         "version": "version",
         "dateAdd": "date_add",
         "group": "`group`",
-        "mergedSum": "merged_sum",
         "os.major": "os_major",
         "os.minor": "os_minor",
         "os.arch": "os_arch",
@@ -613,7 +612,6 @@ class Agent:
         "internal_key": "internal_key",
         "registerIP": "register_ip",
         "disconnection_time": "disconnection_time",
-        "group_config_status": "group_config_status",
         "status_code": "status_code",
     }
 
@@ -662,7 +660,6 @@ class Agent:
         self.node_name = None
         self.registerIP = ip
         self.disconnection_time = None
-        self.group_config_status = None
         self.status_code = None
 
         # If the method has only been called with an ID parameter, no new agent should be added.
@@ -689,7 +686,6 @@ class Agent:
             "group": self.group,
             "node_name": self.node_name,
             "disconnection_time": self.disconnection_time,
-            "group_config_status": self.group_config_status,
             "status_code": self.status_code,
         }
 

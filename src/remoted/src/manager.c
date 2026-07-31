@@ -692,9 +692,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             /* Detect a change in the merged_sum reported by the agent versus the
              * previous keepalive. After a hot reload the agent does not send
              * #!-agent startup, so on worker nodes the cluster sync would only
-             * propagate {id, last_keepalive} (syncreq_keepalive) and the master DB
-             * would keep the stale merged_sum. Escalating to syncreq triggers a
-             * full sync that includes merged_sum and group_config_status. */
+             * propagate {id, last_keepalive} (syncreq_keepalive). Escalating to
+             * syncreq triggers a full sync that includes agent metadata. */
             bool agent_merged_sum_changed = agent_data->merged_sum &&
                                             agent_data->merged_sum[0] &&
                                             prev_reported_merged_sum[0] &&
@@ -731,9 +730,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
                     data->changed = 1;
                 }
-                os_strdup("not synced", agent_data->group_config_status);
-            } else {
-                os_strdup("synced", agent_data->group_config_status);
             }
 
             w_mutex_unlock(&lastmsg_mutex);
