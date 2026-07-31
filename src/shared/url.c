@@ -183,6 +183,7 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
     char response[64];
     char * _url;
     char * srequest;
+    char * temp;
     size_t zrequest;
     ssize_t zrecv;
     int sock;
@@ -200,6 +201,11 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
     _url = wstr_replace(url, " ", "%20");
 
     // Escape delimiter
+
+    temp = wstr_replace(_url, "|", "%7C");
+
+    os_free(_url);
+    _url = temp;
 
     parsed_dest = wstr_replace(dest, "|", "\\|");
     if (header) {
