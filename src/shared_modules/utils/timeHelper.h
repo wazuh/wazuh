@@ -185,8 +185,6 @@ namespace Utils
         }
         std::time_t time = std::mktime(&tm);
 
-        auto itt = std::chrono::system_clock::from_time_t(time);
-
         std::ostringstream output;
         struct tm const* localTime = gmtime_r(&time, &tm);
 
@@ -195,14 +193,8 @@ namespace Utils
             return "";
         }
 
-        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-
-        // Get milliseconds from the current time
-        auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-
-        // ISO 8601
-        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+        // ISO 8601. "YYYY/MM/DD hh:mm:ss" carries no sub-second part.
+        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
 
         return output.str();
     }
@@ -300,7 +292,6 @@ namespace Utils
         if constexpr (std::is_same_v<std::decay_t<T>, uint32_t>)
         {
             std::time_t time = timestamp;
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
             struct tm buf
             {
@@ -310,18 +301,13 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, double>)
         {
             std::time_t time = timestamp;
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
             struct tm buf
             {
@@ -334,11 +320,8 @@ namespace Utils
             output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
             {
-                // Get milliseconds from the current time
-                auto milliseconds =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-                // ISO 8601
-                output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+                // ISO 8601. No fractional part to render.
+                output << ".000Z";
             }
             else
             {
@@ -357,7 +340,6 @@ namespace Utils
                 return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : std::move(ISO8601Timestamp);
             }
             std::time_t time = std::stoi(timestamp);
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
             struct tm buf
             {
@@ -367,12 +349,8 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, std::string_view>)
@@ -390,7 +368,6 @@ namespace Utils
             {
                 return "";
             }
-            auto itt = std::chrono::system_clock::from_time_t(time);
             std::ostringstream output;
             struct tm buf
             {
@@ -400,12 +377,8 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
-            // Get milliseconds from the current time
-            auto milliseconds =
-                std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-            // ISO 8601
-            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+            // ISO 8601. A whole-second timestamp carries no sub-second part.
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S") << ".000Z";
             return output.str();
         }
         else
