@@ -343,8 +343,6 @@ int local_start()
 
     start_agent(1);
 
-    os_delwait();
-
     /* Delete agent state file at exit */
     atexit(DeleteState);
 

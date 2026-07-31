@@ -108,8 +108,13 @@ void __wrap_startup_gate_release_from_https_apply(void)
     function_called();
 }
 
-/* WAIT_FILE/os_setwait release path: no pre-existing wrapper for this ABI. */
+/* WAIT_FILE producer lock: no pre-existing wrapper for either ABI. */
 void __wrap_os_delwait(void)
+{
+    function_called();
+}
+
+void __wrap_os_setwait(void)
 {
     function_called();
 }
@@ -751,6 +756,42 @@ static void test_registered_state_twice_clears_wait_file_each_time(void **state)
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
     expect_function_call(__wrap_os_delwait);
     g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* on_producer_pause: the confirmed-disconnect pause. Both directions move the
+ * lock and the .state status together. */
+static void test_producer_pause_arms_the_lock_and_reports_disconnected(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mwarn, formatted_msg, "Manager unreachable. Pausing module event production.");
+    expect_function_call(__wrap_os_setwait);
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_producer_pause(true, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* The release cannot ride on on_state_change: an agent that loses the manager
+ * while REGISTERED never leaves that state, so there is no transition to hook. */
+static void test_producer_pause_release_clears_the_lock_and_reports_connected(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__minfo, formatted_msg, "Manager reachable again. Resuming module event production.");
+    expect_function_call(__wrap_os_delwait);
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
+
+    g_captured_callbacks.on_producer_pause(false, g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1886,6 +1927,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_arms_the_lock_and_reports_disconnected, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_producer_pause_release_clears_the_lock_and_reports_connected, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_rejected_state_maps_to_nactive, setup_test, teardown_test),

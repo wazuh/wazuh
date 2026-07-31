@@ -270,6 +270,12 @@ typedef struct hc_callbacks_t
     /// Called on the control thread before each Notify (not the dispatcher), so
     /// it must be a fast, non-blocking read. Null means no host block is sent.
     void (*on_collect_host)(char* json_out, size_t cap, void* user_data);
+
+    /// /control has been unreachable at the TRANSPORT level for a threshold
+    /// number of consecutive attempts (paused=true), or has succeeded again
+    /// (paused=false). The consumer arms/disarms its producer lock so modules
+    /// stop generating events they cannot deliver.
+    void (*on_producer_pause)(bool paused, void* user_data);
     void* user_data;
 } hc_callbacks_t;
 

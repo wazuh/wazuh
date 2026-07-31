@@ -111,5 +111,6 @@ std::chrono::milliseconds RetrySender::delayFor(const Result& result)
 
 bool RetrySender::isRetryable(OutcomeClass outcome)
 {
-    return outcome == OutcomeClass::Retryable || outcome == OutcomeClass::BackPressure;
+    return outcome == OutcomeClass::Unreachable || outcome == OutcomeClass::ServerError ||
+           outcome == OutcomeClass::BackPressure;
 }

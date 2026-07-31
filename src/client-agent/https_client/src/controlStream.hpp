@@ -82,6 +82,9 @@ class ControlStream final
         void joinUpgradeWork();
 
     private:
+        /// One iteration's worth of work, returning what it observed so step()
+        /// has a single place to feed the producer-pause decision.
+        OutcomeClass runStep(Waiter& waiter);
         OutcomeClass sendStartup(Waiter& waiter);
         OutcomeClass sendNotify(Waiter& waiter);
         void sendShutdown(Waiter& waiter);
@@ -91,6 +94,7 @@ class ControlStream final
         void dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter);
         void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
+        void updateProducerPause(OutcomeClass outcome);
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
         void updateLocalIp(const HttpResponse& response);
@@ -134,6 +138,13 @@ class ControlStream final
         /// instance. See joinUpgradeWork() for shutdown ordering.
         std::thread m_upgradeThread;
 
+        /// Consecutive undeliverable /control outcomes (see blocksDelivery).
+        uint32_t m_undeliverableStreak {0};
+
+        /// Whether we have told the core to pause its producers. Tracks only our
+        /// own transitions, so it starts false even though agentd arms the lock
+        /// at boot for its own reasons.
+        bool m_producersPaused {false};
 };
 
 #endif // _HC_CONTROL_STREAM_HPP

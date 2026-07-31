@@ -20,7 +20,10 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
 
     if (response.status != TransportStatus::Ok)
     {
-        return OutcomeClass::Retryable; // timeout / connect / TLS / other transport error
+        // timeout / connect / DNS / TLS / other transport error: no HTTP status
+        // ever arrived, so the manager is not answering at all. This is the one
+        // class that arms the producer pause.
+        return OutcomeClass::Unreachable;
     }
 
     const long code = response.httpCode;
@@ -56,13 +59,15 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     }
 
     // 403/426 are not part of the manager contract: they reach the agent only
-    // from an intermediary (reverse proxy, WAF, mTLS gateway). Treat them as
-    // transient so a /stateless batch is preserved and retried, never dropped
-    // (Permanent would consume the batch and count it as lost).
+    // from an intermediary (reverse proxy, WAF, mTLS gateway). Transient so a
+    // /stateless batch is retried rather than consumed as Permanent, and not
+    // Unreachable because something did answer.
     if (code == 403 || code == 426)
     {
-        return OutcomeClass::Retryable;
+        return OutcomeClass::ServerError;
     }
 
-    return (code >= 500) ? OutcomeClass::Retryable : OutcomeClass::Permanent;
+    // 5xx other than the 503 handled above (500, and 502/504 only when an
+    // intermediary is in the path).
+    return (code >= 500) ? OutcomeClass::ServerError : OutcomeClass::Permanent;
 }
