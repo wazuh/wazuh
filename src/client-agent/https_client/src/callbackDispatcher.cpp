@@ -229,3 +229,13 @@ void CallbackDispatcher::onBufferLevel(hc_buffer_level_t level)
 
     enqueue([this, level] { m_callbacks.on_buffer_level(level, m_callbacks.user_data); });
 }
+
+void CallbackDispatcher::onProducerPause(bool paused)
+{
+    if (m_callbacks.on_producer_pause == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, paused] { m_callbacks.on_producer_pause(paused, m_callbacks.user_data); });
+}
