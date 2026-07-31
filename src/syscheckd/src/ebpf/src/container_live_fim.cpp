@@ -55,6 +55,22 @@ directory_t* fim_configuration_directory(const char* key, bool notify_not_found,
 
 #include <json.hpp>
 
+// ResolvePidsForContainer() (PID-liveness fallback, see
+// container-fim-syscollector-test-plan-and-results.md finding #3) and
+// WalkContainerPath() (the lazy per-container catch-up baseline below, see
+// startup-race-solutions-and-edge-cases.md's Option C) are real, exported
+// C++ symbols of libcontainer_baseline.so (confirmed via `nm -D` on a built
+// agent) that live under container_baseline_impl/, not container_baseline's
+// public include/. Included directly here (CMakeLists.txt adds that path)
+// rather than hand-declaring them: ResolvePidsForContainer's plain
+// vector<pid_t>/string signature would have been safe to hand-declare (as
+// it originally was), but WalkContainerPath returns FileBaselineRow/
+// WalkResult *by value* -- a hand-duplicated struct layout that silently
+// drifted from the real one would corrupt memory instead of failing to
+// link, so both are pulled from the real headers instead.
+#include "pid_resolver.hpp"
+#include "rootfs_file_walker.hpp"
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -63,20 +79,6 @@ directory_t* fim_configuration_directory(const char* key, bool notify_not_found,
 #include <cstring>
 #include <string>
 #include <vector>
-
-// ResolvePidsForContainer() is a real, exported C++ symbol of
-// libcontainer_baseline.so (confirmed via `nm -D` on a built agent --
-// nothing hides it despite living under container_baseline_impl/, and
-// fimebpf already links container_baseline). Declared here directly instead
-// of pulling in container_baseline_impl/include/pid_resolver.hpp, since that
-// directory isn't part of container_baseline's public include path and this
-// is the one function from it this file needs, as a PID-liveness fallback
-// for the live path (see its use below, and
-// container-fim-syscollector-test-plan-and-results.md finding #3).
-namespace wazuh::container_baseline
-{
-std::vector<pid_t> ResolvePidsForContainer(const std::string& container_id);
-}
 
 namespace {
 
@@ -364,6 +366,201 @@ void delete_container_file_row(const std::string& container_id, const std::strin
     fim_db_container_file_delete(path.c_str(), container_id.c_str());
 }
 
+bool container_has_existing_rows(const std::string& container_id)
+{
+    const std::string filter = "WHERE container_id = '" + container_id + "' LIMIT 1";
+    cJSON* rows = fim_db_get_every_element("file_entry", filter.c_str());
+    const bool has_rows = rows && cJSON_IsArray(rows) && cJSON_GetArraySize(rows) > 0;
+    if (rows)
+    {
+        cJSON_Delete(rows);
+    }
+    return has_rows;
+}
+
+// Shared by catch_up_container_baseline()'s sync-row call and its
+// finalizing fim_db_transaction_deleted_rows() call below (see there for why
+// the latter is required) -- mirrors container_baseline_fim.cpp's own
+// container_txn_callback(), private to that translation unit.
+void catch_up_txn_callback(ReturnTypeCallback result_type, const cJSON* result_json, void* /*user_data*/)
+{
+    if (!result_json)
+    {
+        return;
+    }
+
+    const cJSON* row_data = result_json;
+    int operation;
+
+    switch (result_type)
+    {
+        case INSERTED:
+            operation = 0; // OPERATION_CREATE
+            break;
+        case MODIFIED:
+            row_data = cJSON_GetObjectItem(result_json, "new");
+            if (!row_data)
+            {
+                return;
+            }
+            operation = 1; // OPERATION_MODIFY
+            break;
+        default:
+            return;
+    }
+
+    const cJSON* path_json = cJSON_GetObjectItem(row_data, "path");
+    const cJSON* cid_json = cJSON_GetObjectItem(row_data, "container_id");
+    if (!path_json || !cJSON_IsString(path_json) || !cid_json || !cJSON_IsString(cid_json))
+    {
+        return;
+    }
+
+    const std::string id = std::string(cJSON_GetStringValue(cid_json)) + ":" + cJSON_GetStringValue(path_json);
+    char* row_str = cJSON_PrintUnformatted(row_data);
+    if (!row_str)
+    {
+        return;
+    }
+    fim_persist_baseline_row(id.c_str(), operation, FIM_FILES_SYNC_INDEX, row_str, 1);
+    free(row_str);
+}
+
+// Lazy per-container catch-up baseline (startup-race-solutions-and-edge-cases.md,
+// Option C): when the live path first resolves a container that has zero
+// existing file_entry rows -- because FIM's one-shot startup baseline missed
+// it (a container_instances connector was still warming up, #37533's finding
+// #2) or because the container started after the agent did -- walk its
+// configured container-tagged directories once, the same way a real baseline
+// pass would have, so pre-existing files aren't permanently invisible just
+// because no write ever happens to touch them. Persists rows via
+// fim_persist_baseline_row() directly, with no stateless alert: a file that
+// already existed before this agent noticed the container isn't a "change"
+// worth alerting on, matching the real baseline's own behavior.
+void catch_up_container_baseline(const std::string& container_id, const std::string& container_json, pid_t pid)
+{
+    cb_monitored_path_t* paths = nullptr;
+    size_t path_count = 0;
+    if (fim_collect_container_monitored_paths(&paths, &path_count) != 0 || !paths || path_count == 0U)
+    {
+        if (paths)
+        {
+            fim_free_container_monitored_paths(paths);
+        }
+        return;
+    }
+
+    std::vector<std::string> rows_json;
+    for (size_t i = 0; i < path_count; ++i)
+    {
+        const auto walk = wazuh::container_baseline::WalkContainerPath(
+            pid, paths[i].internal_path, paths[i].recursion_level, paths[i].max_files, paths[i].max_hash_bytes);
+
+        for (const auto& row : walk.rows)
+        {
+            nlohmann::json j;
+            j["container_id"] = container_id;
+            j["container_json"] = container_json;
+            j["path"] = row.path;
+            j["permissions"] = row.permissions;
+            j["uid"] = row.uid;
+            j["gid"] = row.gid;
+            j["size"] = row.size;
+            j["inode"] = row.inode;
+            j["device"] = row.device;
+            j["mtime"] = row.mtime;
+            j["version"] = 1;
+            if (!row.hash_md5.empty())
+            {
+                j["hash_md5"] = row.hash_md5;
+                j["hash_sha1"] = row.hash_sha1;
+                j["hash_sha256"] = row.hash_sha256;
+            }
+
+            // file_entry.checksum is NOT NULL -- matches the single-event row
+            // built further down in fim_handle_container_whodata_event() and
+            // container_baseline_fim.cpp's own dbsync_sink(), both of which
+            // compute this the same way (sha1 of the row dump so far) before
+            // adding it. Missed on an earlier pass of this function; without
+            // it, most rows in a multi-row transaction like this one failed
+            // to persist even though fim_db_transaction_sync_row_json()
+            // itself never reported an error.
+            const std::string row_dump_so_far = j.dump();
+            char row_checksum[41] = {0};
+            fim_compute_row_checksum(row_dump_so_far.c_str(), row_checksum);
+            j["checksum"] = row_checksum;
+
+            rows_json.push_back(j.dump());
+        }
+    }
+    fim_free_container_monitored_paths(paths);
+
+    mdebug2("catch_up_container_baseline: container_id=%s walked %zu file(s) across %zu monitored path(s)",
+            container_id.c_str(), rows_json.size(), path_count);
+
+    if (rows_json.empty())
+    {
+        return;
+    }
+
+    // Scoped, non-alerting persist -- deliberately mirrors
+    // container_baseline_fim.cpp's own sync_container()/container_txn_callback
+    // (private to that translation unit, so not reused directly) rather than
+    // upsert_container_file_row() above, which exists specifically to alert.
+    nlohmann::json txn_json;
+    txn_json["tables"] = nlohmann::json::array({"file_entry"});
+    txn_json["scope"] = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN}, {"value", container_id}};
+    const std::string txn_str = txn_json.dump();
+
+    TXN_HANDLE txn = fim_db_transaction_start(txn_str.c_str(), catch_up_txn_callback, nullptr);
+    if (!txn)
+    {
+        return;
+    }
+
+    for (const auto& row_json : rows_json)
+    {
+        fim_db_transaction_sync_row_json(txn, "file_entry", row_json.c_str());
+    }
+
+    // Required to actually flush/commit the synced rows -- confirmed on real
+    // hardware: without this call, a multi-row transaction like this one
+    // (unlike upsert_container_file_row()'s single-row case, which doesn't
+    // need it) only persisted 1-2 of several hundred synced rows, the rest
+    // silently lost. Safe to call here even though this function is never
+    // used on a container with pre-existing rows (container_has_existing_rows()
+    // gates every call) -- there is nothing already in scope for it to
+    // spuriously mark DELETED.
+    fim_db_transaction_deleted_rows(txn, catch_up_txn_callback, nullptr);
+}
+
+// Runs synchronously, on the caller's own thread, deliberately -- NOT on a
+// detached thread. `fim_handle_container_whodata_event()` (the only caller)
+// itself runs on a single dedicated consumer thread
+// (ebpf_pop_container_events), never concurrently with itself, so there is
+// no *cross-thread* race to worry about here; there would be one if this ran
+// concurrently with the caller's own upsert_container_file_row() for the
+// same triggering file, both opening a scoped file_entry transaction for the
+// same container_id from different threads at once -- confirmed on real
+// hardware to actually happen: an async version of this (detached thread +
+// mutex-guarded de-dup set) walked several hundred files correctly but only
+// 2 ended up persisted, evidently lost to exactly that kind of transaction
+// overlap. Only paid once per container's first sighting (gated by
+// container_has_existing_rows()), so a brief pause on the consumer thread
+// here is an acceptable trade for correctness.
+void maybe_catch_up_container_baseline(const std::string& container_id, const std::string& container_json, pid_t pid)
+{
+    if (container_has_existing_rows(container_id))
+    {
+        return;
+    }
+
+    mdebug2("maybe_catch_up_container_baseline: container_id=%s has no existing rows -- starting catch-up walk",
+            container_id.c_str());
+
+    catch_up_container_baseline(container_id, container_json, pid);
+}
+
 } // namespace
 
 namespace
@@ -486,6 +683,8 @@ extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
 
     const std::string host_path = "/proc/" + std::to_string(resolved_pid) + "/root" + path;
     const std::string container_json = build_container_json(container_id, data);
+
+    maybe_catch_up_container_baseline(container_id, container_json, static_cast<pid_t>(resolved_pid));
 
     struct stat st{};
     if (::lstat(host_path.c_str(), &st) != 0)

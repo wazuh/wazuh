@@ -15,6 +15,17 @@ include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
 # #37532: container-baseline module (host-side FIM baseline for containers).
 include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
+# #37533: the live path's own lazy catch-up baseline (a container first seen
+# with zero existing rows gets its pre-existing files walked once, same as a
+# real baseline pass) needs WalkContainerPath()/ResolvePidsForContainer()
+# directly. Both are real exported symbols of libcontainer_baseline.so
+# (confirmed via `nm -D`), but their headers live under container_baseline's
+# _impl subdirectory, not its public include/ -- added deliberately here
+# rather than hand-declaring FileBaselineRow/WalkResult ourselves, since
+# those structs (unlike ResolvePidsForContainer's plain vector<pid_t>) are
+# returned by value and a hand-duplicated layout that drifts from the real
+# one would silently corrupt memory instead of failing to link.
+include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/container_baseline_impl/include/)
 # #37533: live container FIM needs the container_instances query client
 # directly (container_baseline's own CMakeLists only re-exposes its own
 # public C API header, not this one, via plain include_directories()).

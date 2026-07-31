@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <set>
 #include <thread>
 
 namespace wazuh::container_baseline {
@@ -38,6 +39,31 @@ constexpr int kOperationCreate = 0;
 constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
 std::atomic<bool> g_everSawContainers{false};
+
+// A non-empty list can still be *incomplete*: one connector (e.g. Docker) can
+// be slower to finish its own initial enumeration than another (e.g.
+// Kubernetes) that's already returning results -- confirmed directly on a
+// real deployment (see #37533's startup-race-solutions-and-edge-cases.md):
+// restarting only the FIM daemon while container_instances stayed warm took
+// its baseline from 3 containers to the correct 4, with nothing else
+// changed. Poll a few more times past the first non-empty result and accept
+// once two consecutive polls agree on the exact set of container ids
+// (content, not just count, so one container stopping while another starts
+// between polls isn't mistaken for stability). Bounded and, like
+// g_everSawContainers above, only paid until stability is actually observed
+// once -- a node that's already settled never pays this again.
+constexpr int kQuiescenceRetryAttempts = 5;
+std::atomic<bool> g_containersStable{false};
+
+std::set<std::string> ContainerIdSet(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
+{
+    std::set<std::string> ids;
+    for (const auto& ref : refs)
+    {
+        ids.insert(ref.containerId);
+    }
+    return ids;
+}
 
 /// Parses container_instances' "resolve" reply "data" object (see
 /// wire_protocol.hpp's recordToJson()) into the shared runtime context. Pod/
@@ -160,6 +186,36 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (!refs.empty())
     {
         g_everSawContainers.store(true);
+    }
+
+    if (!refs.empty() && !g_containersStable.load())
+    {
+        auto last_ids = ContainerIdSet(refs);
+        bool stable = false;
+        for (int attempt = 1; attempt <= kQuiescenceRetryAttempts; ++attempt)
+        {
+            std::this_thread::sleep_for(kListRetryDelay);
+            auto next_refs = client.listContainers();
+            auto next_ids = ContainerIdSet(next_refs);
+            if (next_ids == last_ids)
+            {
+                stable = true;
+                break;
+            }
+            refs = std::move(next_refs);
+            last_ids = std::move(next_ids);
+        }
+
+        if (stable)
+        {
+            g_containersStable.store(true);
+        }
+        // else: attempts exhausted without two consecutive polls agreeing --
+        // proceed with whatever `refs` currently holds rather than blocking
+        // this baseline run indefinitely. g_containersStable stays false, so
+        // the *next* call (the recurring syscollector scan, or another
+        // Run*Baseline invocation) tries the quiescence check again rather
+        // than silently accepting a possibly-still-incomplete list forever.
     }
 
     for (const auto& ref : refs)
