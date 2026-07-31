@@ -39,14 +39,24 @@ namespace remoted::control
             cfg.wdbRoundtripDeadlineMs = c.wdb_roundtrip_deadline_ms;
         }
 
+        if (c.wdb_max_queue_size > 0)
+        {
+            cfg.wdbMaxQueueSize = static_cast<uint32_t>(c.wdb_max_queue_size);
+        }
+
         if (c.tm_concurrency > 0)
         {
             cfg.tmConcurrency = c.tm_concurrency;
         }
 
-        if (c.keepalive_batch_cap > 0)
+        if (c.tm_deadline_ms > 0)
         {
-            cfg.keepaliveBatchCap = c.keepalive_batch_cap;
+            cfg.tmDeadlineMs = static_cast<uint32_t>(c.tm_deadline_ms);
+        }
+
+        if (c.tm_max_queue_size > 0)
+        {
+            cfg.tmMaxQueueSize = static_cast<uint32_t>(c.tm_max_queue_size);
         }
 
         if (std::strlen(c.limits_json) > 0)

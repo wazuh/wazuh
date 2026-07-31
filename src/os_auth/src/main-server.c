@@ -1246,15 +1246,13 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
-            if (cur->group) {
-                if (wdb_set_agent_groups_csv(atoi(cur->id),
-                                             cur->group,
-                                             WDB_GROUP_MODE_OVERRIDE,
-                                             w_is_single_node(NULL) ? "synced" : "syncreq",
-                                             &wdb_sock)) {
-                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
-                }
-
+            char *groups_to_set = cur->group ? cur->group : "default";
+            if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                         groups_to_set,
+                                         WDB_GROUP_MODE_OVERRIDE,
+                                         w_is_single_node(NULL) ? "synced" : "syncreq",
+                                         &wdb_sock)) {
+                merror("Unable to set agent centralized group: %s (internal error)", cur->group);
             }
 
             gettime(&t1);
