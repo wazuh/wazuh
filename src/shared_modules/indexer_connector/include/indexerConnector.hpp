@@ -281,14 +281,6 @@ public:
     void flush();
 
     /**
-     * @brief Flush while the caller owns the lock returned by scopeLock().
-     *
-     * This is used when enqueueing and flushing must be one atomic connector
-     * transaction. Calling it without owning scopeLock() is unsupported.
-     */
-    void flushLocked();
-
-    /**
      * @brief Invoke pending callbacks registered via registerNotify().
      *
      * This method executes all callbacks that were registered and are pending

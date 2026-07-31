@@ -1539,10 +1539,6 @@ public:
                                     m_sessionCompletedCV.notify_all();
                                 });
 
-                            // Keep fetch, conditional writes, and the resulting ACK in the same
-                            // connector transaction. OCC conflicts are surfaced to the session
-                            // instead of being silently accepted as external-version conflicts.
-                            m_indexerConnector->flushLocked();
                         }
                         else
                         {

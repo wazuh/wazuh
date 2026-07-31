@@ -1533,25 +1533,6 @@ public:
         }
     }
 
-    void flushLocked()
-    {
-        m_shouldNotifyAfterBulk = false;
-        try
-        {
-            if (!m_bulkData.empty() || !m_deleteByQuery.empty())
-            {
-                processBulk();
-            }
-        }
-        catch (...)
-        {
-            m_notify.clear();
-            publishQueueMetrics();
-            m_shouldNotifyAfterBulk = false;
-            throw;
-        }
-    }
-
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return std::unique_lock<std::mutex> {m_mutex};

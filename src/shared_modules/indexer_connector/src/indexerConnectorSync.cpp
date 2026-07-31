@@ -111,11 +111,6 @@ public:
         m_impl.flush();
     }
 
-    void flushLocked()
-    {
-        m_impl.flushLocked();
-    }
-
     void invokePendingCallbacks()
     {
         m_impl.invokePendingCallbacks();
@@ -253,11 +248,6 @@ void IndexerConnectorSync::bulkIndexWithConcurrencyControl(std::string_view id,
 void IndexerConnectorSync::flush()
 {
     m_impl->flush();
-}
-
-void IndexerConnectorSync::flushLocked()
-{
-    m_impl->flushLocked();
 }
 
 void IndexerConnectorSync::invokePendingCallbacks()
