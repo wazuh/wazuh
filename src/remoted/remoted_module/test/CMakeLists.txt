@@ -41,7 +41,10 @@ target_include_directories(
           # only gets them via ext_restinio, linked PRIVATE (not propagated to this target).
           ${SRC_FOLDER}/external/asio/include
           # statelessEndpoint_test.cpp includes RapidJSON headers directly; same PRIVATE-linkage gap.
-          ${SRC_FOLDER}/external/rapidjson/include)
+          ${SRC_FOLDER}/external/rapidjson/include
+          # control/*.hpp include "json.hpp" (nlohmann); remoted_module gets that dir PRIVATE so
+          # the utest translation units need it added here too.
+          ${SRC_FOLDER}/external/nlohmann)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 set_tests_properties(remoted_module_utest PROPERTIES LABELS remoted_module_utest)
