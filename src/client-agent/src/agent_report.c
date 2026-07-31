@@ -96,6 +96,11 @@ static char *report_query(const char *target, const char *command) {
     snprintf(request, sizeof(request), "%s", command);
 
     if (report_dispatch(target, request, &response) == 0) {
+        /* Same line, and the same reason, as the POSIX connect failure below:
+         * the component produced nothing, so it is left out of the report.
+         * Worth saying on both platforms -- a module missing from /config is
+         * otherwise silent here, with no socket error to point at. */
+        mdebug1("Component '%s' is not answering, leaving it out of the report.", target);
         os_free(response);
         return NULL;
     }
