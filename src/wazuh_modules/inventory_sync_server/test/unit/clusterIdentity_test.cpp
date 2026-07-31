@@ -13,8 +13,12 @@
 #include "inventory_sync_server.h"
 
 #include <gtest/gtest.h>
+#include <json.hpp>
 
+#include <cstdio>
 #include <cstring>
+
+using namespace nlohmann::literals;
 
 namespace
 {
@@ -56,4 +60,61 @@ TEST(ClusterIdentityTest, OneFieldSetDoesNotLeakIntoTheOther)
 
     EXPECT_EQ("only-cluster-set", identity.clusterName);
     EXPECT_EQ("", identity.nodeName);
+}
+
+/**
+ * @brief Invalid UTF-8 in a manager-side name must not reach the JSON serializer.
+ *
+ * The failure this prevents was a total outage of /stats and /config: nlohmann validates UTF-8 at
+ * dump() time, not on assignment, so one stray latin-1 byte in <cluster><name> made the serialization
+ * of EVERY enriched document throw, and the endpoints answered 400 "Body must be a JSON object" --
+ * blaming the agent for a manager configuration problem, with the only trace at debug level.
+ */
+TEST(ClusterIdentityTest, InvalidUtf8IsReplacedAndReported)
+{
+    auto config = zeroedConfig();
+    // 0xFF is never valid UTF-8 anywhere.
+    std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "prod-\xff-cluster");
+    std::snprintf(config.node_name, sizeof(config.node_name), "%s", "node-01");
+
+    const auto identity = invsync::common::buildClusterIdentity(config);
+
+    EXPECT_TRUE(identity.sanitized) << "the caller has to be able to warn about it";
+    EXPECT_EQ("prod-?-cluster", identity.clusterName);
+    EXPECT_EQ("node-01", identity.nodeName);
+
+    // The point of the exercise: what comes out can be serialized.
+    nlohmann::json document = nlohmann::json::object();
+    document["/wazuh/cluster/name"_json_pointer] = identity.clusterName;
+    EXPECT_NO_THROW(document.dump());
+}
+
+/// Well-formed multi-byte UTF-8 must survive untouched -- accented cluster names are legitimate.
+TEST(ClusterIdentityTest, ValidMultiByteUtf8IsPreserved)
+{
+    auto config = zeroedConfig();
+    std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "cl\xc3\xbaster-\xe2\x9c\x93");
+    std::snprintf(config.node_name, sizeof(config.node_name), "%s", "nodo-\xc3\xb1");
+
+    const auto identity = invsync::common::buildClusterIdentity(config);
+
+    EXPECT_FALSE(identity.sanitized);
+    EXPECT_EQ("cl\xc3\xbaster-\xe2\x9c\x93", identity.clusterName);
+    EXPECT_EQ("nodo-\xc3\xb1", identity.nodeName);
+}
+
+/// A truncated multi-byte sequence at the very end is the other way this arises: a name that was cut
+/// mid-character by the fixed-size buffer it travels in.
+TEST(ClusterIdentityTest, ATruncatedSequenceAtTheEndIsReplaced)
+{
+    auto config = zeroedConfig();
+    std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "prod-\xc3");
+
+    const auto identity = invsync::common::buildClusterIdentity(config);
+
+    EXPECT_TRUE(identity.sanitized);
+    EXPECT_EQ("prod-?", identity.clusterName);
+    nlohmann::json document = nlohmann::json::object();
+    document["/wazuh/cluster/name"_json_pointer] = identity.clusterName;
+    EXPECT_NO_THROW(document.dump());
 }

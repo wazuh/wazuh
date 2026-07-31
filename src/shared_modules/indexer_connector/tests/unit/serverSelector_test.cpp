@@ -219,7 +219,26 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
     phase = 2;
     callCount = 0;
 
-    while (callCount < 2)
+    /*
+     * A full round PLUS ONE call, not the two this used to wait for.
+     *
+     * Two reasons, both consequences of TMonitoring's readers now being wait-free -- isAvailable() no
+     * longer queues behind the health-check round, so this thread can observe the middle of one:
+     *
+     *  - a full round is needed at all, because two calls out of three left the third server still
+     *    holding its phase-1 answer. "All servers are down" used to be true here only because the old
+     *    shared mutex kept this thread asleep until the round had finished.
+     *  - the extra call is needed because the mock bumps `callCount` BEFORE healthCheck() publishes
+     *    the result, so the counter runs one step ahead of the observable state. A round's Nth check
+     *    can only start once the (N-1)th has published, so `size() + 1` calls prove all `size()`
+     *    publishes landed.
+     *
+     * Any `size()` consecutive calls cover every server: the round order is fixed, and `phase` is
+     * stored before the counter is reset, so nothing counted here ran under the old phase.
+     */
+    const auto roundPublished = static_cast<int>(servers.size()) + 1;
+
+    while (callCount < roundPublished)
     {
         std::this_thread::yield();
     }
@@ -229,7 +248,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 
     phase = 3;
     callCount = 0;
-    while (callCount < 2)
+    while (callCount < roundPublished)
     {
         std::this_thread::yield();
     }
