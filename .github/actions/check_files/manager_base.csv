@@ -87,6 +87,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/lib/libgcc_s.so.1,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libindexer_connector.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libinventory_sync.so,root,wazuh-manager,750,file,-rwxr-x---,,
+/var/wazuh-manager/lib/libinventory_sync_server.so,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libjemalloc.so.2,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libpython3.12.so.1.0,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/lib/libremoted_module.so,root,wazuh-manager,750,file,-rwxr-x---,,

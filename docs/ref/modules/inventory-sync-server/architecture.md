@@ -60,9 +60,26 @@ so **the indexer is free to start after modulesd**. A failed attempt is retried 
 heartbeat, with an escalating report: an ERROR naming the failing stage on the first attempt, debug for
 the next hour, then one WARN per hour.
 
-A socket path that could never be bound is the exception: it is validated up front and reported as
-fatal, because nothing an operator does at runtime fixes it and running without ingress while looking
-healthy is worse than not running.
+Conditions the heartbeat can never fix are the exception, reported as fatal: a socket path that could
+never be bound, an exception before the worker thread was launched, and a `libinventory_sync_server.so`
+that cannot be loaded or does not export its entry points. Nothing an operator does at runtime fixes
+any of them, and running without ingress while looking healthy is worse than not running.
+
+## Observability
+
+Every per-request failure condition keeps one throttled log line (90 s window; the first occurrence
+always emits, so transitions are visible immediately): handler throws (answered `500`), limit
+rejections (`411`/`413`/`414`/`431`), unknown routes (`404`/`405` — the trace that catches a route
+mismatch with remoted), malformed HTTP, budget and connection-cap rejections, accept and
+session-bring-up failures, response write failures, and per-phase timeouts.
+
+The worker's heartbeat additionally polls the indexer connector and logs availability *transitions*
+(WARN when it goes away, INFO when it comes back), and a session whose peer closes while its response
+is still deferred is detected and released immediately instead of waiting out the response timeout.
+
+Notes on how these conditions surface on the remoted side — including why a rejection can appear
+there as a transport error, and what a normal shutdown looks like in both logs — live in the module
+README's "Operational notes" section.
 
 ## Two-phase shutdown
 

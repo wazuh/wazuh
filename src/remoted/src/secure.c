@@ -304,11 +304,6 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
-    // max_inflight_bytes, max_parallel_connections and max_deferred_requests are NOT set here:
-    // remoted_module_https_config() above reads them from the `remoted.*` internal options. They
-    // used to be hardcoded at this point, which would now silently overwrite the configured values.
-    // rm_config->keystore_refresh_interval governs how often the C++ Keystore checks
-    // client.keys for changes (hot-reload)
     rm_config->keystore_refresh_interval = keyupdate_interval;
     rm_config->worker_node = logr->worker_node;
     rm_config->verification_mode = logr->https.verification_mode;

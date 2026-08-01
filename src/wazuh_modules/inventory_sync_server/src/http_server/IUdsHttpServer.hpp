@@ -169,17 +169,10 @@ namespace invsync::http
         std::uint32_t socketMode {0660};
 
         /*
-         * There is deliberately no socketGroup here.
-         *
-         * There used to be one, together with a getgrnam_r/chown implementation -- but the builder
-         * cleared the field unconditionally and the transport only acted on it when non-empty, so
-         * those 26 lines could not run in production or in any test. It was aspirational config for a
-         * privilege change that has not happened: modulesd runs as root with its effective group set
-         * to the wazuh group, so the socket already belongs to that group and 0660 suffices.
-         *
-         * If the privilege model does change, note that reinstating this needs more than the field:
-         * internal options can only carry ints (there is no string reader), so the group would have to
-         * arrive some other way.
+         * There is deliberately no socketGroup: modulesd runs with its effective group set to the
+         * wazuh group, so the socket already belongs to it and 0660 suffices. Reinstating one would
+         * need more than the field -- internal options can only carry ints, so the group would have
+         * to arrive some other way.
          */
 
         std::size_t ioThreads {0}; ///< 0 -> cpp_get_nproc(). Reactor threads; they never block.
@@ -190,7 +183,9 @@ namespace invsync::http
         std::size_t maxUrlSize {2048};
         std::size_t maxHeaderNameSize {256};
         std::size_t maxHeaderValueSize {8192};
-        std::size_t maxHeaderCount {64};
+        /// Fixed at 32 everywhere (here, RequestParser::Limits and the builder): it is a term of
+        /// the per-request memory overhead the in-flight byte budget charges for.
+        std::size_t maxHeaderCount {32};
 
         std::size_t headerTimeoutSec {10}; ///< Accept -> full request head received.
         std::size_t bodyTimeoutSec {30};   ///< Head received -> full body received.

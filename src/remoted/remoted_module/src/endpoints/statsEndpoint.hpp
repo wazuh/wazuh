@@ -24,17 +24,6 @@ namespace remoted::endpoints::stats
     /**
      * @brief Policy for the `POST /stats` endpoint: forward the agent's JSON document to modulesd's
      *        inventory sync server and hand its answer back.
-     *
-     * DUMMY. The whole pipeline is real -- authentication, admission control, deferred forwarding,
-     * the UDS round trip and the response mapping -- but neither side interprets the document yet.
-     * modulesd only checks that it is a JSON object and stamps `wazuh.agent.id` and `@timestamp`
-     * onto it. This exists so the plumbing and the file layout are settled before the real
-     * statistics payload is defined.
-     *
-     * @note `/stats` and `/config` are deliberate near-duplicates rather than one shared unit. They
-     * are the same shape today only because both are dummies; their real payloads, validation and
-     * downstream semantics will diverge, and separating them now means that divergence is a change
-     * to one file instead of a refactor of a shared one. Keep them in sync until they must not be.
      */
 
     /// @brief The inventory sync server target reached over @p socketPath, tagged with @p agentId.
