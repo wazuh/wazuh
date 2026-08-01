@@ -22,12 +22,10 @@ extern "C" {
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.
-/// @param db_path Optional full path to the SQLite database file to be used (nullptr for in-memory only).
+/// @param db_path Optional full path to the SQLite database file (nullptr for in-memory only).
 /// @param logger Callback function used for logging messages.
-/// @param timeout Default timeout for synchronization operations in seconds.
-/// @param retries Default number of retries for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///

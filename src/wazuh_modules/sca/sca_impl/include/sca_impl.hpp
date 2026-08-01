@@ -100,7 +100,7 @@ class SecurityConfigurationAssessment
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
         /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, std::chrono::seconds timeout, unsigned int retries,
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
                               std::chrono::seconds integrityInterval);
 
         /// @brief Synchronize the module

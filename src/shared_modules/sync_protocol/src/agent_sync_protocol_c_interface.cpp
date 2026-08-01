@@ -11,7 +11,7 @@
 // LCOV_EXCL_START
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
         {
@@ -25,8 +25,7 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper),
-                                                                                           std::chrono::seconds(timeout), retries));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper)));
         }
         catch (const std::exception& ex)
         {
