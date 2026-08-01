@@ -14,13 +14,9 @@ struct AgentSyncProtocolWrapper
     /// @brief Constructs the wrapper and initializes the AgentSyncProtocol instance.
     ///
     /// @param module Name of the module associated with this instance.
-    /// @param db_path Optional path to the SQLite database file for this protocol instance. If not provided, only in-memory synchronization is available.
+    /// @param db_path Optional path to the SQLite database file. If not provided, only in-memory synchronization is available.
     /// @param logger Logger function
-    /// @param timeout Default timeout for synchronization operations.
-    /// @param retries Default number of retries for synchronization operations.
-    AgentSyncProtocolWrapper(const std::string& module, std::optional<std::string> db_path, LoggerFunc logger,
-                             std::chrono::seconds timeout,
-                             unsigned int retries)
-        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, std::move(logger), timeout, retries)) {}
+    AgentSyncProtocolWrapper(const std::string& module, std::optional<std::string> db_path, LoggerFunc logger)
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, std::move(logger))) {}
 };
 

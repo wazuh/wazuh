@@ -35,8 +35,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries Default number of retries for synchronization operations.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
         /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
-        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger, std::chrono::seconds timeout,
-                                   unsigned int retries, std::shared_ptr<IPersistentQueue> queue = nullptr,
+        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
+                                   std::shared_ptr<IPersistentQueue> queue = nullptr,
                                    std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
@@ -116,11 +116,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief In-memory vector to store PersistedData for recovery scenarios
         std::vector<PersistedData> m_inMemoryData;
 
-        /// @brief Default timeout for synchronization operations
-        std::chrono::seconds m_timeout;
-
-        /// @brief Default number of retries for synchronization operations
-        unsigned int m_retries;
+        /// @brief Retries for the local sync-socket hand-off.
+        ///
+        /// How many times runSession() re-submits to the HTTPS transport's intake
+        /// socket when that socket is transiently unavailable (e.g. agentd restart).
+        /// Fixed; the HTTP-level retry count lives in the transport layer.
+        static constexpr unsigned int SYNC_HANDOFF_RETRIES = 3;
 
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
@@ -188,7 +189,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         SyncModuleResult synchronizeDeltaByBlocks(Option option);
 
         /// @brief Applies HTTP-result outcomes received from https_client callback routing.
-        bool applyHttpResultCode(int resultCode);
+        /// @param resultCode HTTP status code (0 = success).
+        /// @param expectedSession Session that this result belongs to; 0 skips validation
+        ///        (legacy path). The check is performed under m_syncState.mtx so it is
+        ///        race-free with a concurrent session start.
+        bool applyHttpResultCode(int resultCode, uint64_t expectedSession = 0);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry
@@ -258,6 +263,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief True when the in-flight session is an integrity check; non-200 means checksum mismatch.
             bool expectingChecksumResult = false;
 
+            /// @brief Numeric session ID of the current in-flight session.
+            ///
+            /// Set by runSession() before the first send attempt and cleared on reset().
+            /// applyHttpResultCode() validates incoming HCRESULT payloads against this
+            /// value so that a stale response from a previous (timed-out) session cannot
+            /// satisfy a newer one.
+            uint64_t currentSession = 0;
+
             /// @brief Destructor ensures all waiting threads are woken up before destruction.
             ///
             /// This prevents deadlocks when the condition variable is destroyed while threads are still waiting.
@@ -279,6 +292,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
                 expectingChecksumResult = false;
+                currentSession = 0;
             }
         };
 

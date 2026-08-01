@@ -171,14 +171,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
     // Initialize sync protocols
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     // Test routing for VD tables (system, packages, hotfixes)
@@ -255,14 +249,8 @@ TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
     // Initialize sync protocols
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     // Test routing for non-VD tables
@@ -397,14 +385,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
     // Initialize sync protocols
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     // Test parseResponseBuffer with sample data
@@ -514,14 +496,8 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
     // Initialize sync protocols
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     // Test parseResponseBufferVD with sample data

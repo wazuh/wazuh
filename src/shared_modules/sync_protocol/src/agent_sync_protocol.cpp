@@ -58,14 +58,11 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
 }
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
-                                     std::chrono::seconds timeout,
-                                     unsigned int retries, std::shared_ptr<IPersistentQueue> queue,
+                                     std::shared_ptr<IPersistentQueue> queue,
                                      std::shared_ptr<ISyncSessionTransport> syncTransport)
     : m_moduleName(moduleName),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
-      m_logger(std::move(logger)),
-      m_timeout(timeout),
-      m_retries(retries)
+      m_logger(std::move(logger))
 {
     if (!m_logger)
     {
@@ -196,14 +193,67 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         return synchronizeDeltaByBlocks(option);
     }
 
-    // For FULL mode, use in-memory data for recovery scenarios
-    std::vector<PersistedData> dataToSync = m_inMemoryData;
+    // For FULL mode, use in-memory data for recovery scenarios.
+    // Non-VD flows are byte-capped so the HTTP transport receives a bounded payload.
+    // VD flows (VDFIRST / VDSYNC) are deliberately uncapped.
+    std::vector<PersistedData> dataToSync;
+    {
+        const bool uncapped = isUncappedSyncOption(option);
+        const size_t fetchMaxBytes =
+            uncapped
+            ? 0
+            : (FULLSESSION_MAX_BYTES > FULLSESSION_PREFILTER_GRACE_BYTES
+               ? FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES
+               : FULLSESSION_MAX_BYTES);
+
+        if (uncapped || fetchMaxBytes == 0)
+        {
+            dataToSync = m_inMemoryData;
+        }
+        else
+        {
+            size_t estimatedBytes = 0;
+
+            for (const auto& item : m_inMemoryData)
+            {
+                const size_t est = item.id.size() + item.index.size() + item.data.size() + 512U;
+
+                if (!dataToSync.empty() && estimatedBytes + est > fetchMaxBytes)
+                {
+                    break;
+                }
+
+                if (dataToSync.empty() && estimatedBytes + est > fetchMaxBytes)
+                {
+                    m_logger(LOG_WARNING,
+                             "FULL mode: single item (~" + std::to_string(est) +
+                             " B) exceeds byte cap (" + std::to_string(fetchMaxBytes) +
+                             " B); sending it alone.");
+                }
+
+                estimatedBytes += est;
+                dataToSync.push_back(item);
+            }
+
+            if (dataToSync.size() < m_inMemoryData.size())
+            {
+                m_logger(LOG_WARNING,
+                         "FULL mode: payload truncated from " +
+                         std::to_string(m_inMemoryData.size()) + " to " +
+                         std::to_string(dataToSync.size()) +
+                         " items to stay within byte cap.");
+            }
+        }
+    }
 
     if (dataToSync.empty())
     {
         m_logger(LOG_DEBUG, "No items to synchronize in FULL mode");
         return {true, {}};
     }
+
+    // Remember how many items are included so we can trim m_inMemoryData on success.
+    const size_t sentCount = dataToSync.size();
 
     for (size_t i = 0; i < dataToSync.size(); ++i)
     {
@@ -243,7 +293,18 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (success)
     {
         m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
-        m_inMemoryData.clear();
+
+        // Erase only the items that were part of this session; any unsent tail
+        // (due to byte-cap truncation) stays in m_inMemoryData for the next cycle.
+        if (sentCount >= m_inMemoryData.size())
+        {
+            m_inMemoryData.clear();
+        }
+        else
+        {
+            m_inMemoryData.erase(m_inMemoryData.begin(),
+                                 m_inMemoryData.begin() + static_cast<ptrdiff_t>(sentCount));
+        }
     }
 
     std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
@@ -367,6 +428,15 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         catch (const std::exception& e)
         {
             m_logger(LOG_ERROR, std::string("Failed to finalize DELTA sync block: ") + e.what());
+
+            // The upload succeeded but the post-sync DB update failed; rows remain in SYNCING.
+            // Reset them back to PENDING so they are retried on the next cycle.
+            try
+            {
+                m_persistentQueue->resetSyncingItems();
+            }
+            catch (...) {}
+
             success = false;
             break;
         }
@@ -880,6 +950,9 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
         m_syncState.responseReceived = false;
         m_syncState.syncFailed = false;
         m_syncState.expectingChecksumResult = !content.checksums.empty();
+        // Record the session ID so applyHttpResultCode() can reject stale HCRESULT
+        // callbacks that arrive after a timeout and a subsequent session start.
+        m_syncState.currentSession = session;
     }
 
     const auto message = buildFullSessionMessage(content);
@@ -893,15 +966,13 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
              "Sending session " + std::to_string(session) + " as one message (" +
              std::to_string(message.size()) + " bytes).");
 
-    // A refused hand-off usually means the intake is briefly down (an agentd
-    // restart); pausing before the resend keeps the retry budget from being
-    // burnt in one connect-refusal burst. The wait sits on the state cv so a
-    // stop cuts it short.
+    // A refused hand-off usually means the intake socket is briefly down (agentd
+    // restart); a short backoff and a small number of retries avoid burning the
+    // budget in a tight connect-refusal burst. The wait uses the state cv so a
+    // stop() call cuts it short.
     constexpr auto RESEND_BACKOFF = std::chrono::seconds(1);
 
-    // The whole session is retried under the same id; the manager dedups on it,
-    // so a resend after a lost answer cannot double-apply anything.
-    for (unsigned int attempt = 0; attempt <= m_retries; ++attempt)
+    for (unsigned int attempt = 0; attempt <= SYNC_HANDOFF_RETRIES; ++attempt)
     {
         if (shouldStop())
         {
@@ -920,40 +991,47 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
             continue;
         }
 
+        // Session successfully handed off to the transport. The HTTPS client now
+        // owns the send and will fire on_sync_response for EVERY outcome (200,
+        // error, timeout, abort). The module therefore waits indefinitely here —
+        // no module-level response timeout exists. Only shouldStop() (agent
+        // shutdown) interrupts the wait early; items are reset to PENDING and
+        // the next periodic cycle retries them.
         std::unique_lock<std::mutex> lock(m_syncState.mtx);
-
-        if (m_syncState.cv.wait_for(lock, m_timeout, [&]
-    {
-        return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
-        }))
+#ifdef WAZUH_UNIT_TESTING
+        const bool conditionMet = m_syncState.cv.wait_for(lock, std::chrono::seconds(2), [&]
         {
-            if (m_syncState.syncFailed)
-            {
-                m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
-                return false;
-            }
+            return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
+        });
 
-            if (m_syncState.responseReceived)
-            {
-                return true;
-            }
-
-            return false; // Woken by the stop.
+        if (!conditionMet)
+        {
+            m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
         }
 
-        m_logger(LOG_DEBUG, "Timed out waiting for the answer to session " +
-                 std::to_string(session) + ". Retrying the whole session.");
+#else
+        m_syncState.cv.wait(lock, [&]
+        {
+            return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
+        });
+#endif
+
+        if (m_syncState.syncFailed)
+        {
+            m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
+            return false;
+        }
+
+        if (m_syncState.responseReceived)
+        {
+            return true;
+        }
+
+        return false; // Woken by stop().
     }
 
-    if (!shouldStop())
-    {
-        std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
-        // Nothing came back for the session: the manager is most likely not ready
-        // for this agent yet. The module retries on its next cycle.
-        m_syncState.lastSyncManagerNotReady = true;
-    }
-
+    // All hand-off attempts failed: the local sync intake is unavailable.
     return false;
 }
 
@@ -970,10 +1048,22 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
         if (length >= HTTP_RESULT_PREFIX.size() &&
                 std::memcmp(data, HTTP_RESULT_PREFIX.data(), HTTP_RESULT_PREFIX.size()) == 0)
         {
-            const std::string resultCodeStr(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
-                                            length - HTTP_RESULT_PREFIX.size());
-            const int resultCode = std::stoi(resultCodeStr);
-            return applyHttpResultCode(resultCode);
+            // HCRESULT format: "HCRESULT:<session>:<code>" (new, session-correlated)
+            //               or "HCRESULT:<code>"           (legacy, no session check)
+            const std::string remainder(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
+                                        length - HTTP_RESULT_PREFIX.size());
+            const auto colon = remainder.find(':');
+
+            if (colon != std::string::npos)
+            {
+                const uint64_t receivedSession = std::stoull(remainder.substr(0, colon));
+                const int resultCode = std::stoi(remainder.substr(colon + 1));
+                return applyHttpResultCode(resultCode, receivedSession);
+            }
+
+            // Legacy format (no session number) — skip correlation check.
+            const int resultCode = std::stoi(remainder);
+            return applyHttpResultCode(resultCode, 0);
         }
 
         flatbuffers::Verifier verifier(data, length);
@@ -1054,13 +1144,27 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 }
 
-bool AgentSyncProtocol::applyHttpResultCode(int resultCode)
+bool AgentSyncProtocol::applyHttpResultCode(int resultCode, uint64_t expectedSession)
 {
     std::lock_guard<std::mutex> lock(m_syncState.mtx);
 
     if (m_syncState.phase != SyncPhase::WaitingResponse)
     {
         m_logger(LOG_DEBUG, "Discarded response code: protocol is not waiting for a sync answer.");
+        return false;
+    }
+
+    // Transport-level session correlation: reject responses that belong to a
+    // previous (timed-out) session.  A zero expectedSession means the caller
+    // comes from the legacy HCRESULT path (no session number) and skips this check.
+    if (expectedSession != 0 && m_syncState.currentSession != 0 &&
+            expectedSession != m_syncState.currentSession)
+    {
+        m_logger(LOG_DEBUG,
+                 "Discarded stale HCRESULT: received session " +
+                 std::to_string(expectedSession) +
+                 " does not match current session " +
+                 std::to_string(m_syncState.currentSession) + ".");
         return false;
     }
 

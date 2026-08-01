@@ -341,9 +341,6 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
     // metadata/groups synchronization was disabled without any error.
     try
     {
-        g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_response_timeout,
-                                             agent_info_config->sync.sync_retries);
-
         if (g_module_name)
         {
             if (g_log_callback)

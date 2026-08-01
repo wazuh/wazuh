@@ -144,15 +144,15 @@ void syscollector_release_resources()
     Syscollector::instance().releaseResources();
 }
 
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, unsigned int timeout,
-                            unsigned int retries, uint32_t integrityInterval)
+void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD,
+                            uint32_t integrityInterval)
 {
     if (moduleName && syncDbPath && syncDbPathVD)
     {
         try
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), std::chrono::seconds(timeout),
-                                                      retries, integrityInterval);
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD),
+                                                      integrityInterval);
         }
         catch (const std::exception& ex)
         {

@@ -60,7 +60,6 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 // SCA sync protocol variables
 unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sca_sync_response_timeout = 60;         // Database synchronization response timeout (default value)
 uint32_t sca_integrity_interval = 86400;         // Integrity check interval in seconds (default value, 0 = disabled)
 
 // Forward declarations
@@ -455,7 +454,7 @@ static void wm_handle_sca_disable_and_notify_data_clean()
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr)
         {
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_integrity_interval);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_integrity_interval);
         }
 
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
@@ -565,13 +564,12 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_enable_synchronization = data->sync.enable_synchronization;
         if (sca_enable_synchronization) {
             sca_sync_interval = data->sync.sync_interval;
-            sca_sync_response_timeout = data->sync.sync_response_timeout;
             sca_integrity_interval = data->sync.integrity_interval;
         }
 
         // Set the sync protocol parameters
         if (sca_set_sync_parameters_ptr) {
-            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_integrity_interval);
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_integrity_interval);
         }
 
         // Set the yaml to cjson function
@@ -813,8 +811,6 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON_AddNumberToObject(synchronization, "sync_end_delay", data->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", data->sync.sync_max_eps);
-    cJSON_AddNumberToObject(synchronization, "response_timeout", data->sync.sync_response_timeout);
-
     cJSON_AddItemToObject(wm_wd, "synchronization", synchronization);
 
     cJSON_AddItemToObject(root,"sca",wm_wd);

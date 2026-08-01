@@ -475,7 +475,7 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
 
 // Sync protocol methods implementation
 void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
-                                                       std::chrono::seconds timeout, unsigned int retries, std::chrono::seconds integrityInterval)
+                                                       std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -488,7 +488,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
             // Publish under the exclusive lock: wcom queries can arrive while the module
             // is still starting up, and they read the pointer under the shared lock.
             std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
-            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, logger_func, timeout, retries);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
