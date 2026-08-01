@@ -273,14 +273,7 @@ private:
             "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath));
 
         // /stats and /config: same authenticated pipeline as /stateless, but forwarded to modulesd's
-        // inventory sync server instead of the engine. Both are DUMMIES -- the transport, auth,
-        // admission control and response mapping are real, but neither side interprets the document
-        // yet: modulesd only checks that it is a JSON object and stamps wazuh.agent.id and @timestamp
-        // onto it. They are registered (and implemented) separately on purpose, because their real
-        // payloads will diverge.
-        //
-        // Each handler forwards the authenticated agent id as an X-Wazuh-Agent-Id header: unlike a
-        // /stateless batch, these documents do not carry it, and modulesd is what writes it in.
+        // inventory sync server instead of the engine.
         m_authGateway->addAuthenticatedRoute(
             *m_httpServer,
             remoted::http::Method::Post,

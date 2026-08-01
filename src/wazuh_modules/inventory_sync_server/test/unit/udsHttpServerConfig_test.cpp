@@ -11,6 +11,7 @@
 
 #include "http_server/udsHttpServerConfig.hpp"
 
+#include "http_server/requestParser.hpp"
 #include "proc.hpp"
 
 #include <gtest/gtest.h>
@@ -19,6 +20,8 @@
 #include <limits>
 
 using invsync::http::buildServerConfig;
+using invsync::http::RequestParser;
+using invsync::http::UdsHttpServerConfig;
 
 namespace
 {
@@ -29,6 +32,22 @@ namespace
         return inventory_sync_server_config_t {};
     }
 } // namespace
+
+// IUdsHttpServer.hpp documents that "the in-struct values ARE the module defaults"; a value that
+// drifts from the builder's (as maxHeaderCount once did: 64 vs 32) doubles the per-request memory
+// charge of any default-constructed config.
+TEST(UdsHttpServerConfigTest, InStructDefaultsAgreeWithTheBuilderAndTheParser)
+{
+    const UdsHttpServerConfig inStruct {};
+    const auto built = buildServerConfig(zeroedConfig());
+
+    EXPECT_EQ(inStruct.maxBodySize, built.maxBodySize);
+    EXPECT_EQ(inStruct.maxUrlSize, built.maxUrlSize);
+    EXPECT_EQ(inStruct.maxHeaderNameSize, built.maxHeaderNameSize);
+    EXPECT_EQ(inStruct.maxHeaderValueSize, built.maxHeaderValueSize);
+    EXPECT_EQ(inStruct.maxHeaderCount, built.maxHeaderCount);
+    EXPECT_EQ(inStruct.maxHeaderCount, RequestParser::Limits {}.maxHeaderCount);
+}
 
 TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 {

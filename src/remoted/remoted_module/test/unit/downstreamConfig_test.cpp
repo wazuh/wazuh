@@ -43,7 +43,9 @@ TEST(DownstreamConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.responseTimeoutMs, 5000);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.postProcessThreads, static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxResponseBodySize, 10U * 1024U * 1024U);
+    // Strictly larger than the 10 MiB agent-request cap: /stats and /config echo the document back
+    // enriched, so a cap equal to the request cap would 503 a near-cap document.
+    EXPECT_EQ(config.maxResponseBodySize, 11U * 1024U * 1024U);
 }
 
 TEST(DownstreamConfigTest, StructValuesWinAndTimeoutsConvertSecondsToMs)

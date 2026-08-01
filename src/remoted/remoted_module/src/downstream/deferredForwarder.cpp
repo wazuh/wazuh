@@ -103,6 +103,10 @@ namespace remoted::downstream
         /// otherwise write one identical line per event. Throttled, with the count in the message.
         remoted::common::LogThrottle slotExhaustedThrottle;
         std::array<remoted::common::LogThrottle, kDownstreamErrorCount> downstreamErrorThrottles;
+        /// 404/405 from a downstream service: a route contract mismatch between remoted and that
+        /// service. The endpoints collapse it into the same 503 the agent retries forever, so this
+        /// line is the only trace of it anywhere.
+        remoted::common::LogThrottle routeMismatchThrottle;
     };
 
     DeferredForwarder::DeferredForwarder(std::shared_ptr<IDownstreamClient> client,
@@ -172,13 +176,14 @@ namespace remoted::downstream
 
         auto* postPool = &m_impl->postPool;
         auto* errorThrottles = &m_impl->downstreamErrorThrottles;
+        auto* routeMismatchThrottle = &m_impl->routeMismatchThrottle;
         // A string LITERAL, so capturing it below stays allocation-free (see DownstreamTarget).
         const char* const serviceName = target.serviceName;
         m_impl->client->sendAsync(
             std::move(downstreamRequest),
             /*bodyKeepAlive=*/std::move(req),
-            [responder, slotPtr, postProcess, postPool, errorThrottles, serviceName](DownstreamError error,
-                                                                                     DownstreamResponse response)
+            [responder, slotPtr, postProcess, postPool, errorThrottles, routeMismatchThrottle, serviceName](
+                DownstreamError error, DownstreamResponse response)
             {
                 // Diagnose the failure HERE, where the raw DownstreamError is still available: the
                 // endpoint's PostProcessor collapses all of them into one 503, so by the time the
@@ -218,6 +223,23 @@ namespace remoted::downstream
                     {
                         LOGFN_WARN(logFn(),
                                    "The %s answered HTTP %d for %llu request(s) in the last %d s; answering 503.",
+                                   serviceName,
+                                   response.status,
+                                   static_cast<unsigned long long>(failed.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                }
+                else if (response.status == 404 || response.status == 405)
+                {
+                    // A route contract mismatch between remoted and the service: the agent will get
+                    // a 503 and retry something that can never succeed, so without this line the
+                    // mismatch is invisible in both daemons.
+                    if (const auto failed = routeMismatchThrottle->record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "The %s answered HTTP %d for %llu request(s) in the last %d s: the request path "
+                                   "does not match a route on that service. The two sides are running mismatched "
+                                   "versions or configurations; answering 503.",
                                    serviceName,
                                    response.status,
                                    static_cast<unsigned long long>(failed.total),

@@ -33,21 +33,18 @@ namespace remoted::downstream
         /// Default UDS for the engine event ingress; the facade builds the /stateless target from it.
         std::string eventsSocketPath {"queue/sockets/queue-http.sock"};
         /**
-         * @brief Default UDS for modulesd's inventory sync server; /stat and /config target it.
-         *
-         * Must stay in step with that module's own default (see
-         * wazuh_modules/inventory_sync_server/src/http_server/udsHttpServerConfig.hpp). Both sides
-         * hardcode the literal rather than sharing a constant, because the two live in different
-         * binaries with no common header -- downstreamConfig_test.cpp pins this value so a drift
-         * fails a test instead of silently producing connect failures at runtime.
+         * @brief Default UDS for modulesd's inventory sync server; /stats and /config target it.
          */
         std::string inventorySyncSocketPath {"queue/sockets/inventory-sync.sock"};
-        int connectTimeoutMs {2000};                           ///< Connect timeout per request.
-        int writeTimeoutMs {5000};                             ///< Write (request body send) timeout per request.
-        int responseTimeoutMs {5000};                          ///< Response (post-send) timeout per request.
-        std::size_t ioThreads {1};                             ///< Threads running the client's io_context.
-        std::size_t postProcessThreads {4};                    ///< Threads running the per-endpoint post-processors.
-        std::size_t maxResponseBodySize {10U * 1024U * 1024U}; ///< Cap on a downstream response body.
+        int connectTimeoutMs {2000};        ///< Connect timeout per request.
+        int writeTimeoutMs {5000};          ///< Write (request body send) timeout per request.
+        int responseTimeoutMs {5000};       ///< Response (post-send) timeout per request.
+        std::size_t ioThreads {1};          ///< Threads running the client's io_context.
+        std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
+        /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:
+        /// /stats and /config echo the agent's document back ENRICHED, so a cap equal to the
+        /// request cap would turn a near-cap document into ResponseTooLarge -> 503.
+        std::size_t maxResponseBodySize {11U * 1024U * 1024U};
     };
 
     /**

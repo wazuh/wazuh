@@ -18,7 +18,9 @@ namespace
     constexpr int DEFAULT_CONNECT_TIMEOUT_SEC {2};
     constexpr int DEFAULT_WRITE_TIMEOUT_SEC {5};
     constexpr int DEFAULT_RESPONSE_TIMEOUT_SEC {5};
-    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {10U * 1024U * 1024U};
+    // 11 MiB, not 10: strictly larger than the agent-request cap because /stats and /config echo
+    // the agent's document back enriched (see DownstreamConfig::maxResponseBodySize).
+    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {11U * 1024U * 1024U};
 
     // A positive caller value wins; otherwise the built-in default (seconds).
     int resolveSeconds(const int configValue, const int defaultValue)

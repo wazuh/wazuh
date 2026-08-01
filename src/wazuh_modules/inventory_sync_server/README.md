@@ -423,7 +423,7 @@ indexed or stored. The pieces worth knowing:
 
 ## Tests
 
-`inventory_sync_server_utest` — 196 tests.
+`inventory_sync_server_utest` — 201 tests.
 
 | File | What it covers |
 |---|---|
@@ -435,6 +435,7 @@ indexed or stored. The pieces worth knowing:
 | `inFlightBudget_test.cpp`, `logThrottle_test.cpp` | Accounting and rate-limiting, including under concurrency. |
 | `udsHttpServer_test.cpp` | The live server over a real UDS. Highlights: `DeferredReplyFromAnotherThreadArrivesAfterTheHandlerReturned` (the reason this design exists) and **`ThreeHundredConcurrentDeferralsOnTwoIoThreads`** — the requirement stated so it can fail, and the test a blocking thread-per-request server cannot pass. Plus socket mode under a hostile umask, stale-socket recovery, the non-socket refusal, budget/connection 503s, the 500-on-throw barrier *and that the reactor still serves afterwards*, and both never-answered backstops. |
 | `udsShutdown_test.cpp` | The shutdown protocol: S1, S2, S3 (including after the server is destroyed), the bounded drain, force-close, concurrent `send()`/`stop()` from 64 threads, and the whole protocol under 200 live deferrals. |
+| `serverDiagnostics_test.cpp` | The transport's observability contract: a throwing handler answers 500 and its ERROR is throttled across requests; limit rejections (413) and unknown routes (404) each leave a throttled trace; a peer that closes during a deferral frees its connection slot promptly instead of pinning it until the response timeout. |
 | `inventorySyncServerModule_test.cpp` | The C-ABI as a black box, through the real `start()`/`stop()`. Includes the `m_running` wedge regression, the escalating ERROR naming the path and the setting, and the indexer borrow contract. |
 | `indexerGating_test.cpp` | The four-stage startup gate. A real, unconfigured `IndexerSession` blocks the socket fast (no network needed — the hosts-missing check runs first, so it does not even open `queue/keystore`). Each of the three stages is failed in isolation to pin that the ERROR names *that* stage and that no later stage is attempted; that a healthy session + sync connector is **not** enough; that each slot is built exactly once across retries, and that the ones which already succeeded are not rebuilt while another keeps failing; that one heartbeat produces exactly one reported attempt (the escalation clock); and that `stop()` tears down in reverse order — including when only some stages ever ran. |
 | `indexerConnectorConfig_test.cpp` | Pure unit tests of the two overlays, no server. Each builder emits only its own connector's key names and **not** the other's; `max_queue_bytes` is stored as an *unsigned* JSON number (the silent-ignore trap — a `contains()` assertion passes even with the bug); every overlaid key is unsigned; the two `flush_interval_seconds` are independent; negatives do not wrap to `SIZE_MAX`; `hosts`/`ssl.*` pass through and the input is not mutated. |
@@ -506,6 +507,36 @@ curl -i --unix-socket queue/sockets/inventory-sync.sock -X POST \
      -H 'Content-Type: application/octet-stream' --data-binary @/tmp/payload.bin \
      http://localhost/inventory/sync
 ```
+
+## Operational notes
+
+How this module's failure modes surface on the remoted side, and where to look first. Every
+per-request failure condition on this side keeps one **throttled** log line (90 s window; the first
+occurrence always emits), so the absence of a line means the absence of the condition.
+
+- **Rejections can reach remoted as transport errors, not statuses.** The downstream client writes
+  the whole request before reading any response, and this server rejects-and-closes at
+  headers-complete. A rejection whose request body is still in flight (more than the socket buffer,
+  ~200 KiB) surfaces in remoted as `transport_error` rather than as the status code — the throttled
+  WARN on this side (`exceeding a configured limit`, `no route for ...`) is the authoritative
+  record. remoted additionally logs 404/405 answers as a route contract mismatch.
+- **Shutdown order is not coordinated.** `wazuh-server.sh stop` signals modulesd before remoted, so
+  during a normal manager shutdown remoted may log connect failures and `protocol_error` lines for
+  deferrals this server force-closed at the end of its short drain window. Expected during a
+  shutdown; a problem only outside one.
+- **A misconfigured `<indexer>` keeps the socket closed.** The startup gate builds the session and
+  both connectors before opening the socket, so while any of them fails remoted sees connect
+  failures even though modulesd is running — this side's gate log (ERROR on the first attempt, WARN
+  hourly) is the one that names the setting to fix. An *unreachable* but well-configured indexer
+  does NOT keep the socket closed, and the worker's heartbeat logs its availability transitions.
+- **Timeouts are not cross-validated.** remoted's downstream response deadline (5 s default) must
+  stay below this server's `response_timeout` (300 s default — a leak backstop, not a deadline).
+  Nothing detects the two crossing; the peer-gone watch bounds the damage, releasing an abandoned
+  deferral's connection as soon as the peer closes.
+- **Backpressure is remoted's.** Its deferred-work limiter (256 slots shared by `/stateless`,
+  `/stats` and `/config`) saturates long before this server's connection cap or byte budget, so
+  under overload agents see remoted's 503 — and a slow engine can shed `/stats`/`/config` traffic,
+  and vice versa. No layer retries or emits `Retry-After`; the agent's own policy is the only retry.
 
 ## Deliberately absent
 
