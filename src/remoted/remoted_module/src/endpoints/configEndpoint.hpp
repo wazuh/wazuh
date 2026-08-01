@@ -24,19 +24,6 @@ namespace remoted::endpoints::config
     /**
      * @brief Policy for the `POST /config` endpoint: forward the agent's JSON document to modulesd's
      *        inventory sync server and hand its answer back.
-     *
-     * DUMMY. The whole pipeline is real -- authentication, admission control, deferred forwarding,
-     * the UDS round trip and the response mapping -- but neither side interprets the document yet.
-     * modulesd only checks that it is a JSON object and stamps `wazuh.agent.id` and `@timestamp`
-     * onto it. This exists so the plumbing and the file layout are settled before the real
-     * configuration payload is defined.
-     *
-     * @note A deliberate near-duplicate of statsEndpoint -- see the note there. They are the same
-     * shape only because both are dummies; keep them in sync until their real payloads force them
-     * apart.
-     *
-     * @warning Do not introduce a local or parameter named `config` inside this unit: it would shadow
-     * this namespace and make unqualified lookups inside it resolve to the variable.
      */
 
     /// @brief The inventory sync server target reached over @p socketPath, tagged with @p agentId.

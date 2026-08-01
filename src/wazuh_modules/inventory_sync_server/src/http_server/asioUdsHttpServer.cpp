@@ -71,16 +71,10 @@ namespace
     /**
      * @brief Bytes charged to a request on top of its declared payload.
      *
-     * Derived from the limits rather than a constant, and that is the whole point. Per-connection state
-     * stays resident for the WHOLE deferral (unlike RESTinio, which frees it as soon as the handler is
-     * posted), so the budget has to charge for it to be an honest proxy for memory when hundreds of
-     * replies are outstanding -- and the dominant term, the header map, is bounded by three CONFIGURABLE
-     * limits.
-     *
-     * It used to be a flat 16 KiB while the worst-case head alone was 64 * (256 + 8192) == 528 KiB: a
-     * ~33x under-charge, and one that got worse every time an operator raised a header limit. With the
-     * header count now fixed at 32 the worst case is 264 KiB, and computing it here means the charge
-     * cannot drift from the limits again.
+     * Derived from the limits rather than a constant: per-connection state stays resident for the
+     * WHOLE deferral, so the budget has to charge for it to be an honest proxy for memory when
+     * hundreds of replies are outstanding -- and the dominant term, the header map, is bounded by
+     * three CONFIGURABLE limits, so a constant would drift the moment an operator raised one.
      */
     std::size_t perRequestOverhead(const invsync::http::UdsHttpServerConfig& config)
     {
@@ -94,8 +88,7 @@ namespace
      * modulesd runs every module's stop() sequentially and the init script gives the WHOLE daemon
      * 30 s before SIGKILL (init/wazuh-server.sh, MAX_KILL_TRIES), so these have to add up to
      * comfortably less than that on their own: 2 + 10 + drainTimeoutSec (2 by default) + 5 + 2 = 21 s
-     * worst case. They were unnamed literals before, and the largest of them was 30 s -- the entire
-     * budget, spent by one module.
+     * worst case.
      */
 
     /// Waiting for closeAcceptor() to have run on the acceptor strand. Bounded because the strand is
@@ -282,6 +275,17 @@ namespace invsync::http
             common::LogThrottle abandonedThrottle;
             common::LogThrottle responseTimeoutThrottle;
             common::LogThrottle acceptErrorThrottle;
+            common::LogThrottle handlerThrewThrottle;
+            common::LogThrottle sessionBringupThrottle;
+            common::LogThrottle limitRejectThrottle;
+            common::LogThrottle noRouteThrottle;
+            common::LogThrottle writeErrorThrottle;
+            common::LogThrottle phaseTimeoutThrottle;
+            common::LogThrottle peerGoneThrottle;
+
+            /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
+            /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
+            std::atomic<std::size_t> shutdownRejected {0};
 
             std::atomic_bool accepting {false};
 
@@ -354,6 +358,7 @@ namespace invsync::http
                 {
                     return;
                 }
+                m_state->shutdownRejected.fetch_add(1, std::memory_order_relaxed);
                 deliver(errorResponse(503, "Server is shutting down"));
             }
 
@@ -366,17 +371,10 @@ namespace invsync::http
                     return;
                 }
                 m_finished = true;
-                // Cancelling the timer is REQUIRED, not tidiness. A pending async_wait holds a
-                // shared_ptr to this Session, and the Session holds a shared_ptr to the Runtime that
-                // owns the io_context the operation is queued on -- so leaving the wait armed is a
-                // reference cycle that neither side can break: the io_context cannot be destroyed
-                // because the Session keeps it alive, and the Session cannot be destroyed because the
-                // io_context's queue keeps it alive. Cancelling makes the handler run now (with
-                // operation_aborted), while the reactor is still alive, and release its reference.
-                //
-                // Only reachable for a session that is force-closed without ever being answered, which
-                // is why udsShutdown_test.cpp's never-answered cases are the ones that caught it -- and
-                // only under LeakSanitizer.
+                // Cancelling the timer is REQUIRED, not tidiness: a pending async_wait holds a
+                // shared_ptr to this Session, and the Session holds the Runtime that owns the
+                // io_context the wait is queued on -- a reference cycle neither side can break.
+                // Cancelling runs the handler now (operation_aborted) and releases its reference.
                 m_timer.cancel();
                 closeSocket();
                 unregisterSelf();
@@ -388,39 +386,60 @@ namespace invsync::http
             }
 
             /// Called by the responder. Always marshals onto the strand, so Session members stay
-            /// single-threaded no matter which thread produced the response.
+            /// single-threaded no matter which thread produced the response. May run on any caller
+            /// thread, so a failed post must not throw out of it: the session is then reaped by the
+            /// response timer or the peer watch.
             void submitResponse(HttpResponse response)
             {
                 auto self = shared_from_this();
-                asio::post(m_strand,
-                           [self, response = std::move(response)]() mutable { self->deliver(std::move(response)); });
+                try
+                {
+                    asio::post(m_strand,
+                               [self, response = std::move(response)]() mutable
+                               { self->deliver(std::move(response)); });
+                }
+                // LCOV_EXCL_START -- only a failed handler allocation inside asio::post throws here
+                catch (...)
+                {
+                }
+                // LCOV_EXCL_STOP
             }
 
             /// Called when a responder is destroyed without ever having sent: a handler bug, answered
-            /// 503 so the peer is never left hanging.
+            /// 503 so the peer is never left hanging. Runs from a destructor, so it must not throw.
             void submitAbandoned()
             {
                 auto self = shared_from_this();
-                asio::post(m_strand,
-                           [self]()
-                           {
-                               if (self->m_finished)
+                try
+                {
+                    asio::post(m_strand,
+                               [self]()
                                {
-                                   return;
-                               }
-                               if (const auto decision = self->m_state->abandonedThrottle.record())
-                               {
-                                   LOGFN_WARN(logFn(),
-                                              "%llu request(s) in the last %d s were dropped by their handler without "
-                                              "a response and were answered 503. This is a handler bug.",
-                                              static_cast<unsigned long long>(decision.total),
-                                              common::LogThrottle::kDefaultWindowSeconds);
-                               }
-                               self->deliver(errorResponse(503, "Handler produced no response"));
-                           });
+                                   if (self->m_finished)
+                                   {
+                                       return;
+                                   }
+                                   if (const auto decision = self->m_state->abandonedThrottle.record())
+                                   {
+                                       LOGFN_WARN(logFn(),
+                                                  "%llu request(s) in the last %d s were dropped by their handler "
+                                                  "without a response and were answered 503. This is a handler bug.",
+                                                  static_cast<unsigned long long>(decision.total),
+                                                  common::LogThrottle::kDefaultWindowSeconds);
+                                   }
+                                   self->deliver(errorResponse(503, "Handler produced no response"));
+                               });
+                }
+                // LCOV_EXCL_START -- only a failed handler allocation inside asio::post throws here
+                catch (...)
+                {
+                }
+                // LCOV_EXCL_STOP
             }
 
         private:
+            class SessionResponder;
+
             enum class Phase
             {
                 Header,
@@ -481,10 +500,34 @@ namespace invsync::http
                     return;
                 }
 
-                // Header/Body/Write: the peer is slow or gone. Nothing useful to say to it.
+                // Header/Body/Write: the peer is slow or gone. Nothing useful to say to it, but the
+                // operator needs the trace -- these closes consume the connections that
+                // max_parallel_connections bounds, and without a line a slow-loris or a degraded
+                // network is invisible.
+                if (const auto decision = m_state->phaseTimeoutThrottle.record())
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "Closed %llu connection(s) in the last %d s that timed out before a response was "
+                                 "due (last phase: %s).",
+                                 static_cast<unsigned long long>(decision.total),
+                                 common::LogThrottle::kDefaultWindowSeconds,
+                                 phaseName(m_phase));
+                }
                 m_finished = true;
                 closeSocket();
                 unregisterSelf();
+            }
+
+            static const char* phaseName(Phase phase)
+            {
+                switch (phase)
+                {
+                    case Phase::Header: return "reading the request head";
+                    case Phase::Body: return "reading the request body";
+                    case Phase::Response: return "awaiting the handler's response";
+                    case Phase::Write: return "writing the response";
+                }
+                return "unknown";
             }
 
             void doRead()
@@ -528,6 +571,20 @@ namespace invsync::http
                     case RequestParser::Feed::Incomplete: doRead(); return;
                     case RequestParser::Feed::Complete: dispatch(); return;
                     case RequestParser::Feed::Reject:
+                        // These four statuses are decided by limits an operator can tune, and the
+                        // peer's write-then-read pattern often means it never reads the status either
+                        // (see the interop note below deliver()) -- so this line is the only record
+                        // that a 413/414/431 happened at all.
+                        if (const auto decision = m_state->limitRejectThrottle.record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Rejected %llu request(s) in the last %d s for exceeding a configured limit "
+                                       "(last: %d on '%.128s').",
+                                       static_cast<unsigned long long>(decision.total),
+                                       common::LogThrottle::kDefaultWindowSeconds,
+                                       m_parser.rejectStatus(),
+                                       requestPath().c_str());
+                        }
                         deliver(errorResponse(m_parser.rejectStatus(), rejectMessage(m_parser.rejectStatus())));
                         return;
                     case RequestParser::Feed::ProtocolError:
@@ -554,6 +611,7 @@ namespace invsync::http
                     case 413: return "Request body is too large";
                     case 414: return "Request target is too long";
                     case 431: return "Request headers are too large";
+                    case 500: return "Internal error";
                     default: return "Request rejected";
                 }
             }
@@ -636,6 +694,21 @@ namespace invsync::http
 
             void respondNoRoute()
             {
+                // The peer maps 404/405 to a retryable 503 towards the agent and its forwarder logs
+                // them selectively, so a route mismatch between remoted and this module -- the
+                // expected integration failure while the sync path is provisional -- would otherwise
+                // leave no trace in either daemon.
+                if (const auto decision = m_state->noRouteThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Answered %llu request(s) in the last %d s with %d: no route for %s '%.128s'.",
+                               static_cast<unsigned long long>(decision.total),
+                               common::LogThrottle::kDefaultWindowSeconds,
+                               m_pathMatchedOtherMethod ? 405 : 404,
+                               methodToString(m_parser.request().method),
+                               requestPath().c_str());
+                }
+
                 if (!m_pathMatchedOtherMethod)
                 {
                     deliver(errorResponse(404, "Unknown endpoint"));
@@ -668,44 +741,119 @@ namespace invsync::http
                 m_state->undispatched.fetch_sub(1, std::memory_order_relaxed);
                 m_state->dispatchesRunning.fetch_add(1, std::memory_order_relaxed);
 
-                // The payload and its reservation move into a jointly-owned context; the handler
-                // gets a view aliased into it, so dropping that view frees both at once.
-                auto context = std::make_shared<RequestContext>();
-                context->state = m_state; // keeps the budget alive if the handler outlives us
-                context->request = std::move(m_parser.request());
-                context->reservation = std::move(m_reservation);
-                std::shared_ptr<const HttpRequest> request {context, &context->request};
+                // RAII rather than a trailing decrement: a throw below would otherwise leak the
+                // count, and a leaked count makes EVERY later shutdown wait out its full
+                // dispatch-drain window inside modulesd's signal handler.
+                struct RunningGuard
+                {
+                    ServerState& state;
+                    ~RunningGuard()
+                    {
+                        state.dispatchesRunning.fetch_sub(1, std::memory_order_relaxed);
+                        state.noteProgress();
+                    }
+                } runningGuard {*m_state};
 
-                // The read buffer is dead weight from here on, and it would otherwise stay resident
-                // for the whole deferral: 8 KiB x hundreds of pending replies.
-                m_readBuffer.clear();
-                m_readBuffer.shrink_to_fit();
+                std::shared_ptr<SessionResponder> responder;
 
-                armTimer(Phase::Response, std::chrono::seconds {m_state->config.responseTimeoutSec});
-
-                auto responder = std::make_shared<SessionResponder>(m_runtime, weak_from_this(), m_state);
-
-                // Exception barrier. A handler that throws must produce a 500 rather than take the
-                // I/O thread -- and therefore the whole daemon -- down with it.
+                // Exception barrier for the WHOLE dispatch, allocations included, not just the
+                // handler call: a throw anywhere here must produce a 500 rather than take the I/O
+                // thread -- and therefore the whole daemon -- down with it.
                 try
                 {
+                    // The payload and its reservation move into a jointly-owned context; the handler
+                    // gets a view aliased into it, so dropping that view frees both at once.
+                    auto context = std::make_shared<RequestContext>();
+                    context->state = m_state; // keeps the budget alive if the handler outlives us
+                    context->request = std::move(m_parser.request());
+                    context->reservation = std::move(m_reservation);
+                    std::shared_ptr<const HttpRequest> request {context, &context->request};
+
+                    // The read buffer is dead weight from here on, and it would otherwise stay resident
+                    // for the whole deferral: 8 KiB x hundreds of pending replies.
+                    m_readBuffer.clear();
+                    m_readBuffer.shrink_to_fit();
+
+                    armTimer(Phase::Response, std::chrono::seconds {m_state->config.responseTimeoutSec});
+                    watchPeerDuringDeferral();
+
+                    responder = std::make_shared<SessionResponder>(m_runtime, weak_from_this(), m_state);
                     m_route->handler(std::move(request), responder);
                 }
                 catch (const std::exception& e)
                 {
-                    LOGFN_ERROR(logFn(), "An inventory sync request handler threw: %s. Answering 500.", e.what());
-                    responder->send(errorResponse(500, "Internal error"));
+                    answerFailedDispatch(responder, e.what());
                 }
+                // LCOV_EXCL_START -- nothing reachable from here throws a non-std type
                 catch (...)
                 {
+                    answerFailedDispatch(responder, "non-standard exception");
+                }
+                // LCOV_EXCL_STOP
+            }
+
+            /// Answers 500 for a throw while dispatching -- from the handler or from the allocations
+            /// leading up to it. Throttled: a deterministic handler bug fires once per request on the
+            /// ingest path.
+            void answerFailedDispatch(const std::shared_ptr<SessionResponder>& responder, const char* reason)
+            {
+                if (const auto decision = m_state->handlerThrewThrottle.record())
+                {
                     LOGFN_ERROR(logFn(),
-                                "An inventory sync request handler threw a non-standard exception. "
-                                "Answering 500.");
+                                "%llu request(s) failed while being dispatched in the last %d s and were answered "
+                                "500 (last: %s).",
+                                static_cast<unsigned long long>(decision.total),
+                                common::LogThrottle::kDefaultWindowSeconds,
+                                reason);
+                }
+                if (responder)
+                {
                     responder->send(errorResponse(500, "Internal error"));
                 }
+                // LCOV_EXCL_START -- responder is null only when an allocation before the handler
+                // call failed, which a test cannot stage without breaking the allocator
+                else
+                {
+                    deliver(errorResponse(500, "Internal error"));
+                }
+                // LCOV_EXCL_STOP
+            }
 
-                m_state->dispatchesRunning.fetch_sub(1, std::memory_order_relaxed);
-                m_state->noteProgress();
+            /**
+             * @brief Notices a peer that gives up while its response is deferred.
+             *
+             * After dispatch() there is no read pending, so without this an EOF sits unseen and the
+             * fd, the registry entry and the connection slot are held until the response timeout --
+             * hundreds of seconds after the peer's own deadline expired. The protocol is one request
+             * per connection with no pipelining, so the socket becoming readable during a deferral
+             * means EOF or a peer violating the contract; either way the session is done.
+             */
+            void watchPeerDuringDeferral()
+            {
+                auto self = shared_from_this();
+                m_socket.async_wait(
+                    stream_protocol::socket::wait_read,
+                    asio::bind_executor(m_strand,
+                                        [self](const std::error_code& ec)
+                                        {
+                                            if (ec || self->m_finished)
+                                            {
+                                                return; // closed/cancelled, or already answered
+                                            }
+                                            if (const auto decision = self->m_state->peerGoneThrottle.record())
+                                            {
+                                                LOGFN_DEBUG1(logFn(),
+                                                             "Closed %llu connection(s) in the last %d s whose "
+                                                             "peer went away while the response was still "
+                                                             "pending.",
+                                                             static_cast<unsigned long long>(decision.total),
+                                                             common::LogThrottle::kDefaultWindowSeconds);
+                                            }
+                                            self->m_finished = true;
+                                            self->m_timer.cancel();
+                                            self->closeSocket();
+                                            self->unregisterSelf();
+                                        }));
             }
 
             /// Exactly-once. Every path that ends a request funnels through here.
@@ -718,47 +866,63 @@ namespace invsync::http
                 m_finished = true;
                 m_timer.cancel();
 
-                m_writeHead = serializeHead(response);
-                m_writeBody = std::move(response.body);
-                m_writeBuffers = {asio::buffer(m_writeHead), asio::buffer(m_writeBody)};
+                // Past this point m_finished is set, so no other path will ever close this session:
+                // a throw below (serializeHead and the async initiations allocate) must still
+                // release the fd and the registry entry, or they leak until stop().
+                try
+                {
+                    m_writeHead = serializeHead(response);
+                    m_writeBody = std::move(response.body);
+                    m_writeBuffers = {asio::buffer(m_writeHead), asio::buffer(m_writeBody)};
 
-                armWriteTimer();
+                    armWriteTimer();
 
-                auto self = shared_from_this();
-                asio::async_write(m_socket,
-                                  m_writeBuffers,
-                                  asio::bind_executor(m_strand,
-                                                      [self](const std::error_code&, std::size_t)
-                                                      {
-                                                          self->m_timer.cancel();
-                                                          self->closeSocket();
-                                                          self->unregisterSelf();
-                                                          return;
-                                                      }));
+                    auto self = shared_from_this();
+                    asio::async_write(m_socket,
+                                      m_writeBuffers,
+                                      asio::bind_executor(
+                                          m_strand,
+                                          [self](const std::error_code& ec, std::size_t)
+                                          {
+                                              // A response that could not be written must be
+                                              // distinguishable from a delivered one.
+                                              if (ec && ec != asio::error::operation_aborted)
+                                              {
+                                                  if (const auto decision = self->m_state->writeErrorThrottle.record())
+                                                  {
+                                                      LOGFN_DEBUG1(logFn(),
+                                                                   "Failed to write %llu response(s) in the "
+                                                                   "last %d s (last: %s).",
+                                                                   static_cast<unsigned long long>(decision.total),
+                                                                   common::LogThrottle::kDefaultWindowSeconds,
+                                                                   ec.message().c_str());
+                                                  }
+                                              }
+                                              self->m_timer.cancel();
+                                              self->closeSocket();
+                                              self->unregisterSelf();
+                                          }));
+                }
+                // LCOV_EXCL_START -- only serializeHead/async-initiation allocation failures land here
+                catch (...)
+                {
+                    m_timer.cancel();
+                    closeSocket();
+                    unregisterSelf();
+                }
+                // LCOV_EXCL_STOP
             }
 
             /*
              * INTEROP NOTE, for the rejections decided at headers-complete (404, 405, 411, 413, 503).
              *
-             * The peer writes an entire request before reading any of the response. When we reject at
-             * the head and close, a peer that is still sending a large body sees its write fail rather
-             * than reading our status -- so it reports a transport error instead of, say, 413.
-             *
-             * That is accepted deliberately rather than worked around:
-             *   - Draining the rest of the body so the peer can read the status means reading, and
-             *       discarding, everything it declared. There is no bound on that except the write
-             *       deadline, which turns a cheap rejection into an expensive one and hands a client
-             *       control over how long we spend on a request we already refused.
-             *   - remoted, the only production peer, caps the body on its OWN inbound side and answers
-             *       the agent 413 there (see its auth_max_body_size), so an oversized batch never
-             *       reaches this socket in a correctly configured manager. It can only happen when
-             *       this module's body cap is set BELOW remoted's, which is a misconfiguration worth
-             *       fixing rather than absorbing.
-             *   - It matches what the rest of the product does: remoted's own inbound server aborts the
-             *       parse and closes on an over-cap body too.
-             *
-             * A small rejected body -- the realistic 404/405 case -- fits in the socket buffer, so the
-             * peer reads the status normally. Only a large one is truncated.
+             * The peer writes an entire request before reading any of the response, so rejecting at
+             * the head and closing makes a peer mid-way through a large body see a transport error
+             * instead of the status. Accepted deliberately: draining the refused body would hand the
+             * client control over how long we spend on it, and remoted caps the body on its own
+             * inbound side first. A small rejected body fits in the socket buffer and the peer reads
+             * the status normally -- which is why the server-side throttled logs above are the only
+             * reliable record of a large-body rejection.
              */
 
             /// The write deadline is armed after m_finished is already set, so it must close the
@@ -776,6 +940,7 @@ namespace invsync::http
                             return;
                         }
                         self->closeSocket();
+                        self->unregisterSelf();
                     });
             }
 
@@ -889,13 +1054,26 @@ namespace invsync::http
         /// Deliberately NOT bound to a per-connection strand, unlike Session's handlers: this socket
         /// belongs to no Session, nothing else ever touches it, and the one-shot write-then-close is
         /// already serialized by the acceptor strand it was accepted on.
-        void writeAndClose(std::shared_ptr<stream_protocol::socket> socket, const HttpResponse& response)
+        void writeAndClose(std::shared_ptr<ServerState> state,
+                           std::shared_ptr<stream_protocol::socket> socket,
+                           const HttpResponse& response)
         {
             auto payload = std::make_shared<std::string>(serializeHead(response) + response.body);
             asio::async_write(*socket,
                               asio::buffer(*payload),
-                              [socket, payload](const std::error_code&, std::size_t)
+                              [state = std::move(state), socket, payload](const std::error_code& ec, std::size_t)
                               {
+                                  if (ec && ec != asio::error::operation_aborted)
+                                  {
+                                      if (const auto decision = state->writeErrorThrottle.record())
+                                      {
+                                          LOGFN_DEBUG1(logFn(),
+                                                       "Failed to write %llu response(s) in the last %d s (last: %s).",
+                                                       static_cast<unsigned long long>(decision.total),
+                                                       common::LogThrottle::kDefaultWindowSeconds,
+                                                       ec.message().c_str());
+                                      }
+                                  }
                                   std::error_code ignore;
                                   socket->shutdown(stream_protocol::socket::shutdown_both, ignore);
                                   socket->close(ignore);
@@ -940,6 +1118,11 @@ namespace invsync::http
          */
         std::mutex shutdownMutex;
 
+        /// For the I/O-thread resume loop: a persistent throwing condition would otherwise emit one
+        /// ERROR per queued handler, at CPU speed, multiplied by ioThreads. Lives here rather than in
+        /// ServerState because the thread lambda captures the Impl.
+        common::LogThrottle ioThreadResumeThrottle;
+
         /// Bind, permission and listen, in an order where any failure leaves nothing running.
         void bindAcceptor()
         {
@@ -954,7 +1137,9 @@ namespace invsync::http
                                           "-character limit for Unix domain sockets"};
             }
 
-            struct stat existing {};
+            struct stat existing
+            {
+            };
             if (::stat(socketPath.c_str(), &existing) == 0)
             {
                 if (!S_ISSOCK(existing.st_mode))
@@ -965,7 +1150,13 @@ namespace invsync::http
                                               "' already exists and is not a socket; refusing to remove it"};
                 }
                 // A stale socket from an unclean shutdown. Without this, bind() would fail with
-                // EADDRINUSE forever and the module would never come back.
+                // EADDRINUSE forever and the module would never come back. Logged: if the socket was
+                // NOT stale (a second manager still serving on it), this line is the only trace of
+                // the takeover on this side.
+                LOGFN_INFO(logFn(),
+                           "Removing the existing socket at '%s' (a leftover from an unclean shutdown) before "
+                           "binding.",
+                           socketPath.c_str());
                 ::unlink(socketPath.c_str());
             }
 
@@ -990,7 +1181,9 @@ namespace invsync::http
 
             // Remembered so closeAcceptor() can tell OUR socket from one another process rebound at
             // the same path in the meantime, and unlink only its own.
-            struct stat bound {};
+            struct stat bound
+            {
+            };
             boundInode = (::stat(socketPath.c_str(), &bound) == 0) ? bound.st_ino : 0;
         }
 
@@ -1004,47 +1197,89 @@ namespace invsync::http
          */
         void doAccept()
         {
-            acceptor->async_accept(
-                [this](const std::error_code& ec, stream_protocol::socket socket)
+            // Initiation and completion are both guarded: a throw anywhere in the chain would
+            // otherwise escape to the I/O thread barrier and this chain would never re-arm --
+            // with the default of 2 chains, two such events leave the socket bound, the process
+            // healthy and the listener permanently deaf.
+            try
+            {
+                acceptor->async_accept([this](const std::error_code& ec, stream_protocol::socket socket)
+                                       { onAcceptCompleted(ec, std::move(socket)); });
+            }
+            // LCOV_EXCL_START -- initiating an accept throws only on allocation failure
+            catch (const std::exception& e)
+            {
+                reportAcceptFailure(e.what());
+                rearmAccept();
+            }
+            // LCOV_EXCL_STOP
+        }
+
+        void onAcceptCompleted(const std::error_code& ec, stream_protocol::socket socket)
+        {
+            try
+            {
+                if (ec)
                 {
-                    if (ec)
+                    // operation_aborted is the normal path: stopAccepting() closed the acceptor.
+                    // Checking `accepting` too covers the close racing ahead of the cancel.
+                    if (ec == asio::error::operation_aborted || !state->accepting.load(std::memory_order_acquire))
                     {
-                        // operation_aborted is the normal path: stopAccepting() closed the acceptor.
-                        // Checking `accepting` too covers the close racing ahead of the cancel.
-                        if (ec == asio::error::operation_aborted || !state->accepting.load(std::memory_order_acquire))
-                        {
-                            return;
-                        }
-
-                        /*
-                         * Any OTHER error is transient and MUST NOT end the chain. This used to be a
-                         * bare `return`, which meant two EMFILE completions -- one per chain, with the
-                         * default of 2 -- left the socket bound, the process healthy and the listener
-                         * permanently deaf, with not one line in the log. The descriptor budget is
-                         * shared by all of modulesd, so a spike in any other module could trigger it.
-                         */
-                        if (const auto decision = state->acceptErrorThrottle.record())
-                        {
-                            LOGFN_WARN(logFn(),
-                                       "Failed to accept %llu inventory sync connection(s) in the last %d s: %s. The "
-                                       "listener is still accepting; peers will retry.",
-                                       static_cast<unsigned long long>(decision.total),
-                                       common::LogThrottle::kDefaultWindowSeconds,
-                                       ec.message().c_str());
-                        }
-
-                        // Re-arm through the strand instead of recursing here. On a persistent
-                        // condition async_accept can complete immediately, and recursion would grow
-                        // the stack; posting yields the thread between attempts. It does spin the
-                        // acceptor strand while the condition lasts -- accepted as the cheaper
-                        // failure, since per-session strands keep that off the request path.
-                        asio::post(*acceptorStrand, [this]() { doAccept(); });
                         return;
                     }
 
-                    onAccepted(std::move(socket));
-                    doAccept();
-                });
+                    // Any OTHER error (EMFILE above all -- the descriptor budget is shared by all of
+                    // modulesd) is transient and MUST NOT end the chain.
+                    reportAcceptFailure(ec.message().c_str());
+                    rearmAccept();
+                    return;
+                }
+
+                onAccepted(std::move(socket));
+                doAccept();
+            }
+            // LCOV_EXCL_START -- onAccepted() has its own barrier, so only its rollback path or the
+            // re-arm itself can throw here, both allocation failures
+            catch (const std::exception& e)
+            {
+                reportAcceptFailure(e.what());
+                rearmAccept();
+            }
+            catch (...)
+            {
+                reportAcceptFailure("non-standard exception");
+                rearmAccept();
+            }
+            // LCOV_EXCL_STOP
+        }
+
+        void reportAcceptFailure(const char* reason)
+        {
+            if (const auto decision = state->acceptErrorThrottle.record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Failed to accept %llu inventory sync connection(s) in the last %d s: %s. The "
+                           "listener is still accepting; peers will retry.",
+                           static_cast<unsigned long long>(decision.total),
+                           common::LogThrottle::kDefaultWindowSeconds,
+                           reason);
+            }
+        }
+
+        /// Re-arms through the strand instead of recursing: on a persistent condition async_accept
+        /// can complete immediately, and recursion would grow the stack. If even the post fails the
+        /// chain is gone -- the throttled accept-failure line is the only trace.
+        void rearmAccept() noexcept
+        {
+            try
+            {
+                asio::post(*acceptorStrand, [this]() { doAccept(); });
+            }
+            // LCOV_EXCL_START -- only a failed handler allocation inside asio::post throws here
+            catch (...)
+            {
+            }
+            // LCOV_EXCL_STOP
         }
 
         void onAccepted(stream_protocol::socket socket)
@@ -1075,20 +1310,15 @@ namespace invsync::http
                 }
                 // An explicit status rather than a silent close, so the peer classifies this as
                 // "server out of capacity" instead of a transport failure.
-                writeAndClose(std::make_shared<stream_protocol::socket>(std::move(socket)),
+                writeAndClose(state,
+                              std::make_shared<stream_protocol::socket>(std::move(socket)),
                               errorResponse(503, "Too many concurrent connections"));
                 return;
             }
 
-            /*
-             * From here both counters are bumped, so every failure path has to put them back.
-             *
-             * Everything below can throw std::bad_alloc -- the Session allocates its read buffer and
-             * llhttp state, the registry allocates a node, asio::post allocates the handler. A throw
-             * used to escape into the accept handler, which both killed the chain (see doAccept) and
-             * leaked the counters; a leaked counter is permanent, and it makes EVERY later shutdown
-             * sit out its drain window and then log a spurious "requests had not been answered".
-             */
+            // From here both counters are bumped, so every failure path has to put them back:
+            // everything below can throw std::bad_alloc, and a leaked counter is permanent -- it
+            // makes every later shutdown sit out its drain window.
             bool bumpedUndispatched {false};
             bool registered {false};
             std::uint64_t id {0};
@@ -1108,18 +1338,63 @@ namespace invsync::http
                 }
                 registered = true;
 
-                asio::post(session->strand(), [session]() { session->start(); });
+                // The posted body runs later, on the session's strand, outside this try: it needs its
+                // own barrier, or a throw in armTimer/doRead leaves a registered session with no
+                // timer and no read pending -- a permanent fd leak.
+                asio::post(session->strand(),
+                           [session, state = this->state]()
+                           {
+                               try
+                               {
+                                   session->start();
+                               }
+                               // LCOV_EXCL_START -- armTimer/doRead throw only on allocation failure
+                               catch (...)
+                               {
+                                   if (const auto decision = state->sessionBringupThrottle.record())
+                                   {
+                                       LOGFN_ERROR(logFn(),
+                                                   "Could not bring up %llu accepted inventory sync connection(s) in "
+                                                   "the last %d s.",
+                                                   static_cast<unsigned long long>(decision.total),
+                                                   common::LogThrottle::kDefaultWindowSeconds);
+                                   }
+                                   try
+                                   {
+                                       session->forceClose();
+                                   }
+                                   catch (...)
+                                   {
+                                   }
+                               }
+                               // LCOV_EXCL_STOP
+                           });
             }
             catch (const std::exception& e)
             {
-                LOGFN_ERROR(logFn(), "Could not bring up an accepted inventory sync connection: %s.", e.what());
+                reportBringupFailure(e.what());
                 rollbackFailedAccept(bumpedUndispatched, registered, id);
             }
             catch (...)
             {
-                LOGFN_ERROR(logFn(),
-                            "Could not bring up an accepted inventory sync connection: non-standard exception.");
+                reportBringupFailure("non-standard exception");
                 rollbackFailedAccept(bumpedUndispatched, registered, id);
+            }
+        }
+
+        // LCOV_EXCL_START -- both callees of the bad_alloc-only bring-up catches above
+        /// Bring-up failures are resource exhaustion (bad_alloc), i.e. the same incident on every
+        /// connection attempt while it lasts -- so they aggregate like accept failures do.
+        void reportBringupFailure(const char* reason)
+        {
+            if (const auto decision = state->sessionBringupThrottle.record())
+            {
+                LOGFN_ERROR(logFn(),
+                            "Could not bring up %llu accepted inventory sync connection(s) in the last %d s "
+                            "(last: %s).",
+                            static_cast<unsigned long long>(decision.total),
+                            common::LogThrottle::kDefaultWindowSeconds,
+                            reason);
             }
         }
 
@@ -1145,12 +1420,23 @@ namespace invsync::http
             {
             }
         }
+        // LCOV_EXCL_STOP
 
         /// Phase 1. See IUdsHttpServer::stopAccepting() for the guarantees this establishes.
         void doStopAccepting() noexcept
         {
-            std::lock_guard<std::mutex> lock {shutdownMutex};
-            doStopAcceptingLocked();
+            // The lock acquisition sits inside the barrier too: this is noexcept, so anything
+            // escaping here -- however unlikely -- would be an instant terminate for all of modulesd.
+            try
+            {
+                std::lock_guard<std::mutex> lock {shutdownMutex};
+                doStopAcceptingLocked();
+            }
+            // LCOV_EXCL_START -- mutex::lock() failure is not stageable from a test
+            catch (...)
+            {
+            }
+            // LCOV_EXCL_STOP
         }
 
         /// Body of phase 1. Callers must hold shutdownMutex.
@@ -1171,14 +1457,9 @@ namespace invsync::http
                 // than true, which a test can observe by connecting successfully afterwards.
                 if (acceptorStrand && !threads.empty())
                 {
-                    // Bounded, unlike the plain wait() this replaces. The post only runs when an I/O
-                    // thread picks up the acceptor strand, so a handler that never returns used to
-                    // hang here forever -- and this runs with the facade's lifecycle mutex held,
-                    // inside modulesd's signal handler, so "forever" meant the daemon could not exit.
-                    // shared_ptr, not a local: giving up on the wait has to be SAFE. A local promise
-                    // whose address the queued lambda holds would be destroyed under it the moment we
-                    // stopped waiting, so the bounded wait would have traded a hang for a
-                    // use-after-free. The handler keeps the promise alive for as long as it exists.
+                    // Bounded wait: this runs with the facade's lifecycle mutex held, inside
+                    // modulesd's signal handler. The promise is a shared_ptr, not a local, so giving
+                    // up on the wait cannot leave the queued lambda holding a dangling address.
                     auto closed = std::make_shared<std::promise<void>>();
                     auto done = closed->get_future();
                     asio::post(*acceptorStrand,
@@ -1236,21 +1517,28 @@ namespace invsync::http
                 }
 
                 const auto outstanding = state->liveSessions.load(std::memory_order_relaxed);
+                const auto rejected = state->shutdownRejected.load(std::memory_order_relaxed);
                 LOGFN_INFO(logFn(),
                            "inventory sync server is no longer accepting on '%s'; %zu deferred repl%s still "
-                           "outstanding.",
+                           "outstanding, %zu pre-handler connection(s) answered 503.",
                            socketPath.c_str(),
                            outstanding,
-                           outstanding == 1 ? "y" : "ies");
+                           outstanding == 1 ? "y" : "ies",
+                           rejected);
+            }
+            // LCOV_EXCL_START -- nothing in the body throws outside allocation failure
+            catch (const std::exception& e)
+            {
+                // noexcept by contract. A swallowed exception here makes the "no handler will run
+                // again" guarantee best-effort rather than unconditional, so the cause must be named.
+                LOGFN_ERROR(
+                    logFn(), "An error occurred while the inventory sync server stopped accepting: %s.", e.what());
             }
             catch (...)
             {
-                // noexcept by contract. A swallowed exception here makes the "no handler will run
-                // again" guarantee best-effort rather than unconditional -- worth stating plainly,
-                // though unlike remoted's version it rests on two counters we own rather than on a
-                // third-party wait() plus a thread-pool join.
                 LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped accepting.");
             }
+            // LCOV_EXCL_STOP
         }
 
         void closeAcceptor() noexcept
@@ -1271,15 +1559,47 @@ namespace invsync::http
             {
                 return;
             }
-            struct stat current {};
-            if (::stat(socketPath.c_str(), &current) == 0 && current.st_ino == boundInode)
+            struct stat current
+            {
+            };
+            const auto statResult = ::stat(socketPath.c_str(), &current);
+            if (statResult == 0 && current.st_ino == boundInode)
             {
                 ::unlink(socketPath.c_str());
+            }
+            else
+            {
+                // Two managers fighting over the socket (double start, unclean upgrade) is a real
+                // production incident and this is its only trace on this side.
+                try
+                {
+                    LOGFN_WARN(logFn(),
+                               "Not unlinking '%s': %s since this server started.",
+                               socketPath.c_str(),
+                               statResult == 0 ? "another process has re-bound it" : "something removed it");
+                }
+                catch (...) // LCOV_EXCL_LINE -- this function is noexcept and log formatting allocates
+                {
+                }
             }
         }
 
         /// Phase 2. See IUdsHttpServer::stop() for the guarantees this establishes.
         void doStop() noexcept
+        {
+            try
+            {
+                doStopBody();
+            }
+            // LCOV_EXCL_START -- doStopBody() carries its own catches; only mutex::lock() is left
+            catch (...)
+            {
+                // noexcept backstop: nothing may escape into the destructor / the signal handler.
+            }
+            // LCOV_EXCL_STOP
+        }
+
+        void doStopBody()
         {
             std::lock_guard<std::mutex> lock {shutdownMutex};
 
@@ -1345,11 +1665,18 @@ namespace invsync::http
                     }
                 }
             }
+            // LCOV_EXCL_START -- nothing in the body throws outside allocation failure
+            catch (const std::exception& e)
+            {
+                LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped: %s.", e.what());
+                runtime->ioc.stop();
+            }
             catch (...)
             {
                 LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped.");
                 runtime->ioc.stop();
             }
+            // LCOV_EXCL_STOP
 
             joinThreads();
             LOGFN_INFO(logFn(), "inventory sync server fully stopped.");
@@ -1357,45 +1684,73 @@ namespace invsync::http
 
         void forceCloseAll() noexcept
         {
-            std::vector<std::shared_ptr<Session>> snapshot;
+            // Marked noexcept but it allocates and locks; a throw would bypass doStop()'s own catch
+            // (the callee's noexcept wins) and terminate the daemon, so it carries its own barrier.
+            try
             {
-                std::lock_guard<std::mutex> lock {state->registryMutex};
-                snapshot.reserve(state->sessions.size());
-                for (auto& [id, session] : state->sessions)
+                std::vector<std::shared_ptr<Session>> snapshot;
                 {
-                    snapshot.push_back(session);
+                    std::lock_guard<std::mutex> lock {state->registryMutex};
+                    snapshot.reserve(state->sessions.size());
+                    for (auto& [id, session] : state->sessions)
+                    {
+                        snapshot.push_back(session);
+                    }
                 }
-            }
 
-            for (auto& session : snapshot)
+                for (auto& session : snapshot)
+                {
+                    asio::post(session->strand(), [session]() { session->forceClose(); });
+                }
+
+                if (!threads.empty())
+                {
+                    std::unique_lock<std::mutex> lock {state->progressMutex};
+                    state->progressCv.wait_for(lock,
+                                               FORCE_CLOSE_TIMEOUT,
+                                               [this]
+                                               {
+                                                   std::lock_guard<std::mutex> registryLock {state->registryMutex};
+                                                   return state->sessions.empty();
+                                               });
+                }
+
+                std::lock_guard<std::mutex> lock {state->registryMutex};
+                state->sessions.clear();
+            }
+            // LCOV_EXCL_START -- only allocation/lock failure reaches this backstop
+            catch (...)
             {
-                asio::post(session->strand(), [session]() { session->forceClose(); });
             }
-
-            if (!threads.empty())
-            {
-                std::unique_lock<std::mutex> lock {state->progressMutex};
-                state->progressCv.wait_for(lock,
-                                           FORCE_CLOSE_TIMEOUT,
-                                           [this]
-                                           {
-                                               std::lock_guard<std::mutex> registryLock {state->registryMutex};
-                                               return state->sessions.empty();
-                                           });
-            }
-
-            std::lock_guard<std::mutex> lock {state->registryMutex};
-            state->sessions.clear();
+            // LCOV_EXCL_STOP
         }
 
         void joinThreads() noexcept
         {
             for (auto& thread : threads)
             {
-                if (thread.joinable())
+                try
                 {
-                    thread.join();
+                    if (thread.joinable())
+                    {
+                        thread.join();
+                    }
                 }
+                // LCOV_EXCL_START -- join() throws only for deadlock/invalid-handle programming
+                // errors; there is no way to stage one without corrupting the thread object
+                catch (...)
+                {
+                    // join() throwing (system_error) with the thread still joinable would terminate
+                    // on ~thread; detaching is the only remaining way to make the handle droppable.
+                    try
+                    {
+                        thread.detach();
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+                // LCOV_EXCL_STOP
             }
             threads.clear();
         }
@@ -1469,9 +1824,14 @@ namespace invsync::http
             m_impl->threads.emplace_back(
                 [impl = m_impl.get()]
                 {
+                    // First use allocates LogFn's static; doing it here keeps the catch blocks below
+                    // allocation-free.
+                    logFn();
+
                     // Re-enter run() after an exception instead of letting the thread die. Letting it
                     // die would silently shrink the reactor -- the server would keep answering, just
-                    // more slowly, with nothing in the log tying the two together.
+                    // more slowly, with nothing in the log tying the two together. Throttled: a
+                    // condition that repeats fires once per queued handler, at CPU speed.
                     for (;;)
                     {
                         try
@@ -1479,21 +1839,41 @@ namespace invsync::http
                             impl->runtime->ioc.run();
                             break;
                         }
+                        // LCOV_EXCL_START -- every handler posted to the reactor carries its own
+                        // barrier, so only an allocation failure inside asio itself lands here
                         catch (const std::exception& e)
                         {
-                            LOGFN_ERROR(logFn(), "An inventory sync server I/O thread caught: %s. Resuming.", e.what());
+                            if (const auto decision = impl->ioThreadResumeThrottle.record())
+                            {
+                                LOGFN_ERROR(logFn(),
+                                            "The inventory sync server's I/O threads caught %llu exception(s) in the "
+                                            "last %d s and resumed (last: %s).",
+                                            static_cast<unsigned long long>(decision.total),
+                                            common::LogThrottle::kDefaultWindowSeconds,
+                                            e.what());
+                            }
                         }
                         catch (...)
                         {
-                            LOGFN_ERROR(logFn(),
-                                        "An inventory sync server I/O thread caught a non-standard exception. "
-                                        "Resuming.");
+                            if (const auto decision = impl->ioThreadResumeThrottle.record())
+                            {
+                                LOGFN_ERROR(logFn(),
+                                            "The inventory sync server's I/O threads caught %llu exception(s) in the "
+                                            "last %d s and resumed (last: non-standard exception).",
+                                            static_cast<unsigned long long>(decision.total),
+                                            common::LogThrottle::kDefaultWindowSeconds);
+                            }
                         }
+                        // LCOV_EXCL_STOP
                     }
 
                     impl->threadsExited.fetch_add(1);
+                    try
                     {
                         std::lock_guard<std::mutex> lock {impl->threadMutex};
+                    }
+                    catch (...) // LCOV_EXCL_LINE -- mutex::lock() failure is not stageable from a test
+                    {
                     }
                     impl->threadCv.notify_all();
                 });
@@ -1504,16 +1884,25 @@ namespace invsync::http
             asio::post(*m_impl->acceptorStrand, [impl = m_impl.get()]() { impl->doAccept(); });
         }
 
+        // The one always-visible record of the effective transport configuration; the C shim only
+        // reports it at debug level.
         LOGFN_INFO(logFn(),
-                   "inventory sync server bound to '%s' (mode %04o, %zu I/O thread(s), max %zu connection(s), "
-                   "%zu byte in-flight budget, %zu byte body cap, %zu byte per-request overhead).",
+                   "inventory sync server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
+                   "max %zu connection(s), %zu byte in-flight budget, %zu byte body cap, %zu byte per-request "
+                   "overhead; timeouts s: header=%zu body=%zu response=%zu write=%zu drain=%zu).",
                    m_impl->socketPath.c_str(),
                    m_impl->state->config.socketMode,
                    threadCount,
+                   m_impl->state->config.concurrentAccepts,
                    m_impl->state->config.maxConnections,
                    m_impl->state->config.maxInFlightBytes,
                    m_impl->state->config.maxBodySize,
-                   m_impl->state->perRequestOverhead);
+                   m_impl->state->perRequestOverhead,
+                   m_impl->state->config.headerTimeoutSec,
+                   m_impl->state->config.bodyTimeoutSec,
+                   m_impl->state->config.responseTimeoutSec,
+                   m_impl->state->config.writeTimeoutSec,
+                   m_impl->state->config.drainTimeoutSec);
     }
 
     void AsioUdsHttpServer::stopAccepting() noexcept
