@@ -77,6 +77,31 @@ namespace invsync::http
             return static_cast<Impl*>(parser->data);
         }
 
+        /**
+         * @brief Runs a callback body, converting any exception into the parser's reject mechanism.
+         *
+         * The callbacks run inside llhttp_execute(), whose frames are C99: a C++ exception unwinding
+         * through them is undefined behaviour and leaves the llhttp state inconsistent. The bodies
+         * allocate (append, insert_or_assign), so a bad_alloc is possible; it becomes a 500 via the
+         * same HPE_USER path the limit checks already use.
+         */
+        template<typename TBody>
+        static int guarded(llhttp_t* parser, TBody&& body) noexcept
+        {
+            auto* impl = of(parser);
+            try
+            {
+                return body(*impl);
+            }
+            // LCOV_EXCL_START -- the callback bodies throw only on allocation failure
+            catch (...)
+            {
+                impl->owner->m_rejectStatus = 500;
+                return HPE_USER;
+            }
+            // LCOV_EXCL_STOP
+        }
+
         void commitPendingHeader()
         {
             if (pendingName.empty())
@@ -245,23 +270,23 @@ namespace invsync::http
                 llhttp_settings_init(&s);
                 s.on_url = [](llhttp_t* p, const char* at, std::size_t len)
                 {
-                    return of(p)->onUrl(at, len);
+                    return guarded(p, [&](Impl& impl) { return impl.onUrl(at, len); });
                 };
                 s.on_header_field = [](llhttp_t* p, const char* at, std::size_t len)
                 {
-                    return of(p)->onHeaderField(at, len);
+                    return guarded(p, [&](Impl& impl) { return impl.onHeaderField(at, len); });
                 };
                 s.on_header_value = [](llhttp_t* p, const char* at, std::size_t len)
                 {
-                    return of(p)->onHeaderValue(at, len);
+                    return guarded(p, [&](Impl& impl) { return impl.onHeaderValue(at, len); });
                 };
                 s.on_headers_complete = [](llhttp_t* p)
                 {
-                    return of(p)->onHeadersComplete();
+                    return guarded(p, [&](Impl& impl) { return impl.onHeadersComplete(); });
                 };
                 s.on_body = [](llhttp_t* p, const char* at, std::size_t len)
                 {
-                    return of(p)->onBody(at, len);
+                    return guarded(p, [&](Impl& impl) { return impl.onBody(at, len); });
                 };
                 s.on_message_complete = [](llhttp_t* p)
                 {

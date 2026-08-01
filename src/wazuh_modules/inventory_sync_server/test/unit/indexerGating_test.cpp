@@ -194,6 +194,40 @@ TEST_F(IndexerGatingTest, AsyncConnectorFailureBlocksTheSocketAndNamesTheAsyncCo
  * reportFailedStart() increments one shared attempt counter that drives the escalation cadence
  * ("60 attempts is about an hour"). Reporting more than once per attempt would halve that clock.
  */
+/// The heartbeat's health poll is the only production caller of isAvailable(); its TRANSITIONS are
+/// the operator's only record of the indexer going away and coming back. Steady state must stay
+/// silent, or sixty lines an hour would say nothing new.
+TEST_F(IndexerGatingTest, IndexerAvailabilityTransitionsAreLoggedOncePerChange)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+
+    const auto path = uniqueSocketPath("health");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    // First observation: available -> one INFO (the worker's own first heartbeat may already have
+    // emitted it; either way it must be there).
+    invsync::test_hooks::pollIndexerHealthForTests();
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable"));
+
+    LogRecorder::clear();
+    events->m_asyncAvailable.store(false);
+    invsync::test_hooks::pollIndexerHealthForTests();
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("No configured indexer host is currently reachable"));
+
+    // Steady state: a second poll in the same state must not repeat the line.
+    LogRecorder::clear();
+    invsync::test_hooks::pollIndexerHealthForTests();
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
+
+    events->m_asyncAvailable.store(true);
+    invsync::test_hooks::pollIndexerHealthForTests();
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable"))
+        << "recovery must be as visible as the outage";
+}
+
 TEST_F(IndexerGatingTest, OneHeartbeatProducesExactlyOneFailedAttempt)
 {
     invsync::test::installFakeIndexersWithFailingAsync("simulated async failure");

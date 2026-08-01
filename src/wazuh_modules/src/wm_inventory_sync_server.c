@@ -49,9 +49,8 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->cluster_name,
              config->node_name);
 
-    /* The rest of the transport, so every tunable is observable. Nine of these appeared nowhere at all
-     * -- not in a log line, not in the module's dump, not in docs -- so an operator had no way to
-     * confirm what the module was running with. None of them is a secret. */
+    /* The rest of the transport, so every tunable is observable here at debug level; the module's
+     * own startup INFO carries the effective values. None of them is a secret. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "transport: concurrent_accepts=%d, buffer_size=%d, max_url_size=%d, max_header_name_size=%d, "
              "max_header_value_size=%d",
@@ -262,6 +261,11 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
 
         if (inventory_sync_server_start_ptr)
         {
+            /* start() launches a worker thread and returns at once; the socket is bound from that
+             * thread, with a retry every 60 s. Said here because this is the last line under this
+             * tag on the happy path -- progress and failures continue under the module's own tag. */
+            mtinfo(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+                   "Dispatching start; the module binds its socket asynchronously and reports under its own tag.");
             /* The tunables were read -- and validated -- at configuration time; only the values that
              * come from the XML configuration are resolved here, where their parse order is settled. */
             inventory_sync_server_config_t config = *data->config;
@@ -293,29 +297,35 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
 
             if (status != 0)
             {
-                /* The module reported a condition retrying cannot fix -- today, only a socket path it
-                 * could never bind. Inventory ingress would then be silently absent for the life of the
-                 * daemon, so refuse to run instead: an operator gets a CRITICAL and a dead daemon rather
-                 * than a manager that looks healthy and quietly loses inventory.
+                /* The module reported a condition its retry loop cannot fix: an unbindable socket
+                 * path, or an exception before the worker thread existed. Inventory ingress would
+                 * then be silently absent for the life of the daemon, so refuse to run instead.
                  *
                  * This is post-fork (module threads are created after goDaemon()), so
-                 * `wazuh-manager-control start` will already have reported success and the failure shows
-                 * up in `status` and the log. The internal options, by contrast, are validated in
-                 * wm_inventory_sync_server_read(), which is pre-fork and visible to `-t`. */
-                merror_exit("Inventory sync server cannot start; see the preceding error. Not running without "
-                            "inventory ingress.");
+                 * `wazuh-manager-control start` will already have reported success and the failure
+                 * shows up in `status` and the log. The internal options, by contrast, are validated
+                 * in wm_inventory_sync_server_read(), which is pre-fork and visible to `-t`. */
+                mterror_exit(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+                             "Inventory sync server cannot start; see the preceding error. Not running without "
+                             "inventory ingress.");
             }
         }
         else
         {
-            mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG, "Unable to start inventory_sync_server module.");
-            return NULL;
+            /* Same terminality as a failed start: without the entry point this module is absent for
+             * the daemon's whole life, and a manager that looks healthy while quietly losing
+             * inventory is worse than one that refuses to run. Points at packaging, the one thing an
+             * operator can act on. */
+            mterror_exit(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+                         "libinventory_sync_server.so does not export inventory_sync_server_start; the "
+                         "installation is broken. Not running without inventory ingress.");
         }
     }
     else
     {
-        mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG, "Unable to load inventory_sync_server module.");
-        return NULL;
+        mterror_exit(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+                     "Unable to load libinventory_sync_server.so; the installation is broken. Not running "
+                     "without inventory ingress.");
     }
 
     /* start() is non-blocking -- the module owns its own worker thread -- so this routine returns
@@ -334,7 +344,6 @@ void wm_inventory_sync_server_destroy(wm_inventory_sync_server_t* data)
 
 void wm_inventory_sync_server_stop(__attribute__((unused)) wm_inventory_sync_server_t* data)
 {
-    mtinfo(WM_INVENTORY_SYNC_SERVER_LOGTAG, "Module finished.");
     if (inventory_sync_server_stop_ptr)
     {
         inventory_sync_server_stop_ptr();
@@ -343,6 +352,10 @@ void wm_inventory_sync_server_stop(__attribute__((unused)) wm_inventory_sync_ser
     {
         mtwarn(WM_INVENTORY_SYNC_SERVER_LOGTAG, "Unable to stop inventory_sync_server module.");
     }
+    /* After the stop, not before: stop() drains in-flight requests and joins the worker, so a
+     * "finished" printed first would be a lie for those seconds -- exactly the ones an operator
+     * stares at during a hung shutdown. */
+    mtinfo(WM_INVENTORY_SYNC_SERVER_LOGTAG, "Module finished.");
 }
 
 wmodule* wm_inventory_sync_server_read()
@@ -375,10 +388,9 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
         return root;
     }
 
-    /* Reported so `getconfig wmodules` can answer what this module is actually running with; it used to
-     * contribute an anonymous empty object, indistinguishable from every other module that reports
-     * nothing. Secrets-free by construction: the <indexer> block, the only part of the configuration
-     * that can carry credentials, is deliberately excluded. */
+    /* Reported so `getconfig wmodules` can answer what this module is actually running with.
+     * Secrets-free by construction: the <indexer> block, the only part of the configuration that
+     * can carry credentials, is deliberately excluded. */
     cJSON* config = cJSON_CreateObject();
     cJSON_AddNumberToObject(config, "io_threads", data->config->io_threads);
     cJSON_AddNumberToObject(config, "concurrent_accepts", data->config->concurrent_accepts);
