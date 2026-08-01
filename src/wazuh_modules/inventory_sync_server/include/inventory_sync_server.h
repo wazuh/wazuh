@@ -85,13 +85,9 @@ extern "C"
          * Mode applied to the socket file after bind(), which applies the umask and so cannot be
          * relied on.
          *
-         * NOT CONFIGURABLE, and modulesd always leaves it 0 -> the module's 0660.
-         *
-         * It used to be an internal option, and that was a trap: this field is a raw mode_t, but
-         * internal options are parsed with atoi(), i.e. DECIMAL. An operator writing the documented
-         * `0660` produced decimal 660, which exceeded the permitted range and killed the daemon; and
-         * a value that did fit, say 440, was applied as decimal 440 == 0670, quietly granting the
-         * group write and execute on a socket the operator was trying to restrict.
+         * NOT CONFIGURABLE, and modulesd always leaves it 0 -> the module's 0660. Do not turn it
+         * into an internal option: those are parsed with atoi() (decimal), so an operator writing
+         * an octal mode would silently get the wrong permissions.
          */
         int socket_mode;
 
@@ -263,14 +259,15 @@ extern "C"
      * @param callbackLog   Logging callback (modulesd passes mtLoggingFunctionsWrapper).
      * @param configuration Module configuration (may be NULL -> defaults are used).
      *
-     * @return 0 when the module started, non-zero when it CANNOT start and retrying would be
-     *         pointless -- today, only a socket path the server could never bind (missing or
-     *         unwritable parent directory, or a non-socket file already sitting there). modulesd
-     *         treats non-zero as fatal and refuses to run without inventory ingress.
+     * @return 0 when the module started, non-zero when it CANNOT start and no retry loop exists to
+     *         recover it: a socket path the server could never bind (missing or unwritable parent
+     *         directory, or a non-socket file already sitting there), or an exception before the
+     *         worker thread was launched (allocation or thread-spawn failure). modulesd treats
+     *         non-zero as fatal and refuses to run without inventory ingress.
      *
      * @note An unreachable INDEXER is deliberately not fatal and returns 0: the indexer is allowed to
-     *       start after modulesd, and the module retries on its own heartbeat. Only the socket, which
-     *       nothing else can fix, aborts the daemon.
+     *       start after modulesd, and the module retries on its own heartbeat. Only conditions the
+     *       heartbeat can never fix abort the daemon.
      */
     EXPORTED int inventory_sync_server_start(full_log_fnc_t callbackLog,
                                              const inventory_sync_server_config_t* configuration);

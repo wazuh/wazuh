@@ -92,8 +92,9 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            LOGFN_ERROR(
-                LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error starting inventory sync server: %s", e.what());
+            // moduleLogFn() is a pre-built static: constructing a LogFn here would allocate inside
+            // an exception handler at the C boundary, where a second throw is std::terminate.
+            LOGFN_ERROR(invsync::moduleLogFn(), "Error starting inventory sync server: %s", e.what());
         }
         // LCOV_EXCL_START
         catch (...)
@@ -105,21 +106,17 @@ extern "C"
             // Excluded from coverage rather than tested: nothing in this module or the libraries it
             // calls throws a non-std type, so there is no way to reach it without adding a throw for
             // the test's benefit. It stays because the guarantee has to hold if that ever changes.
-            LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
-                        "Error starting inventory sync server: non-standard exception.");
+            LOGFN_ERROR(invsync::moduleLogFn(), "Error starting inventory sync server: non-standard exception.");
         }
         // LCOV_EXCL_STOP
 
         /*
-         * An exception escaping start() is NOT reported as fatal.
-         *
-         * It is reached for a thread that could not be spawned or an allocation that failed -- pressure
-         * that a restart is unlikely to fix and that says nothing about whether the module is
-         * misconfigured. Killing the daemon on it would turn a transient resource problem into an
-         * outage of every other module. The reserved fatal answer is for a socket path that can never
-         * work, which is decided before this point.
+         * An exception escaping start() IS fatal: the facade never launched its worker, so there is
+         * no retry loop and the module would stay absent for the daemon's whole life while modulesd
+         * looked healthy. Reporting non-zero makes the shim refuse to run without inventory ingress,
+         * the same answer an unbindable socket gets.
          */
-        return 0;
+        return 1;
     }
 
     void inventory_sync_server_stop(void)
@@ -130,8 +127,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            LOGFN_ERROR(
-                LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG}, "Error stopping inventory sync server: %s", e.what());
+            LOGFN_ERROR(invsync::moduleLogFn(), "Error stopping inventory sync server: %s", e.what());
         }
         // LCOV_EXCL_START
         catch (...)
@@ -140,8 +136,7 @@ extern "C"
             // This one runs from modulesd's signal handler (wazuh_modules/src/main.c), where a
             // terminate would turn a clean shutdown into a crash. Unreachable for the same reason,
             // and excluded for the same reason.
-            LOGFN_ERROR(LogFn {invsync::INVENTORY_SYNC_SERVER_LOGTAG},
-                        "Error stopping inventory sync server: non-standard exception.");
+            LOGFN_ERROR(invsync::moduleLogFn(), "Error stopping inventory sync server: non-standard exception.");
         }
         // LCOV_EXCL_STOP
     }

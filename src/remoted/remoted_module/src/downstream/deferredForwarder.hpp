@@ -40,12 +40,7 @@ namespace remoted::downstream
          *
          * Deliberately a `const char*` pointing at a string literal rather than a std::string: the
          * failure-log lambda captures it by value on EVERY request, and this pipeline's logging is
-         * documented as allocation-free on the hot path. A literal has static storage, so capturing
-         * it costs nothing and can never dangle.
-         *
-         * Exists because remoted now talks to more than one downstream service (the engine's event
-         * ingress and modulesd's inventory sync server), and a WARN that says only "the downstream
-         * service failed" no longer identifies which one.
+         * documented as allocation-free on the hot path
          */
         const char* serviceName {"downstream service"};
         /// How long this endpoint is willing to wait for the downstream answer, ms. <=0 -> the

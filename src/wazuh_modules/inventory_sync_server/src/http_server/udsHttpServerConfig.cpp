@@ -41,13 +41,9 @@ namespace
     constexpr std::size_t DEFAULT_MAX_HEADER_NAME_SIZE {256};
     constexpr std::size_t DEFAULT_MAX_HEADER_VALUE_SIZE {8192};
     /*
-     * 32, and NOT configurable (see inventory_sync_server.h).
-     *
-     * It is a term of the memory ceiling the in-flight byte budget charges for: the worst-case head is
-     * count * (nameSize + valueSize), and the transport derives its per-request overhead from that
-     * product. Halving the old 64 halves that ceiling, which is what makes the derived overhead a
-     * number the default budget can actually accommodate. 32 header lines is still far more than the
-     * peer sends (it sends five).
+     * 32, and NOT configurable (see inventory_sync_server.h): it is a term of the memory ceiling the
+     * in-flight byte budget charges for -- the worst-case head is count * (nameSize + valueSize) --
+     * and still far more header lines than the peer sends (five).
      */
     constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {32};
 

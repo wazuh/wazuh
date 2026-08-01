@@ -38,4 +38,9 @@ namespace invsync::test_hooks
         invsync::InventorySyncServerFacade::instance().forceRetryForTests();
     }
 
+    void pollIndexerHealthForTests()
+    {
+        invsync::InventorySyncServerFacade::instance().pollIndexerHealthForTests();
+    }
+
 } // namespace invsync::test_hooks

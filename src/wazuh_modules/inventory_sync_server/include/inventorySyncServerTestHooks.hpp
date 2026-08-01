@@ -68,6 +68,9 @@ namespace invsync::test_hooks
     /// Forces one retry attempt synchronously instead of waiting out the real heartbeat.
     EXPORTED void forceRetryForTests();
 
+    /// Runs one indexer-health poll synchronously, as the worker's heartbeat would.
+    EXPORTED void pollIndexerHealthForTests();
+
 } // namespace invsync::test_hooks
 
 #endif // _INVENTORY_SYNC_SERVER_TEST_HOOKS_HPP

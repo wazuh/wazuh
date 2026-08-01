@@ -160,7 +160,9 @@ TEST(UdsHttpServerTest, SocketIsCreatedWithTheConfiguredMode)
         server->addRoute(Method::Get, "/", echoHandler());
         server->start(configFor(path));
 
-        struct stat info {};
+        struct stat info
+        {
+        };
         ASSERT_EQ(0, ::stat(path.c_str(), &info));
         EXPECT_TRUE(S_ISSOCK(info.st_mode));
         EXPECT_EQ(0660U, info.st_mode & 07777U);

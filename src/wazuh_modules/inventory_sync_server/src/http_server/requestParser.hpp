@@ -70,7 +70,7 @@ namespace invsync::http
             std::size_t maxUrlSize {2048};
             std::size_t maxHeaderNameSize {256};
             std::size_t maxHeaderValueSize {8192};
-            std::size_t maxHeaderCount {64};
+            std::size_t maxHeaderCount {32};
         };
 
         explicit RequestParser(Limits limits);
