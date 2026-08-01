@@ -92,14 +92,6 @@ Time interval between database synchronization cycles.
 - **Allowed values:** Time format strings in seconds (e.g., `300s`, `600s`)
 - **Note:** Controls how frequently the agent synchronizes SCA state with the manager
 
-### synchronization/response_timeout
-
-Maximum time to wait for manager response during synchronization.
-
-- **Default value:** `60s`
-- **Allowed values:** Time format strings in seconds
-- **Note:** If timeout is exceeded, synchronization is retried in the next cycle
-
 ### synchronization/max_eps
 
 Maximum events per second for synchronization operations.
@@ -211,7 +203,6 @@ Complete configuration including synchronization settings:
   <synchronization>
     <enabled>yes</enabled>
     <interval>300</interval>
-    <response_timeout>60</response_timeout>
     <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>

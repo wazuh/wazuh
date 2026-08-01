@@ -271,14 +271,23 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
             data.is_data_context = selectStmt.value<int>(6) != 0;
             const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
 
-            if (maxBytes > 0 && !result.empty() && estimatedBytes + estimatedItemBytes > maxBytes)
+            if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
             {
-                break;
-            }
+                if (!result.empty())
+                {
+                    // Normal budget exhaustion: stop before adding this item.
+                    break;
+                }
 
-            if (maxBytes > 0 && result.empty() && estimatedBytes + estimatedItemBytes > maxBytes)
-            {
-                m_logger(LOG_DEBUG, "PersistentQueueStorage: A single pending item exceeds the fetch byte budget; selecting it alone.");
+                // First item already exceeds the cap. Enforcing the limit here
+                // would leave the item stuck in PENDING forever, so we accept it
+                // once but emit a WARNING so operators can investigate oversized records.
+                m_logger(LOG_WARNING,
+                         "PersistentQueueStorage: A single pending item (~" +
+                         std::to_string(estimatedItemBytes) +
+                         " B) exceeds the byte cap (" +
+                         std::to_string(maxBytes) +
+                         " B); sending it alone. Consider reducing individual item size.");
             }
 
             estimatedBytes += estimatedItemBytes;

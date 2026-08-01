@@ -432,30 +432,23 @@ stateDiagram-v2
     WaitingEndAck --> Idle: Timeout/Error
 ```
 
-## Timeout and Retry Mechanism
+## Transport-Level Timeout and Retry
 
-### Timeout Handling
+The sync protocol module does **not** impose a module-level response-wait timeout. Once a session is
+successfully submitted to the HTTPS transport's intake socket, the module waits indefinitely for the
+transport callback. The transport layer owns:
 
-Each phase has specific timeout behaviors:
+- **Per-request timeout** — `statefulTimeoutMs` (default 120 s per attempt, configurable via the
+  HTTPS client configuration).
+- **HTTP-level retries** — `STATEFUL_MAX_ATTEMPTS` (default 5 attempts with backoff).
 
-1. **WaitingStartAck**
-   - Default timeout: 30 seconds
-   - On timeout: Retry sending Start message
-   - Max retries: Configurable (default 3)
-   - After max retries: Abort synchronization
+The only module-level parameter that remains active is **`retries`**, which controls how many times
+`runSession()` re-submits the session to the intake socket if that socket is temporarily unavailable
+(e.g. during an agentd restart between attempts). This is a local hand-off concern, not an HTTP-level
+one.
 
-2. **DataTransfer**
-   - No timeout for data sending
-   - Flow control via EPS limiting
-
-3. **WaitingEndAck**
-   - Default timeout: 30 seconds
-   - On `EndAck(Ok/Error)`: Session completes or fails immediately
-   - On `EndAck(Processing)`: Manager is still processing; agent resets the wait timer and continues waiting **without** resending `End` and **without** consuming a retry
-   - On `ReqRet`: Agent retransmits missing sequences; retrying does **not** consume a retry
-   - On timeout after sending `End`: Retry sending End message, consuming one retry
-   - Max retries: Configurable (default 3)
-   - After max retries: Abort synchronization
+When all transport attempts are exhausted the callback fires with a non-OK result code, the sync cycle
+fails, items are reset to `PENDING`, and the module's own periodic timer triggers the next attempt.
 
 ## Error Handling
 

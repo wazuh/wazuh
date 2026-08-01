@@ -4,14 +4,20 @@
 
 The **Agent Sync Protocol** is a shared module that provides a standardized interface for internal Wazuh modules (FIM, SCA, Inventory) to synchronize data with the Wazuh Manager. It implements a reliable, session-based synchronization mechanism that ensures data consistency and handles errors gracefully.
 
-The protocol supports both **full** and **delta synchronization modes**, enabling efficient data transfer while maintaining state consistency. It uses a persistent queue backed by SQLite for durability and implements retry mechanisms with timeout controls to handle failures.
+The protocol supports both **full** and **delta synchronization modes**, enabling efficient data transfer
+while maintaining state consistency. It uses a persistent queue backed by SQLite for durability.
+Timeout and retry behaviour for the HTTP layer are owned exclusively by the HTTPS transport module;
+the sync protocol itself waits indefinitely for the transport callback and relies on the module's own
+periodic cycle to retry after failures.
 
 ## Key Features
 
 - **Unified API**: Single interface for all modules to interact with the synchronization protocol
 - **Persistent Storage**: SQLite-based queue ensures data durability across agent restarts
-- **Session Management**: Unique session IDs track synchronization state between agent and manager
-- **Retry Mechanism**: Configurable retry attempts with exponential backoff for network resilience
+- **Session Management**: Unique session IDs track synchronization state and guard against stale responses
+- **Transport-Owned Retry**: HTTP-level retries and per-request timeouts are managed by the HTTPS
+  transport layer (`STATEFUL_MAX_ATTEMPTS`, `statefulTimeoutMs`); the protocol layer does not impose
+  a separate response-wait timeout
 - **EPS Control**: Rate limiting to prevent overwhelming the manager with data
 - **Multiple Sync Modes**: Support for full, delta, integrity check, metadata, and groups synchronization
 

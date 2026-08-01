@@ -233,7 +233,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 1);
+
 
     m_agentInfo->initSyncProtocol("test_module");
 
@@ -334,7 +334,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 0);
+
 
     m_agentInfo->initSyncProtocol("test_module");
 
@@ -438,7 +438,7 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 1);
+
 
     m_agentInfo->initSyncProtocol("test_module");
 

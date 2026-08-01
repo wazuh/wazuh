@@ -1075,11 +1075,18 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             continue;
         }
 
-        /* ACK-less flow: route the HTTP outcome code. The receiving module maps
-         * "HCRESULT:0" to success (200 path) and non-zero values to failure. */
+        /* ACK-less flow: route the HTTP outcome code with the session's numeric
+         * ID so the receiving module can discard stale callbacks (responses for
+         * a previous timed-out session that arrives while a newer one is active).
+         * Format: HCRESULT:<session_number>:<result_code>
+         *
+         * session_id format is "<module>-<decimal_uint64>" so the numeric part
+         * is everything after module_len + 1 (the '-'). */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
-        char payload[64];
-        int payload_len = snprintf(payload, sizeof(payload), "HCRESULT:%d", result);
+        const char *session_num = module + module_len + 1; /* points to numeric suffix */
+        char payload[128];
+        int payload_len = snprintf(payload, sizeof(payload), "HCRESULT:%s:%d",
+                                   session_num, result);
 
         if (payload_len <= 0 || (size_t)payload_len >= sizeof(payload)) {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",

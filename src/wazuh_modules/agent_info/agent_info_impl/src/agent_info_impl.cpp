@@ -364,9 +364,7 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName)
     {
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName,
                                                                std::nullopt,
-                                                               logger_func,
-                                                               std::chrono::seconds(m_syncResponseTimeout),
-                                                               m_syncRetries);
+                                                               logger_func);
         m_logFunction(LOG_DEBUG, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
@@ -375,15 +373,6 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName)
         // Re-throw to allow caller to handle
         throw;
     }
-}
-
-void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries)
-{
-    m_syncResponseTimeout = timeout;
-    m_syncRetries = retries;
-
-    m_logFunction(LOG_DEBUG,
-                  "Sync parameters set: timeout=" + std::to_string(timeout) + "s, retries=" + std::to_string(retries));
 }
 
 void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)

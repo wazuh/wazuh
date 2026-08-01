@@ -47,7 +47,7 @@ int main()
             std::cout << "[Test sync_protocol]: " << msg << std::endl;
         };
 
-        AgentSyncProtocol proto{"sync_protocol", ":memory:", std::move(testLogger), std::chrono::seconds(timeout), retries,
+        AgentSyncProtocol proto{"sync_protocol", ":memory:", std::move(testLogger),
                                 nullptr, std::make_shared<LoopbackTransport>()};
         g_proto = &proto;
 
