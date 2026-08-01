@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <thread>
 
 void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
 void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
@@ -48,5 +49,11 @@ protected:
     {
         ssOutput.str("");
     }
+};
+class LogFnTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { Log::setModuleLogFn(LogFn {}); }
+    void TearDown() override { Log::setModuleLogFn(LogFn {}); }
 };
 #endif // LOGGER_HELPER_TEST_H

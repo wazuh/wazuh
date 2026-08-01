@@ -652,6 +652,7 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
         m_orchestrator = std::make_shared<OrchestratorToTest>();
 
         // Add 5 mock workers
@@ -1075,8 +1076,7 @@ TEST_F(OrchestratorTest, hotSwapNamespaceSuccess)
     {
         EXPECT_CALL(*mock, get()).WillRepeatedly(testing::Return(irouterMock));
     }
-    EXPECT_CALL(*routerMock, hotSwapNamespace("myEntry", testing::_))
-        .WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*routerMock, hotSwapNamespace("myEntry", testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
 
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
@@ -1160,7 +1160,8 @@ TEST_F(OrchestratorTest, renameTestEntryWorkerFails)
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
     EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillOnce(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, renameEntry("oldName", "newName")).WillOnce(testing::Return(base::Error {"rename failed"}));
+    EXPECT_CALL(*testerMock, renameEntry("oldName", "newName"))
+        .WillOnce(testing::Return(base::Error {"rename failed"}));
 
     EXPECT_TRUE(m_orchestrator->renameTestEntry("oldName", "newName").has_value());
 }
@@ -1328,8 +1329,7 @@ protected:
             .WillByDefault(
                 [](const std::string&, std::function<uint64_t()>, const std::string&, const std::string&) {});
         ON_CALL(*mockMetrics, registerPullMetricDouble(testing::_, testing::_, testing::_, testing::_))
-            .WillByDefault(
-                [](const std::string&, std::function<double()>, const std::string&, const std::string&) {});
+            .WillByDefault([](const std::string&, std::function<double()>, const std::string&, const std::string&) {});
     }
 
     void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
@@ -1433,11 +1433,10 @@ TEST_F(OrchestratorConstructorTest, ConstructorSuccessWithEmptyStore)
         .WillRepeatedly(testing::Return(store::mocks::storeOk()));
     auto opt = makeValidOptions(1);
 
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 TEST_F(OrchestratorConstructorTest, ConstructorSuccessWithMultipleThreads)
@@ -1447,11 +1446,10 @@ TEST_F(OrchestratorConstructorTest, ConstructorSuccessWithMultipleThreads)
         .WillRepeatedly(testing::Return(store::mocks::storeOk()));
     auto opt = makeValidOptions(3);
 
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 TEST_F(OrchestratorConstructorTest, ConstructorStoreReadErrorCreatesDoc)
@@ -1465,11 +1463,10 @@ TEST_F(OrchestratorConstructorTest, ConstructorStoreReadErrorCreatesDoc)
         .WillRepeatedly(testing::Return(store::mocks::storeOk()));
 
     auto opt = makeValidOptions(1);
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 TEST_F(OrchestratorConstructorTest, ConstructorStartStop)
@@ -1502,8 +1499,7 @@ TEST_F(OrchestratorConstructorTest, ConstructorRequestShutdown)
 TEST_F(OrchestratorConstructorTest, ConstructorWithRouterEntries)
 {
     // JSON array with a valid router entry (has "priority" field)
-    const std::string routerJson =
-        R"([{"name":"route1","namespace":"policy","priority":10}])";
+    const std::string routerJson = R"([{"name":"route1","namespace":"policy","priority":10}])";
     const std::string testerJson = R"([])";
 
     EXPECT_CALL(*m_mockStore, readDoc(testing::_))
@@ -1518,8 +1514,7 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithRouterEntries)
     std::unordered_set<base::Name> fakeAssets {base::Name("decoder/test/0")};
     const std::string hash = "hash123";
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-        .WillRepeatedly(testing::Return(mockPolicy));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillRepeatedly(testing::Return(mockPolicy));
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*mockPolicy, expression()).WillRepeatedly(testing::ReturnRefOfCopy(base::Expression {}));
     EXPECT_CALL(*mockPolicy, hash()).WillRepeatedly(testing::ReturnRefOfCopy(hash));
@@ -1528,19 +1523,17 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithRouterEntries)
     EXPECT_CALL(*mockController, stop()).Times(testing::AnyNumber());
 
     auto opt = makeValidOptions(1);
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 TEST_F(OrchestratorConstructorTest, ConstructorWithTesterEntries)
 {
     // JSON array with a valid tester entry (has "lifetime" field)
     const std::string routerJson = R"([])";
-    const std::string testerJson =
-        R"([{"name":"test1","namespace":"policy","lifetime":3600}])";
+    const std::string testerJson = R"([{"name":"test1","namespace":"policy","lifetime":3600}])";
 
     EXPECT_CALL(*m_mockStore, readDoc(testing::_))
         .WillOnce(testing::Return(store::mocks::storeReadDocResp(json::Json {routerJson.c_str()})))
@@ -1554,8 +1547,7 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithTesterEntries)
     std::unordered_set<base::Name> fakeAssets {base::Name("decoder/test/0")};
     const std::string hash = "hashT";
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-        .WillRepeatedly(testing::Return(mockPolicy));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillRepeatedly(testing::Return(mockPolicy));
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*mockPolicy, expression()).WillRepeatedly(testing::ReturnRefOfCopy(base::Expression {}));
     EXPECT_CALL(*mockPolicy, hash()).WillRepeatedly(testing::ReturnRefOfCopy(hash));
@@ -1564,20 +1556,17 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithTesterEntries)
     EXPECT_CALL(*mockController, stop()).Times(testing::AnyNumber());
 
     auto opt = makeValidOptions(1);
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 TEST_F(OrchestratorConstructorTest, ConstructorWithBothEntries)
 {
     // Both router and tester entries with lastUse for tester
-    const std::string routerJson =
-        R"([{"name":"route1","namespace":"policy","priority":10}])";
-    const std::string testerJson =
-        R"([{"name":"test1","namespace":"policy","lifetime":3600,"lastUse":99999}])";
+    const std::string routerJson = R"([{"name":"route1","namespace":"policy","priority":10}])";
+    const std::string testerJson = R"([{"name":"test1","namespace":"policy","lifetime":3600,"lastUse":99999}])";
 
     EXPECT_CALL(*m_mockStore, readDoc(testing::_))
         .WillOnce(testing::Return(store::mocks::storeReadDocResp(json::Json {routerJson.c_str()})))
@@ -1590,8 +1579,7 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithBothEntries)
     std::unordered_set<base::Name> fakeAssets {base::Name("decoder/test/0")};
     const std::string hash = "hashBoth";
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-        .WillRepeatedly(testing::Return(mockPolicy));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillRepeatedly(testing::Return(mockPolicy));
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*mockPolicy, expression()).WillRepeatedly(testing::ReturnRefOfCopy(base::Expression {}));
     EXPECT_CALL(*mockPolicy, hash()).WillRepeatedly(testing::ReturnRefOfCopy(hash));
@@ -1600,11 +1588,10 @@ TEST_F(OrchestratorConstructorTest, ConstructorWithBothEntries)
     EXPECT_CALL(*mockController, stop()).Times(testing::AnyNumber());
 
     auto opt = makeValidOptions(1);
-    ASSERT_NO_THROW(
-        {
-            Orchestrator orch(opt);
-            orch.stop();
-        });
+    ASSERT_NO_THROW({
+        Orchestrator orch(opt);
+        orch.stop();
+    });
 }
 
 /**************************************************************************
@@ -1644,7 +1631,6 @@ TEST_F(OrchestratorTest, dumpRoutersWhenShutdown)
     ASSERT_NO_THROW(m_orchestrator->callDumpRouters());
 }
 
-
 /**************************************************************************
  * Worker pool expansion tests
  *************************************************************************/
@@ -1654,7 +1640,11 @@ class ExpansionTest : public ::testing::Test
 protected:
     std::unique_ptr<OrchestratorToTest> m_orch;
 
-    void SetUp() override { m_orch = std::make_unique<OrchestratorToTest>(); }
+    void SetUp() override
+    {
+        logging::testInit();
+        m_orch = std::make_unique<OrchestratorToTest>();
+    }
     void TearDown() override { m_orch.reset(); }
 };
 

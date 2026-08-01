@@ -28,16 +28,19 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.10']
     env:
-      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
-      TEST_REPORT_PATH: /home/runner/work/test_report.txt
-      COVERAGE_REPORT_PATH: /home/runner/work/coverage_report
+      PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
+      TEST_REPORT_PATH: ${{ github.workspace }}/test_report.txt
+      COVERAGE_REPORT_PATH: ${{ github.workspace }}/coverage_report
     steps:
       - uses: actions/checkout@v4
 
@@ -111,12 +114,13 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wodles-unit-tests-coverage
           path: ${{ env.COVERAGE_REPORT_PATH }}
-          if-no-files-found: warn
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Generate test report
         if: inputs.generate_report

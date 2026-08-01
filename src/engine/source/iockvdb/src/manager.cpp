@@ -11,6 +11,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <base/name.hpp>
+#include <base/utils/generator.hpp>
 #include <store/istore.hpp>
 
 #include <iockvdb/dbHandle.hpp>
@@ -20,7 +21,9 @@
 namespace
 {
 
-const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"}; ///< Store document name for KVDB state
+const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"};   ///< Store document name for KVDB state
+constexpr std::string_view LOG_MODULE_NAME = "IOC::KVDB"; ///< Log module name for KVDBManager
+
 /**
  * @brief Represents the persisted state of a KVDB instance
  */
@@ -96,7 +99,8 @@ public:
         switch (ret)
         {
             case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing instance_path field");
-            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
+            case json::RetGet::WrongType:
+                throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
             case json::RetGet::Success:
                 if (path.empty())
                     throw std::runtime_error("DBState::fromJson: instance_path field cannot be empty");
@@ -147,15 +151,10 @@ KVDBManager::KVDBManager(std::filesystem::path rootDir, std::shared_ptr<store::I
 
 std::filesystem::path KVDBManager::makeNextInstancePath(std::string_view name)
 {
-    // Use 4-char hex hash derived from current timestamp for uniqueness
-    auto now = std::chrono::system_clock::now();
-    auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-
-    // Generate 4-char hex hash from timestamp
-    uint16_t hash = static_cast<uint16_t>(nanos ^ (nanos >> 16) ^ (nanos >> 32) ^ (nanos >> 48));
-    char buf[5];
-    std::snprintf(buf, sizeof(buf), "%04x", hash);
-    return m_root / std::string(name) / buf;
+    // Random hex suffix for uniqueness. A timestamp-derived hash was used previously, but
+    // folding a nanosecond timestamp down to 16 bits collides under rapid add()/hotSwap()
+    // cycles on the same name, since consecutive calls can land on the same low-order bits.
+    return m_root / std::string(name) / base::utils::generators::randomHexString(8);
 }
 
 void KVDBManager::add(std::string_view name)
@@ -245,7 +244,7 @@ void KVDBManager::add(std::string_view name)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after add: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after add: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Mark as successful - prevent rollback
@@ -254,7 +253,6 @@ void KVDBManager::add(std::string_view name)
     // Opportunistic cleanup of retired instances
     tryCleanRetired();
 }
-
 
 bool KVDBManager::exists(std::string_view dbName) const noexcept
 {
@@ -448,7 +446,7 @@ void KVDBManager::hotSwap(std::string_view sourceDb, std::string_view targetDb)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after hot-swap: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after hot-swap: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Opportunistic cleanup of retired instances
@@ -500,7 +498,7 @@ void KVDBManager::remove(std::string_view name)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after removal: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after removal: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Opportunistic cleanup of retired instances
@@ -596,7 +594,8 @@ void KVDBManager::loadStateFromStore()
                     }
                     else
                     {
-                        LOG_WARNING("[KVDB IOC] Failed to open DB '{}': {}.", dbState.getName(), status.ToString());
+                        LOG_WARNING(
+                            "[{}] Failed to open DB '{}': {}", LOG_MODULE_NAME, dbState.getName(), status.ToString());
                     }
                 }
 
@@ -605,7 +604,8 @@ void KVDBManager::loadStateFromStore()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[KVDB IOC] Failed to restore DB '{}' from '{}': {}.",
+                LOG_WARNING("[{}] Failed to restore DB '{}' from '{}': {}",
+                            LOG_MODULE_NAME,
                             dbState.getName(),
                             dbState.getInstancePath(),
                             e.what());
@@ -614,7 +614,7 @@ void KVDBManager::loadStateFromStore()
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to load persisted state: {}. Starting fresh.", e.what());
+        LOG_WARNING("[{}] Failed to load persisted state: {}. Starting fresh", LOG_MODULE_NAME, e.what());
     }
 }
 
@@ -645,7 +645,7 @@ void KVDBManager::saveStateToStore()
     }
     catch (const std::exception& e)
     {
-        LOG_DEBUG("[KVDB IOC] Could not preload previous persisted paths: {}.", e.what());
+        LOG_DEBUG("[{}] Could not preload previous persisted paths: {}", LOG_MODULE_NAME, e.what());
     }
 
     {

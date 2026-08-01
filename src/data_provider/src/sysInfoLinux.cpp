@@ -443,6 +443,22 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
 
     const file_system::FileSystemWrapper fs;
 
+    // A process can disappear between listing /proc and inspecting it (a short-lived process).
+    // The throwing std::filesystem::is_directory would then raise an ESRCH/ENOENT
+    // filesystem_error that, if it escaped, would abort the whole ports scan and log a misleading
+    // error. Treat a vanished entry as "not a directory" so we simply skip that PID and continue.
+    auto safeIsDirectory = [&fs](const std::filesystem::path & path) -> bool
+    {
+        try
+        {
+            return fs.is_directory(path);
+        }
+        catch (const std::filesystem::filesystem_error&)
+        {
+            return false;
+        }
+    };
+
     if (fs.is_directory(procPath))
     {
         auto procFiles = fs.list_directory(procPath);
@@ -453,12 +469,12 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
             // Only directories that represent a PID are inspected.
             std::string procFileName = procFile.filename().string();
 
-            if (Utils::isNumber(procFileName) && fs.is_directory(procFile))
+            if (Utils::isNumber(procFileName) && safeIsDirectory(procFile))
             {
                 // Only fd directory is inspected.
                 const std::filesystem::path pidFilePath = procFile / "fd";
 
-                if (fs.is_directory(pidFilePath))
+                if (safeIsDirectory(pidFilePath))
                 {
                     std::vector<std::filesystem::path> fdFiles;
 

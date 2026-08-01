@@ -124,6 +124,15 @@ bool wm_control_wait_for_service_active(const char *service) {
     return false;
 }
 
+const char *wm_control_get_bin(void) {
+    /* 5.0 rename: manager ships wazuh-manager-control, agent ships wazuh-control. */
+#ifdef CLIENT
+    return "bin/wazuh-control";
+#else
+    return "bin/wazuh-manager-control";
+#endif
+}
+
 size_t wm_control_execute_action(const char *action, const char *service, char **output) {
 #ifdef __APPLE__
     /* On macOS, do not run wazuh-control directly from here. Forking it from
@@ -178,6 +187,7 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     }
 #else
     bool use_systemd = wm_control_check_systemd();
+    const char *control_bin = wm_control_get_bin();
     char *exec_cmd[4] = {NULL};
 
     if (use_systemd) {
@@ -186,9 +196,9 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
         exec_cmd[2] = (char *)service;
         mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using systemctl", action, service);
     } else {
-        exec_cmd[0] = "bin/wazuh-control";
+        exec_cmd[0] = (char *)control_bin;
         exec_cmd[1] = (char *)action;
-        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using wazuh-control", action, service);
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using %s", action, service, control_bin);
     }
 
     switch (fork()) {
@@ -199,16 +209,16 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
         case 0:
             if (use_systemd && strcmp(action, "reload") == 0) {
                 if (!wm_control_wait_for_service_active(service)) {
-                    mtwarn(WM_CONTROL_LOGTAG, "Service %s not active for systemctl, falling back to wazuh-control", service);
-                    char *fallback_cmd[] = {"bin/wazuh-control", (char *)action, NULL};
+                    mtwarn(WM_CONTROL_LOGTAG, "Service %s not active for systemctl, falling back to %s", service, control_bin);
+                    char *fallback_cmd[] = {(char *)control_bin, (char *)action, NULL};
                     if (execvp(fallback_cmd[0], fallback_cmd) < 0) {
-                        mterror(WM_CONTROL_LOGTAG, "Error executing %s command via wazuh-control: %s (%d)", action, strerror(errno), errno);
+                        mterror(WM_CONTROL_LOGTAG, "Error executing %s command via %s: %s (%d)", action, control_bin, strerror(errno), errno);
                     }
                     _exit(1);
                 }
             }
             if (execvp(exec_cmd[0], exec_cmd) < 0) {
-                mterror(WM_CONTROL_LOGTAG, "Error executing %s command: %s (%d)", action, strerror(errno), errno);
+                mterror(WM_CONTROL_LOGTAG, "Error executing %s command (%s): %s (%d)", action, exec_cmd[0], strerror(errno), errno);
             }
             _exit(1);
         default:

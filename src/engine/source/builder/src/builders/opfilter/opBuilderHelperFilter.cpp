@@ -398,14 +398,18 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     }
 
     const auto name = buildCtx->context().opName;
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
     if (rightParameter->isValue())
     {
-        std::string value;
-        if (std::static_pointer_cast<Value>(rightParameter)->value().getString(value) != json::RetGet::Success)
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        std::string_view sv;
+        if (asValue->getString(sv) != json::RetGet::Success)
         {
             throw std::runtime_error(
                 fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
+        preExtractedValueStr = std::string(sv);
     }
     else
     {
@@ -453,14 +457,9 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         }
 
         std::string_view rValue {};
-        if (rightParameter->isValue())
+        if (preExtractedValueStr.has_value())
         {
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rValue) != json::RetGet::Success)
-            {
-                RETURN_FAILURE(isTestMode,
-                               false,
-                               fmt::format("{} function: Expected a string but got {}.", name, rightParameter->str()));
-            }
+            rValue = *preExtractedValueStr;
         }
         else
         {
@@ -1123,9 +1122,31 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                     targetField.dotPath(),
                     presenceCheck ? "does not contain at least one" : "contains at least one")};
 
+    // Pre-resolve parameters at build time
+    struct CmpParam
+    {
+        std::string refPath;                     ///< Set when the parameter is a reference.
+        std::shared_ptr<const json::Json> value; ///< Set when the parameter is a literal value.
+    };
+    std::vector<CmpParam> cmpParams;
+    cmpParams.reserve(opArgs.size());
+    for (const auto& parameter : opArgs)
+    {
+        if (parameter->isReference())
+        {
+            cmpParams.push_back({std::static_pointer_cast<Reference>(parameter)->jsonPath(), nullptr});
+        }
+        else
+        {
+            cmpParams.push_back({{}, std::static_pointer_cast<Value>(parameter)->sharedValue()});
+        }
+    }
+
     // Return Op
-    return [=, parameters = opArgs, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
-               base::ConstEvent event) -> FilterResult
+    return [=,
+            cmpParams = std::move(cmpParams),
+            isTestMode = buildCtx->isTestMode(),
+            targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
@@ -1138,31 +1159,26 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
             RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
-        json::Json cmpValue {};
-        auto matchCount {0};
-        for (const auto& parameter : parameters)
+        std::size_t matchCount {0};
+        for (const auto& param : cmpParams)
         {
-            if (parameter->isReference())
+            // Comparison value: the shared literal, or a per-event snapshot of the reference.
+            const json::Json* cmp = param.value.get();
+            std::optional<json::Json> refValue;
+            if (cmp == nullptr)
             {
-                auto resolvedParameter {event->getJson(std::static_pointer_cast<Reference>(parameter)->jsonPath())};
-                if (resolvedParameter.has_value())
-                {
-                    cmpValue = std::move(resolvedParameter.value());
-                }
-                else
+                refValue = event->getJson(param.refPath);
+                if (!refValue.has_value())
                 {
                     continue;
                 }
-            }
-            else
-            {
-                cmpValue = std::move(std::static_pointer_cast<Value>(parameter)->value().getJson().value());
+                cmp = &*refValue;
             }
 
             // Check if the array contains the value
             bool found = std::find_if(resolvedArray.value().begin(),
                                       resolvedArray.value().end(),
-                                      [&cmpValue](const json::Json& value) { return value == cmpValue; })
+                                      [cmp](const json::Json& value) { return value == *cmp; })
                          != resolvedArray.value().end();
 
             if (presenceCheck == found)
@@ -1173,7 +1189,7 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                 }
 
                 matchCount++;
-                if (matchCount == parameters.size())
+                if (matchCount == cmpParams.size())
                 {
                     RETURN_SUCCESS(isTestMode, true, successTrace);
                 }
@@ -1508,6 +1524,10 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
     const std::string failureTrace6 {
         fmt::format("[{}] -> Failure: Object does not contain '{}'", name, targetField.dotPath())};
 
+    // Share the Value's compact document once at build time instead of materializing a per event.
+    const std::shared_ptr<const json::Json> defObject =
+        opArgs[0]->isValue() ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
+
     // Return op
     return [=,
             isTestMode = buildCtx->isTestMode(),
@@ -1542,7 +1562,7 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         else
         {
             // Parameter is a definition
-            exists = std::static_pointer_cast<Value>(parameter)->value().exists(pointerPath);
+            exists = defObject->exists(pointerPath);
         }
 
         // Check if object contains the key
@@ -1636,7 +1656,7 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         else
         {
             std::string_view valueString;
-            if (std::static_pointer_cast<Value>(parameter)->value().getString(valueString) != json::RetGet::Success)
+            if (std::static_pointer_cast<Value>(parameter)->getString(valueString) != json::RetGet::Success)
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace3);
             }
@@ -1790,8 +1810,8 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             parameter = opArgs[0],
             expectedKeys](base::ConstEvent event) -> FilterResult
     {
-        const auto objectTarget = event->getObject(targetField);
-        if (!objectTarget.has_value())
+        const auto objectFields = event->getFields(targetField);
+        if (!objectFields.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
@@ -1817,12 +1837,12 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             }
         }
 
-        if (localKeys.size() < objectTarget.value().size())
+        if (localKeys.size() < objectFields->size())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace4);
         }
 
-        for (const auto& [key, value] : objectTarget.value())
+        for (const auto& key : objectFields.value())
         {
             if (localKeys.erase(key) == 0)
             {

@@ -5,7 +5,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 ## Interface library (pure interfaces for mocking)
 add_library(fastmetrics_ifastmetrics INTERFACE)
 target_include_directories(fastmetrics_ifastmetrics INTERFACE ${IFACE_DIR})
-target_link_libraries(fastmetrics_ifastmetrics INTERFACE streamlogger::streamlogger)
+target_link_libraries(fastmetrics_ifastmetrics INTERFACE)
 add_library(fastmetrics::ifastmetrics ALIAS fastmetrics_ifastmetrics)
 
 ## Implementation library
@@ -27,7 +27,6 @@ target_link_libraries(fastmetrics_fastmetrics
     PUBLIC
     fastmetrics::ifastmetrics
     base  # Required for SingletonLocator
-    streamlogger::streamlogger
 )
 
 # Require C++17 for if constexpr and other features

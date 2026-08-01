@@ -333,6 +333,8 @@ static void test_remoted_internal_options_config(void **state) {
     will_return(__wrap_getDefine_Int_default, 107);    // _s_verify_counter
     will_return(__wrap_getDefine_Int_default, 109);    // batch_events_capacity
     will_return(__wrap_getDefine_Int_default, 113);    // batch_events_per_agent_capacity
+    will_return(__wrap_getDefine_Int_default, 1031);   // queue_max_bytes (prime >= 1024 to pass validation)
+    will_return(__wrap_getDefine_Int_default, 1033);   // batch_events_max_bytes (prime >= 1024 to pass validation)
     will_return(__wrap_getDefine_Int_default, 127);    // enrich_cache_expire_time
 
     // Mock ReadConfig calls
@@ -392,6 +394,8 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "verify_msg_id")->valueint, 107);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_capacity")->valueint, 109);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_per_agent_capacity")->valueint, 113);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "queue_max_bytes")->valueint, 1031);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_max_bytes")->valueint, 1033);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "enrich_cache_expire_time")->valueint, 127);
 
     cJSON_Delete(json);

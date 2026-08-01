@@ -1,0 +1,36 @@
+name: "Install Wazuh Agent"
+description: "Installs the Wazuh agent using the interactive installer with preloaded variables"
+
+inputs:
+  install_dir:
+    required: false
+    description: "Installation directory (e.g. /var/ossec for Linux, /Library/Ossec for macOS)"
+    default: "/var/ossec"
+  disable_sca_syscollector:
+    required: false
+    description: "Disable SCA and Syscollector modules at install time"
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Wazuh agent
+      shell: bash
+      env:
+        INSTALL_DIR: ${{ inputs.install_dir }}
+        DISABLE_SCA_SYSCOLLECTOR: ${{ inputs.disable_sca_syscollector }}
+      run: |
+        {
+          echo 'USER_LANGUAGE="en"'
+          echo 'USER_AGENT_MANAGER_IP="127.0.0.1"'
+          echo 'USER_INSTALL_TYPE="agent"'
+          echo "USER_DIR=$INSTALL_DIR"
+          echo 'USER_ENABLE_SYSCHECK="n"'
+          echo 'USER_ENABLE_ROOTCHECK="n"'
+          if [[ "$DISABLE_SCA_SYSCOLLECTOR" == "true" ]]; then
+            echo 'USER_ENABLE_SYSCOLLECTOR="n"'
+            echo 'USER_ENABLE_SCA="n"'
+          fi
+        } > ./etc/preloaded-vars.conf
+        sudo sh install.sh
+        rm ./etc/preloaded-vars.conf

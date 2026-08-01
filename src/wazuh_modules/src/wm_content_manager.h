@@ -12,7 +12,7 @@
 #ifndef _WM_CONTENT_MANAGER
 #define _WM_CONTENT_MANAGER
 
-#define WM_CONTENT_MANAGER_LOGTAG ARGV0 ":content_manager"
+#define WM_CONTENT_MANAGER_LOGTAG ARGV0 ":content-updater"
 
 #include "wmodules.h"
 

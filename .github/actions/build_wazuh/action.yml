@@ -1,0 +1,19 @@
+name: "Build Wazuh"
+description: "Builds the Wazuh project using make for a given target"
+
+inputs:
+  target:
+    required: false
+    description: "Build target: agent or manager"
+    default: "agent"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Wazuh ${{ inputs.target }}
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+      run: |
+        make deps -C src TARGET="$TARGET" -j$(nproc)
+        make -C src TARGET="$TARGET" -j$(nproc)

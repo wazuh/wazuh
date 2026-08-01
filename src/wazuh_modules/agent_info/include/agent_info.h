@@ -29,6 +29,7 @@ struct wm_agent_info_t;
 typedef void (*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag);
 typedef int (*report_callback_t)(const char* message);
 typedef int (*query_module_callback_t)(const char* module_name, const char* query, char** response);
+typedef bool (*is_shutting_down_callback_t)(void);
 
 EXPORTED void agent_info_start(const struct wm_agent_info_t* agent_info_config);
 
@@ -46,6 +47,17 @@ agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_fu
 EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
 
 EXPORTED void agent_info_set_query_module_function(query_module_callback_t query_module_callback);
+
+/**
+ * @brief Set the predicate used to detect that a shutdown is in progress
+ *
+ * The implementation uses it to log expected shutdown-time synchronization/coordination
+ * failures at a lower level (DEBUG or INFO, depending on the message) instead of
+ * WARNING/ERROR.
+ *
+ * @param is_shutting_down_callback Predicate returning true while a shutdown is requested
+ */
+EXPORTED void agent_info_set_is_shutting_down_function(is_shutting_down_callback_t is_shutting_down_callback);
 
 /**
  * @brief Set the cluster name received from the manager during handshake
@@ -110,6 +122,31 @@ EXPORTED const char* agent_info_get_agent_groups(void);
  */
 EXPORTED void agent_info_clear_agent_groups(void);
 
+/**
+ * @brief Callback type used to query agentd for fresh handshake data (cluster_name,
+ * cluster_node, agent_groups) on demand, instead of relying on a one-time cached copy.
+ *
+ * Matches the signature of wm_agent_info_query_agentd_handshake() in wm_agent_info.c,
+ * so it can be registered directly with no adapter function.
+ *
+ * @return true if the query succeeded (output buffers may still be empty if the
+ * corresponding value is legitimately unset), false if the query itself failed.
+ */
+typedef bool (*query_handshake_callback_t)(char* cluster_name,
+                                           size_t cluster_name_size,
+                                           char* cluster_node,
+                                           size_t cluster_node_size,
+                                           char* agent_groups,
+                                           size_t agent_groups_size);
+
+/**
+ * @brief Set the function used to query agentd for fresh handshake data on every
+ * agent metadata population cycle (instead of only once at module startup).
+ *
+ * @param callback The handshake query callback
+ */
+EXPORTED void agent_info_set_query_handshake_function(query_handshake_callback_t callback);
+
 #ifdef __cplusplus
 }
 #endif
@@ -123,6 +160,7 @@ typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const MQ_Functions* mq_funcs);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
+typedef void (*agent_info_set_is_shutting_down_function_func)(is_shutting_down_callback_t is_shutting_down_callback);
 typedef void (*agent_info_set_cluster_name_func)(const char* cluster_name);
 typedef const char* (*agent_info_get_cluster_name_func)(void);
 typedef void (*agent_info_set_cluster_node_func)(const char* cluster_node);
@@ -130,5 +168,6 @@ typedef const char* (*agent_info_get_cluster_node_func)(void);
 typedef void (*agent_info_set_agent_groups_func)(const char* agent_groups);
 typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);
+typedef void (*agent_info_set_query_handshake_function_func)(query_handshake_callback_t callback);
 
 #endif //_AGENT_INFO_H

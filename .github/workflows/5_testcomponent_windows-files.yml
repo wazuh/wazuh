@@ -36,15 +36,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
       - name: Install mingw
-        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
+        run: |
+          sudo apt-get update
+          sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       - name: make deps
@@ -67,12 +73,16 @@ jobs:
           rm -f src/bin_files/libgcc_s_dw2-1.dll
           rm -f src/bin_files/libstdc++-6.dll
       - name: Upload Artifact binaries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: src/bin_files
   check_binaries_details:
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     needs: build
     steps:
@@ -84,8 +94,11 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact binaries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: C:\binaries\
       - name: Install dependencies

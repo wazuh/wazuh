@@ -63,7 +63,8 @@ public:
             retValue = RoundRobinSelector<std::string>::getNext();
             if (retValue.compare(initialValue) == 0)
             {
-                throw std::runtime_error("No available server");
+                throw std::runtime_error("No available server. Unavailable nodes: " +
+                                         m_monitoring->getUnavailableServersDetails());
             }
         }
         return retValue;

@@ -29,10 +29,11 @@ void ContentModule::stop()
 
 ContentRegister::ContentRegister(std::string name,
                                  const nlohmann::json& parameters,
-                                 const FileProcessingCallback fileProcessingCallback)
+                                 const FileProcessingCallback fileProcessingCallback,
+                                 ContentUpdateCallbacks updateCallbacks)
     : m_name {std::move(name)}
 {
-    ContentModuleFacade::instance().addProvider(m_name, parameters, fileProcessingCallback);
+    ContentModuleFacade::instance().addProvider(m_name, parameters, fileProcessingCallback, std::move(updateCallbacks));
 
     if (parameters.contains("interval"))
     {
@@ -56,6 +57,11 @@ ContentRegister::~ContentRegister()
 void ContentRegister::changeSchedulerInterval(const size_t newInterval)
 {
     ContentModuleFacade::instance().changeSchedulerInterval(m_name, newInterval);
+}
+
+uint64_t ContentRegister::getCurrentOffset() const
+{
+    return ContentModuleFacade::instance().getCurrentOffset(m_name);
 }
 
 // LCOV_EXCL_START

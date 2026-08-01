@@ -25,6 +25,14 @@
 // Returns 0 on success, -1 on error. Response must be freed by caller.
 using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
 
+// Type definition for the handshake query callback function.
+// Queries agentd for fresh cluster_name/cluster_node/agent_groups into the given buffers.
+// Returns true if the query succeeded (buffers may still be empty if legitimately unset).
+using handshake_query_callback_t =
+    std::function<bool(char* cluster_name, size_t cluster_name_size,
+                       char* cluster_node, size_t cluster_node_size,
+                       char* agent_groups, size_t agent_groups_size)>;
+
 class AgentInfoImpl
 {
     public:
@@ -46,6 +54,7 @@ class AgentInfoImpl
         /// @param sysInfo Pointer to ISysInfo for system information gathering
         /// @param fileIO Pointer to IFileIOUtils for file I/O operations
         /// @param fileSystem Pointer to IFileSystemWrapper for file system operations
+        /// @param handshakeQueryFunction Function to query agentd for fresh handshake data on every cycle
         AgentInfoImpl(std::string dbPath,
                       std::function<void(const std::string&)> reportDiffFunction = nullptr,
                       std::function<void(const modules_log_level_t, const std::string&)> logFunction = nullptr,
@@ -53,7 +62,8 @@ class AgentInfoImpl
                       std::shared_ptr<IDBSync> dbSync = nullptr,
                       std::shared_ptr<ISysInfo> sysInfo = nullptr,
                       std::shared_ptr<IFileIOUtils> fileIO = nullptr,
-                      std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr);
+                      std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr,
+                      handshake_query_callback_t handshakeQueryFunction = nullptr);
         ~AgentInfoImpl();
 
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
@@ -84,6 +94,13 @@ class AgentInfoImpl
         /// @param retries Number of retries
         /// @param maxEps Maximum events per second
         void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
+
+        /// @brief Set the predicate used to detect that a shutdown is in progress.
+        /// It complements the module's own stop flag so that failures caused by the global agent
+        /// shutdown (which happens before this module receives its own stop) are logged at a lower
+        /// level (DEBUG or INFO, depending on the message) instead of WARNING.
+        /// @param isShuttingDown Predicate returning true while a shutdown is requested
+        void setIsShuttingDownFunction(std::function<bool()> isShuttingDown);
 
         /// @brief Parse sync protocol response buffer
         /// @param data Pointer to the response data buffer
@@ -227,6 +244,14 @@ class AgentInfoImpl
         ///         caller should defer coordination), or Failed (timeout/error/shutdown)
         PauseProbeResult pollFimPauseCompletion(const std::string& moduleName);
 
+        /// @brief Query a coordination module for whether its first synchronization has completed.
+        /// @param moduleName Module name (e.g. sca, syscollector).
+        /// @return false when the module reports first_sync_completed=0 or has not recorded a
+        ///         completed first sync yet (metadata unset = still in progress); true otherwise
+        ///         (already synced, or sync disabled — the module reports completed — or the module
+        ///         did not answer at all), so coordination is never wedged on a module that will not sync.
+        bool isModuleFirstSyncCompleted(const std::string& moduleName);
+
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
         /// @return true if all flushes completed successfully, false otherwise.
@@ -272,6 +297,22 @@ class AgentInfoImpl
         /// @brief Function to query other modules
         module_query_callback_t m_queryModuleFunction;
 
+        /// @brief Function to query agentd for fresh handshake data (cluster_name, cluster_node,
+        /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy.
+        /// Only cluster_name/cluster_node are tracked from it - see populateAgentMetadata() for why
+        /// agent_groups deliberately keeps its own, separate one-shot-at-startup handling.
+        handshake_query_callback_t m_handshakeQueryFunction;
+
+        /// @brief True once a live handshake query has succeeded at least once. Until then,
+        /// populateAgentMetadata() falls back to the C-side startup cache; afterwards, a
+        /// transient live-query failure falls back to these last-known-good values instead
+        /// of reverting all the way back to the (possibly long-stale) startup cache.
+        bool m_hasLiveHandshakeSucceededOnce = false;
+
+        /// @brief Last successfully live-queried cluster_name/cluster_node
+        std::string m_lastLiveClusterName;
+        std::string m_lastLiveClusterNode;
+
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
@@ -292,6 +333,18 @@ class AgentInfoImpl
         /// stop() writes it from another thread (avoids a data race).
         std::atomic<bool> m_stopped{false};
 
+        /// @brief Predicate reporting whether a shutdown is in progress (may be null).
+        /// Injected from the module wrapper; reports the *global* agent shutdown, which is
+        /// signaled before this module's own stop() runs.
+        std::function<bool()> m_isShuttingDown;
+
+        /// @brief True when this module is stopping OR a global shutdown is in progress.
+        /// Used to demote expected shutdown-time failures from WARNING to DEBUG.
+        bool isShutdownInProgress() const
+        {
+            return m_stopped || (m_isShuttingDown && m_isShuttingDown());
+        }
+
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.
         int m_flushPollDelayMs = 10000;
@@ -300,11 +353,15 @@ class AgentInfoImpl
         /// Overridable in unit tests to avoid real sleeps.
         int m_pausePollDelayMs = 1000;
 
-        /// @brief True once the current deferral streak has logged its INFO line, so
-        /// repeated deferrals during the same first sync stay at DEBUG.
-        /// Reset when the deferral episode ends: either FIM reports the first sync is
-        /// complete, or the FIM probe gives up (timeout/IPC failure) without deferring.
-        bool m_deferralLogged = false;
+        /// @brief Modules whose current deferral streak has logged its INFO line, so
+        /// repeated deferrals during the same first sync stay at DEBUG. Tracked per
+        /// module: FIM's probe runs (and ends its episode) every cycle before
+        /// SCA/syscollector are evaluated, so a shared flag would be cleared each cycle
+        /// and re-emit the INFO for the whole duration of their first sync.
+        /// A module is erased when its deferral episode ends: it reports the first sync
+        /// is complete, or (FIM) the probe gives up (timeout/IPC failure) without
+        /// deferring.
+        std::set<std::string> m_deferralLoggedModules;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;
@@ -335,6 +392,16 @@ class AgentInfoImpl
 
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
+
+        /// @brief Serializes destruction of m_spSyncProtocol in stop()
+        std::mutex m_syncProtocolMutex;
+
+        /// @brief Clean-stop handshake: stop() blocks until the run loop (start()) has
+        /// exited, so the sync-protocol connection can be closed with no other thread
+        /// using it.
+        std::mutex m_shutdownMutex;
+        std::condition_variable m_shutdownCv;
+        bool m_runLoopActive = false;
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;

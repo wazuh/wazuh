@@ -7,6 +7,11 @@
  * Foundation.
  */
 
+// Required for CPU_COUNT/sched_getaffinity on Linux (GNU extension)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "shared.h"
 #include "version_op.h"
 
@@ -925,6 +930,60 @@ void free_osinfo(os_info * osinfo) {
 }
 
 
+#ifdef __linux__
+// Convert a CFS quota/period pair into a whole number of cores (ceil, min 1).
+// Returns 0 when there is no limit (quota <= 0) or the input is invalid.
+static int cores_from_quota(long long quota, long long period) {
+    if (quota <= 0 || period <= 0) {
+        return 0;
+    }
+
+    long long cores = (quota + period - 1) / period; // ceil division
+    return cores < 1 ? 1 : (int)cores;
+}
+
+// Detect the effective CPU limit imposed by cgroups (v2 first, then v1).
+// Returns the number of cores allowed by the CPU quota, or 0 when no limit is set.
+static int cgroup_cpu_limit() {
+    FILE *fp;
+
+    // cgroups v2: /sys/fs/cgroup/cpu.max -> "<quota> <period>" or "max <period>"
+    if ((fp = wfopen("/sys/fs/cgroup/cpu.max", "r"))) {
+        char quota_str[64] = {0};
+        long long period = 0;
+        int matched = fscanf(fp, "%63s %lld", quota_str, &period);
+        fclose(fp);
+
+        if (matched == 2 && strcmp(quota_str, "max") != 0) {
+            return cores_from_quota(atoll(quota_str), period);
+        }
+        return 0;
+    }
+
+    // cgroups v1: cpu.cfs_quota_us (-1 = no limit) and cpu.cfs_period_us
+    long long quota = 0;
+    long long period = 0;
+    int have_quota = 0;
+    int have_period = 0;
+
+    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "r"))) {
+        have_quota = (fscanf(fp, "%lld", &quota) == 1);
+        fclose(fp);
+    }
+
+    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "r"))) {
+        have_period = (fscanf(fp, "%lld", &period) == 1);
+        fclose(fp);
+    }
+
+    if (have_quota && have_period) {
+        return cores_from_quota(quota, period);
+    }
+
+    return 0;
+}
+#endif
+
 int get_nproc() {
 #ifdef __linux__
     #ifdef CPU_COUNT
@@ -936,7 +995,13 @@ int get_nproc() {
         return 1;
     }
 
-    return CPU_COUNT(&set);
+    int affinity = CPU_COUNT(&set);
+    if (affinity < 1) {
+        affinity = 1;
+    }
+
+    int limit = cgroup_cpu_limit();
+    return (limit > 0 && limit < affinity) ? limit : affinity;
     #else
     FILE *fp;
     char string[OS_MAXSTR];

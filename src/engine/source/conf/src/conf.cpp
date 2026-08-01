@@ -58,12 +58,17 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
-    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
-    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "admin");
+    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "wazuh-manager");
+    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "wazuh-manager");
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
-    addUnit<size_t>(key::INDEXER_QUEUE_MAX_EVENTS, "WAZUH_INDEXER_QUEUE_MAX_EVENTS", 0x1 << 17);
+    addUnit<size_t>(key::INDEXER_QUEUE_MAX_BYTES, "WAZUH_INDEXER_QUEUE_MAX_BYTES", size_t {0x1} << 26); // 64 MB
+    addUnit<size_t>(key::INDEXER_BULK_MAX_BYTES, "WAZUH_INDEXER_BULK_MAX_BYTES", size_t {0x1} << 23);   // 8 MB
+    addUnit<size_t>(key::INDEXER_FLUSH_INTERVAL, "WAZUH_INDEXER_FLUSH_INTERVAL", 20);
+    addUnit<size_t>(key::INDEXER_LOGGER_QUEUE_SIZE, "WAZUH_INDEXER_LOGGER_QUEUE_SIZE", 8);
+    addUnit<size_t>(key::INDEXER_LOGGER_THREADS, "WAZUH_INDEXER_LOGGER_THREADS", 1);
+    addUnit<size_t>(key::INDEXER_MAX_RETRY_DELAY, "WAZUH_INDEXER_MAX_RETRY_DELAY", 15);
     addUnit<size_t>(
         key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE, "WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE", 100);
     // IOC Sync
@@ -85,6 +90,12 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Queue event module
     addUnit<size_t>(key::EVENT_QUEUE_SIZE, "WAZUH_EVENT_QUEUE_SIZE", 0x1 << 17);
     addUnit<size_t>(key::EVENT_QUEUE_EPS, "WAZUH_EVENT_QUEUE_EPS", 0);
+    addUnit<size_t>(key::EVENT_QUEUE_MAX_BYTES, "WAZUH_EVENT_QUEUE_MAX_BYTES", 0x1 << 25); // 0 = unlimited
+
+    // Agent Metadata Cache
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_TTL, "WAZUH_AGENT_METADATA_CACHE_TTL", 300); // 5 minutes
+    addUnit<size_t>(
+        key::AGENT_METADATA_CACHE_CLEAN_INTERVAL, "WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL", 60); // 1 minute
 
     // Orchestrator module
     addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 0);
@@ -121,16 +132,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::STREAMLOG_DUMPER_MAX_SIZE, "WAZUH_STREAMLOG_DUMPER_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_DUMPER_BUFFER_SIZE, "WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE", 0x1 << 20);
 
-    addUnit<std::string>(key::STREAMLOG_METRICS_PATTERN, "WAZUH_STREAMLOG_METRICS_PATTERN", "${YYYY}-${MM}-${DD}");
-    addUnit<size_t>(key::STREAMLOG_METRICS_MAX_SIZE, "WAZUH_STREAMLOG_METRICS_MAX_SIZE", 10 * 1024 * 1024);
-    addUnit<size_t>(key::STREAMLOG_METRICS_BUFFER_SIZE, "WAZUH_STREAMLOG_METRICS_BUFFER_SIZE", 0x1 << 20);
     addUnit<size_t>(key::STREAMLOG_MAX_FILES, "WAZUH_STREAMLOG_MAX_FILES", 90);
     addUnit<size_t>(
         key::STREAMLOG_MAX_ACCUMULATED_SIZE, "WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE", 20ULL * 1024 * 1024 * 1024);
-
-    // Metrics module
-    addUnit<bool>(key::METRICS_LOG_ENABLED, "WAZUH_METRICS_LOG_ENABLED", false);
-    addUnit<size_t>(key::METRICS_LOG_INTERVAL, "WAZUH_METRICS_LOG_INTERVAL", 1);
 
     // Dumper module
     addUnit<bool>(key::DUMPER_ENABLED, "WAZUH_DUMPER_ENABLED", false);

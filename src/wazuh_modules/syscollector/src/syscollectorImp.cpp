@@ -691,7 +691,16 @@ bool Syscollector::handleNotifyDataClean()
 
 void Syscollector::quiesce()
 {
-    m_stopping = true;
+    {
+        // m_pauseMutex must be held here: pause() checks m_stopping and waits on m_pauseCv
+        // under this same mutex, so setting the flag and notifying without it would leave a
+        // window where pause() reads m_stopping as false and starts waiting right after this
+        // notify_all() fires, missing it (lost wakeup) until some other, unrelated notify
+        // (e.g. a scan/sync finishing on its own) happens to wake it instead.
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_stopping = true;
+        m_pauseCv.notify_all();
+    }
     m_cv.notify_all();
 
     if (m_spSyncProtocol)
@@ -866,7 +875,7 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
         {
             const auto& value = originalData["cpu_speed"];
 
-            if (value.is_number())
+            if (value.is_number() && value.get<double>() != 0.0)
             {
                 ret[pointer] = value.get<int64_t>();
             }
@@ -1026,7 +1035,25 @@ nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& origi
     setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", createFields);
     setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", createFields);
     setJsonField(ret, originalData, "/interface/alias", "interface_alias", createFields);
-    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", createFields);
+
+    // Discard invalid MTU values: 4294967295 (UINT32_MAX) is reported by Windows and 0 by UNIX
+    // when the MTU is not available
+    if (createFields || originalData.contains("interface_mtu"))
+    {
+        const nlohmann::json::json_pointer pointer("/interface/mtu");
+
+        if (originalData.contains("interface_mtu") && originalData["interface_mtu"].is_number() &&
+                originalData["interface_mtu"].get<int64_t>() != UINT32_MAX &&
+                originalData["interface_mtu"].get<int64_t>() != 0)
+        {
+            ret[pointer] = originalData["interface_mtu"];
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
     setJsonField(ret, originalData, "/interface/type", "interface_type", createFields);
@@ -1290,7 +1317,34 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/enabled", "package_enabled", createFields, true);
     setJsonField(ret, originalData, "/package/from_webstore", "package_from_webstore", createFields, true);
     setJsonField(ret, originalData, "/package/id", "package_id", createFields);
-    setJsonField(ret, originalData, "/package/installed", "package_installed", createFields);
+
+    // package_installed is kept as the raw collector string through dbsync (TEXT column,
+    // compared/stored as-is) and only converted to an epoch integer here, for ECS compatibility.
+    if (createFields || originalData.contains("package_installed"))
+    {
+        const nlohmann::json::json_pointer pointer("/package/installed");
+        nlohmann::json installed;
+
+        if (originalData.contains("package_installed") && originalData["package_installed"].is_string())
+        {
+            const auto& timestampStr = originalData["package_installed"].get<std::string>();
+
+            if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
+            {
+                try
+                {
+                    installed = std::stoll(timestampStr);
+                }
+                catch (const std::exception&)
+                {
+                    installed = nullptr;
+                }
+            }
+        }
+
+        ret[pointer] = installed;
+    }
+
     setJsonField(ret, originalData, "/package/name", "package_name", createFields);
     setJsonField(ret, originalData, "/package/path", "package_path", createFields);
     setJsonFieldArray(ret, originalData, "/package/permissions", "package_permissions", createFields);
@@ -1738,30 +1792,6 @@ nlohmann::json Syscollector::getBrowserExtensionsData()
         for (auto& extension : extensions)
         {
             sanitizeJsonValue(extension);
-
-            // Convert package_installed from string to integer for ECS compatibility
-            if (extension.contains("package_installed") && extension["package_installed"].is_string())
-            {
-                try
-                {
-                    const auto& timestampStr = extension["package_installed"].get<std::string>();
-
-                    if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
-                    {
-                        int64_t timestamp = std::stoll(timestampStr);
-                        extension["package_installed"] = timestamp;
-                    }
-                    else
-                    {
-                        extension["package_installed"] = nullptr;
-                    }
-                }
-                catch (const std::exception&)
-                {
-                    extension["package_installed"] = nullptr;
-                }
-            }
-
             extension["checksum"] = getItemChecksum(extension);
             ret.push_back(std::move(extension));
         }
@@ -2229,7 +2259,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 }
 
 // LCOV_EXCL_START
-bool Syscollector::syncModule(Mode mode)
+SyncModuleResult Syscollector::syncModule(Mode mode)
 {
     if (m_paused || m_stopping.load())
     {
@@ -2238,7 +2268,7 @@ bool Syscollector::syncModule(Mode mode)
             m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
         }
 
-        return false;
+        return {false, {}};
     }
 
     m_logFunction(LOG_INFO, "Starting inventory synchronization.");
@@ -2246,14 +2276,15 @@ bool Syscollector::syncModule(Mode mode)
     // RAII guard ensures m_syncing is set to false even if function exits early
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
-    bool success = true;
+    bool overallSuccess = true;
+    std::string failureReason;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
 
-        if (success)
+        if (result.success)
         {
             int64_t firstSyncCompleted = 0;
 
@@ -2262,13 +2293,43 @@ bool Syscollector::syncModule(Mode mode)
                 updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
             }
         }
+        else
+        {
+            overallSuccess = false;
+            failureReason = result.failureReason;
+
+            if (result.stopped || m_stopping.load())
+            {
+                // Not a real failure: the sync was aborted because the module is stopping.
+                // Report it as an expected event, not a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
+            }
+            else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (result.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
+                              std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                              (result.failureReason.empty() ? "." : ": " + result.failureReason));
+            }
+        }
     }
 
     // Check if stopping before proceeding with VD sync
     if (m_stopping.load())
     {
         m_logFunction(LOG_DEBUG, "Stop received during synchronization, skipping VD sync");
-        return false;
+        return {false, {}};
     }
 
     // Sync VD data with appropriate option based on first scan status
@@ -2289,23 +2350,51 @@ bool Syscollector::syncModule(Mode mode)
             vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
         }
 
-        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+        SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        persistVDFirstSyncIfNeeded(vdSuccess, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
 
-        success = vdSuccess && success;
+        if (!vdResult.success)
+        {
+            overallSuccess = false;
+
+            if (failureReason.empty())
+            {
+                failureReason = vdResult.failureReason;
+            }
+
+            if (vdResult.stopped || m_stopping.load())
+            {
+                // Not a real failure: the VD sync was aborted because the module is stopping
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (vdResult.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
+                              std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+            }
+        }
     }
 
-    if (success)
+    if (overallSuccess)
     {
         m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
     }
-    else
-    {
-        m_logFunction(LOG_INFO, "Syscollector synchronization process failed.");
-    }
 
-    return success;
+    return {overallSuccess, std::move(failureReason)};
 }
 // LCOV_EXCL_STOP
 
@@ -2811,8 +2900,8 @@ int Syscollector::executeFlushSync()
     }
 
     // Trigger immediate synchronization to flush pending messages.
-    bool result = true;
-    bool vdResult = true;
+    SyncModuleResult result = {true, {}};
+    SyncModuleResult vdResult = {true, {}};
 
     if (m_spSyncProtocol)
     {
@@ -2835,10 +2924,10 @@ int Syscollector::executeFlushSync()
 
         vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
 
-        persistVDFirstSyncIfNeeded(vdResult, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
     }
 
-    const bool overallSuccess = result && vdResult;
+    const bool overallSuccess = result.success && vdResult.success;
 
     if (overallSuccess)
     {
@@ -2863,14 +2952,55 @@ int Syscollector::executeFlushSync()
         {
             std::string failedQueues;
 
-            if (!result && !vdResult)
+            if (!result.success && !vdResult.success)
                 failedQueues = "both syscollector and VD queues";
-            else if (!result)
+            else if (!result.success)
                 failedQueues = "syscollector queue";
             else
                 failedQueues = "VD queue";
 
-            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues);
+            std::string reason;
+
+            if (!result.success && !result.failureReason.empty())
+                reason = result.failureReason;
+
+            if (!vdResult.success && !vdResult.failureReason.empty())
+                reason += (reason.empty() ? "" : "; VD: ") + vdResult.failureReason;
+
+            const std::string reasonSuffix = reason.empty() ? "" : ": " + reason;
+
+            // A queue that failed counts as "manager not ready" only if that specific sync said so;
+            // a queue that succeeded does not veto the deferral.
+            const bool allFailuresManagerNotReady =
+                (result.success   || result.managerNotReady) &&
+                (vdResult.success || vdResult.managerNotReady);
+
+            // Longest manager-not-ready streak among the queues that actually failed.
+            unsigned int streak = 0;
+
+            if (!result.success && result.managerNotReady && result.consecutiveFailures > streak)
+                streak = result.consecutiveFailures;
+
+            if (!vdResult.success && vdResult.managerNotReady && vdResult.consecutiveFailures > streak)
+                streak = vdResult.consecutiveFailures;
+
+            if (allFailuresManagerNotReady && streak <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector flush deferred: " + failedQueues + reasonSuffix +
+                              " Will retry next cycle.");
+            }
+            else if (allFailuresManagerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector flush failed " + std::to_string(streak) +
+                              " times in a row: " + failedQueues + reasonSuffix);
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues + reasonSuffix);
+            }
         }
     }
 
@@ -4564,9 +4694,9 @@ void Syscollector::runRecoveryProcess()
 
                 m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool success = syncModule(Mode::FULL);
+                bool recoverySucceeded = syncModule(Mode::FULL).success;
 
-                if (success)
+                if (recoverySucceeded)
                 {
                     m_logFunction(LOG_DEBUG, "Recovery completed successfully");
                 }

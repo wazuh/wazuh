@@ -244,11 +244,15 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
         auto tid = m_thread.get_id();
         std::stringstream ss;
         ss << tid;
-        LOG_DEBUG("[Server] {} started in thread {} at {}", m_id, ss.str(), socketPath.string());
+        LOG_DEBUG("[Server] {} started in thread {}, with {} threads, at {}",
+                  m_id,
+                  ss.str(),
+                  CPPHTTPLIB_THREAD_POOL_COUNT,
+                  socketPath.string());
     }
     else
     {
-        LOG_INFO("Starting server {} at {}", m_id, socketPath.string());
+        LOG_INFO("[Server] Starting {} with {} threads, at {}", m_id, CPPHTTPLIB_THREAD_POOL_COUNT, socketPath.string());
         if (!bindAndListen())
         {
             throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));

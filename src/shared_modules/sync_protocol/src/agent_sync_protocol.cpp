@@ -8,6 +8,7 @@
  */
 
 #include "agent_sync_protocol.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "ipersistent_queue.hpp"
 #include "mqueue_transport.hpp"
 #include "persistent_queue.hpp"
@@ -19,6 +20,44 @@
 #include <thread>
 #include <set>
 #include <unistd.h>
+
+// Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
+// We use that to generate a std::string message which will be reported as a warning by each module (FIM, SCA, Syscollector, AgentInfo).
+static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result)
+{
+    std::string failureReason;
+
+    switch (result)
+    {
+        case SyncResult::COMMUNICATION_ERROR:
+            failureReason = "Failed to communicate with the manager.";
+            break;
+
+
+        case SyncResult::START_TIMEOUT_ERROR:
+            failureReason = "Timed out waiting for manager response to Start message.";
+            break;
+
+        case SyncResult::END_TIMEOUT_ERROR:
+            failureReason = "Timed out waiting for manager response to End message.";
+            break;
+
+        case SyncResult::PROTOCOL_ERROR:
+            failureReason = "Manager sent an unexpected or invalid response.";
+            break;
+
+        case SyncResult::NO_GROUPS_ERROR:
+            failureReason = "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.";
+            break;
+
+        // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
+
+        default:
+            break;
+    }
+
+    return failureReason;
+}
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay,
                                      std::chrono::seconds timeout,
@@ -116,18 +155,21 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
     // LCOV_EXCL_STOP
 }
 
-bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
+SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
     // Validate synchronization mode
     if (mode != Mode::FULL && mode != Mode::DELTA)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
-        return false;
+        return {false, {}};
     }
 
     if (!m_transport->checkStatus())
     {
-        return false;
+        // Propagate the reason so the calling module emits a single, informative message at the
+        // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
+        // itself only logs the low-level detail at debug.
+        return {false, "Failed to open the local message queue.", shouldStop()};
     }
 
     // Guard against concurrent calls. The timer thread and the AsyncFlushController
@@ -139,7 +181,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (!m_syncInProgress.compare_exchange_strong(expected, true))
     {
         m_logger(LOG_DEBUG, "Synchronization already in progress, skipping concurrent request");
-        return true;
+        return {true, {}};
     }
 
     struct SyncInProgressGuard
@@ -174,8 +216,9 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         }
         catch (const std::exception& e)
         {
-            m_logger(LOG_ERROR, std::string("Failed to fetch items for sync: ") + e.what());
-            return false;
+            const std::string reason = std::string("Failed to fetch items for sync: ") + e.what();
+            m_logger(LOG_ERROR, reason);
+            return {false, {}};
         }
     }
 
@@ -183,7 +226,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     {
         const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
         m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
-        return true;
+        return {true, {}};
     }
 
     for (size_t i = 0; i < dataToSync.size(); ++i)
@@ -275,8 +318,33 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         m_logger(LOG_ERROR, std::string("Failed to finalize sync state: ") + e.what());
     }
 
+    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    // Report whether a stop was requested so the caller can demote an expected
+    // shutdown-time failure from WARNING to INFO/DEBUG.
+    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
+    const bool stopped = shouldStop();
+    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return success;
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
+}
+
+unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
+{
+    if (success)
+    {
+        m_consecutiveSyncFailures.store(0, std::memory_order_relaxed);
+        return 0;
+    }
+
+    // A sync aborted because the module is stopping says nothing about the manager, so it must not
+    // count towards the streak: the module is torn down on purpose and will start over on restart.
+    if (stopped)
+    {
+        return m_consecutiveSyncFailures.load(std::memory_order_relaxed);
+    }
+
+    return m_consecutiveSyncFailures.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
@@ -341,21 +409,24 @@ void AgentSyncProtocol::clearInMemoryData()
     m_inMemoryData.clear();
 }
 
-bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
-                                                    const std::vector<std::string>& indices,
-                                                    uint64_t globalVersion)
+SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
+                                                                const std::vector<std::string>& indices,
+                                                                uint64_t globalVersion)
 {
     // Validate synchronization mode - only allow metadata and group modes
     if (mode != Mode::METADATA_DELTA && mode != Mode::METADATA_CHECK &&
             mode != Mode::GROUP_DELTA && mode != Mode::GROUP_CHECK)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode for metadata/groups: " + std::to_string(static_cast<int>(mode)));
-        return false;
+        return {false, {}};
     }
 
     if (!m_transport->checkStatus())
     {
-        return false;
+        // Propagate the reason so the calling module emits a single, informative message at the
+        // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
+        // itself only logs the low-level detail at debug.
+        return {false, "Failed to open the local message queue.", shouldStop()};
     }
 
     clearSyncState();
@@ -390,8 +461,15 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         m_logger(LOG_DEBUG, "Synchronization failed for metadata/groups mode");
     }
 
+    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    // Report whether a stop was requested so the caller can demote an expected
+    // shutdown-time failure from WARNING to INFO/DEBUG.
+    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
+    const bool stopped = shouldStop();
+    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return success;
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
@@ -528,6 +606,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         else
         {
             m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
+            m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
 
             if (has_metadata)
             {
@@ -661,6 +740,10 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         else
         {
             m_logger(LOG_DEBUG, "Exceeded maximum retries for Start message.");
+            m_syncState.lastSyncResult = SyncResult::START_TIMEOUT_ERROR;
+            // The manager never acknowledged the handshake: expected while it is not ready for this
+            // agent yet (mostly right after a restart). The module retries on its next cycle.
+            m_syncState.lastSyncManagerNotReady = true;
         }
 
         return false;
@@ -1014,6 +1097,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 if (ranges.empty())
                 {
                     m_logger(LOG_DEBUG, "Received ReqRet with empty ranges. Aborting current sync attempt.");
+                    m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
                     return false;
                 }
 
@@ -1022,12 +1106,14 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 if (rangeData.empty())
                 {
                     m_logger(LOG_DEBUG, "ReqRet asked for ranges that yield no data. Aborting.");
+                    m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
                     return false;
                 }
 
                 if (!sendDataMessages(session, rangeData))
                 {
                     m_logger(LOG_DEBUG, "Failed to resend data for ReqRet.");
+                    m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
                     return false;
                 }
 
@@ -1058,6 +1144,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         else
         {
             m_logger(LOG_DEBUG, "Exceeded maximum retries for End message.");
+            m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
+            // The manager never acknowledged the End message: same expected, self-recovering condition
+            // as the Start timeout above.
+            m_syncState.lastSyncManagerNotReady = true;
         }
 
         return false;
@@ -1110,6 +1200,12 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                                 startAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_logger(LOG_DEBUG, "Received StartAck with error status. Aborting synchronization.");
+                            m_syncState.lastSyncResult = (startAck->status() == Wazuh::SyncSchema::Status::Offline)
+                                                         ? SyncResult::COMMUNICATION_ERROR
+                                                         : SyncResult::PROTOCOL_ERROR;
+                            // An Offline status means the manager itself reports it cannot serve this
+                            // agent yet: expected and self-recovering. An Error status is not.
+                            m_syncState.lastSyncManagerNotReady = (startAck->status() == Wazuh::SyncSchema::Status::Offline);
                             m_syncState.syncFailed = true;
                             m_syncState.cv.notify_all();
                             break;
@@ -1149,6 +1245,9 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+                            // The manager reports it cannot serve this agent: same condition as the
+                            // Offline StartAck above.
+                            m_syncState.lastSyncManagerNotReady = true;
                             m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
@@ -1158,7 +1257,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
                         {
-                            m_syncState.lastSyncResult = SyncResult::GENERIC_ERROR;
+                            m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
                             m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
                         }
 

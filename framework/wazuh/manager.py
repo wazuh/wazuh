@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
 from os import remove
 from os.path import exists
 
@@ -10,33 +11,129 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
-from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.engine_http import EngineHTTPClient, ModulesdHTTPClient
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
+logger = logging.getLogger('wazuh')
+
 node_id = get_node().get('node')
+
+
+def _analysisd_status(running: bool) -> dict:
+    """Build the status entry for analysisd from the Engine `/status` endpoint.
+
+    The engine reports the global `ready` flag plus the per-resource state of spaces, IOC and geo
+    databases. If analysisd is not running or the engine is unreachable, the daemon is not ready.
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = EngineHTTPClient()
+        engine = client.get_status()
+    except WazuhException:
+        # Engine unreachable / error → analysisd cannot be considered ready.
+        return {'ready': False}
+    finally:
+        if client is not None:
+            client.close()
+
+    return {
+        'ready': bool(engine.get('ready', False)),
+        'spaces': engine.get('spaces', {}),
+        'ioc': engine.get('ioc', {}),
+        'geo': engine.get('geo', {}),
+    }
+
+
+def _modulesd_status(running: bool) -> dict:
+    """Build the status entry for modulesd from the `/vulnerability-detector/status` endpoint.
+
+    Queries the modulesd Unix socket. The node is ready when the vulnerability-detector feed is
+    fully loaded (available=True, status='ready'). A disabled VD is not a readiness blocker.
+    """
+    if not running:
+        return {'ready': False}
+
+    infrastructure_modules = {
+        'inventory-sync': {'available': True},
+        'content-manager': {'available': True},
+        'task-manager': {'available': True},
+    }
+
+    client = None
+    try:
+        client = ModulesdHTTPClient()
+        vd = client.get_status()
+    except WazuhException as exc:
+        logger.warning('Could not retrieve modulesd VD status: %s', exc)
+        return {
+            'ready': False,
+            'modules': {
+                'vulnerability-detector': {'available': False, 'status': 'failed'},
+                **infrastructure_modules,
+            },
+        }
+    finally:
+        if client is not None:
+            client.close()
+
+    enabled = vd.get('enabled', True)
+    ready = (not enabled) or (bool(vd.get('available', False)) and vd.get('status') == 'ready')
+
+    return {
+        'ready': ready,
+        'modules': {
+            'vulnerability-detector': vd,
+            **infrastructure_modules,
+        },
+    }
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
-    """Wrapper for status().
+    """Report the node status: whether it is ready to process events, per daemon.
+
+    Each daemon exposes `running` (PID check by the framework) and `ready`. analysisd embeds the
+    Engine `/status` resources (spaces/IOC/geo); modulesd embeds vulnerability-detector status.
+    Daemons without a richer status contract are ready when running. The node-level `ready` is true
+    only when every daemon is ready.
 
     Returns
     -------
     AffectedItemsWazuhResult
-        Affected items.
+        Single affected item: the node status object.
     """
-    result = AffectedItemsWazuhResult(all_msg=f"Processes status was successfully read"
-                                              f"{' in specified node' if node_id != 'manager' else ''}",
-                                      some_msg='Could not read basic information in some nodes',
-                                      none_msg=f"Could not read processes status"
-                                               f"{' in specified node' if node_id != 'manager' else ''}"
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg=f"Node status was successfully read{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f"Could not read node status{' in specified node' if node_id != 'manager' else ''}",
+    )
 
-    result.affected_items.append(status())
+    daemons = status()  # {daemon_name: status_string}
+    node_status = {}
+    node_ready = True
+
+    for daemon, daemon_status in daemons.items():
+        running = daemon_status == 'running'
+        entry = {'ready': running, 'running': running}
+
+        if daemon == 'wazuh-manager-analysisd':
+            entry.update(_analysisd_status(running))
+        elif daemon == 'wazuh-manager-modulesd':
+            entry.update(_modulesd_status(running))
+
+        node_ready = node_ready and bool(entry['ready'])
+        node_status[daemon] = entry
+
+    node_status['ready'] = node_ready
+
+    result.affected_items.append(node_status)
     result.total_affected_items = len(result.affected_items)
 
     return result

@@ -135,10 +135,11 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
 
     if (opArgs[0]->isValue())
     {
-        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        if (std::static_pointer_cast<const Value>(opArgs[0])->type() != json::Json::Type::String)
         {
-            throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+            throw std::runtime_error(
+                fmt::format("Expected 'string' parameter but got type '{}'",
+                            json::Json::typeToStr(std::static_pointer_cast<const Value>(opArgs[0])->type())));
         }
     }
     else
@@ -194,6 +195,18 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
             ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
             : std::nullopt;
 
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
+    if (rightParameter->isValue())
+    {
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        std::string_view sv;
+        if (asValue->getString(sv) == json::RetGet::Success)
+        {
+            preExtractedValueStr = std::string(sv);
+        }
+    }
+
     // Function that implements the helper
     return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
@@ -208,7 +221,8 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
             std::string resolvedRValue;
             if (auto ret = event->getString(resolvedRValue, *rightParamPP); ret != json::RetGet::Success)
             {
-                RETURN_FAILURE(isTestMode, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
+                RETURN_FAILURE(
+                    isTestMode, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
             }
             else
             {
@@ -221,14 +235,11 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
         }
         else
         {
-            // TODO: should we check the result?
-            std::string rightParamStr;
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rightParamStr)
-                != json::RetGet::Success)
+            if (!preExtractedValueStr.has_value())
             {
                 RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
             }
-            const auto res {transformFunction(rightParamStr)};
+            const auto res {transformFunction(*preExtractedValueStr)};
             json::Json result;
             result.setString(res);
             RETURN_SUCCESS(isTestMode, result, successTrace);
@@ -968,8 +979,9 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                     {
                         if (!atleastOne)
                         {
-                            RETURN_FAILURE(
-                                isTestMode, json::Json {}, failureTrace1 + fmt::format("Reference '{}' not found", ref));
+                            RETURN_FAILURE(isTestMode,
+                                           json::Json {},
+                                           failureTrace1 + fmt::format("Reference '{}' not found", ref));
                         }
 
                         result.append(resolvedField);
@@ -1068,7 +1080,8 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
     const std::string failureTrace3 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "array", traceName, arrayRef.dotPath())};
 
     // Return Op
-    return [=, isTestMode = buildCtx->isTestMode(), arrayName = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+    return
+        [=, isTestMode = buildCtx->isTestMode(), arrayName = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
     {
         // Check if reference exists
         if (!event->exists(arrayName))
@@ -2242,8 +2255,9 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
         }
         catch (const std::exception& e)
         {
-            RETURN_FAILURE(
-                isTestMode, event, fmt::format("{} -> An error has occurred during sanitization: '{}'", name, e.what()));
+            RETURN_FAILURE(isTestMode,
+                           event,
+                           fmt::format("{} -> An error has occurred during sanitization: '{}'", name, e.what()));
         }
     };
 }
@@ -2493,8 +2507,8 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' could not be erased", name, targetField.dotPath())};
 
     // Return Op
-    return
-        [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+               base::Event event) -> TransformResult
     {
         bool result {false};
         try
@@ -2539,8 +2553,9 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
     const auto isTestMode = buildCtx->isTestMode();
     const auto tgtPath = targetField.jsonPath();
 
-    const std::optional<json::Json> capturedVal =
-        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value()) : std::nullopt;
+    // Literal comparison value: share the Value's compact document
+    const std::shared_ptr<const json::Json> capturedVal =
+        argIsValue ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
 
     const std::optional<std::string> refPath =
         (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
@@ -2560,14 +2575,17 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, failureTrace1);
         }
 
-        std::optional<json::Json> cmpLocal = capturedVal;
-        if (!cmpLocal && refPath)
+        // Comparison value: the shared literal, or a per-event snapshot of the reference.
+        const json::Json* cmp = capturedVal.get();
+        std::optional<json::Json> refSnap;
+        if (cmp == nullptr && refPath)
         {
             try
             {
-                if (auto snapOpt = event->getJson(*refPath))
+                refSnap = event->getJson(*refPath);
+                if (refSnap)
                 {
-                    cmpLocal = std::move(*snapOpt);
+                    cmp = &*refSnap;
                 }
             }
             catch (const std::runtime_error& e)
@@ -2587,7 +2605,7 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
 
             try
             {
-                if (cmpLocal && event->equals(childPath, *cmpLocal))
+                if (cmp != nullptr && event->equals(childPath, *cmp))
                 {
                     (void)event->erase(childPath);
                 }
@@ -2651,9 +2669,10 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
     const auto failureTrace3 = fmt::format("{} -> Source field '{}' could not be erased", name, targetField.dotPath());
     const auto failureTrace4 = fmt::format("{} -> Source field '{}' is not valid: ", name, srcField.dotPath());
 
-    return
-        [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath(), sourceField = srcField.jsonPath()](
-            base::Event event) -> TransformResult
+    return [=,
+            isTestMode = buildCtx->isTestMode(),
+            targetField = targetField.jsonPath(),
+            sourceField = srcField.jsonPath()](base::Event event) -> TransformResult
     {
         if (event->exists(targetField))
         {
@@ -3220,7 +3239,8 @@ MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std
             const auto ret = event->getString(dateStr, refPath);
             if (ret != json::RetGet::Success)
             {
-                RETURN_FAILURE(isTestMode, json::Json {}, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
+                RETURN_FAILURE(
+                    isTestMode, json::Json {}, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
             }
         }
 
@@ -3345,9 +3365,10 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
     const auto failureTrace3 = fmt::format("{} -> Could not hash string", name);
 
     // Return Op
-    return
-        [=, isTestMode = buildCtx->isTestMode(), refPath = ref.jsonPath(), refPathPP = json::PointerPath(ref.jsonPath())](
-            base::ConstEvent event) -> MapResult
+    return [=,
+            isTestMode = buildCtx->isTestMode(),
+            refPath = ref.jsonPath(),
+            refPathPP = json::PointerPath(ref.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string str;
         if (auto ret = event->getString(str, refPathPP); ret != json::RetGet::Success)
@@ -3461,6 +3482,11 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     const auto failureTrace9 = fmt::format(
         "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
+    // Literal object parameter: share the Value's compact document once at build time
+    // instead of materializing a 64 KB json::Json copy per event.
+    const std::shared_ptr<const json::Json> valueObject =
+        opArgs[0]->isValue() ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
+
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
@@ -3479,8 +3505,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 
         auto pointerPath = json::Json::formatJsonPath(resolvedKey);
 
-        // Get object
-        std::optional<json::Json> resolvedObject {std::nullopt};
+        // Get object: the shared literal, or a per-event snapshot of the reference.
+        const json::Json* resolvedObject = valueObject.get();
+        std::optional<json::Json> refObject;
 
         if (parameter->isReference())
         {
@@ -3492,16 +3519,12 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace3);
             }
-            resolvedObject = event->getJson(ref.jsonPath());
-            if (!resolvedObject.value().isObject())
+            refObject = event->getJson(ref.jsonPath());
+            if (!refObject.value().isObject())
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace4);
             }
-        }
-        else
-        {
-            // Parameter is a value
-            resolvedObject = std::static_pointer_cast<Value>(parameter)->value();
+            resolvedObject = &*refObject;
         }
 
         // Get value from object

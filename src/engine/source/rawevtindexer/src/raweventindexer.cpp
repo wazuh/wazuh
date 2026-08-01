@@ -7,8 +7,7 @@
 namespace raweventindexer
 {
 
-RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                                 std::string_view indexName)
+RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector, std::string_view indexName)
     : m_enabled(false)
     , m_connector(std::move(connector))
     , m_indexName(indexName)
@@ -29,14 +28,7 @@ void RawEventIndexer::index(const std::string& data)
     auto connector = m_connector.lock();
     if (connector)
     {
-        try
-        {
-            connector->index(m_indexName, data);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("Failed to index raw event: {}", e.what());
-        }
+        connector->index(m_indexName, data);
     }
 }
 
@@ -55,14 +47,7 @@ void RawEventIndexer::index(const char* data)
     auto connector = m_connector.lock();
     if (connector)
     {
-        try
-        {
-            connector->index(m_indexName, std::string_view(data));
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("Failed to index raw event: {}", e.what());
-        }
+        connector->index(m_indexName, std::string_view(data));
     }
 }
 
@@ -81,14 +66,7 @@ void RawEventIndexer::index(std::string_view data)
     auto connector = m_connector.lock();
     if (connector)
     {
-        try
-        {
-            connector->index(m_indexName, data);
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("Failed to index raw event: {}", e.what());
-        }
+        connector->index(m_indexName, data);
     }
 }
 
@@ -111,8 +89,7 @@ void RawEventIndexer::hotReloadConf(const json::Json& value)
 {
     if (!value.isBool())
     {
-        throw std::invalid_argument(
-            fmt::format("Expected boolean for 'index_raw_events', got: {}", value.str()));
+        throw std::invalid_argument(fmt::format("Expected boolean for 'index_raw_events', got: {}", value.str()));
     }
 
     value.getBool().value() ? enable() : disable();

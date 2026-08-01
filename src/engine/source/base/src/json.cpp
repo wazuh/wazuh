@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -70,6 +71,60 @@ Json::Json(const Json& other)
     m_document.CopyFrom(other.m_document, m_document.GetAllocator());
 }
 
+namespace
+{
+/// Initial block of a compact document: max(minimum, hint rounded up to the chunk multiple).
+size_t compactInitialCapacity(size_t capacityHint)
+{
+    if (capacityHint <= Json::COMPACT_INITIAL_CAPACITY)
+    {
+        return Json::COMPACT_INITIAL_CAPACITY;
+    }
+    constexpr auto multiple = Json::COMPACT_CHUNK_CAPACITY;
+    return ((capacityHint + multiple - 1) / multiple) * multiple;
+}
+} // namespace
+
+Json::Json(CompactTag, size_t capacityHint)
+    : m_compactBuffer {std::make_unique<uint8_t[]>(compactInitialCapacity(capacityHint))}
+    , m_ownAllocator {std::make_unique<rapidjson::MemoryPoolAllocator<>>(
+          m_compactBuffer.get(), compactInitialCapacity(capacityHint), COMPACT_CHUNK_CAPACITY)}
+    , m_document {m_ownAllocator.get()}
+{
+}
+
+Json Json::compact(std::string_view src, size_t capacityHint)
+{
+    Json result(CompactTag {}, capacityHint != 0 ? capacityHint : src.size());
+    rapidjson::ParseResult parseResult =
+        result.m_document.Parse(src.data(), static_cast<rapidjson::SizeType>(src.size()));
+    if (!parseResult)
+    {
+        throw std::runtime_error(
+            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(parseResult.Code())));
+    }
+    return result;
+}
+
+Json Json::compact() const
+{
+    Json result(CompactTag {}, getUsedMemory());
+    result.m_document.CopyFrom(m_document, result.m_document.GetAllocator());
+    return result;
+}
+
+size_t Json::getUsedMemory() const
+{
+    // rapidjson's GetAllocator() is non-const; Size() does not mutate the pool.
+    return const_cast<Json*>(this)->m_document.GetAllocator().Size();
+}
+
+size_t Json::getAllocatedMemory() const
+{
+    // rapidjson's GetAllocator() is non-const; Capacity() does not mutate the pool.
+    return const_cast<Json*>(this)->m_document.GetAllocator().Capacity();
+}
+
 std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 {
     // TODO: Handle array indices and pointer path operators.
@@ -132,13 +187,21 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 }
 
 Json::Json(Json&& other) noexcept
-    : m_document {std::move(other.m_document)}
+    : m_compactBuffer {std::move(other.m_compactBuffer)}
+    , m_ownAllocator {std::move(other.m_ownAllocator)}
+    , m_document {std::move(other.m_document)}
 {
+    // The moved document keeps its internal pointer to the allocator; moving the
+    // unique_ptrs preserves the allocator's (heap) address, so it stays valid.
 }
 
 Json& Json::operator=(Json&& other) noexcept
 {
+    // Release our document first (it may reference our current allocator), then take
+    // ownership of the other's allocator and its backing buffer.
     m_document = std::move(other.m_document);
+    m_ownAllocator = std::move(other.m_ownAllocator);
+    m_compactBuffer = std::move(other.m_compactBuffer);
     return *this;
 }
 
@@ -160,6 +223,22 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
     {
         const auto got {fieldPtr.Get(m_document)};
         return (got && *got == value.m_document);
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
+}
+
+bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
+{
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
+    if (fieldPtr.IsValid())
+    {
+        const auto got {fieldPtr.Get(m_document)};
+        if (!got || !got->IsString())
+        {
+            return false;
+        }
+        return std::string_view(got->GetString(), got->GetStringLength()) == str;
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
@@ -447,6 +526,26 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+std::unordered_map<std::string, Json> Json::extractObjectMembers()
+{
+    if (!m_document.IsObject())
+    {
+        throw std::runtime_error("extractObjectMembers called on non-object Json");
+    }
+
+    std::unordered_map<std::string, Json> result;
+    result.reserve(m_document.MemberCount());
+
+    for (auto& m : m_document.GetObject())
+    {
+        Json entry;
+        entry.m_document.Swap(m.value); // Zero-copy: steals value, leaves null in source
+        result.try_emplace(std::string(m.name.GetString(), m.name.GetStringLength()), std::move(entry));
+    }
+
+    return result;
 }
 
 std::optional<std::vector<std::string>> Json::getFields() const

@@ -31,7 +31,12 @@ constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";
 constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
-constexpr std::string_view INDEXER_QUEUE_MAX_EVENTS = "analysisd.indexer_queue_max_events";
+constexpr std::string_view INDEXER_QUEUE_MAX_BYTES = "analysisd.indexer_queue_max_bytes";
+constexpr std::string_view INDEXER_BULK_MAX_BYTES = "analysisd.indexer_bulk_max_bytes";
+constexpr std::string_view INDEXER_FLUSH_INTERVAL = "analysisd.indexer_flush_interval";
+constexpr std::string_view INDEXER_LOGGER_QUEUE_SIZE = "analysisd.indexer_logger_queue_size";
+constexpr std::string_view INDEXER_LOGGER_THREADS = "analysisd.indexer_logger_threads";
+constexpr std::string_view INDEXER_MAX_RETRY_DELAY = "analysisd.indexer_max_retry_delay";
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
@@ -50,6 +55,10 @@ constexpr std::string_view REMOTE_CONF_SYNC_INTERVAL = "analysisd.remote_conf_sy
 
 constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
 constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
+constexpr std::string_view EVENT_QUEUE_MAX_BYTES = "analysisd.event_queue_max_bytes";
+
+constexpr std::string_view AGENT_METADATA_CACHE_TTL = "analysisd.agent_metadata_cache_ttl";
+constexpr std::string_view AGENT_METADATA_CACHE_CLEAN_INTERVAL = "analysisd.agent_metadata_cache_clean_interval";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "analysisd.orchestrator_threads";
 
@@ -74,14 +83,9 @@ constexpr std::string_view STREAMLOG_EVENTS_BUFFER_SIZE = "analysisd.streamlog_e
 constexpr std::string_view STREAMLOG_DUMPER_PATTERN = "analysisd.streamlog_dumper_pattern";
 constexpr std::string_view STREAMLOG_DUMPER_MAX_SIZE = "analysisd.streamlog_dumper_max_size";
 constexpr std::string_view STREAMLOG_DUMPER_BUFFER_SIZE = "analysisd.streamlog_dumper_buffer_size";
-constexpr std::string_view STREAMLOG_METRICS_PATTERN = "analysisd.streamlog_metrics_pattern";
-constexpr std::string_view STREAMLOG_METRICS_MAX_SIZE = "analysisd.streamlog_metrics_max_size";
-constexpr std::string_view STREAMLOG_METRICS_BUFFER_SIZE = "analysisd.streamlog_metrics_buffer_size";
 constexpr std::string_view STREAMLOG_MAX_FILES = "analysisd.streamlog_max_files";
 constexpr std::string_view STREAMLOG_MAX_ACCUMULATED_SIZE = "analysisd.streamlog_max_accumulated_size";
 
-constexpr std::string_view METRICS_LOG_ENABLED = "analysisd.metrics_log_enabled";
-constexpr std::string_view METRICS_LOG_INTERVAL = "analysisd.metrics_log_interval";
 constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";

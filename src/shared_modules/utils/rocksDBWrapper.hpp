@@ -28,6 +28,7 @@
 #include <rocksdb/write_batch.h>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -79,13 +80,18 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         * @param useSharedBuffers Whether to use the process-wide shared read cache / write buffer
+         *                        manager instead of a private one.
+         * @param readCacheSize Size in bytes of the private block cache.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const size_t readCacheSize = 16 * 1024 * 1024)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
+            , m_logFn(makeLibLogFn("rocksdb"))
         {
 
             if (useSharedBuffers)
@@ -96,7 +102,7 @@ namespace Utils
             }
             else
             {
-                m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+                m_readCache = rocksdb::NewLRUCache(readCacheSize);
                 m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
             }
 
@@ -203,6 +209,7 @@ namespace Utils
             {
                 m_columnsInstances.emplace_back(m_db, handle);
             }
+            rebuildColumnsIndex();
         }
 
         /**
@@ -526,6 +533,7 @@ namespace Utils
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
             }
             m_columnsInstances.emplace_back(m_db, pColumnFamily);
+            m_columnsIndex.emplace(columnName, m_columnsInstances.size() - 1);
         }
 
         /**
@@ -542,10 +550,7 @@ namespace Utils
                 throw std::invalid_argument {"Column name is empty"};
             }
 
-            return std::find_if(m_columnsInstances.begin(),
-                                m_columnsInstances.end(),
-                                [&columnName](const ColumnFamilyRAII& handle)
-                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+            return m_columnsIndex.find(columnName) != m_columnsIndex.end();
         }
 
         /**
@@ -603,6 +608,8 @@ namespace Utils
                 }
             }
 
+            rebuildColumnsIndex();
+
             for (const auto& columnName : columnsNames)
             {
                 createColumn(columnName);
@@ -630,6 +637,8 @@ namespace Utils
                 {
                     it->drop();
                     m_columnsInstances.erase(it);
+
+                    rebuildColumnsIndex();
 
                     createColumn(columnName);
                 }
@@ -756,10 +765,12 @@ namespace Utils
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
+        std::unordered_map<std::string, size_t> m_columnsIndex;      ///< Column name.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
+        LogFn m_logFn;
 
         /**
          * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
@@ -776,7 +787,7 @@ namespace Utils
                     throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
                                              std::string {repairStatus.getState()});
                 }
-                logWarn(LOGGER_DEFAULT_TAG, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+                LOGFN_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {
@@ -794,22 +805,33 @@ namespace Utils
          */
         ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
         {
-            auto columnNameFind {columnName};
-            if (columnName.empty())
-            {
-                columnNameFind = rocksdb::kDefaultColumnFamilyName;
-            }
+            const auto& columnNameFind = columnName.empty() ? rocksdb::kDefaultColumnFamilyName : columnName;
 
-            if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                            m_columnsInstances.end(),
-                                            [&columnNameFind](const ColumnFamilyRAII& handle)
-                                            { return columnNameFind == handle.handle()->GetName(); })};
-                it != m_columnsInstances.end())
+            if (const auto it {m_columnsIndex.find(columnNameFind)}; it != m_columnsIndex.end())
             {
-                return *it;
+                return m_columnsInstances[it->second];
             }
 
             throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
+        }
+
+        /**
+         * @brief Rebuilds the name
+         *
+         * Must be called after any operation that shifts vector positions (erase); appends
+         * maintain the index incrementally instead. Keeping this index makes columnExists()
+         * and getColumnFamilyBasedOnName() O(1) — they run per document during the feed
+         * load, and a linear scan over hundreds of per-CNA column families made them the
+         * dominant per-document cost.
+         */
+        void rebuildColumnsIndex()
+        {
+            m_columnsIndex.clear();
+            m_columnsIndex.reserve(m_columnsInstances.size());
+            for (size_t i = 0; i < m_columnsInstances.size(); ++i)
+            {
+                m_columnsIndex.emplace(m_columnsInstances[i].handle()->GetName(), i);
+            }
         }
 
         auto createTransaction(const rocksdb::WriteOptions& writeOptions)

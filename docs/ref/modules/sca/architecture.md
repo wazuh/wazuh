@@ -402,7 +402,7 @@ Return 0 (success) or -1 (error)
 
 ## Schema Validation Integration
 
-SCA integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
+SCA integrates with the [Schema Validator](../utils/schema-validator/index.html) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
 
 ### Purpose
 
@@ -713,6 +713,6 @@ Stores individual security checks:
 
 ### References
 
-- [Schema Validator Overview](../utils/schema-validator/README.md)
+- [Schema Validator Overview](../utils/schema-validator/index.html)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
 - [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

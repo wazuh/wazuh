@@ -88,6 +88,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
     wazuh-manager-monitord PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
                                                         ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-monitord PRIVATE monitord_lib)
+  wazuh_link_jemalloc(wazuh-manager-monitord)
 
   wazuh_set_runtime_rpath(wazuh-manager-monitord)
 endif()

@@ -36,6 +36,7 @@ import struct
 import sys
 import time
 import threading
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import psutil
@@ -56,10 +57,12 @@ DEFAULT_EXECUTABLES = [
 # wazuh-indexer is co-located only in all-in-one deployments. The monitor
 # probes for its executable at startup and silently skips it if absent.
 INDEXER_EXECUTABLE = "/usr/share/wazuh-indexer/jdk/bin/java"
+INDEXER_ENGINE_EXECUTABLE = "/usr/share/wazuh-indexer/engine/bin/wazuh-engine"
+DASHBOARD_EXECUTABLE = "/usr/share/wazuh-dashboard/bin/opensearch-dashboards"
+DASHBOARD_NODE_EXECUTABLE = "/usr/share/wazuh-dashboard/node/bin/node"
 
 DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/queue/inventory_sync",
-    "/var/wazuh-manager/queue/engine-output",
     "/var/wazuh-manager/queue/vd",
     "/var/wazuh-manager/",
 ]
@@ -80,12 +83,19 @@ ANALYSISD_HEADER = [
     "server_events_received",
     "router_queue_size",
     "router_queue_usage_percent",
+    "router_queue_bytes_used",
+    "router_queue_bytes_usage_percent",
     "router_events_processed",
     "router_events_dropped",
-    "indexer_queue_usage_percent",
     "indexer_queue_size",
+    "indexer_queue_usage_percent",
     "indexer_events_dropped",
     "router_eps_1m",
+    "agent_cache_entries",
+    "agent_cache_hits",
+    "agent_cache_insertions",
+    "agent_cache_updates",
+    "agent_cache_evictions",
     "spaces_standard_events_unclassified",
     "raw_response_json",
 ]
@@ -191,11 +201,53 @@ def find_process(pid: int | None, name: str | None) -> psutil.Process:
     sys.exit(1)
 
 
-def find_process_by_exe(exe_path: str) -> psutil.Process | None:
-    """Find a process whose executable or any cmdline argument matches *exe_path*.
+@dataclass(frozen=True)
+class ProcessTarget:
+    key: str
+    exe_paths: tuple[str, ...]
+    cmdline_markers: tuple[str, ...] = ()
+    require_cmdline_marker: bool = False
+    csv_name: str | None = None
+    display_name: str | None = None
 
-    Matches both native binaries (exe == path) and Python scripts where the
-    script path appears as cmdline[1] (e.g. python3 /path/to/script.py).
+    @property
+    def name(self) -> str:
+        return self.display_name or self.csv_name or os.path.basename(self.key)
+
+
+def process_target_from_exe(
+    exe_path: str,
+    *,
+    csv_name: str | None = None,
+    display_name: str | None = None,
+    cmdline_markers: tuple[str, ...] | None = None,
+    extra_exe_paths: tuple[str, ...] = (),
+    require_cmdline_marker: bool = False,
+) -> ProcessTarget:
+    markers = (exe_path,) if cmdline_markers is None else cmdline_markers
+    return ProcessTarget(
+        key=exe_path,
+        exe_paths=(exe_path,) + extra_exe_paths,
+        cmdline_markers=markers,
+        require_cmdline_marker=require_cmdline_marker,
+        csv_name=csv_name,
+        display_name=display_name,
+    )
+
+
+def _cmdline_has_marker(cmdline: list[str], markers: tuple[str, ...]) -> bool:
+    if not markers:
+        return False
+    return any(marker in arg for marker in markers for arg in cmdline)
+
+
+def find_process_by_target(target: ProcessTarget) -> psutil.Process | None:
+    """Find a process matching *target*.
+
+    Matches native binaries via ``exe`` and interpreted commands via stable
+    command-line markers. Dashboard monitoring uses an additional cmdline
+    marker requirement so a generic Node.js process is not mistaken for
+    wazuh-dashboard.
 
     Selection when multiple processes match:
       - Native binaries match via `exe`. Only fall back to `cmdline` when no
@@ -212,11 +264,20 @@ def find_process_by_exe(exe_path: str) -> psutil.Process | None:
     cmdline_matches: list[psutil.Process] = []
     for proc in psutil.process_iter(["pid", "exe", "cmdline"]):
         try:
-            if proc.info["exe"] == exe_path:
+            exe = proc.info.get("exe") or ""
+            cmdline = proc.info.get("cmdline") or []
+            exe_match = exe in target.exe_paths
+            cmdline_match = _cmdline_has_marker(cmdline, target.cmdline_markers)
+
+            if target.require_cmdline_marker:
+                if exe_match and cmdline_match:
+                    exe_matches.append(proc)
+                continue
+
+            if exe_match:
                 exe_matches.append(proc)
                 continue
-            cmdline = proc.info.get("cmdline") or []
-            if exe_path in cmdline:
+            if cmdline_match:
                 cmdline_matches.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
@@ -228,7 +289,7 @@ def find_process_by_exe(exe_path: str) -> psutil.Process | None:
     candidates.sort(key=lambda p: (-p.create_time(), p.pid))
     chosen = candidates[0]
 
-    # Warn loudly if there are leftover processes from a previous generation —
+    # Warn loudly if there are leftover processes from a previous generation -
     # they typically hold file locks on shared queues (e.g. RocksDB) and
     # silently break the active master.
     stale = [p for p in candidates[1:]
@@ -240,39 +301,51 @@ def find_process_by_exe(exe_path: str) -> psutil.Process | None:
             "Multiple %s instances detected. Attaching to PID %d (newest, "
             "started %s). Stale instances: %s. Consider "
             "'pkill -9 -f %s && service wazuh-manager restart' before re-running.",
-            os.path.basename(exe_path), chosen.pid,
+            target.name, chosen.pid,
             time.ctime(chosen.create_time()), others,
-            os.path.basename(exe_path),
+            target.name,
         )
 
     return chosen
 
 
-def wait_for_processes(exe_paths: list[str], timeout: float = 30.0) -> dict[str, psutil.Process]:
-    """Wait until every executable in *exe_paths* is running.
+def find_process_by_exe(exe_path: str) -> psutil.Process | None:
+    return find_process_by_target(process_target_from_exe(exe_path))
 
-    Returns a dict mapping exe_path -> psutil.Process.
+
+def wait_for_processes(
+    targets: list[ProcessTarget] | list[str],
+    timeout: float = 30.0,
+) -> dict[ProcessTarget, psutil.Process]:
+    """Wait until every target in *targets* is running.
+
+    Returns a dict mapping ProcessTarget -> psutil.Process.
     Raises SystemExit if timeout expires before all processes appear.
     """
-    remaining = set(exe_paths)
-    found: dict[str, psutil.Process] = {}
+    target_list = [
+        process_target_from_exe(t) if isinstance(t, str) else t
+        for t in targets
+    ]
+    remaining = set(target_list)
+    found: dict[ProcessTarget, psutil.Process] = {}
     deadline = time.monotonic() + timeout
 
     logger.info("Waiting for %d processes (timeout=%ds)...", len(remaining), int(timeout))
     while remaining and time.monotonic() < deadline and _running:
-        for exe in list(remaining):
-            proc = find_process_by_exe(exe)
+        for target in list(remaining):
+            proc = find_process_by_target(target)
             if proc is not None:
-                logger.info("  Found %s -> PID %d", os.path.basename(exe), proc.pid)
-                found[exe] = proc
-                remaining.discard(exe)
+                logger.info("  Found %s -> PID %d", target.name, proc.pid)
+                found[target] = proc
+                remaining.discard(target)
         if remaining:
             time.sleep(1)
 
     if remaining:
+        missing = ", ".join(t.name for t in sorted(remaining, key=lambda t: t.name))
         logger.critical(
             "Timeout: the following processes were NOT found after %ds: %s",
-            int(timeout), ", ".join(os.path.basename(e) for e in sorted(remaining)),
+            int(timeout), missing,
         )
         sys.exit(1)
 
@@ -714,12 +787,21 @@ def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: 
     row["server_events_received"]     = _as_int(global_metrics.get("server.events.received"))
     row["router_queue_size"]          = _as_int(global_metrics.get("router.queue.size"))
     row["router_queue_usage_percent"] = _as_float(global_metrics.get("router.queue.usage.percent"))
+    row["router_queue_bytes_used"]           = _as_int(global_metrics.get("router.queue.bytes.used"))
+    row["router_queue_bytes_usage_percent"]  = _as_float(global_metrics.get("router.queue.bytes.usage.percent"))
     row["router_events_processed"]    = _as_int(global_metrics.get("router.events.processed"))
     row["router_events_dropped"]      = _as_int(global_metrics.get("router.events.dropped"))
-    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_queue_size"]         = _as_int(global_metrics.get("indexer.queue.size"))
+    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_events_dropped"]     = _as_int(global_metrics.get("indexer.events.dropped"))
     row["router_eps_1m"]              = _as_float(global_metrics.get("router.eps.1m"))
+
+    # Agent metadata cache (entries is an instantaneous gauge; the rest are cumulative counters).
+    row["agent_cache_entries"]        = _as_int(global_metrics.get("agent.cache.entries"))
+    row["agent_cache_hits"]           = _as_int(global_metrics.get("agent.cache.hits"))
+    row["agent_cache_insertions"]     = _as_int(global_metrics.get("agent.cache.insertions"))
+    row["agent_cache_updates"]        = _as_int(global_metrics.get("agent.cache.updates"))
+    row["agent_cache_evictions"]      = _as_int(global_metrics.get("agent.cache.evictions"))
 
     # Walk spaces to find the "standard" space and extract events.unclassified.
     for space in raw.get("spaces") or []:
@@ -758,7 +840,8 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                 row = _flatten_analysisd_stats(raw, ts_now, elapsed_s)
                 logger.info(
                     "[analysisd-api] events_received=%d router_q=%d router_q_pct=%.1f "
-                    "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d",
+                    "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d "
+                    "cache_entries=%d cache_hits=%d cache_ins=%d cache_upd=%d cache_evict=%d",
                     _as_int(row.get("server_events_received")),
                     _as_int(row.get("router_queue_size")),
                     _as_float(row.get("router_queue_usage_percent")),
@@ -766,6 +849,11 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                     _as_float(row.get("indexer_queue_usage_percent")),
                     _as_int(row.get("indexer_events_dropped")),
                     _as_int(row.get("spaces_standard_events_unclassified")),
+                    _as_int(row.get("agent_cache_entries")),
+                    _as_int(row.get("agent_cache_hits")),
+                    _as_int(row.get("agent_cache_insertions")),
+                    _as_int(row.get("agent_cache_updates")),
+                    _as_int(row.get("agent_cache_evictions")),
                 )
             except Exception as exc:
                 row = _empty_analysisd_row(ts_now, elapsed_s)
@@ -784,13 +872,41 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
 
 
 # Friendly CSV filename overrides for processes whose basename is generic.
-# e.g. wazuh-indexer runs as "java" — we want wazuh-indexer.csv instead.
+# e.g. wazuh-indexer runs as "java" - we want wazuh-indexer.csv instead.
 _EXE_CSV_ALIAS: dict[str, str] = {
     INDEXER_EXECUTABLE: "wazuh-indexer",
+    INDEXER_ENGINE_EXECUTABLE: "wazuh-indexer-engine",
+    DASHBOARD_EXECUTABLE: "wazuh-dashboard",
+    DASHBOARD_NODE_EXECUTABLE: "wazuh-dashboard",
 }
 
+OPTIONAL_PROCESS_TARGETS = [
+    process_target_from_exe(
+        INDEXER_EXECUTABLE,
+        csv_name="wazuh-indexer",
+        display_name="wazuh-indexer",
+    ),
+    process_target_from_exe(
+        INDEXER_ENGINE_EXECUTABLE,
+        csv_name="wazuh-indexer-engine",
+        display_name="wazuh-indexer-engine",
+    ),
+    ProcessTarget(
+        key=DASHBOARD_EXECUTABLE,
+        exe_paths=(DASHBOARD_EXECUTABLE, DASHBOARD_NODE_EXECUTABLE),
+        cmdline_markers=(
+            DASHBOARD_EXECUTABLE,
+            "/usr/share/wazuh-dashboard/src/cli",
+            "/usr/share/wazuh-dashboard",
+        ),
+        require_cmdline_marker=True,
+        csv_name="wazuh-dashboard",
+        display_name="wazuh-dashboard",
+    ),
+]
 
-def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
+
+def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
     """Spawn process, disk and remoted API monitoring threads."""
     os.makedirs(output_dir, exist_ok=True)
@@ -802,8 +918,11 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
     analysisd_stop = threading.Event()
 
     # Per-process resource threads
-    for exe_path, proc in processes.items():
-        basename = _EXE_CSV_ALIAS.get(exe_path, os.path.basename(exe_path))
+    for target, proc in processes.items():
+        basename = (
+            target.csv_name
+            or _EXE_CSV_ALIAS.get(target.key, os.path.basename(target.key))
+        )
         csv_path = os.path.join(output_dir, f"{basename}.csv")
         t = threading.Thread(
             target=monitor_loop,
@@ -948,19 +1067,21 @@ def main() -> None:
 
     # Multi-process mode (default)
     exe_list = args.exe if args.exe is not None else DEFAULT_EXECUTABLES
+    targets = [process_target_from_exe(exe) for exe in exe_list]
 
-    # Probe for wazuh-indexer (all-in-one only) — add it only when it is
+    # Probe for all-in-one companion processes. Add them only when they are
     # actually running so the monitor works unchanged on manager-only hosts.
     if args.exe is None:
-        indexer_proc = find_process_by_exe(INDEXER_EXECUTABLE)
-        if indexer_proc is not None:
-            logger.info("wazuh-indexer detected (PID %d) — adding to monitored set",
-                        indexer_proc.pid)
-            exe_list = list(exe_list) + [INDEXER_EXECUTABLE]
-        else:
-            logger.info("wazuh-indexer not found — skipping (manager-only host)")
+        for optional_target in OPTIONAL_PROCESS_TARGETS:
+            optional_proc = find_process_by_target(optional_target)
+            if optional_proc is not None:
+                logger.info("%s detected (PID %d) - adding to monitored set",
+                            optional_target.name, optional_proc.pid)
+                targets.append(optional_target)
+            else:
+                logger.info("%s not found - skipping", optional_target.name)
 
-    processes = wait_for_processes(exe_list, timeout=args.timeout)
+    processes = wait_for_processes(targets, timeout=args.timeout)
 
     output_dir = args.output_dir
     if output_dir is None:

@@ -49,8 +49,8 @@ class IAgentSyncProtocol
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode
         /// @param option Synchronization option.
-        /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
+        /// @return SyncModuleResult with success flag and an optional failure reason string.
+        virtual SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
 
         /// @brief Checks if a module index requires full synchronization
         /// @param index The index/table to check
@@ -71,8 +71,8 @@ class IAgentSyncProtocol
         /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
         /// @param indices Vector of index names that will be updated by the manager
         /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
-        /// @return true if synchronization completed successfully, false otherwise
-        virtual bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion = 0) = 0;
+        /// @return SyncModuleResult with success flag and failure reason if unsuccessful
+        virtual SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion = 0) = 0;
 
         /// @brief Notifies the manager about data cleaning for specified indices.
         ///

@@ -165,15 +165,6 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     return (1);
 }
 
-int OSHash_setSize_ex(OSHash *self, unsigned int new_size)
-{
-    int result;
-    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
-    result = OSHash_setSize(self,new_size);
-    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
-    return result;
-}
-
 
 /** int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 0 on error (not found).
@@ -675,42 +666,4 @@ void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHash
             }
         }
     }
-}
-
-void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data)) {
-    switch (mode) {
-        case 0:
-            w_rwlock_rdlock((pthread_rwlock_t *)&hash->mutex);
-        break;
-        case 1:
-            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
-        break;
-        case 2:
-            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
-            sleep(1);
-        break;
-        default:
-            return;
-    }
-    OSHash_It(hash, data, iterating_function);
-    w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
-}
-
-
-/*
- * Returns the index of the key.
- * Key must not be NULL.
- */
-unsigned int OSHash_GetIndex(OSHash *self, const char *key)
-{
-    unsigned int hash_key;
-    unsigned int index;
-
-    /* Generate hash of the message */
-    hash_key = _os_genhash(self, key);
-
-    /* Get array index */
-    index = hash_key % self->rows;
-
-    return index;
 }

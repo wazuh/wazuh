@@ -140,7 +140,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
     {
         if (pLoc) pLoc->Release();
 
-        if (pLoc) pSvc->Release();
+        if (pSvc) pSvc->Release();
 
         oss << "WMI: query error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
@@ -178,7 +178,13 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     pSvc->Release();
     pLoc->Release();
-    pEnumerator->Release();
+
+    // ExecuteWmiQuery may report success yet leave a NULL enumerator; guard the release
+    // to avoid dereferencing NULL on the syscollector scan thread.
+    if (pEnumerator)
+    {
+        pEnumerator->Release();
+    }
 }
 
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)

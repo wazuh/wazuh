@@ -18,6 +18,7 @@
 #define LEOF        -2
 
 #define XML_MAXSIZE           20480
+#define XML_MAX_ATTR_DEPTH    48
 #define XML_VARIABLE_MAXSIZE  256
 
 #define XML_VAR              "var"

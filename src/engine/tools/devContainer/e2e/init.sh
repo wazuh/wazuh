@@ -21,6 +21,56 @@ echo "  init.sh started at $(date '+%Y-%m-%d %H:%M:%S')"
 echo "==========================================================="
 echo ""
 
+# ------------------------------------------------------------------------------
+# CLI args
+# ------------------------------------------------------------------------------
+FROM_WORKFLOWS=0
+for arg in "$@"; do
+  case "$arg" in
+    --from-wf|--from-workflow|--from-workflows)
+      FROM_WORKFLOWS=1
+      ;;
+    -h|--help)
+      cat <<EOF
+Usage: $0 [--from-wf]
+
+Initializes the E2E environment.
+
+By default, the Wazuh Indexer and Dashboard packages are downloaded from the
+staging nightly artifact URL manifests. If a package is missing from the primary
+manifest, the script tries the nightly backup manifest.
+
+Options:
+  --from-wf, --from-workflow, --from-workflows
+                 Download packages from the latest successful GitHub Actions
+                 workflows instead of the staging manifests.
+  --help, -h     Show this help.
+
+Required tools:
+  default mode:  curl
+  --from-wf:     curl, gh, unzip
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      echo "Use --help to see supported options." >&2
+      exit 1
+      ;;
+  esac
+done
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+WAZUH_5X_PRIMARY_MANIFEST_URL="${WAZUH_5X_PRIMARY_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact-urls/artifact_urls_5.0.0-latest.yaml}"
+WAZUH_5X_FALLBACK_MANIFEST_URL="${WAZUH_5X_FALLBACK_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly-backup/artifact_urls_5.0.0-latest.yaml}"
+
+INDEXER_PACKAGE_KEY="wazuh_indexer_amd64_deb"
+INDEXER_PACKAGE_FILE="wazuh-indexer_5.0.0-latest_amd64.deb"
+DASHBOARD_PACKAGE_KEY="wazuh_dashboard_amd64_deb"
+DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest_amd64.deb"
+
 
 # ==============================================================================
 #                          Certificates
@@ -104,6 +154,73 @@ function gh_token() {
 # ==============================================================================
 #                           Helpers
 # ==============================================================================
+function need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || { echo "ERROR: required command not found: $1" >&2; exit 1; }
+}
+
+function yaml_value() {
+  local yaml_file=$1
+  local key=$2
+
+  sed -nE "s|^${key}:[[:space:]]*\"?([^\"]+)\"?[[:space:]]*$|\1|p" "$yaml_file" | head -n 1
+}
+
+function fetch_manifest() {
+  local manifest_url=$1
+  local output_file=$2
+
+  echo "==> Fetching package manifest..."
+  echo "    Manifest: $manifest_url"
+  curl -fsSL "$manifest_url" -o "$output_file"
+}
+
+function resolve_package_url_from_manifest() {
+  local package_name=$1
+  local package_key=$2
+  local manifest=$3
+  local manifest_url=$4
+  local manifest_name=$5
+
+  RESOLVED_PACKAGE_URL="$(yaml_value "$manifest" "$package_key")"
+  RESOLVED_PACKAGE_MANIFEST="$manifest_url"
+
+  if [[ -n "$RESOLVED_PACKAGE_URL" ]]; then
+    echo "==> Found $package_name package in $manifest_name manifest."
+    return 0
+  fi
+
+  return 1
+}
+
+function download_package_from_url() {
+  local package_name=$1
+  local package_url=$2
+  local output_dir=$3
+  local final_filename=$4
+
+  mkdir -p "$output_dir"
+
+  local tmp_file="${output_dir}/${final_filename}.tmp"
+  local final_path="${output_dir}/${final_filename}"
+
+  echo "==> Downloading $package_name package..."
+  echo "    => URL:       $package_url"
+  echo "    => Saving to: $final_path"
+
+  rm -f "$tmp_file"
+  curl -fsSL "$package_url" -o "$tmp_file"
+  mv "$tmp_file" "$final_path"
+
+  echo "    => OK ($(du -h "$final_path" | awk '{print $1}'))"
+  echo "    ---------------------------------------------------"
+  echo "    [Download Summary]"
+  echo "      Source manifest:   $RESOLVED_PACKAGE_MANIFEST"
+  echo "      Package URL:       $package_url"
+  echo "      Saved as:          $final_path"
+  echo "    ---------------------------------------------------"
+  echo ""
+}
+
 #
 # Function to find the first successful run of a GitHub Actions workflow
 #   args:
@@ -290,6 +407,50 @@ function fetch_artifacts_with_patterns() {
 
 
 # ==============================================================================
+#                   Staging manifests
+# ==============================================================================
+function get_packages_from_manifests() {
+  local primary_manifest
+  local fallback_manifest
+  local fallback_manifest_loaded=0
+  primary_manifest="$(mktemp)"
+  fallback_manifest="$(mktemp)"
+  trap 'rm -f "$primary_manifest" "$fallback_manifest"' RETURN
+
+  fetch_manifest "$WAZUH_5X_PRIMARY_MANIFEST_URL" "$primary_manifest"
+
+  if ! resolve_package_url_from_manifest "Wazuh Indexer" "$INDEXER_PACKAGE_KEY" "$primary_manifest" "$WAZUH_5X_PRIMARY_MANIFEST_URL" "primary"; then
+    echo "==> Wazuh Indexer package key '$INDEXER_PACKAGE_KEY' not found in primary manifest."
+    echo "    Trying fallback manifest..."
+    fetch_manifest "$WAZUH_5X_FALLBACK_MANIFEST_URL" "$fallback_manifest"
+    fallback_manifest_loaded=1
+    resolve_package_url_from_manifest "Wazuh Indexer" "$INDEXER_PACKAGE_KEY" "$fallback_manifest" "$WAZUH_5X_FALLBACK_MANIFEST_URL" "fallback" || {
+      echo "ERROR: package key '$INDEXER_PACKAGE_KEY' not found in primary or fallback manifests." >&2
+      return 1
+    }
+  fi
+  download_package_from_url "Wazuh Indexer" "$RESOLVED_PACKAGE_URL" "wazuh-indexer" "$INDEXER_PACKAGE_FILE"
+
+  if ! resolve_package_url_from_manifest "Wazuh Dashboard" "$DASHBOARD_PACKAGE_KEY" "$primary_manifest" "$WAZUH_5X_PRIMARY_MANIFEST_URL" "primary"; then
+    echo "==> Wazuh Dashboard package key '$DASHBOARD_PACKAGE_KEY' not found in primary manifest."
+    echo "    Trying fallback manifest..."
+    if [[ "$fallback_manifest_loaded" -ne 1 ]]; then
+      fetch_manifest "$WAZUH_5X_FALLBACK_MANIFEST_URL" "$fallback_manifest"
+      fallback_manifest_loaded=1
+    fi
+    resolve_package_url_from_manifest "Wazuh Dashboard" "$DASHBOARD_PACKAGE_KEY" "$fallback_manifest" "$WAZUH_5X_FALLBACK_MANIFEST_URL" "fallback" || {
+      echo "ERROR: package key '$DASHBOARD_PACKAGE_KEY' not found in primary or fallback manifests." >&2
+      return 1
+    }
+  fi
+  download_package_from_url "Wazuh Dashboard" "$RESOLVED_PACKAGE_URL" "wazuh-dashboard" "$DASHBOARD_PACKAGE_FILE"
+
+  rm -f "$primary_manifest" "$fallback_manifest"
+  trap - RETURN
+}
+
+
+# ==============================================================================
 #                   Indexer
 # ==============================================================================
 function get_indexer_artifact() {
@@ -358,12 +519,21 @@ function get_dashboard_artifact() {
 #                   MAIN
 ####################################################
 
-# Make sure we have a GitHub token
-gh_token
+need_cmd curl
 
 # Download the last version of the Wazuh Indexer and Dashboard
-get_indexer_artifact
-get_dashboard_artifact
+if [[ "$FROM_WORKFLOWS" -eq 1 ]]; then
+  need_cmd gh
+  need_cmd unzip
+
+  # Make sure we have a GitHub token
+  gh_token
+
+  get_indexer_artifact
+  get_dashboard_artifact
+else
+  get_packages_from_manifests
+fi
 
 # Init certs
 upsert_certs

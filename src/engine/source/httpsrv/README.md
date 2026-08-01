@@ -87,7 +87,7 @@ Utility functions `methodToStr()` and `strToMethod()` convert between enum and s
 | Feature | Implementation |
 |---------|----------------|
 | **Unix Domain Socket** | `set_address_family(AF_UNIX)`, binds to file path |
-| **Thread pool** | `CPPHTTPLIB_THREAD_POOL_COUNT` clamped to `[8, 16]` based on `hardware_concurrency()` |
+| **Thread pool** | `CPPHTTPLIB_THREAD_POOL_COUNT` clamped to `[2, 16]` based on `cpp_get_nproc()` |
 | **Payload limit** | `set_payload_max_length()` — returns `413 Payload Too Large` when exceeded |
 | **Exception safety** | `set_exception_handler()` catches all route handler exceptions → `500 Internal Server Error` |
 | **Logging** | `set_logger()` logs every request/response at TRACE level (truncated to 1024 chars) |

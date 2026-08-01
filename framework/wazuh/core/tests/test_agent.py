@@ -1069,6 +1069,11 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
     with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
         agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
 
+    # Action not available for manager (000)
+    agent = Agent('000')
+    with pytest.raises(WazuhError, match=".* 1703 .*"):
+        agent.get_config('auth', 'auth', 'Wazuh v4.0.0')
+
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

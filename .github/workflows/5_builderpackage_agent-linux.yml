@@ -8,7 +8,10 @@ on:
       - "src/**"
       - "packages/**"
       - "ruleset/**"
+      - "framework/requirements.txt"
       - ".github/actions/check_files/**"
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_package/**"
       - ".github/workflows/5_builderpackage_agent-linux.yml"
       - ".github/workflows/5_testintegration_agent-start.yml"
       - ".github/workflows/5_testintegration_linux-integration-tests.yml"
@@ -61,11 +64,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+# Granted at the workflow level so the reusable smoke-test / integration-test
+# calls (which run S3 uploads/downloads over OIDC) can request id-token.
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   # ===================== DEB JOBS =====================
   build-deb:
+    permissions:
+      id-token: write
+      contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Build DEB ${{ matrix.arch }} package
     strategy:
@@ -91,6 +103,37 @@ jobs:
           echo "TAG=$VERSION" >> $GITHUB_ENV
           echo "CONTAINER_NAME=pkg_deb_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for package building
         run: |
@@ -127,33 +170,42 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: /tmp/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: /tmp/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             /tmp/${{ steps.build.outputs.package-name }}.sha512
             /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-deb:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-deb
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Test DEB ${{ matrix.arch }} package
     strategy:
@@ -174,11 +226,15 @@ jobs:
           echo "SYSTEM=deb" >> $GITHUB_ENV
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "wazuh-agent*${{ matrix.arch }}*.deb"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: 'wazuh-agent.*${{ matrix.arch }}.*\.deb'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set PACKAGE_NAME from downloaded files
         run: |
@@ -192,6 +248,37 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for testing
         run: |
@@ -229,6 +316,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: ${{ env.CSV_FILENAME }}
           installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}
@@ -272,9 +361,12 @@ jobs:
           package_path: /tmp/upgrade_test
 
   upload-deb-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-deb, test-deb]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
@@ -283,12 +375,19 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download all artifacts for this architecture
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ matrix.arch }}*"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ matrix.arch }}.*'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -336,8 +435,11 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm:
+    permissions:
+      id-token: write
+      contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Build RPM ${{ matrix.arch }} package
     strategy:
@@ -370,6 +472,37 @@ jobs:
           echo "TAG=$VERSION" >> $GITHUB_ENV
           echo "CONTAINER_NAME=pkg_rpm_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for package building
         run: |
@@ -406,33 +539,42 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: /tmp/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: /tmp/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             /tmp/${{ steps.build.outputs.package-name }}.sha512
             /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-rpm:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-rpm
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Test RPM ${{ matrix.arch }} package
     strategy:
@@ -460,11 +602,15 @@ jobs:
           echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*.rpm"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*\.rpm'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set PACKAGE_NAME from downloaded files
         run: |
@@ -479,6 +625,37 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for testing
         run: |
@@ -516,6 +693,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: ${{ env.CSV_FILENAME }}
           installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}
@@ -559,9 +738,12 @@ jobs:
           package_path: /tmp/upgrade_test
 
   upload-rpm-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-rpm, test-rpm]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:
@@ -570,6 +752,9 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Map architecture for artifact download
         id: map-arch
         run: |
@@ -580,11 +765,15 @@ jobs:
           echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts for this architecture
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -636,7 +825,7 @@ jobs:
 
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 10
     name: Detect changed Linux test modules
     permissions:
@@ -663,6 +852,10 @@ jobs:
     if: >
       needs.upload-deb-to-s3.result == 'success' &&
       needs.detect-changes.result == 'success'
+    # Required so that the reusable workflow can obtain an OIDC token for AWS authentication.
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}

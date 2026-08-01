@@ -12,3 +12,21 @@ default_rules:
     rule:
       FIND:
         user_name: "admin"
+
+  wazuh_indexer_demo:
+    description: "Read-only permissions for the indexer's wazuh-demo user."
+    rule:
+      FIND:
+        user_name: "wazuh-demo"
+
+  wazuh_indexer_readonly:
+    description: "Read-only permissions for the indexer's wazuh-readonly user."
+    rule:
+      FIND:
+        user_name: "wazuh-readonly"
+
+  wazuh_indexer_admin:
+    description: "Administrator permissions with read-only access to security resources for the indexer's wazuh-admin user."
+    rule:
+      FIND:
+        user_name: "wazuh-admin"

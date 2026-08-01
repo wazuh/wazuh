@@ -17,6 +17,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   contentmanager-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -54,6 +58,8 @@ jobs:
       - name: Content manager - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/content_manager
           id: content_manager
           threshold: "65"

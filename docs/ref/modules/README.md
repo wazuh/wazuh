@@ -1,24 +1,34 @@
 # Modules
 
-- [Active Response](active-response/) - Automated security response actions triggered by detected events
-- [Agent Info](agent_info/) - Agent metadata collection and reporting
-- [Agent Management](agent-management/) - Centralized configuration and group management for agents
-- [Integrations](integrations/) - Cloud services and third-party platform integrations
-- [Engine](engine/) - Event decoding, enrichment, and detection pipeline
-- [Control](control/) - Manager control operations (restart, reload) via wm_control module
-- [Command](command/) - Scheduled command execution through the command wodle
-- [Syscollector](syscollector/) - System inventory collection and monitoring
-- [Logcollector](logcollector/) - Log ingestion
-- [FIM](fim/) - File Integrity Monitoring with persistent state synchronization
-- [Rootcheck](rootcheck/) - Rootkit and anomaly detection
-- [SCA](sca/) - Security Configuration Assessment for compliance evaluation
-- [Vulnerability Scanner](vulnerability-scanner/) - CVE detection and vulnerability assessment
-- [Inventory Sync](inventory-sync/) - Manager-side synchronization service for agent inventory and context data
-- [Remoted](remoted/) - Agent communication daemon
-- [Server API](server-api/) - RESTful management API
-- [RBAC](rbac/) - Role-based access control for the API
-- [Router](router/) - Internal message routing
-- [Agent Sync Protocol](utils/sync-protocol/) - Agent-side library for synchronizing data with the manager
-- [Schema Validator](utils/schema-validator/) - JSON schema validation for synchronized data
-- [FlatBuffers](utils/flatbuffers/) - High-performance serialization for synchronization protocol
-- [Cluster](cluster/) - Manages the Wazuh server cluster
+- [Active Response](active-response/index.html) - Automated security response actions triggered by detected events
+- [Agent Info](agent_info/index.html) - Agent metadata collection and reporting
+- [Agent Management](agent-management/index.html) - Centralized configuration and group management for agents
+- [Agent Upgrade](agent_upgrade/index.html) - Remote agent upgrade via WPK distribution
+- [Authd](authd/index.html) - Agent enrollment service (TLS, key generation)
+- [Client](client/index.html) - Agent daemon (wazuh-agentd) managing agent-manager communication
+- [Cluster](cluster/index.html) - Manages the Wazuh server cluster
+- [Command](command/index.html) - Scheduled command execution through the command wodle
+- [Content Manager](content_manager/index.html) - CTI feed fetcher for Vulnerability Detection
+- [Control](control/index.html) - Manager control operations (restart, reload) via wm_control module
+- [Engine](engine/index.html) - Event decoding, enrichment, and detection pipeline
+- [FIM](fim/index.html) - File Integrity Monitoring with persistent state synchronization
+- [Indexer Connector](indexer_connector/index.html) - OpenSearch indexing library (Filebeat replacement)
+- [Integrations](integrations/index.html) - Cloud services and third-party platform integrations
+- [Inventory Sync](inventory-sync/index.html) - Manager-side synchronization service for agent inventory and context data
+- [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB)
+- [Logcollector](logcollector/index.html) - Log ingestion
+- [Logging](logging/index.html) - Log format configuration (plain text, JSON, or dual output)
+- [Monitord](monitord/index.html) - Agent disconnection monitoring and log rotation
+- [RBAC](rbac/index.html) - Role-based access control for the API
+- [Remoted](remoted/index.html) - Agent communication daemon
+- [Rootcheck](rootcheck/index.html) - Rootkit and anomaly detection
+- [Router](router/index.html) - Internal message routing
+- [SCA](sca/index.html) - Security Configuration Assessment for compliance evaluation
+- [Server API](server-api/index.html) - RESTful management API
+- [Syscollector](syscollector/index.html) - System inventory collection and monitoring
+- [Task Manager](task_manager/index.html) - Task orchestration for distributed operations
+- [Vulnerability Scanner](vulnerability-scanner/index.html) - CVE detection and vulnerability assessment
+- [Wazuh DB](wazuh_db/index.html) - Persistent SQLite database daemon for agent and task state
+- [Agent Sync Protocol](utils/sync-protocol/index.html) - Agent-side library for synchronizing data with the manager
+- [FlatBuffers](utils/flatbuffers/index.html) - High-performance serialization for synchronization protocol
+- [Schema Validator](utils/schema-validator/index.html) - JSON schema validation for synchronized data

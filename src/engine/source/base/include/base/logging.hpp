@@ -326,8 +326,16 @@ constexpr inline const char* default_tag()
  * @see isStandaloneModeEnable(), getDefaultLogger(), log_bridge()
  */
 inline void
-backend_log(logging::Level lvl, const char* file, int line, const char* funcName, const char* text, size_t len)
+backend_log(logging::Level lvl,
+            const char* file,
+            int line,
+            const char* funcName,
+            const char* text,
+            size_t len,
+            const char* tag = nullptr)
 {
+    const char* effectiveTag = (tag && tag[0] != '\0') ? tag : default_tag();
+
     if (base::process::isStandaloneModeEnable())
     {
         const auto spd = SEVERITY_LEVEL.at(lvl);
@@ -338,22 +346,24 @@ backend_log(logging::Level lvl, const char* file, int line, const char* funcName
     switch (lvl)
     {
         case logging::Level::Trace:
-            Log::Logger::debugVerbose(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::debugVerbose(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Debug:
-            Log::Logger::debug(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::debug(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Info:
-            Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Warn:
-            Log::Logger::warning(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::warning(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Err:
         case logging::Level::Critical:
-            Log::Logger::error(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::error(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
-        default: Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text); break;
+        default:
+            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
     }
 }
 
@@ -373,23 +383,34 @@ inline bool should_log(logging::Level lvl)
         return getDefaultLogger()->should_log(SEVERITY_LEVEL.at(lvl));
     }
 
-    // TODO: CHECK THIS BECAUSE SOME TESTS DO NOT USE STANDALONE MODE AND FAIL BECAUSE THEY DO NOT HAVE LIBWAZUHSHARED
-    // // In Wazuh mode, check debug flag from the C logging system
-    // // isDebug() returns: 0 = Info+, 1 = Debug+, 2+ = Trace+
-    // using IsDebugFnType = int (*)();
-    // const auto isDebugFn = base::libwazuhshared::getFunction<IsDebugFnType>("isDebug");
-    // const int debugLevel = isDebugFn();
+    // If libwazuhshared is not loaded (e.g. unit tests that run in non-standalone mode),
+    // mirror backend_log()'s Log::Logger::* fallback: those functions already guard with
+    // if (GLOBAL_LOG_FUNCTION) and silently discard when unset, treating it as debug-level 0.
+    if (!base::libwazuhshared::isInitialized())
+    {
+        switch (lvl)
+        {
+            case logging::Level::Trace:
+            case logging::Level::Debug: return false;
+            default: return true;
+        }
+    }
 
-    // switch (lvl)
-    // {
-    //     case logging::Level::Trace: return debugLevel >= 2;
-    //     case logging::Level::Debug: return debugLevel >= 1;
-    //     case logging::Level::Info:
-    //     case logging::Level::Warn:
-    //     case logging::Level::Err:
-    //     case logging::Level::Critical: return true; // Always log these levels
-    //     default: return false;
-    // }
+    // Cache the function pointer — calling getFunction() (dlsym) on every log check is too slow.
+    using IsDebugFnType = int (*)();
+    static const IsDebugFnType isDebugFn = base::libwazuhshared::getFunction<IsDebugFnType>("isDebug");
+    const int debugLevel = isDebugFn();
+
+    switch (lvl)
+    {
+        case logging::Level::Trace: return debugLevel >= 2;
+        case logging::Level::Debug: return debugLevel >= 1;
+        case logging::Level::Info:
+        case logging::Level::Warn:
+        case logging::Level::Err:
+        case logging::Level::Critical: return true;
+        default: return false;
+    }
     return true;
 }
 

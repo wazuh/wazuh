@@ -27,8 +27,16 @@ Stateful events are persisted for reliable synchronization with the manager via 
         "id": "CUST001",
         "mitre":
         {
-            "tactic": ["TA0008"],
-            "technique": ["T1021"]
+            "tactic":
+            {
+                "id": ["TA0008"],
+                "name": ["Lateral Movement"]
+            },
+            "technique":
+            {
+                "id": ["T1021"],
+                "name": ["Remote Services"]
+            }
         },
         "name": "Ensure SMBv1 is disabled.",
         "rationale": "SMBv1 is outdated and insecure.",
@@ -93,8 +101,16 @@ Stateless events are sent immediately through the message queue for real-time al
             "id": "CUST001",
             "mitre":
             {
-                "tactic": ["TA0008"],
-                "technique": ["T1021"]
+                "tactic":
+                {
+                    "id": ["TA0008"],
+                    "name": ["Lateral Movement"]
+                },
+                "technique":
+                {
+                    "id": ["T1021"],
+                    "name": ["Remote Services"]
+                }
             },
             "name": "Ensure SMBv1 is disabled.",
             "rationale": "SMBv1 is outdated and insecure.",

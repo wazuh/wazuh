@@ -233,13 +233,15 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     mitre = _extract_mitre_from_event(event)
     assert mitre is not None, 'MITRE object was not found in the captured SCA event'
 
-    # Keep compatibility if payload stores a single tactic/technique as string.
-    tactic = mitre.get('tactic', [])
-    technique = mitre.get('technique', [])
-    tactic = [item.strip() for item in tactic.split(',')] if isinstance(tactic, str) else tactic
-    technique = [item.strip() for item in technique.split(',')] if isinstance(technique, str) else technique
+    # Each tactic/technique is an object holding "id" and "name" lists.
+    tactic = mitre.get('tactic', {})
+    technique = mitre.get('technique', {})
 
-    assert set(tactic) == set(test_metadata['mitre_tactics']), \
-        f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {tactic}"
-    assert set(technique) == set(test_metadata['mitre_techniques']), \
-        f"Expected MITRE techniques {test_metadata['mitre_techniques']}, got {technique}"
+    assert set(tactic.get('id', [])) == set(test_metadata['mitre_tactics']), \
+        f"Expected MITRE tactic IDs {test_metadata['mitre_tactics']}, got {tactic.get('id')}"
+    assert set(tactic.get('name', [])) == set(test_metadata['mitre_tactic_names']), \
+        f"Expected MITRE tactic names {test_metadata['mitre_tactic_names']}, got {tactic.get('name')}"
+    assert set(technique.get('id', [])) == set(test_metadata['mitre_techniques']), \
+        f"Expected MITRE technique IDs {test_metadata['mitre_techniques']}, got {technique.get('id')}"
+    assert set(technique.get('name', [])) == set(test_metadata['mitre_technique_names']), \
+        f"Expected MITRE technique names {test_metadata['mitre_technique_names']}, got {technique.get('name')}"

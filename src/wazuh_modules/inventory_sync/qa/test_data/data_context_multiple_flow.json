@@ -9,7 +9,8 @@
         "size": 3,
         "agentid": "001",
         "agentname": "test-agent",
-        "agentversion": "4.8.0"
+        "agentversion": "4.8.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start synchronization session for DataContext with 3 messages",
       "delay": 0.5,
@@ -21,7 +22,10 @@
         "seq": 0,
         "id": "context-id-0",
         "index": "wazuh-states-vulnerabilities",
-        "data": {"cve": "CVE-2024-1234", "severity": "high"}
+        "data": {
+          "cve": "CVE-2024-1234",
+          "severity": "high"
+        }
       },
       "description": "Send first DataContext message",
       "delay": 0.3,
@@ -33,7 +37,10 @@
         "seq": 1,
         "id": "context-id-1",
         "index": "wazuh-states-vulnerabilities",
-        "data": {"cve": "CVE-2024-5678", "severity": "medium"}
+        "data": {
+          "cve": "CVE-2024-5678",
+          "severity": "medium"
+        }
       },
       "description": "Send second DataContext message",
       "delay": 0.3,
@@ -45,7 +52,10 @@
         "seq": 2,
         "id": "context-id-2",
         "index": "wazuh-states-vulnerabilities",
-        "data": {"cve": "CVE-2024-9012", "severity": "critical"}
+        "data": {
+          "cve": "CVE-2024-9012",
+          "severity": "critical"
+        }
       },
       "description": "Send third DataContext message",
       "delay": 0.3,

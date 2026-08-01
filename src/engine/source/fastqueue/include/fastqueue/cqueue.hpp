@@ -8,6 +8,7 @@
 
 #include <blockingconcurrentqueue.h>
 
+#include <fastqueue/bytelimiter.hpp>
 #include <fastqueue/iqueue.hpp>
 #include <fastqueue/ratelimiter.hpp>
 
@@ -59,6 +60,8 @@ private:
     moodycamel::BlockingConcurrentQueue<T, D> m_queue {}; ///< The queue itself.
     std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
     std::unique_ptr<RateLimiter> m_rateLimiter;           ///< Optional rate limiter (nullptr = no limiting)
+
+    ByteLimiter<T> m_byteLimiter;
 
 public:
     /**
@@ -125,14 +128,54 @@ public:
     }
 
     /**
+     * @copydoc IQueue::setByteLimit
+     */
+    void setByteLimit(std::size_t maxBytes, std::function<std::size_t(const T&)> sizeOf) override
+    {
+        m_byteLimiter.configure(maxBytes, std::move(sizeOf));
+    }
+
+    /**
+     * @copydoc IQueue::bytesUsed
+     */
+    std::size_t bytesUsed() const noexcept override { return m_byteLimiter.bytesUsed(); }
+
+    /**
+     * @copydoc IQueue::maxBytes
+     */
+    std::size_t maxBytes() const noexcept override { return m_byteLimiter.maxBytes(); }
+
+    /**
      * @copydoc IQueue::push
      */
-    inline bool push(T&& element) override { return m_queue.try_enqueue(std::move(element)); }
+    inline bool push(T&& element) override
+    {
+        const std::size_t sz = m_byteLimiter.measure(element);
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
+        if (!m_queue.try_enqueue(std::move(element)))
+        {
+            m_byteLimiter.releaseBytes(sz);
+            return false;
+        }
+        return true;
+    }
 
     /**
      * @copydoc IQueue::tryPush
      */
-    inline bool tryPush(const T& element) override { return m_queue.try_enqueue(element); }
+    inline bool tryPush(const T& element) override
+    {
+        const std::size_t sz = m_byteLimiter.measure(element);
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
+        if (!m_queue.try_enqueue(element))
+        {
+            m_byteLimiter.releaseBytes(sz);
+            return false;
+        }
+        return true;
+    }
 
     /**
      * @copydoc IQueue::waitPop
@@ -146,6 +189,7 @@ public:
     {
         const int64_t normalizedTimeout = (timeout < 0) ? 0 : timeout;
 
+        bool result;
         if (m_rateLimiter)
         {
             auto startTime = std::chrono::steady_clock::now();
@@ -162,10 +206,18 @@ public:
             int64_t remainingTimeout = normalizedTimeout - elapsed.count();
             remainingTimeout = (remainingTimeout < 0) ? 0 : remainingTimeout;
 
-            return m_queue.wait_dequeue_timed(element, remainingTimeout);
+            result = m_queue.wait_dequeue_timed(element, remainingTimeout);
+        }
+        else
+        {
+            result = m_queue.wait_dequeue_timed(element, normalizedTimeout);
         }
 
-        return m_queue.wait_dequeue_timed(element, normalizedTimeout);
+        if (result)
+        {
+            m_byteLimiter.releaseBytes(m_byteLimiter.measure(element));
+        }
+        return result;
     }
 
     /**
@@ -178,7 +230,12 @@ public:
         {
             return false;
         }
-        return m_queue.try_dequeue(element);
+        if (!m_queue.try_dequeue(element))
+        {
+            return false;
+        }
+        m_byteLimiter.releaseBytes(m_byteLimiter.measure(element));
+        return true;
     }
 
     /**
@@ -217,7 +274,17 @@ public:
         {
             return 0;
         }
-        return m_queue.try_dequeue_bulk(elements, max);
+        const std::size_t dequeued = m_queue.try_dequeue_bulk(elements, max);
+        if (dequeued > 0 && m_byteLimiter.isEnabled())
+        {
+            std::size_t totalBytes = 0;
+            for (std::size_t i = 0; i < dequeued; ++i)
+            {
+                totalBytes += m_byteLimiter.measure(elements[i]);
+            }
+            m_byteLimiter.releaseBytes(totalBytes);
+        }
+        return dequeued;
     }
 };
 

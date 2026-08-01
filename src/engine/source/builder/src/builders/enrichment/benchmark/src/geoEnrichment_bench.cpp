@@ -180,6 +180,8 @@ public:
     }
 
     void requestShutdown() override {}
+
+    std::vector<geo::GeoDbStatus> getGeoStatus() const override { return {}; }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,7 +212,8 @@ json::Json makeMappingConfig(bool withGeo, bool withAs)
 /**
  * @brief Helper: build the enrichment expression once, then benchmark applying it.
  */
-base::Expression buildEnrichmentExpr(const std::shared_ptr<geo::IManager>& mgr, const json::Json& configDoc, bool isTestMode)
+base::Expression
+buildEnrichmentExpr(const std::shared_ptr<geo::IManager>& mgr, const json::Json& configDoc, bool isTestMode)
 {
     auto enrichBuilder = builder::builders::enrichment::getGeoEnrichmentBuilder(mgr, configDoc);
     auto [expr, name] = enrichBuilder(isTestMode);

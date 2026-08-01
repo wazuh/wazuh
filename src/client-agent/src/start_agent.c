@@ -399,6 +399,26 @@ bool connect_server(int server_id, bool verbose)
             #endif
         }
     } else {
+        if (OS_SetKeepalive(agt->sock) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetKeepalive failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+#endif
+        } else {
+            int keepidle  = getDefine_Int("agent", "tcp_keepidle",  1, 7200);
+            int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
+            int keepcnt   = getDefine_Int("agent", "tcp_keepcnt",   1, 50);
+            OS_SetKeepalive_Options(agt->sock, keepidle, keepintvl, keepcnt);
+        }
+        int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
+        if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+#endif
+        }
         agt->rip_id = server_id;
         last_connection_time = (int)time(NULL);
         os_free(ip_address);
@@ -761,19 +781,24 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                         agent_module_limits.syscollector.browser_extensions);
                                 mdebug2("Received SCA limits: checks=%d", agent_module_limits.sca.checks);
 
-                                /* Store cluster_name in global for agent-info module to query via agcom */
+                                /* Store handshake data in globals for agent-info module to query via agcom.
+                                 * Locked because agcom_gethandshake() may read these concurrently from
+                                 * another thread. */
+                                w_mutex_lock(&agent_handshake_mutex);
+
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
                                 agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
-                                mdebug1("Connected to cluster: %s", agent_cluster_name);
 
-                                /* Store cluster_node in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
                                 agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
-                                mdebug1("Connected to node: %s", agent_cluster_node);
 
-                                /* Store agent_groups in global for agent-info module to query via agcom */
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
+
+                                w_mutex_unlock(&agent_handshake_mutex);
+
+                                mdebug1("Connected to cluster: %s", agent_cluster_name);
+                                mdebug1("Connected to node: %s", agent_cluster_node);
                                 mdebug1("Agent groups: %s", agent_agent_groups);
 
                                 /* Populate shared memory before opening the startup gate so that

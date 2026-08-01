@@ -56,9 +56,9 @@ sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
 Configure the Wazuh server to connect to the Wazuh indexer using the secure keystore:
 
 ```bash
-# Set indexer credentials (default: admin/admin)
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v admin
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v admin
+# Set indexer credentials (default: wazuh-manager/wazuh-manager)
+sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v wazuh-manager
 ```
 
 Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` to specify the indexer IP address:
@@ -197,6 +197,15 @@ Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
 
+> [!IMPORTANT]
+> Enrollment password protection is enabled by default in Wazuh 5.0. Before enrolling agents, you must retrieve the auto-generated password from the manager using:
+> 
+> ```bash
+> sudo cat /var/wazuh-manager/etc/authd.pass
+> ```
+> 
+> Pass this password to the installer using the `WAZUH_REGISTRATION_PASSWORD` environment variable (or `/tmp/wazuh_envs` on macOS, or the installer arguments on Windows) as shown in the examples below.
+
 ### Download package
 
 Download the Wazuh agent package for your platform and version. See the [Package Download](packages.md#package-download) section for available repositories and download instructions.
@@ -209,10 +218,10 @@ Download the Wazuh agent package for your platform and version. See the [Package
 sudo dpkg -i wazuh-agent_*.deb
 ```
 
-You can optionally specify configuration parameters:
+You can optionally specify configuration parameters (such as the manager IP and the required registration password):
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
+sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' dpkg -i wazuh-agent_*.deb
 ```
 
 #### Red Hat-based platforms
@@ -224,7 +233,7 @@ sudo rpm -ivh wazuh-agent-*.rpm
 You can optionally specify configuration parameters:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### SUSE-based platforms
@@ -236,7 +245,7 @@ sudo rpm -ivh wazuh-agent-*.rpm
 You can optionally specify configuration parameters:
 
 ```bash
-sudo WAZUH_MANAGER='10.0.0.2' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
+sudo WAZUH_MANAGER='10.0.0.2' WAZUH_REGISTRATION_PASSWORD='<PASSWORD>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh wazuh-agent-*.rpm
 ```
 
 #### Starting the agent
@@ -266,7 +275,7 @@ sudo installer -pkg wazuh-agent-*.pkg -target /
 You can optionally specify configuration parameters by writing them to `/tmp/wazuh_envs` before running the installer:
 
 ```bash
-echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
+echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && echo "WAZUH_REGISTRATION_PASSWORD='<PASSWORD>'" >> /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
 Start the agent service:
@@ -292,7 +301,7 @@ wazuh-agent-*.msi /q
 You can optionally specify configuration parameters:
 
 ```powershell
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_AGENT_NAME="windows-server-01"
+wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>" WAZUH_AGENT_NAME="windows-server-01"
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
@@ -328,7 +337,13 @@ Specifies the IP address or hostname of the enrollment server. When not specifie
 Defines the port used for agent enrollment. Default: `1515`.
 
 **`WAZUH_REGISTRATION_PASSWORD`**\
-Sets the password required for agent enrollment. This password must match the one configured on the server.
+Sets the password required for agent enrollment. This password must match the one configured on the server. Enrollment password protection is enabled by default, so retrieve the auto-generated password from the manager before enrolling agents:
+
+```bash
+sudo cat /var/wazuh-manager/etc/authd.pass
+```
+
+Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
 
 **`WAZUH_REGISTRATION_CA`**\
 Specifies the path to the CA certificate used to verify the manager's identity during enrollment.

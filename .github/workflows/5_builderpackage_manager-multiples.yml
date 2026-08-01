@@ -87,6 +87,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
 jobs:
   select-targets:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -239,6 +244,7 @@ jobs:
     name: Build Wazuh Manager
     needs: select-targets
     permissions:
+        id-token: write
         contents: read
         packages: write
     strategy:

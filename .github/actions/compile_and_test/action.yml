@@ -35,6 +35,11 @@ runs:
           version: 1.0
 
       - name: Compile
+        env:
+          INPUT_PATH: ${{ inputs.path }}
+          INPUT_TEST: ${{ inputs.test }}
+          INPUT_FLAGS: ${{ inputs.flags }}
+          INPUT_ASAN: ${{ inputs.asan }}
         run: |
           SRC_FOLDER=$(pwd)/src
 
@@ -52,14 +57,14 @@ runs:
           echo $VERSION
           echo $REVISION
 
-          cd ${{ inputs.path }}
+          cd "$INPUT_PATH"
           mkdir -p build && cd build
 
-          if [[ ${{ inputs.test }} == "false" ]]; then
+          if [[ "$INPUT_TEST" == "false" ]]; then
             echo "Compiling without tests"
             cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
           else
-            if [[ "${{ inputs.asan }}" != "false" ]]; then
+            if [[ "$INPUT_ASAN" != "false" ]]; then
               # Compile for ASAN
               echo "Compiling for ASAN"
               export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
@@ -75,14 +80,18 @@ runs:
         shell: bash
 
       - name: Test
+        env:
+          INPUT_PATH: ${{ inputs.path }}
+          INPUT_TEST: ${{ inputs.test }}
+          INPUT_ASAN: ${{ inputs.asan }}
         run: |
 
-          if [[ ${{ inputs.test }} == "false" ]]; then
+          if [[ "$INPUT_TEST" == "false" ]]; then
             echo "Skipping tests"
           else
-            cd ${{ inputs.path }}/build
+            cd "$INPUT_PATH"/build
 
-            if [[ "${{ inputs.asan }}" != "false" ]]; then
+            if [[ "$INPUT_ASAN" != "false" ]]; then
               # Run for ASAN
               echo "Running tests for ASAN"
               ctest --output-on-failure

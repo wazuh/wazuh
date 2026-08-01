@@ -34,6 +34,10 @@ typedef int gid_t;
 
 #define WAZUH_IPC_TIMEOUT 600    // seconds
 
+/* OS_SendUnix: bounded ENOBUFS retry (local Unix datagram backpressure). */
+#define OS_UNIX_SEND_RETRIES     5
+#define OS_UNIX_SEND_BACKOFF_US  1000
+
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY

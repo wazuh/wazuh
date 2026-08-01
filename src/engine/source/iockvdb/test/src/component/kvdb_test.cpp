@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <base/logging.hpp>
 #include <iockvdb/manager.hpp>
 #include <store/mockStore.hpp>
 
@@ -20,6 +21,7 @@ class KVDBComponentTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        logging::testInit();
         // Use unique directory per test to allow parallel execution
         auto testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
         std::string testName = std::string(testInfo->test_suite_name()) + "_" + std::string(testInfo->name());
@@ -1675,10 +1677,10 @@ TEST_F(KVDBComponentTest, LoadStateRestoresSubsequentEntriesWhenOneDiskPathIsMis
     auto writerStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
     ON_CALL(*writerStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
     EXPECT_CALL(*writerStore, upsertDoc(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(
-            ::testing::Invoke([&persistedState](const base::Name&, const json::Json& j)
-                              { persistedState = std::make_shared<json::Json>(j.str().c_str()); }),
-            ::testing::Return(std::nullopt)));
+        .WillRepeatedly(
+            ::testing::DoAll(::testing::Invoke([&persistedState](const base::Name&, const json::Json& j)
+                                               { persistedState = std::make_shared<json::Json>(j.str().c_str()); }),
+                             ::testing::Return(std::nullopt)));
 
     {
         ioc::kvdb::KVDBManager manager(testDir, writerStore);
@@ -1761,10 +1763,10 @@ TEST_F(KVDBComponentTest, SaveStatePreservesPreviousInstancePathForHandleWithout
     auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
 
     EXPECT_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(
-            ::testing::Invoke([&capturedState](const base::Name&, const json::Json& j)
-                              { capturedState = std::make_shared<json::Json>(j.str().c_str()); }),
-            ::testing::Return(std::nullopt)));
+        .WillRepeatedly(
+            ::testing::DoAll(::testing::Invoke([&capturedState](const base::Name&, const json::Json& j)
+                                               { capturedState = std::make_shared<json::Json>(j.str().c_str()); }),
+                             ::testing::Return(std::nullopt)));
 
     {
         ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
@@ -1790,10 +1792,10 @@ TEST_F(KVDBComponentTest, SaveStatePreservesPreviousInstancePathForHandleWithout
 
     std::shared_ptr<json::Json> finalState;
     EXPECT_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::DoAll(
-            ::testing::Invoke([&finalState](const base::Name&, const json::Json& j)
-                              { finalState = std::make_shared<json::Json>(j.str().c_str()); }),
-            ::testing::Return(std::nullopt)));
+        .WillRepeatedly(
+            ::testing::DoAll(::testing::Invoke([&finalState](const base::Name&, const json::Json& j)
+                                               { finalState = std::make_shared<json::Json>(j.str().c_str()); }),
+                             ::testing::Return(std::nullopt)));
 
     {
         ioc::kvdb::KVDBManager manager(testDir, mockStore);

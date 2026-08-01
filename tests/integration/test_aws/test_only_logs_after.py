@@ -6,10 +6,10 @@
 This module will contain all cases for the only logs after test suite
 """
 
-import re
 import pytest
-from datetime import datetime, timedelta, timedelta
+from datetime import datetime
 # qa-integration-framework imports
+from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
 from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, VPC_FLOW_TYPE, US_EAST_1_REGION
 from wazuh_testing.utils.db_queries.aws_db import get_multiple_s3_db_row, get_service_db_row, get_s3_db_row
@@ -24,9 +24,7 @@ from . import event_monitor
 from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
-pytestmark = [pytest.mark.agent, pytest.mark.linux]
-
-daemons_handler_configuration = {'all_daemons': True}
+pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
 configurator.module = 'only_logs_after_test_module'
@@ -42,8 +40,9 @@ configurator.configure_test(configuration_file='bucket_configuration_without_onl
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_without_only_logs_after(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files, set_wazuh_configuration, clean_s3_cloudtrail_db,
-        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
         file_monitoring
 ):
     """
@@ -78,6 +77,9 @@ def test_bucket_without_only_logs_after(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -122,7 +124,7 @@ def test_bucket_without_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -130,14 +132,14 @@ def test_bucket_without_only_logs_after(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[60],
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
@@ -153,7 +155,7 @@ def test_bucket_without_only_logs_after(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -171,8 +173,9 @@ configurator.configure_test(configuration_file='service_configuration_without_on
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_service_without_only_logs_after(
-        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only the event created during execution is processed.
@@ -209,6 +212,9 @@ def test_service_without_only_logs_after(
         - manage_log_group_events:
             type: fixture
             brief: Manage events for the created log stream and log group.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -248,7 +254,7 @@ def test_service_without_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -256,7 +262,7 @@ def test_service_without_only_logs_after(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -272,7 +278,7 @@ def test_service_without_only_logs_after(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -290,8 +296,9 @@ configurator.configure_test(configuration_file='bucket_configuration_with_only_l
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_with_only_logs_after(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files, set_wazuh_configuration, clean_s3_cloudtrail_db,
-        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All logs with a timestamp greater than the only_logs_after value are processed.
@@ -325,6 +332,9 @@ def test_bucket_with_only_logs_after(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -371,7 +381,7 @@ def test_bucket_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -379,14 +389,14 @@ def test_bucket_with_only_logs_after(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[60],
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
@@ -403,7 +413,7 @@ def test_bucket_with_only_logs_after(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -421,8 +431,9 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_with_on
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_with_only_logs_after(
-        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All events with a timestamp greater than the only_logs_after value are processed.
@@ -459,6 +470,9 @@ def test_cloudwatch_with_only_logs_after(
         - manage_log_group_events:
             type: fixture
             brief: Manage events for the created log stream and log group.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -505,7 +519,7 @@ def test_cloudwatch_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -513,14 +527,14 @@ def test_cloudwatch_with_only_logs_after(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[60],
+        timeout=TIMEOUT[10],
         callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
     )
 
@@ -535,7 +549,7 @@ def test_cloudwatch_with_only_logs_after(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -553,8 +567,9 @@ configurator.configure_test(configuration_file='inspector_configuration_with_onl
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_with_only_logs_after(
-        test_configuration, metadata, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
+        test_configuration, metadata,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All events with a timestamp greater than the only_logs_after value are processed.
@@ -582,6 +597,9 @@ def test_inspector_with_only_logs_after(
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -632,7 +650,7 @@ def test_inspector_with_only_logs_after(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -640,31 +658,24 @@ def test_inspector_with_only_logs_after(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    # For inspector, validate V1 and V2 APIs both execute successfully
+    # For inspector, validate InspectorV2 API executed successfully
     if service_type == 'inspector' and expected_results_min is not None:
-        # Validate InspectorV1 API executed (can return 0+ events)
-        log_monitor.start(
-            timeout=TIMEOUT[60],
-            callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
-        )
-        assert log_monitor.callback_result is not None, 'InspectorV1 API did not execute - check logs'
-
         # Validate InspectorV2 API executed (can return 0+ events or report no updates)
         log_monitor.start(
-            timeout=TIMEOUT[60],
+            timeout=TIMEOUT[10],
             callback=event_monitor.make_aws_callback(r'.*\[InspectorV2\] .*(?:\d+ events collected and processed|No findings with recent updates)'),
         )
         assert log_monitor.callback_result is not None, 'InspectorV2 API did not execute - check logs'
 
         # Validate total events meets minimum threshold
         log_monitor.start(
-            timeout=TIMEOUT[60],
+            timeout=TIMEOUT[10],
             callback=event_monitor.make_aws_callback(r'.*Total: (\d+) events'),
         )
         assert log_monitor.callback_result is not None, f'Did not find total events count in logs'
@@ -673,7 +684,7 @@ def test_inspector_with_only_logs_after(
     else:
         # For other services, use original validation
         log_monitor.start(
-            timeout=TIMEOUT[60],
+            timeout=TIMEOUT[10],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
         )
         assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
@@ -698,7 +709,8 @@ configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
                          configurator.metadata,
                          ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
-        metadata, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files, daemons_handler
+        metadata, mark_cases_as_skipped, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -739,6 +751,9 @@ def test_bucket_multiple_calls(
         - clean_s3_cloudtrail_db:
             type: fixture
             brief: Delete the DB file before and after the test execution.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - restart_wazuh_daemon:
             type: fixture
             brief: Restart the wazuh service.
@@ -751,9 +766,13 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
+    only_logs_after = metadata.get('only_logs_after', '2022-NOV-20')
+    later_only_logs_after = metadata.get('later_only_logs_after', '2022-NOV-22')
 
     base_parameters = [
         '--bucket', bucket_name,
@@ -764,6 +783,11 @@ def test_bucket_multiple_calls(
 
     if path is not None:
         base_parameters.extend(['--trail_prefix', path])
+
+    # Scope to the test data account so the module doesn't iterate other account prefixes
+    # in the shared bucket (which would produce extra "No logs to process" messages).
+    if metadata.get('account_id'):
+        base_parameters.extend(['--aws_account_id', metadata['account_id']])
 
     # Call the module without only_logs_after and check that no logs were processed
     # Get bucket type
@@ -789,7 +813,7 @@ def test_bucket_multiple_calls(
 
     # Call the module with only_logs_after set in the past and check that the expected number of logs were processed
     analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
         callback=event_monitor.callback_detect_event_processed,
         expected_results=expected_results,
         error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -800,7 +824,7 @@ def test_bucket_multiple_calls(
         # For VPC the number of messages depend on the number of flow log IDs obtained by the module which may vary.
         expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3,
             error_message=ERROR_MESSAGE['incorrect_event_number'],
@@ -810,7 +834,7 @@ def test_bucket_multiple_calls(
         # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
         # were processed, there were no duplicates
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, later_only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
             error_message=ERROR_MESSAGE['incorrect_event_number'],
@@ -820,7 +844,7 @@ def test_bucket_multiple_calls(
         # Call the module with the same parameters in and check there were no duplicates
         expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3,
             error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -829,7 +853,7 @@ def test_bucket_multiple_calls(
         # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
         # were processed, there were no duplicates
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, later_only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
             error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -837,10 +861,18 @@ def test_bucket_multiple_calls(
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
-    last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
+    # Pre-resolve the effective type from the YAML bucket name so get_last_file_key doesn't try to infer the type
+    # from the shared bucket name via split('-')[1] (which produces 'agent' and causes KeyError).
+    # bucket_name (shared bucket) is still passed for the actual S3 Bucket object access inside get_last_file_key.
+    effective_bucket_type = bucket_type
+    if bucket_type == 'custom':
+        effective_bucket_type = data_bucket_name.split('-')[1]
+    elif bucket_type == 'guardduty' and 'native' in data_bucket_name:
+        effective_bucket_type = 'native-guardduty'
+    last_marker_key = get_last_file_key(effective_bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
     if bucket_type == VPC_FLOW_TYPE:
         data, key = generate_file(bucket_type=bucket_type,
-                                  bucket_name=bucket_name,
+                                  bucket_name=data_bucket_name,
                                   region=region,
                                   prefix='',
                                   suffix='',
@@ -848,7 +880,7 @@ def test_bucket_multiple_calls(
                                   flow_log_id=metadata['flow_log_id'])
     else:
         data, key = generate_file(bucket_type=bucket_type,
-                                  bucket_name=bucket_name,
+                                  bucket_name=data_bucket_name,
                                   region=region,
                                   prefix='',
                                   suffix='',
@@ -860,21 +892,7 @@ def test_bucket_multiple_calls(
                        key=key,
                        client=s3_client)
 
-    # For late-arrival log types the module rewinds the stored key by 1 day and strips it to the
-    # day-folder prefix before using it as StartAfter (rewind_marker_to_day_folder in aws_bucket.py).
-    _LATE_ARRIVAL_LOG_TYPES = {"cloudtrail", "alb", "clb", "nlb"}
-    if bucket_type in _LATE_ARRIVAL_LOG_TYPES and last_marker_key:
-        _date_match = re.search(r'(\d{4}/\d{2}/\d{2})', last_marker_key)
-        if _date_match:
-            _day = datetime.strptime(_date_match.group(1), '%Y/%m/%d')
-            _prefix = last_marker_key[:_date_match.start()]
-            expected_marker = f"{_prefix}{(_day - timedelta(days=1)).strftime('%Y/%m/%d')}"
-        else:
-            expected_marker = last_marker_key
-    else:
-        expected_marker = last_marker_key
-
-    pattern = fr"{MARKER}{expected_marker}"
+    pattern = fr"{MARKER}{last_marker_key}"
 
     analyze_command_output(
         command_output=call_aws_module(*base_parameters),
@@ -894,7 +912,7 @@ configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
                          configurator.metadata,
                          ids=configurator.cases_ids)
 def test_inspector_multiple_calls(
-    metadata, clean_aws_services_db, daemons_handler
+    metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -918,6 +936,9 @@ def test_inspector_multiple_calls(
         - clean_aws_services_db:
             type: fixture
             brief: Delete the DB file before and after the test execution.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - restart_wazuh_daemon:
             type: fixture
             brief: Restart the wazuh service.
@@ -940,14 +961,6 @@ def test_inspector_multiple_calls(
     # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
     # Validate V1 and V2 APIs both execute successfully, and total events meets minimum (106)
     command_output = call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2025-SEP-15')
-
-    # Validate InspectorV1 API executed (can return 0+ events)
-    analyze_command_output(
-        command_output=command_output,
-        callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
-        expected_results=1,
-        error_message='InspectorV1 API did not execute - check logs'
-    )
 
     # Validate InspectorV2 API executed (can return 0+ events or report no updates)
     analyze_command_output(
@@ -983,7 +996,7 @@ configurator.configure_test(cases_file='cases_cloudwatch_multiple_calls.yaml')
 @pytest.mark.xfail
 def test_cloudwatch_multiple_calls(
         metadata, clean_aws_services_db, create_test_log_group, create_test_log_stream, manage_log_group_events,
-        logs_clients, daemons_handler
+        logs_clients, load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -1022,6 +1035,9 @@ def test_cloudwatch_multiple_calls(
         - clean_aws_services_db:
             type: fixture
             brief: Delete the DB file before and after the test execution.
+        - load_wazuh_basic_configuration:
+            type: fixture
+            brief: Load basic wazuh configuration.
         - restart_wazuh_daemon:
             type: fixture
             brief: Restart the wazuh service.

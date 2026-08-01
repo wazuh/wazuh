@@ -459,8 +459,13 @@ WriteManager()
         DisableAuthd
     fi
 
+    if command -v openssl >/dev/null 2>&1; then
+        CLUSTER_KEY=$(openssl rand -hex 16)
+    else
+        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    fi
     # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
@@ -855,6 +860,27 @@ InstallCommon()
 }
 
 
+installIndexerTemplates()
+{
+    local SRC_DIR="external/indexer-plugins"
+    local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+    local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
+
+    if [ ! -d "${SRC_DIR}" ]; then
+        echo "WARNING: ${SRC_DIR} not found. Metrics schemas will be missing."
+        return 0
+    fi
+
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
+    for f in ${STREAMS}; do
+        if [ -f "${SRC_DIR}/${f}" ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${SRC_DIR}/${f}" "${DEST_DIR}/"
+        else
+            echo "WARNING: ${SRC_DIR}/${f} not found."
+        fi
+    done
+}
+
 generateSchemaFiles()
 {
     echo "Generating schema files..."
@@ -1037,6 +1063,8 @@ InstallLocal()
     fi
 
     generateSchemaFiles
+
+    installIndexerTemplates
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
 

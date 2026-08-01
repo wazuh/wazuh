@@ -40,7 +40,7 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 {
     FunctorWrapper functor;
     AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
-    EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
+    EXPECT_EQ(cpp_get_nproc(), dispatcher.numberOfThreads());
 
     for (int i = 0; i < 10; ++i)
     {
@@ -61,7 +61,7 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherCancel)
 {
     FunctorWrapper functor;
     AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
-    EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
+    EXPECT_EQ(cpp_get_nproc(), dispatcher.numberOfThreads());
     dispatcher.cancel();
 
     for (int i = 0; i < 10; ++i)

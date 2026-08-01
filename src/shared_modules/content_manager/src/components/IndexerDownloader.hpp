@@ -53,10 +53,11 @@
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
- *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "pageSize":            100,                       // Documents per page (optional, default 100)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
+ *
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
@@ -65,10 +66,16 @@ private:
     {
         Missing,
         Empty,
-        Updating,
-        Idle,
+        Running,
+        Ready,
+        Failed,
         Unknown
     };
+
+    static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
+
+    /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
+    static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
 
     nlohmann::json m_config;
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
@@ -76,63 +83,280 @@ private:
     /**
      * @brief Returns the _source.excludes filter for CVE search requests.
      *
-     * Excludes CVE5 fields that are stored in the FlatBuffer but never read by the
-     * scan pipeline (descriptions, references, credits, etc.).  This cuts ~34% of the
-     * JSON transfer per CVE document, reducing network, parsing, and memory costs.
-     * Note: an _source.includes approach is ~15% faster per query but breaks non-CVE
-     * documents (FEED-GLOBAL, OSCPE-GLOBAL, CNA-MAPPING-GLOBAL, TID-*) whose document
-     * structure doesn't match CVE5 paths.  Excludes is safe for all document types
-     * because non-CVE docs simply don't have containers.cna/adp fields.
+     * Drops every CVE5 field not consumed by the scan pipeline (updateCVEDescription,
+     * updateCVECandidates, updateHotfixes, updateCVERemediations), including unused
+     * CVSS sub-fields, whole sub-documents (descriptions, references, credits, …),
+     * and x_remediations sub-fields beyond windows[*].anyOf.
+     *
+     * Note: excludes is used instead of includes because non-CVE documents
+     * (FEED-GLOBAL, OSCPE-GLOBAL, CNA-MAPPING-GLOBAL, TID-*) don't share the CVE5 path
+     * structure, which would cause includes to strip their content entirely.
      */
     static const nlohmann::json& getSourceFilter()
     {
-        static const nlohmann::json filter = {{"excludes",
-                                               nlohmann::json::array({"document.containers.cna.descriptions",
-                                                                      "document.containers.cna.references",
-                                                                      "document.containers.cna.solutions",
-                                                                      "document.containers.cna.rejectedReasons",
-                                                                      "document.containers.cna.credits",
-                                                                      "document.containers.cna.timeline",
-                                                                      "document.containers.cna.impacts",
-                                                                      "document.containers.cna.workarounds",
-                                                                      "document.containers.cna.exploits",
-                                                                      "document.containers.cna.configurations",
-                                                                      "document.containers.cna.source",
-                                                                      "document.containers.cna.tags",
-                                                                      "document.containers.cna.taxonomyMappings",
-                                                                      "document.containers.cna.datePublic",
-                                                                      "document.containers.cna.title",
-                                                                      "document.containers.cna.dateAssigned",
-                                                                      "document.containers.cna.replacedBy",
-                                                                      "document.containers.adp.descriptions",
-                                                                      "document.containers.adp.references",
-                                                                      "document.containers.adp.solutions",
-                                                                      "document.containers.adp.rejectedReasons",
-                                                                      "document.containers.adp.credits",
-                                                                      "document.containers.adp.timeline",
-                                                                      "document.containers.adp.impacts",
-                                                                      "document.containers.adp.workarounds",
-                                                                      "document.containers.adp.exploits",
-                                                                      "document.containers.adp.configurations",
-                                                                      "document.containers.adp.source",
-                                                                      "document.containers.adp.tags",
-                                                                      "document.containers.adp.taxonomyMappings",
-                                                                      "document.containers.adp.datePublic",
-                                                                      "document.containers.adp.title"})}};
+        static const nlohmann::json filter = {
+            {"excludes",
+             nlohmann::json::array({// document top-level fields not read by any consumer
+                                    "document.dataType",
+                                    "document.dataVersion",
+                                    // cveMetadata fields not read by any consumer
+                                    "document.cveMetadata.assignerOrgId",
+                                    "document.cveMetadata.requesterUserId",
+                                    "document.cveMetadata.serial",
+                                    "document.cveMetadata.dateReserved",
+                                    "document.cveMetadata.dateRejected",
+                                    // document.containers.cna — whole sub-documents never read
+                                    "document.containers.cna.descriptions",
+                                    "document.containers.cna.references",
+                                    "document.containers.cna.solutions",
+                                    "document.containers.cna.rejectedReasons",
+                                    "document.containers.cna.credits",
+                                    "document.containers.cna.timeline",
+                                    "document.containers.cna.impacts",
+                                    "document.containers.cna.workarounds",
+                                    "document.containers.cna.exploits",
+                                    "document.containers.cna.configurations",
+                                    "document.containers.cna.source",
+                                    "document.containers.cna.tags",
+                                    "document.containers.cna.taxonomyMappings",
+                                    "document.containers.cna.datePublic",
+                                    "document.containers.cna.title",
+                                    "document.containers.cna.dateAssigned",
+                                    "document.containers.cna.replacedBy",
+                                    // document.containers.cna.providerMetadata — only shortName used
+                                    "document.containers.cna.providerMetadata.orgId",
+                                    "document.containers.cna.providerMetadata.dateUpdated",
+                                    // document.containers.cna.affected — unused sub-fields
+                                    "document.containers.cna.affected.collectionURL",
+                                    "document.containers.cna.affected.packageName",
+                                    "document.containers.cna.affected.cpes",
+                                    "document.containers.cna.affected.programFiles",
+                                    "document.containers.cna.affected.programRoutines",
+                                    "document.containers.cna.affected.repo",
+                                    "document.containers.cna.affected.versions.changes",
+                                    // document.containers.cna.problemTypes — only cweId used
+                                    "document.containers.cna.problemTypes.descriptions.lang",
+                                    "document.containers.cna.problemTypes.descriptions.description",
+                                    "document.containers.cna.problemTypes.descriptions.type",
+                                    // document.containers.cna.x_remediations — only windows.anyOf used
+                                    "document.containers.cna.x_remediations.windows.products",
+                                    "document.containers.cna.x_remediations.windows.type",
+                                    // document.containers.cna.metrics — unused top-level fields
+                                    "document.containers.cna.metrics.format",
+                                    "document.containers.cna.metrics.scenarios",
+                                    // document.containers.cna.metrics.cvssV4_0 — unused sub-fields
+                                    "document.containers.cna.metrics.cvssV4_0.vectorString",
+                                    "document.containers.cna.metrics.cvssV4_0.attackComplexity",
+                                    "document.containers.cna.metrics.cvssV4_0.attackRequirements",
+                                    "document.containers.cna.metrics.cvssV4_0.subConfidentialityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.subIntegrityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.subAvailabilityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.exploitMaturity",
+                                    "document.containers.cna.metrics.cvssV4_0.confidentialityRequirement",
+                                    "document.containers.cna.metrics.cvssV4_0.integrityRequirement",
+                                    "document.containers.cna.metrics.cvssV4_0.availabilityRequirement",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedAttackVector",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedAttackComplexity",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedAttackRequirements",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedPrivilegesRequired",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedUserInteraction",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedVulnConfidentialityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedVulnIntegrityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedVulnAvailabilityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedSubConfidentialityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedSubIntegrityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.modifiedSubAvailabilityImpact",
+                                    "document.containers.cna.metrics.cvssV4_0.Safety",
+                                    "document.containers.cna.metrics.cvssV4_0.Automatable",
+                                    "document.containers.cna.metrics.cvssV4_0.Recovery",
+                                    "document.containers.cna.metrics.cvssV4_0.valueDensity",
+                                    "document.containers.cna.metrics.cvssV4_0.vulnerabilityResponseEffort",
+                                    "document.containers.cna.metrics.cvssV4_0.providerUrgency",
+                                    // document.containers.cna.metrics.cvssV3_1 — unused sub-fields
+                                    "document.containers.cna.metrics.cvssV3_1.vectorString",
+                                    "document.containers.cna.metrics.cvssV3_1.attackComplexity",
+                                    "document.containers.cna.metrics.cvssV3_1.exploitCodeMaturity",
+                                    "document.containers.cna.metrics.cvssV3_1.remediationLevel",
+                                    "document.containers.cna.metrics.cvssV3_1.reportConfidence",
+                                    "document.containers.cna.metrics.cvssV3_1.temporalScore",
+                                    "document.containers.cna.metrics.cvssV3_1.temporalSeverity",
+                                    "document.containers.cna.metrics.cvssV3_1.confidentialityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_1.integrityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_1.availabilityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedAttackVector",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedAttackComplexity",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedPrivilegesRequired",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedUserInteraction",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedScope",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedConfidentialityImpact",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedIntegrityImpact",
+                                    "document.containers.cna.metrics.cvssV3_1.modifiedAvailabilityImpact",
+                                    "document.containers.cna.metrics.cvssV3_1.environmentalScore",
+                                    "document.containers.cna.metrics.cvssV3_1.environmentalSeverity",
+                                    // document.containers.cna.metrics.cvssV3_0 — same unused set as V3.1
+                                    "document.containers.cna.metrics.cvssV3_0.vectorString",
+                                    "document.containers.cna.metrics.cvssV3_0.attackComplexity",
+                                    "document.containers.cna.metrics.cvssV3_0.exploitCodeMaturity",
+                                    "document.containers.cna.metrics.cvssV3_0.remediationLevel",
+                                    "document.containers.cna.metrics.cvssV3_0.reportConfidence",
+                                    "document.containers.cna.metrics.cvssV3_0.temporalScore",
+                                    "document.containers.cna.metrics.cvssV3_0.temporalSeverity",
+                                    "document.containers.cna.metrics.cvssV3_0.confidentialityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_0.integrityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_0.availabilityRequirement",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedAttackVector",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedAttackComplexity",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedPrivilegesRequired",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedUserInteraction",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedScope",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedConfidentialityImpact",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedIntegrityImpact",
+                                    "document.containers.cna.metrics.cvssV3_0.modifiedAvailabilityImpact",
+                                    "document.containers.cna.metrics.cvssV3_0.environmentalScore",
+                                    "document.containers.cna.metrics.cvssV3_0.environmentalSeverity",
+                                    // document.containers.cna.metrics.cvssV2_0 — unused sub-fields
+                                    "document.containers.cna.metrics.cvssV2_0.vectorString",
+                                    "document.containers.cna.metrics.cvssV2_0.accessVector",
+                                    "document.containers.cna.metrics.cvssV2_0.exploitability",
+                                    "document.containers.cna.metrics.cvssV2_0.remediationLevel",
+                                    "document.containers.cna.metrics.cvssV2_0.reportConfidence",
+                                    "document.containers.cna.metrics.cvssV2_0.temporalScore",
+                                    "document.containers.cna.metrics.cvssV2_0.collateralDamagePotential",
+                                    "document.containers.cna.metrics.cvssV2_0.targetDistribution",
+                                    "document.containers.cna.metrics.cvssV2_0.confidentialityRequirement",
+                                    "document.containers.cna.metrics.cvssV2_0.integrityRequirement",
+                                    "document.containers.cna.metrics.cvssV2_0.availabilityRequirement",
+                                    "document.containers.cna.metrics.cvssV2_0.environmentalScore",
+                                    // document.containers.adp — whole sub-documents never read
+                                    "document.containers.adp.descriptions",
+                                    "document.containers.adp.references",
+                                    "document.containers.adp.solutions",
+                                    "document.containers.adp.rejectedReasons",
+                                    "document.containers.adp.credits",
+                                    "document.containers.adp.timeline",
+                                    "document.containers.adp.impacts",
+                                    "document.containers.adp.workarounds",
+                                    "document.containers.adp.exploits",
+                                    "document.containers.adp.configurations",
+                                    "document.containers.adp.source",
+                                    "document.containers.adp.tags",
+                                    "document.containers.adp.taxonomyMappings",
+                                    "document.containers.adp.datePublic",
+                                    "document.containers.adp.title",
+                                    // document.containers.adp.providerMetadata — only x_subShortName used
+                                    "document.containers.adp.providerMetadata.orgId",
+                                    "document.containers.adp.providerMetadata.dateUpdated",
+                                    // document.containers.adp.affected — unused sub-fields
+                                    "document.containers.adp.affected.collectionURL",
+                                    "document.containers.adp.affected.packageName",
+                                    "document.containers.adp.affected.cpes",
+                                    "document.containers.adp.affected.programFiles",
+                                    "document.containers.adp.affected.programRoutines",
+                                    "document.containers.adp.affected.repo",
+                                    "document.containers.adp.affected.versions.changes",
+                                    // document.containers.adp.problemTypes — only cweId used
+                                    "document.containers.adp.problemTypes.descriptions.lang",
+                                    "document.containers.adp.problemTypes.descriptions.description",
+                                    "document.containers.adp.problemTypes.descriptions.type",
+                                    // document.containers.adp.metrics — unused top-level fields
+                                    "document.containers.adp.metrics.format",
+                                    "document.containers.adp.metrics.scenarios",
+                                    // document.containers.adp.metrics.cvssV4_0 — same unused set as cna
+                                    "document.containers.adp.metrics.cvssV4_0.vectorString",
+                                    "document.containers.adp.metrics.cvssV4_0.attackComplexity",
+                                    "document.containers.adp.metrics.cvssV4_0.attackRequirements",
+                                    "document.containers.adp.metrics.cvssV4_0.subConfidentialityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.subIntegrityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.subAvailabilityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.exploitMaturity",
+                                    "document.containers.adp.metrics.cvssV4_0.confidentialityRequirement",
+                                    "document.containers.adp.metrics.cvssV4_0.integrityRequirement",
+                                    "document.containers.adp.metrics.cvssV4_0.availabilityRequirement",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedAttackVector",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedAttackComplexity",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedAttackRequirements",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedPrivilegesRequired",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedUserInteraction",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedVulnConfidentialityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedVulnIntegrityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedVulnAvailabilityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedSubConfidentialityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedSubIntegrityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.modifiedSubAvailabilityImpact",
+                                    "document.containers.adp.metrics.cvssV4_0.Safety",
+                                    "document.containers.adp.metrics.cvssV4_0.Automatable",
+                                    "document.containers.adp.metrics.cvssV4_0.Recovery",
+                                    "document.containers.adp.metrics.cvssV4_0.valueDensity",
+                                    "document.containers.adp.metrics.cvssV4_0.vulnerabilityResponseEffort",
+                                    "document.containers.adp.metrics.cvssV4_0.providerUrgency",
+                                    // document.containers.adp.metrics.cvssV3_1 — same unused set as cna
+                                    "document.containers.adp.metrics.cvssV3_1.vectorString",
+                                    "document.containers.adp.metrics.cvssV3_1.attackComplexity",
+                                    "document.containers.adp.metrics.cvssV3_1.exploitCodeMaturity",
+                                    "document.containers.adp.metrics.cvssV3_1.remediationLevel",
+                                    "document.containers.adp.metrics.cvssV3_1.reportConfidence",
+                                    "document.containers.adp.metrics.cvssV3_1.temporalScore",
+                                    "document.containers.adp.metrics.cvssV3_1.temporalSeverity",
+                                    "document.containers.adp.metrics.cvssV3_1.confidentialityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_1.integrityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_1.availabilityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedAttackVector",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedAttackComplexity",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedPrivilegesRequired",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedUserInteraction",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedScope",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedConfidentialityImpact",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedIntegrityImpact",
+                                    "document.containers.adp.metrics.cvssV3_1.modifiedAvailabilityImpact",
+                                    "document.containers.adp.metrics.cvssV3_1.environmentalScore",
+                                    "document.containers.adp.metrics.cvssV3_1.environmentalSeverity",
+                                    // document.containers.adp.metrics.cvssV3_0 — same unused set as V3.1
+                                    "document.containers.adp.metrics.cvssV3_0.vectorString",
+                                    "document.containers.adp.metrics.cvssV3_0.attackComplexity",
+                                    "document.containers.adp.metrics.cvssV3_0.exploitCodeMaturity",
+                                    "document.containers.adp.metrics.cvssV3_0.remediationLevel",
+                                    "document.containers.adp.metrics.cvssV3_0.reportConfidence",
+                                    "document.containers.adp.metrics.cvssV3_0.temporalScore",
+                                    "document.containers.adp.metrics.cvssV3_0.temporalSeverity",
+                                    "document.containers.adp.metrics.cvssV3_0.confidentialityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_0.integrityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_0.availabilityRequirement",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedAttackVector",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedAttackComplexity",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedPrivilegesRequired",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedUserInteraction",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedScope",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedConfidentialityImpact",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedIntegrityImpact",
+                                    "document.containers.adp.metrics.cvssV3_0.modifiedAvailabilityImpact",
+                                    "document.containers.adp.metrics.cvssV3_0.environmentalScore",
+                                    "document.containers.adp.metrics.cvssV3_0.environmentalSeverity",
+                                    // document.containers.adp.metrics.cvssV2_0 — same unused set as cna
+                                    "document.containers.adp.metrics.cvssV2_0.vectorString",
+                                    "document.containers.adp.metrics.cvssV2_0.accessVector",
+                                    "document.containers.adp.metrics.cvssV2_0.exploitability",
+                                    "document.containers.adp.metrics.cvssV2_0.remediationLevel",
+                                    "document.containers.adp.metrics.cvssV2_0.reportConfidence",
+                                    "document.containers.adp.metrics.cvssV2_0.temporalScore",
+                                    "document.containers.adp.metrics.cvssV2_0.collateralDamagePotential",
+                                    "document.containers.adp.metrics.cvssV2_0.targetDistribution",
+                                    "document.containers.adp.metrics.cvssV2_0.confidentialityRequirement",
+                                    "document.containers.adp.metrics.cvssV2_0.integrityRequirement",
+                                    "document.containers.adp.metrics.cvssV2_0.availabilityRequirement",
+                                    "document.containers.adp.metrics.cvssV2_0.environmentalScore"})}};
         return filter;
     }
 
     /**
-     * @brief Reads the current consumer status document from `.wazuh-cti-consumers`.
+     * @brief Reads the consumer status from `.wazuh-cti-consumers`: "ready" (safe to query),
+     *        "running" (indexing, wait), "failed", or empty/missing (not ready yet).
      *
-     * The indexer-side contract guarantees that the document status is:
-     *   - empty / missing while the consumer is not ready yet,
-     *   - "updating" while the feed is still being indexed,
-     *   - "idle" only when the consumer can be queried safely.
+     * @param outRawStatus If non-null, receives the raw status string for logging.
      */
     ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
                                       std::string_view consumerStatusIndex,
-                                      std::string_view consumerStatusId) const
+                                      std::string_view consumerStatusId,
+                                      std::string* outRawStatus = nullptr) const
     {
         const auto query =
             nlohmann::json {{"ids", {{"values", nlohmann::json::array({std::string {consumerStatusId}})}}}};
@@ -162,29 +386,37 @@ private:
 
         std::string status;
         source.at("status").get_to(status);
+        if (outRawStatus)
+        {
+            *outRawStatus = status;
+        }
         if (status.empty())
         {
             return ConsumerStatus::Empty;
         }
-        if (status == "idle")
+        if (status == "ready")
         {
-            return ConsumerStatus::Idle;
+            return ConsumerStatus::Ready;
         }
-        if (status == "updating")
+        if (status == "running")
         {
-            return ConsumerStatus::Updating;
+            return ConsumerStatus::Running;
+        }
+        if (status == "failed")
+        {
+            return ConsumerStatus::Failed;
         }
 
         return ConsumerStatus::Unknown;
     }
 
     /**
-     * @brief Waits until the consumer status document becomes `idle`.
+     * @brief Waits until the consumer status document becomes `ready`.
      *
      * If the consumer status settings are not configured, the wait is skipped so
      * non-VD users of IndexerDownloader keep the previous behaviour.
      */
-    bool waitUntilConsumerIdle(UpdaterContext& context) const
+    bool waitUntilConsumerReady(UpdaterContext& context) const
     {
         static constexpr auto CONSUMER_STATUS_POLL_INTERVAL {std::chrono::minutes {1}};
 
@@ -199,96 +431,213 @@ private:
         if (context.spUpdaterBaseContext->spStopCondition->check())
         {
             logInfo(WM_CONTENTUPDATER,
-                    "IndexerDownloader: Stop requested before waiting for consumer '%s' to become idle.",
+                    "IndexerDownloader: Stop requested before waiting for consumer '%s' to become ready.",
                     consumerStatusId.c_str());
             return false;
         }
 
         IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
+        const auto pollSeconds = static_cast<size_t>(
+            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count());
+
+        // Early query/failed-status results are expected (indexer still settling): DEBUG until the threshold.
+        size_t queryFailures = 0;
+        size_t failedStatusCount = 0;
+
         while (true)
         {
             if (context.spUpdaterBaseContext->spStopCondition->check())
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become ready.",
                         consumerStatusId.c_str());
                 return false;
             }
 
             try
             {
-                switch (readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId))
+                std::string rawStatus;
+                const auto status =
+                    readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId, &rawStatus);
+                queryFailures = 0; // Indexer reachable again.
+                if (status != ConsumerStatus::Failed)
                 {
-                    case ConsumerStatus::Idle:
+                    failedStatusCount = 0;
+                }
+
+                switch (status)
+                {
+                    case ConsumerStatus::Ready:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' in index '%s' is idle. Starting feed download.",
+                                "IndexerDownloader: Consumer '%s' in index '%s' is ready. Starting feed download.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str());
                         return true;
 
                     case ConsumerStatus::Missing:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zu s before retrying.",
+                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zus before retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
                         break;
 
                     case ConsumerStatus::Empty:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zu s before "
+                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zus before "
                                 "retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
                         break;
 
-                    case ConsumerStatus::Updating:
+                    case ConsumerStatus::Running:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' is still updating in '%s'. Waiting %zu s before "
+                                "IndexerDownloader: Consumer '%s' is still running in '%s'. Waiting %zus before "
                                 "retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
+                        break;
+
+                    case ConsumerStatus::Failed:
+                        ++failedStatusCount;
+                        if (failedStatusCount >= INDEXER_WARN_AFTER_ATTEMPTS)
+                        {
+                            logWarn(WM_CONTENTUPDATER,
+                                    "IndexerDownloader: Consumer '%s' in '%s' reports a failed status. Waiting %zus "
+                                    "before retrying.",
+                                    consumerStatusId.c_str(),
+                                    consumerStatusIndex.c_str(),
+                                    pollSeconds);
+                        }
+                        else
+                        {
+                            logDebug2(WM_CONTENTUPDATER,
+                                      "IndexerDownloader: Consumer '%s' in '%s' reports a failed status — waiting %zus "
+                                      "before retrying (attempt %zu/%zu).",
+                                      consumerStatusId.c_str(),
+                                      consumerStatusIndex.c_str(),
+                                      pollSeconds,
+                                      failedStatusCount,
+                                      INDEXER_WARN_AFTER_ATTEMPTS);
+                        }
                         break;
 
                     case ConsumerStatus::Unknown:
                         logWarn(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status. Waiting %zu s "
-                                "before retrying.",
+                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status '%s'. Waiting "
+                                "%zus before retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                rawStatus.c_str(),
+                                pollSeconds);
                         break;
                 }
             }
             catch (const std::exception& e)
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zu s before "
-                        "retrying.",
-                        consumerStatusId.c_str(),
-                        consumerStatusIndex.c_str(),
-                        e.what(),
-                        static_cast<size_t>(
-                            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count()));
+                ++queryFailures;
+                if (queryFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zus before "
+                            "retrying.",
+                            consumerStatusId.c_str(),
+                            consumerStatusIndex.c_str(),
+                            e.what(),
+                            pollSeconds);
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer not available yet — cannot query consumer '%s' in '%s' (%s). "
+                              "Waiting %zus before retrying (attempt %zu/%zu).",
+                              consumerStatusId.c_str(),
+                              consumerStatusIndex.c_str(),
+                              e.what(),
+                              pollSeconds,
+                              queryFailures,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(
                     std::chrono::duration_cast<std::chrono::milliseconds>(CONSUMER_STATUS_POLL_INTERVAL)))
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become ready.",
                         consumerStatusId.c_str());
+                return false;
+            }
+        }
+    }
+
+    bool waitUntilGlobalMapsIndexed(UpdaterContext& context) const
+    {
+        static constexpr auto POLL_INTERVAL {std::chrono::seconds {30}};
+        static const nlohmann::json GLOBAL_MAP_IDS =
+            nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+
+        const auto pollSeconds =
+            static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
+        size_t queryFailures = 0;
+
+        while (true)
+        {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+
+            try
+            {
+                const auto query = nlohmann::json {{"ids", {{"values", GLOBAL_MAP_IDS}}}};
+                const auto searchQuery =
+                    nlohmann::json {{"size", GLOBAL_MAP_IDS.size()}, {"query", query}, {"_source", false}};
+
+                const auto searchResult = syncConnector.executeSearchQuery(indexName, searchQuery);
+                const auto hitCount =
+                    searchResult.value("hits", nlohmann::json::object()).value("hits", nlohmann::json::array()).size();
+                queryFailures = 0;
+
+                if (hitCount >= GLOBAL_MAP_IDS.size())
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Global-map documents present in '%s'. Starting initial load.",
+                            indexName.c_str());
+                    return true;
+                }
+
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Global-map documents not yet indexed in '%s' (%zu/%zu found). Waiting "
+                        "%zus before retrying.",
+                        indexName.c_str(),
+                        hitCount,
+                        GLOBAL_MAP_IDS.size(),
+                        pollSeconds);
+            }
+            catch (const std::exception& e)
+            {
+                ++queryFailures;
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                          "before retrying (attempt %zu).",
+                          indexName.c_str(),
+                          e.what(),
+                          pollSeconds,
+                          queryFailures);
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
                 return false;
             }
         }
@@ -323,8 +672,8 @@ private:
             return;
         }
 
-        logWarn(WM_CONTENTUPDATER,
-                "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
+        logDebug2(WM_CONTENTUPDATER,
+                  "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
         context.spUpdaterBaseContext->spRocksDB->put(
             Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
     }
@@ -345,6 +694,29 @@ private:
 
         const auto result = context.spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
         return std::get<2>(result);
+    }
+
+    /**
+     * @brief Reads the configured page size, falling back to the default when missing or zero.
+     *
+     * A page size of 0 would make every search return an empty page: the load would see
+     * "0 documents" and retry on the not-ready loop forever. Guarded here because this is a
+     * shared component — not every caller sanitizes its config the way the VD facade does.
+     */
+    size_t getConfiguredPageSize() const
+    {
+        constexpr size_t DEFAULT_PAGE_SIZE {100};
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 0u);
+        if (pageSize == 0)
+        {
+            if (m_config.at("indexer").contains("pageSize"))
+            {
+                logWarn(
+                    WM_CONTENTUPDATER, "IndexerDownloader: invalid pageSize 0 — using default %zu.", DEFAULT_PAGE_SIZE);
+            }
+            return DEFAULT_PAGE_SIZE;
+        }
+        return pageSize;
     }
 
     /**
@@ -382,8 +754,10 @@ private:
      * @param context  Updater context (contains the callback).
      * @param hits     Array of Indexer hit objects from a search response.
      * @param cursor   String representation of the highest offset seen in this page.
+     * @return true if this call caused (or coincided with) a durable flush of the feed
+     *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
-    void processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
+    bool processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
         message["type"] = "indexer";
@@ -392,7 +766,7 @@ private:
 
         for (const auto& hit : hits)
         {
-            const auto& source = hit.value("_source", hit);
+            const auto& source = hit.contains("_source") ? hit.at("_source") : hit;
             const auto docType = source.value("type", std::string {});
 
             // TCPE and TVENDORS are Indexer-only types not consumed by VD scan — skip silently.
@@ -408,7 +782,10 @@ private:
             // "FEED-GLOBAL", "TID-xxx"). EventDecoder identifies the resource type
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
-            resource["payload"] = source.value("document", nlohmann::json::object());
+
+            static const nlohmann::json EMPTY_DOCUMENT = nlohmann::json::object();
+            const auto& document = source.contains("document") ? source.at("document") : EMPTY_DOCUMENT;
+            resource["payload"] = document.dump();
 
             if (docType == "CVE")
             {
@@ -434,6 +811,8 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: fileProcessingCallback returned failure");
         }
+
+        return std::get<1>(result) == "flushed";
     }
 
     /**
@@ -445,14 +824,18 @@ private:
      * @param context   Updater context.
      * @param query     Elasticsearch query object (match_all or range).
      * @param startCursor  Starting cursor value (empty for initial load, lastCursor for incremental).
+     * @param escalateLogs  If false, transient failures are logged at DEBUG instead of WARNING.
      * @return Number of documents processed.
      */
-    size_t fetchWithPit(UpdaterContext& context, const nlohmann::json& query, const std::string& startCursor) const
+    size_t fetchWithPit(UpdaterContext& context,
+                        const nlohmann::json& query,
+                        const std::string& startCursor,
+                        const bool escalateLogs = true) const
     {
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -464,7 +847,7 @@ private:
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
             &pit,
-            [&syncConnector](auto* p)
+            [&syncConnector, escalateLogs](auto* p)
             {
                 try
                 {
@@ -472,19 +855,29 @@ private:
                 }
                 catch (const std::exception& e)
                 {
-                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    if (escalateLogs)
+                    {
+                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
+                    else
+                    {
+                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
                 }
             });
 
         std::string currentCursor = startCursor;
+        std::string lastFlushedCursor = startCursor;
         std::optional<nlohmann::json> searchAfter = std::nullopt;
         size_t totalProcessed = 0;
+        bool stopRequested = false;
 
         while (true)
         {
             if (context.spUpdaterBaseContext->spStopCondition->check())
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                stopRequested = true;
                 break;
             }
 
@@ -502,9 +895,14 @@ private:
                 currentCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
             }
 
-            processPage(context, hitArray, currentCursor);
+            const bool flushed = processPage(context, hitArray, currentCursor);
             totalProcessed += hitArray.size();
-            persistCursor(context, currentCursor);
+
+            if (flushed)
+            {
+                lastFlushedCursor = currentCursor;
+                persistCursor(context, lastFlushedCursor);
+            }
 
             if (hitArray.size() < pageSize)
             {
@@ -514,7 +912,7 @@ private:
             searchAfter = lastHit.at("sort");
         }
 
-        context.data["cursor"] = currentCursor;
+        context.data["cursor"] = stopRequested ? lastFlushedCursor : currentCursor;
         return totalProcessed;
     }
 
@@ -525,23 +923,27 @@ private:
      * (hash-modulo on _id). Each slice paginates independently with search_after.
      * The callback is serialized via m_callbackMutex.
      *
-     * Cursor is only persisted after all slices complete (crash = full restart).
+     * Cursor is only persisted after all slices complete naturally (crash or graceful stop
+     * mid-download = full restart on the next cycle, since a partial per-slice offset is
+     * not a safe resume point — see the `interrupted` handling below).
      *
      * @param context    Updater context.
      * @param query      Elasticsearch query object.
      * @param startCursor Starting cursor value.
      * @param numSlices  Number of parallel slices.
+     * @param escalateLogs  If false, transient failures are logged at DEBUG instead of ERROR/WARNING.
      * @return Total number of documents processed across all slices.
      */
     size_t fetchWithSlicedPit(UpdaterContext& context,
                               const nlohmann::json& query,
                               const std::string& startCursor,
-                              size_t numSlices) const
+                              size_t numSlices,
+                              const bool escalateLogs = true) const
     {
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -553,7 +955,7 @@ private:
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
             &pit,
-            [&syncConnector](auto* p)
+            [&syncConnector, escalateLogs](auto* p)
             {
                 try
                 {
@@ -561,7 +963,14 @@ private:
                 }
                 catch (const std::exception& e)
                 {
-                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    if (escalateLogs)
+                    {
+                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
+                    else
+                    {
+                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
                 }
             });
 
@@ -571,11 +980,12 @@ private:
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
         std::mutex errorsMutex;
+        std::atomic<bool> interrupted {false};
 
-        logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
-                numSlices,
-                pageSize);
+        logDebug1(WM_CONTENTUPDATER,
+                  "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
+                  numSlices,
+                  pageSize);
 
         auto sliceWorker = [&](size_t sliceId)
         {
@@ -595,6 +1005,7 @@ private:
                     if (context.spUpdaterBaseContext->spStopCondition->check())
                     {
                         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                        interrupted.store(true);
                         break;
                     }
 
@@ -668,7 +1079,14 @@ private:
             {
                 std::lock_guard<std::mutex> lock(errorsMutex);
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
-                logError(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                if (escalateLogs)
+                {
+                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                }
             }
         };
 
@@ -686,6 +1104,15 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) +
                                      " slice(s) failed: " + errors.front());
+        }
+
+        if (interrupted.load())
+        {
+            logInfo(WM_CONTENTUPDATER,
+                    "IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, %zu "
+                    "documents processed this cycle will be re-fetched on the next initial load.",
+                    totalProcessed.load());
+            return totalProcessed.load();
         }
 
         // Persist cursor only after all slices complete
@@ -706,14 +1133,14 @@ private:
      */
     size_t initialLoad(UpdaterContext& context) const
     {
-        static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
-
         const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
         const size_t numSlices = m_config.at("indexer").value("numSlices", 2u);
         size_t attempt = 0;
 
         while (true)
         {
+            notifyUpdateStarted(context);
+
             if (attempt == 0)
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load (slices=%zu)", numSlices);
@@ -724,6 +1151,9 @@ private:
                     WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
             }
 
+            // Stay at INFO/DEBUG for the first attempts, escalate to WARNING/ERROR afterwards.
+            const bool escalate = (attempt + 1) >= INDEXER_WARN_AFTER_ATTEMPTS;
+
             size_t totalProcessed = 0;
             bool exceptionOccurred = false;
 
@@ -731,20 +1161,33 @@ private:
             {
                 if (numSlices > 1)
                 {
-                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices);
+                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices, escalate);
                 }
                 else
                 {
-                    totalProcessed = fetchWithPit(context, query, "");
+                    totalProcessed = fetchWithPit(context, query, "", escalate);
                 }
             }
             catch (const std::exception& e)
             {
                 exceptionOccurred = true;
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
-                        e.what(),
-                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+                if (escalate)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Initial load failed (%s) — retrying in %zus.",
+                            e.what(),
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer not available yet (%s) — retrying in %zus "
+                              "(attempt %zu/%zu).",
+                              e.what(),
+                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              attempt + 1,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             if (totalProcessed > 0)
@@ -758,18 +1201,32 @@ private:
                 return totalProcessed;
             }
 
+            notifyUpdateFailed(context);
+
             if (!exceptionOccurred)
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
-                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+                if (escalate)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zus.",
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zus "
+                              "(attempt %zu/%zu).",
+                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              attempt + 1,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             ++attempt;
 
             // waitFor returns true when spStopCondition is set (agent shutdown).
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INITIAL_LOAD_RETRY_INTERVAL)))
+                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
                 return 0;
@@ -785,6 +1242,7 @@ private:
      */
     size_t incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
     {
+        notifyUpdateStarted(context);
         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting incremental update from offset %s", lastCursor.c_str());
 
         const nlohmann::json query = {{"range", {{"offset", {{"gt", std::stoull(lastCursor)}}}}}};
@@ -821,59 +1279,107 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
 
-        auto lastCursor = getStoredCursor(*context);
+        // Early completion-validation failures are expected (indexer settling): DEBUG until the threshold.
+        size_t completionFailures = 0;
 
-        // Validate that the stored cursor is a valid integer before using it for an
-        // incremental range query. A corrupt RocksDB entry could cause std::stoull to
-        // throw std::invalid_argument, which would loop on every scheduler cycle.
-        // In that case, discard the cursor and fall back to a full initial load.
-        if (!lastCursor.empty())
+        while (!context->spUpdaterBaseContext->spStopCondition->check())
         {
-            try
+            auto lastCursor = getStoredCursor(*context);
+
+            // Validate that the stored cursor is a valid integer before using it for an
+            // incremental range query. A corrupt RocksDB entry could cause std::stoull to
+            // throw std::invalid_argument, which would loop on every scheduler cycle.
+            // In that case, discard the cursor and fall back to a full initial load.
+            if (!lastCursor.empty())
             {
-                std::stoull(lastCursor);
+                try
+                {
+                    std::stoull(lastCursor);
+                }
+                catch (const std::exception&)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: stored cursor '%s' is not a valid integer — falling back to initial "
+                            "load.",
+                            lastCursor.c_str());
+                    lastCursor.clear();
+                }
             }
-            catch (const std::exception&)
+
+            const bool forceInitialLoad = lastCursor.empty();
+            if (!waitUntilConsumerReady(*context))
+            {
+                break;
+            }
+
+            if (forceInitialLoad && !waitUntilGlobalMapsIndexed(*context))
+            {
+                break;
+            }
+
+            size_t totalProcessed = 0;
+            if (forceInitialLoad)
+            {
+                totalProcessed = initialLoad(*context);
+            }
+            else
+            {
+                totalProcessed = incrementalUpdate(*context, lastCursor);
+            }
+
+            // If a shutdown was requested, skip the completion signal — no point reloading
+            // maps or triggering a rescan if the agent is going down.
+            if (context->spUpdaterBaseContext->spStopCondition->check())
+            {
+                break;
+            }
+
+            if (sendCompletionSignal(*context, totalProcessed))
+            {
+                break;
+            }
+
+            notifyUpdateFailed(*context);
+            invalidateCursor(*context);
+            ++completionFailures;
+            if (completionFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
             {
                 logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: stored cursor '%s' is not a valid integer — falling back to initial load.",
-                        lastCursor.c_str());
-                lastCursor.clear();
+                        "IndexerDownloader: downloaded feed is not ready after completion validation. "
+                        "The stored cursor was invalidated and a full reload will be retried in %zus.",
+                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
             }
-        }
+            else
+            {
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: downloaded feed not ready yet after completion validation — "
+                          "invalidating cursor and retrying a full reload in %zus (attempt %zu/%zu).",
+                          static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                          completionFailures,
+                          INDEXER_WARN_AFTER_ATTEMPTS);
+            }
 
-        const bool forceInitialLoad = lastCursor.empty();
-        if (!waitUntilConsumerIdle(*context))
-        {
-            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
-        }
-
-        size_t totalProcessed = 0;
-        if (forceInitialLoad)
-        {
-            totalProcessed = initialLoad(*context);
-        }
-        else
-        {
-            totalProcessed = incrementalUpdate(*context, lastCursor);
-        }
-
-        // If a shutdown was requested, skip the completion signal — no point reloading
-        // maps or triggering a rescan if the agent is going down.
-        if (context->spUpdaterBaseContext->spStopCondition->check())
-        {
-            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
-        }
-
-        if (!sendCompletionSignal(*context, totalProcessed))
-        {
-            invalidateCursor(*context);
-            logWarn(WM_CONTENTUPDATER,
-                    "IndexerDownloader: downloaded feed is not ready after completion validation. "
-                    "The stored cursor was invalidated and the next scheduler cycle will perform a full reload.");
+            if (context->spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested during completion validation retry — aborting.");
+                break;
+            }
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+    }
+
+private:
+    static void notifyUpdateStarted(const UpdaterContext& context)
+    {
+        invokeContentUpdateCallback(context.spUpdaterBaseContext->updateCallbacks.onStart, "start");
+    }
+
+    static void notifyUpdateFailed(const UpdaterContext& context)
+    {
+        invokeContentUpdateCallback(context.spUpdaterBaseContext->updateCallbacks.onFailure, "failure");
     }
 };
 

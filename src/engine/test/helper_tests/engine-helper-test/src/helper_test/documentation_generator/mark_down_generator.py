@@ -1,5 +1,6 @@
 from helper_test.documentation_generator.types import Documentation, Example
 from helper_test.documentation_generator.exporter import *
+from helper_test.runner import get_helper_test_kvdb_resource
 from collections import defaultdict
 from pathlib import Path
 from typing import List
@@ -215,6 +216,20 @@ class MarkdownGenerator(IExporter):
 
         self.content.append("\n")
 
+    def uses_test_kvdb(self, doc: Documentation) -> bool:
+        """
+        Return whether the helper documentation should include the helper test KVDB resource.
+        """
+        return doc.name.startswith("kvdb_") or "kvdb" in doc.keywords
+
+    def create_test_kvdb_section(self):
+        """
+        Add the KVDB resource used by KVDB helper examples.
+        """
+        self.content.append("## Test KVDB\n")
+        self.content.append("The examples for this helper use the following KVDB resource during tests:\n")
+        self.content.append("```json\n" + json.dumps(get_helper_test_kvdb_resource(), indent=2) + "\n```\n")
+
     def create_document(self, doc: Documentation):
         """
         Creates a Markdown document for a given helper function's documentation.
@@ -262,6 +277,9 @@ class MarkdownGenerator(IExporter):
 
         if doc.examples:
             self.create_tests_table(doc)
+
+        if self.uses_test_kvdb(doc):
+            self.create_test_kvdb_section()
 
         self.all_contents[doc.helper_type][doc.name] = {
             "keywords": doc.keywords,

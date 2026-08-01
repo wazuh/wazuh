@@ -215,9 +215,6 @@ bool reloadAgent(void);
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
-// Clear merged.mg hash cache value.
-void clear_merged_hash_cache();
-
 // Initialize startup gate state for module workload blocking.
 void startup_gate_initialize(void);
 
@@ -287,6 +284,7 @@ extern module_limits_t agent_module_limits;
 extern char agent_cluster_name[256];
 extern char agent_cluster_node[256];
 extern char agent_agent_groups[OS_SIZE_65536];
+extern pthread_mutex_t agent_handshake_mutex;
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 

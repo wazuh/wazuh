@@ -1,12 +1,14 @@
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/logging.hpp>
+
 #include <fastmetrics/registry.hpp>
 
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                const std::shared_ptr<::dumper::IDumper>& dumper)
+                                const std::shared_ptr<::dumper::IDumper>& dumper,
+                                std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache)
 {
     auto lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler");
     auto weakOrchestrator = std::weak_ptr(orchestrator);
@@ -18,13 +20,14 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
             weakDump = std::weak_ptr(dumper),
+            agentMetadataCache = std::move(agentMetadataCache),
             bytesReceivedCounter,
             eventsReceivedCounter](const auto& req, auto& res)
     {
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
         {
-            LOG_ERROR_L(lambdaName.c_str(), "Received request but orchestrator is not available");
+            LOG_ERROR_L(lambdaName.c_str(), "[API::Event] Received request but orchestrator is not available");
             res.status = httplib::StatusCode::InternalServerError_500;
             res.set_content("{\"error\": \"Internal server error\", \"code\": 500}", "application/json");
             return;
@@ -54,11 +57,11 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
                 orchestratorRef->postEvent(std::move(ingestEvent));
             };
 
-            protocol::parseNDJson(req.body, enqueueHook);
+            protocol::parseNDJson(req.body, enqueueHook, agentMetadataCache);
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(lambdaName.c_str(), "Failed to parse request: '{}'", e.what());
+            LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Failed to parse request: '{}'", e.what());
             res.status = httplib::StatusCode::BadRequest_400;
             res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
             return;

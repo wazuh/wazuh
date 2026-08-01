@@ -9,7 +9,8 @@
         "size": 1,
         "agentid": "001",
         "agentname": "test-agent",
-        "agentversion": "4.8.0"
+        "agentversion": "4.8.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start synchronization session for DataContext",
       "delay": 0.5,
@@ -21,7 +22,10 @@
         "seq": 0,
         "id": "context-id-123",
         "index": "wazuh-states-vulnerabilities",
-        "data": {"cve": "CVE-2024-1234", "severity": "high"}
+        "data": {
+          "cve": "CVE-2024-1234",
+          "severity": "high"
+        }
       },
       "description": "Send DataContext message for vulnerability context",
       "delay": 0.5,

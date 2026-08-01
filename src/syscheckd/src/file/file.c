@@ -1234,13 +1234,23 @@ void fim_file_scan() {
             mdebug1("No directory paths configured but database has %d files. Initiating DataClean for files.",
                     files_count);
 
+            bool sync_handle_available = false;
+            bool dataCleanSent = false;
+
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
             if (syscheck.sync_handle) {
+                sync_handle_available = true;
+
                 // Prepare indices vector for data clean notification
                 const char* indices[1] = {FIM_FILES_SYNC_INDEX};
                 size_t indices_count = 1;
 
                 // Send DataClean notification for files index
-                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+            if (sync_handle_available) {
                 if (dataCleanSent) {
                     minfo("DataClean notification sent successfully for files index (all directory paths removed from configuration).");
                 } else {
@@ -1275,15 +1285,23 @@ void fim_file_scan() {
 
     callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths, .pending_sync_updates = pending_sync_updates };
 
+    // The whole transaction lifecycle (start .. deleted_rows/close), plus the post-transaction
+    // cleanup/promotion writes below (cleanup_failed_fim_files, process_pending_sync_updates),
+    // lives inside fim_scan_mutex: those are fim_db paths not covered by FIMDB's internal
+    // teardown guards, and the shutdown waiter (fim_shutdown_waiter(), main.c) relies on this
+    // mutex to know no scan (including its trailing writes) is in flight before it tears the
+    // database down.
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
         OSList_Destroy(failed_paths);
         OSList_Destroy(pending_sync_updates);
         return;
     }
 
-    w_mutex_lock(&syscheck.fim_scan_mutex);
     w_rwlock_rdlock(&syscheck.directories_lock);
 
     OSList_foreach(node_it, syscheck.directories) {
@@ -1316,7 +1334,6 @@ void fim_file_scan() {
     }
 
     w_rwlock_unlock(&syscheck.directories_lock);
-    w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
@@ -1326,6 +1343,8 @@ void fim_file_scan() {
 
     // Process pending sync flag updates now that transaction is committed
     process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     // Cleanup pending sync updates list
     OSList_Destroy(pending_sync_updates);

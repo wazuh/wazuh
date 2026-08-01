@@ -107,16 +107,6 @@ char *OS_IsValidUniqueTime(const char *time_str) __attribute__((nonnull));
 
 
 /**
- * @brief Validate if a time is in on a specied time interval.
- *        Must be a valid string, called after OS_IsValidTime().
- * @param time_str Time to be validated.
- * @param ossec_time Time interval.
- * @return Returns 1 on success or 0 on failure.
- */
-int OS_IsonTime(const char *time_str, const char *ossec_time) __attribute__((nonnull));
-
-
-/**
  * @brief Checks if time is the same or has passed a specified one.
  *        Must be a valid string, called after OS_IsValidTime().
  * @param time_str Time to be validated.

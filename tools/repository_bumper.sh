@@ -173,7 +173,7 @@ update_file_sources() {
 
     # Update defs.h
     if [[ -n "$new_version" ]]; then
-        local defs_file="$DIR_SRC/headers/defs.h"
+        local defs_file="$DIR_SRC/shared/include/defs.h"
         local current_defs_version
         current_defs_version=$(grep -E '^#define __wazuh_version' "$defs_file" \
             | sed -E 's/^#define __wazuh_version\s+"v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
@@ -187,8 +187,7 @@ update_file_sources() {
     # Update wazuh-*.sh scripts
     for script in \
         "$DIR_SRC/init/wazuh-server.sh" \
-        "$DIR_SRC/init/wazuh-client.sh" \
-        "$DIR_SRC/init/wazuh-local.sh"
+        "$DIR_SRC/init/wazuh-client.sh"
     do
         if [[ -n "$new_version" ]]; then
             local current_script_version
@@ -353,16 +352,21 @@ update_file_api() {
         local version_short
         version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
         if [[ -z "$skip_urls" ]]; then
-            # Build the target Git ref for blob/ URLs. Pre-release stages tag as
-            # vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta2), so without the stage
-            # suffix the URL would point to a tag that does not exist yet.
-            local tag_ref="v${new_version}"
-            [[ -n "$new_stage" ]] && tag_ref="${tag_ref}-${new_stage}"
+            # Build the target ref for blob/ URLs.
+            # - Pre-release (stage non-empty): tag format vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta3)
+            # - Release branch (stage empty): branch name format MAJOR.MINOR.PATCH (e.g. 5.0.0, no v)
+            local url_ref
+            if [[ -n "$new_stage" ]]; then
+                url_ref="v${new_version}-${new_stage}"
+            else
+                url_ref="${new_version}"
+            fi
 
-            # blob/ paths: match main, vMAJOR.MINOR.PATCH, and vMAJOR.MINOR.PATCH-STAGE
-            # so subsequent stage bumps can replace an existing tagged ref.
+            # blob/ paths: match main, vMAJOR.MINOR.PATCH, vMAJOR.MINOR.PATCH-STAGE,
+            # and MAJOR.MINOR.PATCH (branch name without v) so any existing ref format
+            # can be replaced on subsequent bumps.
             sed -i -E \
-                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?)(/)~\1${tag_ref}\4~g" \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?|[0-9]+\.[0-9]+\.[0-9]+)(/)~\1${url_ref}\4~g" \
                 "$spec_file"
             # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
             sed -i -E \
@@ -489,45 +493,85 @@ update_file_packages() {
 update_root_changelog() {
     local new_version="$1"
     local changelog_file="$DIR_ROOT/CHANGELOG.md"
+    local repo_url="https://github.com/wazuh/wazuh"
 
     if [[ -z "$new_version" ]]; then
         return
     fi
 
     if [[ ! -f "$changelog_file" ]]; then
-        echo -e "# Change Log\nAll notable changes to this project will be documented in this file.\n" > "$changelog_file"
+        echo "## [v$new_version]" > "$changelog_file"
+        log_action "Created $changelog_file with new version: $new_version"
+        return
     fi
 
-    if grep -q "\[$new_version\]" "$changelog_file"; then
+    if grep -q "\[v\?$new_version\]" "$changelog_file"; then
         log_action "Version $new_version already exists in changelog."
         return
     fi
 
-    local inserted=0
-    local temp_file
-    temp_file=$(mktemp)
+    # Minor series (MAJOR.MINOR) of the version being released.
+    local new_mm="${new_version%.*}"
 
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^##\ \[v?([0-9]+\.[0-9]+\.[0-9]+)\] ]]; then
-            existing_version="${BASH_REMATCH[1]}"
-            if [[ "$existing_version" == "$new_version" ]]; then
-                log_action "Duplicate version $new_version found, skipping."
-                return
-            fi
-            if [[ $inserted -eq 0 ]] && [[ "$(printf "%s\n%s" "$new_version" "$existing_version" | sort -Vr | head -n1)" == "$new_version" ]]; then
-                echo -e "## [v$new_version]\n" >> "$temp_file"
-                inserted=1
-            fi
-        fi
-        echo "$line" >> "$temp_file"
-    done < "$changelog_file"
+    # Candidate prior versions: the current top version (whose full changelog is
+    # replaced by a link) plus every version already listed under
+    # "## Prior versions", newest first.
+    local candidates
+    candidates=$(
+        {
+            grep -m1 -E '^## \[v?[0-9]+\.[0-9]+\.[0-9]+\]' "$changelog_file" \
+                | sed -E 's/^## \[v?([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/'
+            sed -n '/^## Prior versions/,$p' "$changelog_file" \
+                | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//'
+        } | sort -Vr
+    )
 
-    if [[ $inserted -eq 0 ]]; then
-        echo -e "## [v$new_version]\n" >> "$temp_file"
+    # Keep the highest patch per minor series, ignore versions older than 5.0.0,
+    # drop the new release's own series, and take only the two latest minor series.
+    local prior_tags
+    prior_tags=$(awk -F. -v skip="$new_mm" -v min_major=5 '
+        NF < 3 { next }
+        $1 < min_major { next }
+        { mm = $1 "." $2 }
+        mm == skip { next }
+        !seen[mm]++ { print }' <<< "$candidates" | head -n2)
+
+    # Rebuild the changelog: the new version section plus the prior-version links.
+    local new_content="## [v${new_version}]"
+    if [[ -n "$prior_tags" ]]; then
+        new_content+=$'\n\n'"## Prior versions"$'\n'
+        local tag
+        while IFS= read -r tag; do
+            [[ -z "$tag" ]] && continue
+            new_content+=$'\n'"- [v${tag}](${repo_url}/blob/v${tag}/CHANGELOG.md)"
+        done <<< "$prior_tags"
     fi
 
-    mv "$temp_file" "$changelog_file"
+    local current
+    current=$(<"$changelog_file")
+    add_command "$changelog_file" "$current" "$new_content"
     log_action "Modified $changelog_file with new version: $new_version"
+}
+
+update_file_git_refs() {
+    local new_version="$1"
+
+    [[ -z "$new_version" ]] && return
+
+    local refs_file="$DIR_ROOT/tools/get_git_refs.sh"
+    local current_version
+    current_version=$(grep -E 'if \[ "\$version" = "[0-9]+\.[0-9]+\.[0-9]+" \]' "$refs_file" \
+        | sed -E 's/.*if \[ "\$version" = "([0-9]+\.[0-9]+\.[0-9]+)" \].*/\1/')
+
+    if [[ -n "$current_version" && "$current_version" != "$new_version" ]]; then
+        local old_escaped="${current_version//./\\.}"
+        sed -i -E "s|(if \[ \"\\\$version\" = \")${old_escaped}(\" \])|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(# Special case: for version )${old_escaped}(,)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(- Special case: version )${old_escaped}( also returns)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(refs/heads/)${old_escaped}$|\1${new_version}|" "$refs_file"
+        sed -i -E "s|(refs/tags/v)${old_escaped}$|\1${new_version}|" "$refs_file"
+        log_action "Modified $refs_file with new version: $new_version"
+    fi
 }
 
 update_version() {
@@ -546,6 +590,7 @@ update_version() {
     update_file_sources "$new_version" "$new_stage"
     update_file_framework "$new_version" "$new_stage"
     update_file_api "$new_version" "$new_stage"
+    update_file_git_refs "$new_version"
     update_root_changelog "$new_version"
 
     local final_version="${new_version:-$current_version}"

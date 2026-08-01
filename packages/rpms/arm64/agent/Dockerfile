@@ -33,6 +33,7 @@ RUN yum install -y gcc make wget git \
 # -------------------------------------------------------------------
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
     tar xzf gcc-9.4.0.tar.gz && cd gcc-9.4.0 && \
+    sed -i "s|^base_url=.*|base_url='https://gcc.gnu.org/pub/gcc/infrastructure/'|" contrib/download_prerequisites && \
     ./contrib/download_prerequisites && \
     ./configure --prefix=/usr/local/gcc-9.4.0 \
         --enable-languages=c,c++ \
@@ -53,7 +54,9 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.
 # GCC 14.3.0
 # -------------------------------------------------------------------
 RUN curl -OL https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-14.3.0/gcc-14.3.0.tar.gz && \
-    tar xzf gcc-14.3.0.tar.gz && cd gcc-14.3.0 && ./contrib/download_prerequisites && \
+    tar xzf gcc-14.3.0.tar.gz && cd gcc-14.3.0 && \
+    sed -i "s|^base_url=.*|base_url='https://gcc.gnu.org/pub/gcc/infrastructure/'|" contrib/download_prerequisites && \
+    ./contrib/download_prerequisites && \
     mkdir build && cd build && \
     CC=/usr/local/gcc-9.4.0/bin/gcc \
     CXX=/usr/local/gcc-9.4.0/bin/g++ \

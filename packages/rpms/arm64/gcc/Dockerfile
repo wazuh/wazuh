@@ -22,6 +22,7 @@ ARG GCC_STAGE1_VER=8.5.0
 RUN curl -LO https://ftp.gnu.org/gnu/gcc/gcc-${GCC_STAGE1_VER}/gcc-${GCC_STAGE1_VER}.tar.xz && \
     tar -xf gcc-${GCC_STAGE1_VER}.tar.xz && \
     cd gcc-${GCC_STAGE1_VER} && \
+    sed -i "s|^base_url=.*|base_url='https://gcc.gnu.org/pub/gcc/infrastructure/'|" contrib/download_prerequisites && \
     ./contrib/download_prerequisites && \
     mkdir build && cd build && \
     ../configure --prefix=/opt/gcc-${GCC_STAGE1_VER} \
@@ -39,6 +40,7 @@ ENV PATH=/opt/gcc-8.5.0/bin:$PATH \
 RUN wget https://ftp.gnu.org/gnu/gcc/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
  && tar -xf gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
  && cd gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0 \
+ && sed -i "s|^base_url=.*|base_url='https://gcc.gnu.org/pub/gcc/infrastructure/'|" contrib/download_prerequisites \
  && ./contrib/download_prerequisites \
  && mkdir build && cd build \
  && ../configure \

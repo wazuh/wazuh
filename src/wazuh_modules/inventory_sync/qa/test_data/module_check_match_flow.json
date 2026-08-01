@@ -8,7 +8,9 @@
         "mode": 6,
         "size": 0,
         "option": 0,
-        "indices": ["wazuh-states-vulnerabilities"],
+        "indices": [
+          "wazuh-states-vulnerabilities"
+        ],
         "agentid": "001",
         "agentname": "module-check-agent",
         "agentversion": "4.9.0",
@@ -17,7 +19,8 @@
         "osname": "Ubuntu",
         "osplatform": "ubuntu",
         "ostype": "linux",
-        "osversion": "22.04"
+        "osversion": "22.04",
+        "cluster_name": "wazuh"
       },
       "description": "Start ModuleCheck synchronization - verifies checksum matches",
       "delay": 0.5,

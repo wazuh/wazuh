@@ -20,7 +20,8 @@ TEST(RouterModuleCInterfaceTest, TestInitialize)
                       std::ignore = level;
                       std::ignore = log;
                       std::ignore = tag;
-                  }),
+                  },
+                  "test"),
               0);
 }
 

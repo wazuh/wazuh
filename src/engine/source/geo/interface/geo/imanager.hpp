@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include <base/error.hpp>
+#include <base/syncStatus.hpp>
 
 #include <geo/ilocator.hpp>
 
@@ -71,6 +72,18 @@ struct DbInfo
     std::string hash;
     int64_t createdAt;
     Type type;
+};
+
+/**
+ * @brief Status information for a single geo database for status reporting
+ */
+struct GeoDbStatus
+{
+    std::string name;                  ///< Database type name (e.g., "city", "asn")
+    bool available {false};            ///< Has a version loaded and available for queries
+    base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, running, or failed
+    std::string hash;                  ///< Last known content hash (MD5)
+    uint32_t lastSuccessfulUpdate {0};  ///< Unix timestamp of last successful sync (0 if never)
 };
 
 /**
@@ -154,6 +167,13 @@ public:
      * locator could not be retrieved.
      */
     virtual Result<std::shared_ptr<ILocator>> getLocator(Type type) const = 0;
+
+    /**
+     * @brief Get the synchronization status of all geo databases for status reporting.
+     *
+     * @return Vector of GeoDbStatus, one per database type (city, asn).
+     */
+    virtual std::vector<GeoDbStatus> getGeoStatus() const = 0;
 };
 
 } // namespace geo

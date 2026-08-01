@@ -21,3 +21,6 @@ default_roles:
 
   cluster_admin:
     description: Manager administrator of the system, this role have full access to all manager related functionalities.
+
+  wazuh_indexer_admin:
+    description: Indexer administrator, this role can only read security configurations, not change them.

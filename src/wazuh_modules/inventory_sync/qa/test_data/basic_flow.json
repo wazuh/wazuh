@@ -9,7 +9,8 @@
         "size": 1,
         "agentid": "001",
         "agentname": "test-agent",
-        "agentversion": "4.8.0"
+        "agentversion": "4.8.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start synchronization session",
       "delay": 0.5,
@@ -22,7 +23,10 @@
         "operation": 0,
         "id": "doc123",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "Hello", "timestamp": "2025-08-20T10:00:00Z"}
+        "data": {
+          "message": "Hello",
+          "timestamp": "2025-08-20T10:00:00Z"
+        }
       },
       "description": "Send data message using session from start response",
       "delay": 0.5,

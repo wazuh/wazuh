@@ -3,12 +3,12 @@
         "etc/": {
             "permissions": "0o640",
             "source": "master",
-            "files": ["client.keys"],
+            "files": ["client.keys", "authd.pass"],
             "recursive": false,
             "restart": false,
             "remove_subdirs_if_empty": false,
             "extra_valid": false,
-            "description": "client keys file database"
+            "description": "client keys file database and enrollment shared password"
         },
 
         "etc/shared/": {

@@ -24,6 +24,7 @@
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
 #include "asyncFlushController.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
@@ -93,7 +94,7 @@ class EXPORTED Syscollector final
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
                               std::chrono::seconds timeout, unsigned int retries,
                               size_t maxEps, uint32_t integrityInterval);
-        bool syncModule(Mode mode);
+        SyncModuleResult syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
         bool parseResponseBufferVD(const uint8_t* data, size_t length);

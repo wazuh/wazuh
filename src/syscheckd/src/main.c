@@ -20,8 +20,15 @@
 
 #ifndef WIN32
 
+#include <poll.h>
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
+
+/* Milliseconds fim_shutdown_waiter() waits for the synchronization thread to report its
+ * exit before giving up on the teardown; wazuh-control escalates to SIGKILL after ~30
+ * seconds (MAX_KILL_TRIES in init/wazuh-client.sh), so stay well under that. */
+#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
 
 // LCOV_EXCL_START
 
@@ -44,23 +51,151 @@ __attribute__((noreturn)) static void help_syscheckd()
 
 extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
+extern pthread_t fim_sync_thread;
+extern bool fim_sync_thread_initialized;
+extern int fim_sync_exit_pipe[2];
 
-/* Shut down syscheckd properly */
-static void fim_shutdown(int sig)
+/* Self-pipe written by fim_shutdown() to wake fim_shutdown_waiter() */
+static int fim_shutdown_pipe[2] = {-1, -1};
+/* Signal that triggered the shutdown, consumed by fim_shutdown_waiter() */
+static volatile sig_atomic_t fim_shutdown_sig = SIGTERM;
+
+/* Shut down syscheckd properly. This thread performs the teardown that fim_shutdown()
+ * cannot do in signal context. Joining the synchronization thread from the handler
+ * could deadlock: if the signal lands on a thread that holds syscheck.directories_lock
+ * or syscheck.fim_scan_mutex (e.g. the main thread inside fim_scan()), that thread
+ * parks in the handler without releasing them, while fim_run_integrity blocks on those
+ * very locks and never re-checks fim_sync_module_running, so the join never returns.
+ * Destroying the sync protocol handle from the handler is not safe either: it is still
+ * used by threads that are never joined (event persistence, syscom), and a second
+ * termination signal (signal() leaves the other signals unblocked while the handler
+ * runs) could re-enter the handler, skip the join and free the handle under the live
+ * synchronization thread. */
+static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 {
-    /* Close sync thread and release dbsync */
-    minfo(SK_SHUTDOWN);
-    is_fim_shutdown = true;
-    fim_sync_module_running = 0;
+    char buf;
 
-    /* Stop sync protocol */
+    /* Wait for fim_shutdown() to report a termination signal */
+    while (!fim_shutdown_process_on())
+    {
+        if (read(fim_shutdown_pipe[0], &buf, 1) < 0 && errno != EINTR)
+        {
+            sleep(1); // Defensive: reading the shutdown pipe cannot fail in practice
+        }
+    }
+
+    minfo(SK_SHUTDOWN);
+
+    /* Abort any in-flight synchronization so the join below is short */
     if (syscheck.sync_handle)
     {
         asp_stop(syscheck.sync_handle);
     }
 
-    fim_db_teardown();
-    HandleSIG(sig);
+    /* Wait for the inventory synchronization thread to exit: its loop reacts to
+     * fim_sync_module_running (cleared by fim_shutdown()) within a second, and asp_stop()
+     * above aborts an in-flight synchronization. The initialized flag is read under the
+     * same write lock start_daemon() publishes it under, so the startup window cannot be
+     * missed: either the thread is already visible here and gets joined before the handle
+     * is destroyed, or start_daemon() observes the shutdown (is_fim_shutdown is
+     * republished under the lock so the rwlock orders it) and never creates the thread. */
+    w_rwlock_wrlock(&fim_sync_handle_rwlock);
+    is_fim_shutdown = true;
+    /* Republished under the lock: the signal can land between start_daemon()'s shutdown
+     * check and its `fim_sync_module_running = 1`, which would overwrite the handler's
+     * clear inside the creation critical section. Re-clearing here (ordered after that
+     * section by the lock) makes the freshly created loop observe the stop within a
+     * second, so the join below still completes. */
+    fim_sync_module_running = 0;
+    bool join_sync_thread = fim_sync_thread_initialized;
+    /* Read the thread handle under the same lock its writer (start_daemon) holds, so the
+     * join below never races the creation store. */
+    pthread_t sync_thread = fim_sync_thread;
+    fim_sync_thread_initialized = false;
+    w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+    bool sync_thread_exited = true;
+
+    if (join_sync_thread)
+    {
+        /* Everything the synchronization thread can block on after asp_stop() is bounded
+         * (stop-aware waits, predicated sends, 1-second sleeps), so it reports its exit
+         * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
+         * join and the teardown below — destroying the handle under a live thread is the
+         * use-after-free this waiter exists to prevent — and let HandleSIG() exit. */
+        struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
+        int poll_ret;
+
+        while ((poll_ret = poll(&sync_exit_poll, 1, FIM_SYNC_EXIT_TIMEOUT_MS)) < 0 && errno == EINTR) {}
+
+        if (poll_ret > 0)
+        {
+            pthread_join(sync_thread, NULL);
+        }
+        else
+        {
+            sync_thread_exited = false;
+            mwarn("The FIM inventory synchronization thread did not exit in time: skipping the synchronization database teardown.");
+        }
+    }
+
+    if (sync_thread_exited)
+    {
+        /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
+         * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
+         * being leaked (issue #37334). The write lock excludes the handle users that
+         * are not joined above (event persistence, syscom's fim_sync responses, the
+         * DataClean paths and the scheduled-scan asp_reset), which take it for reading
+         * around each call. */
+        w_rwlock_wrlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle)
+        {
+            asp_destroy(syscheck.sync_handle);
+            syscheck.sync_handle = NULL;
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+        /* fim.db itself runs journal_mode=truncate (no -wal/-shm files): this teardown
+         * releases the DBSync context in a controlled order before exit(), it is not WAL
+         * cleanup. FIMDB's internal guards turn the event/query paths into graceful
+         * no-ops after it, but the scan transaction path (fim_db_transaction_*) is not
+         * covered by them. The scan transaction lives entirely inside fim_scan_mutex, so
+         * tear down only when no scan is in flight and keep the mutex so a new scan
+         * cannot start a transaction against the released context; otherwise skip it —
+         * exiting with fim.db open is safe (the truncate journal recovers on the next
+         * start), closing it under a live transaction is not. */
+        if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0)
+        {
+            fim_db_teardown();
+        }
+        else
+        {
+            mdebug1("Skipping the FIM database teardown: a scan is in progress.");
+        }
+    }
+
+    HandleSIG((int)fim_shutdown_sig);
+
+    return NULL;
+}
+
+/* Termination signal handler: only async-signal-safe work happens here; the actual
+ * teardown runs in fim_shutdown_waiter() (see above) */
+static void fim_shutdown(int sig)
+{
+    int saved_errno = errno;
+
+    fim_shutdown_sig = sig;
+    is_fim_shutdown = true;
+    fim_sync_module_running = 0;
+
+    if (fim_shutdown_pipe[1] >= 0)
+    {
+        /* Wake the shutdown waiter; write() is async-signal-safe */
+        while (write(fim_shutdown_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    }
+
+    errno = saved_errno;
 }
 
 /* Syscheck unix main */
@@ -179,6 +314,25 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     }
+
+    /* Spawn the shutdown waiter before registering the termination signal handler
+     * that wakes it through the pipe (issue #37334) */
+    if (pipe(fim_shutdown_pipe) < 0 || pipe(fim_sync_exit_pipe) < 0) {
+        merror_exit("Could not create the shutdown pipes: %s (%d)", strerror(errno), errno);
+    }
+
+    /* Keep the pipes out of child processes (e.g. prefilter_cmd). A failure here is not fatal
+     * (it would only mean the pipe fds could leak into a child), so log and continue. */
+    int cloexec_ret = 0;
+    cloexec_ret |= fcntl(fim_shutdown_pipe[0], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_sync_exit_pipe[0], F_SETFD, FD_CLOEXEC);
+    cloexec_ret |= fcntl(fim_sync_exit_pipe[1], F_SETFD, FD_CLOEXEC);
+    if (cloexec_ret < 0) {
+        mwarn("Could not set FD_CLOEXEC on the shutdown pipes: %s (%d)", strerror(errno), errno);
+    }
+
+    w_create_thread(fim_shutdown_waiter, NULL);
 
     /* Start signal handling */
     StartSIG2(ARGV0, fim_shutdown);

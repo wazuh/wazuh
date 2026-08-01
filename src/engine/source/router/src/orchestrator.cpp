@@ -8,6 +8,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
+#include <proc.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -109,7 +110,7 @@ void saveConfig(const std::weak_ptr<store::IStore>& wStore, const base::Name& st
     auto store = wStore.lock();
     if (!store)
     {
-        LOG_ERROR("Store is unavailable for dumping entries");
+        LOG_ERROR("[Orchestrator] Store is unavailable for dumping entries");
     }
     else
     {
@@ -154,7 +155,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
-        LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
+        LOG_DEBUG("[Orchestrator] {} table not found in store ({}). Creating new table",
                   tableName.toStr(),
                   base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
@@ -164,7 +165,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     auto json = base::getResponse(jsonEntry);
     if (json.isEmpty())
     {
-        LOG_DEBUG("Router: {} table is empty", tableName.toStr());
+        LOG_DEBUG("[Orchestrator] {} table is empty", tableName.toStr());
     }
     // Create empty table.
 
@@ -208,8 +209,13 @@ void Orchestrator::postEvent(IngestEvent&& event)
     const auto queueSize = m_eventQueue->size();
     const auto freeSlots = m_eventQueue->aproxFreeSlots();
     const auto totalSlots = queueSize + freeSlots;
+    const auto bytesUsed = m_eventQueue->bytesUsed();
+    const auto maxBytes = m_eventQueue->maxBytes();
 
-    const bool isContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isCountContended =
+        totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isBytesContended = maxBytes > 0 && (bytesUsed * 100) >= (maxBytes * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isContended = isCountContended || isBytesContended;
 
     if (!isContended)
     {
@@ -254,12 +260,16 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
 
-    LOG_WARNING("Event queue has remained contended for at least {} seconds. Dropped events during contention: {}. "
-                "Approx queue size: {}, approx free slots: {}.",
+    LOG_WARNING("[Orchestrator::Router] Event queue has remained contended for at least {} seconds. Dropped events "
+                "during contention: {}. "
+                "Approx queue size: {}, approx free slots: {}. "
+                "Bytes used: {}, max bytes: {}.",
                 CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
                 queueSize,
-                freeSlots);
+                freeSlots,
+                bytesUsed,
+                maxBytes);
 }
 
 void Orchestrator::Options::validate() const
@@ -319,6 +329,27 @@ Orchestrator::Orchestrator(const Options& opt)
                          return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
                      });
 
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USED,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->bytesUsed() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         if (!eventQueue)
+                             return 0.0;
+                         const auto maxBytes = eventQueue->maxBytes();
+                         if (maxBytes == 0)
+                             return 0.0;
+                         return static_cast<double>(eventQueue->bytesUsed()) * 100.0 / static_cast<double>(maxBytes);
+                     });
+
     // Total events dropped at input (never resets, unlike contention window counter)
     m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
 
@@ -350,12 +381,9 @@ Orchestrator::Orchestrator(const Options& opt)
     std::size_t numThreads = opt.m_numThreads;
     if (numThreads == 0)
     {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0)
-        {
-            numThreads = 1; // Fallback if hardware_concurrency cannot be determined
-        }
-        LOG_DEBUG("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
+        numThreads = cpp_get_nproc();
+        LOG_DEBUG("[Orchestrator] No thread count provided. Using {} worker threads based on system hardware.",
+                  numThreads);
     }
 
     m_targetWorkerCount = numThreads;
@@ -368,19 +396,21 @@ Orchestrator::Orchestrator(const Options& opt)
         auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
-            LOG_ERROR("Router: Cannot load initial states from store for primary worker: {}", err->message);
+            LOG_ERROR("[Orchestrator::Router] Cannot load initial states from store for primary worker: {}",
+                      err->message);
         }
         m_routerWorkers.emplace_back(std::move(r));
     }
-    LOG_DEBUG("Router: Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
-              "expandWorkerPool).",
-              m_targetWorkerCount);
+    LOG_DEBUG(
+        "[Orchestrator::Router] Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
+        "expandWorkerPool).",
+        m_targetWorkerCount);
 
     {
         auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
         if (auto err = initTesterWorker(t, testerEntries))
         {
-            LOG_ERROR("Tester: Cannot load initial states from store: {}", err->message);
+            LOG_ERROR("[Orchestrator::Tester] Cannot load initial states from store: {}", err->message);
         }
         m_testerWorker = std::move(t);
     }
@@ -571,7 +601,7 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // Save the updated configuration (lock already held, use Internal version)
     dumpRoutersInternal();
 
-    LOG_INFO("[Router::hotSwapSpace] Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
+    LOG_INFO("[Orchestrator] Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
     return std::nullopt;
 }
 

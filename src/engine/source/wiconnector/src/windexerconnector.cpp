@@ -63,12 +63,6 @@ enum class IndexResourceType
     POLICY
 };
 
-/**
- * @brief Constant that keeps the value of the base path where engine-output queue is going to be
- *
- */
-const std::string BASEQUEUEPATH = "queue/";
-
 IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
@@ -254,18 +248,18 @@ std::vector<std::string> buildPitIndices(std::vector<std::string> baseIndices,
 }
 
 /**
- * @brief Validates that a CTI consumer is in "idle" state within a PIT snapshot.
+ * @brief Validates that a CTI consumer is in "ready" state within a PIT snapshot.
  *
  * Queries the consumer document by ID inside the given PIT and checks its status field.
  *
  * @param async Reference to the async connector.
  * @param pit The PIT snapshot to query within.
  * @param consumerId The consumer document ID to look up.
- * @return true if consumer status is "idle".
- * @return false if consumer status is NOT "idle" (logs DEBUG).
+ * @return true if consumer status is "ready".
+ * @return false if consumer status is NOT "ready" (logs DEBUG).
  * @throws IndexerConnectorException if the consumer document is not found or has invalid structure.
  */
-bool validateConsumerIdleInPit(IIndexerConnectorAsync& async, const PointInTime& pit, std::string_view consumerId)
+bool validateConsumerReadyInPit(IIndexerConnectorAsync& async, const PointInTime& pit, std::string_view consumerId)
 {
     nlohmann::json consumerQuery = {{"ids", {{"values", {consumerId}}}}};
     nlohmann::json consumerSort = getSortCriteria();
@@ -293,15 +287,15 @@ bool validateConsumerIdleInPit(IIndexerConnectorAsync& async, const PointInTime&
     }
 
     const auto status = consumerSrc["status"].get<std::string>();
-    if (status != "idle")
+    if (status != "ready")
     {
-        LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {}), returning nullopt",
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {}), returning nullopt",
                   std::string(consumerId),
                   status);
         return false;
     }
 
-    LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: idle", std::string(consumerId));
+    LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: ready", std::string(consumerId));
     return true;
 }
 
@@ -356,7 +350,8 @@ std::string Config::toJson() const
         config["ssl"] = sslJson;
     }
 
-    config["max_queue_size"] = maxQueueSize;
+    config["max_queue_bytes"] = maxQueueBytes;
+    config["max_retry_delay_seconds"] = maxRetryDelaySeconds;
 
     return config.dump();
 }
@@ -388,8 +383,8 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    auto inner = std::make_unique<IndexerConnectorAsync>(
-        jsonParsed, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
+    auto inner =
+        std::make_unique<IndexerConnectorAsync>(jsonParsed, LoggingContext {logging::default_tag(), logFunction});
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
 }
 
@@ -413,8 +408,8 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    auto inner = std::make_unique<IndexerConnectorAsync>(
-        jsonConfig, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
+    auto inner =
+        std::make_unique<IndexerConnectorAsync>(jsonConfig, LoggingContext {logging::default_tag(), logFunction});
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
 }
 
@@ -517,10 +512,10 @@ std::optional<PolicyResources> WIndexerConnector::getPolicy(std::string_view spa
     auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
     auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
 
-    // --- Pre-check: validate consumer is idle within the PIT snapshot ---
+    // --- Pre-check: validate consumer is ready within the PIT snapshot ---
     if (consumerIdToValidate.has_value())
     {
-        if (!validateConsumerIdleInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
         {
             return std::nullopt;
         }
@@ -674,7 +669,7 @@ WIndexerConnector::getPolicyHashAndEnabled(std::string_view space,
         auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
         auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
 
-        if (!validateConsumerIdleInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
         {
             return std::nullopt;
         }
@@ -832,7 +827,7 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
 
         const auto& src = hitArray[0]["_source"];
 
-        // Check status == "idle"
+        // Check status == "ready"
         if (!src.contains("status") || !src["status"].is_string())
         {
             LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
@@ -840,9 +835,9 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
         }
 
         const auto status = src["status"].get<std::string>();
-        if (status != "idle")
+        if (status != "ready")
         {
-            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {})", std::string(consumerId), status);
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {})", std::string(consumerId), status);
             return false;
         }
 
@@ -862,7 +857,7 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
             return false;
         }
 
-        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (idle, local_offset={})",
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (ready, local_offset={})",
                   std::string(consumerId),
                   localOffset);
         return true;
@@ -878,7 +873,7 @@ std::optional<std::unordered_map<std::string, std::string>>
 WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate)
 {
     // Hash retrieval with consumer validation delegated to queryByBatches
-    // (creates a single PIT including CTI consumers index and validates idle atomically)
+    // (creates a single PIT including CTI consumers index and validates ready atomically)
     std::optional<json::Json> hashesDoc = std::nullopt;
     const std::string queryBody = fmt::format(R"({{"ids": {{"values": ["{}"]}}}})", IOC_HASHES_DOC_ID);
 
@@ -900,7 +895,7 @@ WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consu
         std::nullopt,
         consumerIdToValidate);
 
-    // Consumer was not idle — propagate nullopt
+    // Consumer was not ready — propagate nullopt
     if (!result.has_value())
     {
         return std::nullopt;
@@ -1015,10 +1010,10 @@ WIndexerConnector::queryByBatches(std::string_view indexName,
     auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
     auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
 
-    // Validate consumer is idle within the PIT snapshot before streaming
+    // Validate consumer is ready within the PIT snapshot before streaming
     if (consumerIdToValidate.has_value())
     {
-        if (!validateConsumerIdleInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
         {
             return std::nullopt;
         }

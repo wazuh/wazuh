@@ -86,7 +86,7 @@ RotationConfig& LogManager::isolatedBasePath(const std::string& channelName, Rot
 void LogManager::requestShutdown()
 {
     m_compressionShouldRun->store(false, std::memory_order_relaxed);
-    LOG_INFO("[Stream logger] Shutdown requested.");
+    LOG_INFO("[Stream logger] Shutdown requested");
     std::unique_lock lock(m_channelsMutex);
     m_channels.clear();
 }

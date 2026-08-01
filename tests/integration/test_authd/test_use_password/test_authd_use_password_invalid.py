@@ -7,8 +7,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check invalid values in the authd.pass (for now just checks 'empty')
-       raises the expected error logs.
+brief: These tests check that an invalid authd.pass (empty or whitespace-only) raises the
+       expected error log and prevents wazuh-authd from starting.
 
 components:
     - authd
@@ -104,23 +104,20 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
             brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
-        - Error log 'Empty password provided.' is raised in ossec.log.
-        - wazuh-manager.service must not be able to restart.
+        - An 'Invalid password provided' error is raised in wazuh-manager.log.
+        - wazuh-authd does not start with an invalid password file.
 
     input_description:
         ./data/configuration_template/config_authd_use_password_invalid.yaml: Wazuh config needed for the tests.
         ./data/test_cases/cases_authd_use_password_invalid.yaml: Values to be used and expected error.
 
     expected_output:
-        - .*Empty password provided.
-        - .*Invalid password provided.
+        - .*Invalid password provided
     '''
     log = test_metadata['error']
-    if log == 'Invalid password provided.':
-        pytest.xfail(reason="No password validation in authd.pass - Issue wazuh/wazuh#16282.")
 
-    # Attempt restart; it may fail (older behavior) or succeed (5.x behavior where
-    # the service continues even if authd exits on invalid password).
+    # wazuh-authd exits on the invalid password; depending on the service manager the
+    # restart may report failure or succeed, so tolerate both outcomes.
     try:
         control_service('restart')
     except ValueError:

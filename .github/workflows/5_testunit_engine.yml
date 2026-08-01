@@ -22,6 +22,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Manager
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
@@ -57,10 +60,11 @@ jobs:
 
       - name: Upload ASAN/LSAN logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: sanitizer-logs
           path: |
             ${{ runner.temp }}/asan*
-          if-no-files-found: ignore
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

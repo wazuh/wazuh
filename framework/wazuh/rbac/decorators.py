@@ -513,7 +513,7 @@ def _has_update_permissions() -> bool:
     perms = rbac.get() or {}
     for action in ("manager:update_config", "cluster:update_config"):
         action_map = perms.get(action)
-        if isinstance(action_map, dict) and len(action_map) > 0:
+        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
             return True
     return False
 

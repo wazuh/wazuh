@@ -30,7 +30,7 @@
 /**
  * @brief Logging context: pairs the caller module name with the log callback.
  *
- * The caller name is used to build the log tag as "<callerName> (indexer-connector)".
+ * The caller name is used to build the log tag as "<callerName>(indexer-connector)".
  */
 using LoggingContext =
     std::pair<std::string,
@@ -111,7 +111,7 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
-     *                "<callerName> (indexer-connector)" (e.g. "vulnerability-scanner (indexer-connector)").
+     *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging = {});
@@ -119,12 +119,12 @@ public:
     ~IndexerConnectorSync();
 
     /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
-     * @param index Index name.
+     * @brief Stage a delete-by-query for one agent.
+     * @param index Target index name.
+     * @param agentId wazuh.agent.id filter.
+     * @param clusterName Manager-side cluster name; when set, also filters by wazuh.cluster.name.
      */
-    void deleteByQuery(const std::string& index, const std::string& agentId);
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName = {});
 
     /**
      * @brief Execute an update by query operation on OpenSearch/Elasticsearch.
@@ -323,19 +323,12 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including servers and SSL settings.
-     * @param queueId Identifier for this connector instance. Combined with basePath to form
-     *                the RocksDB queue directory: basePath / queueId.
-     *                Must be unique per instance to guarantee queue isolation.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
-     *                "<callerName> (indexer-connector)" (e.g. "wazuh-manager-analysisd (indexer-connector)").
+     *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
-     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
-    explicit IndexerConnectorAsync(const nlohmann::json& config,
-                                   std::string queueId,
-                                   LoggingContext logging = {},
-                                   std::string basePath = "queue/indexer/");
+    explicit IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging = {});
 
     ~IndexerConnectorAsync();
 
@@ -384,7 +377,7 @@ public:
     /**
      * @brief Get the current size of the indexing queue.
      *
-     * @return The number of pending indexing operations in the queue.
+     * @return The number of bytes pending in the queue.
      */
     uint64_t getQueueSize() const;
 
