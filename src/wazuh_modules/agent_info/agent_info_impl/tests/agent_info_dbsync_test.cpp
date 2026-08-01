@@ -138,18 +138,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
 }
 
-TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
-{
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
-    // Set sync parameters
-    EXPECT_NO_THROW(m_agentInfo->setSyncParameters(60, 5));
-
-    // Verify the log message contains the parameters
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync parameters set"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("timeout=60"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("retries=5"));
-}
 
 TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
 {

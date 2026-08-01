@@ -84,30 +84,24 @@ Persists a difference to in-memory vector instead of database. This method is us
 ##### `synchronizeModule()`
 
 ```cpp
-bool synchronizeModule(Mode mode,
-                      std::chrono::seconds timeout,
-                      unsigned int retries,
-                      size_t maxEps)
+SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC)
 ```
 
 Initiates a synchronization session with the manager.
 
 **Parameters:**
-- `mode`: Synchronization mode (`Mode::Full` or `Mode::Delta`)
-- `timeout`: Maximum time to wait for each response
-- `retries`: Number of retry attempts for Start and End messages
-- `maxEps`: Maximum events per second (0 = unlimited)
+- `mode`: Synchronization mode (`Mode::FULL` or `Mode::DELTA`)
+- `option`: Sync option (default `Option::SYNC`; use `Option::VDFIRST` / `Option::VDSYNC` for
+  VD flows that are exempt from the byte-cap)
 
-**Returns:** `true` if synchronization completed successfully, `false` otherwise
+**Returns:** `SyncModuleResult` with success flag, optional failure reason, stop and manager-not-ready flags, and consecutive failure count
 
 **Example:**
 ```cpp
-bool success = protocol.synchronizeModule(
-    Mode::Delta,
-    std::chrono::seconds(30),
-    3,
-    1000
-);
+SyncModuleResult result = protocol.synchronizeModule(Mode::DELTA);
+if (!result.success) {
+    // items reset to PENDING; next periodic cycle will retry
+}
 ```
 
 ##### `requiresFullSync()`
@@ -233,17 +227,21 @@ Processes FlatBuffer-encoded responses from the manager.
 ```c
 AgentSyncProtocolHandle* asp_create(const char* module,
                                    const char* db_path,
-                                   const MQ_Functions* mq_funcs,
-                                   asp_logger_t logger)
+                                   asp_logger_t logger,
+                                   unsigned int timeout,
+                                   unsigned int retries)
 ```
 
 Creates a new Agent Sync Protocol instance.
 
 **Parameters:**
-- `module`: Module name string
-- `db_path`: Database file path
-- `mq_funcs`: Pointer to message queue functions structure
+- `module`: Module name string (e.g. `"fim"`, `"syscollector"`)
+- `db_path`: SQLite database file path for the persistent queue (`NULL` for in-memory only)
 - `logger`: Logging callback function
+- `timeout`: Accepted for ABI compatibility but **no longer used**. The response-wait timeout
+  is owned by the HTTPS transport layer (`statefulTimeoutMs`).
+- `retries`: Number of times to retry the local sync-socket hand-off when the intake socket is
+  temporarily unavailable (e.g. during an agentd restart). Does **not** affect HTTP-level retries.
 
 **Returns:** Opaque handle to the protocol instance, or NULL on failure
 
@@ -299,11 +297,7 @@ C wrapper for `persistDifferenceInMemory()`. Persists a difference to in-memory 
 #### `asp_sync_module()`
 
 ```c
-bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                    Mode_t mode,
-                    unsigned int sync_timeout,
-                    unsigned int sync_retries,
-                    size_t max_eps)
+SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle, Mode_t mode)
 ```
 
 C wrapper for `synchronizeModule()`.
@@ -311,21 +305,15 @@ C wrapper for `synchronizeModule()`.
 **Parameters:**
 - `handle`: Protocol handle
 - `mode`: Sync mode (`MODE_FULL` or `MODE_DELTA`)
-- `sync_timeout`: Timeout in seconds
-- `sync_retries`: Number of retries
-- `max_eps`: Maximum events per second
 
-**Returns:** `true` on success, `false` on failure
+**Returns:** `SyncModuleResult_t` with success flag and optional failure reason string
 
 #### `asp_requires_full_sync()`
 
 ```c
 bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                             const char* index,
-                            const char* checksum,
-                            unsigned int sync_timeout,
-                            unsigned int sync_retries,
-                            size_t max_eps)
+                            const char* checksum)
 ```
 
 C wrapper for `requiresFullSync()`. Checks if a module index requires full synchronization.
@@ -334,9 +322,6 @@ C wrapper for `requiresFullSync()`. Checks if a module index requires full synch
 - `handle`: Protocol handle
 - `index`: The index/table to check
 - `checksum`: The calculated checksum for the index
-- `sync_timeout`: Timeout in seconds
-- `sync_retries`: Number of retries
-- `max_eps`: Maximum events per second
 
 **Returns:** `true` if full sync is required (checksum mismatch); `false` if integrity is valid
 
@@ -354,12 +339,11 @@ C wrapper for `clearInMemoryData()`. Clears the in-memory data queue.
 #### `asp_sync_metadata_or_groups()`
 
 ```c
-bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                 Mode_t mode,
-                                 unsigned int sync_timeout,
-                                 unsigned int sync_retries,
-                                 size_t max_eps,
-                                 uint64_t global_version)
+SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                               Mode_t mode,
+                                               const char** indices,
+                                               size_t indices_count,
+                                               uint64_t global_version)
 ```
 
 C wrapper for `synchronizeMetadataOrGroups()`. Synchronizes metadata or groups with the server without sending data.
@@ -367,33 +351,26 @@ C wrapper for `synchronizeMetadataOrGroups()`. Synchronizes metadata or groups w
 **Parameters:**
 - `handle`: Protocol handle
 - `mode`: Sync mode (`MODE_METADATA_DELTA`, `MODE_METADATA_CHECK`, `MODE_GROUP_DELTA`, or `MODE_GROUP_CHECK`)
-- `sync_timeout`: Timeout in seconds
-- `sync_retries`: Number of retries
-- `max_eps`: Maximum events per second
-- `global_version`: Global version to include in the Start message.
+- `indices`: Array of index name strings that will be updated by the manager
+- `indices_count`: Number of indices in the array
+- `global_version`: Global version to include in the Start message
 
-**Returns:** `true` on success, `false` on failure
+**Returns:** `SyncModuleResult_t` with success flag and failure reason if unsuccessful
 
 #### `asp_notify_data_clean()`
 
 ```c
 bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            const char** indices,
-                           size_t indices_count,
-                           unsigned int sync_timeout,
-                           unsigned int sync_retries,
-                           size_t max_eps)
+                           size_t indices_count)
 ```
 
-C wrapper for `notifyDataClean()`. Notifies the manager about data cleaning for specified indices. This function sends DataClean messages for each index in the provided array. The sequence is: Start → StartAck → DataClean (for each index) → End → EndAck. Upon receiving Ok, it clears the local database and returns true.
+C wrapper for `notifyDataClean()`. Notifies the manager about data cleaning for specified indices.
 
 **Parameters:**
 - `handle`: Protocol handle
 - `indices`: Array of index name strings to clean
 - `indices_count`: Number of indices in the array
-- `sync_timeout`: Timeout in seconds
-- `sync_retries`: Number of retries
-- `max_eps`: Maximum events per second
 
 **Returns:** `true` if notification completed successfully and database was cleared, `false` otherwise
 

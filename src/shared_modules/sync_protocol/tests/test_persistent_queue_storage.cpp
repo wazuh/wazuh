@@ -403,13 +403,29 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetSelectsPrefixOnl
     EXPECT_EQ(secondBlock[0].id, "id2");
 }
 
+// An oversized single item (bigger than the byte cap) must still be returned so
+// the queue does not get stuck, BUT the implementation must emit a LOG_WARNING
+// rather than silently swallowing the violation.
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtLeastOneItem)
 {
-    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    // Use a fresh storage instance with a capturing logger.
+    bool warnEmitted = false;
+    LoggerFunc capturingLogger = [&warnEmitted](modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING && msg.find("exceeds") != std::string::npos)
+        {
+            warnEmitted = true;
+        }
+    };
+    auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
 
-    const auto block = storage->fetchAndMarkForSync(1);
+    capStorage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+
+    // Budget of 1 byte — the item is far larger than that.
+    const auto block = capStorage->fetchAndMarkForSync(1);
     ASSERT_EQ(block.size(), static_cast<size_t>(1));
     EXPECT_EQ(block[0].id, "id1");
+    EXPECT_TRUE(warnEmitted) << "Expected LOG_WARNING when a single item exceeds the byte cap";
 }
 
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAllPendingRows)

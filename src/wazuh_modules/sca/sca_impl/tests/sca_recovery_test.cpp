@@ -93,7 +93,7 @@ class SCARecoveryTest : public ::testing::Test
             try
             {
                 m_sca->initSyncProtocol("test_module", "test_sync.db",
-                                        std::chrono::seconds(30), 3, integrityInterval);
+                                        integrityInterval);
             }
             catch (const std::exception&)
             {
