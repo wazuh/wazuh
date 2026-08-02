@@ -659,10 +659,7 @@ TEST_F(MonitoringTest, TheDestructorDoesNotWaitForTheRoundToRequestStop)
     ASSERT_TRUE(gate.entered());
 
     // Destroy from another thread so this one can time how long it takes to reach the flag.
-    std::thread destroyer {[&monitoring]
-                           {
-                               monitoring.reset();
-                           }};
+    std::thread destroyer {[&monitoring] { monitoring.reset(); }};
 
     std::this_thread::sleep_for(std::chrono::milliseconds {100});
     stopRequested.store(true);

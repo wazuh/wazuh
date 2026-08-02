@@ -59,9 +59,7 @@ namespace invsync::common
             return false;
         }
 
-        struct stat existing
-        {
-        };
+        struct stat existing {};
         if (::stat(socketPath.c_str(), &existing) == 0 && !S_ISSOCK(existing.st_mode))
         {
             reason = "a file that is not a socket already exists there, and it will not be removed";
@@ -71,9 +69,7 @@ namespace invsync::common
         const auto slash = socketPath.find_last_of('/');
         const std::string parent = (slash == std::string::npos) ? std::string {"."} : socketPath.substr(0, slash);
 
-        struct stat parentStat
-        {
-        };
+        struct stat parentStat {};
         if (::stat(parent.c_str(), &parentStat) != 0 || !S_ISDIR(parentStat.st_mode))
         {
             reason = "its parent directory '" + parent + "' does not exist";
