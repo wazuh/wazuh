@@ -3297,9 +3297,10 @@ void test_remoted_module_https_config_custom_values(void** state)
 /* Tests w_remoted_build_module_config */
 //
 // w_remoted_build_module_config() calls remoted_module_https_config() internally, so
-// each test below must queue the same 21 __wrap_getDefine_Int_default return values
-// (in the same fixed order) as the remoted_module_https_config tests above, even
-// though these tests assert on the <https>-driven fields instead.
+// each test below must queue the same 24 __wrap_getDefine_Int_default return values
+// (12 http_*, then 3 memory-management, then 6 downstream_*, then 3 auth_*, in that
+// fixed order) as the remoted_module_https_config tests above, even though these
+// tests assert on the <https>-driven fields instead.
 
 void test_w_remoted_build_module_config_all_fields_populated(void** state)
 {
@@ -3330,6 +3331,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
+    // memory-management
+    will_return(__wrap_getDefine_Int_default, 268435456);
+    will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 256);
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3380,6 +3385,9 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 4);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 268435456);
+    will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
