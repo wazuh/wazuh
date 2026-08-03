@@ -2,7 +2,7 @@
 
 The **Container Images** module uses the same C and C++ split used by other Wazuh modules. The C layer lives inside `wazuh-modulesd` and handles configuration, lifecycle, dynamic loading, and logging. The C++ shared library contains the scan loop and image reader implementation.
 
-> **Note:** This first development stage covers module startup, local OCI image layout discovery, metadata reading, and logging. Package extraction, persistence, event generation, and synchronization are not part of this stage.
+> **Note:** This development stage covers module startup, local OCI image layout discovery, metadata reading, logging, and local persistence of the package inventory. Package extraction from image layers, event generation, and synchronization are not part of this stage.
 
 ---
 
@@ -128,7 +128,7 @@ This stage does not generate inventory events.
 | Event type | Status | Notes |
 |------------|--------|-------|
 | Stateless alerts | Not implemented | Planned for later inventory changes. |
-| Stateful events | Not implemented | Requires persistence and synchronization support. |
+| Stateful events | Not implemented | Inventory is persisted locally; requires synchronization support. |
 | Data clean notifications | Not implemented | Requires synchronization support. |
 
 The current observable output is logging from the module scan flow.

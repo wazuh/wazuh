@@ -9,7 +9,7 @@
  */
 
 #include "container_images_impl.hpp"
-#include "local_image_reader.hpp"
+#include "stub_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
 #include <chrono>
@@ -26,56 +26,93 @@ namespace
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, message);
     }
+
+    std::string operationName(ReturnTypeCallback operation)
+    {
+        switch (operation)
+        {
+            case INSERTED: return "created";
+            case MODIFIED: return "modified";
+            case DELETED: return "deleted";
+            default: return "unknown";
+        }
+    }
 } // namespace
 
 namespace containerimages
 {
-    std::unique_ptr<IImageReader> makeReader(const std::string& path)
+    std::unique_ptr<IImageReader> makeReader(const std::string& /*path*/)
     {
-        return std::make_unique<LocalImageReader>(path);
+        // Real source selection (local OCI, registry, socket) lands in a later stage.
+        // Until then the stub reader feeds a fixed inventory through the storage and
+        // sync path so it can be validated end to end.
+        return std::make_unique<StubImageReader>();
     }
 
     ContainerImagesImpl::ContainerImagesImpl(ContainerImagesConfig config,
-                                             std::function<std::unique_ptr<IImageReader>(const std::string&)> readerFactory)
+                                             std::function<std::unique_ptr<IImageReader>(const std::string&)> readerFactory,
+                                             std::shared_ptr<ContainerImagesDB> db)
         : m_config {std::move(config)}
         , m_readerFactory {std::move(readerFactory)}
+        , m_db {db ? std::move(db) : std::make_shared<ContainerImagesDB>(m_config.dbPath)}
     {
+    }
+
+    void ContainerImagesImpl::onDelta(ReturnTypeCallback operation,
+                                      const std::string& table,
+                                      const std::string& id,
+                                      const std::string& data,
+                                      std::uint64_t version)
+    {
+        // The delta payload and version are already extracted here so the synchronization
+        // layer can be attached at this point without reshaping the storage code.
+        (void)data;
+        (void)version;
+
+        logDebug("Inventory " + operationName(operation) + " in " + table + ": " + id + ".");
+    }
+
+    void ContainerImagesImpl::clearInventory()
+    {
+        m_db->dropTables();
     }
 
     std::size_t ContainerImagesImpl::scanOnce()
     {
-        if (m_config.localPaths.empty())
+        const auto reader {m_readerFactory("")};
+
+        if (!reader)
         {
-            logInfo("No local sources configured, nothing to scan.");
             return 0;
         }
 
         logInfo("Scan started.");
 
-        std::size_t total = 0;
+        const auto references {reader->discover()};
 
-        for (const auto& path : m_config.localPaths)
+        const auto deltaCallback = [this](ReturnTypeCallback operation,
+                                          const std::string & table,
+                                          const std::string & id,
+                                          const std::string & data,
+                                          std::uint64_t version)
         {
-            const auto reader = m_readerFactory(path);
+            onDelta(operation, table, id, data, version);
+        };
 
-            if (!reader)
-            {
-                continue;
-            }
+        m_db->syncReferences(references, deltaCallback);
+        m_db->syncPackages(references, deltaCallback);
 
-            const auto references = reader->discover();
+        std::size_t packageCount {0};
 
-            for (const auto& reference : references)
-            {
-                logDebug("Discovered image reference " + reference.source.location + " (" + reference.source.sourceType +
-                         ") digest=" + reference.configDigest + ".");
-            }
-
-            total += references.size();
+        for (const auto& reference : references)
+        {
+            packageCount += reference.packages.size();
         }
 
-        logInfo("Scan ended. Discovered " + std::to_string(total) + " image references.");
-        return total;
+        logInfo("Scan ended. " + std::to_string(references.size()) + " references, " +
+                std::to_string(packageCount) + " packages.");
+
+        return packageCount;
     }
 
     void ContainerImagesImpl::run()

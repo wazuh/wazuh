@@ -12,6 +12,8 @@
 #include "container_images.h"
 #include "ci_logging_helper.hpp"
 
+#include "dbsync.hpp"
+
 #include <exception>
 #include <string>
 
@@ -25,6 +27,13 @@ void ContainerImages::setLogFunction(const std::function<void(const modules_log_
 
 void ContainerImages::init(const containerimages::ContainerImagesConfig& config)
 {
+    // DBSync routes its internal errors through this static logger. Initialize once,
+    // before any DBSync instance is created.
+    DBSync::initialize([](const std::string & message)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, message);
+    });
+
     m_impl = std::make_unique<containerimages::ContainerImagesImpl>(config);
     LoggingHelper::getInstance().log(LOG_DEBUG, "Module initialized.");
 }

@@ -4,7 +4,7 @@ The **Container Images** module introduces agent-side support for collecting inv
 
 The module is implemented as an **agent-only** `wazuh-modulesd` module. It follows the same module layout used by other inventory components: a C glue layer handles configuration and lifecycle, while a C++ shared library contains the scan logic.
 
-> **Note:** This stage covers module scaffolding, local OCI layout discovery, metadata reading, and logging. Package extraction, local persistence, change events, manager synchronization, indexing, Vulnerability Detector integration, and runtime or registry readers are not implemented yet.
+> **Note:** This stage covers module scaffolding, local OCI layout discovery, metadata reading, logging, and local persistence of the package inventory. Package extraction from image layers, change events, manager synchronization, indexing, Vulnerability Detector integration, and runtime or registry readers are not implemented yet.
 
 ## Overview
 
@@ -69,8 +69,7 @@ wazuh-modulesd:container_images: INFO: Scan ended. Discovered 1 image references
 ## Current Limitations
 
 - Package extraction from image layers is not implemented.
-- Local SQLite persistence and DBSync integration are not implemented.
-- Agent Sync Protocol synchronization is not implemented.
+- Agent Sync Protocol synchronization is not implemented, so the stored inventory stays on the agent.
 - Vulnerability Detector integration is not implemented.
 - Runtime, registry, archive, Windows, and Kubernetes integrations are not implemented.
 
@@ -81,3 +80,4 @@ wazuh-modulesd:container_images: INFO: Scan ended. Discovered 1 image references
 | [Configuration](configuration.md) | Configuration options, defaults, and source references |
 | [Architecture](architecture.md) | Technical architecture, data flow, and threading model |
 | [API Reference](api-reference.md) | Internal C and C++ interfaces |
+| [Persistence](persistence.md) | Package inventory storage, schema, and change detection |
