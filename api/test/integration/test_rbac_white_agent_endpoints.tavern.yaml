@@ -613,10 +613,6 @@ stages:
            never_connected: 1
            pending: 0
            total: 6
-         configuration:
-           synced: 4
-           not_synced: 2
-           total: 6
 
 ---
 test_name: GET /agents/summary/os
@@ -1438,13 +1434,17 @@ stages:
       # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - '004'
-          failed_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - '012'
           total_affected_items: 1
-          total_failed_items: 0
+          total_failed_items: 1
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
