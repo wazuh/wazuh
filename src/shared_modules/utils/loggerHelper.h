@@ -279,7 +279,13 @@ namespace Log
     };
     // Pre-bound log wrapper. Holds a tag string and dispatches through GLOBAL_LOG_FUNCTION.
     // Use via LOGFN_* macros so that source location is captured at the call site.
-    struct LogFn
+    //
+    // The type keeps default visibility even though the surrounding block is hidden: LogFn is
+    // embedded as a member (m_logFn) in default-visibility classes (TRocksDBWrapper, dispatchers,
+    // ...) that are ODR-merged across shared objects. A hidden member type in a visible, merged
+    // class is an ODR/ABI mismatch that corrupts m_tag. The dispatch methods below stay hidden so
+    // each DSO still reads its own GLOBAL_LOG_FUNCTION (see the block comment above).
+    struct __attribute__((visibility("default"))) LogFn
     {
         std::string m_tag;
 
@@ -315,7 +321,7 @@ namespace Log
             return m_tag.c_str();
         }
 
-        void info(SourceFile src, const char* fmt, ...) const
+        __attribute__((visibility("hidden"))) void info(SourceFile src, const char* fmt, ...) const
         {
             if (GLOBAL_LOG_FUNCTION)
             {
@@ -326,7 +332,7 @@ namespace Log
             }
         }
 
-        void warn(SourceFile src, const char* fmt, ...) const
+        __attribute__((visibility("hidden"))) void warn(SourceFile src, const char* fmt, ...) const
         {
             if (GLOBAL_LOG_FUNCTION)
             {
@@ -337,7 +343,7 @@ namespace Log
             }
         }
 
-        void debug1(SourceFile src, const char* fmt, ...) const
+        __attribute__((visibility("hidden"))) void debug1(SourceFile src, const char* fmt, ...) const
         {
             if (GLOBAL_LOG_FUNCTION)
             {
@@ -348,7 +354,7 @@ namespace Log
             }
         }
 
-        void debug2(SourceFile src, const char* fmt, ...) const
+        __attribute__((visibility("hidden"))) void debug2(SourceFile src, const char* fmt, ...) const
         {
             if (GLOBAL_LOG_FUNCTION)
             {
@@ -359,7 +365,7 @@ namespace Log
             }
         }
 
-        void error(SourceFile src, const char* fmt, ...) const
+        __attribute__((visibility("hidden"))) void error(SourceFile src, const char* fmt, ...) const
         {
             if (GLOBAL_LOG_FUNCTION)
             {
