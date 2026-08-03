@@ -392,11 +392,21 @@ list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_generate_cert")
-list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                                -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen")
+set(GENERATE_CERT_FLAGS "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
+                         -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
+                         -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
+                         -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
+                         -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen")
+if(${TARGET} STREQUAL "winagent")
+# Same reason as the siblings above: the file wraps pull win_utils.obj and
+# win_service.obj out of DEPENDENCIES_O, and those reference symbols that live
+# in the syscheckd DLL this binary does not link.
+list(APPEND shared_tests_flags "${GENERATE_CERT_FLAGS} -Wl,--wrap,syscom_dispatch \
+                                -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${GENERATE_CERT_FLAGS}")
+endif()
 
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
