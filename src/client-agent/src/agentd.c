@@ -212,23 +212,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             close(agt->execdq);
             agt->execdq=-1;
 
-            // wazuh-control reload sends SIGUSR1 after new processes are started.
-            // Release the startup gate now so modules blocked in
-            // startup_gate_wait_for_ready() can proceed with the new config.
-            startup_gate_refresh_from_local_hash();
-
-            // Same signal, HTTPS-side release (#37831): startup_gate_refresh_from_local_hash()
-            // above is a no-op for a pure-HTTPS agent (it only ever does anything once the
-            // legacy handshake's startup_gate_process_handshake() has populated
-            // startup_gate_expected_sum, which never happens without a legacy handshake).
-            // bridge_on_config_downloaded() (https_client_bridge.c) deliberately does NOT
-            // release the gate inline when reloadAgent() succeeds, to avoid the same
-            // start-then-killed race this file's own reload chain is designed to avoid
-            // (a module blocked in startup_gate_wait_for_ready() unblocking and starting a
-            // moment before this SIGUSR1 restarts it anyway). This is the other half of that
-            // deferral: release once the restart this SIGUSR1 represents has actually
-            // happened. A no-op when already released (own guard) or when nothing was ever
-            // pending via the HTTPS apply chain.
+            // wazuh-control reload sends SIGUSR1 once the new processes are up:
+            // bridge_on_config_downloaded() defers the gate release to here so a
+            // module does not start a moment before the reload restarts it.
             startup_gate_release_from_https_apply();
         }
 
