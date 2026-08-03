@@ -129,6 +129,41 @@ static void test_manager_config_hash_mismatch_keeps_gate_blocked(void **state) {
     assert_gate_state(false, "waiting_config_hash");
 }
 
+/* An empty (contract-legal) manager hash means there is no configuration to
+ * wait for: nothing downloads, so the gate must open or every module blocks
+ * forever in startup_gate_wait_for_ready(). No OS_SHA256_File mock is queued --
+ * the local file is irrelevant here. */
+static void test_manager_config_hash_empty_releases_gate(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: the manager reported no configuration, gate released.");
+
+    startup_gate_check_manager_config_hash("");
+
+    assert_gate_state(true, "no_manager_config");
+}
+
+/* Same for an absent field (NULL). */
+static void test_manager_config_hash_null_releases_gate(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: the manager reported no configuration, gate released.");
+
+    startup_gate_check_manager_config_hash(NULL);
+
+    assert_gate_state(true, "no_manager_config");
+}
+
+/* Already released (remote_conf disabled): silent, and no file is read. */
+static void test_manager_config_hash_is_noop_when_released(void **state) {
+    (void)state;
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+    startup_gate_check_manager_config_hash("");
+
+    assert_gate_state(true, "disabled");
+}
+
 /* First boot, no local merged.mg: nothing to compare. */
 static void test_manager_config_hash_without_local_file_keeps_gate_blocked(void **state) {
     (void)state;
@@ -191,6 +226,12 @@ int main(void) {
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_manager_config_hash_without_local_file_keeps_gate_blocked,
                                         setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_empty_releases_gate,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_null_releases_gate,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_is_noop_when_released,
+                                        setup_remote_conf_disabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_releases_blocked_gate,
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_when_disabled,

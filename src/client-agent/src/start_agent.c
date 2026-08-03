@@ -119,10 +119,19 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
 }
 
 /* Populate shared memory with agent metadata so the first keepalive already
- * contains full agent info. */
+ * contains full agent info.
+ *
+ * Serialized: start_agent() publishes from the main thread while
+ * bridge_on_startup_result() publishes from the module's dispatcher thread, and
+ * metadata_provider_update() has no writer lock of its own -- it only raises an
+ * `updating` flag readers poll, so two overlapping writers would clear it while
+ * one is still copying and a reader would get a torn record. */
 void w_agentd_populate_metadata(void)
 {
+    static pthread_mutex_t metadata_mutex = PTHREAD_MUTEX_INITIALIZER;
     agent_metadata_t metadata = {0};
+
+    w_mutex_lock(&metadata_mutex);
 
 #ifdef WIN32
     os_info *os = get_win_version();
@@ -213,6 +222,8 @@ void w_agentd_populate_metadata(void)
         }
         free(metadata.groups);
     }
+
+    w_mutex_unlock(&metadata_mutex);
 }
 
 /**
