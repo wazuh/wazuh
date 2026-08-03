@@ -133,14 +133,10 @@ int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     return 0;
 }
 
-/* AG_IN_UNMERGE manager-visible report on unmerge failure: no shared wrapper
- * for this ABI either (test_start_agent.c/test_manager.c each define their
- * own local one the same way, since send_msg lives in client-agent/src/sendmsg.c). */
-int __wrap_send_msg(const char *msg, ssize_t msg_length)
+/* bridge_on_startup_result republishes the agent metadata; the real one
+ * (start_agent.c) would touch the metadata shared memory, out of scope here. */
+void __wrap_w_agentd_populate_metadata(void)
 {
-    check_expected(msg);
-    (void)msg_length;
-    return 0;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -1076,9 +1072,12 @@ static void test_config_downloaded_unmerge_failure_corrects_module_hash(void **s
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: failed to unmerge the downloaded configuration "
                   "('" SHAREDCFG_FILE "'); keeping the previously applied files.");
-    /* AG_IN_UNMERGE-equivalent manager-visible report (mirrors receiver.c's
-     * own send_msg() on this exact failure). */
-    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Could not unmerge shared file.");
+    /* AG_IN_UNMERGE manager-visible report, now submitted to the /stateless
+     * accumulator like any other event. */
+    expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_submit_event, frame, "1:wazuh-agent:wazuh: Could not unmerge shared file.");
+    expect_any(__wrap_hc_submit_event, length);
+    will_return(__wrap_hc_submit_event, true);
     expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_config_hash, config_hash, "");
     will_return(__wrap_hc_set_config_hash, true);
@@ -1826,6 +1825,43 @@ static void test_upgrade_thread_lock_restart_send_failure_still_dispatches(void 
     bridge_upgrade_thread(ctx);
 }
 
+/* bridge_on_buffer_level: the same wazuh-agent.buffer event the leaky bucket
+ * emitted, now through the accumulator. */
+static void test_buffer_level_full_emits_the_state_event(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mwarn, formatted_msg, FULL_BUFFER);
+    expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_submit_event, frame,
+                  "1:wazuh-agent:{\"event.module\":\"wazuh-agent\",\"event.category\":\"change\","
+                  "\"event.dataset\":\"wazuh-agent.buffer\",\"event.severity\":2,"
+                  "\"event.action\":\"full\"}");
+    expect_any(__wrap_hc_submit_event, length);
+    will_return(__wrap_hc_submit_event, true);
+
+    g_captured_callbacks.on_buffer_level(HC_BUFFER_FULL, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* An unknown level is traced, not reported. */
+static void test_buffer_level_unknown_is_traced_only(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug2, formatted_msg, "https_client: unknown buffer level 42.");
+    /* No hc_submit_event expectation: nothing may be emitted. */
+
+    g_captured_callbacks.on_buffer_level(42, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1855,6 +1891,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_rejected_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_auth_error_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_forwards_the_frame_to_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_buffer_level_full_emits_the_state_event, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_buffer_level_unknown_is_traced_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_reports_a_dropped_frame, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_rejects_an_empty_frame, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_before_start, setup_test, teardown_test),

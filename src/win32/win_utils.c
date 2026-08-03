@@ -194,9 +194,6 @@ int local_start()
 
     startup_gate_initialize();
 
-    /* Initialize sender */
-    sender_init();
-
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
@@ -228,20 +225,11 @@ int local_start()
     /* Set wait lock before starting threads */
     os_setwait();
 
-    /* Initialize buffer before starting threads that may use it */
-    if (agt->buffer) {
-        buffer_init();
-    } else {
-        minfo(DISABLED_BUFFER);
-    }
-
-    /* HTTPS client: the agent's transport, unconditionally (mirrors AgentdStart
-     * on POSIX; the Windows startup path is separate). Started here, with the
-     * legacy buffer and before any producer thread, for the same reason that
-     * one is: on Windows the modules call SendMSG in-process, so an event
+    /* HTTPS client: the agent's only transport (mirrors AgentdStart on POSIX;
+     * the Windows startup path is separate). Started before any producer
+     * thread: on Windows the modules call SendMSG in-process, so an event
      * emitted before the accumulator exists is dropped outright rather than
-     * waiting in a queue as it would on POSIX. The server address and the keys
-     * are both already validated by this point (see above). */
+     * waiting in a queue as it would on POSIX. */
     w_https_client_start();
     atexit(w_https_client_stop);
 
@@ -329,9 +317,6 @@ int local_start()
         }
     }
 
-    /* Socket connection */
-    agt->sock = -1;
-
     /* Initialize random numbers */
     srandom(time(0));
     os_random();
@@ -347,16 +332,6 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Launch dispatch thread */
-    if (agt->buffer) {
-        w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }
-
     /* Configure and start statistics */
     w_agentd_state_init();
     w_create_thread(NULL,
@@ -369,25 +344,20 @@ int local_start()
     start_agent(1);
 
     os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
-
-    /* Start request module */
-    req_init();
-    w_create_thread(NULL,
-                     0,
-                     req_receiver,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
 
     /* Delete agent state file at exit */
     atexit(DeleteState);
 
-    /* Send agent stopped message at exit */
-    atexit(send_agent_stopped_message);
+    /* Main thread from here on. With no manager socket left to read, all that
+     * remains of the old receiver loop is expiring the active-response
+     * timeouts, which only this thread runs. */
+    while (1) {
+        if (agt->execdq >= 0) {
+            ExecdTimeoutRun();
+        }
 
-    /* Start receiver -- main process here */
-    receiver_messages();
+        sleep(1);
+    }
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);
@@ -436,24 +406,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
-    /* Stateless events -> HTTPS /stateless accumulator (#37835). Stateful ('s')
-     * frames keep the legacy buffer/send_msg path until #37836 wires /stateful.
+    /* Every event goes to the HTTPS /stateless accumulator; sync sessions are
+     * handed to the module in-process (bridge_submit_sync_session).
      * (Windows has no DGRAM queue; SendMSGAction is the in-process EventForward.) */
-    if (loc == 's') {
-        if (!agt->buffer){
-            w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-            if (send_msg(tmpstr, -1) >= 0) {
-                retval = 0;
-            }
-        } else {
-            buffer_append(tmpstr, -1);
-            retval = 0;
-        }
-    } else {
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        w_https_client_submit_event(tmpstr, strlen(tmpstr));
-        retval = 0;
-    }
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+    w_https_client_submit_event(tmpstr, strlen(tmpstr));
+    retval = 0;
 
     if (!ReleaseMutex(hMutex)) {
         merror("Error releasing mutex.");
@@ -528,19 +486,10 @@ int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, 
     // Append the binary payload
     memcpy(p, message, message_len);
 
-    // Dispatch the message (either to buffer or directly)
-    if (!agt->buffer) {
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        // Pass the constructed message and its *actual size*.
-        if (send_msg(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
-    } else {
-        // Pass the constructed message and its *actual size* to the buffer.
-        if (buffer_append(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
-    }
+    // Dispatch the message with its *actual size* (binary payload: no strlen).
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+    w_https_client_submit_event(tmpstr, total_len);
+    retval = 0;
 
     // Release the mutex
     if (!ReleaseMutex(hMutex)) {

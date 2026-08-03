@@ -40,35 +40,15 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
-set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,OS_ConnectUDP \
-                            -Wl,--wrap,OS_SetKeepalive -Wl,--wrap,OS_SetKeepalive_Options -Wl,--wrap,OS_SetSendTimeout \
-                            -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
-                            -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
+set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
+                            -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                             -Wl,--wrap=_imp__dbsync_initialize \
-                            -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
-                            -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,w_calloc_expression_t -Wl,--wrap,w_expression_compile -Wl,--wrap,w_expression_match \
-                            -Wl,--wrap,w_free_expression_t -Wl,--wrap,OS_CloseSocket \
                             -Wl,--wrap,metadata_provider_update -Wl,--wrap,get_unix_version -Wl,--wrap,get_win_version -Wl,--wrap,free_osinfo")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,w_query_agentd")
 else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS}")
-endif()
-
-list(APPEND client-agent_names "test_notify")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
-                                -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
-                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                                -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
-else()
-list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
-                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND client-agent_names "test_agentd_state")
@@ -81,36 +61,26 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                     -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_PrintUnformatted@4 \
                                     -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--wrap,w_query_agentd -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
                                     -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
-                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_PrintUnformatted \
                                     -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
-endif()
-
-list(APPEND client-agent_names "test_buffer")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,getDefine_Int \
-                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap,w_query_agentd")
-else()
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 endif()
 
 list(APPEND client-agent_names "test_agcom")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig \
                                 -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get \
                                 -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                 -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
 else()
-list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig \
                                 -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
 endif()
@@ -121,13 +91,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,w_https_client_start -Wl,--wrap,w_https_client_stop ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_startup_gate")
-list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
-
-list(APPEND client-agent_names "test_sendmsg")
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
-                                -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,CreateSecMSG \
-                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_CloseSocket")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -139,7 +103,8 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
                                 -Wl,--wrap,wfopen \
-                                -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent -Wl,--wrap,send_msg \
+                                -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
+                                -Wl,--wrap,w_agentd_populate_metadata \
                                 -Wl,--wrap,startup_gate_release_from_https_apply -Wl,--wrap,os_delwait \
                                 -Wl,--wrap,OS_SHA256_File \
                                 -Wl,--wrap,task_registry_check_and_record \

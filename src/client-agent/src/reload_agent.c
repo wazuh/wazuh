@@ -18,7 +18,7 @@
 #include "client-config.h"
 #include "wmodules.h"
 #include "agentd.h"
-#include "sendmsg.h"
+#include "https_client_bridge.h"
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
@@ -122,10 +122,7 @@ int verifyRemoteConf(){
     } else if (Test_Client(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "client");
 		goto fail;
-	} else if (Test_ClientBuffer(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "client_buffer");
-		goto fail;
-    } else if (Test_WModule(configPath) < 0) {
+	} else if (Test_WModule(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "wodle");
 		goto fail;
     }
@@ -134,6 +131,7 @@ int verifyRemoteConf(){
 
 	fail:
 		mdebug2("Invalid remote configuration received");
-		send_msg(msg_output, -1);
+		/* Manager-visible report, now over /stateless. */
+		w_https_client_submit_event(msg_output, strlen(msg_output));
 		return OS_INVALID;
 };

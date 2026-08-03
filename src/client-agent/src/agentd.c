@@ -33,13 +33,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Initialize module limits with default values */
     module_limits_init(&agent_module_limits);
 
-    available_server = 0;
-
     /* Initial random numbers must happen before chroot */
     srandom_init();
-
-    /* Initialize sender */
-    sender_init();
 
     /* Going Daemon */
     if (!run_foreground) {
@@ -78,7 +73,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         mdebug1("Version detected -> %s", getuname());
     }
 
-    /* Try to connect to server */
+    /* Producer lock. Driving it from the HTTPS connection state is #38010. */
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
@@ -86,8 +81,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
-    maxfd = agt->m_queue;
-    agt->sock = -1;
+    maxfd = agt->m_queue + 1;
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -112,28 +106,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         w_create_thread(w_rotate_log_thread, (void *)NULL);
     }
 
-    /* Launch dispatch thread */
-    if (agt->buffer){
-
-        buffer_init();
-
-        w_create_thread(dispatch_buffer, (void *)NULL);
-    } else {
-        mdebug1(DISABLED_BUFFER);
-    }
-
     /* Configure and start statistics */
     w_agentd_state_init();
     w_create_thread(state_main, NULL);
 
-    /* Set max fd for select */
-    if (agt->sock > maxfd) {
-        maxfd = agt->sock;
-    }
-
-    /* HTTPS client: the agent's transport, unconditionally. Still runs
-     * independently of the legacy TCP path below until that is retired
-     * (later workstream). See client-agent/https_client and the bridge. */
+    /* HTTPS client: the agent's only transport. It owns the connection
+     * lifecycle, the keepalives, the buffering and the shutdown notification. */
     w_https_client_start();
 
     /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
@@ -144,7 +122,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent(1);
 
     os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     // Ignore SIGPIPE signal to prevent the process from crashing
     struct sigaction act;
@@ -152,123 +129,24 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
 
-    // Start request module
-    req_init();
-    w_create_thread(req_receiver, NULL);
-
     // Start local socket listener for agcom requests (Unix only)
     w_create_thread(agcom_main, NULL);
 
-    /* Send agent stopped message at exit */
-    atexit(send_agent_stopped_message);
-
-    /* Send first notification */
-    run_notify();
-
-    /* Maxfd must be higher socket +1 */
-    maxfd++;
-
-    /* Monitor loop */
+    /* Monitor loop. The local event queue is the only descriptor left, so the
+     * per-iteration work runs before the wait: an idle agent still handles a
+     * pending SIGUSR1 reload. */
     while (1) {
-
-        /* Continuously send notifications */
-        run_notify();
-
-        /* agt->sock is permanently -1: the legacy TCP path has been retired
-         * (start_agent() no longer attempts it, see its own comment), so there
-         * is no descriptor to reconnect. Everything below that used to depend
-         * on a valid sock -- needs_config_reload handling, execdq, the queue
-         * forwarder -- must run every iteration regardless, gated only by the
-         * select() timeout below; sock-specific operations are individually
-         * guarded instead of short-circuiting the whole loop body. */
-        const int sock = agt->sock;
-
-        if (sock >= 0 && sock > maxfd - 1) {
-            maxfd = sock + 1;
-        }
-
-        /* Monitor all available sockets from here */
-        FD_ZERO(&fdset);
-        if (sock >= 0) {
-            FD_SET(sock, &fdset);
-        }
-        FD_SET(agt->m_queue, &fdset);
-
-        fdtimeout.tv_sec = 1;
-        fdtimeout.tv_usec = 0;
-
-        /* Wait with a timeout for any descriptor */
-        do {
-            rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
-        } while (rc < 0 && errno == EINTR);
-
-        if (rc == -1) {
-            /* EBADF can occur if a non-main thread closed agt->sock while we
-             * were inside select(). Nothing reconnects it (legacy is retired),
-             * so just make sure the next iteration's FD_SET() skips it too. */
-            if (errno == EBADF) {
-                agt->sock = -1;
-                continue;
-            }
-            merror_exit(SELECT_ERROR, errno, strerror(errno));
-        } else if (rc == 0) {
-            continue;
-        }
 
         /* Check the flag for pending configuration reload */
         if (needs_config_reload) {
             needs_config_reload = false;
 
             close(agt->execdq);
-            agt->execdq=-1;
+            agt->execdq = -1;
 
-            // Update buffer configuration
-            const char *cfg = WAZUHCONF;
-            unsigned int current_capacity = agt->buflength;
-            int current_buffer_flag = agt->buffer;
-
-            mdebug2("Buffer pre-update, enable: %i size: %i ", agt->buffer, current_capacity);
-
-            if (ReadConfig(CBUFFER, cfg, NULL, agt) < 0) {
-                mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-            }
-
-            if (agt->flags.remote_conf) {
-                ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
-                mdebug1("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
-            }
-
-            //  Buffer was enabled, needs to be disabled
-            if (agt->buffer == 0 && current_buffer_flag != 0) {
-                w_agentd_buffer_free(current_capacity);
-            } else if (current_buffer_flag == 0 && agt->buffer != 0) {
-                // Buffer was disabled, needs to be enabled
-                buffer_init();
-                w_create_thread(dispatch_buffer, (void *)NULL);
-            } else if (agt->buffer != 0) {
-                // Buffer was enabled, stays enabled (potential resize)
-                w_agentd_buffer_resize(current_capacity, agt->buflength);
-            }
-
-            mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
-
-            // wazuh-control reload sends SIGUSR1 after new processes are started.
-            // Release the startup gate now so modules blocked in
-            // startup_gate_wait_for_ready() can proceed with the new config.
-            startup_gate_refresh_from_local_hash();
-
-            // Same signal, HTTPS-side release (#37831): startup_gate_refresh_from_local_hash()
-            // above is a no-op for a pure-HTTPS agent (it only ever does anything once the
-            // legacy handshake's startup_gate_process_handshake() has populated
-            // startup_gate_expected_sum, which never happens without a legacy handshake).
-            // bridge_on_config_downloaded() (https_client_bridge.c) deliberately does NOT
-            // release the gate inline when reloadAgent() succeeds, to avoid the same
-            // start-then-killed race this file's own reload chain is designed to avoid
-            // (a module blocked in startup_gate_wait_for_ready() unblocking and starting a
-            // moment before this SIGUSR1 restarts it anyway). This is the other half of that
-            // deferral: release once the restart this SIGUSR1 represents has actually
-            // happened. A no-op when already released (own guard) or when nothing was ever
-            // pending via the HTTPS apply chain.
+            // wazuh-control reload sends SIGUSR1 once the new processes are up:
+            // bridge_on_config_downloaded() defers the gate release to here so a
+            // module does not start a moment before the reload restarts it.
             startup_gate_release_from_https_apply();
         }
 
@@ -280,21 +158,23 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }
         }
 
-        /* For the receiver (legacy only -- sock is never valid without it) */
-        if (sock >= 0 && FD_ISSET(sock, &fdset)) {
-            if (receive_msg() < 0) {
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-                merror(LOST_ERROR);
-                os_setwait();
-                start_agent(0);
-                mdebug1(SERVER_UP);
-                os_delwait();
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
-            }
+        FD_ZERO(&fdset);
+        FD_SET(agt->m_queue, &fdset);
+
+        fdtimeout.tv_sec = 1;
+        fdtimeout.tv_usec = 0;
+
+        /* Wait with a timeout for the event queue */
+        do {
+            rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
+        } while (rc < 0 && errno == EINTR);
+
+        if (rc == -1) {
+            merror_exit(SELECT_ERROR, errno, strerror(errno));
         }
 
         /* For the forwarder */
-        if (FD_ISSET(agt->m_queue, &fdset)) {
+        if (rc > 0 && FD_ISSET(agt->m_queue, &fdset)) {
             EventForward();
         }
     }

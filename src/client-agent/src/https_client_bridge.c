@@ -26,12 +26,10 @@
  * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
  * release path either, also clears that producer lock on REGISTERED.
  * on_startup_result applies module limits and cluster-name authority, and
- * on_config_downloaded writes/applies merged.mg and releases the startup_gate
- * -- both were previously dev-scaffold stubs; see
- * startup_gate_release_from_https_apply()'s own comment for why that release
- * cannot reuse the legacy MD5-based gate machinery. Still pending (a later
- * integration workstream): retiring the legacy TCP data path this module runs
- * alongside.
+ * on_config_downloaded writes/applies merged.mg and releases the startup_gate.
+ *
+ * Since #38030 this is the agent's only transport, so every manager-visible
+ * message the C side still produces goes into its /stateless accumulator.
  */
 
 #include "https_client_bridge.h"
@@ -43,7 +41,6 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
-#include "sendmsg.h" /* send_msg(): the AG_IN_UNMERGE manager-visible report on unmerge failure */
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
@@ -54,10 +51,9 @@
 #include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* */
 
 #ifdef WIN32
-/* Declared (not static) in receiver.c; the AR forwarding path below mirrors
- * its exact legacy write, just triggered from a /control task instead of the
- * legacy TCP receiver. */
-extern w_queue_t *winexec_queue;
+/* The queue os_execd pops from. Lived in receiver.c; the /control
+ * active_response dispatch below is its only producer now. */
+w_queue_t *winexec_queue;
 
 /* asp_set_session_sender: registers this bridge's in-process /stateful session sender with
  * agent_sync_protocol, since Windows has no local socket for it to connect to (see
@@ -392,6 +388,10 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
 
     bridge_apply_cluster_identity(root);
     bridge_apply_agent_groups(root);
+
+    /* The cluster/groups the two calls above just wrote are what the metadata
+     * carries; the legacy handshake republished it at exactly this point. */
+    w_agentd_populate_metadata();
 
     cJSON_Delete(root);
 }
@@ -944,11 +944,10 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
         merror("https_client: failed to unmerge the downloaded configuration "
                "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
-        /* Manager-visible report, mirroring receiver.c's own AG_IN_UNMERGE event
-         * on the same failure. */
+        /* Manager-visible report, now over /stateless. */
         char unmerge_fail_msg[OS_MAXSTR];
         snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
-        send_msg(unmerge_fail_msg, -1);
+        w_https_client_submit_event(unmerge_fail_msg, strlen(unmerge_fail_msg));
         free_strarray(ignore_list);
         if (handle) {
             hc_set_config_hash(handle, "");
@@ -1158,20 +1157,35 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
-/* Occupancy thresholds the module reports against, kept so the log lines can
- * quote them exactly as buffer.c does. Filled by bridge_build_config() from the
- * same internal options buffer_init() reads. */
+/* Occupancy thresholds the module reports against, so the log lines can quote
+ * them as buffer.c did. Filled by bridge_build_config(). */
 static int g_buffer_warn_level = 90;
 static int g_buffer_normal_level = 70;
+
+/* The wazuh-agent.buffer occupancy event (manager flood rules 202-205), moved
+ * here from buffer.c. It used to bypass the ring it reported on; the accumulator
+ * is the only route out now, so a report can itself be dropped while the
+ * accumulator is full -- the mwarn below always reaches the agent log. */
+static void bridge_send_buffer_status_event(const char *action, int severity)
+{
+    char msg[OS_MAXSTR];
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.category", "change");
+    cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
+    cJSON_AddNumberToObject(event, "event.severity", severity);
+    cJSON_AddStringToObject(event, "event.action", action);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+    snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
+    w_https_client_submit_event(msg, strlen(msg));
+}
 
 /* Reports the accumulator's occupancy exactly as the legacy leaky bucket
  * reported the ring it replaced (client-agent/src/buffer.c): the same log lines
  * and the same wazuh-agent.buffer state event, so the manager-side flood rules
- * keep firing now that stateless events no longer pass through buffer_append().
- *
- * The state event bypasses the accumulator -- send_buffer_status_event() writes
- * straight to send_msg() -- exactly as buffer.c bypassed the ring it reports
- * on. A flood report must not queue behind the flood it is reporting. */
+ * keep firing now that the accumulator is what fills up. */
 static void bridge_on_buffer_level(int level, void *user_data)
 {
     (void)user_data;
@@ -1179,22 +1193,22 @@ static void bridge_on_buffer_level(int level, void *user_data)
     switch (level) {
     case HC_BUFFER_WARNING:
         mwarn(WARN_BUFFER, g_buffer_warn_level);
-        send_buffer_status_event("warning", 1);
+        bridge_send_buffer_status_event("warning", 1);
         break;
 
     case HC_BUFFER_FULL:
         mwarn(FULL_BUFFER);
-        send_buffer_status_event("full", 2);
+        bridge_send_buffer_status_event("full", 2);
         break;
 
     case HC_BUFFER_FLOOD:
         mwarn(FLOODED_BUFFER);
-        send_buffer_status_event("flooded", 3);
+        bridge_send_buffer_status_event("flooded", 3);
         break;
 
     case HC_BUFFER_NORMAL:
         mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
-        send_buffer_status_event("normal", 0);
+        bridge_send_buffer_status_event("normal", 0);
         break;
 
     default:
@@ -1309,11 +1323,8 @@ static bool bridge_build_config(hc_config_t *config)
     config->config_report_enabled = agt->config_report.enabled;
     config->config_report_interval_s = (uint32_t)agt->config_report.interval;
 
-    /* Occupancy ladder: the same internal options buffer_init() reads, so an
-     * operator who tuned the legacy client buffer keeps their thresholds now
-     * that the accumulator is what fills up. Read here rather than through
-     * buffer.c's globals because those are only set when the legacy buffer is
-     * enabled, and the accumulator applies either way. */
+    /* Occupancy ladder: the same internal options the legacy client buffer
+     * read, so tuned thresholds keep working. */
     g_buffer_warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     g_buffer_normal_level = getDefine_Int("agent", "normal_level", 0, g_buffer_warn_level - 1);
     config->buffer_warn_level = (uint32_t)g_buffer_warn_level;

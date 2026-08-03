@@ -16,8 +16,6 @@
 #include "module_limits.h"
 
 /* Global variables */
-time_t available_server;
-time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
@@ -25,7 +23,6 @@ agent *agt;
 anti_tampering *atc;
 #endif
 int remote_conf;
-int min_eps;
 int rotate_log;
 int agent_debug_level;
 
@@ -44,9 +41,6 @@ int ClientConf(const char *cfgfile)
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->profile = NULL;
-    agt->buffer = 1;
-    agt->buflength = 5000;
-    agt->events_persec = 600;
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
@@ -66,14 +60,12 @@ int ClientConf(const char *cfgfile)
     agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
     agt->enrollment_cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
-    if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CBUFFER, cfgfile, NULL, agt) < 0) {
+    if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);
     }
 
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
-        ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     } else {
         remote_conf = 0;
@@ -83,11 +75,6 @@ int ClientConf(const char *cfgfile)
         return OS_INVALID;
     }
 #endif
-
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
-        mwarn("Client buffer throughput too low: set to %d eps", min_eps);
-        agt->events_persec = min_eps;
-    }
 
     return (1);
 }
@@ -176,26 +163,6 @@ cJSON *getClientConfig(void) {
     return root;
 }
 
-cJSON *getBufferConfig(void) {
-
-    if (!agt) {
-        return NULL;
-    }
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *buffer = cJSON_CreateObject();
-
-    if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
-    cJSON_AddNumberToObject(buffer,"queue_size",agt->buflength);
-    cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
-
-    cJSON_AddItemToObject(root,"buffer",buffer);
-
-    return root;
-}
-
-
-
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void) {
 
@@ -226,17 +193,15 @@ cJSON *getAgentInternalOptions(void) {
 #else
     cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
 #endif
+    /* Read from the internal options: the globals that held these lived in the
+     * retired buffer.c/request.c. */
+    const int warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",tolerance);
-    cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
+    cJSON_AddNumberToObject(agent,"normal_level",getDefine_Int("agent", "normal_level", 0, warn_level - 1));
+    cJSON_AddNumberToObject(agent,"tolerance",getDefine_Int("agent", "tolerance", 0, 600));
+    cJSON_AddNumberToObject(agent,"recv_timeout",getDefine_Int("agent", "recv_timeout", 1, 600));
     cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"min_eps",min_eps);
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
-    cJSON_AddNumberToObject(agent,"request_pool",request_pool);
-    cJSON_AddNumberToObject(agent,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(agent,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(agent,"max_attempts",max_attempts);
 
     cJSON_AddItemToObject(internals,"agent",agent);
 
