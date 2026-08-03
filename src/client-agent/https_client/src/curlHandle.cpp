@@ -268,6 +268,13 @@ namespace
                 return code;
             }
 
+            std::string localIp() override
+            {
+                char* ip = nullptr;
+                curl_easy_getinfo(m_handle, CURLINFO_LOCAL_IP, &ip);
+                return ip != nullptr ? std::string(ip) : std::string();
+            }
+
         private:
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};

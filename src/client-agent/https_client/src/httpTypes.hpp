@@ -37,10 +37,10 @@ enum class OutcomeClass
     Ok,
     Retryable,
     BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
-    AuthFail,        ///< 401 (or 403): re-sign and retry on a slow cadence.
+    AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
-    VersionRejected, ///< 426 at Startup: REJECTED state, slow re-Startup.
+    VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     Interrupted      ///< Aborted by shutdown: never a silent success.
 };
 
@@ -81,6 +81,8 @@ inline int toHcResult(OutcomeClass outcome)
 struct HttpRequestSpec
 {
     std::string target;                ///< e.g. "/stateless" (also the MAC'd target).
+    std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
+    ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
     const uint8_t* body {nullptr};     ///< In-memory body (nullptr when file-backed).
     size_t bodyLength {0};
@@ -101,6 +103,8 @@ struct HttpResponse
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
     long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
+    ///< the agent's own address toward the manager.
     std::string body;
 };
 

@@ -70,6 +70,7 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
 
     response.status = handle->perform();
     response.httpCode = handle->responseCode();
+    response.localIp = handle->localIp();
     return response;
 }
 
@@ -179,6 +180,11 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     for (const auto& header : spec.headers)
     {
         handle.appendHeader(header);
+    }
+
+    if (!spec.contentType.empty())
+    {
+        handle.appendHeader("Content-Type: " + spec.contentType);
     }
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.

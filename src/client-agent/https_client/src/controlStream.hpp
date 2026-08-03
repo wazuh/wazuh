@@ -27,6 +27,7 @@
 #include "taskIdStore.hpp"
 #include "wpkFetcher.hpp"
 
+#include <functional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -46,7 +47,8 @@ class ControlStream final
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
-                      ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore);
+                      ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore,
+                      std::function<std::string()> collectHost = {});
 
         /// Safety net for any destruction path that doesn't go through HttpsClientFacade::
         /// stop() first (e.g. a test constructing a bare ControlStream): joins m_upgradeThread
@@ -91,6 +93,7 @@ class ControlStream final
         void maybeArmSettingsRefresh(const std::string& incoming);
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
+        void updateLocalIp(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
         const ModuleConfig& m_config;
@@ -105,6 +108,12 @@ class ControlStream final
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
         ITaskIdStore& m_taskStore;
+        /// Pull-source for the Notify host block, fed from the agent's
+        /// metadata_provider. Empty/unset -> no host block (metadata not ready).
+        std::function<std::string()> m_collectHost;
+        /// The agent's own IP (CURLINFO_LOCAL_IP), captured from the last
+        /// /control connection and reported as host.ip on the next Notify.
+        std::string m_localIp;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings
