@@ -13,7 +13,7 @@
 #include "shared.h"
 #include "wmodules.h"
 
-void __wrap_wm_task_cache_init(int cache_ttl);
+void __wrap_wm_task_cache_init(void);
 
 int __wrap_w_create_thread(void* (*function_pointer)(void*), void* data);
 

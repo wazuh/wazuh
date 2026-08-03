@@ -213,10 +213,10 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) {
     // Use default if not specified
     int limit = (max_tasks > 0) ? max_tasks : WM_TASK_DEFAULT_MAX_TASKS_PER_POLL;
 
-    // Check cache first
+    // Check cache first (only caches "no pending tasks" state)
     tasks = wm_task_cache_get(agent_id);
     if (tasks) {
-        mtdebug2(WM_TASK_MANAGER_LOGTAG, "Cache hit for agent %s", agent_id);
+        mtdebug2(WM_TASK_MANAGER_LOGTAG, "Cache hit for agent %s (no pending tasks)", agent_id);
         return tasks;
     }
 
@@ -247,35 +247,40 @@ cJSON* wm_task_manager_get_pending_tasks(const char *agent_id, int max_tasks) {
 
     // Duplicate tasks array
     tasks = cJSON_Duplicate(tasks_json, 1);
+    int task_count = cJSON_GetArraySize(tasks);
 
-    // Mark tasks as delivered
-    cJSON *task = NULL;
-    time_t delivery_time = time(NULL);
+    // If there are tasks, mark them as delivered
+    // IMPORTANT: Do NOT cache tasks - they should only be delivered once
+    if (task_count > 0) {
+        cJSON *task = NULL;
+        time_t delivery_time = time(NULL);
 
-    cJSON_ArrayForEach(task, tasks) {
-        cJSON *task_id_json = cJSON_GetObjectItem(task, "task_id");
-        if (task_id_json && cJSON_IsString(task_id_json)) {
-            cJSON *mark_params = cJSON_CreateObject();
-            cJSON_AddStringToObject(mark_params, "task_id", task_id_json->valuestring);
-            cJSON_AddNumberToObject(mark_params, "delivery_time", delivery_time);
+        cJSON_ArrayForEach(task, tasks) {
+            cJSON *task_id_json = cJSON_GetObjectItem(task, "task_id");
+            if (task_id_json && cJSON_IsString(task_id_json)) {
+                cJSON *mark_params = cJSON_CreateObject();
+                cJSON_AddStringToObject(mark_params, "task_id", task_id_json->valuestring);
+                cJSON_AddNumberToObject(mark_params, "delivery_time", delivery_time);
 
-            int mark_error = WM_TASK_SUCCESS;
-            cJSON *mark_response = wm_task_manager_send_message_to_wdb("mark_delivered", mark_params, &mark_error);
+                int mark_error = WM_TASK_SUCCESS;
+                cJSON *mark_response = wm_task_manager_send_message_to_wdb("mark_delivered", mark_params, &mark_error);
 
-            cJSON_Delete(mark_params);
-            if (mark_response) {
-                cJSON_Delete(mark_response);
+                cJSON_Delete(mark_params);
+                if (mark_response) {
+                    cJSON_Delete(mark_response);
+                }
             }
         }
+
+        mtdebug1(WM_TASK_MANAGER_LOGTAG, "Retrieved %d pending tasks for agent %s",
+                 task_count, agent_id);
+    } else {
+        // No tasks - cache this "empty" state to reduce DB queries
+        wm_task_cache_set(agent_id, tasks);
+        mtdebug2(WM_TASK_MANAGER_LOGTAG, "No pending tasks for agent %s, cached empty state", agent_id);
     }
 
     cJSON_Delete(response);
-
-    // Update cache
-    wm_task_cache_set(agent_id, tasks);
-
-    mtdebug1(WM_TASK_MANAGER_LOGTAG, "Retrieved %d pending tasks for agent %s",
-             cJSON_GetArraySize(tasks), agent_id);
 
     return tasks;
 }
