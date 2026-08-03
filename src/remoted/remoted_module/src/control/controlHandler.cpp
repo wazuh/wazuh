@@ -40,8 +40,15 @@ namespace remoted::control
             auto parseParts = [](const std::string& v) -> std::array<int, 4>
             {
                 std::array<int, 4> parts {0, 0, 0, 0};
-                size_t pos = v.find_first_of("+-");
-                std::string numericPart = (pos != std::string::npos) ? v.substr(0, pos) : v;
+                // Strip leading 'v' or 'V' if present
+                std::string version = v;
+                if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
+                {
+                    version = version.substr(1);
+                }
+
+                size_t pos = version.find_first_of("+-");
+                std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
 
                 std::istringstream iss(numericPart);
                 std::string token;
@@ -318,6 +325,7 @@ namespace remoted::control
             // lock. Two concurrent notifies for the same agent hitting this node
             // won't both write to wdb.
             bool doWrite = false;
+            bool doFullUpdate = false;
             auto refreshedEntry = m_registry->update(
                 id,
                 [&](std::shared_ptr<const AgentEntry> old)
@@ -328,17 +336,34 @@ namespace remoted::control
                     {
                         e->createdAtSec = now;
                     }
-                    if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+
+                    if (data.host)
                     {
-                        e->lastKeepaliveUpdateSec = now;
-                        doWrite = true;
+                        // Always write host info if throttle has expired
+                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        {
+                            e->lastKeepaliveUpdateSec = now;
+                            doWrite = true;
+                            doFullUpdate = true;
+                        }
                     }
+                    else
+                    {
+                        // Only write lightweight keepalive if throttle has expired
+                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        {
+                            e->lastKeepaliveUpdateSec = now;
+                            doWrite = true;
+                            doFullUpdate = false;
+                        }
+                    }
+
                     return e;
                 });
 
             if (doWrite)
             {
-                if (data.host)
+                if (doFullUpdate)
                 {
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq" : "synced";
                     m_wdbClient->updateAgentData(
