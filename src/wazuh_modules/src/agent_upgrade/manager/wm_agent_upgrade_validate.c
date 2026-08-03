@@ -182,8 +182,15 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (wazuh_version) {
+        // Handle version with or without 'v' prefix
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
+            // Version has 'v' prefix (e.g., "v5.0.0")
+        } else if (wazuh_version[0] >= '0' && wazuh_version[0] <= '9') {
+            // Version is numeric without 'v' prefix (e.g., "5.0.0")
+            tmp_agent_version = (char *)wazuh_version;
+        }
 
+        if (tmp_agent_version) {
             if (compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT, true) < 0) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
