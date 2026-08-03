@@ -26,12 +26,10 @@
  * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
  * release path either, also clears that producer lock on REGISTERED.
  * on_startup_result applies module limits and cluster-name authority, and
- * on_config_downloaded writes/applies merged.mg and releases the startup_gate
- * -- both were previously dev-scaffold stubs; see
- * startup_gate_release_from_https_apply()'s own comment for why that release
- * cannot reuse the legacy MD5-based gate machinery. Still pending (a later
- * integration workstream): retiring the legacy TCP data path this module runs
- * alongside.
+ * on_config_downloaded writes/applies merged.mg and releases the startup_gate.
+ *
+ * Since #38030 this is the agent's only transport, so every manager-visible
+ * message the C side still produces goes into its /stateless accumulator.
  */
 
 #include "https_client_bridge.h"
@@ -43,7 +41,6 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
-#include "sendmsg.h" /* send_msg(): the AG_IN_UNMERGE manager-visible report on unmerge failure */
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
@@ -947,11 +944,10 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
         merror("https_client: failed to unmerge the downloaded configuration "
                "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
-        /* Manager-visible report, mirroring receiver.c's own AG_IN_UNMERGE event
-         * on the same failure. */
+        /* Manager-visible report, now over /stateless. */
         char unmerge_fail_msg[OS_MAXSTR];
         snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
-        send_msg(unmerge_fail_msg, -1);
+        w_https_client_submit_event(unmerge_fail_msg, strlen(unmerge_fail_msg));
         free_strarray(ignore_list);
         if (handle) {
             hc_set_config_hash(handle, "");
@@ -1167,7 +1163,9 @@ static int g_buffer_warn_level = 90;
 static int g_buffer_normal_level = 70;
 
 /* The wazuh-agent.buffer occupancy event (manager flood rules 202-205), moved
- * here from buffer.c: this is its only caller. */
+ * here from buffer.c. It used to bypass the ring it reported on; the accumulator
+ * is the only route out now, so a report can itself be dropped while the
+ * accumulator is full -- the mwarn below always reaches the agent log. */
 static void bridge_send_buffer_status_event(const char *action, int severity)
 {
     char msg[OS_MAXSTR];
@@ -1181,7 +1179,7 @@ static void bridge_send_buffer_status_event(const char *action, int severity)
     cJSON_Delete(event);
     snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
     os_free(json_str);
-    send_msg(msg, -1);
+    w_https_client_submit_event(msg, strlen(msg));
 }
 
 /* Reports the accumulator's occupancy exactly as the legacy leaky bucket
