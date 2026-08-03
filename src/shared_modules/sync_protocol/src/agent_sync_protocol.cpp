@@ -853,16 +853,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
             valueOffsets.push_back(dataValueBuilder.Finish());
         }
 
-        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataBatch>> batchOffsets;
-
-        if (!valueOffsets.empty())
-        {
-            auto valuesVec = builder.CreateVector(valueOffsets);
-            Wazuh::SyncSchema::DataBatchBuilder dataBatchBuilder(builder);
-            dataBatchBuilder.add_values(valuesVec);
-            batchOffsets.push_back(dataBatchBuilder.Finish());
-        }
-
         std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataContext>> contextOffsets;
         contextOffsets.reserve(content.dataContexts.size());
 
@@ -911,17 +901,48 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
         Wazuh::SyncSchema::EndBuilder endBuilder(builder);
         const auto endOffset = endBuilder.Finish();
 
-        auto batchesVec = builder.CreateVector(batchOffsets);
-        auto contextsVec = builder.CreateVector(contextOffsets);
-        auto cleansVec = builder.CreateVector(cleanOffsets);
-        auto checksumsVec = builder.CreateVector(checksumOffsets);
+        // A session carries exactly one of these: a data sync (values and/or
+        // contexts), a clean notification, or a checksum check - never a mix,
+        // so the three go through one union instead of three optional fields.
+        Wazuh::SyncSchema::SessionPayload payloadType = Wazuh::SyncSchema::SessionPayload::NONE;
+        flatbuffers::Offset<void> payloadOffset;
+
+        if (!cleanOffsets.empty())
+        {
+            auto itemsVec = builder.CreateVector(cleanOffsets);
+            Wazuh::SyncSchema::CleansBuilder cleansBuilder(builder);
+            cleansBuilder.add_items(itemsVec);
+            payloadOffset = cleansBuilder.Finish().Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::Cleans;
+        }
+        else if (!checksumOffsets.empty())
+        {
+            auto itemsVec = builder.CreateVector(checksumOffsets);
+            Wazuh::SyncSchema::ChecksumsBuilder checksumsBuilder(builder);
+            checksumsBuilder.add_items(itemsVec);
+            payloadOffset = checksumsBuilder.Finish().Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::Checksums;
+        }
+        else if (!valueOffsets.empty() || !contextOffsets.empty())
+        {
+            auto valuesVec = builder.CreateVector(valueOffsets);
+            auto contextsVec = builder.CreateVector(contextOffsets);
+            Wazuh::SyncSchema::SyncDataBuilder syncDataBuilder(builder);
+            syncDataBuilder.add_values(valuesVec);
+            syncDataBuilder.add_contexts(contextsVec);
+            payloadOffset = syncDataBuilder.Finish().Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::SyncData;
+        }
 
         Wazuh::SyncSchema::FullSessionBuilder fullSessionBuilder(builder);
         fullSessionBuilder.add_start(startOffset);
-        fullSessionBuilder.add_batches(batchesVec);
-        fullSessionBuilder.add_contexts(contextsVec);
-        fullSessionBuilder.add_cleans(cleansVec);
-        fullSessionBuilder.add_checksums(checksumsVec);
+
+        if (payloadType != Wazuh::SyncSchema::SessionPayload::NONE)
+        {
+            fullSessionBuilder.add_payload_type(payloadType);
+            fullSessionBuilder.add_payload(payloadOffset);
+        }
+
         fullSessionBuilder.add_end(endOffset);
         const auto fullSessionOffset = fullSessionBuilder.Finish();
 

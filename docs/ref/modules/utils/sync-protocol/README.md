@@ -27,27 +27,33 @@ Each internal module maintains its own instance of the Agent Sync Protocol with 
 
 ```
 ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│     FIM     │   │     SCA     │   │  Inventory  │
+│     FIM     │   │     SCA     │   │ Syscollector│
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │ Agent Sync  │   │ Agent Sync  │   │ Agent Sync  │
 │ Protocol    │   │ Protocol    │   │ Protocol    │
-│ (FIM)       │   │ (SCA)       │   │ (Inventory) │
+│ (FIM)       │   │ (SCA)       │   │(Syscollector│
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │   SQLite    │   │   SQLite    │   │   SQLite    │
-│ fim_sync.db │   │ sca_sync.db │   │ inv_sync.db │
+│ fim_sync.db │   │ sca_sync.db │   │ sys_sync.db │
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
        └────────────┬────┴─────────────────┘
+                    │  one FullSession message per session
+                    ▼
+        ┌───────────────────────┐
+        │   queue-sync socket   │  (local AF_UNIX STREAM,
+        │  (SyncSocketTransport)│   no size bound)
+        └───────────┬───────────┘
                     │
-           ┌────────▼────────┐
-           │  Message Queue  │
-           │    (MQueue)     │
-           └────────┬────────┘
-                    │
+                    ▼
+        ┌───────────────────────┐
+        │  agentd / https_client │
+        └───────────┬───────────┘
+                    │  HTTPS POST /stateful
                     ▼
              Wazuh Manager
 ```
