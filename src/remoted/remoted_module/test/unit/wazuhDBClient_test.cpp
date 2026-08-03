@@ -131,7 +131,7 @@ TEST(WazuhDBClientTest, QueryRoundTripsCommandAndResponse)
 TEST(WazuhDBClientTest, GetAgentGroupsParsesCsvFromWdbResponse)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_grp");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok {\"group\":\"default,web,dmz\"}"; });
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok [{\"group\":\"default,web,dmz\"}]"; });
 
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
@@ -149,7 +149,7 @@ TEST(WazuhDBClientTest, GetAgentGroupsParsesCsvFromWdbResponse)
 TEST(WazuhDBClientTest, GetAgentGroupsReturnsEmptyOnEmptyCsv)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_gemp");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok {\"group\":\"\"}"; });
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok [{\"group\":\"\"}]"; });
 
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);

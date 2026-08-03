@@ -396,7 +396,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_w
                                 -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
                                 -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen")
+                                -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
+                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

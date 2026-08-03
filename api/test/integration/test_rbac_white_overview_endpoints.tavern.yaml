@@ -47,10 +47,6 @@ stages:
              never_connected: 1
              pending: 0
              total: 6
-           configuration:
-             synced: 4
-             not_synced: 2
-             total: 6
          agent_version: !anything # This will be tested with an external function
          groups: []
          last_registered_agent:
@@ -59,7 +55,6 @@ stages:
              id: !anystr
              ip: !anystr
              lastKeepAlive: !anystr
-             mergedSum: !anystr
              name: !anystr
              node_name: !anystr
              os:

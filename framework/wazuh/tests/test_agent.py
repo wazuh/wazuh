@@ -183,6 +183,7 @@ async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
     get_agents_summary_mock.assert_called_once_with(agent_ids)
 
 
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_summary_status(socket_mock, send_mock):
@@ -191,8 +192,7 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
     expected_results = {
-        'connection': {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6},
-        'configuration': {'synced': 3, 'not_synced': 3, 'total': 6}
+        'connection': {'active': 3, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 6}
     }
     summary_data = summary['data']
 

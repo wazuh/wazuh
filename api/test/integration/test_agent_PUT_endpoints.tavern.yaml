@@ -393,8 +393,12 @@ stages:
                 - "006"
                 - "007"
                 - "008"
+                - "009"
+                - "010"
+                - "011"
+                - "012"
           total_affected_items: 4
-          total_failed_items: 4
+          total_failed_items: 8
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -508,8 +512,12 @@ stages:
                 - "006"
                 - "007"
                 - "008"
+                - "009"
+                - "010"
+                - "011"
+                - "012"
           total_affected_items: 4
-          total_failed_items: 4
+          total_failed_items: 8
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
