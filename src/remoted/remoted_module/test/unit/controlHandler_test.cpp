@@ -258,7 +258,7 @@ TEST(ControlHandlerTest, StartupHigherVersionRejectedWhenAllowHigherFalse)
 TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default,web\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default,web\"}]"; });
     HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
 
     StartupData data;
@@ -286,7 +286,7 @@ TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
 TEST(ControlHandlerTest, StartupFallsBackToDefaultGroupOnEmptyWdbCsv)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"\"}]"; });
     HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
 
     StartupData data;

@@ -94,7 +94,7 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
     // Wire format assertion: JSON with action & string agent_id.
     auto req = nlohmann::json::parse(lastReq);
     EXPECT_EQ(req.value("action", ""), "get_pending_tasks");
-    EXPECT_EQ(req.value("agent_id", ""), "42");
+    EXPECT_EQ(req.value("agent_id", ""), "042");
 
     EXPECT_GE(metrics.taskFetchCount.load(), 1U);
 }

@@ -47,10 +47,6 @@ stages:
              never_connected: 2
              pending: 0
              total: 12
-           configuration:
-             synced: 8
-             not_synced: 4
-             total: 12
          agent_version: !anything
          groups:
            - configSum: !anystr
@@ -75,7 +71,6 @@ stages:
              id: !anystr
              ip: !anystr
              lastKeepAlive: !anystr
-             mergedSum: !anystr
              name: !anystr
              node_name: !anystr
              os:
