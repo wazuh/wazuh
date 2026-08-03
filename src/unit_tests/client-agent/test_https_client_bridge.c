@@ -143,8 +143,8 @@ int __wrap_send_msg(const char *msg, ssize_t msg_length)
     return 0;
 }
 
-/* bridge_build_config() reads the client-buffer occupancy options exactly as
- * buffer_init() does, and the real getDefine_Int() merror_exit()s when a name
+/* bridge_build_config() reads the occupancy options, and the real
+ * getDefine_Int() merror_exit()s when a name
  * is not in internal_options.conf. No case here exercises those values, so
  * answer with the shipped defaults instead of scripting three returns into
  * every test that starts the client. */

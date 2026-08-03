@@ -112,16 +112,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         w_create_thread(w_rotate_log_thread, (void *)NULL);
     }
 
-    /* Launch dispatch thread */
-    if (agt->buffer){
-
-        buffer_init();
-
-        w_create_thread(dispatch_buffer, (void *)NULL);
-    } else {
-        mdebug1(DISABLED_BUFFER);
-    }
-
     /* Configure and start statistics */
     w_agentd_state_init();
     w_create_thread(state_main, NULL);
@@ -221,36 +211,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
             close(agt->execdq);
             agt->execdq=-1;
-
-            // Update buffer configuration
-            const char *cfg = WAZUHCONF;
-            unsigned int current_capacity = agt->buflength;
-            int current_buffer_flag = agt->buffer;
-
-            mdebug2("Buffer pre-update, enable: %i size: %i ", agt->buffer, current_capacity);
-
-            if (ReadConfig(CBUFFER, cfg, NULL, agt) < 0) {
-                mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-            }
-
-            if (agt->flags.remote_conf) {
-                ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
-                mdebug1("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
-            }
-
-            //  Buffer was enabled, needs to be disabled
-            if (agt->buffer == 0 && current_buffer_flag != 0) {
-                w_agentd_buffer_free(current_capacity);
-            } else if (current_buffer_flag == 0 && agt->buffer != 0) {
-                // Buffer was disabled, needs to be enabled
-                buffer_init();
-                w_create_thread(dispatch_buffer, (void *)NULL);
-            } else if (agt->buffer != 0) {
-                // Buffer was enabled, stays enabled (potential resize)
-                w_agentd_buffer_resize(current_capacity, agt->buflength);
-            }
-
-            mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
 
             // wazuh-control reload sends SIGUSR1 after new processes are started.
             // Release the startup gate now so modules blocked in
