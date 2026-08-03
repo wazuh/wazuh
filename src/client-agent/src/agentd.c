@@ -36,9 +36,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Initial random numbers must happen before chroot */
     srandom_init();
 
-    /* Initialize sender */
-    sender_init();
-
     /* Going Daemon */
     if (!run_foreground) {
         nowDaemon();
@@ -131,10 +128,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     memset(&act, 0, sizeof(act));
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
-
-    // Start request module
-    req_init();
-    w_create_thread(req_receiver, NULL);
 
     // Start local socket listener for agcom requests (Unix only)
     w_create_thread(agcom_main, NULL);
