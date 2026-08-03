@@ -160,9 +160,8 @@ void test_wm_task_manager_get_pending_tasks_with_cache_miss(void **state)
     expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    // Mock cache set
-    expect_string(__wrap_wm_task_cache_set, agent_id, agent_id);
-    expect_any(__wrap_wm_task_cache_set, tasks);
+    // NOTE: wm_task_cache_set is NOT called when tasks have data
+    // Cache only stores empty states to prevent re-delivery
 
     cJSON *tasks = wm_task_manager_get_pending_tasks(agent_id, 10);
 
@@ -170,17 +169,15 @@ void test_wm_task_manager_get_pending_tasks_with_cache_miss(void **state)
 
     assert_non_null(tasks);
     assert_true(cJSON_IsArray(tasks));
+    assert_int_equal(cJSON_GetArraySize(tasks), 1);
 }
 
 void test_wm_task_manager_get_pending_tasks_with_cache_hit(void **state)
 {
     const char *agent_id = "002";
 
-    // Mock cache hit - the function will return cached tasks immediately
+    // Mock cache hit - cache only returns empty arrays (no pending tasks state)
     cJSON *cached_tasks = cJSON_CreateArray();
-    cJSON *task = cJSON_CreateObject();
-    cJSON_AddStringToObject(task, "task_id", "456");
-    cJSON_AddItemToArray(cached_tasks, task);
 
     expect_string(__wrap_wm_task_cache_get, agent_id, agent_id);
     will_return(__wrap_wm_task_cache_get, cached_tasks);
@@ -196,7 +193,46 @@ void test_wm_task_manager_get_pending_tasks_with_cache_hit(void **state)
 
     assert_non_null(tasks);
     assert_true(cJSON_IsArray(tasks));
-    assert_int_equal(cJSON_GetArraySize(tasks), 1);
+    assert_int_equal(cJSON_GetArraySize(tasks), 0);
+}
+
+void test_wm_task_manager_get_pending_tasks_no_tasks_caches_empty(void **state)
+{
+    const char *agent_id = "003";
+
+    // Mock cache miss
+    expect_string(__wrap_wm_task_cache_get, agent_id, agent_id);
+    will_return(__wrap_wm_task_cache_get, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:task-manager");
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
+    // Mock wdbc_query_ex for get_pending returning no tasks
+    char *wdb_response = "ok {\"tasks\":[]}";
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_any(__wrap_wdbc_query_ex, query);
+    expect_value(__wrap_wdbc_query_ex, len, OS_MAXSTR);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap_wdbc_parse_result, result, wdb_response);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    // IMPORTANT: Cache should be set when no tasks found
+    expect_string(__wrap_wm_task_cache_set, agent_id, agent_id);
+    expect_any(__wrap_wm_task_cache_set, tasks);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:task-manager");
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
+    cJSON *tasks = wm_task_manager_get_pending_tasks(agent_id, 10);
+
+    state[0] = tasks;
+
+    assert_non_null(tasks);
+    assert_true(cJSON_IsArray(tasks));
+    assert_int_equal(cJSON_GetArraySize(tasks), 0);
 }
 
 // Tests for wm_task_manager_dispatch
@@ -262,13 +298,9 @@ void test_wm_task_manager_dispatch_create_task(void **state)
 void test_wm_task_manager_dispatch_get_pending(void **state)
 {
     const char *message = "{\"action\":\"get_pending_tasks\",\"agent_id\":\"003\"}";
-    time_t now = 1234567890;
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
     expect_any(__wrap__mtdebug1, formatted_msg);
-
-    // Mock time() - dispatch or parsing may call it
-    will_return(__wrap_time, now);
 
     // Mock cache miss
     expect_string(__wrap_wm_task_cache_get, agent_id, "003");
@@ -293,9 +325,9 @@ void test_wm_task_manager_dispatch_get_pending(void **state)
     expect_string(__wrap_wm_task_cache_set, agent_id, "003");
     expect_any(__wrap_wm_task_cache_set, tasks);
 
-    // Mock debug log - dispatch response formatting might log
-    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:task-manager");
-    expect_any(__wrap__mtdebug1, formatted_msg);
+    // Mock debug log - no tasks logs with mtdebug2
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:task-manager");
+    expect_any(__wrap__mtdebug2, formatted_msg);
 
     char *response = wm_task_manager_dispatch(message);
 
@@ -344,6 +376,7 @@ int main(void) {
         // wm_task_manager_get_pending_tasks tests
         cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_with_cache_miss, teardown_json),
         cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_with_cache_hit, teardown_json),
+        cmocka_unit_test_teardown(test_wm_task_manager_get_pending_tasks_no_tasks_caches_empty, teardown_json),
         // wm_task_manager_dispatch tests
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_create_task, teardown_string),
         cmocka_unit_test_teardown(test_wm_task_manager_dispatch_get_pending, teardown_string),

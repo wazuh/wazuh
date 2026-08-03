@@ -30,13 +30,6 @@ Interval between cleanup runs. Each run marks expired tasks and deletes rows tha
 - **Default value:** `300` (5 minutes)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
 
-### cache_ttl
-
-Time-to-live of an entry in the in-memory pending-tasks cache. Higher values reduce database load; lower values reduce the window during which a freshly-created task might not appear in the response of a `get_pending_tasks` call for another agent (own-agent entries are invalidated immediately on task creation).
-
-- **Default value:** `60` (seconds)
-- **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
-
 ### max_payload_bytes
 
 Maximum accepted size of a single task payload, after JSON serialization. Requests exceeding this limit are rejected with a `create_failed` error and logged.
@@ -70,7 +63,6 @@ Or explicit:
 <task-manager>
   <task_ttl>3600</task_ttl>
   <cleanup_interval>300</cleanup_interval>
-  <cache_ttl>60</cache_ttl>
   <max_payload_bytes>1048576</max_payload_bytes>
   <max_tasks_per_poll>100</max_tasks_per_poll>
 </task-manager>
@@ -84,7 +76,6 @@ For deployments with many agents and frequent task creation, enlarge the respons
 <task-manager>
   <task_ttl>7200</task_ttl>
   <cleanup_interval>600</cleanup_interval>
-  <cache_ttl>60</cache_ttl>
   <max_tasks_per_poll>500</max_tasks_per_poll>
 </task-manager>
 ```
@@ -96,16 +87,6 @@ The default 1 MiB limit is enough for the majority of tasks. Raise it only if th
 ```xml
 <task-manager>
   <max_payload_bytes>4194304</max_payload_bytes>
-</task-manager>
-```
-
-### Faster Cache Invalidation
-
-If freshly-created tasks must be picked up as soon as possible from any manager node (at the cost of more database reads), lower the cache TTL:
-
-```xml
-<task-manager>
-  <cache_ttl>5</cache_ttl>
 </task-manager>
 ```
 

@@ -72,9 +72,8 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     }
 
     // Initialize task cache
-    int cache_ttl = task_config->cache_ttl > 0 ? task_config->cache_ttl : WM_TASK_DEFAULT_CACHE_TTL;
-    wm_task_cache_init(cache_ttl);
-    mtinfo(WM_TASK_MANAGER_LOGTAG, "Task cache initialized with TTL: %d seconds", cache_ttl);
+    wm_task_cache_init();
+    mtinfo(WM_TASK_MANAGER_LOGTAG, "Task cache initialized");
 
     // Start clean tasks thread
     w_create_thread(wm_task_manager_clean_tasks, task_config);
@@ -138,6 +137,11 @@ STATIC void* wm_task_manager_dealer(__attribute__((unused)) void *args) {
         }
 
         mtdebug1(WM_TASK_MANAGER_LOGTAG, "New client connected (%d)", peer);
+
+    #ifdef WAZUH_UNIT_TESTING
+        // Exit after accepting one connection for unit tests
+        break;
+    #endif
     }
 
     close(sock);
@@ -233,6 +237,11 @@ STATIC void* wm_task_manager_worker(__attribute__((unused)) void *args) {
         }
 
         os_free(buffer);
+
+    #ifdef WAZUH_UNIT_TESTING
+        // Exit after one iteration for unit tests
+        break;
+    #endif
     }
 
     mtdebug1(WM_TASK_MANAGER_LOGTAG, "Worker thread exiting");
@@ -307,8 +316,6 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
             task_config->task_ttl > 0 ? task_config->task_ttl : WM_TASK_DEFAULT_TTL);
         cJSON_AddNumberToObject(wm_info, "cleanup_interval",
             task_config->cleanup_interval > 0 ? task_config->cleanup_interval : WM_TASK_DEFAULT_CLEANUP_INTERVAL);
-        cJSON_AddNumberToObject(wm_info, "cache_ttl",
-            task_config->cache_ttl > 0 ? task_config->cache_ttl : WM_TASK_DEFAULT_CACHE_TTL);
         cJSON_AddNumberToObject(wm_info, "max_payload_bytes",
             task_config->max_payload_bytes > 0 ? task_config->max_payload_bytes : WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES);
         cJSON_AddNumberToObject(wm_info, "max_tasks_per_poll",
