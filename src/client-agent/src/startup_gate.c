@@ -72,15 +72,26 @@ void startup_gate_check_manager_config_hash(const char *manager_sha256) {
     bool should_check = false;
     os_sha256 local_sha256;
 
-    if (!manager_sha256 || !manager_sha256[0]) {
-        return;
-    }
-
     w_mutex_lock(&startup_gate_mutex);
     should_check = startup_gate_enabled && !startup_gate_ready;
     w_mutex_unlock(&startup_gate_mutex);
 
     if (!should_check) {
+        return;
+    }
+
+    if (!manager_sha256 || !manager_sha256[0]) {
+        // An empty config_hash is contract-legal ("Empty when the manager
+        // reported none", hc_callbacks_t): the manager has no configuration for
+        // this agent's groups, so nothing will be downloaded and there is
+        // nothing to wait for. maybeDownloadConfig() also returns early on it,
+        // so without this the gate would never open and every module would
+        // block forever in startup_gate_wait_for_ready(). The legacy handshake
+        // released the gate on an absent merged_sum for the same reason.
+        w_mutex_lock(&startup_gate_mutex);
+        startup_gate_set_locked(true, "no_manager_config");
+        w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: the manager reported no configuration, gate released.");
         return;
     }
 
