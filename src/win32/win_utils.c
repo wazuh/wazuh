@@ -194,9 +194,6 @@ int local_start()
 
     startup_gate_initialize();
 
-    /* Initialize sender */
-    sender_init();
-
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
@@ -348,15 +345,6 @@ int local_start()
 
     os_delwait();
 
-    /* Start request module */
-    req_init();
-    w_create_thread(NULL,
-                     0,
-                     req_receiver,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
-
     /* Delete agent state file at exit */
     atexit(DeleteState);
 
@@ -500,9 +488,8 @@ int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, 
 
     // Dispatch the message with its *actual size* (binary payload: no strlen).
     w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-    if (send_msg(tmpstr, total_len) >= 0) {
-        retval = 0;
-    }
+    w_https_client_submit_event(tmpstr, total_len);
+    retval = 0;
 
     // Release the mutex
     if (!ReleaseMutex(hMutex)) {
