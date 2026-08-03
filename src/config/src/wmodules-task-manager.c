@@ -11,7 +11,6 @@
 
 static const char *XML_TASK_TTL = "task_ttl";
 static const char *XML_CLEANUP_INTERVAL = "cleanup_interval";
-static const char *XML_CACHE_TTL = "cache_ttl";
 static const char *XML_MAX_PAYLOAD_BYTES = "max_payload_bytes";
 static const char *XML_MAX_TASKS_PER_POLL = "max_tasks_per_poll";
 
@@ -25,7 +24,6 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
         data->enabled = 1;
         data->task_ttl = 0;              // 0 = use default
         data->cleanup_interval = 0;      // 0 = use default
-        data->cache_ttl = 0;             // 0 = use default
         data->max_payload_bytes = 0;     // 0 = use default
         data->max_tasks_per_poll = 0;    // 0 = use default
         module->context = &WM_TASK_MANAGER_CONTEXT;
@@ -62,16 +60,6 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
             data->cleanup_interval = atoi(nodes[i]->content);
             if (data->cleanup_interval < 0) {
                 merror("Invalid value for element '%s' at module '%s'.", XML_CLEANUP_INTERVAL, WM_TASK_MANAGER_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_CACHE_TTL)) {
-            if (!nodes[i]->content) {
-                merror("Empty content for tag '%s' at module '%s'.", XML_CACHE_TTL, WM_TASK_MANAGER_CONTEXT.name);
-                return OS_INVALID;
-            }
-            data->cache_ttl = atoi(nodes[i]->content);
-            if (data->cache_ttl < 0) {
-                merror("Invalid value for element '%s' at module '%s'.", XML_CACHE_TTL, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_MAX_PAYLOAD_BYTES)) {

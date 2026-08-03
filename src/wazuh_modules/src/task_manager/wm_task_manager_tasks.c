@@ -18,27 +18,17 @@
 
 #include "wmodules.h"
 #include "wm_task_manager_tasks.h"
+#include "hash_op.h"
 #include "openssl/sha.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-// In-memory cache structure
-typedef struct cache_entry {
-    char *agent_id;
-    cJSON *tasks;
-    time_t timestamp;
-    struct cache_entry *next;
-} cache_entry_t;
-
-typedef struct {
-    cache_entry_t *head;
-    pthread_rwlock_t lock;
-    int ttl;
-} task_cache_t;
-
-// Global cache instance
-static task_cache_t *g_task_cache = NULL;
+// Simplified cache for "no pending tasks" state using OSHash
+// Only stores agent IDs that have no pending tasks
+// Cache is invalidated when new tasks are created via wm_task_manager_create_task()
+// Uses Wazuh's OSHash for efficient lookups
+static OSHash *g_task_cache = NULL;
 
 // Generate deterministic task ID
 char* wm_task_manager_generate_task_id(
@@ -76,148 +66,70 @@ char* wm_task_manager_generate_task_id(
 }
 
 // Initialize cache
-void wm_task_cache_init(int ttl) {
+void wm_task_cache_init(void) {
     // Clean up existing cache if any
     if (g_task_cache) {
         wm_task_cache_destroy();
     }
 
-    g_task_cache = calloc(1, sizeof(task_cache_t));
+    g_task_cache = OSHash_Create();
     if (!g_task_cache) {
-        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to allocate task cache");
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to create task cache");
         return;
     }
-    g_task_cache->ttl = ttl;
-    pthread_rwlock_init(&g_task_cache->lock, NULL);
-    g_task_cache->head = NULL;
 }
 
 // Get from cache
+// Returns empty array if agent has no pending tasks (cached state)
+// Returns NULL if cache miss (need to query DB)
 cJSON* wm_task_cache_get(const char *agent_id) {
     if (!g_task_cache) return NULL;
 
-    pthread_rwlock_rdlock(&g_task_cache->lock);
+    // Check if agent is in cache (meaning it has no pending tasks)
+    void *result = OSHash_Get(g_task_cache, agent_id);
 
-    time_t now = time(NULL);
-    cache_entry_t *entry = g_task_cache->head;
-
-    while (entry) {
-        if (strcmp(entry->agent_id, agent_id) == 0) {
-            // Check if expired
-            if (now - entry->timestamp < g_task_cache->ttl) {
-                cJSON *tasks_copy = cJSON_Duplicate(entry->tasks, 1);
-                pthread_rwlock_unlock(&g_task_cache->lock);
-                return tasks_copy;
-            }
-            break;
-        }
-        entry = entry->next;
+    if (result) {
+        // Cache hit: agent has no pending tasks
+        return cJSON_CreateArray();
     }
 
-    pthread_rwlock_unlock(&g_task_cache->lock);
+    // Cache miss
     return NULL;
 }
 
 // Set in cache
+// Only call this when agent has NO pending tasks
+// NEVER cache actual tasks - they must be delivered only once
 void wm_task_cache_set(const char *agent_id, cJSON *tasks) {
     if (!g_task_cache) return;
 
-    pthread_rwlock_wrlock(&g_task_cache->lock);
-
-    // Remove existing entry
-    cache_entry_t *prev = NULL;
-    cache_entry_t *entry = g_task_cache->head;
-
-    while (entry) {
-        if (strcmp(entry->agent_id, agent_id) == 0) {
-            if (prev) {
-                prev->next = entry->next;
-            } else {
-                g_task_cache->head = entry->next;
-            }
-            free(entry->agent_id);
-            cJSON_Delete(entry->tasks);
-            free(entry);
-            break;
-        }
-        prev = entry;
-        entry = entry->next;
+    // Only cache empty states
+    if (!tasks || cJSON_GetArraySize(tasks) > 0) {
+        return;
     }
 
-    // Add new entry
-    cache_entry_t *new_entry = calloc(1, sizeof(cache_entry_t));
-    if (new_entry) {
-        new_entry->agent_id = strdup(agent_id);
-        new_entry->tasks = cJSON_Duplicate(tasks, 1);
+    // Add agent to cache (value is just a marker, we use (void*)1)
+    // OSHash_Set will add or update, no need to check if exists
+    int result = OSHash_Set(g_task_cache, agent_id, (void*)1);
 
-        // Check for allocation failures
-        if (!new_entry->agent_id || !new_entry->tasks) {
-            mterror(WM_TASK_MANAGER_LOGTAG, "Failed to allocate cache entry for agent %s", agent_id);
-            if (new_entry->agent_id) {
-                free(new_entry->agent_id);
-            }
-            if (new_entry->tasks) {
-                cJSON_Delete(new_entry->tasks);
-            }
-            free(new_entry);
-        } else {
-            new_entry->timestamp = time(NULL);
-            new_entry->next = g_task_cache->head;
-            g_task_cache->head = new_entry;
-        }
+    if (result != OSHASH_SUCCESS && result != OSHASH_DUPLICATE) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to cache empty state for agent %s", agent_id);
     }
-
-    pthread_rwlock_unlock(&g_task_cache->lock);
 }
 
 // Invalidate cache entry
 void wm_task_cache_invalidate(const char *agent_id) {
     if (!g_task_cache) return;
 
-    pthread_rwlock_wrlock(&g_task_cache->lock);
-
-    cache_entry_t *prev = NULL;
-    cache_entry_t *entry = g_task_cache->head;
-
-    while (entry) {
-        if (strcmp(entry->agent_id, agent_id) == 0) {
-            if (prev) {
-                prev->next = entry->next;
-            } else {
-                g_task_cache->head = entry->next;
-            }
-            free(entry->agent_id);
-            cJSON_Delete(entry->tasks);
-            free(entry);
-            break;
-        }
-        prev = entry;
-        entry = entry->next;
-    }
-
-    pthread_rwlock_unlock(&g_task_cache->lock);
+    // Remove agent from cache
+    OSHash_Delete(g_task_cache, agent_id);
 }
 
 // Destroy cache
 void wm_task_cache_destroy(void) {
     if (!g_task_cache) return;
 
-    pthread_rwlock_wrlock(&g_task_cache->lock);
-
-    // Free all cache entries
-    cache_entry_t *entry = g_task_cache->head;
-    while (entry) {
-        cache_entry_t *next = entry->next;
-        free(entry->agent_id);
-        cJSON_Delete(entry->tasks);
-        free(entry);
-        entry = next;
-    }
-
-    pthread_rwlock_unlock(&g_task_cache->lock);
-    pthread_rwlock_destroy(&g_task_cache->lock);
-
-    // Free cache structure
-    free(g_task_cache);
+    // OSHash_Free handles all cleanup including mutex
+    OSHash_Free(g_task_cache);
     g_task_cache = NULL;
 }

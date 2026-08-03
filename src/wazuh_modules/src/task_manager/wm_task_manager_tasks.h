@@ -32,21 +32,22 @@ char* wm_task_manager_generate_task_id(
 
 /**
  * Initialize task cache
- * @param ttl Cache time-to-live in seconds
+ * Cache only stores "no pending tasks" states - actual tasks are never cached
  */
-void wm_task_cache_init(int ttl);
+void wm_task_cache_init(void);
 
 /**
  * Get tasks from cache
  * @param agent_id Agent identifier
- * @return Cached tasks array (caller must free with cJSON_Delete), or NULL if not cached/expired
+ * @return Empty array if agent has no pending tasks (cached state), or NULL if cache miss
  */
 cJSON* wm_task_cache_get(const char *agent_id);
 
 /**
  * Set tasks in cache
+ * Only caches empty task arrays (no pending tasks state)
  * @param agent_id Agent identifier
- * @param tasks Tasks array to cache (will be duplicated)
+ * @param tasks Tasks array - only empty arrays are cached
  */
 void wm_task_cache_set(const char *agent_id, cJSON *tasks);
 
