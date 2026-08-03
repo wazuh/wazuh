@@ -272,6 +272,83 @@ TEST(WazuhDBClientTest, UpdateAgentDataIncludesHostInfoFields)
     EXPECT_NE(got.find("\"agent_ip\":\"10.0.0.1\""), std::string::npos);
 }
 
+TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_osver");
+    std::mutex mu;
+    std::string received;
+    FakeUdsServer server(path,
+                         [&](const std::string& req) -> std::string
+                         {
+                             std::lock_guard<std::mutex> lock(mu);
+                             received = req;
+                             return "ok";
+                         });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    // Test Ubuntu version format
+    HostInfo host1;
+    host1.osVersion = "22.04";
+    host1.osName = "Ubuntu";
+    host1.osPlatform = "ubuntu";
+    host1.architecture = "x86_64";
+    host1.ip = "10.0.0.1";
+
+    Waiter<SocketError> w1;
+    client.updateAgentData(1, "v5.0.0", "node", "active", "synced", &host1, [&](SocketError e) { w1.complete(e); });
+    ASSERT_TRUE(w1.wait(3000ms));
+
+    std::string got1;
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got1 = received;
+    }
+    EXPECT_NE(got1.find("\"os_major\":\"22\""), std::string::npos) << "Ubuntu 22.04 should parse major=22, got: " << got1;
+    EXPECT_NE(got1.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 22.04 should parse minor=04, got: " << got1;
+
+    // Test SUSE version format
+    HostInfo host2;
+    host2.osVersion = "15-SP7";
+    host2.osName = "SUSE";
+    host2.osPlatform = "sles";
+    host2.architecture = "x86_64";
+    host2.ip = "10.0.0.2";
+
+    Waiter<SocketError> w2;
+    client.updateAgentData(2, "v5.0.0", "node", "active", "synced", &host2, [&](SocketError e) { w2.complete(e); });
+    ASSERT_TRUE(w2.wait(3000ms));
+
+    std::string got2;
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got2 = received;
+    }
+    EXPECT_NE(got2.find("\"os_major\":\"15\""), std::string::npos) << "SUSE 15-SP7 should parse major=15, got: " << got2;
+    EXPECT_NE(got2.find("\"os_minor\":\"7\""), std::string::npos) << "SUSE 15-SP7 should parse minor=7, got: " << got2;
+
+    // Test version with patch number
+    HostInfo host3;
+    host3.osVersion = "20.04.5";
+    host3.osName = "Ubuntu";
+    host3.osPlatform = "ubuntu";
+    host3.architecture = "x86_64";
+    host3.ip = "10.0.0.3";
+
+    Waiter<SocketError> w3;
+    client.updateAgentData(3, "v5.0.0", "node", "active", "synced", &host3, [&](SocketError e) { w3.complete(e); });
+    ASSERT_TRUE(w3.wait(3000ms));
+
+    std::string got3;
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got3 = received;
+    }
+    EXPECT_NE(got3.find("\"os_major\":\"20\""), std::string::npos) << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
+    EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
+}
+
 TEST(WazuhDBClientTest, UpdateAgentDataOmitsOsTypeWhenEmpty)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_noty");
