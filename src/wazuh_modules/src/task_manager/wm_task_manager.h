@@ -27,7 +27,6 @@ typedef enum _wm_task_type {
 // Defaults
 #define WM_TASK_DEFAULT_TTL 3600 // 1 hour
 #define WM_TASK_DEFAULT_CLEANUP_INTERVAL 300 // 5 minutes
-#define WM_TASK_DEFAULT_CACHE_TTL 60 // 60 seconds
 #define WM_TASK_DEFAULT_MAX_PAYLOAD_BYTES 1048576 // 1 MB
 #define WM_TASK_DEFAULT_MAX_TASKS_PER_POLL 100 // Maximum tasks returned per poll
 
@@ -35,7 +34,6 @@ typedef struct _wm_task_manager {
     int enabled:1;
     int task_ttl;              // Time-to-live for all tasks (default: 1 hour)
     int cleanup_interval;      // Cleanup thread interval (default: 5 minutes)
-    int cache_ttl;             // In-memory cache TTL (default: 60 seconds)
     int max_payload_bytes;     // Maximum task payload size (default: 1 MB)
     int max_tasks_per_poll;    // Maximum tasks per get_pending_tasks call (default: 100)
 } wm_task_manager;
