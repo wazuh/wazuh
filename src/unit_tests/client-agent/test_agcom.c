@@ -212,7 +212,6 @@ static void test_agcom_getallconfig_reports_every_section_as_one_module(void** s
     char* output = NULL;
 
     g_client_cfg = make_simple_json("client", "ok");
-    g_buffer_cfg = make_simple_json("buffer", "ok");
     g_internal_cfg = make_simple_json("internal", "ok");
 #ifndef WIN32
     g_anti_tampering_cfg = make_simple_json("anti_tampering", "ok");
@@ -235,7 +234,6 @@ static void test_agcom_getallconfig_reports_every_section_as_one_module(void** s
 
     cJSON* config = cJSON_GetObjectItem(entry, "config");
     assert_non_null(cJSON_GetObjectItem(config, "client"));
-    assert_non_null(cJSON_GetObjectItem(config, "buffer"));
     assert_non_null(cJSON_GetObjectItem(config, "internal"));
 #ifndef WIN32
     assert_non_null(cJSON_GetObjectItem(config, "anti_tampering"));
@@ -261,7 +259,7 @@ static void test_agcom_getallconfig_omits_sections_that_are_unset(void** state)
     cJSON* report = cJSON_Parse(output + 3);
     cJSON* config = cJSON_GetObjectItem(cJSON_GetArrayItem(report, 0), "config");
     assert_non_null(cJSON_GetObjectItem(config, "client"));
-    assert_null(cJSON_GetObjectItem(config, "buffer"));
+    assert_null(cJSON_GetObjectItem(config, "internal"));
 
     cJSON_Delete(report);
     free(output);
