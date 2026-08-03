@@ -74,6 +74,17 @@ def _record_uploaded_key(key):
         logger.warning("Could not record uploaded key '%s' to manifest '%s': %s", key, manifest, exc)
 
 
+@pytest.fixture
+def record_uploaded_key():
+    """Expose _record_uploaded_key to test bodies that upload objects themselves.
+
+    manage_bucket_files records the keys it uploads, but a few tests upload directly in their body
+    (e.g. test_bucket_multiple_calls). Those must register their key too, otherwise a hard cancel
+    during the test would orphan the object - the exact case this cleanup targets.
+    """
+    return _record_uploaded_key
+
+
 def _safe_delete_key(key, bucket_name, s3_client):
     """Delete one key from the shared bucket; log failures; refuse to touch permanent seeds."""
     if key in _PERMANENT_SEED_KEYS or any(fid in key for fid in _PERMANENT_SEED_FLOW_LOG_IDS):
@@ -95,14 +106,20 @@ def _assert_prefix_clean(bucket_name, key, s3_client):
     rather than letting them produce a confusing count mismatch downstream.
 
     The listing uses Delimiter='/' so it only inspects objects that live DIRECTLY under the prefix,
-    not nested sub-"folders". This matters for flat-layout bucket types (e.g. server_access, whose key
-    is 'test_prefix/<file>'), where key.rsplit('/', 1)[0] collapses to the shared 'test_prefix/' root:
+    not nested sub-"folders". This matters for bucket types whose key is '<path>/<file>' (e.g.
+    server_access configured with a path, giving 'test_prefix/<file>'), where key.rsplit('/', 1)[0]
+    collapses to the shared '<path>/' root:
     without the delimiter the guard would also scan unrelated objects nested deeper under that root
     (e.g. the load balancers' 'test_prefix/AWSLogs/.../elasticloadbalancing/...') and raise a false
     positive. Date-partitioned types (cloudtrail, ELB, umbrella, ...) keep their files directly at the
     date-level prefix, so they are still checked exactly as before.
+
+    For flat, root-level keys (a pathless bucket type, e.g. server_access with no path, whose key has
+    no '/') the prefix is '' so the listing scopes to root-level objects only (Prefix='' + Delimiter='/'
+    returns just the bucket root, and the nested permanent seeds are excluded). Without this, the prefix
+    would be '<filename>/' - a prefix nothing matches - and a root-level orphan would go undetected.
     """
-    prefix = key.rsplit('/', 1)[0] + '/'
+    prefix = key.rsplit('/', 1)[0] + '/' if '/' in key else ''
     unexpected = [
         obj.key for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix, Delimiter='/')
         if obj.key not in _PERMANENT_SEED_KEYS
