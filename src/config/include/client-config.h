@@ -82,9 +82,6 @@ typedef struct _agent {
     int max_time_reconnect_try;
     int main_ip_update_interval;
     char *profile;
-    volatile int buffer;
-    int buflength;
-    int events_persec;
     int package_uninstallation;
     agent_flags_t flags;
     agent_ssl ssl;     ///< HTTPS transport TLS settings (<client><ssl>).

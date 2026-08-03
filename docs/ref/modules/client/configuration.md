@@ -4,7 +4,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Configuration file:** `/var/ossec/etc/ossec.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\ossec.conf` (Windows)
 
-**XML Sections:** `<client>`, `<client_buffer>`, `<anti_tampering>`
+**XML Sections:** `<client>`, `<anti_tampering>`
 
 **Module:** Agent-only
 
@@ -246,34 +246,9 @@ Network interface index to bind for enrollment connection.
 
 ## Client Buffer Configuration (`<client_buffer>`)
 
-Configures event buffering when the manager is unreachable.
-
-### disabled
-
-Enable or disable client buffering.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled (`no`), events are buffered during manager disconnections
-
-### queue_size
-
-Maximum number of events to buffer.
-
-- **Default value:** `5000`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Maximum:** System memory dependent
-- **Note:** Events exceeding this limit are dropped
-
-### events_per_second
-
-Maximum events per second to send when reconnecting (rate limiting).
-
-- **Default value:** `500`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Note:** Prevents overwhelming manager during reconnection
+Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
+accumulator, configured under `<client><batch>`. The section is still accepted
+and ignored, with a warning.
 
 ---
 
@@ -460,11 +435,12 @@ Automatic agent registration:
 High-volume environment:
 
 ```xml
-<client_buffer>
-  <disabled>no</disabled>
-  <queue_size>50000</queue_size>
-  <events_per_second>1000</events_per_second>
-</client_buffer>
+<client>
+  <batch>
+    <size>10MB</size>
+    <interval>5s</interval>
+  </batch>
+</client>
 ```
 
 ### Anti-Tampering Configuration
@@ -508,12 +484,6 @@ Full example with all sections:
       <groups>webservers,production</groups>
     </enrollment>
   </client>
-
-  <client_buffer>
-    <disabled>no</disabled>
-    <queue_size>10000</queue_size>
-    <events_per_second>600</events_per_second>
-  </client_buffer>
 
   <anti_tampering>
     <package_uninstallation>yes</package_uninstallation>

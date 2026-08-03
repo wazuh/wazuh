@@ -258,7 +258,6 @@ static void test_SendMSGAction_mutex_error(void **state) {
 
 static void test_SendMSGAction_non_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -277,7 +276,6 @@ static void test_SendMSGAction_non_escape(void **state) {
 
 static void test_SendMSGAction_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -297,7 +295,6 @@ static void test_SendMSGAction_escape(void **state) {
 
 static void test_SendMSGAction_multi_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
@@ -350,7 +347,6 @@ static void test_SendBinaryMSGAction_message_too_large(void **state) {
 static void test_SendBinaryMSGAction_direct_send_success(void **state) {
     (void) state;
 
-    agt->buffer = 0;
 
     const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
     size_t payload_len = sizeof(payload);
