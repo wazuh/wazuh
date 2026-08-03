@@ -14,7 +14,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_wm_task_cache_init(__attribute__ ((__unused__)) int cache_ttl) {
+void __wrap_wm_task_cache_init(void) {
     // No-op wrapper - cache init doesn't need mocking for these tests
 }
 

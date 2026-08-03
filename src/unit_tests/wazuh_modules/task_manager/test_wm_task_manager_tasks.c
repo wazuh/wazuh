@@ -24,7 +24,7 @@
 // External functions under test
 char* wm_task_manager_generate_task_id(const char *source_id, const char *agent_id,
                                        const char *task_type, time_t create_time);
-void wm_task_cache_init(int ttl);
+void wm_task_cache_init(void);
 cJSON* wm_task_cache_get(const char *agent_id);
 void wm_task_cache_set(const char *agent_id, cJSON *tasks);
 void wm_task_cache_invalidate(const char *agent_id);
@@ -103,7 +103,7 @@ void test_wm_task_manager_generate_task_id_deterministic(void **state)
 void test_wm_task_cache_init(void **state)
 {
     // Just verify it doesn't crash
-    wm_task_cache_init(60);
+    wm_task_cache_init();
     // No assertions needed - just checking it initializes without error
 }
 
@@ -112,16 +112,12 @@ void test_wm_task_cache_set_and_get(void **state)
     const char *agent_id = "001";
 
     // Initialize cache first
-    wm_task_cache_init(60);
+    wm_task_cache_init();
 
-    // Create test tasks
+    // Create empty tasks array (cache only stores "no pending tasks" state)
     cJSON *tasks = cJSON_CreateArray();
-    cJSON *task = cJSON_CreateObject();
-    cJSON_AddStringToObject(task, "task_id", "test-123");
-    cJSON_AddStringToObject(task, "task_type", "active_response");
-    cJSON_AddItemToArray(tasks, task);
 
-    // Set in cache
+    // Set in cache (only empty arrays should be cached)
     wm_task_cache_set(agent_id, tasks);
 
     // Get from cache
@@ -129,10 +125,10 @@ void test_wm_task_cache_set_and_get(void **state)
 
     state[0] = cached_tasks;
 
-    // Verify we got something back
+    // Verify we got an empty array back
     assert_non_null(cached_tasks);
     assert_true(cJSON_IsArray(cached_tasks));
-    assert_int_equal(cJSON_GetArraySize(cached_tasks), 1);
+    assert_int_equal(cJSON_GetArraySize(cached_tasks), 0);
 
     // Clean up original tasks
     cJSON_Delete(tasks);
@@ -143,7 +139,7 @@ void test_wm_task_cache_get_nonexistent(void **state)
     const char *agent_id = "nonexistent";
 
     // Initialize cache first
-    wm_task_cache_init(60);
+    wm_task_cache_init();
 
     // Try to get non-existent entry
     cJSON *cached_tasks = wm_task_cache_get(agent_id);
@@ -152,18 +148,37 @@ void test_wm_task_cache_get_nonexistent(void **state)
     assert_null(cached_tasks);
 }
 
-void test_wm_task_cache_invalidate(void **state)
+void test_wm_task_cache_does_not_cache_tasks(void **state)
 {
     const char *agent_id = "002";
 
     // Initialize cache
-    wm_task_cache_init(60);
+    wm_task_cache_init();
 
-    // Create and cache tasks
+    // Create tasks with data
     cJSON *tasks = cJSON_CreateArray();
     cJSON *task = cJSON_CreateObject();
     cJSON_AddStringToObject(task, "task_id", "test-456");
     cJSON_AddItemToArray(tasks, task);
+
+    // Try to cache tasks with data (should be rejected)
+    wm_task_cache_set(agent_id, tasks);
+    cJSON_Delete(tasks);
+
+    // Verify nothing was cached (cache only stores empty states)
+    cJSON *cached = wm_task_cache_get(agent_id);
+    assert_null(cached);
+}
+
+void test_wm_task_cache_invalidate(void **state)
+{
+    const char *agent_id = "003";
+
+    // Initialize cache
+    wm_task_cache_init();
+
+    // Create and cache empty tasks (cache only stores "no pending tasks" state)
+    cJSON *tasks = cJSON_CreateArray();
 
     wm_task_cache_set(agent_id, tasks);
     cJSON_Delete(tasks);
@@ -198,6 +213,7 @@ int main(void) {
         cmocka_unit_test(test_wm_task_cache_init),
         cmocka_unit_test_teardown(test_wm_task_cache_set_and_get, teardown_json),
         cmocka_unit_test(test_wm_task_cache_get_nonexistent),
+        cmocka_unit_test(test_wm_task_cache_does_not_cache_tasks),
         cmocka_unit_test(test_wm_task_cache_invalidate),
     };
     return cmocka_run_group_tests(tests, NULL, group_teardown);
