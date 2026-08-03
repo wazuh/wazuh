@@ -607,10 +607,6 @@ stages:
            never_connected: 1
            pending: 0
            total: 6
-         configuration:
-           synced: 4
-           not_synced: 2
-           total: 6
 
 ---
 test_name: GET /agents/summary/os
