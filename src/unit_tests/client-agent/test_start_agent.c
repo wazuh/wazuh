@@ -134,9 +134,6 @@ static int setup_test(void **state) {
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->profile = NULL;
-    agt->buffer = 1;
-    agt->buflength = 5000;
-    agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     /* Connected sock */
     agt->sock = -1;

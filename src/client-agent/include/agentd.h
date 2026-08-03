@@ -18,27 +18,16 @@
 #include "state.h"
 #include "module_limits.h"
 
-/* Buffer functions */
+/* Request pool helpers (request.c) */
 #define full(i, j, n) ((i + 1) % (n) == j)
-#define warn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength >= ((float)warn_level/100.0))
-#define nowarn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)warn_level/100.0))
-#define normal(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)normal_level/100.0))
-#define capacity(i, j) (float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength
 #define empty(i, j) (i == j)
 #define forward(x, n) x = (x + 1) % (n)
-
-/* Buffer statuses */
-#define NORMAL 0
-#define WARNING 1
-#define FULL 2
-#define FLOOD 3
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
-cJSON *getBufferConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
@@ -57,86 +46,6 @@ int receive_msg(void);
 #ifdef WIN32
 int receiver_messages(void);
 #endif
-
-/* Message stored in the event buffer. */
-typedef struct {
-    void *data;
-    size_t size;
-} buffered_message;
-
-/* Initialize agent buffer */
-void buffer_init();
-
-/**
- * @brief Appends a message to the event buffer.
- *
- * This function stores a message in the agent's event buffer for later dispatch.
- * It handles both null-terminated text strings and binary data buffers.
- * The buffer has anti-flooding mechanisms.
- *
- * @param msg Pointer to the message data.
- * @param msg_len The length of the message in bytes. If less than 0, `msg` is treated as a null-terminated string.
- * @return 0 on success, -1 if the buffer is full or a memory allocation error occurs.
- */
-int buffer_append(const char *msg, ssize_t msg_len);
-
-/**
- * @brief Sends the wazuh-agent.buffer occupancy state event (manager flood
- *        rules 202-205).
- *
- * Writes straight to send_msg(), bypassing every buffer, so a flood report
- * never queues behind the flood it reports. Called by the legacy leaky bucket
- * and by the https_client bridge for the /stateless accumulator.
- *
- * @param action One of "normal", "warning", "full", "flooded".
- * @param severity Matching severity, 0 to 3.
- */
-void send_buffer_status_event(const char *action, int severity);
-
-/**
- * @brief Resizes the internal circular buffer to a desired capacity.
- *
- * @param current_capacity The current allocated capacity of the buffer before resizing.
- * @param desired_capacity The new capacity to which the buffer should be resized.
- *
- * @retval 0 on success.
- * @retval -1 on failure (e.g., invalid capacity, memory allocation error).
- *
- * @note If the desired capacity is smaller than the current number of messages,
- * the buffer will truncate the newest messages to preserve the oldest ones.
- */
-int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
-
-/**
- * @brief Frees all dynamically allocated memory associated with the agent's message buffer.
- *
- * This function performs a complete cleanup of the circular message buffer.
- * It iterates through all allocated slots up to the provided `current_capacity`,
- * freeing individual messages first to prevent memory leaks. After clearing
- * the contents, it deallocates the buffer array itself. Finally, it resets
- * global buffer-related state variables (like `agt->buflength`, `i`, and `j`)
- * to indicate an unallocated and empty state.
- *
- * This function is thread-safe, utilizing a mutex to protect access to shared buffer state.
- *
- * @param current_capacity The current allocated capacity of the buffer to be freed.
- * This parameter is crucial for iterating over the correct number of slots.
- */
-void w_agentd_buffer_free(unsigned int current_capacity);
-
-/* Thread to dispatch messages from the buffer */
-#ifdef WIN32
-DWORD WINAPI dispatch_buffer(LPVOID arg);
-#else
-void *dispatch_buffer(void * arg);
-#endif
-/**
- * @brief get the number of events in buffer
- *
- * @retval number of events in the buffer
- * @retval -1 if the anti-flooding mechanism is disabled
- */
-int w_agentd_get_buffer_lenght();
 
 /* Initialize sender structure */
 void sender_init();
@@ -305,9 +214,6 @@ void * agcom_main(void * arg);
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;
-extern int warn_level;
-extern int normal_level;
-extern int tolerance;
 extern int rotate_log;
 extern int request_pool;
 extern int rto_sec;
@@ -321,7 +227,6 @@ extern int size_rotate_read;
 extern int timeout;
 extern int interval;
 extern int remote_conf;
-extern int min_eps;
 
 
 /* Global variables. Only modified during startup. */
