@@ -809,8 +809,6 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                  * (OS, hostname, groups, cluster info) available. */
                                 populate_early_metadata();
 
-                                startup_gate_process_handshake(is_startup, merged_sum_buffer);
-
                                 /* Check if limits changed and reload if auto_restart is enabled */
                                 if (previous_limits.limits_received &&
                                     module_limits_changed(&previous_limits, &agent_module_limits)) {
@@ -829,7 +827,6 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         } else {
                             mdebug1("No handshake JSON after ACK, using defaults");
                             populate_early_metadata();
-                            startup_gate_process_handshake(is_startup, NULL);
                         }
 
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
