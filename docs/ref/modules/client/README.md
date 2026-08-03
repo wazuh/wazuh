@@ -10,7 +10,7 @@ The client module (`agentd`) manages the communication between Wazuh agents and 
 
 **Configuration file:** `/var/ossec/etc/ossec.conf`
 
-**XML Section:** `<client>`, `<client_buffer>`, `<anti_tampering>`
+**XML Section:** `<client>`, `<anti_tampering>`
 
 ---
 
@@ -68,12 +68,6 @@ Quick configuration example:
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
 </client>
-
-<client_buffer>
-  <disabled>no</disabled>
-  <queue_size>5000</queue_size>
-  <events_per_second>500</events_per_second>
-</client_buffer>
 
 <anti_tampering>
   <disabled>no</disabled>
@@ -182,10 +176,8 @@ Common issues:
 
 If events are being dropped due to buffer overflow:
 
-1. Check buffer size in configuration
-2. Increase `queue_size` in `<client_buffer>`
-3. Increase `events_per_second` if manager can handle more load
-4. Verify network connectivity is stable
+1. Check the accumulator limits in `<client><batch>` (`size`, `interval`)
+2. Verify network connectivity is stable
 
 ### Anti-Tampering Alerts
 

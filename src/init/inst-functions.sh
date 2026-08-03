@@ -379,14 +379,6 @@ WriteAgent()
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "  <client_buffer>" >> $NEWCONFIG
-    echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
-    echo "    <disabled>no</disabled>" >> $NEWCONFIG
-    echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>600</events_per_second>" >> $NEWCONFIG
-    echo "  </client_buffer>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
     # Rootcheck
     WriteRootcheck "agent"
 
