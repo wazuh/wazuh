@@ -13,6 +13,30 @@
 
 #include "curlHandle.hpp"
 
+#include <functional>
+#include <string>
+
+namespace
+{
+    /// Wraps the C on_collect_host callback as the pull-source ControlStream
+    /// uses for the Notify host block. Returns "" when the callback is unset.
+    std::function<std::string()> makeHostCollector(const hc_callbacks_t& callbacks)
+    {
+        return [fn = callbacks.on_collect_host, userData = callbacks.user_data]() -> std::string
+        {
+            if (fn == nullptr)
+            {
+                return {};
+            }
+
+            char buffer[4096] = {};
+            fn(buffer, sizeof(buffer), userData);
+            buffer[sizeof(buffer) - 1] = '\0';
+            return std::string(buffer);
+        };
+    }
+} // namespace
+
 HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks)
     : m_config(ModuleConfig::fromC(config))
     , m_keyProvider(m_config.agentKeyHex)
@@ -27,7 +51,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
                  m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
-                m_configHash, m_cluster, m_authGate, m_taskStore)
+                m_configHash, m_cluster, m_authGate, m_taskStore, makeHostCollector(callbacks))
     , m_reporter(m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_cluster,
                  m_collectors)
 {

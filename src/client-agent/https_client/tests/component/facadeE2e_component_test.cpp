@@ -57,6 +57,15 @@ namespace
         }
     }
 
+    /// Stands in for the agent's metadata_provider collector: supplies the host
+    /// fields the module cannot know (hostname/architecture/os). host.ip is NOT
+    /// provided here; the module injects it from the live connection.
+    void collectHostStub(char* json_out, size_t cap, void*)
+    {
+        std::snprintf(json_out, cap,
+                      R"({"hostname":"h","architecture":"x86_64","os":{"type":"linux"}})");
+    }
+
     void onSync(const char*, int, const char*, size_t, void* userData)
     {
         static_cast<Recorder*>(userData)->syncCount++;
@@ -279,6 +288,60 @@ TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
     EXPECT_NE(recorder.states.end(),
               std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
+}
+
+TEST_F(FacadeE2eTest, ControlRequestsAdvertiseJsonContentType)
+{
+    // End-to-end proof that /control carries Content-Type: application/json over
+    // the real curl path (the unit test only proves CurlPerformer emits it).
+    const uint16_t port = TLS_PORT + 7;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered (startup on /control).
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    EXPECT_TRUE(waitForBody(peek, "/peek/control-content-type", "application/json", 3000));
+
+    hc_destroy(handle);
+}
+
+TEST_F(FacadeE2eTest, NotifyHostCarriesTheLiveLocalIp)
+{
+    // End-to-end proof that host.ip is populated from the real connection
+    // (CURLINFO_LOCAL_IP), not from the retired getsockname(agt->sock) path.
+    // The loopback fake manager yields a local IP of 127.0.0.1.
+    const uint16_t port = TLS_PORT + 8;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_collect_host = collectHostStub;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    const HandleGuard guard {handle};
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    // The first Notify carries the host block with the injected local IP.
+    EXPECT_TRUE(waitForBody(peek, "/peek/last-notify", R"("ip":"127.0.0.1")", 5000));
 }
 
 TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)

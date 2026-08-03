@@ -122,7 +122,7 @@ TEST(ControlStateMachineTest, RegisteredAuthFailedDemotesToAuthError)
 TEST(ControlStateMachineTest, RegisteredVersionRejectionDemotesToRejected)
 {
     auto machine = inState(State::Registered);
-    // A 426 arriving during Notify (StartupRejected event) demotes.
+    // A 409 arriving during Notify (StartupRejected event) demotes.
     const auto effects = machine.onEvent(Event::StartupRejected);
     EXPECT_EQ(State::Rejected, machine.state());
     EXPECT_TRUE(effects.slowCadence);
@@ -228,7 +228,7 @@ TEST(ControlStateMachineTest, TransientFailureKeepsAnArmedRefresh)
 
 TEST(ControlStateMachineTest, DemotionClearsAnArmedRefresh)
 {
-    // A refresh Startup answered 426/401 demotes; the slow re-Startup cadence
+    // A refresh Startup answered 409/401 demotes; the slow re-Startup cadence
     // owns recovery and the one-shot refresh request must not linger.
     for (const auto event :
             {
