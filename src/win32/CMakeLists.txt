@@ -133,9 +133,13 @@ target_compile_definitions(wazuh-agent PRIVATE OSSECHIDS ARGV0="wazuh-agent"
 set_target_properties(
   wazuh-agent PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                          OUTPUT_NAME wazuh-agent)
+# These archives are mutually dependent (wazuh/wazuh-modulesd call
+# agcom_dispatch and syscom_dispatch, defined in wazuh-agentd and
+# wazuh-syscheckd), so a single-pass scan leaves them unresolved.
 target_link_libraries(
   wazuh-agent
-  PRIVATE dbsync
+  PRIVATE -Wl,--start-group
+          dbsync
           wazuh-agentd
           wazuh-logcollector
           wazuh-execd
@@ -149,6 +153,7 @@ target_link_libraries(
           wazuh-modulesd
           wazuh
           rootcheck
+          -Wl,--end-group
           ${WIN_SYSTEM_LIBS})
 
 # --- wazuh-agent-eventchannel.exe ---
@@ -166,7 +171,8 @@ set_target_properties(
              OUTPUT_NAME wazuh-agent-eventchannel)
 target_link_libraries(
   wazuh-agent-eventchannel
-  PRIVATE dbsync
+  PRIVATE -Wl,--start-group
+          dbsync
           wazuh-agentd
           wazuh-logcollector-event
           wazuh-execd
@@ -180,6 +186,7 @@ target_link_libraries(
           wazuh-modulesd
           wazuh
           rootcheck
+          -Wl,--end-group
           ${WIN_SYSTEM_LIBS})
 
 # --- setup-windows.exe ---
