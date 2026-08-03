@@ -626,10 +626,10 @@ static int teardown_decode_fim_event(void **state) {
     Eventinfo *data = *state;
     int i;
 
-    if(data->log){
+    if(data->log && data->log != data->full_log){
         free(data->log);
-        data->log = NULL;
     }
+    data->log = NULL;
 
     for(i = 0; i < FIM_NFIELDS; i++) {
         free(data->decoder_info->fields[i]);
@@ -1667,6 +1667,76 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
     assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert actual output */
+    assert_string_equal(input->lf->full_log,
+        "Registry Value '[x64] HKEY_LOCAL_MACHINE\\software\\test\\some:value' modified\n"
+        "Mode: scheduled\n"
+        "Changed attributes: size,md5,sha1,sha256\n"
+        "Size changed from '1234' to '4567'\n"
+        "Old md5sum was: 'old_hash_md5'\n"
+        "New md5sum is : 'hash_md5'\n"
+        "Old sha1sum was: 'old_hash_sha1'\n"
+        "New sha1sum is : 'hash_sha1'\n"
+        "Old sha256sum was: 'old_hash_sha256'\n"
+        "New sha256sum is : 'hash_sha256'\n");
+}
+
+// full_log allocated from the input length (as cleanevent.c does) must be resized
+// before the generated alert is written, otherwise the write goes out of bounds.
+static void test_fim_generate_alert_registry_value_small_full_log(void **state) {
+    fim_data_t *input = *state;
+    int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    cJSON *array_it;
+
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
+
+    if(input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test"), input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_ARCH].value = strdup("[x64]");
+    if (input->lf->fields[FIM_REGISTRY_ARCH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_VALUE_NAME].value = strdup("some:value");
+    if (input->lf->fields[FIM_REGISTRY_VALUE_NAME].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value = strdup("REG_SZ");
+    if (input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_HASH].value = strdup("234567890ABCDEF1234567890ABCDEF123456111");
+    if (input->lf->fields[FIM_REGISTRY_HASH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_MODE].value = strdup("scheduled");
+    if (input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("registry_value"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
+    cJSON_ArrayForEach(array_it, changed_attributes) {
+        wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
+    }
+
+    /* Reproduce the input-derived allocation performed by cleanevent.c: a buffer
+     * smaller than the alert fim_generate_alert is about to build. */
+    free(input->lf->full_log);
+    if (input->lf->full_log = calloc(64, sizeof(char)), input->lf->full_log == NULL)
+        fail();
+    input->lf->log = input->lf->full_log;
+
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
+
+    assert_int_equal(ret, 0);
+
+    /* The full alert must be present and untruncated. */
     assert_string_equal(input->lf->full_log,
         "Registry Value '[x64] HKEY_LOCAL_MACHINE\\software\\test\\some:value' modified\n"
         "Mode: scheduled\n"
@@ -3401,6 +3471,12 @@ static void test_decode_fim_event_type_event(void **state) {
     expect_string(__wrap_wdbc_parse_result, result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
+    /* In production lf->log points inside lf->full_log (set by cleanevent); model
+     * that here so the alert generation can reuse the buffer as it does live. */
+    strcpy(lf->full_log, lf->log);
+    free(lf->log);
+    lf->log = lf->full_log;
+
     ret = decode_fim_event(&sdb, lf);
 
     assert_int_equal(ret, 1);
@@ -4018,6 +4094,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_full_alert, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_key_alert, setup_registry_key_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_value_alert, setup_registry_value_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_value_small_full_log, setup_registry_value_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_registry_unknow_value_alert, setup_registry_value_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_type_not_modified, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_generate_alert_invalid_element_in_attributes, setup_fim_data, teardown_fim_data),
