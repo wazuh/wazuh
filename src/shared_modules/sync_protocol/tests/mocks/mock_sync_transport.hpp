@@ -126,21 +126,20 @@ inline const Wazuh::SyncSchema::FullSession* capturedSession(
     return message ? message->content_as<Wazuh::SyncSchema::FullSession>() : nullptr;
 }
 
-/// @brief How many DataValue entries the session carried, across every batch.
-inline int countedDataValues(const Wazuh::SyncSchema::FullSession* session)
+/// @brief The session's SyncData payload, or nullptr if it carries something else.
+inline const Wazuh::SyncSchema::SyncData* syncData(const Wazuh::SyncSchema::FullSession* session)
 {
-    int total = 0;
-
-    if (session && session->batches())
+    if (session && session->payload_type() == Wazuh::SyncSchema::SessionPayload::SyncData)
     {
-        for (const auto* batch : *session->batches())
-        {
-            if (batch && batch->values())
-            {
-                total += static_cast<int>(batch->values()->size());
-            }
-        }
+        return session->payload_as_SyncData();
     }
 
-    return total;
+    return nullptr;
+}
+
+/// @brief How many DataValue entries the session carried.
+inline int countedDataValues(const Wazuh::SyncSchema::FullSession* session)
+{
+    const auto* data = syncData(session);
+    return (data && data->values()) ? static_cast<int>(data->values()->size()) : 0;
 }
