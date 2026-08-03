@@ -156,32 +156,68 @@ TEST_F(RetrySenderTest, PayloadTooLargeReturnsImmediately)
     EXPECT_TRUE(m_waiter.requestedDelays().empty());
 }
 
-TEST_F(RetrySenderTest, AuthFailureReturnsImmediately)
+TEST_F(RetrySenderTest, RepeatedAuthFailureReturnsAuthFail)
 {
-    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 401)));
+    // A 401 triggers one fresh-timestamp retry; a second 401 is the verdict.
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::AuthFail, result.outcome); // Re-enroll policy is the caller's.
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());   // The auth retry is immediate.
 }
 
-TEST_F(RetrySenderTest, AuthFailureEngagesTheAuthGateButSuccessDoesNot)
+TEST_F(RetrySenderTest, AuthFailureRecoversWithAFreshTimestamp)
+{
+    // The first 401 is an edge/expired timestamp; the immediate resign succeeds.
+    std::vector<std::string> authorizations;
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        authorizations.push_back(spec.headers.back());
+        m_clock.advance(std::chrono::seconds {5}); // Clock moves before the retry.
+        return response(TransportStatus::Ok, 401);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        authorizations.push_back(spec.headers.back());
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    ASSERT_EQ(2u, authorizations.size());
+    EXPECT_NE(authorizations[0], authorizations[1]); // Retry was freshly signed.
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());  // No backoff between the two.
+}
+
+TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 {
     ::testing::NiceMock<MockCallbackSink> sink;
     AuthGate gate {sink, [] {}};
     RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, &gate};
 
+    // First send: a 401 then a 200 on the retry -> recovered, no pause.
     EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
     .WillOnce(Return(response(TransportStatus::Ok, 200)))
+    // Second send: two 401s -> escalate.
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
     .WillOnce(Return(response(TransportStatus::Ok, 401)));
 
     guarded.send(makeSpec(), m_waiter, 1);
-    EXPECT_FALSE(gate.paused()); // 200: no pause.
+    EXPECT_FALSE(gate.paused()); // Retry recovered: no pause.
     guarded.send(makeSpec(), m_waiter, 1);
-    EXPECT_TRUE(gate.paused());  // 401: paused.
+    EXPECT_TRUE(gate.paused());  // Retry also 401: paused.
 }
 
 TEST_F(RetrySenderTest, VersionRejectionReturnsImmediately)
 {
-    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 426)));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 409)));
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::VersionRejected, result.outcome);
 }

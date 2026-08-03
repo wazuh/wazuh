@@ -35,7 +35,7 @@
  *        idiom). It validates the AES-CMAC of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
  *        interop; a mismatch yields 401. It supports a one-shot 503 (back-
- *        pressure), a session LRU-of-one (dedup), and a 426 mode.
+ *        pressure), a session LRU-of-one (dedup), and a 409 version-reject mode.
  *
  * The child process runs the server; the parent asserts on the responses it
  * receives (the two sides do not share memory).
@@ -340,9 +340,17 @@ class FakeManager final
             // whether a graceful stop actually sends {"type":"shutdown"}.
             auto controlTypes = std::make_shared<std::string>();
             auto controlMutex = std::make_shared<std::mutex>();
+            // The Content-Type each /control request advertised, so a test can
+            // confirm the per-endpoint header survives the real curl path (the
+            // unit test only proves CurlPerformer emits it). Same peek idiom.
+            auto controlContentTypes = std::make_shared<std::string>();
+            // The last Notify body, so a test can confirm the real host block
+            // (including host.ip from the live connection) over the curl path.
+            auto lastNotifyBody = std::make_shared<std::string>();
 
             server.Post("/control",
-                        [verify, settingsFlipAfter, notifyCount, configHash, controlTypes, controlMutex](
+                        [verify, settingsFlipAfter, notifyCount, configHash, controlTypes,
+                                 controlContentTypes, lastNotifyBody, controlMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
@@ -351,9 +359,15 @@ class FakeManager final
                     return;
                 }
 
+                {
+                    std::lock_guard<std::mutex> lock(*controlMutex);
+                    *controlContentTypes += request.get_header_value("Content-Type");
+                    *controlContentTypes += ";";
+                }
+
                 if (request.has_header("X-Reject-Version"))
                 {
-                    response.status = 426;
+                    response.status = 409;
                     return;
                 }
 
@@ -402,6 +416,10 @@ class FakeManager final
                 if (request.body.find("\"type\":\"notify\"") != std::string::npos)
                 {
                     notifyCount->fetch_add(1);
+                    {
+                        std::lock_guard<std::mutex> lock(*controlMutex);
+                        *lastNotifyBody = request.body;
+                    }
                     const std::string agent =
                         configHash.empty()
                         ? std::string {R"({"groups":["default"]})"}
@@ -432,6 +450,24 @@ class FakeManager final
                 std::lock_guard<std::mutex> lock(*controlMutex);
                 response.status = 200;
                 response.set_content(*controlTypes, "text/plain");
+            });
+
+            server.Get("/peek/control-content-type",
+                       [controlContentTypes, controlMutex](const httplib::Request&,
+                                                           httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*controlMutex);
+                response.status = 200;
+                response.set_content(*controlContentTypes, "text/plain");
+            });
+
+            server.Get("/peek/last-notify",
+                       [lastNotifyBody, controlMutex](const httplib::Request&,
+                                                      httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*controlMutex);
+                response.status = 200;
+                response.set_content(*lastNotifyBody, "text/plain");
             });
         }
 

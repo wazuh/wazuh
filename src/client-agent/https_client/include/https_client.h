@@ -262,6 +262,14 @@ typedef struct hc_callbacks_t
     /// logged and the cycle skipped.
     char* (*collect_stats)(void* user_data);
     char* (*collect_config)(void* user_data);
+
+    /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
+    /// object for the /control Notify: {"hostname":..,"architecture":..,"ip":..,
+    /// "os":{"name":..,"version":..,"platform":..,"type":..}}. Write an empty
+    /// string when metadata is not yet available; the Notify then omits host.
+    /// Called on the control thread before each Notify (not the dispatcher), so
+    /// it must be a fast, non-blocking read. Null means no host block is sent.
+    void (*on_collect_host)(char* json_out, size_t cap, void* user_data);
     void* user_data;
 } hc_callbacks_t;
 
