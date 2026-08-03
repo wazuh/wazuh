@@ -30,6 +30,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(void, wireAbort, (const std::atomic<bool>* abortFlag), (override));
         MOCK_METHOD(TransportStatus, perform, (), (override));
         MOCK_METHOD(long, responseCode, (), (override));
+        MOCK_METHOD(std::string, localIp, (), (override));
 };
 
 #endif // _HC_MOCK_CURL_HANDLE_HPP

@@ -97,6 +97,47 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_EQ(200, response.httpCode);
 }
 
+TEST(CurlPerformerTest, ContentTypeEmittedWhenSet)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    const auto config = makeConfig(HC_VERIFY_NONE);
+
+    const uint8_t body[] = R"({"type":"notify"})";
+    HttpRequestSpec spec;
+    spec.target = "/control";
+    spec.contentType = "application/json";
+    spec.body = body;
+    spec.bodyLength = sizeof(body) - 1;
+
+    EXPECT_CALL(*handle, appendHeader("Content-Type: application/json"));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(config, std::move(mock));
+    performer.perform(spec);
+}
+
+TEST(CurlPerformerTest, NoContentTypeWhenUnset)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    const auto config = makeConfig(HC_VERIFY_NONE);
+
+    const uint8_t body[] = "H {}\n";
+    HttpRequestSpec spec;
+    spec.target = "/stateless"; // */* endpoint: keep libcurl's default.
+    spec.body = body;
+    spec.bodyLength = sizeof(body) - 1;
+
+    EXPECT_CALL(*handle, appendHeader(::testing::StartsWith("Content-Type:"))).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(config, std::move(mock));
+    performer.perform(spec);
+}
+
 TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();

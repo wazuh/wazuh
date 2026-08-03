@@ -67,13 +67,15 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::ConnectFail, 0, OutcomeClass::Retryable},
         ClassifierCase {TransportStatus::TlsFail, 0, OutcomeClass::Retryable},
         ClassifierCase {TransportStatus::OtherError, 0, OutcomeClass::Retryable},
-        // Auth: 401 per #37732; 403 kept until FR7.4 is reconciled (T2).
+        // Auth: 401 only. 403 is not an auth code in the final contract; as a
+        // non-contract intermediary code it is transient, so events are kept.
         ClassifierCase {TransportStatus::Ok, 401, OutcomeClass::AuthFail},
-        ClassifierCase {TransportStatus::Ok, 403, OutcomeClass::AuthFail},
-        // Version rejection: 426 per #37732, 409 per the #37733 OpenAPI
-        // ("Protocol version not supported"); both accepted until reconciled.
-        ClassifierCase {TransportStatus::Ok, 426, OutcomeClass::VersionRejected},
+        ClassifierCase {TransportStatus::Ok, 403, OutcomeClass::Retryable},
+        // Version rejection: 409 Conflict per the #37733 /control contract.
+        // 426 was the superseded #37732 proposal; now a transient intermediary
+        // code (Retryable) rather than a batch-dropping Permanent.
         ClassifierCase {TransportStatus::Ok, 409, OutcomeClass::VersionRejected},
+        ClassifierCase {TransportStatus::Ok, 426, OutcomeClass::Retryable},
         // Back-pressure signals.
         ClassifierCase {TransportStatus::Ok, 429, OutcomeClass::BackPressure},
         ClassifierCase {TransportStatus::Ok, 503, OutcomeClass::BackPressure},
