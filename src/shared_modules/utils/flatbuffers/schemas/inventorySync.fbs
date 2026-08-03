@@ -100,6 +100,30 @@ table DataBatch {
     values: [DataValue];
 }
 
+/// The data-sync payload of a FullSession: DataValue items (module/metadata
+/// upserts and deletes) and DataContext items (vulnerability-detection data)
+/// travel together in the same session, so both live here side by side.
+table SyncData {
+    values: [DataValue];
+    contexts: [DataContext];
+}
+
+table Cleans {
+    items: [DataClean];
+}
+
+table Checksums {
+    items: [ChecksumModule];
+}
+
+/// A session carries exactly one of these: a data sync, a clean notification,
+/// or an integrity checksum - never a combination.
+union SessionPayload {
+    SyncData,
+    Cleans,
+    Checksums
+}
+
 /// A whole synchronization session as ONE message.
 ///
 /// The chunked Start -> StartAck -> DataBatch[] -> End -> EndAck exchange exists
@@ -112,10 +136,7 @@ table DataBatch {
 /// so a retried session keeps the same id and the manager can dedup it.
 table FullSession {
     start: Start;
-    batches: [DataBatch];
-    contexts: [DataContext];
-    cleans: [DataClean];
-    checksums: [ChecksumModule];
+    payload: SessionPayload;
     end: End;
 }
 
