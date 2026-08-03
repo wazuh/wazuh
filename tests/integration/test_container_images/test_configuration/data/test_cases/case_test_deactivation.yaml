@@ -1,0 +1,9 @@
+- name: check_container_images_deactivation
+  description: Verify that the module does not start when it is disabled
+  configuration_parameters:
+    ENABLED: 'no'
+    SCAN_ON_START: 'yes'
+    INTERVAL: 5s
+    LOCAL_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    enabled: 'no'
