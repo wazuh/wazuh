@@ -18,11 +18,6 @@
 #include "state.h"
 #include "module_limits.h"
 
-/* Request pool helpers (request.c) */
-#define full(i, j, n) ((i + 1) % (n) == j)
-#define empty(i, j) (i == j)
-#define forward(x, n) x = (x + 1) % (n)
-
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
@@ -44,9 +39,6 @@ void start_agent(int is_startup);
 
 /* Publish the agent metadata into shared memory */
 void w_agentd_populate_metadata(void);
-
-/* Initialize sender structure */
-void sender_init();
 
 /**
  * Tries to enroll to a server indicated by server_rip
@@ -89,19 +81,6 @@ bool package_uninstall_validation(const char *uninstall_auth_token, const char *
 DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 #else
 void * w_rotate_log_thread(void * arg);
-#endif
-
-// Initialize request module
-void req_init();
-
-// Push a request message into dispatching queue. Return 0 on success or -1 on error.
-int req_push(char * buffer, size_t length);
-
-// Request receiver thread start
-#ifdef WIN32
-DWORD WINAPI req_receiver(LPVOID arg);
-#else
-void * req_receiver(void * arg);
 #endif
 
 // Reload agent
@@ -181,10 +160,6 @@ void * agcom_main(void * arg);
 extern int agent_debug_level;
 extern int win_debug_level;
 extern int rotate_log;
-extern int request_pool;
-extern int rto_sec;
-extern int rto_msec;
-extern int max_attempts;
 extern int log_compress;
 extern int keep_log_days;
 extern int day_wait;
