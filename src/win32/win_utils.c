@@ -228,13 +228,6 @@ int local_start()
     /* Set wait lock before starting threads */
     os_setwait();
 
-    /* Initialize buffer before starting threads that may use it */
-    if (agt->buffer) {
-        buffer_init();
-    } else {
-        minfo(DISABLED_BUFFER);
-    }
-
     /* HTTPS client: the agent's transport, unconditionally (mirrors AgentdStart
      * on POSIX; the Windows startup path is separate). Started here, with the
      * legacy buffer and before any producer thread, for the same reason that
@@ -345,16 +338,6 @@ int local_start()
                         NULL,
                         0,
                         (LPDWORD)&threadID);
-    }
-
-    /* Launch dispatch thread */
-    if (agt->buffer) {
-        w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
     }
 
     /* Configure and start statistics */
@@ -516,18 +499,10 @@ int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, 
     // Append the binary payload
     memcpy(p, message, message_len);
 
-    // Dispatch the message (either to buffer or directly)
-    if (!agt->buffer) {
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        // Pass the constructed message and its *actual size*.
-        if (send_msg(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
-    } else {
-        // Pass the constructed message and its *actual size* to the buffer.
-        if (buffer_append(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
+    // Dispatch the message with its *actual size* (binary payload: no strlen).
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+    if (send_msg(tmpstr, total_len) >= 0) {
+        retval = 0;
     }
 
     // Release the mutex

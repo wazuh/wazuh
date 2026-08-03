@@ -1158,20 +1158,33 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
-/* Occupancy thresholds the module reports against, kept so the log lines can
- * quote them exactly as buffer.c does. Filled by bridge_build_config() from the
- * same internal options buffer_init() reads. */
+/* Occupancy thresholds the module reports against, so the log lines can quote
+ * them as buffer.c did. Filled by bridge_build_config(). */
 static int g_buffer_warn_level = 90;
 static int g_buffer_normal_level = 70;
+
+/* The wazuh-agent.buffer occupancy event (manager flood rules 202-205), moved
+ * here from buffer.c: this is its only caller. */
+static void bridge_send_buffer_status_event(const char *action, int severity)
+{
+    char msg[OS_MAXSTR];
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.category", "change");
+    cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
+    cJSON_AddNumberToObject(event, "event.severity", severity);
+    cJSON_AddStringToObject(event, "event.action", action);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+    snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
+    send_msg(msg, -1);
+}
 
 /* Reports the accumulator's occupancy exactly as the legacy leaky bucket
  * reported the ring it replaced (client-agent/src/buffer.c): the same log lines
  * and the same wazuh-agent.buffer state event, so the manager-side flood rules
- * keep firing now that stateless events no longer pass through buffer_append().
- *
- * The state event bypasses the accumulator -- send_buffer_status_event() writes
- * straight to send_msg() -- exactly as buffer.c bypassed the ring it reports
- * on. A flood report must not queue behind the flood it is reporting. */
+ * keep firing now that the accumulator is what fills up. */
 static void bridge_on_buffer_level(int level, void *user_data)
 {
     (void)user_data;
@@ -1179,22 +1192,22 @@ static void bridge_on_buffer_level(int level, void *user_data)
     switch (level) {
     case HC_BUFFER_WARNING:
         mwarn(WARN_BUFFER, g_buffer_warn_level);
-        send_buffer_status_event("warning", 1);
+        bridge_send_buffer_status_event("warning", 1);
         break;
 
     case HC_BUFFER_FULL:
         mwarn(FULL_BUFFER);
-        send_buffer_status_event("full", 2);
+        bridge_send_buffer_status_event("full", 2);
         break;
 
     case HC_BUFFER_FLOOD:
         mwarn(FLOODED_BUFFER);
-        send_buffer_status_event("flooded", 3);
+        bridge_send_buffer_status_event("flooded", 3);
         break;
 
     case HC_BUFFER_NORMAL:
         mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
-        send_buffer_status_event("normal", 0);
+        bridge_send_buffer_status_event("normal", 0);
         break;
 
     default:
@@ -1309,11 +1322,8 @@ static bool bridge_build_config(hc_config_t *config)
     config->config_report_enabled = agt->config_report.enabled;
     config->config_report_interval_s = (uint32_t)agt->config_report.interval;
 
-    /* Occupancy ladder: the same internal options buffer_init() reads, so an
-     * operator who tuned the legacy client buffer keeps their thresholds now
-     * that the accumulator is what fills up. Read here rather than through
-     * buffer.c's globals because those are only set when the legacy buffer is
-     * enabled, and the accumulator applies either way. */
+    /* Occupancy ladder: the same internal options the legacy client buffer
+     * read, so tuned thresholds keep working. */
     g_buffer_warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     g_buffer_normal_level = getDefine_Int("agent", "normal_level", 0, g_buffer_warn_level - 1);
     config->buffer_warn_level = (uint32_t)g_buffer_warn_level;
