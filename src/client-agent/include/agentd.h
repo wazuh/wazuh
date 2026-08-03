@@ -39,31 +39,14 @@ void AgentdStart(int uid, int gid, const char *user, const char *group) __attrib
 /* Event Forwarder */
 void *EventForward(void);
 
-/* Receiver messages */
-int receive_msg(void);
+/* Read the keys, arm the startup gate and report the agent start */
+void start_agent(int is_startup);
 
-/* Receiver messages for Windows */
-#ifdef WIN32
-int receiver_messages(void);
-#endif
+/* Publish the agent metadata into shared memory */
+void w_agentd_populate_metadata(void);
 
 /* Initialize sender structure */
 void sender_init();
-
-/* Extract the shared files */
-char *getsharedfiles(void);
-
-/* Get agent IP */
-char *get_agent_ip();
-
-/* Initialize handshake to server */
-void start_agent(int is_startup);
-
-/* Connect to the server */
-bool connect_server(int initial_id, bool verbose);
-
-/* Send agent stopped message to server */
-void send_agent_stopped_message();
 
 /**
  * Tries to enroll to a server indicated by server_rip
@@ -100,10 +83,6 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
  * @return true if validation is granted, false if denied
  * */
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
-
-/* Notify server */
-void run_notify(void);
-
 
 // Thread to rotate internal log
 #ifdef WIN32
@@ -211,15 +190,12 @@ extern int keep_log_days;
 extern int day_wait;
 extern int daily_rotations;
 extern int size_rotate_read;
-extern int timeout;
 extern int interval;
 extern int remote_conf;
 
 
 /* Global variables. Only modified during startup. */
 
-extern time_t available_server;
-extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
