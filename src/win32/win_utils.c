@@ -255,13 +255,11 @@ int local_start()
     /* Set wait lock before starting threads */
     os_setwait();
 
-    /* HTTPS client: the agent's transport, unconditionally (mirrors AgentdStart
-     * on POSIX; the Windows startup path is separate). Started here, with the
-     * legacy buffer and before any producer thread, for the same reason that
-     * one is: on Windows the modules call SendMSG in-process, so an event
+    /* HTTPS client: the agent's only transport (mirrors AgentdStart on POSIX;
+     * the Windows startup path is separate). Started before any producer
+     * thread: on Windows the modules call SendMSG in-process, so an event
      * emitted before the accumulator exists is dropped outright rather than
-     * waiting in a queue as it would on POSIX. The server address and the keys
-     * are both already validated by this point (see above). */
+     * waiting in a queue as it would on POSIX. */
     w_https_client_start();
     atexit(w_https_client_stop);
 
@@ -349,9 +347,6 @@ int local_start()
         }
     }
 
-    /* Socket connection */
-    agt->sock = -1;
-
     /* Initialize random numbers */
     srandom(time(0));
     os_random();
@@ -379,7 +374,6 @@ int local_start()
     start_agent(1);
 
     os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     /* Start request module */
     req_init();
@@ -393,11 +387,16 @@ int local_start()
     /* Delete agent state file at exit */
     atexit(DeleteState);
 
-    /* Send agent stopped message at exit */
-    atexit(send_agent_stopped_message);
+    /* Main thread from here on. With no manager socket left to read, all that
+     * remains of the old receiver loop is expiring the active-response
+     * timeouts, which only this thread runs. */
+    while (1) {
+        if (agt->execdq >= 0) {
+            ExecdTimeoutRun();
+        }
 
-    /* Start receiver -- main process here */
-    receiver_messages();
+        sleep(1);
+    }
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);
