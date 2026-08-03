@@ -18,7 +18,7 @@
 #include "client-config.h"
 #include "wmodules.h"
 #include "agentd.h"
-#include "sendmsg.h"
+#include "https_client_bridge.h"
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
@@ -131,6 +131,7 @@ int verifyRemoteConf(){
 
 	fail:
 		mdebug2("Invalid remote configuration received");
-		send_msg(msg_output, -1);
+		/* Manager-visible report, now over /stateless. */
+		w_https_client_submit_event(msg_output, strlen(msg_output));
 		return OS_INVALID;
 };
