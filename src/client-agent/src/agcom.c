@@ -132,7 +132,6 @@ size_t agcom_getallconfig(char ** output) {
     cJSON *body = cJSON_CreateObject();
 
     module_report_merge(body, getClientConfig());
-    module_report_merge(body, getBufferConfig());
     module_report_merge(body, getAgentInternalOptions());
 #ifndef WIN32
     module_report_merge(body, getAntiTamperingConfig());
