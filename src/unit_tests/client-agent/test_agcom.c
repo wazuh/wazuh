@@ -20,7 +20,6 @@
 
 /* --- Stub controls --- */
 static cJSON *g_client_cfg = NULL;
-static cJSON *g_buffer_cfg = NULL;
 static cJSON *g_internal_cfg = NULL;
 #ifndef WIN32
 static cJSON *g_anti_tampering_cfg = NULL;
@@ -32,14 +31,6 @@ cJSON* __wrap_getClientConfig(void)
 {
     cJSON* ret = g_client_cfg;
     g_client_cfg = NULL;
-
-    return ret;
-}
-
-cJSON* __wrap_getBufferConfig(void)
-{
-    cJSON* ret = g_buffer_cfg;
-    g_buffer_cfg = NULL;
 
     return ret;
 }
@@ -133,24 +124,6 @@ static void test_agcom_getconfig_client_ok(void** state)
     char* output = NULL;
 
     g_client_cfg = make_simple_json("client", "ok");
-
-    size_t len = agcom_dispatch(command, &output);
-
-    assert_non_null(output);
-    assert_true(strncmp(output, "ok ", 3) == 0);
-    assert_true(strlen(output) > 3);
-    assert_int_equal((int)len, (int)strlen(output));
-
-    free(output);
-}
-
-static void test_agcom_getconfig_buffer_ok(void** state)
-{
-    (void)state;
-    char command[] = "getconfig buffer";
-    char* output = NULL;
-
-    g_buffer_cfg = make_simple_json("buffer", "ok");
 
     size_t len = agcom_dispatch(command, &output);
 
@@ -343,7 +316,6 @@ int main(void)
         cmocka_unit_test(test_agcom_dispatch_unknown_command),
         cmocka_unit_test(test_agcom_dispatch_getstate),
         cmocka_unit_test(test_agcom_getconfig_client_ok),
-        cmocka_unit_test(test_agcom_getconfig_buffer_ok),
         cmocka_unit_test(test_agcom_getconfig_internal_ok),
 #ifndef WIN32
         cmocka_unit_test(test_agcom_getconfig_anti_tampering_ok),
