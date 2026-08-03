@@ -268,7 +268,13 @@ namespace remoted::control
                   try
                   {
                       auto json = nlohmann::json::parse(payload);
-                      std::string groupsCsv = json.value("group", "");
+                      std::string groupsCsv;
+
+                      // Wazuh-DB returns an array: [{"group":"grp1,grp2"}]
+                      if (json.is_array() && !json.empty() && json[0].is_object())
+                      {
+                          groupsCsv = json[0].value("group", "");
+                      }
 
                       std::vector<std::string> groups;
                       if (!groupsCsv.empty())

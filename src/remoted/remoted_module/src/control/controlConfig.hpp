@@ -26,9 +26,9 @@ namespace remoted::control
     inline constexpr uint32_t kWdbRoundtripDeadlineMs = 2000;
     inline constexpr uint32_t kWdbMaxQueueSize = 10'000;
     inline constexpr uint32_t kGroupsRefreshIntervalSec = 60;
-    inline constexpr uint32_t kTmConcurrency = 10;
+    inline constexpr uint32_t kTmConcurrency = 4;
     inline constexpr uint32_t kTaskMaxQueueSize = 10'000;
-    inline constexpr uint32_t kTmDeadlineMs = 200;
+    inline constexpr uint32_t kTmDeadlineMs = 2000;
     inline constexpr size_t kFileHashBufferSize = 8192;
     inline constexpr size_t kInotifyBufferSize = 4096;
 
