@@ -68,11 +68,14 @@
 | Issue | Comment |
 |-------|---------|
 | [#29533](https://github.com/wazuh/wazuh/issues/29533) [#31838](https://github.com/wazuh/wazuh/issues/31838) | Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. |
+| [#37828](https://github.com/wazuh/wazuh/issues/37828) [#37830](https://github.com/wazuh/wazuh/issues/37830) [#37832](https://github.com/wazuh/wazuh/issues/37832) [#37833](https://github.com/wazuh/wazuh/issues/37833) [#37834](https://github.com/wazuh/wazuh/issues/37834) [#37835](https://github.com/wazuh/wazuh/issues/37835) [#37836](https://github.com/wazuh/wazuh/issues/37836) | Added an agent HTTPS client covering the `/control` lifecycle, the `/stateless` and `/stateful` data planes, `/download` for centralized configuration and WPK packages, task dispatch with durable deduplication, and remote upgrade, with AES-CMAC request signing and fail-closed TLS validation. |
+| [#37843](https://github.com/wazuh/wazuh/issues/37843) | Added periodic `/stats` and `/config` push, reporting every module's statistics and configuration in a single aggregated document per endpoint, behind two `ossec.conf` toggles that are off by default. |
 
 #### Changed
 
 | Issue | Comment |
 |-------|---------|
+| [#37831](https://github.com/wazuh/wazuh/issues/37831) | Changed the agent transport to HTTPS for all server communication, removing the legacy TCP data path and its internal-option fallback. |
 | [#33378](https://github.com/wazuh/wazuh/issues/33378) | Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. |
 | [#34849](https://github.com/wazuh/wazuh/issues/34849) | Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. |
 | [#33199](https://github.com/wazuh/wazuh/issues/33199) | Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. |
