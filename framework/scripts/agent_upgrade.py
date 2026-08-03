@@ -5,11 +5,22 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import warnings
 from asyncio import run
 from os.path import dirname
 from signal import signal, SIGINT
 from sys import exit, path, argv
 from time import sleep
+
+from starlette.exceptions import StarletteDeprecationWarning
+
+# Importing connexion pulls in `starlette.testclient`, which warns when `httpx2` is not
+# installed. Starlette attributes the warning to the importer, so filter by message, not module.
+warnings.filterwarnings(
+    'ignore', category=StarletteDeprecationWarning,
+    message=r'Using `httpx` with `starlette\.testclient` is deprecated',
+)
+
 from connexion import ProblemException
 
 # Set framework path
