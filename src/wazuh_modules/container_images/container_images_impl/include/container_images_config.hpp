@@ -23,6 +23,9 @@ namespace containerimages
         bool scanOnStart {true};
         unsigned int interval {3600};        ///< Seconds between scans.
         std::vector<std::string> localPaths; ///< Paths of the configured local sources.
+
+        // Persistence.
+        std::string dbPath {"queue/container_images/db/container_images.db"}; ///< Local inventory DB.
     };
 } // namespace containerimages
 
