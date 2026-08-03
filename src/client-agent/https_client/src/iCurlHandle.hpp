@@ -68,6 +68,7 @@ class ICurlHandle
 
         virtual TransportStatus perform() = 0;
         virtual long responseCode() = 0;
+        virtual std::string localIp() = 0; ///< CURLINFO_LOCAL_IP after perform().
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

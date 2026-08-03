@@ -47,6 +47,7 @@
 #include "task_registry_client.h" /* durable task_id registry client */
 #include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command */
 #include "cJSON.h"
+#include "metadata_provider.h" /* metadata_provider_get(): host metadata for the Notify */
 #include "os_net.h"
 #include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* */
 
@@ -1217,6 +1218,69 @@ static void bridge_on_buffer_level(int level, void *user_data)
     }
 }
 
+/* Host metadata source for the /control Notify. Pulled fresh each Notify from
+ * the shared metadata_provider (hostname/architecture/os.*). Writes an empty
+ * string when metadata is not yet available, so the module omits the host
+ * block. The agent IP is NOT sourced here: on the HTTPS agent there is no live
+ * manager socket (agt->sock is permanently -1), so the module adds host.ip from
+ * the actual connection (CURLINFO_LOCAL_IP) instead. Runs on the module's
+ * control thread; a shared-memory read, fast and non-blocking. */
+static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
+{
+    (void)user_data;
+
+    if (json_out == NULL || cap == 0) {
+        return;
+    }
+
+    json_out[0] = '\0';
+
+    agent_metadata_t metadata = {0};
+
+    if (metadata_provider_get(&metadata) != 0) {
+        mdebug2("https_client: host metadata not available yet; sending Notify without host.");
+        return;
+    }
+
+    cJSON *host = cJSON_CreateObject();
+
+    if (host == NULL) {
+        metadata_provider_free_metadata(&metadata);
+        return;
+    }
+
+    if (metadata.hostname[0]) {
+        cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+    }
+    if (metadata.architecture[0]) {
+        cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+    }
+
+    cJSON *os = cJSON_CreateObject();
+    if (metadata.os_name[0]) {
+        cJSON_AddStringToObject(os, "name", metadata.os_name);
+    }
+    if (metadata.os_version[0]) {
+        cJSON_AddStringToObject(os, "version", metadata.os_version);
+    }
+    if (metadata.os_platform[0]) {
+        cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+    }
+    if (metadata.os_type[0]) {
+        cJSON_AddStringToObject(os, "type", metadata.os_type);
+    }
+    cJSON_AddItemToObject(host, "os", os);
+
+    char *printed = cJSON_PrintUnformatted(host);
+    if (printed) {
+        snprintf(json_out, cap, "%s", printed);
+        os_free(printed);
+    }
+
+    cJSON_Delete(host);
+    metadata_provider_free_metadata(&metadata);
+}
+
 /* Maps the agent config parser's verification_mode enum onto the module
  * ABI's hc_verify_mode_t. The two are defined in independent headers with
  * matching values by convention (both documented "FULL is 0, fails closed");
@@ -1445,6 +1509,7 @@ void w_https_client_start(void)
     callbacks.on_buffer_level = bridge_on_buffer_level;
     callbacks.collect_stats = bridge_collect_stats;
     callbacks.collect_config = bridge_collect_config;
+    callbacks.on_collect_host = bridge_on_collect_host;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {

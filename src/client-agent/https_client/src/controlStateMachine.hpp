@@ -40,7 +40,7 @@ class ControlStateMachine final
         enum class Event
         {
             StartupAccepted,
-            StartupRejected, ///< 426 / 400 at Startup or Notify.
+            StartupRejected, ///< 409 / 400 at Startup or Notify.
             AuthFailed,      ///< 401.
             TransientFailure,
             NotifyOk,
