@@ -257,8 +257,10 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     const auto* session = capturedSession(mockSyncTransport, keepAlive);
     ASSERT_NE(nullptr, session);
     EXPECT_EQ(2, countedDataValues(session));
-    ASSERT_NE(nullptr, session->contexts());
-    EXPECT_EQ(2u, session->contexts()->size());
+    const auto* data = syncData(session);
+    ASSERT_NE(nullptr, data);
+    ASSERT_NE(nullptr, data->contexts());
+    EXPECT_EQ(2u, data->contexts()->size());
 }
 
 TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoesNotAffectDataValue)
@@ -308,12 +310,13 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
 }
 
 // ========================================
-// Tests for DataBatch protocol behavior
+// Tests for SyncData payload behavior
 // ========================================
 
-TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
+TEST_F(AgentSyncProtocolDataContextTest, SyncData_DataValuesArriveTogether)
 {
-    // DataValues in DELTA mode must be sent inside a DataBatch, not as individual DataValue messages.
+    // DataValues in DELTA mode must be sent inside the session's SyncData payload,
+    // not as individual DataValue messages.
     mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int dataBatchMessagesSent = 0;
@@ -361,19 +364,19 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
 
     syncThread.join();
 
-    // All DataValues must arrive inside DataBatch messages, never as individual DataValue messages
+    // All DataValues must arrive inside the session's SyncData payload, never as
+    // individual DataValue messages.
     std::vector<uint8_t> keepAlive;
     const auto* session = capturedSession(mockSyncTransport, keepAlive);
     ASSERT_NE(nullptr, session);
     EXPECT_EQ(1, mockSyncTransport->sendCount());          // One message for the whole session.
-    ASSERT_NE(nullptr, session->batches());
-    EXPECT_EQ(1u, session->batches()->size());             // No ~60 KB split any more.
+    ASSERT_NE(nullptr, syncData(session));                 // No ~60 KB split any more.
     EXPECT_EQ(3, countedDataValues(session));
 }
 
-TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValues)
+TEST_F(AgentSyncProtocolDataContextTest, SyncData_PayloadContainsExpectedDataValues)
 {
-    // Verify that the DataBatch payload carries the correct seq and id for each DataValue.
+    // Verify that the SyncData payload carries the correct seq and id for each DataValue.
     mockQueue = std::make_shared<MockPersistentQueue>();
 
     static std::vector<std::pair<uint64_t, std::string>> received; // {seq, id}
@@ -419,9 +422,9 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
     std::vector<uint8_t> keepAlive;
     const auto* session = capturedSession(mockSyncTransport, keepAlive);
     ASSERT_NE(nullptr, session);
-    ASSERT_NE(nullptr, session->batches());
-    ASSERT_EQ(1u, session->batches()->size());
-    const auto* values = session->batches()->Get(0)->values();
+    const auto* data = syncData(session);
+    ASSERT_NE(nullptr, data);
+    const auto* values = data->values();
     ASSERT_NE(nullptr, values);
     ASSERT_EQ(2u, values->size());
     EXPECT_EQ(0u, values->Get(0)->seq());
