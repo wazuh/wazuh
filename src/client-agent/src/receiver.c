@@ -251,34 +251,16 @@ int receive_msg()
                                         mwarn("Could not clean up shared directory.");
                                     }
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
-                                        const bool gate_was_blocked = !startup_gate_is_ready();
-                                        const bool gate_would_release = gate_was_blocked && startup_gate_check_hash_match();
                                         const bool config_changed = (strcmp(last_reload_sum, file_sum) != 0);
 
-                                        if (config_changed && (agt->flags.auto_restart || gate_would_release)) {
+                                        if (config_changed && agt->flags.auto_restart) {
                                             strncpy(last_reload_sum, file_sum, sizeof(last_reload_sum) - 1);
-                                            if (gate_would_release && !agt->flags.auto_restart) {
-                                                mdebug1("Agent is reloading to apply startup hash validated configuration.");
-                                            } else {
-                                                minfo("Agent is reloading due to shared configuration changes.");
-                                            }
-                                            // The reload chain (modulesd CONTROL_SOCK -> wazuh-control
-                                            // reload -> SIGUSR1) is the normal release path; doing it
-                                            // there ensures modules don't briefly start with the new
-                                            // config and then get killed when the chain restarts them.
-                                            // Only release the gate inline if reloadAgent() reports the
-                                            // control socket is unreachable, in which case the chain
-                                            // will never fire and the gate would otherwise stay stuck.
-                                            if (!reloadAgent() && gate_would_release) {
-                                                startup_gate_refresh_from_local_hash();
-                                            }
+                                            minfo("Agent is reloading due to shared configuration changes.");
+                                            reloadAgent();
+                                        } else if (!config_changed) {
+                                            mdebug1("Shared agent configuration unchanged, skipping reload.");
                                         } else {
-                                            startup_gate_refresh_from_local_hash();
-                                            if (!config_changed) {
-                                                mdebug1("Shared agent configuration unchanged, skipping reload.");
-                                            } else {
-                                                mdebug1("Shared agent configuration has been updated.");
-                                            }
+                                            mdebug1("Shared agent configuration has been updated.");
                                         }
                                     }
                                 }

@@ -146,19 +146,9 @@ int verifyRemoteConf();
 // Initialize startup gate state for module workload blocking.
 void startup_gate_initialize(void);
 
-// Update startup gate state from handshake payload.
-void startup_gate_process_handshake(bool is_startup, const char *merged_sum);
-
-// Re-check startup gate state after merged.mg updates.
-void startup_gate_refresh_from_local_hash(void);
-
 // Release the startup gate from the HTTPS /control apply chain
 // (bridge_on_config_downloaded, once a downloaded config has been verified
-// and applied). There is no merged_sum handshake field to key a hash
-// comparison off over HTTPS, so this opens the gate directly on the
-// strength of the module's own SHA-256 verification, rather than routing
-// through startup_gate_refresh_from_local_hash()'s (legacy-only, MD5-based)
-// comparison machinery.
+// and applied).
 void startup_gate_release_from_https_apply(void);
 
 // Release the startup gate from the manager's per-Notify config_hash (SHA-256
@@ -171,9 +161,6 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 
 // Query startup gate state.
 bool startup_gate_is_ready(void);
-
-// Check if local hash matches expected without updating gate state.
-bool startup_gate_check_hash_match(void);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
