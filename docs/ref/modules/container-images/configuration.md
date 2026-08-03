@@ -60,8 +60,6 @@ This enables the module with default settings:
 | `references` | section | empty | Container section for image sources. |
 | `references/local` | string | empty | Path to a local OCI image layout. This element can be repeated. |
 
-Synchronization options are not available in this stage. Local persistence, state synchronization, and manager-side cleanup are planned for later development stages.
-
 ---
 
 ## Time Interval Format
