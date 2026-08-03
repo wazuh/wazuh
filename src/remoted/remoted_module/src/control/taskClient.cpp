@@ -173,7 +173,10 @@ namespace remoted::control
 
                 nlohmann::json request;
                 request["action"] = "get_pending_tasks";
-                request["agent_id"] = std::to_string(req.id);
+                // Format agent_id with zero-padding to match database format (e.g., "001")
+                std::ostringstream oss;
+                oss << std::setfill('0') << std::setw(3) << req.id;
+                request["agent_id"] = oss.str();
                 std::string requestStr = request.dump();
 
                 response.clear();

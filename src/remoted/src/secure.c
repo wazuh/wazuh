@@ -396,8 +396,8 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
     rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 2000);
     rm_config->wdb_max_queue_size = getDefine_Int_default("remoted", "control_wdb_max_queue_size", 100, 1000000, 10000);
-    rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 256, 10);
-    rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 10, 10000, 200);
+    rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 64, 4);
+    rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
     rm_config->tm_max_queue_size = getDefine_Int_default("remoted", "control_tm_max_queue_size", 100, 1000000, 10000);
 
     extern module_limits_t manager_module_limits;

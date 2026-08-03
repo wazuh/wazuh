@@ -96,6 +96,7 @@ namespace remoted::control
     enum class AgentStatusCode : int
     {
         InvalidVersion = 1,
+        ErrVersionRecv = 2,
         HcShutdownRecv = 3,
     };
 
