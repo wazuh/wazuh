@@ -54,10 +54,9 @@
 #include "state.h" /* w_agentd_state_update, INCREMENT_TASK_* */
 
 #ifdef WIN32
-/* Declared (not static) in receiver.c; the AR forwarding path below mirrors
- * its exact legacy write, just triggered from a /control task instead of the
- * legacy TCP receiver. */
-extern w_queue_t *winexec_queue;
+/* The queue os_execd pops from. Lived in receiver.c; the /control
+ * active_response dispatch below is its only producer now. */
+w_queue_t *winexec_queue;
 
 /* asp_set_session_sender: registers this bridge's in-process /stateful session sender with
  * agent_sync_protocol, since Windows has no local socket for it to connect to (see
@@ -392,6 +391,10 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
 
     bridge_apply_cluster_identity(root);
     bridge_apply_agent_groups(root);
+
+    /* The cluster/groups the two calls above just wrote are what the metadata
+     * carries; the legacy handshake republished it at exactly this point. */
+    w_agentd_populate_metadata();
 
     cJSON_Delete(root);
 }

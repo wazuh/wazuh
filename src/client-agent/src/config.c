@@ -16,8 +16,6 @@
 #include "module_limits.h"
 
 /* Global variables */
-time_t available_server;
-time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
