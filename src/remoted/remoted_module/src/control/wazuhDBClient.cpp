@@ -299,6 +299,63 @@ namespace remoted::control
               });
     }
 
+    /**
+     * @brief Parse os_major and os_minor from os_version string
+     * @param osVersion The OS version string (e.g., "22.04", "20.04.5", "15-SP7")
+     * @param osMajor Output string for major version
+     * @param osMinor Output string for minor version
+     */
+    static void parseOsVersion(const std::string& osVersion, std::string& osMajor, std::string& osMinor)
+    {
+        if (osVersion.empty())
+        {
+            return;
+        }
+
+        // Find the first dot or hyphen separator
+        size_t dotPos = osVersion.find('.');
+        size_t hyphenPos = osVersion.find('-');
+        size_t sepPos = std::min(dotPos, hyphenPos);
+
+        if (sepPos == std::string::npos || sepPos == 0)
+        {
+            return;
+        }
+
+        // Extract major version
+        osMajor = osVersion.substr(0, sepPos);
+
+        // Extract minor version
+        if (dotPos != std::string::npos && dotPos == sepPos)
+        {
+            // Standard format: "22.04" or "20.04.5"
+            size_t minorStart = dotPos + 1;
+            size_t minorEnd = osVersion.find('.', minorStart);
+            if (minorEnd == std::string::npos)
+            {
+                minorEnd = osVersion.length();
+            }
+            if (minorEnd > minorStart)
+            {
+                osMinor = osVersion.substr(minorStart, minorEnd - minorStart);
+            }
+        }
+        else if (hyphenPos != std::string::npos && hyphenPos == sepPos)
+        {
+            // SUSE format: "15-SP7"
+            size_t spPos = osVersion.find("SP", hyphenPos);
+            if (spPos == std::string::npos)
+            {
+                spPos = osVersion.find("sp", hyphenPos);
+            }
+            if (spPos != std::string::npos)
+            {
+                size_t minorStart = spPos + 2;
+                osMinor = osVersion.substr(minorStart);
+            }
+        }
+    }
+
     void WazuhDBClient::updateAgentData(AgentId id,
                                         const std::string& version,
                                         const std::string& nodeName,
@@ -318,8 +375,13 @@ namespace remoted::control
         {
             params["os_name"] = host->osName;
             params["os_version"] = host->osVersion;
-            params["os_major"] = "";
-            params["os_minor"] = "";
+
+            // Parse os_major and os_minor from os_version
+            std::string osMajor, osMinor;
+            parseOsVersion(host->osVersion, osMajor, osMinor);
+            params["os_major"] = osMajor;
+            params["os_minor"] = osMinor;
+
             params["os_platform"] = host->osPlatform;
             params["os_arch"] = host->architecture;
             params["agent_ip"] = host->ip;
