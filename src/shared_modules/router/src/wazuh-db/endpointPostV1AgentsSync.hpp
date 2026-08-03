@@ -72,13 +72,12 @@ public:
         {
             if (jsonBody.contains("syncreq"))
             {
-                DBStatement stmt(
-                    db, // LCOV_EXCL_LINE
-                    "UPDATE agent SET ip = ?, name = ?, node_name = ?, "
-                    "os_arch = ?, os_major = ?, os_minor = ?, os_name = ?, os_type = ?, "
-                    "os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
-                    "connection_status = ?, disconnection_time = ?, status_code= ?, "
-                    "sync_status = 'synced' WHERE id = ?;");
+                DBStatement stmt(db, // LCOV_EXCL_LINE
+                                 "UPDATE agent SET ip = ?, name = ?, node_name = ?, "
+                                 "os_arch = ?, os_major = ?, os_minor = ?, os_name = ?, os_type = ?, "
+                                 "os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
+                                 "connection_status = ?, disconnection_time = ?, status_code= ?, "
+                                 "sync_status = 'synced' WHERE id = ?;");
 
                 const auto& syncReq = jsonBody.at("syncreq");
                 for (const auto& agent : syncReq)
