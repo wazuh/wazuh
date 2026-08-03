@@ -18,6 +18,8 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace remoted::downstream
 {
@@ -65,6 +67,12 @@ namespace remoted::downstream
         remoted::http::Method method {remoted::http::Method::Post};
         std::string path;
         std::string contentType;
+        /// Extra request headers, written verbatim in order after Content-Type. Content-Length,
+        /// Host and Connection are produced by the client and must NOT be supplied here.
+        ///
+        /// This is how per-request context that is not part of the body reaches a downstream
+        /// service -- e.g. the authenticated agent id, which /stats and /config forward as `X-Wazuh-Agent-Id`.
+        std::vector<std::pair<std::string, std::string>> headers;
         std::string_view body;
         /// Per-request response deadline, ms. <=0 -> DownstreamConfig::responseTimeoutMs (the global
         /// default). Lets one endpoint wait minutes for a slow async handler without forcing every

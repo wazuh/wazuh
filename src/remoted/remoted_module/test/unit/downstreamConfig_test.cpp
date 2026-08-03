@@ -34,12 +34,18 @@ TEST(DownstreamConfigTest, DefaultsWhenEmpty)
     const auto config = buildDownstreamConfig(zeroedConfig());
 
     EXPECT_EQ(config.eventsSocketPath, "queue/sockets/queue-http.sock");
+    // Wire contract with modulesd's inventory sync server, which hardcodes the same literal in its
+    // own default (different binary, no shared header). Pinned on both sides so a drift fails a test
+    // instead of producing connect failures at runtime.
+    EXPECT_EQ(config.inventorySyncSocketPath, "queue/sockets/inventory-sync.sock");
     EXPECT_EQ(config.connectTimeoutMs, 2000);
     EXPECT_EQ(config.writeTimeoutMs, 5000);
     EXPECT_EQ(config.responseTimeoutMs, 5000);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.postProcessThreads, static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxResponseBodySize, 10U * 1024U * 1024U);
+    // Strictly larger than the 10 MiB agent-request cap: /stats and /config echo the document back
+    // enriched, so a cap equal to the request cap would 503 a near-cap document.
+    EXPECT_EQ(config.maxResponseBodySize, 11U * 1024U * 1024U);
 }
 
 TEST(DownstreamConfigTest, StructValuesWinAndTimeoutsConvertSecondsToMs)

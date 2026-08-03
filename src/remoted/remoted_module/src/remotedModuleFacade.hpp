@@ -29,7 +29,9 @@
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
 #include "endpoints/authGateway.hpp"
+#include "endpoints/configEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
+#include "endpoints/statsEndpoint.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -240,6 +242,7 @@ private:
         m_forwarder = std::make_unique<remoted::downstream::DeferredForwarder>(
             downstreamClient, m_deferredLimiter, downstreamConfig.postProcessThreads);
         const std::string eventsSocketPath = downstreamConfig.eventsSocketPath;
+        const std::string inventorySyncSocketPath = downstreamConfig.inventorySyncSocketPath;
 
         // Unauthenticated health probe (no request body, no auth). Exempt from the in-flight
         // byte budget (countAgainstBudget=false) so liveness stays 200 even under memory pressure.
@@ -268,6 +271,28 @@ private:
         // at 0), so that is what gets checked against the transport's request cap.
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath));
+
+        // /stats and /config: same authenticated pipeline as /stateless, but forwarded to modulesd's
+        // inventory sync server instead of the engine.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/stats",
+            remoted::endpoints::stats::makeHandler(*m_forwarder, inventorySyncSocketPath));
+
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/config",
+            remoted::endpoints::config::makeHandler(*m_forwarder, inventorySyncSocketPath));
+
+        // Both leave the per-endpoint response override at 0 as well, so they are checked against the
+        // same cap. The agent id passed here is irrelevant to the check -- only the timeouts matter --
+        // so a placeholder keeps this from needing a real request.
+        warnIfDownstreamBudgetExceedsRequestTimeout(
+            "/stats", downstreamConfig, config, remoted::endpoints::stats::target(inventorySyncSocketPath, "0"));
+        warnIfDownstreamBudgetExceedsRequestTimeout(
+            "/config", downstreamConfig, config, remoted::endpoints::config::target(inventorySyncSocketPath, "0"));
 
         m_httpServer->start(config);
     }
@@ -335,7 +360,7 @@ private:
         catch (const std::exception& e)
         {
             // Deliberately does NOT re-enter the loop: an exception that repeats every iteration
-            // would spin forever writing to ossec.log, which is worse than a dead worker. The
+            // would spin forever writing to wazuh-manager.log, which is worse than a dead worker. The
             // module keeps serving whatever the HTTP server already started.
             LOGFN_ERROR(
                 moduleLogFn(), "The remoted module worker thread stopped on an unexpected exception: %s.", e.what());

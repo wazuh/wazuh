@@ -26,7 +26,8 @@ remoted_module/
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
-    └── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
+    ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
+    └── send_agent_json.py          # CLI to sign + POST /stats and /config, and verify the echo
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
@@ -119,9 +120,10 @@ src/http_server/
        `ca_path`, when configured) must be readable by the unprivileged user `remoted` runs as.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
-       set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound
-       in-memory resource usage rather than tune the transport). The transport clamps the budget
-       up to at least one max-size request so a too-small value can't reject everything.
+       populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
+       `remoted.max_deferred_requests` internal options in `secure.c` (same pattern as group 1).
+       The transport still clamps the in-flight budget up to at least one max-size request at
+       start(), so a too-small value can't reject everything.
     4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
        `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
        `downstream_post_process_threads`, `downstream_max_response_body_size`,
@@ -154,7 +156,9 @@ src/endpoints/
 │                            #   plus errorResponseFor(AuthError) (the {"error","code"} response shape)
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler
-└── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statsEndpoint.hpp/.cpp    # /stats policy (DUMMY): forwards to modulesd's inventory sync server
+└── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
 ```
 
 - **Endpoint handler (async):**
@@ -189,6 +193,28 @@ src/endpoints/
   `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
   `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
+- **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`) — DUMMIES.** Same authenticated
+  pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
+  (`queue/sockets/inventory-sync.sock`) instead of the engine. Everything around them is real —
+  AES-CMAC auth, admission control, deferred forwarding, the UDS round trip, the response mapping —
+  but neither side interprets the document yet: modulesd only checks it is a JSON object and stamps
+  `wazuh.agent.id` and `@timestamp` onto it. Three things differ from `/stateless`:
+  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
+    these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
+    That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
+    Authorization header the gateway already verified, never from the body, so a document claiming a
+    different agent cannot override it.
+  - **`postProcess` passes the downstream body through on success** (`200` + modulesd's JSON), unlike
+    `/stateless` which discards it. Failure statuses are still collapsed to fixed local messages, so an
+    arbitrary downstream string is never reflected back to an agent.
+  - **The only endpoint-level validation is "body is not empty" → `400`.** Parsing is modulesd's job;
+    doing it on both sides would walk the payload twice on the hot path. Rejecting an empty body here
+    still saves a deferred-work slot and a UDS round trip.
+
+  They are **deliberate near-duplicates** rather than one shared unit registered on two paths. They are
+  the same shape only because both are dummies; their real payloads, validation and downstream
+  semantics will diverge, and separating them now makes that divergence a change to one file. Keep them
+  in sync until they must not be.
 - **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
   warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
@@ -280,7 +306,7 @@ sequenceDiagram
     participant E as Engine
 
     Ag->>A: TLS + POST /stateless (H/E batch)
-    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder; drop RESTinio's buffer
+    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder drop RESTinio's buffer
     A->>B: asio::post (worker queue)
     Note over A: return request_accepted() — I/O thread free
     Note over B: AES-CMAC verify (beginSession→update→finish)<br/>build AuthenticatedRequest (payload = view + keep-alive)
@@ -294,7 +320,7 @@ sequenceDiagram
     E-->>C: 200 / 400 / 500
     Note over C: async_read → llhttp parse → finish() (once)
     C->>D: asio::post (post-proc queue)
-    Note over D: stateless::postProcess → 202 / 400 / 413 / 503<br/>responder->send(); Slot released
+    Note over D: stateless::postProcess → 202 / 400 / 413 / 503<br/>responder->send() Slot released
     D->>A: builder.done() schedules the write on the connection strand
     A-->>Ag: HTTP response
 ```
@@ -493,7 +519,7 @@ generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s complet
 the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
 so by the time the agent is answered the cause is gone.
 
-RESTinio's own diagnostics reach `ossec.log` too, via `WazuhRestinioLogger`
+RESTinio's own diagnostics reach `wazuh-manager.log` too, via `WazuhRestinioLogger`
 (`http_server/RestinioHttpServer.cpp`), which replaces `restinio::null_logger_t` — whose methods are
 `constexpr void {}`, i.e. every transport diagnostic was previously discarded *at compile time*. This
 covers TLS handshake failures, malformed HTTP, `EADDRINUSE`, and every `http_max_*` breach — but
@@ -535,8 +561,15 @@ target/body forwarded, post-processor result delivered + slot released, keep-ali
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
 `validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
 `makeHandler()` short-circuits before `forward()` on a validation failure and still forwards +
-post-processes on success), `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse,
-connect/timeout errors, keep-alive), `payload_test.cpp` (zero-copy `Payload`: view validity,
+post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two dummy
+endpoints, one file each mirroring their duplicated implementations: the target's socket/path/
+content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the full
+`postProcess` mapping table, **that a success passes the enriched body through and a downstream error
+body is NOT reflected**, and that an empty body answers 400 without ever reaching `forward()`),
+`asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
+**and that caller-supplied headers are actually serialized onto the wire without displacing
+Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
+`payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
 core `cmac_test.cpp`, `authMiddleware_test.cpp` (incl. a non-numeric `Authorization` agent-id →
@@ -560,3 +593,38 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
                                             # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys
 ```
+
+### Manual / end-to-end (`tools/send_agent_json.py`)
+
+Same signing, for the two dummy endpoints — `POST /stats` and `POST /config`. This one is the
+end-to-end check of the *whole* forwarding path, because those endpoints echo the document back: a
+successful run prints it with `wazuh.agent.id` and `@timestamp` added, which only happens if the UDS
+hop and the `X-Wazuh-Agent-Id` header propagation both worked.
+
+**It verifies that, not just the status code.** A `200` whose body is missing either stamp, or whose
+`wazuh.agent.id` is not the authenticated agent, is reported as a FAIL — otherwise a server that
+answered `200` without enriching anything would look like a pass.
+
+Requires `wazuh-manager-modulesd` running with the `inventory_sync_server` module; without it every
+forwarded request answers `503` and the tool says so explicitly (distinct from remoted itself being
+unreachable, which it also reports separately).
+
+```bash
+python3 tools/send_agent_json.py                          # one signed /stats -> 200 + enriched echo
+python3 tools/send_agent_json.py --endpoint config        # same, against /config
+python3 tools/send_agent_json.py --body '{"cpu":42}'      # must be a JSON OBJECT for a 200
+python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
+python3 tools/send_agent_json.py --all                    # 13 scenarios x BOTH endpoints
+# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
+```
+
+`--all` runs every scenario against **both** endpoints on purpose: they are deliberate near-duplicates
+in the C++, so covering both is what proves the duplication is actually wired up on each path. It
+covers the endpoint-specific rejections (empty body → 400 short-circuited by remoted before any UDS
+round trip; non-object and malformed JSON → 400 from modulesd) plus every auth-layer failure. It does
+**not** repeat the transport-level limits (oversized URL/header/count → dropped connection) — those are
+endpoint-independent and already covered by `send_stateless.py --all`.
+
+> The signing helpers are duplicated between the two scripts rather than shared, so each stays a
+> single file you can copy onto a manager and run. If the canonical string ever changes on the C++
+> side, both copies fail loudly with `401 InvalidMac` rather than silently mis-signing.

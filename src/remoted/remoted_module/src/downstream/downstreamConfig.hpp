@@ -23,21 +23,28 @@ namespace remoted::downstream
     /**
      * @brief Tunables for the deferred-forwarding subsystem.
      *
-     * The events socket path mirrors remoted's C forwarder (ANLSYS_ENRICH_SOCK, relative to the
-     * chroot) and is not C-ABI driven -- it is an installation detail, not an ops tuning knob.
-     * Every other field is populated from the C-ABI struct by buildDownstreamConfig() below; the
-     * in-struct defaults here only apply to a default-constructed DownstreamConfig (e.g. in tests).
+     * The socket paths mirror the services they reach (relative to the chroot) and are not C-ABI
+     * driven -- they are installation details, not ops tuning knobs. Every other field is populated
+     * from the C-ABI struct by buildDownstreamConfig() below; the in-struct defaults here only apply
+     * to a default-constructed DownstreamConfig (e.g. in tests).
      */
     struct DownstreamConfig
     {
         /// Default UDS for the engine event ingress; the facade builds the /stateless target from it.
         std::string eventsSocketPath {"queue/sockets/queue-http.sock"};
-        int connectTimeoutMs {2000};                           ///< Connect timeout per request.
-        int writeTimeoutMs {5000};                             ///< Write (request body send) timeout per request.
-        int responseTimeoutMs {5000};                          ///< Response (post-send) timeout per request.
-        std::size_t ioThreads {1};                             ///< Threads running the client's io_context.
-        std::size_t postProcessThreads {4};                    ///< Threads running the per-endpoint post-processors.
-        std::size_t maxResponseBodySize {10U * 1024U * 1024U}; ///< Cap on a downstream response body.
+        /**
+         * @brief Default UDS for modulesd's inventory sync server; /stats and /config target it.
+         */
+        std::string inventorySyncSocketPath {"queue/sockets/inventory-sync.sock"};
+        int connectTimeoutMs {2000};        ///< Connect timeout per request.
+        int writeTimeoutMs {5000};          ///< Write (request body send) timeout per request.
+        int responseTimeoutMs {5000};       ///< Response (post-send) timeout per request.
+        std::size_t ioThreads {1};          ///< Threads running the client's io_context.
+        std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
+        /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:
+        /// /stats and /config echo the agent's document back ENRICHED, so a cap equal to the
+        /// request cap would turn a near-cap document into ResponseTooLarge -> 503.
+        std::size_t maxResponseBodySize {11U * 1024U * 1024U};
     };
 
     /**
