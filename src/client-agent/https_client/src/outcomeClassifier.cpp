@@ -30,7 +30,7 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::Ok;
     }
 
-    if (code == 401 || code == 403) // 401 per #37732; 403 kept until FR7.4 is reconciled (T2)
+    if (code == 401) // Generic auth failure, the only auth code in the contract.
     {
         return OutcomeClass::AuthFail;
     }
@@ -42,11 +42,10 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::PayloadTooLarge;
     }
 
-    // Version/protocol rejection: 426 per the #37732 proposal, 409 per the
-    // #37733 Task Manager OpenAPI ("Protocol version not supported"). Both
-    // accepted until the two specs reconcile; either way the client goes
-    // REJECTED and re-tries Startup on the slow cadence.
-    if (code == 426 || code == 409)
+    // 409 Conflict: protocol/agent version not supported (the #37733 /control
+    // contract). The client goes REJECTED and re-tries Startup on the slow
+    // cadence.
+    if (code == 409)
     {
         return OutcomeClass::VersionRejected;
     }
@@ -54,6 +53,15 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     if (code == 429 || code == 503)
     {
         return OutcomeClass::BackPressure;
+    }
+
+    // 403/426 are not part of the manager contract: they reach the agent only
+    // from an intermediary (reverse proxy, WAF, mTLS gateway). Treat them as
+    // transient so a /stateless batch is preserved and retried, never dropped
+    // (Permanent would consume the batch and count it as lost).
+    if (code == 403 || code == 426)
+    {
+        return OutcomeClass::Retryable;
     }
 
     return (code >= 500) ? OutcomeClass::Retryable : OutcomeClass::Permanent;

@@ -24,6 +24,7 @@ namespace
     {
         HttpRequestSpec spec;
         spec.target = "/control";
+        spec.contentType = "application/json";
         spec.body = reinterpret_cast<const uint8_t*>(body.data());
         spec.bodyLength = body.size();
         spec.timeoutMs = timeoutMs;
@@ -115,7 +116,8 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
                              const ISigner& signer, IClock& clock, IRandom& random,
                              ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
                              ConfigHashState& configHash, ClusterIdentity& cluster,
-                             AuthGate& authGate, ITaskIdStore& taskStore)
+                             AuthGate& authGate, ITaskIdStore& taskStore,
+                             std::function<std::string()> collectHost)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
@@ -127,6 +129,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_cluster(cluster)
     , m_authGate(authGate)
     , m_taskStore(taskStore)
+    , m_collectHost(std::move(collectHost))
 {
 }
 
@@ -226,6 +229,7 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       CONTROL_MAX_ATTEMPTS);
+    updateLocalIp(result.response);
 
     if (result.outcome == OutcomeClass::Ok)
     {
@@ -256,14 +260,40 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
 OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 {
-    // The keepalive request is bare; the manager reports the
+    // Keepalive: type + agent version + host metadata. The manager reports the
     // hashes and tasks in the response.
-    const std::string body = R"({"type":"notify"})";
+    nlohmann::json request;
+    request["type"] = "notify";
+    request["agent"]["version"] = m_config.version;
+
+    // Host block, pulled fresh from the agent metadata each Notify. Omitted when
+    // the source is unavailable (empty/malformed), never fatal.
+    if (m_collectHost)
+    {
+        auto host = nlohmann::json::parse(m_collectHost(), nullptr, false);
+
+        if (!host.is_discarded() && host.is_object())
+        {
+            // The agent's own IP toward the manager is a transport-layer fact the
+            // module owns (CURLINFO_LOCAL_IP from the last /control connection),
+            // not agent metadata; inject it here. Absent until the first
+            // connection succeeds, then carried on every Notify.
+            if (!m_localIp.empty())
+            {
+                host["ip"] = m_localIp;
+            }
+
+            request["host"] = std::move(host);
+        }
+    }
+
+    const std::string body = request.dump();
 
     LOGFN_DEBUG2(m_logFn, "Sending /control notify.");
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       CONTROL_MAX_ATTEMPTS);
+    updateLocalIp(result.response);
     const auto effects = m_machine.onEvent(eventFor(result.outcome));
     applyEffects(effects, {});
 
@@ -487,6 +517,16 @@ void ControlStream::joinUpgradeWork()
     if (m_upgradeThread.joinable())
     {
         m_upgradeThread.join();
+    }
+}
+
+void ControlStream::updateLocalIp(const HttpResponse& response)
+{
+    // curl reports the local address only after a connection was established;
+    // keep the last known value so a transient failure does not blank host.ip.
+    if (!response.localIp.empty())
+    {
+        m_localIp = response.localIp;
     }
 }
 

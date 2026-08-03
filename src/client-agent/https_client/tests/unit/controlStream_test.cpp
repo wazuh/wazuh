@@ -16,6 +16,8 @@
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 
+#include "external/nlohmann/json.hpp"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -30,12 +32,14 @@ using ::testing::Return;
 
 namespace
 {
-    HttpResponse response(TransportStatus status, long code, const std::string& body = {})
+    HttpResponse response(TransportStatus status, long code, const std::string& body = {},
+                          const std::string& localIp = {})
     {
         HttpResponse value;
         value.status = status;
         value.httpCode = code;
         value.body = body;
+        value.localIp = localIp;
         return value;
     }
 
@@ -54,7 +58,8 @@ namespace
                 , m_configHash("abc")
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
-                       m_spoolFactory, m_configHash, m_cluster, m_authGate, m_taskStore)
+                       m_spoolFactory, m_configHash, m_cluster, m_authGate, m_taskStore,
+                       [this] { return m_hostJson; })
             {
             }
 
@@ -82,6 +87,7 @@ namespace
             AuthGate m_authGate;
             FakeWaiter m_waiter;
             FakeTaskIdStore m_taskStore;
+            std::string m_hostJson; ///< Injected Notify host block ("" -> omitted).
             ControlStream m_stream;
     };
 } // namespace
@@ -174,7 +180,7 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
 {
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_REJECTED));
     EXPECT_CALL(m_sink, onStartupResult(false, _)); // A rejected startup is reported to the consumer.
-    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 426)));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 409)));
 
     EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_REJECTED, m_stream.connState());
@@ -183,7 +189,10 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
 TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
 {
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
-    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 401)));
+    // A 401 gets one fresh-timestamp retry; a second 401 escalates to AUTH_ERROR.
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
 
     EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
@@ -194,6 +203,7 @@ TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
     // First step: 401 startup engages the gate (via RetrySender) -> AUTH_ERROR.
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 401)))   // Startup -> 401.
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))   // One-shot auth retry -> 401 -> pause.
     .WillOnce(Invoke(                                       // Post-release startup.
                   [&](const HttpRequestSpec & spec)
     {
@@ -215,21 +225,81 @@ TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
     EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
 }
 
-TEST_F(ControlStreamTest, NotifyRequestIsBare)
+TEST_F(ControlStreamTest, NotifyCarriesTypeVersionAndHost)
 {
-    // 5.1.2: the agent sends nothing but the discriminator; the manager
-    // reports groups/config_hash/settings_hash in the response.
+    // The collector supplies hostname/architecture/os; host.ip is injected by
+    // the module from the connection's local IP (CURLINFO_LOCAL_IP), captured
+    // on the preceding Startup response.
+    m_hostJson = R"({"hostname":"ubuntu-test","architecture":"x86_64",)"
+                 R"("os":{"name":"Ubuntu","version":"20.04","platform":"ubuntu","type":"linux"}})";
+
+    std::string sent;
     EXPECT_CALL(m_performer, perform(_))
-    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}", "192.168.1.100"))) // Startup: local IP.
     .WillOnce(Invoke(
                   [&](const HttpRequestSpec & spec)
     {
-        EXPECT_EQ(R"({"type":"notify"})", bodyOf(spec));
+        sent = bodyOf(spec);
         return response(TransportStatus::Ok, 200, "{}");
     }));
 
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify.
+
+    const auto body = nlohmann::json::parse(sent);
+    EXPECT_EQ("notify", body.at("type"));
+    EXPECT_EQ("5.1.0", body.at("agent").at("version"));
+    EXPECT_EQ("ubuntu-test", body.at("host").at("hostname"));
+    EXPECT_EQ("x86_64", body.at("host").at("architecture"));
+    EXPECT_EQ("192.168.1.100", body.at("host").at("ip")); // From CURLINFO_LOCAL_IP.
+    EXPECT_EQ("linux", body.at("host").at("os").at("type"));
+}
+
+TEST_F(ControlStreamTest, NotifyHostOmitsIpWhenLocalIpUnknown)
+{
+    // Host metadata is available but no connection has reported a local IP yet:
+    // the host block is sent without the ip key rather than an empty one.
+    m_hostJson = R"({"hostname":"h","os":{"type":"linux"}})";
+
+    std::string sent;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup: no local IP.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sent = bodyOf(spec);
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    const auto body = nlohmann::json::parse(sent);
+    EXPECT_TRUE(body.at("host").is_object());
+    EXPECT_FALSE(body.at("host").contains("ip"));
+}
+
+TEST_F(ControlStreamTest, NotifyOmitsHostWhenMetadataUnavailable)
+{
+    m_hostJson.clear(); // metadata_provider not ready yet.
+
+    std::string sent;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sent = bodyOf(spec);
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    const auto body = nlohmann::json::parse(sent);
+    EXPECT_EQ("notify", body.at("type"));
+    EXPECT_EQ("5.1.0", body.at("agent").at("version"));
+    EXPECT_FALSE(body.contains("host"));
 }
 
 TEST_F(ControlStreamTest, SettingsMismatchTriggersOneStartupRefresh)

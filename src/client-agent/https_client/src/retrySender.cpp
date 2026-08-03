@@ -30,10 +30,20 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     base.abortFlag = waiter.stopFlag();
 
     Result result;
+    bool authRetried = false;
 
     for (uint32_t attempt = 1; attempt <= maxAttempts; attempt++)
     {
         result = attemptOnce(base);
+
+        // One-shot 401 retry: a 401 can be a just-expired/edge timestamp as
+        // easily as a dead key. Resign with a fresh timestamp (attemptOnce
+        // re-signs) and try once more; only a second 401 escalates below.
+        if (result.outcome == OutcomeClass::AuthFail && !authRetried)
+        {
+            authRetried = true;
+            result = attemptOnce(base);
+        }
 
         if (!isRetryable(result.outcome) || attempt == maxAttempts)
         {
@@ -53,8 +63,9 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     }
     else if (result.outcome == OutcomeClass::AuthFail && m_authGate != nullptr)
     {
-        // 401 on any endpoint: the credential is dead. Pause everything and
-        // ask for re-enrollment (once per incident). #37828.
+        // A 401 that survived the one-shot fresh-timestamp retry above: treat it
+        // as a dead credential. Pause everything and ask for re-enrollment (once
+        // per incident). #37828.
         m_authGate->reportAuthFailure();
     }
 
