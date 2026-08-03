@@ -2,7 +2,7 @@
 
 The Container Images module provides an internal C and C++ interface for interaction between `wazuh-modulesd` and the `libcontainer_images.so` shared library.
 
-> **Note:** This is not a user-facing API. The first development stage exposes lifecycle and logging functions only. Persistence, event, and synchronization APIs are not available yet.
+> **Note:** This is not a user-facing API. This development stage exposes lifecycle and logging functions only. Persistence is internal to the shared library; event and synchronization APIs are not available yet.
 
 ---
 
