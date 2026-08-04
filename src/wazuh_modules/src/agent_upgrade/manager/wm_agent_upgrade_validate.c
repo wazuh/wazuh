@@ -148,7 +148,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
  * @return true if a version token was found, false if the filename does not
  *         follow the canonical pattern (renamed file, missing tokens, etc.).
  */
-static bool wm_agent_upgrade_parse_wpk_custom_version(const char *file_path, char *out, size_t out_size) {
+bool wm_agent_upgrade_parse_wpk_custom_version(const char *file_path, char *out, size_t out_size) {
     if (!file_path || !out || out_size == 0) {
         return false;
     }
