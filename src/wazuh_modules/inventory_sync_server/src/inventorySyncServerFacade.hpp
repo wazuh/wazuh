@@ -318,8 +318,7 @@ namespace invsync
                 invsync::http::Method::Get,
                 "/",
                 [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<invsync::http::IHttpResponder> responder) {
                     responder->send(
                         invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
@@ -658,8 +657,7 @@ namespace invsync
                 !buildAndPublish(m_indexerSession,
                                  FailureStage::IndexerSession,
                                  generation,
-                                 [&]
-                                 {
+                                 [&] {
                                      return sessionFactory(
                                          rawIndexerConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
@@ -908,14 +906,18 @@ namespace invsync
         /// shared_ptr, not unique_ptr: an in-flight attempt takes a counted reference so stop()
         /// clearing this member cannot dangle a connector constructor still running on it.
         std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
-        std::unique_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
+        /// shared_ptr for the same reason as the async one below: the sync pipeline workers (F2) will
+        /// hold it weakly. The factory still returns unique_ptr; the assignment converts.
+        std::shared_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
         /// shared_ptr because the /stats and /config handlers hold it WEAKLY (which needs a shared
         /// owner) -- the weak capture is what keeps stop()'s phase-2 reset destructive.
         std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
+            {
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
 
         /*
          * The production connector factories are the only place that knows the seam it is handed wraps
