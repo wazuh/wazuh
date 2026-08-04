@@ -121,37 +121,10 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
     }
 }
 
-void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
-                                                  Operation operation,
-                                                  const std::string& index,
-                                                  const std::string& data,
-                                                  uint64_t version)
-{
-    try
-    {
-        PersistedData persistedData;
-        persistedData.seq = 0;  // Will be assigned during synchronization
-        persistedData.id = id;
-        persistedData.index = index;
-        persistedData.data = data;
-        persistedData.operation = operation;
-        persistedData.version = version;
-
-        m_inMemoryData.push_back(std::move(persistedData));
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Failed to persist item in memory: ") + e.what());
-    }
-
-    // LCOV_EXCL_STOP
-}
-
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
     // Validate synchronization mode
-    if (mode != Mode::FULL && mode != Mode::DELTA)
+    if (mode != Mode::DELTA)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
         return {false, {}};
@@ -188,131 +161,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    if (mode == Mode::DELTA)
-    {
-        return synchronizeDeltaByBlocks(option);
-    }
-
-    // For FULL mode, use in-memory data for recovery scenarios.
-    // Non-VD flows are byte-capped so the HTTP transport receives a bounded payload.
-    // VD flows (VDFIRST / VDSYNC) are deliberately uncapped.
-    std::vector<PersistedData> dataToSync;
-    {
-        const bool uncapped = isUncappedSyncOption(option);
-        const size_t fetchMaxBytes =
-            uncapped
-            ? 0
-            : (FULLSESSION_MAX_BYTES > FULLSESSION_PREFILTER_GRACE_BYTES
-               ? FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES
-               : FULLSESSION_MAX_BYTES);
-
-        if (uncapped || fetchMaxBytes == 0)
-        {
-            dataToSync = m_inMemoryData;
-        }
-        else
-        {
-            size_t estimatedBytes = 0;
-
-            for (const auto& item : m_inMemoryData)
-            {
-                const size_t est = item.id.size() + item.index.size() + item.data.size() + 512U;
-
-                if (!dataToSync.empty() && estimatedBytes + est > fetchMaxBytes)
-                {
-                    break;
-                }
-
-                if (dataToSync.empty() && estimatedBytes + est > fetchMaxBytes)
-                {
-                    m_logger(LOG_WARNING,
-                             "FULL mode: single item (~" + std::to_string(est) +
-                             " B) exceeds byte cap (" + std::to_string(fetchMaxBytes) +
-                             " B); sending it alone.");
-                }
-
-                estimatedBytes += est;
-                dataToSync.push_back(item);
-            }
-
-            if (dataToSync.size() < m_inMemoryData.size())
-            {
-                m_logger(LOG_WARNING,
-                         "FULL mode: payload truncated from " +
-                         std::to_string(m_inMemoryData.size()) + " to " +
-                         std::to_string(dataToSync.size()) +
-                         " items to stay within byte cap.");
-            }
-        }
-    }
-
-    if (dataToSync.empty())
-    {
-        m_logger(LOG_DEBUG, "No items to synchronize in FULL mode");
-        return {true, {}};
-    }
-
-    // Remember how many items are included so we can trim m_inMemoryData on success.
-    const size_t sentCount = dataToSync.size();
-
-    for (size_t i = 0; i < dataToSync.size(); ++i)
-    {
-        dataToSync[i].seq = i;
-    }
-
-    std::vector<PersistedData> dataValueItems;
-    std::vector<PersistedData> dataContextItems;
-
-    for (auto& item : dataToSync)
-    {
-        if (item.is_data_context)
-        {
-            dataContextItems.push_back(std::move(item));
-        }
-        else
-        {
-            dataValueItems.push_back(std::move(item));
-        }
-    }
-
-    std::set<std::string> uniqueIndicesSet;
-
-    for (const auto& item : dataValueItems)
-    {
-        uniqueIndicesSet.insert(item.index);
-    }
-
-    SessionContent content;
-    content.mode = mode;
-    content.indices.assign(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
-    content.option = option;
-    content.dataValues = std::move(dataValueItems);
-    content.dataContexts = std::move(dataContextItems);
-    const bool success = runSession(content);
-
-    if (success)
-    {
-        m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
-
-        // Erase only the items that were part of this session; any unsent tail
-        // (due to byte-cap truncation) stays in m_inMemoryData for the next cycle.
-        if (sentCount >= m_inMemoryData.size())
-        {
-            m_inMemoryData.clear();
-        }
-        else
-        {
-            m_inMemoryData.erase(m_inMemoryData.begin(),
-                                 m_inMemoryData.begin() + static_cast<ptrdiff_t>(sentCount));
-        }
-    }
-
-    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
-    const bool stopped = shouldStop();
-    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
-    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
-    clearSyncState();
-    return {success, failureReason, stopped, managerNotReady, consecutiveFailures};
+    return synchronizeDeltaByBlocks(option);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -511,11 +360,6 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         clearSyncState();
         return result;
     }
-}
-
-void AgentSyncProtocol::clearInMemoryData()
-{
-    m_inMemoryData.clear();
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -842,7 +686,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
                                reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
             Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
-            dataValueBuilder.add_seq(item.seq);
             dataValueBuilder.add_id(idStr);
             dataValueBuilder.add_index(idxStr);
             dataValueBuilder.add_version(item.version);
@@ -864,7 +707,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
                                reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
             Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
-            dataContextBuilder.add_seq(item.seq);
             dataContextBuilder.add_id(idStr);
             dataContextBuilder.add_index(idxStr);
             dataContextBuilder.add_data(dataVec);
@@ -879,23 +721,26 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
             auto idxStr = builder.CreateString(item.index);
 
             Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
-            dataCleanBuilder.add_seq(item.seq);
             dataCleanBuilder.add_index(idxStr);
             cleanOffsets.push_back(dataCleanBuilder.Finish());
         }
 
-        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::ChecksumModule>> checksumOffsets;
-        checksumOffsets.reserve(content.checksums.size());
+        // An integrity check always covers a single index/module (see requiresFullSync()),
+        // so content.checksums never holds more than one entry.
+        flatbuffers::Offset<Wazuh::SyncSchema::ChecksumModule> checksumOffset;
+        bool hasChecksum = false;
 
-        for (const auto& entry : content.checksums)
+        if (!content.checksums.empty())
         {
+            const auto& entry = content.checksums.front();
             auto idxStr = builder.CreateString(entry.index);
             auto checksumStr = builder.CreateString(entry.checksum);
 
             Wazuh::SyncSchema::ChecksumModuleBuilder checksumBuilder(builder);
             checksumBuilder.add_index(idxStr);
             checksumBuilder.add_checksum(checksumStr);
-            checksumOffsets.push_back(checksumBuilder.Finish());
+            checksumOffset = checksumBuilder.Finish();
+            hasChecksum = true;
         }
 
         Wazuh::SyncSchema::EndBuilder endBuilder(builder);
@@ -915,13 +760,10 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
             payloadOffset = cleansBuilder.Finish().Union();
             payloadType = Wazuh::SyncSchema::SessionPayload::Cleans;
         }
-        else if (!checksumOffsets.empty())
+        else if (hasChecksum)
         {
-            auto itemsVec = builder.CreateVector(checksumOffsets);
-            Wazuh::SyncSchema::ChecksumsBuilder checksumsBuilder(builder);
-            checksumsBuilder.add_items(itemsVec);
-            payloadOffset = checksumsBuilder.Finish().Union();
-            payloadType = Wazuh::SyncSchema::SessionPayload::Checksums;
+            payloadOffset = checksumOffset.Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::ChecksumModule;
         }
         else if (!valueOffsets.empty() || !contextOffsets.empty())
         {
@@ -1222,7 +1064,6 @@ Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
 {
     static const std::unordered_map<Mode, Wazuh::SyncSchema::Mode> modeMap =
     {
-        {Mode::FULL, Wazuh::SyncSchema::Mode::ModuleFull},
         {Mode::DELTA, Wazuh::SyncSchema::Mode::ModuleDelta},
         {Mode::CHECK, Wazuh::SyncSchema::Mode::ModuleCheck},
         {Mode::METADATA_DELTA, Wazuh::SyncSchema::Mode::MetadataDelta},

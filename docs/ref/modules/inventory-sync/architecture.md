@@ -12,7 +12,7 @@ Responsibilities:
 
 - Creates and clears the local RocksDB session store in `inventory_sync/`.
 - Subscribes to the Router topic `inventory-states` with subscriber id `inventory-sync-module`.
-- Validates and dispatches `Start`, `DataValue`, `DataBatch`, `DataContext`, `DataClean`, `ChecksumModule`, `End`, and `ReqRet` protocol messages.
+- Validates and dispatches `Start`, `DataValue`, `DataContext`, `DataClean`, `ChecksumModule`, and `End` protocol messages.
 - Owns the worker queue for inbound messages and the queue that serializes indexer-side completion work.
 - Executes bulk indexing, delete-by-query, update-by-query, checksum verification, stale-session cleanup, and agent deletion.
 - Triggers the Vulnerability Scanner for sessions marked with `VDFirst` or `VDSync`.
@@ -45,7 +45,7 @@ Responsibilities:
 
 ### `src/wazuh_modules/inventory_sync/src/responseDispatcher.hpp`
 
-This component sends `StartAck`, `EndAck`, and retransmission requests back to the agent through the Router/response path.
+This component sends `EndAck` back to the agent through the Router/response path.
 
 ### `src/wazuh_modules/inventory_sync/src/inventorySyncQueryBuilder.hpp`
 
@@ -88,13 +88,12 @@ The protocol is organized around three phases:
 1. **Start**
 
 - The agent opens a session with module name, mode, option, message count, target indices, agent identity, groups, and cluster fields.
-- The manager assigns a 64-bit session id and replies with `StartAck`.
+- The manager assigns a 64-bit session id. No acknowledgment is sent back for session establishment.
 - The session is rejected if the indexer is unavailable, the agent is locked for metadata or group maintenance, or the configured session limit is reached.
 
 2. **Data**
 
 - `DataValue` carries upsert or delete operations for indexable state documents.
-- `DataBatch` carries multiple `DataValue` entries in one protocol message; Inventory Sync unwraps them and stores them as individual session entries.
 - `DataContext` carries auxiliary context data. Inventory Sync stores it in RocksDB and tracks its sequence number, but does not index it directly.
 - `DataClean` requests `deleteByQuery` against one or more indices for the current agent.
 - `ChecksumModule` provides the agent checksum used by `ModuleCheck`.
@@ -110,13 +109,14 @@ The protocol is organized around three phases:
 
 Inventory Sync supports these synchronization modes:
 
-- `ModuleFull`: delete all documents for the agent in the Start indices, then index the session payload.
 - `ModuleDelta`: apply only the `DataValue` upserts and deletes received in the session.
 - `ModuleCheck`: compare the agent checksum with the manager checksum for the target index.
 - `MetadataDelta`: update agent metadata fields on existing state documents.
 - `MetadataCheck`: repair stale or inconsistent metadata through update-by-query.
 - `GroupDelta`: update `wazuh.agent.groups` on existing state documents.
 - `GroupCheck`: repair stale or inconsistent groups through update-by-query.
+
+There is no full/replace mode (`ModuleFull` was removed): it used to `deleteByQuery` every index in `Start` unconditionally, which was unsafe once the agent started byte-capping its payloads — a truncated session would still trigger the full delete, permanently losing whatever did not fit. A full resync is now a `DataClean` (explicit, scoped delete of the target index) followed by an ordinary `ModuleDelta` sync of the fresh snapshot, which the agent can safely split across as many sessions as needed.
 
 ## Message handling details
 
@@ -126,17 +126,10 @@ Inventory Sync supports these synchronization modes:
 - Replayed at End time into `bulkIndex` or `bulkDelete` calls.
 - Enriched by the manager with `wazuh.agent.*` and `wazuh.cluster.name` metadata before indexing.
 
-### `DataBatch`
-
-- Supported by the current schema and implementation.
-- Used to ship many `DataValue` entries in one message.
-- Inventory Sync unpacks the batch and stores each item as an individual session record so the rest of the pipeline remains unchanged.
-
 ### `DataContext`
 
 - Stored in RocksDB as `{session}_{seq}_context`.
 - Excluded from indexer replay.
-- Participates in gap tracking and retransmission.
 - Can still be consumed by downstream session logic, including vulnerability-scanner flows that use the session RocksDB contents.
 
 ### `DataClean`
@@ -168,7 +161,6 @@ This prevents race conditions where inventory data would be indexed with stale m
 
 Inventory Sync includes several consistency mechanisms:
 
-- **Gap detection and retransmission** through `GapSet` and `ReqRet`.
 - **Stale-session cleanup** for sessions inactive for **20 minutes**.
 - **Periodic cleanup sweep** every **10 minutes**.
 - **Checksum validation** with retry logic for `ModuleCheck` to tolerate indexer propagation delays.

@@ -121,7 +121,7 @@ sequenceDiagram
     Module->>Module: Calculate checksum for index
     Module->>ASP: requiresFullSync(index, checksum)
 
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleCheck) + Checksums{[index, checksum]} + End
+    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleCheck) + ChecksumModule{index, checksum} + End
     ASP->>Transport: sendSession(session_id, bytes)
     Transport->>AD: Write over queue-sync socket
     AD->>Manager: POST /stateful
@@ -193,32 +193,39 @@ sequenceDiagram
     ASP-->>Module: true (success)
 ```
 
-### In-Memory Recovery Flow
+### Full-Replace Recovery Flow (DataClean + DELTA)
+
+There is no in-memory recovery API or `Mode::FULL` anymore (see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta) for why). Recovery is a `notifyDataClean()` call followed by an ordinary persisted-queue `Mode::DELTA` sync of the fresh snapshot:
 
 ```mermaid
 sequenceDiagram
     participant Module as Internal Module
     participant ASP as Agent Sync Protocol
-    participant Memory as In-Memory Vector
+    participant Queue as Persistent Queue
     participant Transport as SyncSocketTransport
     participant Manager as Wazuh Manager
 
-    Note over Module: Module recovery initiated
+    Note over Module: Recovery initiated (e.g. checksum mismatch)
 
-    Module->>ASP: clearInMemoryData()
-    ASP->>Memory: Clear
-
-    loop For each recovery item
-        Module->>ASP: persistDifferenceInMemory(id, operation, index, data, version)
-        ASP->>Memory: Store in memory vector
-    end
-
-    Module->>ASP: synchronizeModule(FULL)
-    ASP->>Memory: Read all items
-    ASP->>ASP: Build ONE FullSession<br/>Start(mode=ModuleFull, size=N) + SyncData{values} + End
+    Module->>ASP: notifyDataClean({index})
+    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta, index=[index]) + Cleans{DataClean(index)} + End
     ASP->>Transport: sendSession(session_id, bytes)
     Transport-->>Manager: (via agentd/https_client)
     Manager-->>ASP: EndAck(status=Ok)
+    ASP-->>Module: true
+
+    loop For each item in the fresh snapshot
+        Module->>ASP: persistDifference(id, operation, index, data, version)
+        ASP->>Queue: Store in SQLite
+    end
+
+    Module->>ASP: synchronizeModule(DELTA)
+    ASP->>Queue: fetchAndMarkForSync(byteCap)
+    ASP->>ASP: Build FullSession<br/>Start(mode=ModuleDelta, size=N) + SyncData{values} + End
+    ASP->>Transport: sendSession(session_id, bytes)
+    Transport-->>Manager: (via agentd/https_client)
+    Manager-->>ASP: EndAck(status=Ok)
+    ASP->>Queue: clearSyncedItems()
 
     ASP-->>Module: SyncModuleResult{success=true}
 ```

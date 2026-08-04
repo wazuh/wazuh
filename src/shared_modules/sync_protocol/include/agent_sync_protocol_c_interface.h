@@ -47,22 +47,6 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* data,
                       uint64_t version);
 
-/// @brief Persists a difference to in-memory vector instead of database.
-///
-/// This method is used for recovery scenarios where data should be kept in memory.
-/// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param id Unique identifier for the data item.
-/// @param operation Type of operation (create, modify, delete).
-/// @param index Logical index for the data item.
-/// @param data Serialized content of the message.
-/// @param version Version of the data (64-bit unsigned integer).
-void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                const char* id,
-                                Operation_t operation,
-                                const char* index,
-                                const char* data,
-                                uint64_t version);
-
 /// @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
@@ -87,10 +71,6 @@ bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
 /// @param length Size of the FlatBuffer message in bytes.
 /// @return true if parsed successfully, false on error.
 bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
-
-/// @brief Clears the in-memory data queue.
-/// @param handle Protocol handle.
-void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 
 /// @brief Synchronizes metadata or groups with the server without sending data.
 ///

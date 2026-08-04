@@ -172,18 +172,27 @@ protocol->persistDifference(
 );
 ```
 
-#### C++ Example - Recovery Using In-Memory Storage
+#### C++ Example - Full-Replace Recovery (DataClean + DELTA)
+
+There is no in-memory recovery API or `Mode::FULL`: a full-replace resync clears the target
+index first, then streams the fresh snapshot through the normal persistent-queue DELTA path
+(which safely splits into as many sessions as needed) — see
+[Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta) for why.
+
 ```cpp
-void recoverModuleData() {
+void recoverModuleData(const std::string& index) {
     minfo("Starting module recovery process");
 
-    // Clear in-memory data before persisting recovery items
-    protocol->clearInMemoryData();
+    // Clear the manager's index before resending the fresh snapshot.
+    if (!protocol->notifyDataClean({index})) {
+        merror("Failed to clear index %s before recovery; will retry later", index.c_str());
+        return;
+    }
 
     std::vector<RecoveryItem> recoveryItems = loadRecoveryData();
 
     for (const auto& item : recoveryItems) {
-        protocol->persistDifferenceInMemory(
+        protocol->persistDifference(
             item.id,
             Operation::CREATE,
             item.index,
@@ -192,10 +201,9 @@ void recoverModuleData() {
         );
     }
 
-    minfo("Persisted %zu recovery items in memory", recoveryItems.size());
+    minfo("Persisted %zu recovery items", recoveryItems.size());
 
-    // Mode::FULL reads from the in-memory vector, not the persistent queue
-    SyncModuleResult result = protocol->synchronizeModule(Mode::FULL);
+    SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
 
     if (result.success) {
         minfo("Recovery completed successfully");
@@ -211,7 +219,7 @@ bool should_perform_full_sync(const char* index) {
     char checksum[65];
     calculate_index_checksum(index, checksum);
 
-    // Sends one FullSession carrying a Checksums payload and waits for the EndAck
+    // Sends one FullSession carrying a ChecksumModule payload and waits for the EndAck
     bool needs_full_sync = asp_requires_full_sync(handle, index, checksum);
 
     if (needs_full_sync) {
@@ -400,9 +408,27 @@ private:
         {
             std::this_thread::sleep_for(std::chrono::minutes(15));
 
-            // Full sync every 4 hours (16 * 15 min), delta sync otherwise
-            const Mode mode = (++syncCount % 16 == 0) ? Mode::FULL : Mode::DELTA;
-            const auto result = m_protocol->synchronizeModule(mode);
+            SyncModuleResult result;
+
+            // Full-replace resync every 4 hours (16 * 15 min): clear the index, re-persist a
+            // fresh snapshot, then sync via DELTA. Every other cycle is a plain delta sync of
+            // whatever is already pending. See the recovery example above for why there is no
+            // Mode::FULL to reach for here.
+            if (++syncCount % 16 == 0)
+            {
+                if (!m_protocol->notifyDataClean({"inventory_packages"}))
+                {
+                    merror("Failed to clear inventory_packages before full-replace resync");
+                    continue;
+                }
+
+                for (const auto& pkg : loadAllInstalledPackages())
+                {
+                    onPackageInstalled(pkg);
+                }
+            }
+
+            result = m_protocol->synchronizeModule(Mode::DELTA);
 
             if (!result.success)
             {

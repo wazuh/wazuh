@@ -71,35 +71,16 @@ protocol.persistDifference(
 );
 ```
 
-##### `persistDifferenceInMemory()`
-
-```cpp
-void persistDifferenceInMemory(const std::string& id,
-                               Operation operation,
-                               const std::string& index,
-                               const std::string& data,
-                               uint64_t version)
-```
-
-Persists a difference to an in-memory vector instead of the database. Used for recovery scenarios where data should be kept in memory rather than written to disk; consumed by a subsequent `synchronizeModule(Mode::FULL, ...)` call instead of the persistent queue.
-
-**Parameters:**
-- `id`: Unique identifier for the data item
-- `operation`: Type of operation (`Operation::CREATE`, `Operation::MODIFY`, `Operation::DELETE_`)
-- `index`: Logical index for the data item
-- `data`: Serialized content of the message
-- `version`: Version of the data
-
 ##### `synchronizeModule()`
 
 ```cpp
 SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC)
 ```
 
-Synchronizes a module's pending data with the manager. `Mode::FULL` reads from the in-memory vector (see `persistDifferenceInMemory()`); `Mode::DELTA` reads from the persistent queue, split into as many `FullSession` messages as needed to stay under the byte cap (`Option::VDFIRST`/`Option::VDSYNC` are exempt from that cap); `Mode::CHECK` is handled by `requiresFullSync()` instead.
+Synchronizes a module's pending data with the manager. `Mode::DELTA` reads from the persistent queue, split into as many `FullSession` messages as needed to stay under the byte cap (`Option::VDFIRST`/`Option::VDSYNC` are exempt from that cap); `Mode::CHECK` is handled by `requiresFullSync()` instead. There is no `Mode::FULL`: a full-replace resync is `notifyDataClean()` followed by an ordinary `Mode::DELTA` sync of the freshly re-persisted snapshot — see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta) for why.
 
 **Parameters:**
-- `mode`: Synchronization mode (`Mode::FULL` or `Mode::DELTA`)
+- `mode`: Synchronization mode (only `Mode::DELTA` is valid here)
 - `option`: Sync option (default `Option::SYNC`; use `Option::VDFIRST` / `Option::VDSYNC` for VD flows)
 
 **Returns:** `SyncModuleResult` with success flag, optional failure reason, stop and manager-not-ready flags, and consecutive failure count
@@ -119,21 +100,13 @@ bool requiresFullSync(const std::string& index,
                       const std::string& checksum)
 ```
 
-Checks if a module index requires full synchronization by sending one `FullSession` carrying a `Checksums` payload and waiting for the manager's `EndAck`.
+Checks if a module index requires full synchronization by sending one `FullSession` carrying a `ChecksumModule` payload and waiting for the manager's `EndAck`.
 
 **Parameters:**
 - `index`: The index/table to check
 - `checksum`: The calculated checksum for the index
 
 **Returns:** `true` if full sync is required (checksum mismatch, i.e. `EndAck.status != Ok`); `false` if integrity is valid or the transport is not currently reachable
-
-##### `clearInMemoryData()`
-
-```cpp
-void clearInMemoryData()
-```
-
-Clears the in-memory data queue. This method removes all entries from the in-memory vector used for recovery scenarios.
 
 ##### `synchronizeMetadataOrGroups()`
 
@@ -290,27 +263,6 @@ C wrapper for `persistDifference()`, always with `isDataContext = false`.
 - `data`: JSON data string
 - `version`: Version of the data
 
-#### `asp_persist_diff_in_memory()`
-
-```c
-void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                const char* id,
-                                Operation_t operation,
-                                const char* index,
-                                const char* data,
-                                uint64_t version)
-```
-
-C wrapper for `persistDifferenceInMemory()`. Persists a difference to an in-memory vector instead of the database.
-
-**Parameters:**
-- `handle`: Protocol handle
-- `id`: Unique identifier for the data item
-- `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_MODIFY`, `OPERATION_DELETE`, `OPERATION_NO_OP`)
-- `index`: Logical index for the data item
-- `data`: Serialized content of the message
-- `version`: Version of the data
-
 #### `asp_sync_module()`
 
 ```c
@@ -321,7 +273,7 @@ C wrapper for `synchronizeModule()` with the default `Option_t` (`OPTION_SYNC`).
 
 **Parameters:**
 - `handle`: Protocol handle
-- `mode`: Sync mode (`MODE_FULL` or `MODE_DELTA`)
+- `mode`: Sync mode (only `MODE_DELTA` is valid here)
 
 **Returns:** `SyncModuleResult_t` with success flag and optional failure reason string
 
@@ -341,17 +293,6 @@ C wrapper for `requiresFullSync()`. Checks if a module index requires full synch
 - `checksum`: The calculated checksum for the index
 
 **Returns:** `true` if full sync is required (checksum mismatch); `false` if integrity is valid
-
-#### `asp_clear_in_memory_data()`
-
-```c
-void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle)
-```
-
-C wrapper for `clearInMemoryData()`. Clears the in-memory data queue.
-
-**Parameters:**
-- `handle`: Protocol handle
 
 #### `asp_sync_metadata_or_groups()`
 
@@ -472,7 +413,6 @@ typedef enum {
 
 ```cpp
 enum class Mode : int {
-    FULL           = MODE_FULL,           // Full synchronization mode
     DELTA          = MODE_DELTA,          // Delta synchronization mode
     CHECK          = MODE_CHECK,          // Integrity check mode
     METADATA_DELTA = MODE_METADATA_DELTA, // Metadata delta synchronization mode
@@ -484,15 +424,16 @@ enum class Mode : int {
 
 ```c
 typedef enum {
-    MODE_FULL = 0,
-    MODE_DELTA = 1,
-    MODE_CHECK = 2,
-    MODE_METADATA_DELTA = 3,
-    MODE_METADATA_CHECK = 4,
-    MODE_GROUP_DELTA = 5,
-    MODE_GROUP_CHECK = 6
+    MODE_DELTA = 0,
+    MODE_CHECK = 1,
+    MODE_METADATA_DELTA = 2,
+    MODE_METADATA_CHECK = 3,
+    MODE_GROUP_DELTA = 4,
+    MODE_GROUP_CHECK = 5
 } Mode_t;
 ```
+
+There is no `FULL`/`MODE_FULL`: a full-replace resync is `notifyDataClean()` followed by an ordinary `Mode::DELTA` sync — see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta).
 
 #### `Option` / `Option_t`
 

@@ -79,32 +79,6 @@ extern "C" {
         }
     }
 
-    void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                    const char* id,
-                                    Operation_t operation,
-                                    const char* index,
-                                    const char* data,
-                                    uint64_t version)
-    {
-        try
-        {
-            if (!handle || !id || !index || !data) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->persistDifferenceInMemory(id,
-                                                     static_cast<Operation>(operation),
-                                                     index, data, version);
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
-        }
-    }
-
     SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                                        Mode_t mode)
     {
@@ -179,25 +153,6 @@ extern "C" {
         catch (...)
         {
             return false;
-        }
-    }
-
-    void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle)
-    {
-        try
-        {
-            if (!handle) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->clearInMemoryData();
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
         }
     }
 

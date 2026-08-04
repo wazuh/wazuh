@@ -47,22 +47,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                uint64_t version,
                                bool isDataContext = false) override;
 
-        /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
-        void persistDifferenceInMemory(const std::string& id,
-                                       Operation operation,
-                                       const std::string& index,
-                                       const std::string& data,
-                                       uint64_t version) override;
-
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
                               const std::string& checksum) override;
-
-        /// @copydoc IAgentSyncProtocol::clearInMemoryData
-        void clearInMemoryData() override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
@@ -112,9 +102,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};
-
-        /// @brief In-memory vector to store PersistedData for recovery scenarios
-        std::vector<PersistedData> m_inMemoryData;
 
         /// @brief Retries for the local sync-socket hand-off.
         ///

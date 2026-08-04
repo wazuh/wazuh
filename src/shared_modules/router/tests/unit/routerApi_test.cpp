@@ -660,23 +660,23 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId, const
     auto clusterNameOffset = clusterName.empty() ? 0 : builder.CreateString(clusterName);
 
     auto startMsg = Wazuh::SyncSchema::CreateStart(builder,
-                                                   moduleOffset,                       // module
-                                                   Wazuh::SyncSchema::Mode_ModuleFull, // mode
-                                                   100,                                // size
-                                                   0,                                  // index
-                                                   Wazuh::SyncSchema::Option_Sync,     // option
-                                                   0,                                  // architecture
-                                                   0,                                  // hostname
-                                                   0,                                  // osname
-                                                   0,                                  // osplatform
-                                                   0,                                  // ostype
-                                                   0,                                  // osversion
-                                                   0,                                  // agentversion
-                                                   0,                                  // agentname
-                                                   agentIdOffset,                      // agentid
-                                                   0,                                  // groups
-                                                   0,                                  // global_version
-                                                   clusterNameOffset);                 // cluster_name
+                                                   moduleOffset,                        // module
+                                                   Wazuh::SyncSchema::Mode_ModuleDelta, // mode
+                                                   100,                                 // size
+                                                   0,                                   // index
+                                                   Wazuh::SyncSchema::Option_Sync,      // option
+                                                   0,                                   // architecture
+                                                   0,                                   // hostname
+                                                   0,                                   // osname
+                                                   0,                                   // osplatform
+                                                   0,                                   // ostype
+                                                   0,                                   // osversion
+                                                   0,                                   // agentversion
+                                                   0,                                   // agentname
+                                                   agentIdOffset,                       // agentid
+                                                   0,                                   // groups
+                                                   0,                                   // global_version
+                                                   clusterNameOffset);                  // cluster_name
 
     auto msg = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_Start, startMsg.Union());
 

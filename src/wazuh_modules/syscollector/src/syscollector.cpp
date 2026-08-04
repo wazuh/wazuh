@@ -169,10 +169,12 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
 
 bool syscollector_sync_module(Mode_t mode)
 {
-    Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    (void)mode;
     // Syscollector::syncModule() already logs a WARNING with the failure reason before returning.
     // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
-    return Syscollector::instance().syncModule(syncMode).success;
+    // Only MODE_DELTA is meaningful here: a full replace is now a DataClean + DELTA
+    // sequence handled internally by the recovery path, not by this entry point.
+    return Syscollector::instance().syncModule(Mode::DELTA).success;
 }
 
 void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)

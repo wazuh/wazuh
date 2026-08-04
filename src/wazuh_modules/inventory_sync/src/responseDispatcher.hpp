@@ -113,25 +113,6 @@ public:
     {
     }
 
-    void sendStartAck(const Wazuh::SyncSchema::Status status,
-                      std::string_view agentId,
-                      const uint64_t sessionId,
-                      std::string_view moduleName) const
-    {
-        ResponseMessage responseMessage;
-        responseMessage.builder.Clear();
-        responseMessage.agentId = agentId;
-        responseMessage.moduleName = moduleName;
-        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
-        auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status);
-
-        auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-            responseMessage.builder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
-        responseMessage.builder.Finish(messageOffset); // Print complete message buffer in hex with spaces
-
-        m_responseDispatcher->push(std::move(responseMessage));
-    }
-
     void sendEndAck(const Wazuh::SyncSchema::Status status,
                     std::string_view agentId,
                     const uint64_t sessionId,
@@ -146,32 +127,6 @@ public:
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
-        responseMessage.builder.Finish(messageOffset);
-
-        m_responseDispatcher->push(std::move(responseMessage));
-    }
-
-    void sendEndMissingSeq(const std::string_view agentId,
-                           const uint64_t sessionId,
-                           std::string_view moduleName,
-                           const std::vector<std::pair<uint64_t, uint64_t>>& ranges) const
-    {
-        ResponseMessage responseMessage;
-        responseMessage.builder.Clear();
-        responseMessage.agentId = agentId;
-        responseMessage.moduleName = moduleName;
-        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> convertedRanges;
-
-        for (const auto& [first, second] : ranges)
-        {
-            auto offset = Wazuh::SyncSchema::CreatePair(responseMessage.builder, first, second);
-            convertedRanges.push_back(offset);
-        }
-
-        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
-        auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(responseMessage.builder, &convertedRanges);
-        auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-            responseMessage.builder, Wazuh::SyncSchema::MessageType_ReqRet, endOffset.Union());
         responseMessage.builder.Finish(messageOffset);
 
         m_responseDispatcher->push(std::move(responseMessage));
