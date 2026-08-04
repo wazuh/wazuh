@@ -174,7 +174,14 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
     }
 
-    HandleSIG((int)fim_shutdown_sig);
+    /* Not HandleSIG(): its exit() would run the static destructors and the atexit handlers
+     * while the threads this waiter could not join are still using them (issue #37993). */
+    minfo(SIGNAL_RECV, (int)fim_shutdown_sig, strsignal((int)fim_shutdown_sig));
+#ifdef ENABLE_AUDIT
+    clean_rules();
+#endif
+    DeletePID(ARGV0);
+    _exit(1);
 
     return NULL;
 }
