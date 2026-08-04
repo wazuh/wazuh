@@ -13,6 +13,7 @@ from api.models.security_token_response_model import TokenResponseModel
 from api.authentication import generate_token
 from api.configuration import default_security_configuration
 from api.controllers.util import json_response, JSON_CONTENT_TYPE
+from api.middlewares import settle_login_attempt
 from api.models.base_model_ import Body
 from api.models.configuration_model import SecurityConfigurationModel
 from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
@@ -49,6 +50,7 @@ async def deprecated_login_user(user: str, raw: bool = False) -> ConnexionRespon
     ConnexionResponse
         Raw or JSON response with the generated access token.
     """
+    await settle_login_attempt(request)
     f_kwargs = {'user_id': user}
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
@@ -89,6 +91,7 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
     ConnexionResponse
         Raw or JSON response with the generated access token.
     """
+    await settle_login_attempt(request)
     f_kwargs = {'user_id': user}
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
@@ -130,6 +133,7 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
     ConnexionResponse
         Raw or JSON response with the generated access token.
     """
+    await settle_login_attempt(request)
     auth_context = await request.json()
     f_kwargs = {'user_id': user, 'auth_context': auth_context}
 

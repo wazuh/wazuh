@@ -175,6 +175,31 @@ async def check_blocked_ip(request: Request):
             ip_block.add(host)
 
 
+async def settle_login_attempt(request: Request):
+    """Release the attempt reserved by `check_blocked_ip` for a successful login.
+
+    Only failed login attempts should count towards `max_login_attempts`, so a
+    successful authentication releases the attempt that was counted at the gate
+    before credential validation ran.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    """
+    global ip_block, ip_stats
+    max_login_attempts = configuration.api_conf['access']['max_login_attempts']
+    host = request.client.host
+
+    async with ip_lock:
+        if host not in ip_stats:
+            return
+
+        ip_stats[host]['attempts'] -= 1
+        if ip_stats[host]['attempts'] < max_login_attempts:
+            ip_block.discard(host)
+
+
 def check_rate_limit(
     request_counter_key: str,
     current_time_key: str,
