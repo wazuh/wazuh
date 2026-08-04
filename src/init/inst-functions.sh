@@ -176,9 +176,18 @@ GenerateAuthCert()
                     fi
                     echo "Generating self-signed certificate for ${AUTHD_BIN}..."
                     ${INSTALLDIR}/bin/${AUTHD_BIN} -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
-                    chmod 640 ${INSTALLDIR}/etc/sslmanager.key
-                    chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
             fi
+        fi
+
+        # Owned by ${WAZUH_USER} for consistent least-privilege file ownership, even though
+        # authd itself never drops privileges (root can still read/write regardless of
+        # owner). Re-applied unconditionally (not just on fresh generation) so upgrades from
+        # installs that left these root-owned also get corrected.
+        if [ -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/sslmanager.key
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/sslmanager.cert
+            chmod 640 ${INSTALLDIR}/etc/sslmanager.key
+            chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
         fi
     fi
 }
