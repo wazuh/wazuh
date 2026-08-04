@@ -1055,8 +1055,6 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
                                     size_t body_len, void *user_data)
 {
     (void)user_data;
-    (void)body;
-    (void)body_len;
     mdebug1("https_client /stateful session=%s result=%d (%zu byte answer)",
             session_id ? session_id : "?", result, body_len);
 
@@ -1075,35 +1073,44 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             continue;
         }
 
-        /* ACK-less flow: route the HTTP outcome code with the session's numeric
-         * ID so the receiving module can discard stale callbacks (responses for
-         * a previous timed-out session that arrives while a newer one is active).
-         * Format: HCRESULT:<session_number>:<result_code>
+        /* ACK-less flow: route the raw HTTP status code and body with the session's
+         * numeric ID so the receiving module can discard stale callbacks (responses
+         * for a previous timed-out session that arrives while a newer one is active)
+         * and interpret the /stateful contract itself (a 409 means checksum mismatch,
+         * a 200 body may carry {"noop":true}, etc - see agent_sync_protocol's HTTP
+         * result handling; this bridge does not interpret the body, only carries it).
+         * Format: HCRESULT:<session_number>:<result_code>:<body>
          *
-         * session_id format is "<module>-<decimal_uint64>" so the numeric part
-         * is everything after module_len + 1 (the '-'). */
+         * session_id format is "<module>-<decimal_uint64>" so the numeric part is
+         * everything after module_len + 1 (the '-'). The body is copied verbatim
+         * after the second colon: the receiving parser only looks for the first two
+         * colons, so a JSON body containing its own colons is never misread. */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
         const char *session_num = module + module_len + 1; /* points to numeric suffix */
-        char payload[128];
-        int payload_len = snprintf(payload, sizeof(payload), "HCRESULT:%s:%d",
-                                   session_num, result);
 
-        if (payload_len <= 0 || (size_t)payload_len >= sizeof(payload)) {
+        char prefix[64];
+        int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
+
+        if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
             mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
                     session_id ? session_id : "?");
             return;
         }
 
+        const size_t payload_len = (size_t)prefix_len + body_len;
         char *framed = NULL;
-        os_malloc(header_len + (size_t)payload_len + 1, framed);
+        os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
-        memcpy(framed + header_len, payload, (size_t)payload_len);
-        framed[header_len + (size_t)payload_len] = '\0';
+        memcpy(framed + header_len, prefix, (size_t)prefix_len);
+        if (body_len > 0) {
+            memcpy(framed + header_len + (size_t)prefix_len, body, body_len);
+        }
+        framed[header_len + payload_len] = '\0';
 
         if (SYNC_ROUTES[i].syscheck) {
-            ag_send_syscheck(framed, header_len + (size_t)payload_len);
+            ag_send_syscheck(framed, header_len + payload_len);
         } else {
-            wmcom_send(framed, header_len + (size_t)payload_len);
+            wmcom_send(framed, header_len + payload_len);
         }
 
         os_free(framed);

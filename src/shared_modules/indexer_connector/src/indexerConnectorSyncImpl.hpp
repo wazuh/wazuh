@@ -837,8 +837,8 @@ public:
             LOGFN_WARN(m_logFn,
                        "Update by query skipped: no valid indices after filtering (input had %zu entries)",
                        indices.size());
-            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent +
-            // sendEndAck) must still fire so the session terminates cleanly. Treat the
+            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent)
+            // must still fire so the session terminates cleanly. Treat the
             // missing/filtered indices as a no-op success.
             m_shouldNotifyAfterBulk = true;
             return;

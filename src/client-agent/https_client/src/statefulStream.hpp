@@ -68,7 +68,12 @@ class StatefulStream final
 
         struct SendResult
         {
-            int code {HC_RESULT_ERROR};
+            /// Raw HTTP status code the manager answered with (the /stateful contract
+            /// interprets these directly - it does not go through the shared D9
+            /// classifier, whose numeric-code meanings are specific to /stateless).
+            /// 0 means no HTTP response was received at all (timeout/connect/TLS
+            /// failure/abort) - the sync protocol treats that like a 503.
+            long httpCode {0};
             std::string body;
         };
 

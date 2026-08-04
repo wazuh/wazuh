@@ -527,14 +527,18 @@ public:
      */
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
+        // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the manager no
+        // longer acknowledges End at all. responseDispatcher is kept as a parameter for
+        // call-site compatibility but unused here; the real /stateful HTTP response is the
+        // server team's own follow-up (see the FullSession-handling gap noted throughout).
+        (void)responseDispatcher;
+
         std::lock_guard lock(m_mutex);
         m_endReceived = true;
 
         if (m_endEnqueued)
         {
             LOGFN_DEBUG2(m_logFn, "End already enqueued for session %llu", m_context->sessionId);
-            responseDispatcher.sendEndAck(
-                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
             return;
         }
 
@@ -543,8 +547,6 @@ public:
             LOGFN_DEBUG2(m_logFn, "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
-            responseDispatcher.sendEndAck(
-                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
         }
         else
         {

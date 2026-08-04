@@ -112,25 +112,6 @@ public:
         , m_logFn(Log::currentModuleLogFn())
     {
     }
-
-    void sendEndAck(const Wazuh::SyncSchema::Status status,
-                    std::string_view agentId,
-                    const uint64_t sessionId,
-                    std::string_view moduleName) const
-    {
-        ResponseMessage responseMessage;
-        responseMessage.builder.Clear();
-        responseMessage.agentId = agentId;
-        responseMessage.moduleName = moduleName;
-        // TODO(#38117): session field removed from agent FlatBuffer schema (sessionId arg)
-        auto startAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status);
-
-        auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-            responseMessage.builder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
-        responseMessage.builder.Finish(messageOffset);
-
-        m_responseDispatcher->push(std::move(responseMessage));
-    }
 };
 
 using ResponseDispatcher = ResponseDispatcherImpl<ResponseQueue>;

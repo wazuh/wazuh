@@ -258,7 +258,13 @@ public:
 };
 
 /**
- * @brief Response server for receiving EndAck messages.
+ * @brief Response server listening on the legacy ARQUEUE socket.
+ *
+ * TODO(#38117): StartAck/EndAck removed from FlatBuffer schema/agent side - the manager
+ * no longer acknowledges sessions via either, so nothing this server could receive here
+ * is a valid response anymore (see handleFlatBufferMessage). Kept listening (rather than
+ * removed outright) in case future testtool work needs a socket to receive on; the real
+ * /stateful HTTP response is the server team's own follow-up.
  */
 class ResponseServer
 {
@@ -267,21 +273,11 @@ private:
     std::thread m_serverThread;
     std::atomic<bool> m_shouldStop {false};
     std::string m_path;
-
-    // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
-    // acknowledges session establishment at all, so there is nothing to wait for here anymore.
-    std::promise<void>& m_endAckPromise;
-    std::atomic<bool>& m_receivedEndAck;
     bool m_verbose;
 
 public:
-    ResponseServer(std::string path,
-                   std::promise<void>& endAckPromise,
-                   std::atomic<bool>& receivedEndAck,
-                   bool verbose = false)
+    ResponseServer(std::string path, bool verbose = false)
         : m_path(std::move(path))
-        , m_endAckPromise(endAckPromise)
-        , m_receivedEndAck(receivedEndAck)
         , m_verbose(verbose)
     {
         m_socketFd = socket(AF_UNIX, SOCK_DGRAM, 0);
@@ -441,30 +437,10 @@ private:
 
         auto message = Wazuh::SyncSchema::GetMessage(data);
 
-        switch (message->content_type())
-        {
-            case Wazuh::SyncSchema::MessageType_EndAck: handleEndAck(message->content_as_EndAck()); break;
-            default:
-                std::cout << "[WARN] Unknown message type: " << static_cast<int>(message->content_type()) << std::endl;
-        }
-    }
-
-    void handleEndAck(const Wazuh::SyncSchema::EndAck* endAck)
-    {
-        std::cout << "[INFO] ✓ EndAck received" << std::endl;
-        // TODO(#38117): session field removed from agent FlatBuffer schema
-        std::cout << "       Status: " << static_cast<int>(endAck->status()) << std::endl;
-
-        if (!m_receivedEndAck.exchange(true))
-        {
-            try
-            {
-                m_endAckPromise.set_value();
-            }
-            catch (const std::future_error&)
-            {
-            }
-        }
+        // TODO(#38117): StartAck/EndAck removed from FlatBuffer schema/agent side - the
+        // manager no longer acknowledges sessions via either, so no message type this
+        // testtool could receive here is a valid response anymore.
+        std::cout << "[WARN] Unknown message type: " << static_cast<int>(message->content_type()) << std::endl;
     }
 };
 
@@ -735,23 +711,6 @@ public:
 
         return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
     }
-
-    /**
-     * @brief Build End message.
-     */
-    static std::vector<uint8_t> buildEnd(uint64_t session)
-    {
-        flatbuffers::FlatBufferBuilder builder;
-
-        Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        // TODO(#38117): session field removed from agent FlatBuffer schema
-        auto endOffset = endBuilder.Finish();
-
-        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_End, endOffset.Union());
-        builder.Finish(message);
-
-        return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
-    }
 };
 
 // Command line parser
@@ -797,16 +756,9 @@ void sendEvent(bool verbose,
                uint32_t waitTime,
                RouterProvider& routerProvider,
                FakeReportServer& fakeReportServer,
-               uint64_t& sessionId,
-               std::promise<void>& endAckPromise,
-               std::atomic<bool>& receivedEndAck)
+               uint64_t& sessionId)
 {
-    // Reset promise for new iteration
-    endAckPromise = std::promise<void>();
-    receivedEndAck = false;
     sessionId = 0;
-
-    auto endAckFuture = endAckPromise.get_future();
 
     // Load test data
     AgentTestData testData;
@@ -908,10 +860,9 @@ void sendEvent(bool verbose,
         routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
     }
 
-    // Send END
-    std::cout << "[SEND] End message" << std::endl;
-    auto endMsg = MessageBuilder::buildEnd(sessionId);
-    routerProvider.send(std::vector<char>(endMsg.begin(), endMsg.end()));
+    // TODO(#38117): End removed from FlatBuffer schema/agent side - the real agent no
+    // longer sends a standalone End message (or any of the chunked messages this testtool
+    // simulates above); it sends one FullSession. Nothing to send here anymore.
 
     std::cout << "\n[INFO] Waiting " << waitTime << " seconds for VD processing..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(waitTime));
@@ -1021,10 +972,8 @@ int main(int argc, char* argv[])
         fakeReportServer.start();
 
         uint64_t sessionId = 0;
-        std::promise<void> endAckPromise;
-        std::atomic<bool> receivedEndAck {false};
 
-        ResponseServer responseServer(DEFAULT_ARQUEUE, endAckPromise, receivedEndAck, config.verbose);
+        ResponseServer responseServer(DEFAULT_ARQUEUE, config.verbose);
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -1041,23 +990,14 @@ int main(int argc, char* argv[])
                               config.waitTime,
                               routerProvider,
                               fakeReportServer,
-                              sessionId,
-                              endAckPromise,
-                              receivedEndAck);
+                              sessionId);
                 }
             }
         }
         else
         {
             // Single file
-            sendEvent(config.verbose,
-                      config.input,
-                      config.waitTime,
-                      routerProvider,
-                      fakeReportServer,
-                      sessionId,
-                      endAckPromise,
-                      receivedEndAck);
+            sendEvent(config.verbose, config.input, config.waitTime, routerProvider, fakeReportServer, sessionId);
         }
 
         // Cleanup
