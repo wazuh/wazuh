@@ -318,12 +318,13 @@ TEST(CallbackDispatcherBinaryTest, ASyncResponseBodyKeepsItsNulBytes)
     };
     callbacks.user_data = &captured;
 
-    // Shaped like a FlatBuffer root: a leading offset with high NUL bytes.
-    const std::string endAck {"\x0c\x00\x00\x00WZ\x00\x01\x00\x00\x00\x00", 12};
+    // A body with an embedded NUL partway through, to prove c_str()-style truncation
+    // never happens on the way through.
+    const std::string binaryBody {"\x0c\x00\x00\x00WZ\x00\x01\x00\x00\x00\x00", 12};
 
     CallbackDispatcher dispatcher {callbacks};
     dispatcher.start();
-    dispatcher.onSyncResponse("fim-42", HC_RESULT_OK, endAck);
+    dispatcher.onSyncResponse("fim-42", 200, binaryBody);
 
     {
         std::unique_lock<std::mutex> lock(captured.mutex);
@@ -331,6 +332,6 @@ TEST(CallbackDispatcherBinaryTest, ASyncResponseBodyKeepsItsNulBytes)
     }
 
     dispatcher.stop();
-    EXPECT_EQ(endAck, captured.body);
+    EXPECT_EQ(binaryBody, captured.body);
     EXPECT_EQ(12u, captured.body.size()); // Not 4, which is where the first NUL sits.
 }

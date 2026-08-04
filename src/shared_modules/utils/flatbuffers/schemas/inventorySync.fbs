@@ -14,14 +14,6 @@ enum Operation: byte {
     Delete
 }
 
-enum Status: byte {
-    Ok,
-    Error,
-    Offline,
-    ChecksumMismatch,
-    Processing
-}
-
 enum Option: byte {
     Sync,
     VDFirst,
@@ -63,13 +55,6 @@ table Start {
     cluster_node: string;
 }
 
-table End {
-}
-
-table EndAck {
-    status: Status;
-}
-
 table DataClean {
     index: string;
 }
@@ -105,19 +90,11 @@ union SessionPayload {
 
 /// A whole synchronization session as ONE message.
 ///
-/// The chunked Start -> StartAck -> DataBatch[] -> End -> EndAck exchange used to
-/// exist because the module->agentd transport was a DGRAM socket bounded by
-/// OS_MAXSTR (65536), which forced sessions to be split into ~60 KB batches. Over
-/// the STREAM sync socket that bound is gone, so the whole session crosses at once
-/// and the manager answers it with a single result. StartAck and DataBatch (along
-/// with the per-chunk exchange they supported) no longer exist as message types.
-///
 /// The session id is chosen by the AGENT here, not handed back by an ack,
 /// so a retried session keeps the same id and the manager can dedup it.
 table FullSession {
     start: Start;
     payload: SessionPayload;
-    end: End;
 }
 
 union MessageType {
@@ -125,8 +102,6 @@ union MessageType {
     DataClean,
     ChecksumModule,
     Start,
-    End,
-    EndAck,
     DataContext,
     FullSession
 }

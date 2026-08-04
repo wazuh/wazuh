@@ -29,29 +29,6 @@ protected:
     using ResponseDispatcherForTest = ResponseDispatcherImpl<MockResponseQueue>;
 };
 
-TEST_F(ResponseDispatcherTest, SendEndAck)
-{
-    auto* mockQueue = new StrictMock<MockResponseQueue>();
-    ResponseDispatcherForTest dispatcher(mockQueue);
-
-    std::string agentId = "002";
-    uint64_t sessionId = 54321;
-    std::string moduleName = "another_module";
-
-    EXPECT_CALL(*mockQueue, push(_))
-        .WillOnce(Invoke(
-            [&](ResponseMessage&& responseMsg)
-            {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(responseMsg.builder.GetBufferPointer());
-                ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_EndAck);
-
-                auto endAck = msg->content_as_EndAck();
-                ASSERT_NE(endAck, nullptr);
-                EXPECT_EQ(endAck->status(), Wazuh::SyncSchema::Status_Error);
-                // TODO(#38117): session field removed from agent FlatBuffer schema
-                // EXPECT_EQ(endAck->session(), 54321);
-                // Note: EndAck schema doesn't include module field
-            }));
-
-    dispatcher.sendEndAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
-}
+// TODO(#38117): StartAck/EndAck removed from FlatBuffer schema/agent side - the manager
+// no longer acknowledges sessions via either, so ResponseDispatcherImpl has no methods
+// left to test here. The real /stateful HTTP response is the server team's own follow-up.
