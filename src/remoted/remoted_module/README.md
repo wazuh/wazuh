@@ -23,6 +23,7 @@ remoted_module/
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
@@ -219,6 +220,275 @@ src/endpoints/
   warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
   guarantee makes the 500 a no-op if the handler had already replied.
+
+## Control endpoint (`POST /control`) — `src/control/`
+
+The `/control` endpoint handles **5.x agent lifecycle and keepalive messages** (startup, notify,
+shutdown) over the authenticated HTTPS channel, replacing the legacy TCP text-format control messages
+that 4.x agents still use. It performs version validation, updates agent status in wazuh-db, and
+fetches pending tasks from task-manager for the agent.
+
+```
+src/control/
+├── controlTypes.hpp          # DTOs: AgentId, StartupData, NotifyData, ShutdownData, HostInfo, HttpResponse
+├── controlConfig.hpp/.cpp    # ControlConfig + buildControlConfig() from C-ABI fields
+├── metrics.hpp               # ControlMetrics (atomic counters: startup/notify/shutdown/errors)
+├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
+├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
+├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
+├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
+├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
+└── hashCache.hpp/.cpp        # HashCache: LRU cache for merged.mg file hashes (avoids repeated disk reads)
+```
+
+### Architecture
+
+The `/control` endpoint is **synchronous** from the HTTP handler's perspective (replies immediately),
+but internally **async** for database and task-manager operations via dedicated UDS clients. Unlike
+`/stateless`, which forwards the entire request body downstream and waits, `/control` parses the
+agent's message, updates the agent registry, triggers async database writes, and replies with task
+data — all while keeping the HTTP handler thread free.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ag as 5.x Agent
+    participant EP as POST /control<br/>(controlEndpoint)
+    participant CH as ControlHandler
+    participant AR as AgentRegistry
+    participant WDB as WazuhDBClient<br/>(wazuh-db UDS)
+    participant TC as TaskClient<br/>(task-manager UDS)
+    participant DB as wazuh-db
+    participant TM as task-manager
+
+    Ag->>EP: POST /control {"type":"startup","version":"v5.0.0"}
+    Note over EP: Auth via AuthGateway<br/>Parse JSON + validate agent ID
+    EP->>CH: handleStartup(id, data, callback)
+    Note over CH: Version check (reject if invalid)
+    CH->>WDB: getAgentGroups(id)
+    WDB-->>DB: async UDS query
+    DB-->>WDB: ["default","web-servers"]
+    WDB-->>CH: groups
+    CH->>AR: update(id, metadata)
+    Note over AR: Sharded map insert/update
+    CH->>WDB: updateAgentData(id, version, groups, ...)
+    Note over WDB: Fire-and-forget async write
+    CH->>TC: getPendingTasks(id)
+    TC-->>TM: async UDS query
+    TM-->>TC: [task1, task2, ...]
+    TC-->>CH: tasks
+    CH->>EP: callback({"groups":[...],"tasks":[...]})
+    EP-->>Ag: 200 OK + JSON response
+```
+
+### Message types
+
+1. **`startup`** — agent sends on connect or after config reload
+   - **Request**: `{"type":"startup","version":"5.0.0"}`
+   - Validates agent version (rejects if `< manager` when `allow_higher_versions=false`)
+   - Marks agent as connected in wazuh-db (global.db)
+   - Records connection timestamp
+   - Fetches agent groups from wazuh-db
+   - **Response**:
+     ```json
+     {
+       "limits": {
+         "fim": {"file": 100000, "registry_key": 100000, "registry_value": 100000},
+         "syscollector": {"packages": 50000, "processes": 50000, ...},
+         "sca": {"checks": 10000}
+       },
+       "cluster": {"name": "wazuh-cluster", "node": "node01"},
+       "agent": {"groups": ["default", "web-servers"]}
+     }
+     ```
+   - On version mismatch: updates wazuh-db status_code to `invalid_version` and returns `400 {"error":"invalid_version"}`
+
+2. **`notify`** — periodic keepalive (agent polls every 10 seconds; hot path)
+   - **Request**:
+     ```json
+     {
+       "type": "notify",
+       "agent": {"version": "5.0.0"},
+       "host": {
+         "hostname": "ubuntu-test",
+         "architecture": "x86_64",
+         "ip": "192.168.1.100",
+         "os": {"name": "Ubuntu", "version": "20.04", "platform": "ubuntu", "type": "linux"}
+       }
+     }
+     ```
+   - Optional host metadata (OS, architecture, hostname, IP) — sent on first keepalive or when values change
+   - Updates agent registry with last activity timestamp
+   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 300s):
+     - **Full update** (`updateAgentData`): when host metadata is present in the request
+     - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
+   - Calculates `settings_hash` (SHA256 of limits + cluster + groups from agent's startup data)
+   - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file)
+   - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
+   - **Response (no tasks)**:
+     ```json
+     {
+       "agent": {"groups": ["web-servers"], "config_hash": "e3b0c44..."},
+       "settings_hash": "d7a8fbb..."
+     }
+     ```
+   - **Response (with tasks)**: same as above plus `"tasks": [{"task_id":"...","task_type":"active_response","payload":{...}}]`
+   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`), processes tasks
+   - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
+
+3. **`shutdown`** — agent sends on clean exit
+   - **Request**: `{"type":"shutdown"}`
+   - Updates agent registry
+   - Sets connection status to `disconnected` in wazuh-db (global.db)
+   - Records disconnection timestamp
+   - **Response**: `{}` (empty JSON object)
+
+### Components
+
+#### ControlHandler (`controlHandler.hpp/.cpp`)
+
+Core business logic. Owns references to all clients (wazuh-db, task-manager) and the agent registry.
+Implements `handleStartup()`, `handleNotify()`, `handleShutdown()` with the logic above.
+
+Wazuh-db writes are throttled per agent via `lastKeepaliveUpdateSec` (in `AgentRegistry`) to avoid
+flooding wazuh-db with writes every 10 seconds. Full updates (`updateAgentData`) are sent when the
+agent includes host metadata in the notify request; lightweight keepalives (`updateKeepalive`) are
+sent otherwise. Both respect the `keepaliveThrottleSec` window (default 300s).
+
+Version comparison uses a local `compareVersions()` function for semantic versioning (e.g., `"v5.0.0"`
+vs `"v4.9.2"`), stripping leading `v`/`V` and ignoring everything after `-` or `+`.
+
+#### AgentRegistry (`agentRegistry.hpp/.cpp`)
+
+Thread-safe **sharded hash map** (`std::unordered_map` per shard, each with its own `shared_mutex`)
+that caches agent metadata to avoid repeated wazuh-db lookups on every keepalive. Each `AgentEntry`
+stores:
+- `groups` — agent's assigned groups (vector of strings)
+- `groupsRefreshedAtSec` — timestamp of last groups refresh
+- `lastKeepaliveUpdateSec` — timestamp of last wazuh-db write (for throttling)
+- `lastActivitySec` — timestamp of last control message (any type)
+- `createdAtSec` — timestamp of first insertion into registry
+
+Supports:
+- `update(id, updateFn)` — atomic read-modify-write via a lambda (returns the new entry)
+- `get(id)` — read-only lookup (returns `shared_ptr<const AgentEntry>`)
+- `evictExpiredEntries(ttlSec)` — periodic cleanup (two-phase: read-lock scan, then write-lock erase)
+
+Sharding (8 shards) minimizes lock contention on high-frequency keepalives from many agents.
+
+#### WazuhDBClient (`wazuhDBClient.hpp/.cpp`)
+
+Async UDS client to `queue/sockets/wdb` with a **dedicated worker thread** and **bounded request queue**.
+Exposes:
+- `getAgentGroups(id, callback)` — synchronous UDS round-trip (startup only, not on hot path)
+- `updateAgentData(...)` — fire-and-forget async write (full agent metadata)
+- `updateKeepalive(...)` — fire-and-forget async write (lightweight)
+- `updateStatusCode(...)` — fire-and-forget async write (e.g., invalid_version rejection)
+
+Internally:
+- Maintains a persistent connection (reconnects on error)
+- Request queue with `max_queue_size` — drops requests with `SocketError::QueueFull` when full
+- Per-request deadline (`deadline_ms`) — reports `SocketError::Timeout` if wazuh-db doesn't respond
+- Uses `LogThrottle` to avoid flooding logs with repeated errors (connection failures, timeouts, queue full)
+
+#### TaskClient (`taskClient.hpp/.cpp`)
+
+Async UDS client to `queue/sockets/task` with same architecture as `WazuhDBClient`. Fetches pending
+upgrade/command tasks for an agent via `getPendingTasks(id, callback)`. Returns a vector of `Task`
+objects (id, type, payload JSON). Uses the same bounded queue + deadline + error throttling pattern.
+
+#### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
+
+Watches `var/multigroups/*.mg` for changes (inotify + poll fallback) to detect group shared file
+updates. When a `.mg` file changes, it:
+1. Hashes the file
+2. Compares against the cached hash (`HashCache`)
+3. If changed, marks all agents in that group for config invalidation (via callback)
+
+This is the signal that triggers agents in a group to re-fetch their shared configuration when
+`merged.mg` is updated.
+
+#### HashCache (`hashCache.hpp/.cpp`)
+
+Simple LRU cache (`std::list` + `std::unordered_map`) for file path → SHA256 hash. Avoids re-reading
+and re-hashing the same `.mg` file on every agent keepalive. Configurable `maxSize` (default 256).
+Thread-safe via a single `std::mutex`.
+
+#### controlEndpoint (`endpoints/controlEndpoint.hpp/.cpp`)
+
+The HTTP endpoint registration. Parses the JSON body (validates it's an object with a `"type"` field),
+extracts the agent ID from the authenticated request, and dispatches to the appropriate
+`ControlHandler` method. Returns:
+- `400` — invalid_body, invalid_json, invalid_agent_id, unknown_message_type
+- `200` — success + JSON response body
+
+Uses `LogThrottle` for error conditions (invalid body/JSON/agent ID, unknown type) to avoid log
+flooding from malformed agent requests.
+
+### Configuration
+
+Via `ControlConfig` (`controlConfig.hpp/.cpp`), populated from C-ABI struct fields in
+`remoted_module_config_t` (see `secure.c`):
+- `managerVersion` — manager's semantic version (for version comparison)
+- `allowHigherVersions` — whether to accept agents with version > manager
+- `nodeName` — worker node name (for cluster sync_status)
+- `isWorkerNode` — true on worker nodes (affects sync_status values)
+- `agentRegistryTtlSec` — how long to keep idle agents in the registry (default 3600s)
+- `agentRegistryEvictionIntervalSec` — how often to run eviction (default 300s)
+- `wdbSocketPath` — path to wazuh-db UDS socket (default `queue/sockets/wdb`)
+- `wdbQueueSize` — wazuh-db client queue size (default 1024)
+- `wdbDeadlineMs` — wazuh-db request timeout (default 5000ms)
+- `taskSocketPath` — path to task-manager UDS socket (default `queue/sockets/task`)
+- `taskQueueSize` — task-manager client queue size (default 256)
+- `taskDeadlineMs` — task-manager request timeout (default 5000ms)
+
+Built via `remoted::control::buildControlConfig()` in the facade's startup.
+
+### Metrics
+
+`ControlMetrics` (`metrics.hpp`) tracks:
+- `startupCount` — total `POST /control {"type":"startup"}` messages
+- `notifyCount` — total `POST /control {"type":"notify"}` messages
+- `shutdownCount` — total `POST /control {"type":"shutdown"}` messages
+- `wdbErrorCount` — wazuh-db operation failures (connection, timeout, queue full)
+- `taskFetchCount` — successful task fetches from task-manager
+- `taskFetchErrorCount` — task-manager operation failures
+
+All atomic `uint64_t`. Exposed via `RemotedModuleFacade::getMetrics()` (future: add a `GET /metrics`
+endpoint to surface these).
+
+### Error handling
+
+- **Version rejection**: `400 {"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`)
+- **Database errors**: `500 {"error":"database_error"}` (wazuh-db down or timeout)
+- **Queue full** (wazuh-db or task-manager): drops the operation, logs warning (throttled), continues
+- **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
+
+All errors use `LogThrottle` (90-second windows) to avoid log flooding:
+- WARN-level: version rejections, wdb errors, queue full, timeouts
+- DEBUG2-level: per-request success logs (startup, notify, shutdown)
+
+### Thread safety
+
+- **AgentRegistry**: sharded with per-shard `shared_mutex` (concurrent reads, exclusive writes)
+- **WazuhDBClient / TaskClient**: single worker thread per client, requests queued via `std::queue` + mutex + CV
+- **ControlHandler**: stateless (all state in registry + clients), thread-safe via client APIs
+- **HashCache**: single `std::mutex` protecting LRU list + map
+
+The HTTP handler threads call `ControlHandler` concurrently; the handler coordinates via the registry
+and clients, which are all thread-safe internally.
+
+### Lifecycle
+
+1. **Startup**: `RemotedModuleFacade::start()` builds `ControlConfig`, creates all clients
+   (wazuh-db, task-manager), creates the registry, creates `ControlHandler`, and registers
+   `POST /control` via `controlEndpoint::makeHandler(handler)`.
+2. **Runtime**: HTTP worker threads process `/control` requests concurrently. The registry eviction
+   thread runs periodically (every `agentRegistryEvictionIntervalSec`). Wazuh-db and task-manager
+   clients maintain persistent connections (reconnect on error).
+3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
+   then stops the wazuh-db and task-manager clients (drains their queues), then destroys the
+   registry (eviction thread stops automatically on destruction).
 
 ## Deferred forwarding (async UDS) — `src/downstream/`
 

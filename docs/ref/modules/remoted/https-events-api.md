@@ -162,6 +162,15 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
   **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
   return the errors above.
+- **`POST /control`** — authenticated agent lifecycle and control messages. Once the signature is
+  verified, the module processes the agent's control message (`startup`, `notify`, or `shutdown`),
+  updates agent metadata in wazuh-db, retrieves pending tasks from task-manager, and returns
+  configuration state and pending work. Handles agent initial connection state (`startup` with
+  limits, cluster info, and groups), periodic keepalive every 10 seconds (`notify` with hash-based
+  change detection for config and settings), and clean disconnection (`shutdown`). Returns **`200
+  OK`** with a JSON response on success, **`400`** on malformed requests, **`401`** on auth
+  failures, or **`503`** when wazuh-db/task-manager are unreachable. See
+  [Control endpoint](#control-endpoint-post-control) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -332,6 +341,185 @@ client behavior — a portscanner, or negative-test traffic like `tools/send_sta
 a manager-side problem, so they are not logged unthrottled at warning/error level the way
 `max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
 exception, the HTTPS server failing to bind, is already covered above.
+
+## Control endpoint (`POST /control`)
+
+The `/control` endpoint manages agent lifecycle events and periodic keepalive for 5.x agents,
+replacing the legacy TCP-based control messages (`#!-agent startup`, `#!-agent shutdown`) used by
+4.x agents. It handles three message types: **startup** (agent initial connection), **notify**
+(periodic keepalive every 10 seconds), and **shutdown** (clean agent disconnection).
+
+### Message types
+
+All requests carry a JSON body with a `type` field indicating the message type. Authentication and
+error handling follow the same AES-CMAC mechanism as `/stateless` (see
+[Authentication](#authentication-aes-cmac) above).
+
+#### Startup
+
+Sent by the agent on initial connection. The manager marks the agent as connected in global.db,
+records the connection time, and returns limits (FIM, Syscollector, SCA quotas), cluster
+information (name and node), and the agent's assigned groups. The agent stores this data locally.
+No hashes are included in the startup response.
+
+**Request:**
+```json
+{
+  "type": "startup",
+  "version": "5.0.0"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "limits": {
+    "fim": {"file": 100000, "registry_key": 100000, "registry_value": 100000},
+    "syscollector": {"packages": 50000, "processes": 50000, "ports": 50000},
+    "sca": {"checks": 10000}
+  },
+  "cluster": {
+    "name": "wazuh-cluster",
+    "node": "node01"
+  },
+  "agent": {
+    "groups": ["default", "web-servers"]
+  }
+}
+```
+
+#### Notify (keepalive)
+
+Sent every 10 seconds. The agent includes metadata (version) and optionally host information
+(hostname, architecture, IP, OS details). The manager calculates two hashes: `settings_hash` (SHA-256
+of limits + cluster + groups from the startup data) and `config_hash` (SHA-256 of the agent's
+`merged.mg` file), queries task-manager for pending tasks, and returns the hashes along with any
+tasks.
+
+The manager throttles wazuh-db writes per agent (default 300s): when the throttle window has expired,
+it writes a full update (`updateAgentData`) if host metadata is present in the request, or a
+lightweight keepalive (`updateKeepalive`) otherwise.
+
+If tasks are found, the manager marks them as delivered (updates status to `delivered` and records
+delivery time). Task delivery status is **local only** (not broadcast to the cluster).
+
+The agent compares the received hashes against its local copies: if `settings_hash` differs, it
+sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
+`/download`.
+
+**Request:**
+```json
+{
+  "type": "notify",
+  "agent": {
+    "version": "5.0.0"
+  },
+  "host": {
+    "hostname": "ubuntu-test",
+    "architecture": "x86_64",
+    "ip": "192.168.1.100",
+    "os": {
+      "name": "Ubuntu",
+      "version": "20.04",
+      "platform": "ubuntu",
+      "type": "linux"
+    }
+  }
+}
+```
+
+**Response without tasks (`200 OK`):**
+```json
+{
+  "agent": {
+    "groups": ["web-servers"],
+    "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"
+}
+```
+
+**Response with tasks (`200 OK`):**
+```json
+{
+  "agent": {
+    "groups": ["web-servers"],
+    "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+  "tasks": [
+    {
+      "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f",
+      "task_type": "active_response",
+      "payload": {
+        "wazuh": {
+          "active_response": {
+            "name": "firewall-drop",
+            "executable": "firewall-drop",
+            "extra_arguments": "192.168.1.100"
+          }
+        },
+        "rule": {"id": 5503},
+        "data": {"srcip": "192.168.1.100"}
+      }
+    }
+  ]
+}
+```
+
+#### Shutdown
+
+Sent when the agent cleanly disconnects (e.g., service stop, not a crash). The manager updates the
+agent status in global.db to "disconnected" and records the disconnection time.
+
+**Request:**
+```json
+{
+  "type": "shutdown"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{}
+```
+
+### Architecture
+
+The `/control` endpoint integrates with two backend services over Unix-domain sockets:
+
+- **wazuh-db** (`queue/db/wdb`): Agent metadata storage. The handler writes agent info (OS, version,
+  hostname, etc.) via `agent <id> set <field> <value>` commands, updates connection status, and
+  reads back the agent's groups. Dedicated worker threads with bounded request queues and async I/O
+  prevent blocking the HTTP worker threads.
+- **task-manager** (`queue/tasks/task`): Task delivery. The handler queries pending tasks for the
+  agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
+  included in the response. Task state is local to the node; cluster broadcast is handled separately
+  by the task-manager service.
+
+A thread-safe **agent registry** (8-shard hash table) caches agent metadata (groups, last activity
+timestamp, last keepalive update timestamp) to minimize wazuh-db round-trips during the hot path
+(`notify` every 10 seconds per agent). Entries are evicted periodically based on inactivity TTL.
+
+### Error handling
+
+Errors follow the same pattern as `/stateless` (see [Error responses](#error-responses) above).
+Control-specific conditions:
+
+| Condition | HTTP | `error` message |
+|---|---|---|
+| Body empty or exceeds 64 KiB | `400` | `invalid_body` |
+| Malformed JSON body | `400` | `invalid_json` |
+| Invalid agent ID format | `400` | `invalid_agent_id` |
+| Unknown message type | `400` | `unknown_message_type` |
+| Invalid agent version (startup only) | `400` | `invalid_version` |
+| Invalid host info format (notify only) | `400` | `invalid_host_info` |
+| wazuh-db error during startup (get groups) | `500` | `database_error` |
+
+Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the same responses as
+`/stateless`. Throttled logging (one message per 90 seconds per condition) prevents log flooding
+from repeated errors; see
+[Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems).
 
 ## Testing
 
