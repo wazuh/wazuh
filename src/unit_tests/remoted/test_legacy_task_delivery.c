@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "remoted.h"
+#include "legacy_task_delivery.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -321,6 +322,86 @@ static void test_deliver_fails_on_sha1_mismatch_no_upgrade_step(void **state) {
     cJSON_Delete(payload);
 }
 
+static void test_deliver_fails_on_open_step(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                 // lock_restart succeeds
+    expect_req_step(NULL, -1);                 // open fails: no ack
+    expect_any(__wrap__mwarn, formatted_msg);   // "no response for step targeting 'open'"
+    expect_any(__wrap__merror, formatted_msg);  // "'open' step failed, aborting push"
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    assert_false(legacy_task_deliver_remote_upgrade("035", payload));
+    cJSON_Delete(payload);
+
+    // No wfopen/fread call is queued: if the code proceeded to 'write' after this failure,
+    // the mock queue for that step would be empty and fail the test.
+}
+
+static void test_deliver_fails_on_close_step(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                                    // lock_restart
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);       // open
+
+    expect_string(__wrap_wfopen, path, "var/upgrade/wazuh_agent.wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fake_file);
+
+    expect_fread("hello", 5);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);       // write
+    expect_fread("", 0);
+    expect_fclose(fake_file, 0);
+
+    expect_req_step(NULL, -1);                  // close fails: no ack
+    expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'close'"
+    expect_any(__wrap__merror, formatted_msg);   // "'close' step failed, aborting push"
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    assert_false(legacy_task_deliver_remote_upgrade("036", payload));
+    cJSON_Delete(payload);
+
+    // No 'sha1'/'upgrade' step is queued: a further attempt would exhaust the mock queue.
+}
+
+static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                                    // lock_restart
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);       // open
+
+    expect_string(__wrap_wfopen, path, "var/upgrade/wazuh_agent.wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fake_file);
+
+    expect_fread("hello", 5);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);       // write
+    expect_fread("", 0);
+    expect_fclose(fake_file, 0);
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);            // close
+    expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);       // sha1, matches
+    expect_req_step("{\"error\":0,\"message\":\"1\"}", 0);            // upgrade: non-zero exit status
+
+    expect_any(__wrap__merror, formatted_msg); // "installer script failed (exit status: 1)"
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    assert_false(legacy_task_deliver_remote_upgrade("037", payload));
+    cJSON_Delete(payload);
+}
+
 /* ---------------------------------------------------------------------- */
 /* Poll cycle: version-gate ordering + task-type filtering + no-retry       */
 /* ---------------------------------------------------------------------- */
@@ -507,15 +588,114 @@ static void test_poll_cycle_eligible_agent_zero_pending_tasks(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, response);
     will_return(__wrap_OS_RecvSecureTCP, strlen(response));
 
-    // No req_send_and_wait/minfo/merror/remoted_enqueue_manager_event calls are queued: an empty
-    // task list must not attempt any push and must not log a failure -- any unexpected call here
-    // fails the test.
+    // No req_send_and_wait/minfo/merror calls are queued: an empty task list must not attempt
+    // any push and must not log a failure -- any unexpected call here fails the test.
     legacy_upgrade_poll_cycle();
 
     os_free(response);
     os_free(keyentries[0]->id);
     os_free(keyentries[0]);
     os_free(keyentries);
+}
+
+/* Tests for legacy_task_process_upgrade_ack() -- the ack must always be replied to with
+ * clear_upgrade_result when it's a recognized upgrade_update_status message, regardless of the
+ * reported outcome, and never touch any task's stored status (that's out of scope -- 'delivered'
+ * is the Task Manager's own terminal state for a legacy push, by design). */
+
+void test_process_upgrade_ack_success_replies_clear_upgrade_result(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "001");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    bool result = legacy_task_process_upgrade_ack("001",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+
+    assert_true(result);
+}
+
+void test_process_upgrade_ack_failure_still_replies_clear_upgrade_result(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "002");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    bool result = legacy_task_process_upgrade_ack("002",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
+        "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
+
+    assert_true(result);
+}
+
+void test_process_upgrade_ack_malformed_json_ignored(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "legacy_task_delivery: agent '003' sent an unparseable upgrade acknowledgment, ignoring");
+
+    // No req_send_and_wait call queued -- any call here fails the test.
+    bool result = legacy_task_process_upgrade_ack("003", "not json");
+
+    assert_false(result);
+}
+
+void test_process_upgrade_ack_unexpected_command_ignored(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "legacy_task_delivery: agent '004' sent an upgrade acknowledgment with an unexpected "
+        "'command', ignoring");
+
+    bool result = legacy_task_process_upgrade_ack("004", "{\"command\":\"something_else\",\"parameters\":{}}");
+
+    assert_false(result);
+}
+
+void test_process_upgrade_ack_missing_error_field_ignored(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "legacy_task_delivery: agent '005' sent an upgrade acknowledgment with a missing or "
+        "invalid 'parameters.error', ignoring");
+
+    bool result = legacy_task_process_upgrade_ack("005",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"message\":\"x\",\"status\":\"Done\"}}");
+
+    assert_false(result);
+}
+
+void test_process_upgrade_ack_reply_failure_still_returns_true(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "006");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, NULL);
+    will_return(__wrap_req_send_and_wait, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '006': no response for step targeting 'upgrade'");
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '006': failed to deliver 'clear_upgrade_result', the agent "
+        "may keep resending its upgrade acknowledgment");
+
+    bool result = legacy_task_process_upgrade_ack("006",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+
+    // The ack itself was well-formed and processed -- true even though the reply delivery failed.
+    assert_true(result);
 }
 
 int main(void) {
@@ -529,8 +709,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_lock_restart_no_further_steps, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_write_step_no_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_sha1_mismatch_no_upgrade_step, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_fails_on_open_step, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_fails_on_close_step, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_fails_on_upgrade_exit_nonzero, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_gating_filtering_and_no_retry, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_poll_cycle_eligible_agent_zero_pending_tasks, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_success_replies_clear_upgrade_result, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_failure_still_replies_clear_upgrade_result, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_malformed_json_ignored, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_unexpected_command_ignored, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_missing_error_field_ignored, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_reply_failure_still_returns_true, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

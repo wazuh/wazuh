@@ -1310,10 +1310,14 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         message_type = MT_INV_SYNC;
     }
     else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
-        // Upgrade acknowledgments from agents are no longer processed in 5.x
-        // Fire-and-forget model: agents execute tasks without reporting results
-        mdebug2("Ignoring upgrade acknowledgment from agent '%s' (not processed in 5.x)", agent_id);
-        return true;
+        // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
+        // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
+        // legacy_task_delivery.c). This is additive: the ack is not router-bound, so it still
+        // falls through to the normal analysisd/Engine event path (batch_queue_enqueue_ex) like
+        // any other agent message, instead of being silently discarded.
+        legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
+        mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
+        return false;
     }
 
     if (!router_handle) {

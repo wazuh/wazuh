@@ -25,4 +25,22 @@
  */
 void *legacy_upgrade_task_delivery(void *arg);
 
+/**
+ * @brief Process a legacy agent's `upgrade_update_status` ack.
+ *
+ * A pre-v5.0.0 agent resends this ack on a backoff loop until it receives an explicit
+ * `clear_upgrade_result` command back -- see wm_agent_upgrade_check_status() (agent-side,
+ * unmodified). This only confirms the ack is a well-formed `upgrade_update_status` message and
+ * replies with `clear_upgrade_result` so the agent stops retrying; it does not touch any task's
+ * stored status -- `delivered` is the Task Manager's own terminal state for a legacy push, by
+ * design (the agent's own durable dedup is what guards against a duplicate/late redelivery, not
+ * a manager-side status field).
+ *
+ * @param agent_id Agent identifier.
+ * @param ack_json The ack's JSON body, with the `u:upgrade_module:` header already stripped.
+ * @return true if the ack was a recognized `upgrade_update_status` message and was replied to;
+ * false if it was malformed/unrecognized and ignored.
+ */
+bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json) __attribute__((nonnull));
+
 #endif /* LEGACY_TASK_DELIVERY_H */
