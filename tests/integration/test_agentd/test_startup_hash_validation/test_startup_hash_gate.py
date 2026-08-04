@@ -9,8 +9,10 @@ type: integration
 
 brief: Validate startup hash gate behavior in wazuh-agentd.
        Modules call startup_gate_wait_for_ready() at startup and remain
-       blocked until the handshake merged_sum matches the local merged.mg
-       hash.
+       blocked until the manager-reported config_hash (SHA-256, delivered over
+       /control notify) matches a local SHA-256 of merged.mg -- the single
+       feed left after wazuh/wazuh#38030 retired the legacy TCP handshake and
+       its MD5 merged_sum comparison (see client-agent/src/startup_gate.c).
 
        Architecture note: The agent command socket (queue/sockets/agent) used
        to query gate status is created by the agcom thread, which only starts
@@ -100,16 +102,17 @@ AGENT_SOCKET_PATH = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'agent')
 MODULE_DAEMONS = ('wazuh-modulesd', 'wazuh-syscheckd', 'wazuh-logcollector', 'wazuh-execd')
 ALL_DAEMONS = ('wazuh-agentd',) + MODULE_DAEMONS
 
-# Log patterns emitted by the startup gate C code. Under HTTPS (wazuh/wazuh#37831) the
-# handshake carries no merged_sum, so startup_gate_process_handshake() (which used to set
-# "waiting_hash_match"/"hash_match") never runs -- the reason stays at its initial
-# "waiting_handshake" while blocked, and becomes "https_hash_match" (direct SHA-256 match
-# against the manager-reported config_hash) or "https_config_applied" (released after a
-# successful /download) once released. See client-agent/src/startup_gate.c.
+# Log patterns emitted by the startup gate C code. wazuh/wazuh#38030 retired the legacy TCP
+# handshake path entirely (startup_gate_process_handshake() and its MD5 merged_sum no longer
+# exist), leaving the gate with a single SHA-256 feed: the reason stays at its initial
+# "waiting_config_hash" while blocked, and becomes "https_hash_match" (direct SHA-256 match
+# against the manager-reported config_hash), "https_config_applied" (released after a
+# successful /download), or "no_manager_config" (the manager reported no config_hash at all --
+# nothing to wait for) once released. See client-agent/src/startup_gate.c.
 GATE_BLOCKING_PATTERN = (
     r".*Startup hash gate is blocking "
     r"'wazuh-(modulesd|syscheckd|logcollector|execd)' "
-    r"\((waiting_handshake|waiting for agentd startup gate status)\)\."
+    r"\((waiting_config_hash|waiting for agentd startup gate status)\)\."
 )
 
 # YAML template paths for merged.mg and handshake JSON.
@@ -399,10 +402,10 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             remoted_server.start()
             wait_connect()
 
-            # Gate should remain blocked with waiting_handshake reason (it never
+            # Gate should remain blocked with waiting_config_hash reason (it never
             # transitions away from its initial reason under HTTPS since nothing
             # ever matches -- see GATE_BLOCKING_PATTERN's comment above).
-            _wait_startup_gate_status(False, "waiting_handshake")
+            _wait_startup_gate_status(False, "waiting_config_hash")
 
             # Module daemons are running (processes exist) but blocked inside
             # startup_gate_wait_for_ready().
@@ -433,7 +436,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             delay_timer = _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Gate blocked during delay.
-            _wait_startup_gate_status(False, "waiting_handshake")
+            _wait_startup_gate_status(False, "waiting_config_hash")
 
             # Modules running but blocked.
             for daemon_name in MODULE_DAEMONS:
@@ -455,14 +458,17 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
 
         elif scenario == "reload_chain_fails_gate_still_releases":
-            # Regression for issue #36239. When the simulator pushes merged.mg,
-            # receiver.c calls reloadAgent() to propagate the new config via
-            # the modulesd control socket. If that socket isn't reachable, the
-            # call exhausts its 30 retries. Before the fix, the gate stayed at
-            # waiting_hash_match forever (only an agentd restart recovered).
-            # After the fix, the gate is released by receive_msg() once
-            # reloadAgent() reports failure (i.e. the reload chain definitively
-            # cannot run), so modules can still start without a full restart.
+            # Regression for issue #36239 (originally against the legacy handshake's
+            # receiver.c, since retired by wazuh/wazuh#38030 -- the mechanism now lives in
+            # bridge_on_config_downloaded(), https_client_bridge.c). When the simulator
+            # pushes merged.mg, that callback calls reloadAgent() to propagate the new
+            # config via the modulesd control socket. If that socket isn't reachable, the
+            # call exhausts its 30 retries. Before the original #36239 fix, the gate stayed
+            # blocked forever whenever this happened (only an agentd restart recovered).
+            # The bridge's own fallback (see its comment above the reloadAgent() call)
+            # releases the gate inline via startup_gate_release_from_https_apply() once
+            # reloadAgent() reports failure (i.e. the reload chain definitively cannot
+            # run), so modules can still start without a full restart.
             #
             # We force the failure by stopping wazuh-modulesd between the
             # handshake and the merged.mg push, so its CONTROL_SOCK is gone
@@ -477,7 +483,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Handshake done, merged.mg not yet available -> blocked.
-            _wait_startup_gate_status(False, "waiting_handshake")
+            _wait_startup_gate_status(False, "waiting_config_hash")
 
             # Kill modulesd: queue/sockets/control now disappears, so the
             # reloadAgent() call triggered by the upcoming download will fail.
@@ -533,7 +539,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Gate blocked while waiting for the config to become available.
-            _wait_startup_gate_status(False, "waiting_handshake")
+            _wait_startup_gate_status(False, "waiting_config_hash")
 
             # Wait for the download -> reload chain -> SIGUSR1 -> gate released.
             _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
@@ -655,7 +661,7 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Handshake done, local hash is stale -> blocked.
-            _wait_startup_gate_status(False, "waiting_handshake")
+            _wait_startup_gate_status(False, "waiting_config_hash")
 
             # Wait for the download -> reload chain -> SIGUSR1 -> gate released.
             _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
