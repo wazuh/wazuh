@@ -79,12 +79,13 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPL] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfPL] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
+    print_out("    -u <user>   User to run as. Default: %s.", USER);
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
@@ -165,7 +166,9 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
+    uid_t uid;
     gid_t gid;
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
 
     pthread_t thread_local_server = 0;
@@ -208,7 +211,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -221,6 +224,13 @@ int main(int argc, char **argv)
                 case 'd':
                     debug_level = 1;
                     nowDebug();
+                    break;
+
+                case 'u':
+                    if (!optarg) {
+                        merror_exit("-u needs an argument");
+                    }
+                    user = optarg;
                     break;
 
                 case 'g':
@@ -485,9 +495,10 @@ int main(int argc, char **argv)
     }
 
     /* Check if the user/group given are valid */
+    uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -498,6 +509,10 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Signal manipulation */
