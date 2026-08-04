@@ -24,13 +24,28 @@ namespace invsync::endpoints::config
     /**
      * @brief The agent configuration ingress endpoint, reached through remoted's `POST /config`.
      *
-     * DUMMY. It does the full request/response cycle and the enrichment, but nothing durable: the
-     * document is parsed, checked to be a JSON object, stamped with `wazuh.agent.id`, `@timestamp`,
-     * `wazuh.cluster.name` and `wazuh.cluster.node`, echoed back, and then DISCARDED. Nothing is
-     * indexed or stored.
+     * The body is a JSON array of `{"module": <string>, "config": <object>}` pairs -- one per agent
+     * module (e.g. `fim`, `logcollector`). Each valid element is reduced to exactly those two keys
+     * (anything else the agent sent is dropped) and wrapped into the document indexed under
+     * `wazuh-agent-config`:
      *
-     * @note A deliberate near-duplicate of statsEndpoint -- see the note there. Identical today only
-     * because both are dummies; keep them in sync until their real payloads force them apart.
+     * @code
+     * {
+     *   "@timestamp": "...",
+     *   "wazuh": {
+     *     "agent": { "id": "<authenticated id>",
+     *                "configuration": { "content": [ {"module": ..., "config": ...}, ... ] } },
+     *     "cluster": { "name": "...", "node": "..." }
+     *   }
+     * }
+     * @endcode
+     *
+     * The `wazuh-agent-config` index template is `dynamic: strict`: any field outside this exact
+     * shape makes the (fire-and-forget) write fail with no way to report it back to the caller, which
+     * is why every element is sanitized down to `module`/`config` before it reaches the connector.
+     *
+     * The document is indexed under the agent id as its `_id`, so each report replaces the previous
+     * one for that agent -- there is no separate delete step.
      *
      * @warning Do not introduce a local or parameter named `config` inside this unit: it would shadow
      * this namespace and make unqualified lookups inside it resolve to the variable.
@@ -73,11 +88,6 @@ namespace invsync::endpoints::config
 
     /**
      * @brief Build the endpoint's route handler.
-     *
-     * The returned handler replies inline. When real configuration handling lands it may instead move the
-     * responder onto a queue and return without answering -- which is what the transport's
-     * deferred-response contract exists to support, and why the signature already takes a responder
-     * rather than returning a response.
      *
      * @param connector The async indexer connector, held WEAKLY and locked at each point of use.
      *
