@@ -22,6 +22,7 @@
 #include "indexed_queue_op.h"
 #include "batch_queue_op.h"
 #include "http_op.h"
+#include "legacy_task_delivery.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
 // (remoted_module.h) are two independently-maintained mirrors of the same values, since
@@ -494,6 +495,9 @@ void HandleSecure()
 
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
+
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
 
     /* Create wait_for_msgs threads */
     {
