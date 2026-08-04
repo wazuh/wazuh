@@ -147,6 +147,30 @@ static void test_authd_ciphers_default_is_tls13(void **state) {
     os_free(local_config.manager_key);
 }
 
+// Test ssl_auto_negotiate removal (issue #38091)
+
+static void test_read_authd_ssl_auto_negotiate_removed(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ssl_auto_negotiate", node[0]->element);
+    os_strdup("yes", node[0]->content);
+    node[1] = NULL;
+
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'ssl_auto_negotiate'.");
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), OS_INVALID);
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
 // Test <ciphers> parsing/validation
 
 static void test_read_authd_ciphers_valid(void **state) {
@@ -226,6 +250,7 @@ int main(void)
         cmocka_unit_test(test_w_authd_parse_agents_invalid_element),
         cmocka_unit_test(test_authd_use_password_default),
         cmocka_unit_test(test_authd_ciphers_default_is_tls13),
+        cmocka_unit_test(test_read_authd_ssl_auto_negotiate_removed),
         cmocka_unit_test(test_read_authd_ciphers_valid),
         cmocka_unit_test(test_read_authd_ciphers_invalid),
         cmocka_unit_test(test_w_authd_validate_ciphers_single_valid),
