@@ -1076,6 +1076,8 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-modulesd ${INSTALLDIR}/bin/
   else
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-modulesd ${INSTALLDIR}/bin/
+    rm -f ${INSTALLDIR}/bin/wazuh-manager-control-helper
+    ${INSTALL} -m 4750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-service-control ${INSTALLDIR}/bin/
   fi
   if [ "X${INSTYPE}" = "Xmanager" ]; then
     ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
@@ -1420,7 +1422,13 @@ InstallLocal()
 
     # Install Vulnerability Detector files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd/feed
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd/vd_updater
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
+
+    # Modulesd persistent data
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/inventory_sync
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
 
 
     # Install Task Manager files
@@ -1536,6 +1544,12 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
+
+    for MODULESD_DATA in queue/inventory_sync queue/vd/feed queue/vd/vd_updater queue/diff queue/keystore; do
+        if [ -d "${INSTALLDIR}/${MODULESD_DATA}" ]; then
+            find -P "${INSTALLDIR}/${MODULESD_DATA}" -exec chown -h ${WAZUH_USER}:${WAZUH_GROUP} {} +
+        fi
+    done
 }
 
 InstallAgent()

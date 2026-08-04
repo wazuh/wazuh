@@ -171,11 +171,15 @@ case "$1" in
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
-        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-db \
+        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \
         wazuh-manager-keystore wazuh-manager-modulesd \
         wazuh-manager-monitord wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             case "${BIN}" in
+                wazuh-manager-service-control)
+                    chown root:${GROUP} "${DIR}/bin/${BIN}"
+                    chmod 4750 "${DIR}/bin/${BIN}"
+                    ;;
                 agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd)
                     chown root:${GROUP} "${DIR}/bin/${BIN}"
                     ;;
@@ -235,6 +239,14 @@ case "$1" in
     for YEAR_DIR in ${DIR}/logs/[0-9][0-9][0-9][0-9]; do
         if [ -d "${YEAR_DIR}" ]; then
             chown -R ${USER}:${GROUP} "${YEAR_DIR}" > /dev/null 2>&1 || true
+        fi
+    done
+
+    # Same reassignment for modulesd's own stores, which the engine's list does not
+    # cover. -P/-h so a symlink under queue/ is never followed nor its target touched.
+    for MODULESD_DATA in queue/inventory_sync queue/vd/feed queue/vd/vd_updater queue/diff queue/keystore; do
+        if [ -d "${DIR}/${MODULESD_DATA}" ]; then
+            find -P "${DIR}/${MODULESD_DATA}" -exec chown -h ${USER}:${GROUP} {} + > /dev/null 2>&1 || true
         fi
     done
 
