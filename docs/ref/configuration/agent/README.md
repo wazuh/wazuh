@@ -17,7 +17,7 @@ Configuration reference for Wazuh agent components.
 | [Active Response](../../modules/active-response/configuration.md) | `<active-response>` | `execd.*` |
 | [Agent Info](../../modules/agent_info/configuration.md) | `<agent-info>` | - |
 | [Agent Upgrade](../../modules/agent_upgrade/configuration.md) | `<agent-upgrade>` | - |
-| [Client](../../modules/client/configuration.md) | `<client>`, `<anti_tampering>` | `agent.*`, `windows.*` (Windows only) |
+| [Client](../../modules/client/configuration.md) | `<agent>`, `<anti_tampering>` | `agent.*`, `windows.*` (Windows only) |
 | [Command](../../modules/command/configuration.md) | `<wodle name="command">` | `wazuh_command.*` |
 | [Logcollector](../../modules/logcollector/configuration.md) | `<localfile>`, `<socket>` | `logcollector.*` |
 | [Logging](../../modules/logging/configuration.md) | `<logging>` | - |

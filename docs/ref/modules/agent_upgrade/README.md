@@ -3,7 +3,7 @@
 The agent upgrade module handles remote agent upgrades using WPK (Wazuh Package Kit) files. It has two roles depending on where it runs:
 
 - **Manager side** — validates upgrade requests coming from the Server API, resolves the target WPK for each agent, and creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md) with the metadata the agent will need to fetch and install the package.
-- **Agent side** — listens on the agent's local `queue/sockets/upgrade` socket and executes the file-transfer / install commands (`open`, `write`, `close`, `sha1`, `upgrade`) issued by the agent daemon after the WPK has been received.
+- **Agent side** — listens on the agent's local `queue/sockets/upgrade` socket and executes the `upgrade` command issued by the agent daemon once the WPK has been downloaded. After the agent restarts, it reports the outcome as a stateless event and erases its local `upgrade_result` file.
 
 Source: [src/wazuh_modules/src/agent_upgrade/](../../../../src/wazuh_modules/src/agent_upgrade/)
 
@@ -46,8 +46,9 @@ API / agent_upgrade CLI  ──►  queue/tasks/upgrade  (agent_upgrade manager)
 
 The manager-side module does **not** send WPK data to the agent directly. Once the task has been stored in the Task Manager, the module is done with that request. Task delivery depends on the target agent's version:
 
-- **5.x agents** pull the task from the manager's HTTPS control endpoint on their next poll, download the WPK through the same HTTPS interface, and hand the file off to their local upgrade module for installation.
-- **4.x agents** are served by the manager's compatibility push path, which reads pending tasks from the Task Manager and forwards the WPK to the agent through the existing agent-manager channel using the same `open` / `write` / `close` / `sha1` / `upgrade` commands understood by the agent-side listener.
+**5.x agents** pull the task from the manager's HTTPS control endpoint on their next poll, download the WPK through the same HTTPS interface, and hand the file off to their local upgrade module for installation.
+
+A **4.x agent** installs the WPK with its own 4.x upgrade module, which is why a 5.0.0 WPK still has to be consumable by 4.x code: the WPK's `upgrade.sh` / `upgrade.bat` and `pkg_installer.sh` run under the agent being replaced, not under 5.x. Getting a task's WPK to a 4.x agent is not handled by this module.
 
 Because task IDs are derived deterministically from `agent_id`, `task_type`, `create_time`, and the request timestamp forwarded from the API, the same upgrade request routed to different manager nodes produces the same `task_id` and does not double-schedule the upgrade.
 
@@ -74,23 +75,19 @@ download the WPK. If the file is missing on that node, the upgrade will fail.
 | `queue/tasks/upgrade` | Inbound   | Receives `upgrade` / `upgrade_custom` commands from the Server API |
 | `queue/tasks/task`    | Outbound  | Sends `create_task` requests to the Task Manager                   |
 
-The manager-side module no longer connects directly to Remoted or drives a WPK transfer thread pool from the API request path. For 5.x agents, WPK bytes flow from the manager to the agent through the HTTPS server on the manager, driven by the agent's poll. For 4.x agents, the manager's compatibility push path reads the pending task from the Task Manager and delivers the WPK over the existing agent-manager channel.
+The manager-side module no longer connects directly to Remoted or drives a WPK transfer thread pool from the API request path. For 5.x agents, WPK bytes are meant to flow from the manager to the agent through the HTTPS server on the manager, driven by the agent's poll: the agent fetches the file with `POST /download` once `/control` hands it a `remote_upgrade` task.
 
 ---
 
 ## Agent-side flow
 
-On the agent, the upgrade module runs a listener on the local Unix domain socket `queue/sockets/upgrade` (`AGENT_UPGRADE_SOCK`). It accepts JSON commands issued by the agent daemon after a `remote_upgrade` task has been delivered and the WPK has been retrieved:
+On the agent, the upgrade module runs a listener on the local Unix domain socket `queue/sockets/upgrade` (`AGENT_UPGRADE_SOCK`). A 5.x agent downloads the WPK itself over HTTPS, so the listener accepts one JSON command, issued by the agent daemon once the file is on disk:
 
-| Command   | Parameters                          | Purpose                                                                                            |
-| --------- | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `open`    | `file`, `mode` (`w` / `wb`)         | Create the WPK file inside the agent's incoming directory                                          |
-| `write`   | `file`, `buffer` (base64), `length` | Append a chunk of WPK data to the opened file                                                      |
-| `close`   | `file`                              | Close and flush the WPK file                                                                       |
-| `sha1`    | `file`                              | Compute and return the SHA-1 of the received file for validation                                   |
-| `upgrade` | `file`, `installer`                 | Verify the WPK signature, uncompress, unmerge into the upgrade directory and execute the installer |
+| Command   | Parameters          | Purpose                                                                                            |
+| --------- | ------------------- | -------------------------------------------------------------------------------------------------- |
+| `upgrade` | `file`, `installer` | Verify the WPK signature, uncompress, unmerge into the upgrade directory and execute the installer |
 
-All five commands are gated by the `allow_upgrades` flag, which reflects the agent's `<agent-upgrade><enabled>` setting. When disabled, every command is answered with `Upgrade module is disabled or not ready yet` (error code `ERROR_UPGRADES_NOT_ALLOWED`).
+The command is gated by the `allow_upgrades` flag, which reflects the agent's `<agent-upgrade><enabled>` setting. When disabled, it is answered with `Upgrade module is disabled or not ready yet` (error code `ERROR_UPGRADES_NOT_ALLOWED`).
 
 The `upgrade` command:
 1. Verifies the WPK signature against the CA store (see `ca_verification` / `ca_store`).
@@ -118,4 +115,4 @@ Windows agents accept the same JSON commands but through the agentd IPC layer in
 | `manager/wm_agent_upgrade_parsing.c`  | Parses API messages and formats responses                                 |
 | `manager/wm_agent_upgrade_validate.c` | Version / platform / WPK integrity checks                                 |
 | `agent/wm_agent_upgrade_agent.c`      | Agent-side listener on `queue/sockets/upgrade` (POSIX)                    |
-| `agent/wm_agent_upgrade_com.c`        | Implementation of `open`, `write`, `close`, `sha1`, `upgrade`             |
+| `agent/wm_agent_upgrade_com.c`        | Implementation of the `upgrade` command                                   |

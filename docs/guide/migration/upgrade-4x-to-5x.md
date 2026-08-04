@@ -60,7 +60,9 @@ The following changes were identified during agent startup validation after upgr
 
 | 4.X configuration element | 5.0 status | Agent log message (observed) | Required action |
 |---|---|---|---|
-| `<client><server>...</server></client>` | Deprecated | `INFO: The <server> tag is deprecated, please use <manager> instead.` | Replace `<server>` with `<manager>`. |
+| `<client>...</client>` | Renamed | `INFO: <agent><server><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | Rename the block to `<agent>`. A 5.0 agent still starts without the rename: it reads `<server><address>` from the old block and defaults the port to `1517`. Nothing else inside `<client>` is read. |
+| `<client><manager>...</manager></client>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'manager'.` | Rename `<manager>` to `<server>` inside `<agent>`. The 4.14 templates already ship `<server>`. |
+| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
 | `<syscheck><scan_on_start>...</scan_on_start></syscheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'scan_on_start'.` | Remove this element from `syscheck` (Always executed on start). |
@@ -84,7 +86,7 @@ These messages are resolved by removing the invalid elements listed above.
 
 ## `ossec.conf` quick before/after examples
 
-### Client connection block
+### Agent connection block
 
 Before (4.X style):
 
@@ -102,13 +104,20 @@ Before (4.X style):
 After (5.0 compatible):
 
 ```xml
-<client>
-	<manager>
+<agent>
+	<server>
 		<address>MANAGER_IP</address>
-		<port>1514</port>
-	</manager>
-</client>
+		<port>1517</port>
+	</server>
+</agent>
 ```
+
+`<client>` is renamed to `<agent>` in 5.0: one block under two names, never both. Options for an agent that is already on 5.0 with the old block:
+
+- **Leave it.** The agent reads `<server><address>` from `<client>` and uses port `1517`. It connects, and logs which value it inherited. Nothing else in the block is read, so options such as `<enrollment>` or `<config-profile>` stop having an effect.
+- **Rename it** to `<agent>`, which is what a fresh 5.0 install ships. Every option in the block is read again.
+
+Recommended: rename it. The fallback exists so a remote upgrade cannot strand an agent, not as a configuration to keep.
 
 ### Removed modules
 
@@ -163,7 +172,7 @@ Recommended handling:
 
 After upgrading and cleaning configuration, verify:
 
-1. Agent successfully connects over TCP to manager on port `1514`.
+1. Agent successfully connects to the manager over HTTPS on port `1517`.
 2. Enrollment/service endpoint is reachable on port `1515` (if enrollment is being used).
 3. Agent and manager versions are both compatible with 5.0 communication protocol.
 
@@ -179,9 +188,24 @@ Workaround checklist:
 
 - Confirm manager is up and reachable from the agent host.
 - Confirm manager has been migrated to a compatible 5.0 deployment.
-- Confirm firewall/network rules allow `1514/tcp` and `1515/tcp`.
-- Confirm the agent points to the correct manager address in `<client><manager>`.
+- Confirm firewall/network rules allow `1517/tcp` (agent to manager) and `1515/tcp` (enrollment).
+- Confirm the agent points to the correct manager address in `<agent><server><address>`.
 - Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
+
+## Remote upgrade (WPK)
+
+A remote upgrade from 4.14.X to 5.0.0 never rewrites `ossec.conf`: the file the 4.X agent had is the file the 5.0 agent reads, which is why the `<client>` fallback above exists.
+
+Before installing anything, the WPK installer checks that the manager accepts connections on the HTTPS port the upgraded agent will use, and aborts if it does not:
+
+```console
+2026/07/31 00:26:57 - Checking connectivity to MANAGER_IP:1517.
+2026/07/31 00:26:58 - Upgrade failed. The manager is not reachable at MANAGER_IP:1517, interrupting upgrade.
+```
+
+The abort happens before the package manager runs, so the agent stays on 4.14.X, keeps running, and the upgrade can be retried once `1517` is reachable. `upgrade_result` is `2`.
+
+The target address and port come from the same place the agent reads them: `<agent><server>` first, then `<client><server><address>`, with `1517` as the port default.
 
 ## Validation checklist
 
@@ -189,5 +213,6 @@ Migration is complete when all conditions below are met:
 
 - Agent was upgraded using the required version path.
 - No invalid `syscheck`/`rootcheck` element warnings remain.
-- No deprecated `<server>`, `protocol`, or `crypto_method` warnings remain.
+- The connection block is `<agent>`, and no `<client>` fallback message remains in `ossec.log`.
+- No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
