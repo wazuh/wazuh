@@ -353,6 +353,20 @@ namespace remoted::endpoints::download
         : m_fd {fd}
         , m_size {size}
     {
+        // Baseline for the mid-transfer modification check in read(). Best-effort on purpose: a
+        // descriptor we cannot stat is not a reason to refuse to serve a file we already opened
+        // successfully. m_mtimeKnown is what makes that true -- without it, a failed fstat would
+        // leave the baseline at zero, every comparison would mismatch, and EVERY transfer would
+        // abort. The byte-count half of the check stands on its own either way.
+        struct stat info
+        {
+        };
+        if (::fstat(m_fd, &info) == 0)
+        {
+            m_mtimeSec = static_cast<std::int64_t>(info.st_mtim.tv_sec);
+            m_mtimeNsec = static_cast<std::int64_t>(info.st_mtim.tv_nsec);
+            m_mtimeKnown = true;
+        }
     }
 
     FileByteSource::~FileByteSource()
@@ -388,7 +402,71 @@ namespace remoted::endpoints::download
             throw std::system_error {errno, std::generic_category(), "read() failed while streaming a resource"};
         }
 
+        if (bytesRead == 0)
+        {
+            // End of stream. The per-chunk check below has already covered everything up to the
+            // last data read; this catches a writer that landed between that read and this one.
+            if (m_delivered != m_size)
+            {
+                // Short by construction: end-of-file arrived before the file's own length.
+                throw std::runtime_error {"the resource was truncated while it was being streamed"};
+            }
+            checkNotModified();
+            return 0;
+        }
+
+        m_delivered += static_cast<std::uint64_t>(bytesRead);
+
+        // More readable than the file held at open(): the bytes already sent belong to a version
+        // that no longer exists. Cheap enough to keep as its own invariant -- it needs no syscall.
+        if (m_delivered > m_size)
+        {
+            throw std::runtime_error {"the resource grew while it was being streamed"};
+        }
+
+        // Checked per chunk, not only at end-of-stream. Same criterion either way, but a writer
+        // that lands one second into a 1 GiB transfer would otherwise cost the full gigabyte of
+        // reads and socket writes before the transfer is abandoned; here it costs one more chunk.
+        // The price is an fstat() per chunk -- no path resolution, no I/O, against a read() plus a
+        // socket write that are already happening.
+        checkNotModified();
+
         return static_cast<std::size_t>(bytesRead);
+    }
+
+    void FileByteSource::checkNotModified() const
+    {
+        struct stat info
+        {
+        };
+        if (::fstat(m_fd, &info) != 0)
+        {
+            throw std::system_error {errno, std::generic_category(), "fstat() failed while streaming a resource"};
+        }
+
+        // Classified rather than lumped together, so the abort WARN names what actually happened:
+        // a shorter file is a truncating rewrite (c_group() on merged.mg), a longer one is a file
+        // still being staged (a WPK mid-download), and an unchanged length with a moved mtime is a
+        // same-size rewrite -- the case no byte count can see.
+        const auto currentSize = static_cast<std::uint64_t>(info.st_size);
+
+        if (currentSize < m_size)
+        {
+            throw std::runtime_error {"the resource was truncated while it was being streamed"};
+        }
+
+        if (currentSize > m_size)
+        {
+            throw std::runtime_error {"the resource grew while it was being streamed"};
+        }
+
+        // Same length: only the baseline mtime distinguishes it, and only when we recorded one.
+        // Without a baseline the check is skipped rather than assumed to have failed.
+        if (m_mtimeKnown && (static_cast<std::int64_t>(info.st_mtim.tv_sec) != m_mtimeSec ||
+                             static_cast<std::int64_t>(info.st_mtim.tv_nsec) != m_mtimeNsec))
+        {
+            throw std::runtime_error {"the resource was modified while it was being streamed"};
+        }
     }
 
     std::uint64_t FileByteSource::size() const noexcept
