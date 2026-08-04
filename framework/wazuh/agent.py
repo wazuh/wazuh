@@ -1313,22 +1313,15 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agent_config(agent_list: list = None, component: str = None, config: str = None) -> WazuhResult:
-    """Read selected configuration from agent.
+async def get_agent_config(agent_list: list = None, module: str = None) -> WazuhResult:
+    """Read the agent's last reported configuration for a module.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's.
-    component : str
-        Selected component.
-    config : str
-        Configuration to get, written on disk.
-
-    Raises
-    ------
-    WazuhError(1740)
-        If the agent is not active.
+    module : str
+        Selected agent's module.
 
     Returns
     -------
@@ -1341,11 +1334,7 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
     my_agent = Agent(agent_id)
     my_agent.load_info_from_db()
 
-    if my_agent.status != "active":
-        raise WazuhError(1740)
-
-    return WazuhResult(
-        {'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
+    return WazuhResult({'data': await my_agent.get_config(module=module)})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)

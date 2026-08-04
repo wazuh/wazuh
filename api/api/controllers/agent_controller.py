@@ -16,7 +16,6 @@ from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -295,11 +294,12 @@ async def restart_agents_by_node(node_id: str, pretty: bool = False,
 
 
 async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                           component: str = None, **kwargs: dict) -> ConnexionResponse:
+                           module: str = None, **kwargs: dict) -> ConnexionResponse:
     """Get agent active configuration.
 
-    Returns the active configuration the agent is currently using. This can be different from the configuration present
-    in the configuration file, if it has been modified and the agent has not been restarted yet.
+    Returns the last configuration the agent reported to the manager for the given module. This can be different
+    from the configuration present in the configuration file, if it has been modified and the agent has not
+    restarted yet.
 
     Parameters
     ----------
@@ -309,8 +309,8 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
         Disable timeout response.
     agent_id : str
         Agent ID.
-    component : str
-        Selected agent's component which configuration is got.
+    module : str
+        Selected agent's module which configuration is got.
 
     Returns
     -------
@@ -318,16 +318,13 @@ async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False
         API response with the agent configuration.
     """
     f_kwargs = {'agent_list': [agent_id],
-                'component': component,
-                'config': kwargs.get('configuration', None)
+                'module': module
                 }
-
-    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
     dapi = DistributedAPI(f=agent.get_agent_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']

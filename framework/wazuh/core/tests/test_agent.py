@@ -1013,42 +1013,24 @@ async def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_
             await Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method returns expected message."""
+@patch('wazuh.core.agent.configuration.get_agent_active_configuration', new_callable=AsyncMock)
+async def test_agent_get_config(mock_get_agent_active_configuration):
+    """Test get_config returns the module's last reported configuration."""
+    mock_get_agent_active_configuration.return_value = {"test": "conf"}
     agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
+
+    result = await agent.get_config(module='com')
+
     assert result == {"test": "conf"}, 'Result message is not as expected.'
+    mock_get_agent_active_configuration.assert_called_once_with(agent_id='001', module='com')
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method raises expected exceptions."""
-    # Invalid component
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1101 .*"):
-        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
-
-    # Component or config is none
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1307 .*"):
-        agent.get_config('com', None, 'Wazuh v4.0.0')
-        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
-
-    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
-
+async def test_agent_get_config_ko():
+    """Test get_config raises expected exceptions."""
     # Action not available for manager (000)
     agent = Agent('000')
     with pytest.raises(WazuhError, match=".* 1703 .*"):
-        agent.get_config('auth', 'auth', 'Wazuh v4.0.0')
+        await agent.get_config(module='com')
 
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
