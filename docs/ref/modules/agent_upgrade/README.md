@@ -51,6 +51,12 @@ The manager-side module does **not** send WPK data to the agent directly. Once t
 
 Because task IDs are derived deterministically from `agent_id`, `task_type`, `create_time`, and the request timestamp forwarded from the API, the same upgrade request routed to different manager nodes produces the same `task_id` and does not double-schedule the upgrade.
 
+**Custom WPK files in cluster environments:** When using the `/agents/upgrade_custom` API endpoint
+with a local WPK file (via the `file_path` parameter), you must ensure the specified file exists at
+the same absolute path on **all manager nodes** in the cluster. The manager that receives the API
+request validates and creates the task, but the agent may connect to a different cluster node to
+download the WPK. If the file is missing on that node, the upgrade will fail.
+
 ### Version constraints
 
 | Condition                                                       | Behavior                                                                                   |
