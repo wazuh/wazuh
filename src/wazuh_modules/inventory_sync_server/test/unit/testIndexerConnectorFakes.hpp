@@ -20,6 +20,8 @@
 #include "indexer/indexerSessionAdapter.hpp"
 #include "inventorySyncServerTestHooks.hpp"
 
+#include <json.hpp>
+
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -49,8 +51,17 @@ namespace invsync::test
         /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
         /// without an unreachable host, since the fake never touches a network.
         std::atomic<bool> m_asyncAvailable {true};
+        /// Same flag for the sync fake, for the pipeline's own availability gate (F2).
+        std::atomic<bool> m_syncAvailable {true};
         /// Writes seen by the async fake: (id, index, data).
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
+        /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
+        /// the seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
+        /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by m_mutex.
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
+        std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
+        /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
+        nlohmann::json m_searchResponse = nlohmann::json::object();
 
         void recordDestruction(const char* what)
         {
@@ -74,6 +85,24 @@ namespace invsync::test
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_writes;
+        }
+
+        void recordSyncOp(std::string op, std::string id, std::string index, std::string data, std::string version)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_syncOps.emplace_back(std::move(op), std::move(id), std::move(index), std::move(data), std::move(version));
+        }
+
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> syncOps()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_syncOps;
+        }
+
+        nlohmann::json searchResponse()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_searchResponse;
         }
     };
 
@@ -104,18 +133,24 @@ namespace invsync::test
     /// Session fake: nothing to forward, its construction succeeding is the whole contract.
     using FakeIndexerSession = FakeIndexerObject<invsync::indexer::IIndexerSession>;
 
-    /// Connector fakes: always available, never throw to construct.
-    template<typename TInterface>
-    class FakeIndexerConnector final : public TInterface
+    /**
+     * @brief Sync connector fake: records every seam call into the shared event record.
+     *
+     * Its own class (not a shared template with the async fake) because past isAvailable() the two
+     * seams share no method. Operations never touch a network: writes append to
+     * ConnectorEvents::m_syncOps, flush() bumps a counter, and executeSearchQuery() returns the
+     * canned m_searchResponse -- which is how a test drives the checksum path deterministically.
+     */
+    class FakeIndexerConnectorSync final : public invsync::indexer::IIndexerConnectorSync
     {
     public:
-        FakeIndexerConnector(std::shared_ptr<ConnectorEvents> events, const char* name)
+        FakeIndexerConnectorSync(std::shared_ptr<ConnectorEvents> events, const char* name)
             : m_events {std::move(events)}
             , m_name {name}
         {
         }
 
-        ~FakeIndexerConnector() override
+        ~FakeIndexerConnectorSync() override
         {
             if (m_events)
             {
@@ -123,9 +158,77 @@ namespace invsync::test
             }
         }
 
+        /// Reads the shared flag so a test can make the pipeline's availability gate fire.
         bool isAvailable() const override
         {
-            return true;
+            return m_events == nullptr || m_events->m_syncAvailable.load();
+        }
+
+        void bulkIndex(std::string_view id, std::string_view index, std::string_view data) override
+        {
+            if (m_events)
+            {
+                m_events->recordSyncOp("bulkIndex", std::string {id}, std::string {index}, std::string {data}, {});
+            }
+        }
+
+        void
+        bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version) override
+        {
+            if (m_events)
+            {
+                m_events->recordSyncOp(
+                    "bulkIndex", std::string {id}, std::string {index}, std::string {data}, std::string {version});
+            }
+        }
+
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            if (m_events)
+            {
+                m_events->recordSyncOp("bulkDelete", std::string {id}, std::string {index}, {}, {});
+            }
+        }
+
+        void
+        deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) override
+        {
+            if (m_events)
+            {
+                // agentId rides in the id column; clusterName in the data column.
+                m_events->recordSyncOp("deleteByQuery", agentId, index, clusterName, {});
+            }
+        }
+
+        void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery) override
+        {
+            if (m_events)
+            {
+                std::string joined;
+                for (const auto& index : indices)
+                {
+                    joined += joined.empty() ? index : ("," + index);
+                }
+                m_events->recordSyncOp("executeUpdateByQuery", {}, joined, updateQuery.dump(), {});
+            }
+        }
+
+        nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) override
+        {
+            if (!m_events)
+            {
+                return nlohmann::json::object();
+            }
+            m_events->recordSyncOp("executeSearchQuery", {}, index, searchQuery.dump(), {});
+            return m_events->searchResponse();
+        }
+
+        void flush() override
+        {
+            if (m_events)
+            {
+                m_events->m_syncFlushes.fetch_add(1);
+            }
         }
 
     private:
@@ -133,15 +236,8 @@ namespace invsync::test
         const char* m_name;
     };
 
-    using FakeIndexerConnectorSync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorSync>;
-
     /**
-     * @brief Async connector fake. Its own class rather than an alias of the template above.
-     *
-     * IIndexerConnectorAsync exposes the two fire-and-forget writes on top of isAvailable(), so the
-     * shared template is ABSTRACT for it. The writes cannot be pushed up into the template either:
-     * for the sync alias they would be overrides of virtuals that do not exist. Duplicating the
-     * destruction bookkeeping is the cheaper of the two costs.
+     * @brief Async connector fake.
      *
      * Writes are recorded so the facade tests can assert on them; the per-endpoint suites use their
      * own local fakes instead, which record per instance.

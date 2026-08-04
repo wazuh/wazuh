@@ -11,9 +11,34 @@ file(GLOB_RECURSE INVENTORY_SYNC_SERVER_SRC "src/*.cpp")
 
 add_library(inventory_sync_server SHARED ${INVENTORY_SYNC_SERVER_SRC})
 
+# FlatBuffers schema of the sync session (the FINAL wire contract, own copy under a distinct C++
+# namespace until the legacy schema retires -- see schemas/inventorySyncSession.fbs). Generated into
+# this module's binary dir, same pattern as shared_modules/sync_protocol: the legacy
+# shared_modules/utils/flatbuffers/schemas/inventorySync.fbs is NOT touched.
+set(FLATC_EXECUTABLE ${SRC_FOLDER}/external/flatbuffers/build/flatc)
+set(INVENTORY_SYNC_SERVER_SCHEMA ${CMAKE_CURRENT_SOURCE_DIR}/schemas/inventorySyncSession.fbs)
+set(INVENTORY_SYNC_SERVER_GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/inventorySyncSession_generated.h)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
+add_custom_command(
+  OUTPUT ${INVENTORY_SYNC_SERVER_GENERATED_HEADER}
+  COMMAND ${FLATC_EXECUTABLE} --cpp -o ${CMAKE_CURRENT_BINARY_DIR}/include ${INVENTORY_SYNC_SERVER_SCHEMA}
+          --no-warnings
+  DEPENDS ${INVENTORY_SYNC_SERVER_SCHEMA}
+  COMMENT "Generating inventory_sync_server FlatBuffers schema header"
+  VERBATIM)
+add_custom_target(generate_inventory_sync_server_schema DEPENDS ${INVENTORY_SYNC_SERVER_GENERATED_HEADER})
+if(TARGET flatbuffers_external)
+  add_dependencies(generate_inventory_sync_server_schema flatbuffers_external)
+endif()
+add_dependencies(inventory_sync_server generate_inventory_sync_server_schema)
+
 target_include_directories(
   inventory_sync_server
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+         # Generated schema header + the header-only flatbuffers runtime it includes. PUBLIC so the
+         # unit-test target inherits both through target_link_libraries.
+         ${CMAKE_CURRENT_BINARY_DIR}/include
+         ${SRC_FOLDER}/external/flatbuffers/include
   # src/ is on the path so submodules resolve by prefix: "http_server/...", "endpoints/...",
   # "common/...".
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
