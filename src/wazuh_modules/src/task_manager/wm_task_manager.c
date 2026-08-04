@@ -75,6 +75,17 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     wm_task_cache_init();
     mtinfo(WM_TASK_MANAGER_LOGTAG, "Task cache initialized");
 
+    // Warn about unsafe interaction with remoted's legacy task delivery poller
+    int task_ttl = task_config->task_ttl > 0 ? task_config->task_ttl : WM_TASK_DEFAULT_TTL;
+    int legacy_task_polling_interval =
+        getDefine_Int_default("remoted", "legacy_task_polling_interval", 300, 86400, 900);
+
+    if (legacy_task_polling_interval >= task_ttl) {
+        mtwarn(WM_TASK_MANAGER_LOGTAG, "remoted.legacy_task_polling_interval (%d) is >= task-manager.task_ttl (%d). "
+               "A pending task may expire before the legacy task delivery poller ever gets a chance to see it.",
+               legacy_task_polling_interval, task_ttl);
+    }
+
     // Start clean tasks thread
     w_create_thread(wm_task_manager_clean_tasks, task_config);
 
