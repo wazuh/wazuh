@@ -387,8 +387,15 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
                 "module limits are unchanged.");
     }
 
+    /* agent_handshake_mutex guards these globals against the agcom "gethandshake"
+     * responder, which agent-info polls periodically. The legacy connection thread
+     * used to be the writer and took this lock; the control thread is now, so it
+     * takes it too. Held across both calls so a reader never sees a new cluster
+     * identity paired with the previous groups. */
+    w_mutex_lock(&agent_handshake_mutex);
     bridge_apply_cluster_identity(root);
     bridge_apply_agent_groups(root);
+    w_mutex_unlock(&agent_handshake_mutex);
 
     /* The cluster/groups the two calls above just wrote are what the metadata
      * carries; the legacy handshake republished it at exactly this point. */
