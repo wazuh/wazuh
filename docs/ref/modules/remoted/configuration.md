@@ -268,6 +268,21 @@ Agent metadata cache expiration time in seconds.
 - **Allowed values:** Integer from `60` to `86400`
 - **Note:** Entries older than this threshold are cleaned up periodically; adjust based on agent stability (ephemeral: `300`, stable: `600-1800`)
 
+### remoted.legacy_task_polling_interval
+
+Interval in seconds between polls of the Task Manager's pending tasks on behalf of connected
+agents older than v5.0.0. Every cycle, `remoted` checks each connected agent's self-reported
+version and, for agents confirmed below v5.0.0, asks the Task Manager for pending tasks and
+delivers any `remote_upgrade` (WPK) one over the agent's existing session — see
+[Remote agent upgrade](/guide/migration/remote-agent-upgrade.md) for the full delivery flow.
+
+- **Default value:** `900` (15 minutes)
+- **Allowed values:** Integer from `300` to `86400`
+- **Note:** Must be configured comfortably smaller than the Task Manager's own `task-manager.task_ttl`
+  (default `3600`s, see [Task Manager configuration](../task_manager/configuration.md)) — a task created just
+  after a poll cycle must still be `pending` when the next cycle runs, or it can flip to `expired` before
+  ever being delivered.
+
 ### remoted.keyupdate_interval
 
 Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
