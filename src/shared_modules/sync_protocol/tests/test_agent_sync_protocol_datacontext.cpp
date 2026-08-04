@@ -427,8 +427,6 @@ TEST_F(AgentSyncProtocolDataContextTest, SyncData_PayloadContainsExpectedDataVal
     const auto* values = data->values();
     ASSERT_NE(nullptr, values);
     ASSERT_EQ(2u, values->size());
-    EXPECT_EQ(0u, values->Get(0)->seq());
     EXPECT_EQ("host_id_1", values->Get(0)->id()->str());
-    EXPECT_EQ(1u, values->Get(1)->seq());
     EXPECT_EQ("host_id_2", values->Get(1)->id()->str());
 }

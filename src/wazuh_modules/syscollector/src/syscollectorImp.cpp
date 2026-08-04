@@ -4806,7 +4806,16 @@ void Syscollector::runRecoveryProcess()
                     return;
                 }
 
-                m_spSyncProtocol->clearInMemoryData();
+                // Clear the manager's index before resending: a full-replace sync is now a
+                // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
+                // (which used to make the manager unconditionally deleteByQuery over a
+                // byte-capped/truncated payload and could permanently drop whatever didn't
+                // fit in that one session).
+                if (!m_spSyncProtocol->notifyDataClean({index}))
+                {
+                    m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+                    return;
+                }
 
                 for (const auto& item : items)
                 {
@@ -4829,7 +4838,7 @@ void Syscollector::runRecoveryProcess()
 
                     if (shouldPersist)
                     {
-                        m_spSyncProtocol->persistDifferenceInMemory(
+                        m_spSyncProtocol->persistDifference(
                             calculateHashId(item, tableName),
                             Operation::CREATE,
                             index,
@@ -4839,9 +4848,9 @@ void Syscollector::runRecoveryProcess()
                     }
                 }
 
-                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
+                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool recoverySucceeded = syncModule(Mode::FULL).success;
+                bool recoverySucceeded = syncModule(Mode::DELTA).success;
 
                 if (recoverySucceeded)
                 {

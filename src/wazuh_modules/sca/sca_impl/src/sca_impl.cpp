@@ -1244,7 +1244,16 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             LOG_DEBUG,
             "Retrieved " + std::to_string(checks.size()) + " synced checks from database for SCA " + syncReason);
 
-        m_spSyncProtocol->clearInMemoryData();
+        // Clear the manager's index before resending: a full-replace sync is now a
+        // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
+        // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
+        // payload and could permanently drop whatever didn't fit in that one session).
+        if (!m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}))
+        {
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Failed to clear SCA index before " + syncReason + "; will retry later");
+            return {false, {}};
+        }
 
         for (const auto& check : checks)
         {
@@ -1312,7 +1321,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 const std::vector<unsigned char> hashResult = hash.hash();
                 std::string hashedId = Utils::asciiToHex(hashResult);
 
-                m_spSyncProtocol->persistDifferenceInMemory(
+                m_spSyncProtocol->persistDifference(
                     hashedId,
                     Operation::CREATE,
                     SCA_SYNC_INDEX,
@@ -1325,7 +1334,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
         {

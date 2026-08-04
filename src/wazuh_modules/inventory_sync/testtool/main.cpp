@@ -258,7 +258,7 @@ public:
 };
 
 /**
- * @brief Response server for receiving StartAck/EndAck/ReqRet messages.
+ * @brief Response server for receiving EndAck messages.
  */
 class ResponseServer
 {
@@ -268,26 +268,19 @@ private:
     std::atomic<bool> m_shouldStop {false};
     std::string m_path;
 
-    uint64_t& m_sessionId;
-    std::promise<void>& m_startAckPromise;
+    // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
+    // acknowledges session establishment at all, so there is nothing to wait for here anymore.
     std::promise<void>& m_endAckPromise;
-    std::atomic<bool>& m_receivedStartAck;
     std::atomic<bool>& m_receivedEndAck;
     bool m_verbose;
 
 public:
     ResponseServer(std::string path,
-                   uint64_t& sessionId,
-                   std::promise<void>& startAckPromise,
                    std::promise<void>& endAckPromise,
-                   std::atomic<bool>& receivedStartAck,
                    std::atomic<bool>& receivedEndAck,
                    bool verbose = false)
         : m_path(std::move(path))
-        , m_sessionId(sessionId)
-        , m_startAckPromise(startAckPromise)
         , m_endAckPromise(endAckPromise)
-        , m_receivedStartAck(receivedStartAck)
         , m_receivedEndAck(receivedEndAck)
         , m_verbose(verbose)
     {
@@ -450,32 +443,9 @@ private:
 
         switch (message->content_type())
         {
-            case Wazuh::SyncSchema::MessageType_StartAck: handleStartAck(message->content_as_StartAck()); break;
             case Wazuh::SyncSchema::MessageType_EndAck: handleEndAck(message->content_as_EndAck()); break;
-            case Wazuh::SyncSchema::MessageType_ReqRet: handleReqRet(message->content_as_ReqRet()); break;
             default:
                 std::cout << "[WARN] Unknown message type: " << static_cast<int>(message->content_type()) << std::endl;
-        }
-    }
-
-    void handleStartAck(const Wazuh::SyncSchema::StartAck* startAck)
-    {
-        // TODO(#38117): session field removed from agent FlatBuffer schema; m_sessionId always 0 now
-        m_sessionId = 0; // was: startAck->session()
-
-        std::cout << "[INFO] ✓ StartAck received" << std::endl;
-        std::cout << "       Session: " << m_sessionId << " (deprecated field)" << std::endl;
-        std::cout << "       Status: " << static_cast<int>(startAck->status()) << std::endl;
-
-        if (!m_receivedStartAck.exchange(true))
-        {
-            try
-            {
-                m_startAckPromise.set_value();
-            }
-            catch (const std::future_error&)
-            {
-            }
         }
     }
 
@@ -496,17 +466,6 @@ private:
             }
         }
     }
-
-    void handleReqRet(const Wazuh::SyncSchema::ReqRet* reqRet)
-    {
-        // TODO(#38117): session field removed from agent FlatBuffer schema
-        std::cout << "[INFO] ✓ ReqRet received";
-        if (reqRet->seq())
-        {
-            std::cout << ", Missing ranges: " << reqRet->seq()->size();
-        }
-        std::cout << std::endl;
-    }
 };
 
 /**
@@ -514,10 +473,6 @@ private:
  */
 inline Wazuh::SyncSchema::Mode parseMode(const std::string& modeStr)
 {
-    if (modeStr == "full" || modeStr == "ModuleFull")
-    {
-        return Wazuh::SyncSchema::Mode_ModuleFull;
-    }
     if (modeStr == "delta" || modeStr == "ModuleDelta")
     {
         return Wazuh::SyncSchema::Mode_ModuleDelta;
@@ -706,7 +661,7 @@ public:
     /**
      * @brief Build DataValue message from payload JSON.
      *
-     * @param session   Session ID from StartAck
+     * @param session   Unused (session field removed from FlatBuffer schema)
      * @param seq       Sequence number
      * @param payload   Complete JSON payload (checksum/package/host/state...)
      * @param index     Index name (wazuh-states-inventory-packages/system/hotfixes)
@@ -730,7 +685,8 @@ public:
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
         // TODO(#38117): session field removed from agent FlatBuffer schema
-        dataBuilder.add_seq(seq);
+        // TODO(#38117): seq field removed from agent FlatBuffer schema
+        (void)seq;
         dataBuilder.add_operation(operation);
         dataBuilder.add_index(indexStr);
         dataBuilder.add_id(idStr);
@@ -747,7 +703,7 @@ public:
     /**
      * @brief Build DataContext message from payload JSON.
      *
-     * @param session   Session ID from StartAck
+     * @param session   Unused (session field removed from FlatBuffer schema)
      * @param seq       Sequence number
      * @param payload   Complete JSON payload
      * @param index     Index name
@@ -766,7 +722,8 @@ public:
 
         Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
         // TODO(#38117): session field removed from agent FlatBuffer schema
-        dataBuilder.add_seq(seq);
+        // TODO(#38117): seq field removed from agent FlatBuffer schema
+        (void)seq;
         dataBuilder.add_index(indexStr);
         dataBuilder.add_id(idStr);
         dataBuilder.add_data(dataVec);
@@ -841,19 +798,14 @@ void sendEvent(bool verbose,
                RouterProvider& routerProvider,
                FakeReportServer& fakeReportServer,
                uint64_t& sessionId,
-               std::promise<void>& startAckPromise,
                std::promise<void>& endAckPromise,
-               std::atomic<bool>& receivedStartAck,
                std::atomic<bool>& receivedEndAck)
 {
-    // Reset promises for new iteration
-    startAckPromise = std::promise<void>();
+    // Reset promise for new iteration
     endAckPromise = std::promise<void>();
-    receivedStartAck = false;
     receivedEndAck = false;
     sessionId = 0;
 
-    auto startAckFuture = startAckPromise.get_future();
     auto endAckFuture = endAckPromise.get_future();
 
     // Load test data
@@ -898,10 +850,8 @@ void sendEvent(bool verbose,
     auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
     routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
 
-    if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-    {
-        throw std::runtime_error("Timeout waiting for StartAck");
-    }
+    // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
+    // acknowledges Start at all, so proceed directly to sending data messages.
 
     // Send DataValue messages
     uint64_t seq = 0;
@@ -1071,18 +1021,10 @@ int main(int argc, char* argv[])
         fakeReportServer.start();
 
         uint64_t sessionId = 0;
-        std::promise<void> startAckPromise;
         std::promise<void> endAckPromise;
-        std::atomic<bool> receivedStartAck {false};
         std::atomic<bool> receivedEndAck {false};
 
-        ResponseServer responseServer(DEFAULT_ARQUEUE,
-                                      sessionId,
-                                      startAckPromise,
-                                      endAckPromise,
-                                      receivedStartAck,
-                                      receivedEndAck,
-                                      config.verbose);
+        ResponseServer responseServer(DEFAULT_ARQUEUE, endAckPromise, receivedEndAck, config.verbose);
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -1100,9 +1042,7 @@ int main(int argc, char* argv[])
                               routerProvider,
                               fakeReportServer,
                               sessionId,
-                              startAckPromise,
                               endAckPromise,
-                              receivedStartAck,
                               receivedEndAck);
                 }
             }
@@ -1116,9 +1056,7 @@ int main(int argc, char* argv[])
                       routerProvider,
                       fakeReportServer,
                       sessionId,
-                      startAckPromise,
                       endAckPromise,
-                      receivedStartAck,
                       receivedEndAck);
         }
 

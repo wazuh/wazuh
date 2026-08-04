@@ -29,7 +29,6 @@ enum class Operation : int
 /// @brief Defines the type of synchronization mode.
 enum class Mode : int
 {
-    FULL  = MODE_FULL,               ///< Full synchronization mode.
     DELTA = MODE_DELTA,              ///< Delta synchronization mode.
     CHECK = MODE_CHECK,              ///< Integrity check mode.
     METADATA_DELTA = MODE_METADATA_DELTA, ///< Metadata delta synchronization mode.

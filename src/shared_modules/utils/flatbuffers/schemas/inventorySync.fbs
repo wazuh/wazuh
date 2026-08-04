@@ -1,7 +1,6 @@
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {
-    ModuleFull,
     ModuleDelta,
     ModuleCheck,
     MetadataDelta,
@@ -30,7 +29,6 @@ enum Option: byte {
 }
 
 table DataValue {
-    seq: ulong;
     operation: Operation;
     id: string;
     index: string;
@@ -39,7 +37,6 @@ table DataValue {
 }
 
 table DataContext {
-    seq: ulong;
     id: string;
     index: string;
     data: [byte];
@@ -66,10 +63,6 @@ table Start {
     cluster_node: string;
 }
 
-table StartAck {
-    status: Status;
-}
-
 table End {
 }
 
@@ -77,27 +70,13 @@ table EndAck {
     status: Status;
 }
 
-table Pair {
-    begin: ulong;
-    end: ulong;
-}
-
-table ReqRet {
-    seq: [Pair];
-}
-
 table DataClean {
-    seq: ulong;
     index: string;
 }
 
 table ChecksumModule {
     index: string;
     checksum: string;
-}
-
-table DataBatch {
-    values: [DataValue];
 }
 
 /// The data-sync payload of a FullSession: DataValue items (module/metadata
@@ -108,31 +87,32 @@ table SyncData {
     contexts: [DataContext];
 }
 
+/// A session may clean several indices at once (e.g. FIM clearing files,
+/// registry keys, and registry values together), so this is a real array.
 table Cleans {
     items: [DataClean];
 }
 
-table Checksums {
-    items: [ChecksumModule];
-}
-
 /// A session carries exactly one of these: a data sync, a clean notification,
-/// or an integrity checksum - never a combination.
+/// or an integrity checksum - never a combination. An integrity check always
+/// covers a single index/module, so it references ChecksumModule directly
+/// instead of wrapping it in an array table.
 union SessionPayload {
     SyncData,
     Cleans,
-    Checksums
+    ChecksumModule
 }
 
 /// A whole synchronization session as ONE message.
 ///
-/// The chunked Start -> StartAck -> DataBatch[] -> End -> EndAck exchange exists
-/// because the module->agentd transport was a DGRAM socket bounded by OS_MAXSTR
-/// (65536), which forced sessions to be split into ~60 KB batches. Over the
-/// STREAM sync socket that bound is gone, so the whole session crosses at once
-/// and the manager answers it with a single result.
+/// The chunked Start -> StartAck -> DataBatch[] -> End -> EndAck exchange used to
+/// exist because the module->agentd transport was a DGRAM socket bounded by
+/// OS_MAXSTR (65536), which forced sessions to be split into ~60 KB batches. Over
+/// the STREAM sync socket that bound is gone, so the whole session crosses at once
+/// and the manager answers it with a single result. StartAck and DataBatch (along
+/// with the per-chunk exchange they supported) no longer exist as message types.
 ///
-/// The session id is chosen by the AGENT here, not handed back by a StartAck,
+/// The session id is chosen by the AGENT here, not handed back by an ack,
 /// so a retried session keeps the same id and the manager can dedup it.
 table FullSession {
     start: Start;
@@ -145,12 +125,9 @@ union MessageType {
     DataClean,
     ChecksumModule,
     Start,
-    StartAck,
     End,
     EndAck,
-    ReqRet,
     DataContext,
-    DataBatch,
     FullSession
 }
 

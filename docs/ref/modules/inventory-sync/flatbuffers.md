@@ -16,12 +16,9 @@ union MessageType {
     DataClean,
     ChecksumModule,
     Start,
-    StartAck,
     End,
     EndAck,
-    ReqRet,
     DataContext,
-    DataBatch,
     FullSession
 }
 
@@ -34,7 +31,6 @@ root_type Message;
 
 ```flatbuffers
 enum Mode: byte {
-    ModuleFull,
     ModuleDelta,
     ModuleCheck,
     MetadataDelta,
@@ -105,7 +101,7 @@ table Start {
 Important fields:
 
 - `module`: currently `syscollector`, `fim`, or `sca` for indexed module flows.
-- `mode`: full, delta, integrity-check, metadata, or group mode.
+- `mode`: delta, integrity-check, metadata, or group mode. There is no full/replace mode: a full resync is a `DataClean` followed by a delta sync of the fresh snapshot (see [architecture.md](architecture.md)).
 - `size`: number of expected sequence-tracked messages.
 - `index`: target indices for the current session.
 - `option`: vulnerability-scanner integration behavior.
@@ -129,28 +125,16 @@ table DataValue {
 
 This is the main indexable payload type.
 
-- `seq`: sequence number used by `GapSet`.
 - `operation`: `Upsert` or `Delete`.
 - `id`: logical document id fragment.
 - `index`: target state index.
 - `version`: optional document version propagated to the indexer.
 - `data`: JSON payload bytes.
 
-### `DataBatch`
-
-```flatbuffers
-table DataBatch {
-    values: [DataValue];
-}
-```
-
-`DataBatch` allows multiple `DataValue` items to be sent inside one message. Inventory Sync expands the batch internally and stores each contained item as an individual session record. This is the standalone, per-message form used by the chunked protocol below; inside a `FullSession` the same `DataValue` items travel directly in `SyncData.values` instead (see [`FullSession`](#fullsession-one-message-per-session)), without the `DataBatch` wrapper.
-
 ### `DataContext`
 
 ```flatbuffers
 table DataContext {
-    seq: ulong;
     id: string;
     index: string;
     data: [byte];
@@ -160,7 +144,7 @@ table DataContext {
 Current behavior:
 
 - stored in RocksDB with a `_context` suffix,
-- tracked for retransmission and end-of-session completeness,
+- tracked for end-of-session completeness,
 - not indexed directly by Inventory Sync,
 - available to downstream processing that reads the session store.
 
@@ -168,7 +152,6 @@ Current behavior:
 
 ```flatbuffers
 table DataClean {
-    seq: ulong;
     index: string;
 }
 ```
@@ -197,16 +180,6 @@ table End {
 
 ## Acknowledgments
 
-### `StartAck`
-
-```flatbuffers
-table StartAck {
-    status: Status;
-}
-```
-
-Acknowledges that the manager accepted the `Start` request.
-
 ### `EndAck`
 
 ```flatbuffers
@@ -216,21 +189,6 @@ table EndAck {
 ```
 
 The manager returns the final outcome of the session in `EndAck`.
-
-## Retransmission support
-
-```flatbuffers
-table Pair {
-    begin: ulong;
-    end: ulong;
-}
-
-table ReqRet {
-    seq: [Pair];
-}
-```
-
-`ReqRet` is used to request retransmission of missing sequence ranges detected by the manager.
 
 ## `FullSession` (one message per session)
 
@@ -246,14 +204,10 @@ table Cleans {
     items: [DataClean];
 }
 
-table Checksums {
-    items: [ChecksumModule];
-}
-
 union SessionPayload {
     SyncData,
     Cleans,
-    Checksums
+    ChecksumModule
 }
 
 table FullSession {
@@ -265,7 +219,7 @@ table FullSession {
 
 The chunked `Start` → `StartAck` → `DataBatch`/`DataClean`/`ChecksumModule`[…] → `End` → `EndAck` exchange documented above exists because the module→agentd transport used to be a DGRAM socket bounded by `OS_MAXSTR` (65536), which forced sessions to be split into ~60 KB messages. Over the STREAM sync socket that bound is gone, so the agent now sends the whole session as **one** `FullSession` message and the manager answers it with a single `EndAck` — no `StartAck`, no per-item messages, no `ReqRet` round trip.
 
-- `payload` carries exactly one of `SyncData`, `Cleans`, or `Checksums` — a session is either a data sync, a clean notification, or an integrity check, never a combination. The union makes that mutual exclusion structural instead of relying on sender discipline.
+- `payload` carries exactly one of `SyncData`, `Cleans`, or `ChecksumModule` — a session is either a data sync, a clean notification, or an integrity check, never a combination. The union makes that mutual exclusion structural instead of relying on sender discipline. `ChecksumModule` is referenced directly (no wrapper array table) because an integrity check always covers a single index/module; `Cleans` stays an array because a session can clean several indices at once.
 - `SyncData.values` and `SyncData.contexts` *can* both be non-empty in the same session: regular module deltas (`DataValue`) and vulnerability-detection context items (`DataContext`) are pulled from the same producer queue and travel together.
 - `payload` can be entirely absent (a session with just `start`/`end`, no `SessionPayload` set at all) for metadata/group syncs that carry no data items.
 
@@ -273,5 +227,4 @@ The chunked `Start` → `StartAck` → `DataBatch`/`DataClean`/`ChecksumModule`[
 
 - `size` in `Start` can be zero for `MetadataDelta`, `MetadataCheck`, `GroupDelta`, `GroupCheck`, and `ModuleCheck` sessions.
 - `DataContext` is part of the live protocol even though it is not replayed into the indexer.
-- `DataBatch` is part of the live protocol and should be supported by tools that generate or validate Inventory Sync traffic.
 - The agent-side `sync_protocol` module (`src/shared_modules/sync_protocol`) only ever sends `FullSession` messages; the chunked, per-message protocol documented above is what Inventory Sync's manager-side receiver currently implements. Tools that need to interoperate with the agent as it actually behaves today should target `FullSession`.

@@ -425,16 +425,18 @@ std::string SCA::query(const std::string& jsonQuery)
 /// @brief C-style wrapper for SCA module synchronization.
 ///
 /// Provides a C-compatible interface for triggering database synchronization
-/// of the SCA module with configurable parameters.
+/// of the SCA module.
 ///
-/// @param mode Synchronization mode (MODE_FULL or MODE_DELTA)
+/// @param mode Synchronization mode (only MODE_DELTA is meaningful here; a full
+///        replace is now a DataClean + DELTA sequence handled internally by
+///        performRecovery(), not by this entry point).
 /// @return true if synchronization succeeds, false otherwise
 bool sca_sync_module(Mode_t mode)
 {
-    Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    (void)mode;
     // The C++ syncModule() already logs a WARNING with the failure reason before returning.
     // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
-    return SCA::instance().syncModule(syncMode);
+    return SCA::instance().syncModule(Mode::DELTA);
 }
 
 /// @brief C-style wrapper for persisting SCA differences.

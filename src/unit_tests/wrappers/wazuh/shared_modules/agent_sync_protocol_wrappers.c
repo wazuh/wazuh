@@ -47,18 +47,6 @@ SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return result;
 }
 
-void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                       const char* id,
-                                       int operation,
-                                       const char* index,
-                                       const char* data) {
-    check_expected_ptr(handle);
-    check_expected_ptr(id);
-    check_expected(operation);
-    check_expected_ptr(index);
-    check_expected_ptr(data);
-}
-
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
                                    const char* checksum) {
@@ -73,10 +61,6 @@ bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uin
     check_expected_ptr(data);
     check_expected(length);
     return mock_type(bool);
-}
-
-void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle) {
-    check_expected_ptr(handle);
 }
 
 SyncModuleResult_t __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
