@@ -334,36 +334,70 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         return false; // Return false as this is not a checksum error from manager
     }
 
-    clearSyncState();
+#ifdef WAZUH_UNIT_TESTING
+    constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::milliseconds(50);
+#else
+    // The indexer may not have caught up with a recent bulk write yet, so a single
+    // 409 isn't trusted as a genuine mismatch on its own -- see
+    // CHECKSUM_MISMATCH_MAX_ATTEMPTS's doc comment for why this budget exists.
+    constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::seconds(10);
+#endif
 
-    // The integrity check is Start + ChecksumModule + End, now one message.
-    SessionContent content;
-    content.mode = Mode::CHECK;
-    content.indices = {index};
-    content.checksums = {{index, checksum}};
-
-    if (runSession(content))
+    for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
-        m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
-        clearSyncState();
-        return false; // Integrity is valid, no sync required
-    }
-    else
-    {
-        // Only return true if manager explicitly reported Status=Error (CHECKSUM_ERROR)
-        // All other errors (communication, timeout, etc.) should return false
-        bool result = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
-
-        std::string message =
-            (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR)
-            ? "Checksum validation failed, full sync required"
-            : "Manager is offline";
-
-        m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - " + message);
+        if (shouldStop())
+        {
+            return false;
+        }
 
         clearSyncState();
-        return result;
+
+        // The integrity check is Start + ChecksumModule, now one message.
+        SessionContent content;
+        content.mode = Mode::CHECK;
+        content.indices = {index};
+        content.checksums = {{index, checksum}};
+
+        if (runSession(content))
+        {
+            m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index +
+                     " (attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
+            clearSyncState();
+            return false; // Integrity is valid, no sync required
+        }
+
+        // Only spend the retry budget on an explicit checksum mismatch (409). Any other
+        // failure (communication error, manager offline, timeout) returns false right
+        // away -- it says nothing about whether the checksum actually matches.
+        const bool isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        clearSyncState();
+
+        if (!isChecksumMismatch)
+        {
+            m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - Manager is offline");
+            return false;
+        }
+
+        if (attempt < CHECKSUM_MISMATCH_MAX_ATTEMPTS)
+        {
+            m_logger(LOG_DEBUG, "Checksum mismatch reported by manager for index: " + index +
+                     " (attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
+                     "); the indexer may not have caught up with a recent write yet, retrying.");
+
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+            m_syncState.cv.wait_for(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
+        }
+        else
+        {
+            m_logger(LOG_DEBUG, "Checksum validation failed for index: " + index + " after " +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
+                     " attempts - full sync required");
+        }
     }
+
+    return true;
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -496,7 +530,6 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAndBuildStart(
     flatbuffers::FlatBufferBuilder& builder,
     Mode mode,
-    size_t dataSize,
     const std::vector<std::string>& uniqueIndices,
     Option option,
     std::optional<uint64_t> globalVersion)
@@ -589,7 +622,6 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(protocolMode);
-        startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);
 
         // Translate Option enum to Schema Option
@@ -657,16 +689,10 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        // The size announced in Start counts every item the session carries.
-        const size_t itemCount = content.dataValues.size() +
-                                 content.dataContexts.size() +
-                                 content.dataCleans.size();
-
         // Every nested table has to be finished before the parent builder opens,
         // so Start and all the item vectors are built up front.
         const auto startOffset = waitMetadataAndBuildStart(builder,
                                                            content.mode,
-                                                           itemCount,
                                                            content.indices,
                                                            content.option,
                                                            content.globalVersion);

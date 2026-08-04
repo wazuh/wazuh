@@ -95,8 +95,17 @@ class AgentSessionImpl final
     uint64_t m_seqCounter {0};
 
 public:
+    // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed with server
+    // team) - the manager can no longer read a declared DataValue count off the wire at all.
+    // declaredSize is now a caller-supplied parameter instead of data->size(): the real fix
+    // (deriving it from the actual FullSession payload post-parse, once the FullSession-based
+    // dispatch rewrite lands) is the server team's own follow-up. Until then, production
+    // call sites pass 0 - see the TODO at the InventorySyncFacade construction site for what
+    // that disables (the DataValue quota reservation; GapSet(0) also means the completeness
+    // gate below is trivially satisfied immediately instead of after real items arrive).
     explicit AgentSessionImpl(const uint64_t sessionId,
                               Wazuh::SyncSchema::Start const* data,
+                              const uint64_t declaredSize,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
                               const TResponseDispatcher& responseDispatcher,
@@ -181,26 +190,14 @@ public:
         }
 
         // Create new session.
-        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck, ModuleCheck don't send data messages,
-        // so size can be 0
-        if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
-            data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_ModuleCheck)
-        {
-            // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no
-            // longer acknowledges session establishment at all.
-            LOGFN_WARN(m_logFn,
-                       "Start: invalid size 0 for mode %d (agent '%.*s', module '%s'); rejecting session.",
-                       static_cast<int>(data->mode()),
-                       static_cast<int>(agentId.size()),
-                       agentId.data(),
-                       std::string(moduleName.data(), moduleName.size()).c_str());
-            throw AgentSessionException("Invalid size");
-        }
+        // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed with
+        // server team) - the manager can no longer validate "size 0 only for modes that don't
+        // send data messages" against a declared wire value. That check belongs in the
+        // FullSession-based rewrite (server team's own follow-up), where a mismatch between
+        // the actual payload item count and the mode can be caught after parsing instead.
 
-        m_declaredSize = data->size();
-        m_gapSet = std::make_unique<GapSet>(data->size());
+        m_declaredSize = declaredSize;
+        m_gapSet = std::make_unique<GapSet>(declaredSize);
 
         m_context =
             std::make_shared<Context>(Context {.mode = data->mode(),

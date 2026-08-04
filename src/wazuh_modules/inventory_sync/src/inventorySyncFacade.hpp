@@ -241,8 +241,14 @@ class InventorySyncFacadeImpl final
                 }
                 else
                 {
-                    // Reserve DataValue quota for this session. Reject if reservation would underflow.
-                    const uint64_t requestedSize = startMsg->size();
+                    // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed
+                    // with server team) - the manager can no longer read a declared DataValue
+                    // count off the wire before a session is admitted. This reservation is a
+                    // no-op (0) until the FullSession-based rewrite (server team's own follow-up)
+                    // derives it from the actual payload item count after parsing instead of a
+                    // pre-declared Start field. The DataValue quota cap is effectively disabled
+                    // until then.
+                    const uint64_t requestedSize = 0;
                     uint64_t remaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
                     bool admitted = false;
                     while (remaining >= requestedSize)
@@ -284,6 +290,7 @@ class InventorySyncFacadeImpl final
                             m_agentSessions.try_emplace(sessionId,
                                                         sessionId,
                                                         startMsg,
+                                                        requestedSize,
                                                         *m_dataStore,
                                                         *m_indexerQueue,
                                                         *m_responseDispatcher,
