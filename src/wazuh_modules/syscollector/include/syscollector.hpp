@@ -220,6 +220,10 @@ class EXPORTED Syscollector final
         /// deltas and emits stateless + stateful events exactly as for host rows.
         /// See container_baseline_scanner.hpp.
         void scanContainerBaseline();
+        /// @brief cb_row_sink_t-shaped trampoline: `userData` is always `this`,
+        /// forwarding straight into persistDifference(). See scanContainerBaseline().
+        static void ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
+                                          uint64_t version, void* userData);
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& scan_lock);
         bool pause();

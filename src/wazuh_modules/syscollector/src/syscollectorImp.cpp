@@ -1903,6 +1903,15 @@ namespace
 }
 #endif
 
+#if defined(__linux__)
+void Syscollector::ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
+                                         uint64_t version, void* userData)
+{
+    auto* self = static_cast<Syscollector*>(userData);
+    self->persistDifference(id, static_cast<Operation>(operation), index, json, version);
+}
+#endif
+
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)

@@ -130,6 +130,8 @@ extern "C" int cbaseline_run_fim_dbsync(const char*                connector_soc
             if (sink == nullptr) return;
             sink(row.container_id.c_str(), row.table.c_str(), row.json.c_str(), user_data);
         });
+}
+
 extern "C" cbaseline_reconciler_t* cbaseline_reconciler_create(const char*   connector_socket_path,
                                                                const char*   prior_state_db_path,
                                                                cb_row_sink_t sink,
