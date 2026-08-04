@@ -6820,11 +6820,10 @@ paths:
                         use_source_ip: "no"
                         purge: "yes"
                         use_password: "no"
-                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+                        ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
                         ssl_manager_cert: "etc/sslmanager.cert"
                         ssl_manager_key: "etc/sslmanager.key"
-                        ssl_auto_negotiate: "no"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"
