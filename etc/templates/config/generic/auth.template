@@ -10,5 +10,4 @@
     <ssl_verify_host>no</ssl_verify_host>
     <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>
     <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>
-    <ssl_auto_negotiate>no</ssl_auto_negotiate>
   </auth>

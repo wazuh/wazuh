@@ -93,7 +93,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_verify_host = "ssl_verify_host";
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
-    static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
     static const char *xml_agents = "agents";
 
@@ -120,7 +119,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->flags.verify_host = 0;
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
-    config->flags.auto_negotiate = 0;
     config->flags.remote_enrollment = 1;
     config->force_options.enabled = true;
     config->force_options.key_mismatch = true;
@@ -237,15 +235,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         } else if (!strcmp(node[i]->element, xml_ssl_manager_key)) {
             free(config->manager_key);
             config->manager_key = strdup(node[i]->content);
-        } else if (!strcmp(node[i]->element, xml_ssl_auto_negotiate)) {
-            short b = eval_bool(node[i]->content);
-
-            if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-
-            config->flags.auto_negotiate = b;
         } else if (strcasecmp(node[i]->element, xml_agents) == 0) {
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children == NULL) {
