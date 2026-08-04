@@ -20,8 +20,9 @@ using namespace remoted::control;
 // -----------------------------------------------------------------------------
 // isValidVersion
 //
-// Regex: ^\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$
+// Regex: ^[vV]?\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$
 // Documented behaviour:
+//   - optional leading 'v' or 'V'
 //   - one to four dotted numeric parts (major, major.minor, ..., a.b.c.d)
 //   - optional +tag or -tag suffix using the token charset above
 //   - empty rejected
@@ -37,6 +38,10 @@ TEST(ControlTypesTest, IsValidVersionAcceptsCanonicalForms)
     EXPECT_TRUE(isValidVersion("5.0.0-alpha0"));
     EXPECT_TRUE(isValidVersion("5.0.0+build.42"));
     EXPECT_TRUE(isValidVersion("5.0.0-rc.1"));
+    EXPECT_TRUE(isValidVersion("v5.0.0"));
+    EXPECT_TRUE(isValidVersion("V5.0.0"));
+    EXPECT_TRUE(isValidVersion("v5"));
+    EXPECT_TRUE(isValidVersion("v5.0.0-rc.1"));
 }
 
 TEST(ControlTypesTest, IsValidVersionRejectsEmpty)
@@ -55,7 +60,6 @@ TEST(ControlTypesTest, IsValidVersionRejectsOversizedInput)
 
 TEST(ControlTypesTest, IsValidVersionRejectsMalformed)
 {
-    EXPECT_FALSE(isValidVersion("v5.0.0"));       // leading 'v'
     EXPECT_FALSE(isValidVersion("5.0.0."));       // trailing dot
     EXPECT_FALSE(isValidVersion(".5.0"));         // leading dot
     EXPECT_FALSE(isValidVersion("5.0.0.0.0"));    // 5 parts
@@ -66,6 +70,8 @@ TEST(ControlTypesTest, IsValidVersionRejectsMalformed)
     EXPECT_FALSE(isValidVersion(" 5.0.0"));       // leading space
     EXPECT_FALSE(isValidVersion("5.0.0-alpha!")); // '!' is not in tag charset
     EXPECT_FALSE(isValidVersion("5a.0.0"));       // non-numeric part
+    EXPECT_FALSE(isValidVersion("vv5.0.0"));      // double 'v'
+    EXPECT_FALSE(isValidVersion("v"));            // only 'v'
 }
 
 // -----------------------------------------------------------------------------
