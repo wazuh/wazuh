@@ -59,6 +59,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 /* Forward declarations */
 void * close_fp_main(void * args);
 void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
+bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
 
 /* Setup/teardown */
 
@@ -2230,9 +2231,34 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     batch_queue_free(events_queue);
 }
 
-void test_HandleSecureMessage_upgrade_ack_ignored(void** state)
-{
-    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}";
+/* legacy_task_process_upgrade_ack() (legacy_task_delivery.c) owns parsing the ack and replying
+ * with clear_upgrade_result; router_message_forward() only needs to call it and then still let
+ * the message fall through to the normal event path. Mocked here so this file only asserts that
+ * call happens (with the right agent id and the ack body, header stripped) -- not the reply's
+ * wire mechanics, which belong to test_legacy_task_delivery.c. */
+bool __wrap_legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json) {
+    check_expected(agent_id);
+    check_expected(ack_json);
+    return mock_type(bool);
+}
+
+/* The agent's upgrade ack must now fall through to the normal event path (like any other
+ * agent message) instead of being discarded. Covers all three known ack shapes -- the interception
+ * in router_message_forward() is header-prefix-only, so all three must behave identically. */
+static int check_evt_item_matches_ack(const LargestIntegralType value,
+                                      const LargestIntegralType check_value_data) {
+    evt_item_t *e = (evt_item_t *)(uintptr_t)value;
+    const char *expected = (const char *)(uintptr_t)check_value_data;
+    assert_non_null(e);
+    assert_non_null(e->raw);
+    assert_int_equal(e->len, strlen(expected));
+    assert_memory_equal(e->raw, expected, e->len);
+    return 1;
+}
+
+static void run_upgrade_ack_forwarded_test(const char *ack_json) {
+    char buffer[OS_MAXSTR + 1];
+    snprintf(buffer, sizeof(buffer), "u:upgrade_module:%s", ack_json);
     message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
@@ -2280,10 +2306,23 @@ void test_HandleSecureMessage_upgrade_ack_ignored(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    // Upgrade messages are now ignored in 5.x (fire-and-forget model)
-    expect_string(__wrap__mdebug2, formatted_msg, "Ignoring upgrade acknowledgment from agent '001' (not processed in 5.x)");
+    expect_string(__wrap_legacy_task_process_upgrade_ack, agent_id, "001");
+    expect_string(__wrap_legacy_task_process_upgrade_ack, ack_json, ack_json);
+    will_return(__wrap_legacy_task_process_upgrade_ack, true);
 
-    // Message is consumed (not forwarded to router or analysisd)
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Upgrade acknowledgment from agent '001' routed to the normal event path");
+
+    // router_message_forward() now returns false for this header -> falls through to the
+    // ordinary batch_queue_enqueue_ex path, with the exact raw message unmodified.
+    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
+    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
+    expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_matches_ack,
+                 (LargestIntegralType)(uintptr_t)buffer);
+    will_return(__wrap_batch_queue_enqueue_ex, -1);
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2294,6 +2333,50 @@ void test_HandleSecureMessage_upgrade_ack_ignored(void** state)
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
     batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_upgrade_ack_success_forwarded(void** state)
+{
+    (void) state;
+    run_upgrade_ack_forwarded_test(
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+}
+
+void test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded(void** state)
+{
+    (void) state;
+    run_upgrade_ack_forwarded_test(
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":1,"
+        "\"message\":\"Upgrade failed due missing dependency\",\"status\":\"Failed\"}}");
+}
+
+void test_HandleSecureMessage_upgrade_ack_failed_forwarded(void** state)
+{
+    (void) state;
+    run_upgrade_ack_forwarded_test(
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
+        "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
+}
+
+/* Companion test: router_message_forward() itself must return false for this header (callers key
+ * behavior off the return value), not just "the message happens to end up enqueued". */
+void test_router_message_forward_upgrade_ack_returns_false(void** state)
+{
+    (void) state;
+    char msg[] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":"
+                 "{\"error\":0,\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}";
+
+    expect_string(__wrap_legacy_task_process_upgrade_ack, agent_id, "001");
+    expect_string(__wrap_legacy_task_process_upgrade_ack, ack_json,
+                  "{\"command\":\"upgrade_update_status\",\"parameters\":"
+                  "{\"error\":0,\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+    will_return(__wrap_legacy_task_process_upgrade_ack, true);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Upgrade acknowledgment from agent '001' routed to the normal event path");
+
+    assert_false(router_message_forward(msg, strlen(msg), "001"));
 }
 
 void test_HandleSecureMessage_router_forwarding_disabled(void** state)
@@ -3458,7 +3541,10 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_control_msg_succes),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock_2),
-        cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_ignored),
+        cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_success_forwarded),
+        cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded),
+        cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_failed_forwarded),
+        cmocka_unit_test(test_router_message_forward_upgrade_ack_returns_false),
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
         cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
         cmocka_unit_test(test_HandleSecureMessage_event_without_trailing_null),

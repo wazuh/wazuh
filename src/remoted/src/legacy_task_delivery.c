@@ -83,6 +83,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
 STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data) __attribute__((nonnull(1, 2, 3)));
 STATIC void legacy_upgrade_poll_cycle(void);
+STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
 
 /**
  * @brief Determine whether a connected agent is confirmed to be below v5.0.0.
@@ -463,6 +464,24 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
 }
 
 /**
+ * @brief Send `clear_upgrade_result` to an agent over the existing upgrade command channel.
+ *
+ * This is what stops the agent's ack retry loop
+ * (wm_agent_upgrade_check_status(), agent-side, unmodified): on receipt it deletes its local
+ * `upgrade_result` file and the loop exits.
+ *
+ * @param agent_id Target agent identifier.
+ */
+STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) {
+    cJSON *params = cJSON_CreateObject();
+
+    if (!legacy_task_send_upgrade_step(agent_id, "clear_upgrade_result", params, NULL)) {
+        mwarn("legacy_task_delivery: agent '%s': failed to deliver 'clear_upgrade_result', "
+              "the agent may keep resending its upgrade acknowledgment", agent_id);
+    }
+}
+
+/**
  * @brief One full poll cycle: snapshot the connected-agent set, version-gate each one, and
  * deliver eligible remote_upgrade tasks.
  */
@@ -539,6 +558,48 @@ STATIC void legacy_upgrade_poll_cycle(void) {
         os_free(agent_ids[i]);
     }
     os_free(agent_ids);
+}
+
+bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json) {
+    cJSON *ack = cJSON_Parse(ack_json);
+
+    if (!ack) {
+        mdebug1("legacy_task_delivery: agent '%s' sent an unparseable upgrade acknowledgment, ignoring", agent_id);
+        return false;
+    }
+
+    cJSON *command_obj = cJSON_GetObjectItem(ack, "command");
+
+    if (!cJSON_IsString(command_obj) || strcmp(command_obj->valuestring, "upgrade_update_status") != 0) {
+        mdebug1("legacy_task_delivery: agent '%s' sent an upgrade acknowledgment with an unexpected "
+                "'command', ignoring", agent_id);
+        cJSON_Delete(ack);
+        return false;
+    }
+
+    cJSON *parameters_obj = cJSON_GetObjectItem(ack, "parameters");
+    cJSON *error_obj = parameters_obj ? cJSON_GetObjectItem(parameters_obj, "error") : NULL;
+
+    if (!cJSON_IsNumber(error_obj)) {
+        mdebug1("legacy_task_delivery: agent '%s' sent an upgrade acknowledgment with a missing or "
+                "invalid 'parameters.error', ignoring", agent_id);
+        cJSON_Delete(ack);
+        return false;
+    }
+
+    cJSON *message_obj = cJSON_GetObjectItem(parameters_obj, "message");
+    const char *message = cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)";
+
+    minfo("legacy_task_delivery: agent '%s' reported upgrade result (error %d: %s), replying with "
+          "clear_upgrade_result", agent_id, error_obj->valueint, message);
+
+    cJSON_Delete(ack);
+
+    // Stop the agent's retry loop regardless of the outcome it reported: a lost
+    // clear_upgrade_result on a prior ack must not leave it stuck resending forever.
+    legacy_task_send_clear_upgrade_result(agent_id);
+
+    return true;
 }
 
 void *legacy_upgrade_task_delivery(void *arg) {
