@@ -203,8 +203,8 @@ void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result
 
     enqueue([this, sessionId, result, body]
     {
-        // Length-carrying: the body is an EndAck FlatBuffer, so it is binary and
-        // c_str() alone would truncate it at the first NUL.
+        // Length-carrying: the body is the manager's raw /stateful JSON response, and
+        // c_str() alone would truncate it at the first embedded NUL, if any.
         m_callbacks.on_sync_response(
             sessionId.c_str(), result, body.data(), body.size(), m_callbacks.user_data);
     });

@@ -26,16 +26,13 @@ public:
     MOCK_METHOD(void, push, (const Response& response));
 };
 
-// Mock for TResponseDispatcher
+// Mock for TResponseDispatcher. TODO(#38117): StartAck/EndAck removed from FlatBuffer
+// schema/agent side - the manager no longer acknowledges sessions via either, so this
+// mock has no methods left. Kept as a type for AgentSessionImpl's template parameter.
 class MockResponseDispatcher
 {
 public:
     virtual ~MockResponseDispatcher() = default;
-    MOCK_METHOD(
-        void,
-        sendEndAck,
-        (Wazuh::SyncSchema::Status status, std::string_view agentId, uint64_t sessionId, std::string_view moduleName),
-        (const));
 };
 
 #endif // _MOCK_AGENT_SESSION_HPP

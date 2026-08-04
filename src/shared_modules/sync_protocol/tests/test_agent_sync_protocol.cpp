@@ -85,6 +85,25 @@ class AgentSyncProtocolTest : public ::testing::Test
             metadata_provider_reset();
         }
 
+        /// Builds the wire format https_client_bridge.c sends for a /stateful outcome:
+        /// "HCRESULT:<session>:<http_code>:<body>". forSession=0 skips the protocol's
+        /// session-correlation check (matching how these tests never cared about it
+        /// before the HTTP-result contract existed).
+        static std::vector<uint8_t> buildHcResult(int httpCode, const std::string& body = "{}",
+                                                  uint64_t forSession = 0)
+        {
+            const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
+                                     std::to_string(httpCode) + ":" + body;
+            return std::vector<uint8_t>(text.begin(), text.end());
+        }
+
+        /// Feeds a /stateful HTTP result to the protocol, as https_client_bridge.c would.
+        bool feedHttpResult(int httpCode, const std::string& body = "{}", uint64_t forSession = 0)
+        {
+            const auto buf = buildHcResult(httpCode, body, forSession);
+            return protocol->parseResponseBuffer(buf.data(), buf.size());
+        }
+
         std::shared_ptr<MockPersistentQueue> mockQueue;
         std::shared_ptr<MockSyncTransport> mockSyncTransport =
             std::make_shared<MockSyncTransport>();
@@ -344,16 +363,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineEndAckReportsManagerNotRea
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with Offline status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline);
-    auto endAckOffset = endAckBuilder.Finish();
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+    feedHttpResult(503);  // was Status::Offline
 
     syncThread.join();
 
@@ -465,16 +475,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessResetsConsecutiveFailures)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck Ok
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 
@@ -730,16 +731,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
             {
                 lastSendCount = currentSendCount;
 
-                flatbuffers::FlatBufferBuilder endBuilder;
-                Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-                endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-                auto endAckOffset = endAckBuilder.Finish();
-                auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                                      endBuilder,
-                                      Wazuh::SyncSchema::MessageType::EndAck,
-                                      endAckOffset.Union());
-                endBuilder.Finish(endMessage);
-                protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+                feedHttpResult(200);  // was Status::Ok
                 ++handled;
                 continue;
             }
@@ -799,16 +791,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSy
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
 
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
     EXPECT_TRUE(result.success);
@@ -854,16 +837,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
 
         EXPECT_GT(mockSyncTransport->sendCount(), sendCountBefore);
 
-        flatbuffers::FlatBufferBuilder endBuilder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        auto endAckOffset = endAckBuilder.Finish();
-        auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                              endBuilder,
-                              Wazuh::SyncSchema::MessageType::EndAck,
-                              endAckOffset.Union());
-        endBuilder.Finish(endMessage);
-        protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+        feedHttpResult(200);  // was Status::Ok
 
         syncThread.join();
         EXPECT_TRUE(result.success);
@@ -899,16 +873,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWh
     });
 
     EXPECT_TRUE(mockSyncTransport->waitForSession());
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 
@@ -958,16 +923,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAbortsRemainingBlocksAfterSe
                 lastSendCount = currentSendCount;
                 ++handled;
 
-                flatbuffers::FlatBufferBuilder endBuilder;
-                Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-                endAckBuilder.add_status(handled == 1 ? Wazuh::SyncSchema::Status::Ok : Wazuh::SyncSchema::Status::Error);
-                auto endAckOffset = endAckBuilder.Finish();
-                auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                                      endBuilder,
-                                      Wazuh::SyncSchema::MessageType::EndAck,
-                                      endAckOffset.Union());
-                endBuilder.Finish(endMessage);
-                protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+                feedHttpResult(handled == 1 ? 200 : 500);  // was Status::Ok : Status::Error
                 continue;
             }
 
@@ -1078,20 +1034,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with ERROR status
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // syncFailed = true
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(500);  // was Status::Error
 
     syncThread.join();
 }
@@ -1169,20 +1112,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1232,19 +1162,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFinalizeSyncStateException)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 
@@ -1307,20 +1225,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    flatbuffers::FlatBufferBuilder builder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto message = Wazuh::SyncSchema::CreateMessage(
-                       builder,
-                       Wazuh::SyncSchema::MessageType::EndAck,
-                       endAckOffset.Union());
-    builder.Finish(message);
-
-    const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
+    bool response = feedHttpResult(200);  // was Status::Ok
 
     EXPECT_TRUE(response);
 }
@@ -1357,27 +1262,14 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with ERROR status
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    bool response = feedHttpResult(500);  // was Status::Error
 
     EXPECT_TRUE(response);
 
     syncThread.join();
 
     // Transient manager-reported failures must be debug, not error (issue #36724).
-    logCapture.expectDebugNotError("Received EndAck with Error status");
+    logCapture.expectDebugNotError("Manager reported a protocol error (500)");
     logCapture.expectDebugNotError("Synchronization failed: Manager reported an error status.");
 }
 
@@ -1413,27 +1305,14 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with OFFLINE status
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline); // Status Offline
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    bool response = feedHttpResult(503);  // was Status::Offline
 
     EXPECT_TRUE(response);
 
     syncThread.join();
 
     // Offline EndAck is the same transient class: debug, not error (issue #36724).
-    logCapture.expectDebugNotError("Received EndAck with Offline status");
+    logCapture.expectDebugNotError("Manager reported not ready (503)");
 }
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
@@ -1468,20 +1347,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with OK status
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok); // Status Ok
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    bool response = feedHttpResult(200);  // was Status::Ok
 
     EXPECT_TRUE(response);
 
@@ -1539,19 +1405,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with matching checksum (Status::Ok)
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1588,19 +1442,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with non-matching checksum (Status::ChecksumMismatch indicates mismatch)
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(409);  // was Status::ChecksumMismatch
 
     syncThread.join();
 }
@@ -1689,19 +1531,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataDeltaMode)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1737,19 +1567,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithMetadataCheckMode)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1785,19 +1603,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupDeltaMode)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1833,19 +1639,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithGroupCheckMode)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -1962,19 +1756,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with Error status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(500);  // was Status::Error
 
     syncThread.join();
 }
@@ -2169,19 +1951,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanEndAckError)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // Send EndAck with ERROR status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(500);  // was Status::Error
 
     syncThread.join();
 }
@@ -2213,19 +1983,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanClearItemsByIndexThrows)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // Send EndAck with OK status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -2257,19 +2015,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithSingleIndex)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // Send EndAck with OK status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -2305,19 +2051,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanSuccessWithMultipleIndices)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // Send EndAck with OK status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder,
-                          Wazuh::SyncSchema::MessageType::EndAck,
-                          endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 }
@@ -2441,17 +2175,7 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // Send EndAck with OK status
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage = Wazuh::SyncSchema::CreateMessage(
-                          endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    feedHttpResult(200);  // was Status::Ok
 
     syncThread.join();
 
@@ -2527,18 +2251,76 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckChecksumMismatch)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with ChecksumMismatch status
-    flatbuffers::FlatBufferBuilder endBuilder2;
+    bool response = feedHttpResult(409);  // was Status::ChecksumMismatch
 
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder2(endBuilder2);
-    endAckBuilder2.add_status(Wazuh::SyncSchema::Status::ChecksumMismatch); // Status ChecksumMismatch
-    auto endAckOffset2 = endAckBuilder2.Finish();
+    EXPECT_TRUE(response);
 
-    auto endMessage2 =
-        Wazuh::SyncSchema::CreateMessage(endBuilder2, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset2.Union());
-    endBuilder2.Finish(endMessage2);
+    syncThread.join();
+}
 
-    const uint8_t* endBuffer2 = endBuilder2.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer2, endBuilder2.GetSize());
+// 413: the manager rejected the session as larger than its total in-flight budget
+// (see the D2 HTTP contract). New behavior - never existed as an EndAck status.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithPayloadTooLarge)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_FALSE(syncResult.managerNotReady) << "413 is not a manager-not-ready condition";
+        EXPECT_NE(syncResult.failureReason.find("too large"), std::string::npos);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(413, R"({"error":"session exceeds max_inflight_bytes","code":413})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// httpCode 0: no HTTP response at all (timeout/connect/TLS failure/abort) - treated
+// like a 503, since the transport layer already exhausted its own retries.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNoHttpResponse)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_TRUE(syncResult.managerNotReady);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(0, "");
 
     EXPECT_TRUE(response);
 
@@ -2577,18 +2359,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckGenericError)
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
     // EndAck with Error status (which should map to GENERIC_ERROR)
-    flatbuffers::FlatBufferBuilder endBuilder;
-
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
-    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
-    auto endAckOffset = endAckBuilder.Finish();
-
-    auto endMessage =
-        Wazuh::SyncSchema::CreateMessage(endBuilder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
-    endBuilder.Finish(endMessage);
-
-    const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
+    bool response = feedHttpResult(500);  // was Status::Error
 
     EXPECT_TRUE(response);
 
@@ -3278,173 +3049,6 @@ TEST_F(AgentSyncProtocolTest, VDWorkflow_FetchOnlyDataValues)
 
 // Verifies that EndAck{Processing} is correctly parsed and the sync continues waiting.
 // After Processing, the protocol must accept a subsequent EndAck{Ok} and complete.
-TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckProcessing)
-{
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
-
-    std::vector<PersistedData> testData =
-    {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
-    };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
-
-    std::thread syncThread([this]()
-    {
-        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result.success);
-    });
-
-    // StartAck
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-    }
-
-    // EndAck{Processing}: parseResponseBuffer must return true and sync must not terminate
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        bool response = protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-        EXPECT_TRUE(response);
-    }
-
-    // EndAck{Ok}: sync must complete successfully
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-    }
-
-    syncThread.join();
-}
-
-// Verifies the main VD-scanner-slow scenario:
-// manager responds Processing to End (session enqueued, scanner running),
-// then sends EndAck{Ok} when processing completes. Sync must succeed.
-TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckSuccess)
-{
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
-
-    std::vector<PersistedData> testData =
-    {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
-        {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY, 2},
-    };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
-
-    std::thread syncThread([this]()
-    {
-        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result.success);
-    });
-
-    // StartAck
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-    }
-
-    // EndAck{Processing}: manager received End and started processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-    }
-
-    // EndAck{Ok}: manager finished processing
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-    }
-
-    syncThread.join();
-}
-
-// Verifies that EndAck{Processing} does not consume a retry slot.
-//
-// With retries=0 (single End attempt allowed), the only way to succeed is if
-// the post-Processing timeout does NOT increment the attempt counter (sentEnd=false).
-// Without the sentEnd guard, attempt would reach 1 > 0 and the sync would fail
-// before EndAck{Ok} arrives.
-//
-// Flow: End → Processing → timeout (sentEnd=false → no attempt++) → End → EndAck{Ok} → success
-TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckDoesNotConsumeRetry)
-{
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    // retries=0: only one End attempt. A timeout after Processing must not consume it.
-    const unsigned int retries_zero = 0;
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
-
-    std::vector<PersistedData> testData =
-    {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
-    };
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData))
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
-    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
-
-    std::thread syncThread([this]()
-    {
-        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result.success);
-    });
-
-    // StartAck
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-    }
-
-    // EndAck{Processing}: manager received End (session enqueued, scanner running)
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Processing);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-    }
-
-    // Wait for the post-Processing timeout (min_timeout=1s) to expire plus a buffer,
-    // then inject EndAck{Ok} while the agent is waiting on the re-sent End.
-    // If the fix is absent, the loop would have exited (attempt > 0) before this point.
-    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
-    }
-
-    syncThread.join();
-}
-
 namespace
 {
     std::mutex END_RETRY_TEST_MTX;
@@ -3545,12 +3149,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleConcurrentCallIsSkippedAndDoesNot
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
     {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
-        auto offset = endAckBuilder.Finish();
-        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
-        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+        feedHttpResult(200);  // was Status::Ok
     }
 
     syncThread.join();

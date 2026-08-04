@@ -89,25 +89,22 @@ class MockSyncTransport : public ISyncSessionTransport
         std::atomic<bool> m_available {true};
 };
 
-/// @brief Answers the session the protocol is waiting on, the way the manager
-///        does: one EndAck carrying the session's own id.
+/// @brief Answers the session the protocol is waiting on, the way the manager does:
+///        one HCRESULT carrying the raw HTTP status code (see
+///        AgentSyncProtocol::applyHttpResult - there is no EndAck FlatBuffer message
+///        anymore). forSession=0 skips the protocol's session-correlation check.
 inline void answerSession(const std::shared_ptr<MockSyncTransport>& transport,
                           const std::function<void(const uint8_t*, size_t)>& feed,
-                          Wazuh::SyncSchema::Status status = Wazuh::SyncSchema::Status::Ok)
+                          int httpCode = 200, uint64_t forSession = 0)
 {
     if (!transport->waitForSession())
     {
         return; // The caller's assertions report the timeout.
     }
 
-    flatbuffers::FlatBufferBuilder builder;
-    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
-    endAckBuilder.add_status(status);
-    auto endAckOffset = endAckBuilder.Finish();
-    auto message = Wazuh::SyncSchema::CreateMessage(
-                       builder, Wazuh::SyncSchema::MessageType::EndAck, endAckOffset.Union());
-    builder.Finish(message);
-    feed(builder.GetBufferPointer(), builder.GetSize());
+    const std::string text = "HCRESULT:" + std::to_string(forSession) + ":" +
+                             std::to_string(httpCode) + ":{}";
+    feed(reinterpret_cast<const uint8_t*>(text.data()), text.size());
 }
 
 /// @brief The FullSession the protocol handed over, for tests that assert on

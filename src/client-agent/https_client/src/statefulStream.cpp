@@ -112,7 +112,7 @@ bool StatefulStream::step(Waiter& waiter)
     }
 
     const auto result = sendSession(session, waiter);
-    m_sink.onSyncResponse(session.id, result.code, result.body);
+    m_sink.onSyncResponse(session.id, static_cast<int>(result.httpCode), result.body);
     return true;
 }
 
@@ -155,5 +155,9 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
                  static_cast<unsigned long long>(session.size));
 
     const auto result = m_sender.send(spec, waiter, STATEFUL_MAX_ATTEMPTS);
-    return {toHcResult(result.outcome), result.response.body};
+    // The /stateful contract is interpreted from the raw HTTP status code and body by
+    // agent_sync_protocol, not from the shared D9 OutcomeClass (see SendResult::httpCode).
+    // result.response.httpCode is 0 when no HTTP response was received (m_sender's retry
+    // loop already exhausted its attempts via the OutcomeClass-driven retry decision).
+    return {result.response.httpCode, result.response.body};
 }

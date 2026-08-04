@@ -144,7 +144,7 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAtSubmitAndStreamedWithSessionHeader)
         EXPECT_EQ(8u, spec.bodyFileSize);
         return response(TransportStatus::Ok, 200, R"({"itemsProcessed":42})");
     }));
-    EXPECT_CALL(m_sink, onSyncResponse("sess-1", HC_RESULT_OK, R"({"itemsProcessed":42})"));
+    EXPECT_CALL(m_sink, onSyncResponse("sess-1", 200, R"({"itemsProcessed":42})"));
 
     ASSERT_TRUE(submit("sess-1", "12345678"));
     EXPECT_TRUE(m_stream.step(m_waiter));
@@ -174,7 +174,7 @@ TEST_F(StatefulStreamTest, SubmitFileAdoptsAnAlreadySpooledSessionAndDeletesIt)
         EXPECT_EQ(200000u, spec.bodyFileSize); // The full session, well past the 64 KB cap.
         return response(TransportStatus::Ok, 200, R"({"itemsProcessed":199975})");
     }));
-    EXPECT_CALL(m_sink, onSyncResponse("intake-1", HC_RESULT_OK, _));
+    EXPECT_CALL(m_sink, onSyncResponse("intake-1", 200, _));
 
     ASSERT_TRUE(m_stream.submitFile("intake-1", path, 200000));
     EXPECT_TRUE(m_stream.step(m_waiter));
@@ -239,7 +239,7 @@ TEST_F(StatefulStreamTest, FailureOutcomeCrossesTheSink)
     const std::string path = ::testing::TempDir() + "hc_stateful_fail.tmp";
     EXPECT_CALL(m_spoolFactory, spool(_, _)).WillOnce(Return(ByMove(makeSpoolAt(path, "body"))));
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 413)));
-    EXPECT_CALL(m_sink, onSyncResponse("sess-perm", HC_RESULT_PERMANENT, _));
+    EXPECT_CALL(m_sink, onSyncResponse("sess-perm", 413, _));
 
     submit("sess-perm", "body");
     EXPECT_TRUE(m_stream.step(m_waiter));
@@ -250,8 +250,8 @@ TEST_F(StatefulStreamTest, QueueIsFifo)
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 200)));
 
     ::testing::InSequence sequence;
-    EXPECT_CALL(m_sink, onSyncResponse("first", HC_RESULT_OK, _));
-    EXPECT_CALL(m_sink, onSyncResponse("second", HC_RESULT_OK, _));
+    EXPECT_CALL(m_sink, onSyncResponse("first", 200, _));
+    EXPECT_CALL(m_sink, onSyncResponse("second", 200, _));
 
     submit("first", "a");
     submit("second", "bb");

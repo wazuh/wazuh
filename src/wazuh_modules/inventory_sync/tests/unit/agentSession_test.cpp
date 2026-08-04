@@ -250,7 +250,6 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     session.handleEnd(mockResponseDispatcher);
 }
@@ -401,17 +400,9 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
     // Handle DataClean message
     session.handleDataClean(dataClean);
 
-    // Create and handle End message
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
-    auto endMsg = endMsgBuilder.Finish();
-    endBuilder.Finish(endMsg);
-
-    auto end = flatbuffers::GetRoot<Wazuh::SyncSchema::End>(endBuilder.GetBufferPointer());
-
+    // Handle End
     // Expect the indexer queue to be pushed when all sequences received
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
     ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
 }
 
@@ -526,17 +517,9 @@ TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
     // Handle DataContext message
     session.handleDataContext(dataContext, dataContextBuilder.GetBufferPointer(), dataContextBuilder.GetSize());
 
-    // Create and handle End message
-    flatbuffers::FlatBufferBuilder endBuilder;
-    Wazuh::SyncSchema::EndBuilder endMsgBuilder(endBuilder);
-    auto endMsg = endMsgBuilder.Finish();
-    endBuilder.Finish(endMsg);
-
-    auto end = flatbuffers::GetRoot<Wazuh::SyncSchema::End>(endBuilder.GetBufferPointer());
-
+    // Handle End
     // Expect the indexer queue to be pushed when all sequences received
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
     ASSERT_NO_THROW({ session.handleEnd(mockResponseDispatcher); });
 }
 
@@ -912,7 +895,6 @@ TEST_F(AgentSessionTest, HandleData_DuplicateAfterEnd_DoesNotRePush)
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
     session.handleEnd(mockResponseDispatcher);
@@ -944,7 +926,6 @@ TEST_F(AgentSessionTest, HandleDataContext_DuplicateAfterEnd_DoesNotRePush)
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     session.handleDataContext(ctx, reinterpret_cast<const uint8_t*>(ctx->data()->data()), ctx->data()->size());
     session.handleEnd(mockResponseDispatcher);
@@ -973,7 +954,6 @@ TEST_F(AgentSessionTest, HandleDataClean_DuplicateAfterEnd_DoesNotRePush)
     auto dc = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dcBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     session.handleDataClean(dc);
     session.handleEnd(mockResponseDispatcher);
@@ -995,7 +975,6 @@ TEST_F(AgentSessionTest, HandleChecksumModule_AfterEnd_IsIgnored)
     AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
 
     // End first.
     session.handleEnd(mockResponseDispatcher);

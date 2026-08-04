@@ -321,27 +321,6 @@ class InventorySyncFacadeImpl final
                 LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: ChecksumModule handled for session %llu", 0ULL);
             }
         }
-        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
-        {
-            const auto end = syncMessage->content_as<Wazuh::SyncSchema::End>();
-            if (!end)
-            {
-                throw InventorySyncException("Invalid end message");
-            }
-
-            // Check if session exists.
-            std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
-            {
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
-            }
-            else
-            {
-                // Handle end.
-                it->second.handleEnd(*m_responseDispatcher);
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: End handled for session %llu", 0ULL);
-            }
-        }
         else
         {
             throw InventorySyncException("Invalid message type");
@@ -708,9 +687,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -751,9 +729,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -786,9 +763,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -834,9 +810,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -875,10 +850,7 @@ public:
                                 LOGFN_ERROR(m_logFn,
                                             "ModuleCheck: No index specified for agent %s",
                                             res.context->agentId.c_str());
-                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                 res.context->agentId,
-                                                                 res.context->sessionId,
-                                                                 res.context->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                             }
                             else
                             {
@@ -927,10 +899,7 @@ public:
                                     LOGFN_INFO(m_logFn,
                                                "ModuleCheck: Checksums match for agent %s - no full resync needed",
                                                res.context->agentId.c_str());
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                 }
                                 else
                                 {
@@ -939,10 +908,7 @@ public:
                                                "full resync required",
                                                res.context->agentId.c_str(),
                                                MAX_RETRIES);
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                 }
                             }
                         }
@@ -950,10 +916,7 @@ public:
                         {
                             LOGFN_ERROR(
                                 m_logFn, "ModuleCheck failed for agent %s: %s", res.context->agentId.c_str(), e.what());
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
+                            // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                         }
 
                         if (eraseSession(res.context->sessionId) == 0)
@@ -1179,8 +1142,6 @@ public:
                             {
                                 // On the first manager startup the CVE feed may still be downloading.
                                 // Block here until it's ready so the scan doesn't run against empty data.
-                                // The agent stays in Status_Processing (sent at End-message time) and
-                                // gets Status_Ok once the scan finishes.
                                 if (!VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
                                     VulnerabilityScannerFacade::instance().waitForFeedReady();
@@ -1258,10 +1219,7 @@ public:
                                                             "agent %s: %s",
                                                             res.context->agentId.c_str(),
                                                             e.what());
-                                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                                 res.context->agentId,
-                                                                                 res.context->sessionId,
-                                                                                 res.context->moduleName);
+                                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                                 m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                                                 eraseSession(res.context->sessionId);
                                                 m_sessionCompletedCV.notify_all();
@@ -1299,9 +1257,8 @@ public:
                             m_indexerConnector->registerNotify(
                                 [this, ctx = res.context]()
                                 {
-                                    // Send ACK to agent.
-                                    m_responseDispatcher->sendEndAck(
-                                        Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                    // real /stateful HTTP response is the server team's own follow-up.
                                     // Delete data from database.
                                     m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                     // Delete Session.
@@ -1322,10 +1279,7 @@ public:
                                          "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
                                          "response for session %llu",
                                          res.context->sessionId);
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
+                            // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                             if (eraseSession(res.context->sessionId) == 0)
                             {
@@ -1353,11 +1307,7 @@ public:
                         unlockAgent(res.context->agentId);
                     }
 
-                    // Send ACK to agent.
-                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                     res.context->agentId,
-                                                     res.context->sessionId,
-                                                     res.context->moduleName);
+                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
@@ -1382,11 +1332,7 @@ public:
                         unlockAgent(res.context->agentId);
                     }
 
-                    // Send ACK to agent.
-                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                     res.context->agentId,
-                                                     res.context->sessionId,
-                                                     res.context->moduleName);
+                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
