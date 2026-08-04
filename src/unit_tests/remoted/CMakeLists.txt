@@ -110,7 +110,8 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUn
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
                            -Wl,--wrap,assign_group_to_agent \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid \
-                           -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd \
+                           -Wl,--wrap,agent_meta_check_version ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
@@ -158,3 +159,14 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${remoted_test_name} COMMAND ${remoted_test_name})
 endforeach()
+
+# test_legacy_task_delivery and test_remcom both reach agent_metadata_db.c's
+# agent_meta_check_version() (directly or via legacy_task_agent_is_pre_v5()/
+# remcom_filter_pre_v5_agent_ids()) and need its own real calls to agent_meta_snapshot_str/
+# wdb_get_agent_info to go through this binary's --wrap mocks. Linking that .o only from the
+# prebuilt libremoted_lib.a archive left --wrap's substitution unreliable for intra-file calls
+# originating in an ARCHIVE member (observed empirically: the real, unwrapped functions ran
+# instead of the mocks, segfaulting on the never-initialized agent_meta_map). Compiling
+# agent_metadata_db.c directly as an extra source here -- same as remoted_module_wrappers.c above
+# -- makes it the first (non-archive) definition the linker resolves against, which reliably
+# honors --wrap for every reference project-wide.

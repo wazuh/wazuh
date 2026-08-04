@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "remoted.h"
 #include "../../remoted/src/state.h"
@@ -24,15 +25,84 @@
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
 #include "../wrappers/wazuh/remoted/config_wrappers.h"
 #include "../wrappers/wazuh/remoted/manager_wrappers.h"
+#include "../../remoted/src/agent_metadata_db.h"
 
 char* remcom_output_builder(int error_code, const char* message, cJSON* data_json);
 size_t remcom_dispatch(char * command, char ** output);
+
+/* Mocks agent_meta_check_version() at the same seam legacy_task_delivery.c's poller uses, so
+ * these tests assert only remcom.c's filtering -- the helper's own logic is covered in
+ * test_legacy_task_delivery.c. */
+agent_version_check_t __wrap_agent_meta_check_version(const char *agent_id_str, const char *min_version, char **out_version) {
+    check_expected(agent_id_str);
+    check_expected(min_version);
+
+    agent_version_check_t result = mock_type(agent_version_check_t);
+    char *version = mock_ptr_type(char*);
+
+    if (out_version) {
+        *out_version = version;
+    } else {
+        os_free(version);
+    }
+
+    return result;
+}
+
+// expect_string() only stores the pointer it's given, not a copy (cmocka's _expect_string()) --
+// the actual comparison runs later, well after expect_agent_version() returns, so each expected
+// string must outlive that call. Tracked here and freed by test_teardown() below, rather than
+// leaked, so this file stays clean under ASan.
+#define MAX_EXPECTED_AGENT_IDS 256
+static char *expected_agent_id_pool[MAX_EXPECTED_AGENT_IDS];
+static size_t expected_agent_id_pool_count = 0;
+
+static void expect_agent_version(int agent_id, agent_version_check_t result, const char *version) {
+    char *agent_id_str;
+    os_malloc(16, agent_id_str);
+    snprintf(agent_id_str, 16, "%.3d", agent_id);
+
+    assert_true(expected_agent_id_pool_count < MAX_EXPECTED_AGENT_IDS);
+    expected_agent_id_pool[expected_agent_id_pool_count++] = agent_id_str;
+
+    expect_string(__wrap_agent_meta_check_version, agent_id_str, agent_id_str);
+    expect_string(__wrap_agent_meta_check_version, min_version, "v5.0.0");
+    will_return(__wrap_agent_meta_check_version, result);
+    will_return(__wrap_agent_meta_check_version, version ? strdup(version) : NULL);
+}
+
+/* Custom cmocka check comparing the -1-terminated int array `agents_ids` receives against an
+ * expected -1-terminated array, by content -- required because remcom_filter_pre_v5_agent_ids()
+ * always returns a newly allocated array, so pointer-identity checks against the array
+ * wdb_get_agents_ids_of_current_node() originally returned no longer apply. */
+static int check_agents_ids_content(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    int *actual = (int *)(uintptr_t)value;
+    int *expected = (int *)(uintptr_t)check_value_data;
+
+    if (!actual || !expected) {
+        return actual == expected;
+    }
+
+    int i = 0;
+    for (; expected[i] != -1; i++) {
+        if (actual[i] != expected[i]) {
+            return 0;
+        }
+    }
+    return actual[i] == -1;
+}
 
 /* setup/teardown */
 
 static int test_teardown(void ** state) {
     char* string = *state;
     os_free(string);
+
+    for (size_t i = 0; i < expected_agent_id_pool_count; i++) {
+        os_free(expected_agent_id_pool[i]);
+    }
+    expected_agent_id_pool_count = 0;
+
     return 0;
 }
 
@@ -224,13 +294,24 @@ void test_remcom_dispatch_getagentsstats_all_due(void ** state) {
     }
     connected_agents[150] = OS_INVALID;
 
+    // Separate, stable copy of the expected content: remcom_filter_pre_v5_agent_ids() frees
+    // `connected_agents` itself once it builds the filtered array, so the check below must not
+    // read through that (by-then-freed) pointer.
+    static int expected_ids[151];
+    memcpy(expected_ids, connected_agents, sizeof(expected_ids));
 
     expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
-    expect_value(__wrap_rem_create_agents_state_json, agents_ids, connected_agents);
+    // All 150 agents are < v5.0.0, so filtering doesn't change the set -- only tests that "due"
+    // reflects the raw page size (150 == REM_MAX_NUM_AGENTS_STATS), not the filtered count.
+    for (int i = 1; i <= 150; i++) {
+        expect_agent_version(i, AGENT_VERSION_CHECK_LT_MIN, "Wazuh v4.14.6");
+    }
+
+    expect_check(__wrap_rem_create_agents_state_json, agents_ids, check_agents_ids_content, (LargestIntegralType)(uintptr_t)expected_ids);
     will_return(__wrap_rem_create_agents_state_json, data_json);
 
     size_t size = remcom_dispatch(request, &response);
@@ -252,13 +333,55 @@ void test_remcom_dispatch_getagentsstats_all_ok(void ** state) {
     connected_agents[0] = 1;
     connected_agents[1] = OS_INVALID;
 
+    static int expected_ids[2] = {1, OS_INVALID};
 
     expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
-    expect_value(__wrap_rem_create_agents_state_json, agents_ids, connected_agents);
+    expect_agent_version(1, AGENT_VERSION_CHECK_LT_MIN, "Wazuh v4.14.6");
+
+    expect_check(__wrap_rem_create_agents_state_json, agents_ids, check_agents_ids_content, (LargestIntegralType)(uintptr_t)expected_ids);
+    will_return(__wrap_rem_create_agents_state_json, data_json);
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+/* getagentsstats "all" filters out agents >= v5.0.0 (own /stats path applies) and unknown-version
+ * agents (same conservative treatment as legacy_task_delivery.c's poller). */
+void test_remcom_dispatch_getagentsstats_all_mixed_versions_filtered(void ** state) {
+    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
+    char *response = NULL;
+    cJSON* data_json = cJSON_CreateObject();
+
+    int *connected_agents;
+    os_calloc(4, sizeof(int), connected_agents);
+    connected_agents[0] = 1; // < v5.0.0: kept
+    connected_agents[1] = 2; // >= v5.0.0: excluded
+    connected_agents[2] = 3; // unknown version (no cache, no wazuh-db info): excluded
+    connected_agents[3] = OS_INVALID;
+
+    static int expected_ids[2] = {1, OS_INVALID};
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
+    expect_agent_version(1, AGENT_VERSION_CHECK_LT_MIN, "Wazuh v4.14.6"); // < v5.0.0: kept
+    expect_agent_version(2, AGENT_VERSION_CHECK_GE_MIN, "Wazuh v5.1.0");  // >= v5.0.0: excluded
+    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_agent_version(3, AGENT_VERSION_CHECK_UNKNOWN, NULL);           // unknown: excluded
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    expect_check(__wrap_rem_create_agents_state_json, agents_ids, check_agents_ids_content, (LargestIntegralType)(uintptr_t)expected_ids);
     will_return(__wrap_rem_create_agents_state_json, data_json);
 
     size_t size = remcom_dispatch(request, &response);
@@ -720,6 +843,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_empty_agents, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_due, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_ok, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_mixed_versions_filtered, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_empty_agents, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_ok, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup, test_teardown),

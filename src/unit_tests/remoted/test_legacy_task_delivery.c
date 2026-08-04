@@ -28,6 +28,7 @@
 /* Prototypes of the STATIC (test-exported under WAZUH_UNIT_TESTING) functions under test,
  * declared here rather than in a header -- same convention test_remcom.c already uses. */
 bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version);
+agent_version_check_t agent_meta_check_version(const char *agent_id_str, const char *min_version, char **out_version);
 bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj);
 void legacy_upgrade_poll_cycle(void);
 
@@ -182,6 +183,40 @@ static void test_version_gate_legacy_agent_is_eligible(void **state) {
     assert_true(legacy_task_agent_is_pre_v5("023", &version));
     assert_non_null(version);
     assert_string_equal(version, "Wazuh v4.14.6");
+    free(version);
+}
+
+/* Covers agent_meta_check_version()'s real logic (shared by legacy_task_agent_is_pre_v5() above
+ * and remcom.c's getagentsstats filter) through the real function, all four outcomes. */
+static void test_agent_meta_check_version_classifications(void **state) {
+    (void) state;
+    char *version = NULL;
+
+    // Unknown: no cache entry, no wazuh-db info either.
+    expect_cache_miss("100");
+    expect_wdb_version(100, NULL);
+    assert_int_equal(agent_meta_check_version("100", "v5.0.0", &version), AGENT_VERSION_CHECK_UNKNOWN);
+    assert_null(version);
+
+    // Unparseable: a version string was found but has no 'v' token.
+    expect_cache_miss("101");
+    expect_wdb_version(101, "4.14.6");
+    assert_int_equal(agent_meta_check_version("101", "v5.0.0", &version), AGENT_VERSION_CHECK_UNPARSEABLE);
+    assert_non_null(version);
+    free(version);
+
+    // >= min_version.
+    expect_cache_miss("102");
+    expect_wdb_version(102, "Wazuh v5.0.0");
+    assert_int_equal(agent_meta_check_version("102", "v5.0.0", &version), AGENT_VERSION_CHECK_GE_MIN);
+    assert_non_null(version);
+    free(version);
+
+    // < min_version.
+    expect_cache_miss("103");
+    expect_wdb_version(103, "Wazuh v4.14.6");
+    assert_int_equal(agent_meta_check_version("103", "v5.0.0", &version), AGENT_VERSION_CHECK_LT_MIN);
+    assert_non_null(version);
     free(version);
 }
 
@@ -704,6 +739,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_version_gate_unparseable_version_skips, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_version_gate_5x_agent_skips, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_version_gate_legacy_agent_is_eligible, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_agent_meta_check_version_classifications, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_write_step_chunks_large_file, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_deliver_fails_on_lock_restart_no_further_steps, test_setup, test_teardown),
