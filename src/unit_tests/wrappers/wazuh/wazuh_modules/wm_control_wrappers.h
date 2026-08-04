@@ -20,5 +20,6 @@ pid_t __wrap_fork(void);
 
 /* Linker-provided real symbol when --wrap,wm_control_check_systemd is enabled. */
 extern bool __real_wm_control_check_systemd(void);
+extern size_t __real_wm_control_execute_action(const char *action, const char *service, char **output);
 
 #endif

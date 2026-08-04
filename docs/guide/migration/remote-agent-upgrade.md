@@ -294,7 +294,7 @@ Via binary:
 
 ## Custom WPK upgrade
 
-Use the custom upgrade method when the manager does not have access to the WPK repository or when a private WPK is required. The custom WPK file must be placed on the **manager** (accessible from all cluster nodes for clustered deployments) before triggering the upgrade.
+Use the custom upgrade method when the manager does not have access to the WPK repository or when a private WPK is required. The custom WPK file must be placed on the **manager**, be readable by the `wazuh-manager` user, and be accessible from all cluster nodes for clustered deployments before triggering the upgrade.
 
 ### Via API
 

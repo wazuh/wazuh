@@ -19,6 +19,7 @@
 #include <functional>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 
 #include <proc.hpp>
 
@@ -554,16 +555,22 @@ extern "C"
                     });
                 // LCOV_EXCL_STOP
 
-                // Set umask to create socket with 0660 permissions
-                mode_t oldMask = umask(0117); // umask 0117 creates files with 0660
-
                 // Bind to socket and listen
-                instance->server->bind_to_port(path.c_str(), true);
+                if (!instance->server->bind_to_port(path.c_str(), true))
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to bind socket");
+                    return;
+                }
+
+                if (chmod(path.c_str(), 0660) != 0)
+                {
+                    std::filesystem::remove(path);
+                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to set socket permissions");
+                    return;
+                }
 
                 // Listen
                 instance->running = instance->server->listen_after_bind();
-
-                umask(oldMask); // Restore original umask
                 if (instance->running == false)
                 {
                     logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");

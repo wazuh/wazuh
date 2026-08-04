@@ -340,6 +340,12 @@ if [ "$1" -eq 1 ]; then
   chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
 fi
 
+for MODULESD_DATA in queue/inventory_sync queue/vd/feed queue/vd/vd_updater queue/diff queue/keystore; do
+  if [ -d "%{_localstatedir}/${MODULESD_DATA}" ]; then
+    find -P "%{_localstatedir}/${MODULESD_DATA}" -exec chown -h wazuh-manager:wazuh-manager {} +
+  fi
+done
+
 if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-manager
 fi
@@ -565,6 +571,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
+%attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
@@ -643,10 +650,14 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/diff
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/inventory_sync
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd/feed
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd/vd_updater
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore

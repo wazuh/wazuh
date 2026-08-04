@@ -27,6 +27,9 @@ static void wm_setup();                 // Setup function. Exits on error.
 static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 static void wm_signals_configure();     // Configure signal handling.
+#ifdef WAZUH_RUNTIME_USER
+static void wm_drop_privileges(const char *user); // Drop manager privileges permanently.
+#endif
 
 static int flag_foreground = 0;         // Running in foreground.
 
@@ -39,6 +42,12 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
+#ifdef WAZUH_RUNTIME_USER
+    const char *runtime_user = WAZUH_RUNTIME_USER;
+    const char *getopt_options = "dfhtu:";
+#else
+    const char *getopt_options = "dfht";
+#endif
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -58,7 +67,7 @@ int main(int argc, char **argv)
 
     // Get command line options
 
-    while ((c = getopt(argc, argv, "dfht")) != -1) {
+    while ((c = getopt(argc, argv, getopt_options)) != -1) {
         switch (c) {
         case 'd':
             nowDebug();
@@ -74,6 +83,11 @@ int main(int argc, char **argv)
             test_config = 1;
             flag_foreground = 1;
             break;
+#ifdef WAZUH_RUNTIME_USER
+        case 'u':
+            runtime_user = optarg;
+            break;
+#endif
         default:
             print_out(" ");
             wm_help();
@@ -104,6 +118,10 @@ int main(int argc, char **argv)
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
         merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
     }
+
+#ifdef WAZUH_RUNTIME_USER
+    wm_drop_privileges(runtime_user);
+#endif
 
     // Setup daemon
 
@@ -166,12 +184,19 @@ void wm_help()
 {
     print_out("Wazuh Module Manager - %s\nWazuh Inc.", __wazuh_version);
     print_out(" ");
+#ifdef WAZUH_RUNTIME_USER
+    print_out("Usage: %s -[d|f|h|t] [-u <user>]", ARGV0);
+#else
     print_out("Usage: %s -[d|f|h|t]", ARGV0);
+#endif
     print_out(" ");
     print_out("    -d    Increase debug mode.");
     print_out("    -f    Run in foreground.");
     print_out("    -h    Print this help.");
     print_out("    -t    Test configuration.");
+#ifdef WAZUH_RUNTIME_USER
+    print_out("    -u <user> Run as user (default: %s).", WAZUH_RUNTIME_USER);
+#endif
 
     exit(EXIT_FAILURE);
 }
@@ -208,6 +233,7 @@ void wm_setup()
         nowDaemon();
     }
 
+#ifndef WAZUH_RUNTIME_USER
     const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
     if (gid == (gid_t) OS_INVALID) {
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
@@ -218,6 +244,7 @@ void wm_setup()
     }
 
     wm_setGroupID(gid);
+#endif
 
     if (wm_check() < 0) {
         mdebug1("No configuration defined. Exiting...");
@@ -235,6 +262,33 @@ void wm_setup()
     // Initialize children pool
     wm_children_pool_init();
 }
+
+#ifdef WAZUH_RUNTIME_USER
+static void wm_drop_privileges(const char *user)
+{
+    const uid_t uid = Privsep_GetUser(user);
+    const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+
+    if (uid == (uid_t) OS_INVALID || gid == (gid_t) OS_INVALID) {
+        merror_exit(USER_ERROR, user, GROUPGLOBAL, strerror(errno), errno);
+    }
+
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
+    }
+
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
+    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid) {
+        merror_exit("Privilege drop to '%s:%s' could not be verified.", user, GROUPGLOBAL);
+    }
+
+    wm_setGroupID(gid);
+    umask(0007);
+}
+#endif
 
 // Cleanup function, called on exiting.
 

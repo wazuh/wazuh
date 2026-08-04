@@ -449,3 +449,14 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+if(${TARGET} STREQUAL "manager" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Exercise the restricted set-user-ID executable directly without adding it
+    # to the shared library test matrix.
+    add_executable(test_manager_service_control test_manager_service_control.c)
+    target_compile_definitions(
+        test_manager_service_control PRIVATE WAZUH_RUNTIME_USER="wazuh-manager")
+    target_link_libraries(test_manager_service_control -lcmocka -fprofile-arcs
+                          -ftest-coverage)
+    add_test(NAME test_manager_service_control COMMAND test_manager_service_control)
+endif()
