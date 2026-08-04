@@ -203,10 +203,24 @@ namespace remoted::endpoints::download
     /**
      * @brief An IByteSource backed by an open file descriptor.
      *
-     * Holds the descriptor for the whole transfer rather than reopening per chunk, which makes a
-     * download immune to the file being replaced underneath it: `c_group()` regenerates a merged
-     * configuration by writing `merged.mg.tmp` and renaming it into place, so an open descriptor
-     * keeps serving the consistent old inode instead of a half-written new one.
+     * Holds the descriptor for the whole transfer rather than reopening per chunk. When a writer
+     * replaces the file by rename (`c_group()` with `remoted.disk_storage=1` writes `merged.mg.tmp`
+     * and renames it into place), the open descriptor keeps serving the consistent old inode and
+     * nothing further is needed.
+     *
+     * That is NOT the only way these files are written, which is why this class also detects
+     * in-place modification:
+     *   - `c_group()` in its DEFAULT configuration (`remoted.disk_storage=0`) builds the merged
+     *     configuration in memory and then does `fopen(merged.mg, "w")` + `fwrite` -- truncating
+     *     and rewriting the same inode.
+     *   - A WPK is fetched straight to its final path (`wurl_request()` into `var/upgrade/`), so it
+     *     grows in place while it is being staged.
+     *
+     * Either way the descriptor follows the file's new contents, and the danger is specific: the
+     * next read() would hit the new end-of-file and return 0, the transport would emit the
+     * terminating chunk, and the agent would accept a truncated or spliced file as COMPLETE. Being
+     * cut off is recoverable -- the agent retries; being handed corrupt bytes that look whole is
+     * not. See read() for how that is turned back into an abort.
      *
      * Not thread-safe by itself, and does not need to be: the transport never calls read()
      * concurrently with itself for a given response.
@@ -234,9 +248,28 @@ namespace remoted::endpoints::download
          * Retries on EINTR. A short read is NOT end-of-stream (it happens naturally on some
          * filesystems); only a 0-byte read is.
          *
-         * @throws std::system_error on an unrecoverable read error, which aborts the transfer.
-         *         Returning 0 instead would emit the terminating chunk and hand the agent a
-         *         truncated file that looks complete.
+         * After EVERY chunk -- not only at end-of-stream -- re-`fstat`s the descriptor and compares
+         * size and mtime against what they were at open(). Any mismatch means the file was
+         * rewritten mid-transfer, so what has been streamed is a mix of two versions:
+         *   - shorter -> a truncating rewrite (c_group() on merged.mg)
+         *   - longer  -> still being staged (a WPK mid-download)
+         *   - same length, mtime moved -> a same-size rewrite, which no byte count can see
+         *
+         * Checking per chunk rather than once at the end is what bounds the waste: a writer landing
+         * one second into a 1 GiB transfer would otherwise cost the whole gigabyte of reads and
+         * socket writes before the transfer is abandoned. The end-of-stream check remains, covering
+         * a writer that lands between the final data read and the zero-byte read.
+         *
+         * @throws std::system_error on an unrecoverable read error, and std::runtime_error when the
+         *         file changed underneath the transfer. Both abort it. Returning 0 instead would
+         *         emit the terminating chunk and hand the agent a corrupt file that looks complete;
+         *         aborting makes the agent retry, which is the recoverable outcome.
+         *
+         * @note This detects the modification, it does not prevent it: a writer that rewrites the
+         *       file with an identical length inside the same mtime granularity would still slip
+         *       through, and nothing here can know a writer holds the file open before it acts.
+         *       Closing that needs the writers to publish atomically by rename (as
+         *       `disk_storage=1` already does) rather than any check here.
          */
         std::size_t read(char* buffer, std::size_t capacity) override;
 
@@ -244,8 +277,23 @@ namespace remoted::endpoints::download
         std::uint64_t size() const noexcept;
 
     private:
+        /**
+         * @brief Compare the descriptor's current size/mtime against the baseline from open().
+         *
+         * Called after every chunk and again at end-of-stream.
+         *
+         * @throws std::runtime_error naming which way it changed (truncated / grew / modified), so
+         *         the abort WARN says what actually happened rather than just "it changed".
+         */
+        void checkNotModified() const;
+
         int m_fd {-1};
         std::uint64_t m_size {0};
+        std::uint64_t m_delivered {0}; ///< Bytes handed to the transport so far.
+        // mtime at open, kept as plain integers so this header needs no <sys/stat.h>.
+        std::int64_t m_mtimeSec {0};
+        std::int64_t m_mtimeNsec {0};
+        bool m_mtimeKnown {false}; ///< False if the baseline fstat failed; the mtime check is then skipped.
     };
 
     /**

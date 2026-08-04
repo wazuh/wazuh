@@ -17,12 +17,15 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <variant>
 #include <vector>
 
@@ -558,6 +561,129 @@ TEST(DownloadFileByteSourceTest, AZeroCapacityReadIsNotMistakenForEndOfStream)
     char buffer[4] {};
     EXPECT_EQ((*source)->read(buffer, 0), 0U);
     EXPECT_EQ(drain(**source, 16), "abc"); // nothing was consumed
+}
+
+// A merged.mg or a WPK can be rewritten IN PLACE while it is being served: c_group() with the
+// default remoted.disk_storage=0 truncates merged.mg and rewrites it, and a WPK is fetched straight
+// to its final path. The descriptor then follows the new contents, and the failure that matters is
+// silent -- read() hits the new end-of-file, returns 0, and the transport emits the terminating
+// chunk, so the agent accepts a spliced file as COMPLETE. Each case below must throw instead, which
+// aborts the transfer without a terminator and makes the agent retry.
+
+TEST(DownloadFileByteSourceTest, TruncationMidTransferAbortsRatherThanLookingComplete)
+{
+    TempDir dir;
+    const std::string contents(8192, 'a');
+    const auto path = dir.writeFile("merged.mg", contents);
+
+    auto source = openRegularFile(path);
+    ASSERT_TRUE(source.has_value());
+
+    // Consume part of the file, then truncate it the way an in-place rewrite would.
+    std::vector<char> buffer(1024);
+    ASSERT_EQ((*source)->read(buffer.data(), buffer.size()), 1024U);
+    ASSERT_EQ(::truncate(path.c_str(), 2048), 0);
+
+    // Drains the remaining 1 KiB, then hits the new EOF, which must NOT look like a clean end.
+    EXPECT_THROW(
+        {
+            while ((*source)->read(buffer.data(), buffer.size()) > 0)
+            {
+            }
+        },
+        std::runtime_error);
+}
+
+TEST(DownloadFileByteSourceTest, AFileGrowingMidTransferAborts)
+{
+    TempDir dir;
+    // A WPK still being staged grows in place; the bytes already sent belong to a version that no
+    // longer exists, so continuing would splice two files together.
+    const std::string contents(4096, 'w');
+    const auto path = dir.writeFile("staging.wpk", contents);
+
+    auto source = openRegularFile(path);
+    ASSERT_TRUE(source.has_value());
+
+    std::vector<char> buffer(1024);
+    ASSERT_EQ((*source)->read(buffer.data(), buffer.size()), 1024U);
+
+    {
+        std::ofstream appending {path, std::ios::binary | std::ios::app};
+        appending << std::string(8192, 'W');
+    }
+
+    EXPECT_THROW(
+        {
+            while ((*source)->read(buffer.data(), buffer.size()) > 0)
+            {
+            }
+        },
+        std::runtime_error);
+}
+
+TEST(DownloadFileByteSourceTest, ARewriteKeepingTheSameLengthIsCaughtByMtime)
+{
+    TempDir dir;
+    // The byte-count check cannot see this one: same length, different contents. Only the mtime
+    // captured at open() distinguishes it.
+    const std::string contents(4096, 'o');
+    const auto path = dir.writeFile("merged.mg", contents);
+
+    auto source = openRegularFile(path);
+    ASSERT_TRUE(source.has_value());
+
+    std::vector<char> buffer(1024);
+    ASSERT_EQ((*source)->read(buffer.data(), buffer.size()), 1024U);
+
+    // Sleep so the rewrite lands in a distinguishable mtime even on a coarse-grained filesystem.
+    std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    dir.writeFile("merged.mg", std::string(4096, 'n'));
+
+    EXPECT_THROW(
+        {
+            while ((*source)->read(buffer.data(), buffer.size()) > 0)
+            {
+            }
+        },
+        std::runtime_error);
+}
+
+TEST(DownloadFileByteSourceTest, ModificationAbortsOnTheNextChunkNotAtEndOfStream)
+{
+    TempDir dir;
+    // The point of checking per chunk: a writer landing early must not cost the whole file in
+    // reads and socket writes before the transfer is abandoned. Asserting that the very NEXT read
+    // throws is what distinguishes per-chunk detection from an end-of-stream-only check -- the
+    // latter would happily return ~1 MiB more before noticing.
+    const std::string contents(1024 * 1024, 'a');
+    const auto path = dir.writeFile("big.wpk", contents);
+
+    auto source = openRegularFile(path);
+    ASSERT_TRUE(source.has_value());
+
+    std::vector<char> buffer(4096);
+    ASSERT_EQ((*source)->read(buffer.data(), buffer.size()), 4096U);
+
+    // Same length, so only the mtime baseline can see it. Sleep so the rewrite lands in a
+    // distinguishable mtime even on a coarse-grained filesystem.
+    std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    dir.writeFile("big.wpk", std::string(1024 * 1024, 'b'));
+
+    EXPECT_THROW((*source)->read(buffer.data(), buffer.size()), std::runtime_error);
+}
+
+TEST(DownloadFileByteSourceTest, AnUntouchedFileStreamsToCompletion)
+{
+    TempDir dir;
+    // The counterpart to the three above: the detection must not fire on a normal transfer, or
+    // every download would abort.
+    const std::string contents(8192, 'k');
+    const auto path = dir.writeFile("quiet.mg", contents);
+
+    auto source = openRegularFile(path);
+    ASSERT_TRUE(source.has_value());
+    EXPECT_NO_THROW({ EXPECT_EQ(drain(**source, 1024), contents); });
 }
 
 TEST(DownloadFileByteSourceTest, OpeningAMissingFileReportsEnoent)
