@@ -205,7 +205,9 @@ jobs:
       id-token: write
       contents: read
     needs: build-deb
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 30
     name: Test DEB ${{ matrix.arch }} package
     strategy:
@@ -366,7 +368,9 @@ jobs:
       contents: read
     needs: [build-deb, test-deb]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
@@ -574,7 +578,9 @@ jobs:
       id-token: write
       contents: read
     needs: build-rpm
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 30
     name: Test RPM ${{ matrix.arch }} package
     strategy:
@@ -743,7 +749,9 @@ jobs:
       contents: read
     needs: [build-rpm, test-rpm]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:
@@ -825,7 +833,9 @@ jobs:
 
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 10
     name: Detect changed Linux test modules
     permissions:

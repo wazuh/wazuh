@@ -191,7 +191,9 @@ jobs:
       id-token: write
       contents: read
     needs: build-deb-arm64
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 30
     name: Test DEB package
 
@@ -312,7 +314,9 @@ jobs:
       contents: read
     needs: [build-deb-arm64, test-deb-arm64]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload DEB to S3
 
@@ -535,7 +539,9 @@ jobs:
       id-token: write
       contents: read
     needs: build-rpm-arm64
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 30
     name: Test RPM package
 
@@ -656,7 +662,9 @@ jobs:
       contents: read
     needs: [build-rpm-arm64, test-rpm-arm64]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload RPM to S3
 

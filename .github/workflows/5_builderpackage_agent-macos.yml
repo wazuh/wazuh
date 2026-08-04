@@ -232,7 +232,9 @@ jobs:
       contents: read
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
@@ -493,7 +495,9 @@ jobs:
       contents: read
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 
@@ -593,7 +597,9 @@ jobs:
 
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `-small` overrides the instance size for this job only: no compilation
+    # happens here, so the 2 vCPU tier is sufficient. See #38174.
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     timeout-minutes: 10
     name: Detect changed macOS test modules
     permissions:
