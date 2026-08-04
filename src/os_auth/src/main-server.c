@@ -79,7 +79,7 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphers] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -89,12 +89,12 @@ static void help_authd(char * home_path)
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Force shared-password enrollment on (already enabled by default); password read from %s or generated.", AUTHD_PASS);
-    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
-    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
+    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.3 only.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -266,8 +266,8 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     else {
-                        if (w_str_is_number(optarg)) {
-                            merror_exit("-%c needs a valid list of SSL ciphers", c);
+                        if (w_authd_validate_ciphers(optarg) == OS_INVALID) {
+                            merror_exit("-%c needs a valid list of TLS 1.3 cipher suites", c);
                         }
                         ciphers = optarg;
                     }
@@ -569,7 +569,7 @@ int main(int argc, char **argv)
 
         /* Start SSL */
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
-            merror("SSL error. Exiting.");
+            merror("SSL context setup failed. Exiting.");
             exit(1);
         }
 
