@@ -180,7 +180,7 @@ endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_names "test_ssl_op")
-    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new -Wl,--wrap,_merror")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
