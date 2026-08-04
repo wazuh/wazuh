@@ -22,6 +22,14 @@ Time-to-live for a task, measured from `create_time`. Tasks whose age exceeds `t
 
 - **Default value:** `3600` (1 hour)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
+- **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default `900`s,
+  see [remoted configuration](../remoted/configuration.md)) must be configured comfortably smaller than
+  this value, or a `remote_upgrade` task created just after a poll cycle can expire before the next cycle
+  ever picks it up. At startup, the Task Manager reads `remoted.legacy_task_polling_interval` from
+  `internal_options.conf` (via `getDefine_Int_default`, the same generic lookup-by-section-name mechanism
+  `remoted` itself uses — it is not restricted to the daemon that defines the option) and logs an
+  `mtwarn` if `legacy_task_polling_interval >= task_ttl`. This is a startup-time check only; it does not
+  react to a config change made without restarting `wazuh-modulesd`.
 
 ### cleanup_interval
 
