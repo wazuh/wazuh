@@ -37,7 +37,6 @@ table DataContext {
 table Start {
     module: string;
     mode: Mode;
-    size: ulong;
     index: [string];
     option: Option;
     architecture: string;

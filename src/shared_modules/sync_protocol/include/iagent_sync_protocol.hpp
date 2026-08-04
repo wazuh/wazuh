@@ -40,6 +40,12 @@ class IAgentSyncProtocol
         virtual SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
 
         /// @brief Checks if a module index requires full synchronization
+        ///
+        /// A 409 (checksum mismatch) is retried against the manager up to
+        /// CHECKSUM_MISMATCH_MAX_ATTEMPTS times, spaced out, before being trusted as a
+        /// genuine mismatch -- a recent bulk write may not be visible in the indexer yet.
+        /// Any other failure (communication error, manager offline) returns false
+        /// immediately without spending this retry budget.
         /// @param index The index/table to check
         /// @param checksum The calculated checksum for the index
         /// @return true if full sync is required (checksum mismatch); false if integrity is valid.

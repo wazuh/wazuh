@@ -1410,6 +1410,10 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     syncThread.join();
 }
 
+// A single 409 no longer means "full sync required" -- the manager's old internal
+// retry-against-indexer loop moved to the agent (2026-08-04, #38117/#38128), so this
+// now takes CHECKSUM_MISMATCH_MAX_ATTEMPTS (5) consecutive 409s before the agent
+// trusts the mismatch as genuine.
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -1423,28 +1427,70 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
-    // Start requiresFullSync in a separate thread
-    std::thread syncThread([this, &testIndex, &testChecksum]()
+    bool result = false;
+    std::thread syncThread([this, &testIndex, &testChecksum, &result]()
     {
-        bool result = protocol->requiresFullSync(
-                          testIndex,
-                          testChecksum
-                      );
-        EXPECT_TRUE(result);
+        result = protocol->requiresFullSync(testIndex, testChecksum);
     });
 
-    // Wait for start message
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    int handled = 0;
+    int lastSendCount = 0;
 
-    // StartAck
+    while (handled < 5)
+    {
+        const int currentSendCount = mockSyncTransport->sendCount();
 
-    // Wait for checksum message
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+        if (currentSendCount > lastSendCount)
+        {
+            lastSendCount = currentSendCount;
+            feedHttpResult(409);  // was Status::ChecksumMismatch
+            ++handled;
+            continue;
+        }
 
-    // EndAck with non-matching checksum (Status::ChecksumMismatch indicates mismatch)
-    feedHttpResult(409);  // was Status::ChecksumMismatch
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 
     syncThread.join();
+    EXPECT_TRUE(result);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 5);
+}
+
+// The whole point of moving the retry budget to the agent: a checksum mismatch caused
+// by the indexer not having caught up with a recent bulk write yet must resolve on
+// retry, not force a full sync.
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncRecoversAfterTransientMismatch)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    const std::string testIndex = "test_index";
+    const std::string testChecksum = "test_checksum";
+
+    bool result = true;
+    std::thread syncThread([this, &testIndex, &testChecksum, &result]()
+    {
+        result = protocol->requiresFullSync(testIndex, testChecksum);
+    });
+
+    // First attempt: 409 (indexer hasn't caught up yet).
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(409);
+
+    // Second attempt: 200 (indexer caught up) -- must NOT need all 5 attempts.
+    const int sendCountBefore = mockSyncTransport->sendCount();
+
+    while (mockSyncTransport->sendCount() <= sendCountBefore)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    feedHttpResult(200);
+
+    syncThread.join();
+    EXPECT_FALSE(result);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 2);
 }
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)

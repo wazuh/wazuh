@@ -86,13 +86,12 @@ struct AgentTestData
      *     "osversion": "22.04",
      *     "groups": ["default", "extra-group"],
      *
-     *     // Optional; if omitted, indices and size are computed automatically
+     *     // Optional; if omitted, indices are computed automatically
      *     "indices": [
      *       "wazuh-states-inventory-packages",
      *       "wazuh-states-inventory-system",
      *       "wazuh-states-inventory-hotfixes"
-     *     ],
-     *     "size": 5
+     *     ]
      *   },
      *   "data_values": [
      *     {
@@ -527,11 +526,10 @@ public:
      * @brief Build Start message from JSON description.
      *
      * @param startJson   "Start" object from the input file.
-     * @param defaultSize Number of messages (data_values + data_context) if size is not set in JSON.
      * @param defaultIndices Indices inferred from data_values/data_context if not set in JSON.
      */
-    static std::vector<uint8_t>
-    buildStart(const nlohmann::json& startJson, uint64_t defaultSize, const std::vector<std::string>& defaultIndices)
+    static std::vector<uint8_t> buildStart(const nlohmann::json& startJson,
+                                           const std::vector<std::string>& defaultIndices)
     {
         flatbuffers::FlatBufferBuilder builder;
 
@@ -553,8 +551,6 @@ public:
 
         std::string optionStr = startJson.value("option", std::string("VDSync"));
         auto option = parseOption(optionStr);
-
-        uint64_t size = startJson.value("size", defaultSize);
 
         // Indices: either provided in Start or inferred from messages
         std::vector<std::string> indices;
@@ -611,7 +607,6 @@ public:
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(mode);
-        startBuilder.add_size(size);
         startBuilder.add_index(indicesOffset);
         startBuilder.add_option(option);
         startBuilder.add_agentid(agentIdStr);
@@ -799,7 +794,7 @@ void sendEvent(bool verbose,
 
     // Send START
     std::cout << "[SEND] Start message" << std::endl;
-    auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
+    auto startMsg = MessageBuilder::buildStart(testData.start, indices);
     routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
 
     // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
