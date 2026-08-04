@@ -37,7 +37,6 @@ typedef struct authd_flags_t {
     unsigned short clear_removed:1;
     unsigned short use_password:1;
     unsigned short verify_host:1;
-    unsigned short auto_negotiate:1;
     unsigned short remote_enrollment:1;
 } authd_flags_t;
 

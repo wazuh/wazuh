@@ -79,7 +79,7 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfPL] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -94,7 +94,6 @@ static void help_authd(char * home_path)
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
-    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.3 only.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -194,7 +193,6 @@ int main(int argc, char **argv)
     {
         int c;
         int use_pass = 0;
-        int auto_method = 0;
         int validate_host = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -210,7 +208,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PaL:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -296,10 +294,6 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
-                    break;
-
-                case 'a':
-                    auto_method = 1;
                     break;
 
                 case 'C':
@@ -430,10 +424,6 @@ int main(int argc, char **argv)
 
         if (use_pass) {
             config.flags.use_password = 1;
-        }
-
-        if (auto_method) {
-            config.flags.auto_negotiate = 1;
         }
 
         if (validate_host) {
@@ -568,7 +558,7 @@ int main(int argc, char **argv)
         }
 
         /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, 0), !ctx) {
             merror("SSL context setup failed. Exiting.");
             exit(1);
         }
