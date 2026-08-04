@@ -71,10 +71,9 @@
  * poller only ever consumes a task's payload, it never touches task creation. */
 #define LEGACY_TASK_WPK_DEFAULT_PATH "var/upgrade/"
 
-/* Delay before the very first poll cycle after a remoted (re)start, so it doesn't race Task
- * Manager's cache_ttl window (default 60s) and re-read/re-mark-delivered a snapshot that was
- * already served before the restart. See remoted's configuration.md for the operator-managed
- * constraint this encodes against remoted.legacy_task_polling_interval / task-manager.cache_ttl. */
+/* Delay before the very first poll cycle after a remoted (re)start, giving reconnecting agents
+ * time to report their version before the poller starts deciding eligibility from stale/absent
+ * agent metadata. */
 #define LEGACY_TASK_STARTUP_DELAY_SEC 65
 
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) __attribute__((nonnull(1)));
