@@ -784,10 +784,18 @@ TEST(HttpServerStreamingTest, AbortedTransferSendsNoTerminatorAndReleasesTheSour
     }
     EXPECT_TRUE(destroyed->load()) << "the byte source outlived an aborted transfer (descriptor leak)";
 
-    // The server must still be healthy for the next request.
-    const auto second = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}",
-                                                         16 * 1024);
-    EXPECT_FALSE(second.empty()) << "the server stopped serving after an aborted transfer";
+    // The server must still be healthy for the next request. Read this one to COMPLETION rather
+    // than aborting again: a second abort would leave its pump in flight at stop() below, and
+    // "serves a whole response" is the stronger health check anyway.
+    const auto second = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/stream", "{}");
+    ASSERT_FALSE(second.empty()) << "the server stopped serving after an aborted transfer";
+
+    const auto [secondHead, secondBody] = remoted::test::splitResponse(second);
+    std::vector<std::size_t> secondSizes;
+    bool secondComplete = false;
+    const auto decoded = remoted::test::decodeChunked(secondBody, secondSizes, secondComplete);
+    EXPECT_TRUE(secondComplete) << "the transfer after an aborted one was itself truncated";
+    EXPECT_EQ(decoded, payload) << "the transfer after an aborted one did not deliver the payload";
 
     server->stop();
 }
