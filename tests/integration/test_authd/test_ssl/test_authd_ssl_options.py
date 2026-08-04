@@ -82,9 +82,9 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
     '''
     description:
         Checks if the 'SSL' settings of the 'wazuh-manager-authd' daemon work correctly by enrolling agents
-        that use different values for these settings. Different types of encryption and secure
-        connection protocols are tested, in addition to the 'ssl_auto_negotiate' option
-        that automatically chooses the protocol to be used.
+        that use different values for these settings. Verifies TLS 1.3 ciphersuites are accepted and that
+        connections attempting TLS 1.2 or TLS 1.1 are rejected, since 'wazuh-manager-authd' enforces TLS 1.3
+        as its minimum protocol version with no configuration override.
 
     wazuh_min_version:
         5.0.0
