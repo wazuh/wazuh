@@ -10,8 +10,10 @@
  */
 
 #include "wazuhDBClient.hpp"
+#include "common/logThrottle.hpp"
 #include "controlConfig.hpp"
 #include "epollWrapper.hpp"
+#include "loggerHelper.h"
 #include "socketClient.hpp"
 #include "socketWrapper.hpp"
 #include <chrono>
@@ -28,6 +30,41 @@
 
 namespace remoted::control
 {
+    namespace
+    {
+        constexpr auto WDB_CLIENT_LOGTAG {"wazuh-manager-remoted:wdb-client"};
+
+        const LogFn& logFn()
+        {
+            static const LogFn instance {WDB_CLIENT_LOGTAG};
+            return instance;
+        }
+
+        // Throttles for recurring errors
+        remoted::common::LogThrottle& queueFullThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& connectFailThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& timeoutThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& ioErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+    } // namespace
     class WazuhDBClient::Impl
     {
     public:
@@ -96,6 +133,14 @@ namespace remoted::control
             if (reject)
             {
                 incWdbError(m_metrics);
+                if (const auto throttle = queueFullThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "WazuhDB queue full (max=%u): dropped %llu request(s) in the last %d s.",
+                               m_maxQueueSize,
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 reject(SocketError::QueueFull, "");
             }
         }
@@ -132,11 +177,20 @@ namespace remoted::control
                             responseReady = true;
                             responseCv.notify_one();
                         });
+                    LOGFN_DEBUG2(logFn(), "Connected to WazuhDB socket at %s.", m_wdbSocketPath.c_str());
                     return true;
                 }
                 catch (...)
                 {
                     client.reset();
+                    if (const auto throttle = connectFailThrottle().record())
+                    {
+                        LOGFN_ERROR(logFn(),
+                                    "Failed to connect to WazuhDB socket at %s: %llu failure(s) in the last %d s.",
+                                    m_wdbSocketPath.c_str(),
+                                    throttle.total,
+                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     return false;
                 }
             };
@@ -177,17 +231,27 @@ namespace remoted::control
 
                 try
                 {
+                    LOGFN_DEBUG2(logFn(), "Sending WazuhDB command: %s", req.command.c_str());
                     client->send(req.command.data(), req.command.size());
 
                     std::unique_lock<std::mutex> respLock(responseMutex);
                     if (responseCv.wait_for(
                             respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
                     {
+                        LOGFN_DEBUG2(logFn(), "Received WazuhDB response.");
                         req.callback(SocketError::None, response);
                     }
                     else
                     {
                         incWdbError(m_metrics);
+                        if (const auto throttle = timeoutThrottle().record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "WazuhDB query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                                       m_deadlineMs,
+                                       throttle.total,
+                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
                         req.callback(SocketError::Timeout, "");
                         needsReconnect = true;
                     }
@@ -195,6 +259,13 @@ namespace remoted::control
                 catch (...)
                 {
                     incWdbError(m_metrics);
+                    if (const auto throttle = ioErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "WazuhDB I/O error: %llu error(s) in the last %d s.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     req.callback(SocketError::Io, "");
                     needsReconnect = true;
                 }
