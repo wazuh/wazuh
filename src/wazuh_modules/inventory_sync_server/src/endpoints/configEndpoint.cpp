@@ -17,12 +17,17 @@
 
 #include <exception>
 #include <json.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 
 namespace
 {
     constexpr auto CONFIG_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
+
+    // The wazuh-agent-config index template is dynamic:strict -- this literal has to stay in sync
+    // with that template's index_patterns.
+    constexpr auto AGENT_CONFIG_INDEX_NAME {"wazuh-agent-config"};
 
     // One shared instance rather than a per-call temporary: this runs on EVERY request.
     // loggerHelper.h stays out of configEndpoint.hpp, which the tests include.
@@ -43,6 +48,54 @@ namespace
     invsync::http::HttpResponse serviceUnavailable()
     {
         return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+    }
+
+    /**
+     * @brief Validate the reported body shape and reduce it to the sanitized `{module, config}` array
+     *        the wazuh-agent-config template expects.
+     *
+     * Every element is rebuilt from scratch with exactly these two keys rather than validated in
+     * place: the template is dynamic:strict, so any extra key the agent sent would otherwise reach
+     * the (fire-and-forget) indexer write and fail it with no way to report that back to the caller.
+     *
+     * @return The sanitized array on success; std::nullopt if any element fails validation, in which
+     * case @p reason is set to a caller-facing 400 message.
+     */
+    std::optional<nlohmann::json> sanitizeReportedModules(const nlohmann::json& document, const char*& reason)
+    {
+        if (!document.is_array())
+        {
+            reason = "Body must be a JSON array of {\"module\", \"config\"} entries";
+            return std::nullopt;
+        }
+
+        auto sanitized = nlohmann::json::array();
+        for (const auto& element : document)
+        {
+            if (!element.is_object())
+            {
+                reason = "Each entry must be a JSON object";
+                return std::nullopt;
+            }
+
+            const auto moduleIt = element.find("module");
+            if (moduleIt == element.end() || !moduleIt->is_string() || moduleIt->get<std::string>().empty())
+            {
+                reason = "Each entry must have a non-empty string \"module\"";
+                return std::nullopt;
+            }
+
+            const auto configIt = element.find("config");
+            if (configIt == element.end() || !configIt->is_object())
+            {
+                reason = "Each entry must have an object \"config\"";
+                return std::nullopt;
+            }
+
+            sanitized.push_back({{"module", *moduleIt}, {"config", *configIt}});
+        }
+
+        return sanitized;
     }
 } // namespace
 
@@ -81,9 +134,17 @@ namespace invsync::endpoints::config
             // Non-throwing parse: a malformed document is ordinary input here, not an error condition,
             // and letting nlohmann throw would cost an exception per bad request.
             auto document = nlohmann::json::parse(request->body, nullptr, /*allow_exceptions=*/false);
-            if (document.is_discarded() || !document.is_object())
+            if (document.is_discarded())
             {
-                responder->send(badRequest("Body must be a JSON object"));
+                responder->send(badRequest("Malformed JSON body"));
+                return;
+            }
+
+            const char* rejectionReason = nullptr;
+            auto sanitizedContent = sanitizeReportedModules(document, rejectionReason);
+            if (!sanitizedContent)
+            {
+                responder->send(badRequest(rejectionReason));
                 return;
             }
 
@@ -130,34 +191,37 @@ namespace invsync::endpoints::config
 
             try
             {
-                // JSON pointers rather than bracket chaining, so `wazuh.agent.id` reads the same way
-                // it is spelled everywhere else in the schema. All four overwrite whatever the agent
-                // sent: the authenticated id, this manager's own identity and the server's clock are
-                // the authoritative ones.
-                document["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
-                document["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
-                document["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
-                document["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
+                // Shaped to match the wazuh-agent-config template exactly (dynamic:strict): the
+                // authenticated id, this manager's own identity and the server's clock, plus the
+                // sanitized module array -- nothing else.
+                nlohmann::json indexedDocument;
+                indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
+                indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = *sanitizedContent;
+                indexedDocument["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
+                indexedDocument["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
+                indexedDocument["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
+
+                // Indexed under the agent id as _id: each report replaces the previous one for that
+                // agent, so there is no separate delete step.
+                indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, indexedDocument.dump());
 
                 if (const auto decision = acceptedThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Enriched and discarded %llu config document(s) in the last %d s. This endpoint is a "
-                                 "dummy: the document is echoed back but NOT indexed -- `indexer` is available and "
-                                 "injected, but nothing writes through it yet.",
+                                 "Indexed %llu agent config document(s) in the last %d s.",
                                  static_cast<unsigned long long>(decision.total),
                                  invsync::common::LogThrottle::kDefaultWindowSeconds);
                 }
 
-                // Echoed back so the caller can see what was added; the document itself is dropped.
-                responder->send(http::HttpResponse::json(200, document.dump()));
+                // The protocol-defined acknowledgment: an empty object, not the enriched document.
+                responder->send(http::HttpResponse::json(200, "{}"));
             }
             catch (const std::exception& e)
             {
-                // Serializing back out can still fail on input we accepted -- e.g. a string field
-                // holding invalid UTF-8, which nlohmann rejects at dump() time, not at parse time.
-                LOGFN_DEBUG1(logFn(), "Could not serialize an enriched config document: %s.", e.what());
-                responder->send(badRequest("Body must be a JSON object"));
+                // Building/serializing the document can still fail on input we accepted -- e.g. a
+                // string field holding invalid UTF-8, which nlohmann rejects at dump() time.
+                LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
+                responder->send(badRequest("Body must be a JSON array of {\"module\", \"config\"} entries"));
             }
         };
     }
