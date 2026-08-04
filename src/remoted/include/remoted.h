@@ -246,6 +246,7 @@ extern size_t batch_events_per_agent_capacity;
 extern size_t queue_max_bytes;
 extern size_t batch_events_max_bytes;
 extern int enrich_cache_expire_time;
+extern int legacy_task_polling_interval;
 
 extern module_limits_t manager_module_limits;
 extern bool manager_module_limits_enabled;
