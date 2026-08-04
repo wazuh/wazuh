@@ -18,7 +18,7 @@ Source: [src/wazuh_modules/src/task_manager/](../../../../src/wazuh_modules/src/
 
 ## Overview
 
-The Task Manager owns the lifecycle of *tasks* — small, typed JSON records that instruct an agent to perform an action. It exposes a JSON-based IPC interface over a Unix domain socket, persists tasks in the `tasks.db` SQLite database (managed by Wazuh DB), and serves pending tasks to agents via the manager's HTTPS control endpoint. Tasks addressed to legacy 4.x agents are also supported through a compatibility push path that reuses the existing agent-manager channel.
+The Task Manager owns the lifecycle of *tasks* — small, typed JSON records that instruct an agent to perform an action. It exposes a JSON-based IPC interface over a Unix domain socket and persists tasks in the `tasks.db` SQLite database (managed by Wazuh DB). The Task Manager itself never delivers a task to an agent — it only stores `create_task` calls and hands back pending ones on `get_pending_tasks`, marking them delivered as it does. Delivery is the consumer's job: `remoted`'s own task-polling thread is the current consumer, and it pushes `remote_upgrade` tasks over the agent's existing session.
 
 Key properties of the current implementation:
 
@@ -149,7 +149,7 @@ The cache reduces database queries for agents that poll frequently when they hav
 
 - The listener socket and the cleanup thread run on every manager node — master and workers alike. Any node can accept `create_task` requests from local producers and serve `get_pending_tasks` to the agents connected to it.
 - Task IDs are deterministic, so the same logical request routed to different manager nodes produces the same `task_id` and collapses into a single row in `tasks.db`.
-- Delivery bookkeeping is node-local: `mark_delivered` is issued by the node that returned the task, and no cross-node broadcast is performed. If the same task is served by two different manager nodes before the row is updated, both responses include the task and the agent is expected to deduplicate.
+- Delivery bookkeeping is node-local: `mark_delivered` is issued by the node that returned the task, and no cross-node broadcast is performed. Task creation always routes to the agent's current owning node, so this is a stranding risk (a task can sit on the wrong node's `tasks.db` if an agent reconnects elsewhere, and simply expires via the normal TTL sweep), not a duplication risk — an agent can't receive the same task twice from two nodes, since `remoted`'s poller only ever talks to the agent's own node.
 
 ---
 
