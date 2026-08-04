@@ -33,19 +33,6 @@ class IAgentSyncProtocol
                                        uint64_t version,
                                        bool isDataContext = false) = 0;
 
-        /// @brief Persist a difference to in-memory vector instead of database.
-        /// This method is used for recovery scenarios where data should be kept in memory.
-        /// @param id Unique identifier for the data item.
-        /// @param operation Type of operation (CREATE, MODIFY, DELETE).
-        /// @param index Logical index for the data item.
-        /// @param data Serialized content of the message.
-        /// @param version Version of the data.
-        virtual void persistDifferenceInMemory(const std::string& id,
-                                               Operation operation,
-                                               const std::string& index,
-                                               const std::string& data,
-                                               uint64_t version) = 0;
-
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode
         /// @param option Synchronization option.
@@ -58,11 +45,6 @@ class IAgentSyncProtocol
         /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
         virtual bool requiresFullSync(const std::string& index,
                                       const std::string& checksum) = 0;
-
-        /// @brief Clears the in-memory data queue.
-        ///
-        /// This method removes all entries from the in-memory vector used for recovery scenarios.
-        virtual void clearInMemoryData() = 0;
 
         /// @brief Synchronizes metadata or groups with the server without sending data.
         ///

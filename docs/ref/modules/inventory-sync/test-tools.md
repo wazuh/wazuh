@@ -17,9 +17,8 @@ They cover components such as:
 - `AgentSession`
 - `GapSet`
 - `ResponseDispatcher`
-- `DataBatch` handling behavior
 
-These tests validate session lifecycle, chunk tracking, checksum handling, retransmission behavior, and response dispatch without requiring a full manager deployment.
+These tests validate session lifecycle, chunk tracking, checksum handling, and response dispatch without requiring a full manager deployment.
 
 ## Protocol integration tests
 
@@ -33,7 +32,6 @@ Current test coverage includes flows such as:
 
 - basic start/data/end synchronization,
 - sessions with no data,
-- `ReqRet` retransmission handling,
 - `DataClean` processing,
 - `DataContext`-only sessions,
 - checksum match and mismatch flows,
