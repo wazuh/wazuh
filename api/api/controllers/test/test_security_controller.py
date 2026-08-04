@@ -47,6 +47,8 @@ def mock_request():
         with patch('api.controllers.security_controller.request', MagicMock) as m_req:
             m_req.json = AsyncMock(side_effect=lambda: {'ctx': ''} )
             m_req.get = MagicMock(return_value=None)
+            m_req.client = MagicMock()
+            m_req.client.host = 'ip'
             m_req.query_params = MagicMock()
             m_req.query_params.get = MagicMock(return_value=None)
             m_req.context = {
@@ -87,7 +89,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request):
     """Verify 'login_user' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await login_user(user='001', raw=mock_bool)
