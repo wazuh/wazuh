@@ -70,14 +70,10 @@ table Cleans {
     items: [DataClean];
 }
 
-table Checksums {
-    items: [ChecksumModule];
-}
-
 union SessionPayload {
     SyncData,
     Cleans,
-    Checksums
+    ChecksumModule
 }
 
 table End {
@@ -95,8 +91,8 @@ None of these tables carry a `session` field. The session id is chosen by the **
 `payload` carries exactly one of three shapes, depending on what the session is for:
 
 - **`SyncData`** — a module/metadata sync. `values` (`DataValue`, from `persistDifference(..., isDataContext=false)`) and `contexts` (`DataContext`, from `persistDifference(..., isDataContext=true)`) can both be populated in the same session: they are pulled from the same producer queue and travel together.
-- **`Cleans`** — one `DataClean` per index, from `notifyDataClean()`.
-- **`Checksums`** — one `ChecksumModule`, from `requiresFullSync()`.
+- **`Cleans`** — one `DataClean` per index, from `notifyDataClean()`. This is a real array: a session can clean several indices at once (e.g. FIM clearing files, registry keys, and registry values together).
+- **`ChecksumModule`** — from `requiresFullSync()`. Referenced directly rather than wrapped in an array table, since an integrity check always covers exactly one index/module.
 - **absent** — `synchronizeMetadataOrGroups()` sends `Start` and `End` with no payload at all.
 
 A session is always exactly one of these — never a combination — which is why they are a `union` rather than four independent optional fields.
@@ -122,7 +118,7 @@ table EndAck {
 - **`Ok`**: success. `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `false` (integrity valid).
 - **`Error`**: generic protocol failure (`SyncResult::PROTOCOL_ERROR`). Items are reset to `PENDING` for the next cycle.
 - **`Offline`**: the manager cannot serve this agent right now (`SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result). Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
-- **`ChecksumMismatch`**: only meaningful as the answer to a `Checksums` session — `requiresFullSync()` returns `true` (full sync needed).
+- **`ChecksumMismatch`**: only meaningful as the answer to a `ChecksumModule` session — `requiresFullSync()` returns `true` (full sync needed).
 - **`Processing`**: defined in the schema's `Status` enum but not currently handled as an intermediate/"keep waiting" state by `AgentSyncProtocol` — there is no longer a separate `End` message to withhold, since `end` is part of the same `FullSession` the manager already received in full.
 
 `parseResponseBuffer()` is one of two ways a result reaches the protocol. The other is `applyHttpResultCode(int resultCode, uint64_t expectedSession)`, used by the HTTPS transport path: it accepts a `"HCRESULT:<session>:<code>"` string (or the legacy `"HCRESULT:<code>"`, which skips session correlation) carrying the HTTP status code directly, without a FlatBuffer body at all. Either path ends in the same terminal `SyncResult`.
@@ -148,7 +144,7 @@ Agent                                   Manager
   |                                        |
   |------------- FullSession ------------> |
   |   Start(mode=ModuleCheck)               |
-  |   payload = Checksums{[index, sum]}     |
+  |   payload = ChecksumModule{index, sum}  |
   |   End                                  |
   |                                        |
   |<-------------- EndAck ----------------- |
@@ -192,16 +188,37 @@ Agent                                   Manager
   | (local database cleanup)               |
 ```
 
-### In-Memory Recovery (`persistDifferenceInMemory` + `synchronizeModule(Mode::FULL, ...)`)
+### Full-Replace Recovery: DataClean Then DELTA
+
+There is no `Mode::FULL`/in-memory recovery API anymore. `Mode::FULL` used to make the manager
+`deleteByQuery` every index in `Start` unconditionally and then index whatever the agent sent in
+that one session — safe only as long as the payload always went whole. Once DELTA sessions
+started being byte-capped and split into blocks, stamping a byte-capped payload as `Mode::FULL`
+would still trigger the unconditional delete, permanently losing whatever did not fit in that one
+session (see the change that removed it).
+
+A full-replace resync (recovery after a checksum mismatch, or a module's first sync) is instead
+two ordinary operations already described above: a `Cleans` session to explicitly and scopedly
+clear the target index, followed by a `Mode::DELTA` sync — itself already safely
+block-splittable — of the freshly rebuilt snapshot, persisted through the normal
+`persistDifference()`/persistent-queue path like any other delta.
 
 ```
 Agent (recovery)                        Manager
   |                                        |
-  | clearInMemoryData()                    |
-  | persistDifferenceInMemory() x N        |
+  |------------- FullSession ------------> |
+  |   Start(mode=ModuleDelta, index=[idx]) |
+  |   payload = Cleans{DataClean(index)}   |
+  |   End                                  |
+  |                                        |
+  |<-------------- EndAck ----------------- |
+  |              status: Ok                |
+  |                                        |
+  | persistDifference() x N                |
+  | (fresh snapshot, persistent queue)     |
   |                                        |
   |------------- FullSession ------------> |
-  |   Start(mode=ModuleFull, size=N)       |
+  |   Start(mode=ModuleDelta, size=N)      |
   |   payload = SyncData{values: [...]}    |
   |   End                                  |
   |                                        |

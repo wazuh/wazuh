@@ -598,26 +598,23 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         {"sync", 1}
     });
 
-    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
-    .Times(1);
-    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC))
+    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
     .WillOnce(testing::Invoke([](const std::string&,
                                  Operation,
                                  const std::string&,
                                  const std::string & data,
-                                 uint64_t)
+                                 uint64_t,
+                                 bool)
     {
         const auto payload = nlohmann::json::parse(data);
         EXPECT_EQ(payload["check"]["id"], "check-1");
         EXPECT_EQ(payload["check"]["result"], "Not applicable");
         EXPECT_EQ(payload["policy"]["id"], "policy-1");
     }));
-    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
-    .Times(0);
+    .WillOnce(testing::Return(SyncModuleResult{true}));
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
 
@@ -646,11 +643,11 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult{true}));
-    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
+    // After the first sync, periodic syncs call synchronizeModule() directly and never go
+    // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_))
     .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, testing::_, testing::_, testing::_, testing::_))
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
     .Times(0);
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));

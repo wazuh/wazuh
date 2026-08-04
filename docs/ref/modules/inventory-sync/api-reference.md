@@ -38,18 +38,14 @@ The FlatBuffer protocol accepted by Inventory Sync includes:
 
 - `Start`
 - `DataValue`
-- `DataBatch`
 - `DataContext`
 - `DataClean`
 - `ChecksumModule`
 - `End`
-- `ReqRet`
 
 Responses produced by the manager include:
 
-- `StartAck`
 - `EndAck`
-- `ReqRet`
 
 See the FlatBuffers page for the full schema details.
 

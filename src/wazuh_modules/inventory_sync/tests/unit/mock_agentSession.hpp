@@ -33,16 +33,6 @@ public:
     virtual ~MockResponseDispatcher() = default;
     MOCK_METHOD(
         void,
-        sendStartAck,
-        (Wazuh::SyncSchema::Status status, std::string_view agentId, uint64_t sessionId, std::string_view moduleName),
-        (const));
-    MOCK_CONST_METHOD4(sendEndMissingSeq,
-                       void(std::string_view agentId,
-                            uint64_t sessionId,
-                            std::string_view moduleName,
-                            const std::vector<std::pair<uint64_t, uint64_t>>& ranges));
-    MOCK_METHOD(
-        void,
         sendEndAck,
         (Wazuh::SyncSchema::Status status, std::string_view agentId, uint64_t sessionId, std::string_view moduleName),
         (const));

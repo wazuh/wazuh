@@ -9,8 +9,9 @@ FlatBuffers is a high-performance serialization library used throughout Wazuh fo
 The Inventory Sync module uses FlatBuffers as its primary communication protocol for synchronizing inventory data between agents and the manager. The protocol supports multiple synchronization modes:
 
 **Module Synchronization** (agent-side inventory modules):
-- `ModuleFull`: Complete inventory replacement for a module (syscollector, FIM, SCA)
-- `ModuleDelta`: Incremental updates for inventory changes
+- `ModuleDelta`: Incremental updates for inventory changes. A full-replace resync (e.g. after a
+  checksum mismatch) is a `DataClean` followed by an ordinary `ModuleDelta` sync of the fresh
+  snapshot — there is no separate full-replacement mode.
 - `ModuleCheck`: Integrity verification using checksums
 
 **Agent Context Synchronization** (agent-info module):
@@ -56,7 +57,7 @@ These schemas are compiled into C++ headers during the build process.
 
 ### `inventorySync.fbs` — Status Enum
 
-The `Status` enum is used in acknowledgment messages (`StartAck`, `EndAck`) to convey the outcome of a protocol phase:
+The `Status` enum is used in the `EndAck` acknowledgment message to convey the outcome of a protocol phase:
 
 | Value | Meaning |
 |-------|---------|

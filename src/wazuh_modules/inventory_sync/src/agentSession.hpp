@@ -88,6 +88,11 @@ class AgentSessionImpl final
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
     const LogFn& m_logFn;               ///< Log function for this session
+    // TODO(#38117): seq field removed from FlatBuffer schema on the agent side (agreed with server team);
+    // this manager-generated arrival-order counter is a temporary placeholder for GapSet completeness
+    // tracking. It does not detect out-of-order delivery or true retransmission the way the agent-supplied
+    // seq did - real support requires the FullSession-based redesign owned by the server team.
+    uint64_t m_seqCounter {0};
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
@@ -101,6 +106,11 @@ public:
         , m_logFn(logFn)
 
     {
+        // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
+        // acknowledges session establishment. responseDispatcher is kept as a constructor parameter
+        // for call-site compatibility (it's still used by handleEnd()) but unused here.
+        (void)responseDispatcher;
+
         if (data == nullptr)
         {
             throw AgentSessionException("Invalid data");
@@ -178,7 +188,14 @@ public:
             data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck &&
             data->mode() != Wazuh::SyncSchema::Mode_ModuleCheck)
         {
-            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
+            // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no
+            // longer acknowledges session establishment at all.
+            LOGFN_WARN(m_logFn,
+                       "Start: invalid size 0 for mode %d (agent '%.*s', module '%s'); rejecting session.",
+                       static_cast<int>(data->mode()),
+                       static_cast<int>(agentId.size()),
+                       agentId.data(),
+                       std::string(moduleName.data(), moduleName.size()).c_str());
             throw AgentSessionException("Invalid size");
         }
 
@@ -216,9 +233,6 @@ public:
                      m_context->sessionId,
                      m_context->clusterName.c_str(),
                      m_context->clusterNode.c_str());
-
-        responseDispatcher.sendStartAck(
-            Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -250,7 +264,8 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
         // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
         // use the manager-side sessionId as the storage key component instead.
         const auto session = m_context->sessionId;
@@ -278,7 +293,7 @@ public:
 
         // The validation of the sequence number against declared size is performed above, so if we reach this line
         // the observation should not throw, though if it does the data chunk is already stored.
-        m_gapSet->observe(data->seq());
+        m_gapSet->observe(seq);
 
         LOGFN_DEBUG2(m_logFn,
                      "Data received: %s %llu %llu %s",
@@ -373,7 +388,8 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
         // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
         // use the manager-side sessionId as the storage key component instead.
         const auto session = m_context->sessionId;
@@ -439,7 +455,8 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
         // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
         // use the manager-side sessionId as the storage key component instead.
         const auto session = m_context->sessionId;
@@ -503,9 +520,10 @@ public:
     /**
      * @brief Handles the end-of-transmission signal from the agent.
      *
-     * If all chunks were received, pushes the final acknowledgment. Otherwise, triggers missing range dispatch.
+     * If all chunks were received, pushes the final acknowledgment. Otherwise, the session
+     * is left incomplete and pending (see TODO below).
      *
-     * @param responseDispatcher Dispatcher used to report missing sequences (if any).
+     * @param responseDispatcher Dispatcher used to send the final acknowledgment.
      */
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
@@ -530,8 +548,18 @@ public:
         }
         else
         {
-            responseDispatcher.sendEndMissingSeq(
-                m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
+            // TODO(#38117): ReqRet (request-retransmission-of-missing-ranges) removed from the
+            // FlatBuffer schema/agent side - the agent no longer sends chunked DataBatch messages
+            // or handles a ReqRet reply at all, so this "missing sequences" case can no longer be
+            // resolved by asking the agent to resend. This whole chunked/GapSet completeness path
+            // is unreachable under the current one-shot FullSession model; the session is simply
+            // left incomplete/pending here until the server team's FullSession-based rewrite.
+            LOGFN_WARN(m_logFn,
+                       "End received with missing sequences for session %llu (agent '%s', module '%s'); "
+                       "session left incomplete.",
+                       m_context->sessionId,
+                       m_context->agentId.c_str(),
+                       m_context->moduleName.c_str());
         }
     }
 

@@ -82,9 +82,7 @@ To integrate the Agent Sync Protocol in your module:
 
 2. Create a protocol instance with your module name and database path
 
-3. Persist differences using:
-   - `persistDifference()` / `asp_persist_diff()` for database storage
-   - `persistDifferenceInMemory()` / `asp_persist_diff_in_memory()` for in-memory recovery
+3. Persist differences using `persistDifference()` / `asp_persist_diff()`
 
 4. Process manager responses with `parseResponseBuffer()` or `asp_parse_response_buffer()`
 
@@ -95,7 +93,9 @@ To integrate the Agent Sync Protocol in your module:
    - `synchronizeModule()` / `asp_sync_module()` for module data
    - `synchronizeMetadataOrGroups()` / `asp_sync_metadata_or_groups()` for metadata/groups
 
-7. Clean up in-memory data (if used):
-   - `clearInMemoryData()` / `asp_clear_in_memory_data()` before recovery
+7. For a full-replace resync (e.g. after a checksum mismatch), call `notifyDataClean()` /
+   `asp_notify_data_clean()` on the affected indices first, then re-persist the fresh snapshot
+   and synchronize with `Mode::DELTA` — there is no in-memory recovery API or `Mode::FULL`
+   anymore (see [Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta)).
 
 See the [Integration Guide](integration-guide.md) for detailed examples.
