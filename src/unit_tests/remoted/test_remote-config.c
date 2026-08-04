@@ -286,11 +286,12 @@ static void test_w_remoted_parse_agents_invalid_element(void **state) {
     os_free(node);
 }
 
-static void test_remoted_internal_options_config(void **state) {
-    (void) state;
-
-    // Set internal options with prime numbers using mocked getDefine_Int
-
+/* Mocks every internal option RemotedConfig reads, in order, ending with
+ * legacy_task_polling_interval returning `legacy_value` (after asserting the
+ * call site still passes min=300/max=86400/default=900). Shared by the main
+ * prime-number test and the dedicated legacy_task_polling_interval boundary
+ * test so the latter doesn't have to duplicate ~40 unrelated will_return calls. */
+static void mock_remoted_internal_options(int legacy_value) {
     // FIM limits
     will_return(__wrap_getDefine_Int_default, 1);
     will_return(__wrap_getDefine_Int_default, 1);
@@ -346,6 +347,10 @@ static void test_remoted_internal_options_config(void **state) {
     will_return(__wrap_getDefine_Int_default, 1031);   // queue_max_bytes (prime >= 1024 to pass validation)
     will_return(__wrap_getDefine_Int_default, 1033);   // batch_events_max_bytes (prime >= 1024 to pass validation)
     will_return(__wrap_getDefine_Int_default, 127);    // enrich_cache_expire_time
+    expect_value(__wrap_getDefine_Int_default, min, 300);
+    expect_value(__wrap_getDefine_Int_default, max, 86400);
+    expect_value(__wrap_getDefine_Int_default, default_val, 900);
+    will_return(__wrap_getDefine_Int_default, legacy_value); // legacy_task_polling_interval
 
     // Mock ReadConfig calls
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
@@ -359,6 +364,13 @@ static void test_remoted_internal_options_config(void **state) {
     // Mock get_node_name and get_cluster_name calls
     will_return(__wrap_get_node_name, NULL);
     will_return(__wrap_get_cluster_name, NULL);
+}
+
+static void test_remoted_internal_options_config(void **state) {
+    (void) state;
+
+    // Set internal options with prime numbers using mocked getDefine_Int
+    mock_remoted_internal_options(131); // legacy_task_polling_interval
 
     // Call RemotedConfig to load all internal options
     int ret = RemotedConfig("test_ossec.conf", &logr);
@@ -411,6 +423,33 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "queue_max_bytes")->valueint, 1031);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_max_bytes")->valueint, 1033);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "enrich_cache_expire_time")->valueint, 127);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 131);
+
+    cJSON_Delete(json);
+}
+
+/* Verifies config.c wires the 300/86400/900 (min/max/default) triple and that
+ * the floor (300) round-trips through getRemoteInternalConfig() -- not the
+ * real clamp/reject logic itself, which is generic shared code with no
+ * existing coverage anywhere in the repo. */
+static void test_remoted_legacy_task_polling_interval_bounds(void **state) {
+    (void) state;
+
+    mock_remoted_internal_options(300); // legacy_task_polling_interval floor
+
+    int ret = RemotedConfig("test_ossec.conf", &logr);
+    assert_int_equal(ret, 1);
+
+    cJSON *json = getRemoteInternalConfig();
+    assert_non_null(json);
+
+    cJSON *internal = cJSON_GetObjectItem(json, "internal");
+    assert_non_null(internal);
+
+    cJSON *remoted_obj = cJSON_GetObjectItem(internal, "remoted");
+    assert_non_null(remoted_obj);
+
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 300);
 
     cJSON_Delete(json);
 }
@@ -921,6 +960,7 @@ int main(void)
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_value),
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
         cmocka_unit_test(test_remoted_internal_options_config),
+        cmocka_unit_test(test_remoted_legacy_task_polling_interval_bounds),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_valid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_invalid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_connection_section, setup, teardown),
