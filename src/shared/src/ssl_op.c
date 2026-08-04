@@ -104,7 +104,8 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
     }
 
     if (auto_method) {
-        /* <ssl_auto_negotiate>yes</ssl_auto_negotiate>: allow legacy TLS 1.0/1.1 */
+        /* Only reachable via the agent's <enrollment><auto_method>yes</auto_method>;
+         * wazuh-authd always passes 0 and has no config option to override it. */
         SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
         SSL_CTX_set_security_level(ctx, 0);
     } else {

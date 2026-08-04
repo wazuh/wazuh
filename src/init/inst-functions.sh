@@ -72,12 +72,11 @@ DisableAuthd()
     echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
     echo "    <use_password>no</use_password>" >> $NEWCONFIG
-    echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
+    echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
     echo "    <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
     echo "    <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
-    echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
