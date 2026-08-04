@@ -10,7 +10,7 @@ The client module (`agentd`) manages the communication between Wazuh agents and 
 
 **Configuration file:** `/var/ossec/etc/ossec.conf`
 
-**XML Section:** `<client>`, `<anti_tampering>`
+**XML Section:** `<agent>`, `<anti_tampering>`
 
 ---
 
@@ -59,15 +59,15 @@ For complete configuration options, see:
 Quick configuration example:
 
 ```xml
-<client>
+<agent>
   <server>
     <address>manager.example.com</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
   </server>
   <config-profile>web-servers</config-profile>
   <auto_restart>yes</auto_restart>
-</client>
+</agent>
 
 <anti_tampering>
   <disabled>no</disabled>
@@ -168,7 +168,7 @@ tail -f /var/ossec/logs/ossec.log
 
 Common issues:
 - Incorrect manager address or port
-- Firewall blocking port 1514
+- Firewall blocking port 1517
 - Agent key not registered on manager
 - Manager not accepting connections (`remoted` not running)
 
