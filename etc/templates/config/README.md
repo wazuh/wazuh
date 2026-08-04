@@ -42,12 +42,13 @@
     header-comments.template
 
     <ossec_config>
-        <client>
+        <agent>
           <server>
             <address>192.168.10.100</address>
+            <port>1517</port>
           </server>
           <config-profile>distribution, distributionVersion</config-profile>
-        </client>
+        </agent>
 
         logging.template
 
