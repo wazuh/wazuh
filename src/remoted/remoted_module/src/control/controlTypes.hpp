@@ -82,7 +82,7 @@ namespace remoted::control
             return false;
         }
 
-        static const std::regex versionRegex(R"(^\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$)");
+        static const std::regex versionRegex(R"(^[vV]?\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$)");
         return std::regex_match(version, versionRegex);
     }
 
