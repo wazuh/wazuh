@@ -1153,72 +1153,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     agent_info_data *agent_data;
                     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-                    // Detect JSON format (5.0+ agent) vs text format (4.x agent)
-                    int result;
-                    char **groups = NULL;
-                    size_t groups_count = 0;
-                    char *cluster_name = NULL;
-                    char *cluster_node = NULL;
-
-                    if (tmp_msg[0] == '{') {
-                        // JSON keepalive from 5.0+ agent - extract groups and cluster info during parsing
-                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
-                        if (result == OS_SUCCESS) {
-                            mdebug2("Parsed JSON keepalive from agent %s", key->id);
-                        } else {
-                            mwarn("Failed to parse JSON keepalive from agent %s", key->id);
-                        }
-                    } else {
-                        // Text keepalive from 4.x agent
-                        result = parse_agent_update_msg(tmp_msg, agent_data);
-                    }
+                    // Text keepalive from 4.x agent
+                    int result = parse_agent_update_msg(tmp_msg, agent_data);
 
                     if (OS_SUCCESS == result) {
                         // Build metadata from parsed agent_info_data and upsert in the global map
                         agent_meta_t *fresh = agent_meta_from_agent_info(key->id, key->name, agent_data);
                         if (fresh) {
-                            // Add groups if available (5.0+ agents only)
-                            if (groups) {
-                                fresh->groups = groups;
-                                fresh->groups_count = groups_count;
-                                groups = NULL;  // Transfer ownership to fresh
-                            }
-                            // Add cluster info if available (5.0+ agents only)
-                            if (cluster_name) {
-                                fresh->cluster_name = cluster_name;
-                                cluster_name = NULL;  // Transfer ownership to fresh
-                            }
-                            if (cluster_node) {
-                                fresh->cluster_node = cluster_node;
-                                cluster_node = NULL;  // Transfer ownership to fresh
-                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
                                 mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
-                        } else {
-                            // Free groups if agent_meta creation failed
-                            if (groups) {
-                                for (size_t i = 0; i < groups_count; i++) {
-                                    os_free(groups[i]);
-                                }
-                                os_free(groups);
-                            }
-                            // Free cluster info if agent_meta creation failed
-                            os_free(cluster_name);
-                            os_free(cluster_node);
                         }
-                    } else {
-                        // Free groups if parsing failed
-                        if (groups) {
-                            for (size_t i = 0; i < groups_count; i++) {
-                                os_free(groups[i]);
-                            }
-                            os_free(groups);
-                        }
-                        // Free cluster info if parsing failed
-                        os_free(cluster_name);
-                        os_free(cluster_node);
                     }
 
                     wdb_free_agent_info_data(agent_data);
