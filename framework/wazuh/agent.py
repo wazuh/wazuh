@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
 import operator
 from os import chmod, path, listdir
 from typing import Union
@@ -20,6 +21,8 @@ from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy
 from wazuh.rbac.decorators import expose_resources, async_list_handler
+
+logger = logging.getLogger('wazuh')
 
 node_id = get_node().get('node')
 
@@ -1184,7 +1187,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731] + ERROR_CODES_UPGRADE_SOCKET})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
                    use_http: bool = False, package_type: str = None, file_path: str = None, installer: str = None,
                    filters: dict = None, q: str = None, request_time: int = None) -> AffectedItemsWazuhResult:
@@ -1233,32 +1236,51 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
     if agent_list:
         system_agents = get_agents_info()
+        logger.debug('upgrade_agents: requested %s out of %d agent(s) known in client.keys',
+                    sorted(agent_list), len(system_agents))
+
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
+        logger.debug('upgrade_agents: rbac filter resolved to rbac_ids=%s rbac_negate=%s',
+                    rbac_filters['filters'].get('rbac_ids'), rbac_filters.get('rbac_negate'))
 
         with WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
         filtered_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
-
+        logger.debug('upgrade_agents: agent DB query (query=%s) matched %d agent(s): %s',
+                    q, len(filtered_agents), sorted(filtered_agents))
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
+        if not_found_agents:
+            logger.warning('upgrade_agents: agent(s) not present in client.keys, excluded: %s',
+                           sorted(not_found_agents))
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
         # Add non eligible agents to failed_items (only if filters were specified, otherwise RBAC filtered)
         non_eligible_agents = agent_list - not_found_agents - filtered_agents
-        if filters or q:
-            [result.add_failed_item(id_=ag, error=WazuhError(
-                1731,
-                extra_message="some of the requirements are not met -> {}".format(
-                    ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                    (f', q: {q}' if q else '')
-                )
-            )) for ag in non_eligible_agents]
+        if non_eligible_agents:
+            if filters or q:
+                logger.warning('upgrade_agents: agent(s) excluded by filters=%s q=%s: %s',
+                               filters, q, sorted(non_eligible_agents))
+                [result.add_failed_item(id_=ag, error=WazuhError(
+                    1731,
+                    extra_message="some of the requirements are not met -> {}".format(
+                        ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                        (f', q: {q}' if q else '')
+                    )
+                )) for ag in non_eligible_agents]
+            else:
+                logger.warning('upgrade_agents: agent(s) exist in client.keys but were not returned by the '
+                               'agent DB query, with no explicit filter/q to explain why -- excluded from '
+                               'this response with no failed_item reported for them: %s',
+                               sorted(non_eligible_agents))
 
         eligible_agents = agent_list - not_found_agents - non_eligible_agents
+        logger.debug('upgrade_agents: %d agent(s) eligible for task creation: %s',
+                    len(eligible_agents), sorted(eligible_agents))
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
