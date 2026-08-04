@@ -136,6 +136,86 @@ static void test_authd_use_password_default(void **state) {
     os_free(local_config.manager_key);
 }
 
+static void test_authd_ciphers_default_is_tls13(void **state) {
+    authd_config_t local_config = {0};
+
+    assert_int_equal(Read_Authd(NULL, NULL, &local_config, NULL), 0);
+    assert_string_equal(local_config.ciphers, DEFAULT_CIPHERS);
+
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+// Test <ciphers> parsing/validation
+
+static void test_read_authd_ciphers_valid(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ciphers", node[0]->element);
+    os_strdup("TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256", node[0]->content);
+    node[1] = NULL;
+
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), 0);
+    assert_string_equal(local_config.ciphers, "TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256");
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+static void test_read_authd_ciphers_invalid(void **state) {
+    authd_config_t local_config = {0};
+
+    XML_NODE node;
+    os_calloc(2, sizeof(xml_node *), node);
+    os_calloc(1, sizeof(xml_node), node[0]);
+    os_strdup("ciphers", node[0]->element);
+    os_strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH", node[0]->content);
+    node[1] = NULL;
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite 'HIGH' in 'ciphers' option");
+    assert_int_equal(Read_Authd(NULL, node, &local_config, NULL), OS_INVALID);
+
+    os_free(node[0]->element);
+    os_free(node[0]->content);
+    os_free(node[0]);
+    os_free(node);
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
+// Test w_authd_validate_ciphers directly
+
+static void test_w_authd_validate_ciphers_single_valid(void **state) {
+    assert_int_equal(w_authd_validate_ciphers("TLS_AES_256_GCM_SHA384"), 0);
+}
+
+static void test_w_authd_validate_ciphers_multiple_valid(void **state) {
+    assert_int_equal(w_authd_validate_ciphers(DEFAULT_CIPHERS), 0);
+}
+
+static void test_w_authd_validate_ciphers_invalid_token(void **state) {
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite 'NOT_A_SUITE' in 'ciphers' option");
+    assert_int_equal(w_authd_validate_ciphers("TLS_AES_256_GCM_SHA384:NOT_A_SUITE"), OS_INVALID);
+}
+
+static void test_w_authd_validate_ciphers_empty(void **state) {
+    assert_int_equal(w_authd_validate_ciphers(""), OS_INVALID);
+}
+
+static void test_w_authd_validate_ciphers_null(void **state) {
+    assert_int_equal(w_authd_validate_ciphers(NULL), OS_INVALID);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -145,6 +225,14 @@ int main(void)
         cmocka_unit_test(test_w_authd_parse_agents_invalid_value),
         cmocka_unit_test(test_w_authd_parse_agents_invalid_element),
         cmocka_unit_test(test_authd_use_password_default),
+        cmocka_unit_test(test_authd_ciphers_default_is_tls13),
+        cmocka_unit_test(test_read_authd_ciphers_valid),
+        cmocka_unit_test(test_read_authd_ciphers_invalid),
+        cmocka_unit_test(test_w_authd_validate_ciphers_single_valid),
+        cmocka_unit_test(test_w_authd_validate_ciphers_multiple_valid),
+        cmocka_unit_test(test_w_authd_validate_ciphers_invalid_token),
+        cmocka_unit_test(test_w_authd_validate_ciphers_empty),
+        cmocka_unit_test(test_w_authd_validate_ciphers_null),
 
     };
 
