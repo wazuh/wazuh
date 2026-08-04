@@ -108,10 +108,12 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
         SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
         SSL_CTX_set_security_level(ctx, 0);
     } else {
-        SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
+        SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
     }
 
-    if (!(SSL_CTX_set_cipher_list(ctx, ciphers))) {
+    if (!(SSL_CTX_set_ciphersuites(ctx, ciphers))) {
+        merror("Invalid TLS 1.3 cipher suite list: '%s'", ciphers);
+        ERR_print_errors_fp(stderr);
         goto CONTEXT_ERR;
     }
 

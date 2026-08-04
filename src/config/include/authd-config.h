@@ -69,4 +69,13 @@ typedef struct authd_config_t {
  */
 int get_time_interval(char *source, time_t *interval);
 
+/**
+ * @brief Validates that a colon-separated string only contains TLS 1.3 ciphersuite names
+ *        accepted by SSL_CTX_set_ciphersuites().
+ *
+ * @param ciphers Colon-separated list of TLS 1.3 ciphersuite names.
+ * @retval OS_INVALID if any token is not a recognized TLS 1.3 ciphersuite name. 0 otherwise.
+ */
+int w_authd_validate_ciphers(const char *ciphers);
+
 #endif

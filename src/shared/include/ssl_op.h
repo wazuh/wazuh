@@ -32,7 +32,8 @@
 
 #define KEYFILE             "etc/sslmanager.key"
 #define CERTFILE            "etc/sslmanager.cert"
-#define DEFAULT_CIPHERS     "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+/* TLS 1.3 ciphersuite names (SSL_CTX_set_ciphersuites), not a legacy OpenSSL cipher list */
+#define DEFAULT_CIPHERS     "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #define MAX_SSL_PACKET_SIZE 16384
 
 SSL_CTX* os_ssl_keys(int is_server,
