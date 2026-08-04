@@ -115,6 +115,15 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUn
 list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
 
+list(APPEND remoted_names "test_legacy_task_delivery")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getpid \
+                           ${STDIO_OP_WRAPPERS} -Wl,--wrap,popen \
+                           -Wl,--wrap,wfopen -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
+                           -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,agent_meta_snapshot_str \
+                           -Wl,--wrap,req_send_and_wait -Wl,--wrap,key_lock_read -Wl,--wrap,key_unlock \
+                           -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
+                           -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
+
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
