@@ -52,6 +52,20 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
 int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task)  __attribute__((nonnull(4)));
 
 /**
+ * Extract the target version token from a canonical WPK filename of the form
+ * "wazuh_agent_v<VERSION>_<rest>.wpk", prefixed with 'v' for direct use with
+ * compare_wazuh_versions(). Shared with wm_agent_upgrade_commands.c's
+ * verification_mode/force gate, which needs the same resolved target
+ * version this function already computes for the intermediate-version check.
+ * @param file_path Full path or basename of the WPK file.
+ * @param out Output buffer for the version token (e.g. "v5.0.0").
+ * @param out_size Capacity of out.
+ * @return true if a version token was found, false if the filename does not
+ * follow the canonical pattern (renamed file, missing tokens, etc.).
+ */
+bool wm_agent_upgrade_parse_wpk_custom_version(const char *file_path, char *out, size_t out_size);
+
+/**
  * Translate architecture based on platform and package type if necessary
  * @param platform Agent platform
  * @param package_type Package type
