@@ -376,10 +376,29 @@ void SecurityConfigurationAssessment::releaseResources()
 
     std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
 
+    // Release the sync manager first: it was constructed with a copy of m_dBSync (see the
+    // constructor), so it co-owns the DBSync handle. Resetting m_dBSync alone leaves that copy
+    // alive, ~SQLiteDBEngine never runs, and the standing write transaction on sca.db is never
+    // committed nor the connection closed -- so the file stays locked until the OS tears the
+    // process down and the next agent process fails with "database is locked" (issue #38069).
+    m_syncManager.reset();
+
     // Explicitly release DBSync before static destruction to avoid use-after-free
     // during shutdown when DBSyncImplementation singleton may be destroyed first.
+    // This must drop the last reference, otherwise the database is not closed here: every
+    // member holding a copy of m_dBSync has to be reset above (see releaseResources() in the
+    // header). It cannot be left to ~SecurityConfigurationAssessment, which never runs because
+    // SCA::~SCA releases the impl to avoid teardown races at process exit.
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
+    if (m_dBSync && m_dBSync.use_count() > 1)
+    {
+        LoggingHelper::getInstance().log(
+            LOG_WARNING,
+            "SCA database is still referenced by " + std::to_string(m_dBSync.use_count() - 1) +
+            " other owner(s); it will not be closed until the process exits.");
+    }
+
     m_dBSync.reset();
 
     // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
@@ -389,7 +408,9 @@ void SecurityConfigurationAssessment::releaseResources()
     // thread and the SCA run loop have already exited (see wm_sca_start teardown),
     // mirroring Syscollector::releaseResources(); the entry points still reachable from
     // other threads (wcom queries and sync responses, agent-info's in-process
-    // coordination queries) are excluded by the lock, which they take shared.
+    // coordination queries) are excluded by the lock, which they take shared -- except
+    // setSyncLimit(), which takes no lock because it runs on the module thread before the
+    // run loop starts (its only caller is wm_sca_start).
     m_spSyncProtocol.reset();
 }
 

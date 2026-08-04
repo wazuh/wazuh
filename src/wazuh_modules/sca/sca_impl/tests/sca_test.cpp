@@ -778,3 +778,74 @@ TEST_F(ScaTest, ExecuteFlushSync_GenuineFailureKeepsError)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("deferred")));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("times in a row")));
 }
+
+// releaseResources() must drop *every* owner of the DBSync handle held by the module, not just
+// m_dBSync: SCASyncManager is constructed with a copy of it, so a reset that misses the manager
+// leaves the refcount above zero, ~SQLiteDBEngine never runs and sca.db stays locked.
+// The module instance is deliberately kept alive across the assertion because in production it is
+// never destroyed (SCA::~SCA releases it), so releaseResources() is the only thing that can close
+// the database.
+TEST_F(ScaTest, ReleaseResources_DropsEveryDbSyncOwner)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    const std::weak_ptr<IDBSync> dbSyncWatcher = mockDBSync;
+
+    SCAMock scaMock(mockDBSync, nullptr);
+    mockDBSync.reset();
+
+    ASSERT_FALSE(dbSyncWatcher.expired());
+
+    scaMock.releaseResources();
+
+    EXPECT_TRUE(dbSyncWatcher.expired());
+}
+
+// End-to-end form of the same bug, asserting on the symptom reported in #38069: DBSync writes go
+// into a long-lived transaction that only ~SQLiteDBEngine commits, so while any owner survives the
+// database file stays under a RESERVED lock and the next connection fails with
+// "sqlite: database is locked" -- which on Windows is the incoming agent process after a WPK upgrade.
+TEST_F(ScaTest, ReleaseResources_ReleasesSqliteWriteLock)
+{
+    const auto dbPath = makeTempPath();
+    auto dbSync = std::make_shared<DBSync>(
+                      HostType::AGENT,
+                      DbEngineType::SQLITE3,
+                      dbPath,
+                      kCreateStatement,
+                      DbManagement::PERSISTENT);
+
+    SCAMock scaMock(dbSync, nullptr);
+
+    // Writing inside DBSync's standing transaction takes the RESERVED lock on the database file.
+    insertRow(dbSync, "sca_policy",
+    {
+        {"id", "policy-1"},
+        {"name", "Policy 1"},
+        {"file", "policy.yml"},
+        {"description", "Policy description"},
+        {"refs", "https://example.com"}
+    });
+
+    dbSync.reset();
+    scaMock.releaseResources();
+
+    // A second connection stands in for the incoming agent process: it must be able to open the
+    // database and write to it immediately.
+    std::shared_ptr<DBSync> reopened;
+    ASSERT_NO_THROW(reopened = std::make_shared<DBSync>(
+                                   HostType::AGENT,
+                                   DbEngineType::SQLITE3,
+                                   dbPath,
+                                   kCreateStatement,
+                                   DbManagement::PERSISTENT));
+    EXPECT_NO_THROW(insertRow(reopened, "sca_policy",
+    {
+        {"id", "policy-2"},
+        {"name", "Policy 2"},
+        {"file", "policy2.yml"},
+        {"description", "Policy description"},
+        {"refs", "https://example.com"}
+    }));
+
+    reopened->closeAndDeleteDatabase();
+}
