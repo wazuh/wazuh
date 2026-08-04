@@ -110,6 +110,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// Fixed; the HTTP-level retry count lives in the transport layer.
         static constexpr unsigned int SYNC_HANDOFF_RETRIES = 3;
 
+        /// @brief Total attempts for a module integrity check (requiresFullSync()) before
+        ///        trusting a checksum mismatch (409) as genuine.
+        ///
+        /// A bulk write to the indexer may not be visible yet when the manager checks it,
+        /// which used to make the manager retry internally against the indexer up to 5
+        /// times before answering. That loop moved here (2026-08-04, #38117/#38128) so the
+        /// manager stops holding the connection for the whole retry budget: on a 409 the
+        /// agent itself re-sends the same integrity check, spaced by CHECKSUM_RETRY_DELAY,
+        /// and only reports a real mismatch once every attempt in this budget agrees.
+        static constexpr unsigned int CHECKSUM_MISMATCH_MAX_ATTEMPTS = 5;
+
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
         /// @param stopped Whether it was aborted because a stop was requested.
@@ -124,7 +135,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///        to end.
         /// @param builder Builder to emit the table into.
         /// @param mode Sync mode
-        /// @param dataSize Size of data to send
         /// @param uniqueIndices Vector of unique indices to be synchronized
         /// @param option Synchronization option.
         /// @param globalVersion Optional global version to include in the Start message
@@ -133,7 +143,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         flatbuffers::Offset<Wazuh::SyncSchema::Start> waitMetadataAndBuildStart(
             flatbuffers::FlatBufferBuilder& builder,
             Mode mode,
-            size_t dataSize,
             const std::vector<std::string>& uniqueIndices,
             Option option = Option::SYNC,
             std::optional<uint64_t> globalVersion = std::nullopt);
@@ -148,8 +157,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Everything a session carries. All four flows (module sync,
         ///        metadata/groups, integrity check, data clean) differ only in
         ///        which of these are populated, so they all go through
-        ///        runSession() and produce one FullSession message. The size
-        ///        announced in Start is derived from the item vectors.
+        ///        runSession() and produce one FullSession message.
         struct SessionContent
         {
             Mode mode {Mode::DELTA};
