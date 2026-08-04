@@ -130,7 +130,10 @@ void HttpsClientFacade::startSyncIntake()
             // reaches this agent through on_sync_response.
             LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.",
                        sessionId.c_str());
-            m_dispatcher.onSyncResponse(sessionId, HC_RESULT_BACKPRESSURE, "");
+            // 503: the manager-not-ready code the sync protocol already knows how to
+            // handle (retry next cycle) - this is local backpressure, never a real HTTP
+            // response, but the semantics match.
+            m_dispatcher.onSyncResponse(sessionId, 503, "");
             return false;
         }
 

@@ -53,7 +53,7 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @return SyncModuleResult_t with success flag and an optional failure reason string.
 SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
-                     Mode_t mode);
+                                   Mode_t mode);
 
 /// @brief Checks if a module index requires full synchronization.
 ///

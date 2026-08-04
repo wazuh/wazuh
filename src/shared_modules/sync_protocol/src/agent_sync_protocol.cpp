@@ -48,6 +48,10 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.";
             break;
 
+        case SyncResult::PAYLOAD_TOO_LARGE:
+            failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
+            break;
+
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
 
         default:
@@ -743,9 +747,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
             hasChecksum = true;
         }
 
-        Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        const auto endOffset = endBuilder.Finish();
-
         // A session carries exactly one of these: a data sync (values and/or
         // contexts), a clean notification, or a checksum check - never a mix,
         // so the three go through one union instead of three optional fields.
@@ -785,7 +786,6 @@ std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionCon
             fullSessionBuilder.add_payload(payloadOffset);
         }
 
-        fullSessionBuilder.add_end(endOffset);
         const auto fullSessionOffset = fullSessionBuilder.Finish();
 
         auto message = Wazuh::SyncSchema::CreateMessage(
@@ -812,8 +812,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
         m_syncState.phase = SyncPhase::WaitingResponse;
         m_syncState.responseReceived = false;
         m_syncState.syncFailed = false;
-        m_syncState.expectingChecksumResult = !content.checksums.empty();
-        // Record the session ID so applyHttpResultCode() can reject stale HCRESULT
+        // Record the session ID so applyHttpResult() can reject stale HCRESULT
         // callbacks that arrive after a timeout and a subsequent session start.
         m_syncState.currentSession = session;
     }
@@ -908,97 +907,35 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
 
     try
     {
-        if (length >= HTTP_RESULT_PREFIX.size() &&
-                std::memcmp(data, HTTP_RESULT_PREFIX.data(), HTTP_RESULT_PREFIX.size()) == 0)
+        // Every sync outcome (success or failure) arrives this way now - there is no
+        // FlatBuffer response message anymore (no EndAck, no per-item acks): the manager
+        // answers a /stateful session with a single HTTP response, routed here as
+        // "HCRESULT:<session>:<http_code>:<body>". The body is the manager's raw JSON
+        // response (may be empty) and may itself contain colons, so only the first two
+        // colons are parsed as delimiters.
+        if (length < HTTP_RESULT_PREFIX.size() ||
+                std::memcmp(data, HTTP_RESULT_PREFIX.data(), HTTP_RESULT_PREFIX.size()) != 0)
         {
-            // HCRESULT format: "HCRESULT:<session>:<code>" (new, session-correlated)
-            //               or "HCRESULT:<code>"           (legacy, no session check)
-            const std::string remainder(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
-                                        length - HTTP_RESULT_PREFIX.size());
-            const auto colon = remainder.find(':');
-
-            if (colon != std::string::npos)
-            {
-                const uint64_t receivedSession = std::stoull(remainder.substr(0, colon));
-                const int resultCode = std::stoi(remainder.substr(colon + 1));
-                return applyHttpResultCode(resultCode, receivedSession);
-            }
-
-            // Legacy format (no session number) — skip correlation check.
-            const int resultCode = std::stoi(remainder);
-            return applyHttpResultCode(resultCode, 0);
-        }
-
-        flatbuffers::Verifier verifier(data, length);
-
-        if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
-        {
-            m_logger(LOG_ERROR, "Invalid FlatBuffer message");
+            m_logger(LOG_ERROR, "Response buffer is not an HCRESULT payload.");
             return false;
         }
 
-        const auto* message = Wazuh::SyncSchema::GetMessage(data);
-        const auto messageType = message->content_type();
+        const std::string remainder(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
+                                    length - HTTP_RESULT_PREFIX.size());
+        const auto firstColon = remainder.find(':');
+        const auto secondColon =
+            (firstColon == std::string::npos) ? std::string::npos : remainder.find(':', firstColon + 1);
 
-        std::unique_lock<std::mutex> lock(m_syncState.mtx);
-
-        switch (messageType)
+        if (firstColon == std::string::npos || secondColon == std::string::npos)
         {
-            case Wazuh::SyncSchema::MessageType::EndAck:
-                {
-                    const auto* endAck = message->content_as_EndAck();
-
-                    if (m_syncState.phase != SyncPhase::WaitingResponse)
-                    {
-                        m_logger(LOG_DEBUG, "Discarded response: protocol is not waiting for a sync answer.");
-                        return true;
-                    }
-
-                    if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
-                            endAck->status() == Wazuh::SyncSchema::Status::Offline ||
-                            endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
-                    {
-                        // Store the specific error type for detailed reporting
-                        if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                            // The manager reports it cannot serve this agent: same condition as the
-                            // manager reporting it cannot serve this agent yet.
-                            m_syncState.lastSyncManagerNotReady = true;
-                            m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
-                        }
-                        else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
-                            m_logger(LOG_DEBUG, "Checksum mismatch detected by manager, full resync will be triggered.");
-                        }
-                        else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
-                            m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
-                        }
-
-                        m_syncState.syncFailed = true;
-                        m_syncState.cv.notify_all();
-                        break;
-                    }
-
-                    m_syncState.lastSyncResult = SyncResult::SUCCESS;
-                    m_syncState.responseReceived = true;
-                    m_syncState.cv.notify_all();
-
-                    m_logger(LOG_DEBUG, "Sync response received with success status.");
-                    break;
-                }
-
-            default:
-                {
-                    m_logger(LOG_DEBUG, "Unknown message type: " + std::to_string(static_cast<int>(messageType)));
-                    return false;
-                }
+            m_logger(LOG_ERROR, "Malformed HCRESULT payload.");
+            return false;
         }
 
-        return true;
+        const uint64_t receivedSession = std::stoull(remainder.substr(0, firstColon));
+        const int httpCode = std::stoi(remainder.substr(firstColon + 1, secondColon - firstColon - 1));
+        const std::string_view body(remainder.data() + secondColon + 1, remainder.size() - secondColon - 1);
+        return applyHttpResult(httpCode, body, receivedSession);
     }
     catch (const std::exception& e)
     {
@@ -1007,14 +944,17 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 }
 
-bool AgentSyncProtocol::applyHttpResultCode(int resultCode, uint64_t expectedSession)
+bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)
 {
     std::lock_guard<std::mutex> lock(m_syncState.mtx);
 
+    // A response that no longer applies (nothing in flight, or it belongs to a
+    // previous/timed-out session) is an expected race, not a parse failure: return
+    // true so the C-level receiver (wm_sca.c et al.) does not log it as an error.
     if (m_syncState.phase != SyncPhase::WaitingResponse)
     {
         m_logger(LOG_DEBUG, "Discarded response code: protocol is not waiting for a sync answer.");
-        return false;
+        return true;
     }
 
     // Transport-level session correlation: reject responses that belong to a
@@ -1028,26 +968,54 @@ bool AgentSyncProtocol::applyHttpResultCode(int resultCode, uint64_t expectedSes
                  std::to_string(expectedSession) +
                  " does not match current session " +
                  std::to_string(m_syncState.currentSession) + ".");
-        return false;
+        return true;
     }
 
-    if (resultCode == 0)
+    // The HTTP status code alone fully determines the outcome; the body (already
+    // valid JSON text from the manager) is only ever used here for logging context.
+    if (httpCode == 200)
     {
         m_syncState.lastSyncResult = SyncResult::SUCCESS;
         m_syncState.responseReceived = true;
         m_syncState.cv.notify_all();
+        m_logger(LOG_DEBUG, "Sync response received with success status: " + std::string(body));
         return true;
     }
 
     m_syncState.syncFailed = true;
 
-    if (m_syncState.expectingChecksumResult)
+    switch (httpCode)
     {
-        m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
-    }
-    else
-    {
-        m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
+        case 409: // checksum_mismatch: full resync will be triggered by the caller.
+            m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+            m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
+            break;
+
+        case 413: // Session larger than the manager's total in-flight budget; must be split.
+            m_syncState.lastSyncResult = SyncResult::PAYLOAD_TOO_LARGE;
+            m_logger(LOG_WARNING, "Session rejected as too large by the manager (413): " + std::string(body));
+            break;
+
+        case 503: // Manager not ready (indexer down, at capacity, shutting down, or a VD
+            // feed still downloading): retried on the next cycle either way.
+            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
+            m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
+            break;
+
+        case 0: // No HTTP response at all (timeout/connect/TLS failure/abort).
+            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
+            m_logger(LOG_DEBUG, "No HTTP response received for the sync session.");
+            break;
+
+        default: // 400/403/500 and anything else: a protocol-level failure the caller
+            // does not blindly retry with identical bytes.
+            m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
+            m_logger(LOG_DEBUG,
+                     "Manager reported a protocol error (" + std::to_string(httpCode) + "): " +
+                     std::string(body));
+            break;
     }
 
     m_syncState.cv.notify_all();

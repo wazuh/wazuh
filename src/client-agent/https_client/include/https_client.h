@@ -77,8 +77,11 @@ typedef enum hc_buffer_level_t
     HC_BUFFER_FLOOD
 } hc_buffer_level_t;
 
-/* Outcome classes of a request/submission (D9 classification). Crosses the
- * ABI in the on_sync_response callback. */
+/* Outcome classes of a request/submission (D9 classification), part of the
+ * stable ABI surface. on_sync_response no longer carries this type (see its
+ * own doc comment): the /stateful contract needs the real HTTP status code,
+ * not this coarser classification, so retry/backoff decisions inside the
+ * transport layer use the internal (C++-only) OutcomeClass instead. */
 typedef enum hc_result_t
 {
     HC_RESULT_OK = 0,
@@ -243,8 +246,15 @@ typedef struct hc_callbacks_t
     /// agent's startup hash gate) can reconcile it even when nothing needs
     /// downloading. Empty when the manager reported none.
     void (*on_manager_config_hash)(const char* config_hash, void* user_data);
-    /// The HTTP outcome for a /stateful session. `result` carries the verdict
-    /// (200 path => HC_RESULT_OK, non-200 path => non-zero). `body` may be empty.
+    /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
+    /// header, `result` here is the RAW HTTP status code the manager answered with
+    /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful
+    /// contract's numeric-code meanings are its own (a 409 means checksum mismatch,
+    /// not the version-rejection a control-plane 409 would mean) and are interpreted
+    /// by the sync protocol module, not by this transport layer. `result == 0` means
+    /// no HTTP response was received at all (timeout/connect/TLS failure/abort);
+    /// treat it like a 503. `body` carries the raw JSON response body and may be
+    /// empty.
     void (*on_sync_response)(const char* session_id, int result, const char* body,
                              size_t body_len, void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
