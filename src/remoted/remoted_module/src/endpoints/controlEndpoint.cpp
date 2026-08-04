@@ -11,7 +11,9 @@
 
 #include "controlEndpoint.hpp"
 
+#include "common/logThrottle.hpp"
 #include "control/controlTypes.hpp" // AgentId, StartupData, NotifyData, ShutdownData, HostInfo, HttpResponse
+#include "loggerHelper.h"
 
 #include "json.hpp"
 #include <charconv>
@@ -23,6 +25,43 @@ namespace remoted::endpoints::control
 {
     namespace
     {
+        constexpr auto CONTROL_ENDPOINT_LOGTAG {"wazuh-manager-remoted:control-endpoint"};
+
+        // One shared instance to avoid heap allocations per log call (LogFn holds a std::string
+        // and this tag is past the SSO threshold). Kept in .cpp to avoid pulling loggerHelper.h
+        // into the header (see auth/keystore.cpp for the reason).
+        const LogFn& logFn()
+        {
+            static const LogFn instance {CONTROL_ENDPOINT_LOGTAG};
+            return instance;
+        }
+
+        // Throttles for recurring errors to avoid log flooding. Each condition gets its own throttle
+        // so different error types can be reported independently.
+        remoted::common::LogThrottle& invalidBodyThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& invalidJsonThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& invalidAgentIdThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& unknownTypeThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
         // Cap on the /control JSON body actually parsed. The transport already
         // enforces a hard body cap; this is a second, endpoint-local guard so a
         // pathological JSON blob (still under the transport cap) can't cost
@@ -115,6 +154,16 @@ namespace remoted::endpoints::control
             const auto body = authReq->payload.bytes();
             if (body.empty() || body.size() > kMaxControlBodySize)
             {
+                // Throttle to avoid flooding on repeated malformed requests
+                if (const auto throttle = invalidBodyThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Invalid /control body size (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               static_cast<int>(authReq->agentId.size()),
+                               authReq->agentId.data(),
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 responder->send(errorJson(400, "invalid_body"));
                 return;
             }
@@ -125,6 +174,15 @@ namespace remoted::endpoints::control
             nlohmann::json j = nlohmann::json::parse(body.data(), body.data() + body.size(), nullptr, false);
             if (j.is_discarded() || !j.is_object())
             {
+                if (const auto throttle = invalidJsonThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Invalid /control JSON (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               static_cast<int>(authReq->agentId.size()),
+                               authReq->agentId.data(),
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 responder->send(errorJson(400, "invalid_json"));
                 return;
             }
@@ -132,6 +190,16 @@ namespace remoted::endpoints::control
             remoted::control::AgentId id = 0;
             if (!parseAgentId(authReq->agentId, id))
             {
+                if (const auto throttle = invalidAgentIdThrottle().record())
+                {
+                    LOGFN_WARN(
+                        logFn(),
+                        "Invalid agent ID in /control request (%.*s): rejected %llu request(s) in the last %d s.",
+                        static_cast<int>(authReq->agentId.size()),
+                        authReq->agentId.data(),
+                        throttle.total,
+                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 responder->send(errorJson(400, "invalid_agent_id"));
                 return;
             }
@@ -141,19 +209,33 @@ namespace remoted::endpoints::control
             {
                 remoted::control::StartupData data;
                 data.version = readString(j, "version");
+                LOGFN_DEBUG1(logFn(), "Agent %u: /control startup (version=%s).", id, data.version.c_str());
                 handler.handleStartup(id, data, bridgeToResponder(std::move(responder)));
             }
             else if (type == "notify")
             {
                 remoted::control::NotifyData data = parseNotify(j);
+                // DEBUG2 because notify is the hot path (periodic keepalives)
+                LOGFN_DEBUG2(logFn(), "Agent %u: /control notify.", id);
                 handler.handleNotify(id, data, bridgeToResponder(std::move(responder)));
             }
             else if (type == "shutdown")
             {
+                LOGFN_DEBUG1(logFn(), "Agent %u: /control shutdown.", id);
                 handler.handleShutdown(id, remoted::control::ShutdownData {}, bridgeToResponder(std::move(responder)));
             }
             else
             {
+                if (const auto throttle = unknownTypeThrottle().record())
+                {
+                    LOGFN_WARN(
+                        logFn(),
+                        "Unknown /control message type '%s' (agent %u): rejected %llu request(s) in the last %d s.",
+                        type.c_str(),
+                        id,
+                        throttle.total,
+                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 responder->send(errorJson(400, "unknown_message_type"));
             }
         };
