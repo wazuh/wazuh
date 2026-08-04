@@ -100,56 +100,37 @@ STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attrib
  * @return true if confirmed < v5.0.0, false if unknown or >= v5.0.0.
  */
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) {
-    agent_meta_t snap = {0};
     char *version = NULL;
+    agent_version_check_t result = agent_meta_check_version(agent_id, LEGACY_TASK_MIN_HTTPS_VERSION, &version);
 
-    if (agent_meta_snapshot_str(agent_id, &snap) == 0 && snap.agent_version && *snap.agent_version) {
-        os_strdup(snap.agent_version, version);
-    }
-    agent_meta_clear(&snap);
+    switch (result) {
+        case AGENT_VERSION_CHECK_UNKNOWN:
+            mdebug1("legacy_task_delivery: agent '%s' has no known version, skipping this cycle "
+                    "(leaving any pending tasks for the HTTPS control endpoint)", agent_id);
+            return false;
 
-    if (!version) {
-        cJSON *agent_info = wdb_get_agent_info(atoi(agent_id), NULL);
+        case AGENT_VERSION_CHECK_UNPARSEABLE:
+            mdebug1("legacy_task_delivery: agent '%s' reported an unparseable version '%s', skipping", agent_id, version);
+            os_free(version);
+            return false;
 
-        if (agent_info && agent_info->child) {
-            cJSON *version_obj = cJSON_GetObjectItem(agent_info->child, "version");
+        case AGENT_VERSION_CHECK_GE_MIN: {
+            char *version_ptr = strchr(version, 'v');
+            mdebug2("legacy_task_delivery: agent '%s' is on '%s' (>= %s), skipping",
+                    agent_id, version_ptr ? version_ptr : version, LEGACY_TASK_MIN_HTTPS_VERSION);
+            os_free(version);
+            return false;
+        }
 
-            if (cJSON_IsString(version_obj) && version_obj->valuestring && *version_obj->valuestring) {
-                os_strdup(version_obj->valuestring, version);
+        case AGENT_VERSION_CHECK_LT_MIN:
+        default:
+            if (out_version) {
+                *out_version = version;
+            } else {
+                os_free(version);
             }
-        }
-
-        if (agent_info) {
-            cJSON_Delete(agent_info);
-        }
+            return true;
     }
-
-    if (!version) {
-        mdebug1("legacy_task_delivery: agent '%s' has no known version, skipping this cycle "
-                "(leaving any pending tasks for the HTTPS control endpoint)", agent_id);
-        return false;
-    }
-
-    char *version_ptr = strchr(version, 'v');
-    if (!version_ptr) {
-        mdebug1("legacy_task_delivery: agent '%s' reported an unparseable version '%s', skipping", agent_id, version);
-        os_free(version);
-        return false;
-    }
-
-    if (compare_wazuh_versions(version_ptr, LEGACY_TASK_MIN_HTTPS_VERSION, true) >= 0) {
-        mdebug2("legacy_task_delivery: agent '%s' is on '%s' (>= %s), skipping", agent_id, version_ptr, LEGACY_TASK_MIN_HTTPS_VERSION);
-        os_free(version);
-        return false;
-    }
-
-    if (out_version) {
-        *out_version = version;
-    } else {
-        os_free(version);
-    }
-
-    return true;
 }
 
 /**

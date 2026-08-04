@@ -5,6 +5,7 @@
 from wazuh.core import common
 from wazuh.core import exception
 from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
+from wazuh.core.utils import WazuhVersion
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.engine_http import EngineHTTPClient
 from wazuh.core.exception import WazuhException
@@ -46,8 +47,11 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
             system_agents = get_agents_info()
             rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
-            with WazuhDBQueryAgents(limit=None, select=["id"], **rbac_filters) as db_query:
+            with WazuhDBQueryAgents(limit=None, select=["id", "version"], **rbac_filters) as db_query:
                 data = db_query.run()
+
+            # Convert list of dictionaries to dictionary: agent id -> version
+            agent_versions = {agent['id']: agent.get('version') for agent in data['items']}
 
             agent_list = set(agent_list)
 
@@ -58,6 +62,17 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
             # HTTPS: No status filtering needed, get stats regardless of connection state
             eligible_agents = agent_list - not_found_agents
+
+            # getstats has no legacy relay for agents below v5.0.0.
+            # Same shape restart/reload's own gate already uses (agent.py:245,357).
+            queryable_agents = set()
+            for agent_id in eligible_agents:
+                version = agent_versions.get(agent_id)
+                if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+                    result.add_failed_item(id_=agent_id, error=exception.WazuhError(1762))
+                    continue
+                queryable_agents.add(agent_id)
+            eligible_agents = queryable_agents
 
             # Transform the format of the agent ids to the general format
             eligible_agents = [int(agent) for agent in eligible_agents]
