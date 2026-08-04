@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added a minimum length check for legacy-format agent messages in `wazuh-remoted`. ([#38099](https://github.com/wazuh/wazuh/pull/38099))
 - Fixed a spurious `StarletteDeprecationWarning` printed by `agent_upgrade` at startup. ([#38085](https://github.com/wazuh/wazuh/pull/38085))
 - Fixed the API login attempt limit not being applied consistently under concurrent requests. ([#38135](https://github.com/wazuh/wazuh/pull/38135))
+- Fixed a heap buffer write in `wazuh-analysisd` when generating FIM alerts by resizing `full_log` before writing. ([#38145](https://github.com/wazuh/wazuh/pull/38145))
 
 ### Agent
 

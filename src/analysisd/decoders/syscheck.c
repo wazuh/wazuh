@@ -1677,6 +1677,11 @@ static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON 
         }
     }
 
+    /* full_log was sized from the input length in cleanevent.c; resize it to the
+     * OS_MAXSTR bound used below before writing the generated alert. */
+    os_realloc(lf->full_log, OS_MAXSTR, lf->full_log);
+    lf->log = lf->full_log;
+
     snprintf(lf->full_log, OS_MAXSTR,
             "%s '%s' %s\n"
             "%s"
