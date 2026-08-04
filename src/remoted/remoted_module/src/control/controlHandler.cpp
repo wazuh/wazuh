@@ -10,7 +10,9 @@
  */
 
 #include "controlHandler.hpp"
+#include "common/logThrottle.hpp"
 #include "json.hpp"
+#include "loggerHelper.h"
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -25,6 +27,34 @@ namespace remoted::control
 {
     namespace
     {
+        constexpr auto CONTROL_HANDLER_LOGTAG {"wazuh-manager-remoted:control-handler"};
+
+        // One shared LogFn instance to avoid heap allocations per log call.
+        // Kept in .cpp to avoid pulling loggerHelper.h into header.
+        const LogFn& logFn()
+        {
+            static const LogFn instance {CONTROL_HANDLER_LOGTAG};
+            return instance;
+        }
+
+        // Throttles for error conditions that could flood logs
+        remoted::common::LogThrottle& versionRejectionThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& wdbErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& invalidHostInfoThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
         // Wall-clock seconds for timestamps that must be comparable across nodes.
         uint64_t getWallSec()
         {
@@ -146,6 +176,20 @@ namespace remoted::control
 
             if (versionInvalid)
             {
+                // Throttle version rejections: bursts of incompatible-version agents shouldn't flood logs
+                if (const auto throttle = versionRejectionThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Agent %u rejected for invalid version '%s' (manager=%s, allow_higher=%d): %llu "
+                               "rejection(s) in the last %d s.",
+                               id,
+                               data.version.c_str(),
+                               m_config.managerVersion.c_str(),
+                               m_config.allowHigherVersions,
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
+
                 const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
                 m_wdbClient->updateStatusCode(
                     id, AgentStatusCode::InvalidVersion, data.version, syncStatus, [](SocketError) {});
@@ -163,6 +207,16 @@ namespace remoted::control
                                         {
                                             if (err != SocketError::None)
                                             {
+                                                // Throttle wdb errors during startup to avoid flooding on outages
+                                                if (const auto throttle = wdbErrorThrottle().record())
+                                                {
+                                                    LOGFN_ERROR(logFn(),
+                                                                "Failed to get agent groups from wdb for startup: %llu "
+                                                                "failure(s) in the last %d s.",
+                                                                throttle.total,
+                                                                remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                                }
+
                                                 HttpResponse response;
                                                 response.status = 500;
                                                 response.body = R"({"error":"database_error"})";
@@ -174,6 +228,12 @@ namespace remoted::control
                                             {
                                                 groups = {"default"};
                                             }
+
+                                            LOGFN_DEBUG1(logFn(),
+                                                         "Agent %u startup: version=%s, groups=%s.",
+                                                         id,
+                                                         version.c_str(),
+                                                         toGroupsCsv(groups).c_str());
 
                                             const uint64_t now = getWallSec();
 
@@ -219,6 +279,16 @@ namespace remoted::control
             // so we don't forward oversized strings to wdb.
             if (data.host && !isValidHostInfo(*data.host))
             {
+                // Throttle invalid host info rejections
+                if (const auto throttle = invalidHostInfoThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Agent %u notify rejected for invalid host info: %llu rejection(s) in the last %d s.",
+                               id,
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
+
                 HttpResponse response;
                 response.status = 400;
                 response.body = R"({"error":"invalid_host_info"})";
@@ -284,6 +354,8 @@ namespace remoted::control
         void handleShutdown(AgentId id, const ShutdownData&, ResponseCallback callback)
         {
             incShutdown(m_metrics);
+
+            LOGFN_DEBUG1(logFn(), "Agent %u: shutdown received, updating registry and wdb.", id);
 
             const uint64_t now = getWallSec();
             m_registry->update(id,
@@ -365,12 +437,14 @@ namespace remoted::control
             {
                 if (doFullUpdate)
                 {
+                    LOGFN_DEBUG2(logFn(), "Agent %u: writing full agent data to wdb.", id);
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq" : "synced";
                     m_wdbClient->updateAgentData(
                         id, data.version, m_config.nodeName, "active", syncStatus, &(*data.host), [](SocketError) {});
                 }
                 else
                 {
+                    LOGFN_DEBUG2(logFn(), "Agent %u: writing keepalive to wdb.", id);
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq_keepalive" : "synced";
                     m_wdbClient->updateKeepalive(id, "active", syncStatus, [](SocketError) {});
                 }

@@ -10,9 +10,11 @@
  */
 
 #include "taskClient.hpp"
+#include "common/logThrottle.hpp"
 #include "controlConfig.hpp"
 #include "epollWrapper.hpp"
 #include "json.hpp"
+#include "loggerHelper.h"
 #include "socketClient.hpp"
 #include "socketWrapper.hpp"
 #include <atomic>
@@ -29,6 +31,47 @@
 
 namespace remoted::control
 {
+    namespace
+    {
+        constexpr auto TASK_CLIENT_LOGTAG {"wazuh-manager-remoted:task-client"};
+
+        const LogFn& logFn()
+        {
+            static const LogFn instance {TASK_CLIENT_LOGTAG};
+            return instance;
+        }
+
+        // Throttles for recurring errors
+        remoted::common::LogThrottle& queueFullThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& connectFailThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& timeoutThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& ioErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        remoted::common::LogThrottle& protocolErrorThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+    } // namespace
     class TaskClient::Impl
     {
     public:
@@ -97,6 +140,14 @@ namespace remoted::control
             if (reject)
             {
                 incTaskFetchError(m_metrics);
+                if (const auto throttle = queueFullThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Task client queue full (max=%u): dropped %llu request(s) in the last %d s.",
+                               m_maxQueueSize,
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 reject(SocketError::QueueFull, {});
             }
         }
@@ -133,11 +184,20 @@ namespace remoted::control
                             responseReady = true;
                             responseCv.notify_one();
                         });
+                    LOGFN_DEBUG2(logFn(), "Connected to task manager socket at %s.", m_taskSocketPath.c_str());
                     return true;
                 }
                 catch (...)
                 {
                     client.reset();
+                    if (const auto throttle = connectFailThrottle().record())
+                    {
+                        LOGFN_ERROR(logFn(),
+                                    "Failed to connect to task manager socket at %s: %llu failure(s) in the last %d s.",
+                                    m_taskSocketPath.c_str(),
+                                    throttle.total,
+                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     return false;
                 }
             };
@@ -184,6 +244,7 @@ namespace remoted::control
 
                 try
                 {
+                    LOGFN_DEBUG2(logFn(), "Fetching pending tasks for agent %u.", req.id);
                     client->send(requestStr.data(), requestStr.size());
 
                     std::unique_lock<std::mutex> respLock(responseMutex);
@@ -191,6 +252,14 @@ namespace remoted::control
                             respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
                     {
                         incTaskFetchError(m_metrics);
+                        if (const auto throttle = timeoutThrottle().record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Task manager query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                                       m_deadlineMs,
+                                       throttle.total,
+                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        }
                         req.callback(SocketError::Timeout, {});
                         needsReconnect = true;
                         continue;
@@ -199,6 +268,13 @@ namespace remoted::control
                 catch (...)
                 {
                     incTaskFetchError(m_metrics);
+                    if (const auto throttle = ioErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Task manager I/O error: %llu error(s) in the last %d s.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     req.callback(SocketError::Io, {});
                     needsReconnect = true;
                     continue;
@@ -218,6 +294,13 @@ namespace remoted::control
                 if (json.contains("error"))
                 {
                     incTaskFetchError(m_metrics);
+                    if (const auto throttle = protocolErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Task manager returned error response: %llu error(s) in the last %d s.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     callback(SocketError::ProtocolError, {});
                     return;
                 }
@@ -225,6 +308,13 @@ namespace remoted::control
                 if (!json.contains("status") || json["status"] != "ok")
                 {
                     incTaskFetchError(m_metrics);
+                    if (const auto throttle = protocolErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Task manager invalid status response: %llu error(s) in the last %d s.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
                     callback(SocketError::ProtocolError, {});
                     return;
                 }
@@ -243,11 +333,22 @@ namespace remoted::control
                 }
 
                 incTaskFetch(m_metrics);
+                if (!tasks.empty())
+                {
+                    LOGFN_DEBUG1(logFn(), "Retrieved %zu pending task(s) from task manager.", tasks.size());
+                }
                 callback(SocketError::None, std::move(tasks));
             }
             catch (...)
             {
                 incTaskFetchError(m_metrics);
+                if (const auto throttle = protocolErrorThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Task manager JSON parse error: %llu error(s) in the last %d s.",
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
                 callback(SocketError::ProtocolError, {});
             }
         }
