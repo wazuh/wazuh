@@ -130,13 +130,6 @@ Path to the private key corresponding to `ssl_manager_cert`.
 - **Default value:** `etc/sslmanager.key` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
 
-### ssl_auto_negotiate
-
-By default, `wazuh-authd` enforces TLS 1.3 as the minimum protocol version and rejects TLS 1.2 or older handshakes. Setting this option to `yes` overrides that floor and allows the TLS handshake to negotiate down to TLS 1.0, for compatibility with clients that cannot use TLS 1.3. Enabling it lowers the security of the enrollment channel; only use it as a temporary compatibility measure.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-
 ### force
 
 Sub-element that controls forced re-enrollment behavior when an agent already exists in the manager keystore.
@@ -251,7 +244,6 @@ Mutual TLS with client certificate verification:
   <ssl_verify_host>yes</ssl_verify_host>
   <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
-  <ssl_auto_negotiate>no</ssl_auto_negotiate>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>
