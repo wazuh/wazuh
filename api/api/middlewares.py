@@ -129,7 +129,11 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
 
 async def check_blocked_ip(request: Request):
-    """Blocks/unblocks the IPs that are requesting an API token.
+    """Blocks/unblocks the IPs that are requesting an API token, counting the attempt.
+
+    The attempt is counted in the same locked section that checks the block, before the
+    request is dispatched to authentication, so concurrent requests observe each other's
+    in-flight attempts instead of only already-recorded failures.
 
     Parameters
     ----------
@@ -142,6 +146,7 @@ async def check_blocked_ip(request: Request):
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
     block_time = access_conf['block_time']
+    max_login_attempts = access_conf['max_login_attempts']
     host = request.client.host
 
     async with ip_lock:
@@ -159,6 +164,40 @@ async def check_blocked_ip(request: Request):
                 detail="Limit of login attempts reached. The current IP has been blocked due "
                        "to a high number of login attempts"
             )
+
+        if host not in ip_stats:
+            ip_stats[host] = {'attempts': 1}
+        else:
+            ip_stats[host]['attempts'] += 1
+        ip_stats[host]['timestamp'] = get_utc_now().timestamp()
+
+        if ip_stats[host]['attempts'] >= max_login_attempts:
+            ip_block.add(host)
+
+
+async def settle_login_attempt(request: Request):
+    """Release the attempt reserved by `check_blocked_ip` for a successful login.
+
+    Only failed login attempts should count towards `max_login_attempts`, so a
+    successful authentication releases the attempt that was counted at the gate
+    before credential validation ran.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+    """
+    global ip_block, ip_stats
+    max_login_attempts = configuration.api_conf['access']['max_login_attempts']
+    host = request.client.host
+
+    async with ip_lock:
+        if host not in ip_stats:
+            return
+
+        ip_stats[host]['attempts'] -= 1
+        if ip_stats[host]['attempts'] < max_login_attempts:
+            ip_block.discard(host)
 
 
 def check_rate_limit(

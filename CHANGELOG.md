@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Improved SCA policy source validation to correctly enforce the `sca.remote_commands` restriction. ([#37953](https://github.com/wazuh/wazuh/pull/37953))
 - Added a minimum length check for legacy-format agent messages in `wazuh-remoted`. ([#38099](https://github.com/wazuh/wazuh/pull/38099))
 - Fixed a spurious `StarletteDeprecationWarning` printed by `agent_upgrade` at startup. ([#38085](https://github.com/wazuh/wazuh/pull/38085))
+- Fixed the API login attempt limit not being applied consistently under concurrent requests. ([#38135](https://github.com/wazuh/wazuh/pull/38135))
 
 ### Agent
 
