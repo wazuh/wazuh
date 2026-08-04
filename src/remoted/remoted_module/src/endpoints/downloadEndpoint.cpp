@@ -314,7 +314,7 @@ namespace remoted::endpoints::download
         std::string name;
         name.reserve(MULTIGROUP_HASH_HEX_CHARS);
 
-        for (unsigned int i = 0; i < digestLength && name.size() < MULTIGROUP_HASH_HEX_CHARS; ++i)
+        for (unsigned int i = 0; i < MULTIGROUP_HASH_HEX_CHARS / 2 && i < digestLength; ++i)
         {
             name.push_back(HEX_DIGITS[(digest[i] >> 4) & 0x0F]);
             name.push_back(HEX_DIGITS[digest[i] & 0x0F]);
