@@ -114,6 +114,7 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
+        1130: {'message': "The agent hasn't reported its configuration yet"},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',

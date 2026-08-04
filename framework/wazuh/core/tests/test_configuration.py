@@ -7,12 +7,12 @@ import subprocess
 import sys
 from types import MappingProxyType
 from unittest.mock import mock_open, ANY
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 from defusedxml.ElementTree import fromstring
 
-from wazuh.core.common import OSSEC_CONF, REMOTED_SOCKET
+from wazuh.core.common import OSSEC_CONF
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -394,64 +394,44 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
 
-@pytest.mark.parametrize("agent_id, component, socket, socket_dir, rec_msg", [
-    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
-    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    (None, 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    (None, 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    (None, 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    (None, 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    (None, 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    (None, 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    (None, 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
-    (None, 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    (None, 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
-    (None, 'wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
-    (None, 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
-    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
-    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
-    ('001', 'agent', 'remote', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
-    ('001', 'analysis', 'remote', 'sockets', 'ok {"analysis": {"enabled": "yes"}}'),
-    ('001', 'com', 'remote', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('001', 'integrator', 'remote', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('001', 'logcollector', 'remote', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('001', 'mail', 'remote', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('001', 'monitor', 'remote', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('001', 'request', 'remote', 'sockets', 'ok {"request": {"enabled": "yes"}}'),
-    ('001', 'syscheck', 'remote', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('001', 'wmodules', 'remote', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}')
+@pytest.mark.parametrize("component, socket, socket_dir, rec_msg", [
+    ('auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    ('auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    ('auth', 'auth', 'sockets', 'ok {"auth": {}}'),
+    ('agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
+    ('integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
+    ('logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
+    ('mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
+    ('monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    ('request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    ('syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
+    ('wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
+    ('wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
 ])
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
 @patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
-def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
+def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 
-    socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id is not None else "WazuhSocketJSON"
+    socket_class = "WazuhSocket" if socket not in sockets_json_protocol else "WazuhSocketJSON"
     with patch(f'wazuh.core.wazuh_socket.{socket_class}.close') as mock_close:
         with patch(f'wazuh.core.wazuh_socket.{socket_class}.send') as mock_send:
             with patch(f'wazuh.core.wazuh_socket.{socket_class}.__init__', return_value=None) as mock__init__:
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.receive',
                            return_value=rec_msg.encode() if socket_class == "WazuhSocket" else rec_msg) as mock_receive:
 
-                    result = configuration.get_active_configuration(
-                        agent_id=agent_id, component=component, configuration=config
-                    )
-                    mock__init__.assert_called_with(
-                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id is None else REMOTED_SOCKET
-                    )
+                    result = configuration.get_active_configuration(component=component, configuration=config)
+                    mock__init__.assert_called_with(f"/var/wazuh-manager/queue/{socket_dir}/{socket}")
 
                     if socket_class == "WazuhSocket":
-                        mock_send.assert_called_with(
-                            f"getconfig {config}".encode() if agent_id is None else \
-                                f"{agent_id} {component} getconfig {config}".encode()
-                        )
+                        mock_send.assert_called_with(f"getconfig {config}".encode())
                     else:  # socket_class == "WazuhSocketJSON"
                         mock_create_wazuh_socket_message.assert_called_with(
                             origin={'module': ANY}, command="getconfig", parameters={'section': config}
@@ -467,31 +447,23 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
                         assert 'authd.pass' not in result
 
 
-@pytest.mark.parametrize('agent_id, component, config, socket_exist, socket_class, expected_error, expected_id', [
-    # Checks for 000 or any other agent
-    (None, 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
-    (None, None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
-    (None, 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
-    ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1116),  # Cannot send request
-    ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1117),  # No such file or directory
+@pytest.mark.parametrize('component, config, socket_exist, socket_class, expected_error, expected_id', [
+    ('test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
+    (None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
+    ('test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
 
-    # Checks for 000 - Simple messages
-    (None, 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
-    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
+    # Simple messages
+    ('syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
+    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
+    ('syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
-    # Checks for 000 - JSON messages
-    (None, 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
-    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
-    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
-
-    # Checks for 001
-    ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhInternalError, 1118)  # Data could not be received
-
+    # JSON messages
+    ('request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
+    ('request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
+    ('request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
 ])
 @patch('os.path.exists')
-def test_get_active_configuration_ko(mock_exists, agent_id, component, config, socket_exist, socket_class,
+def test_get_active_configuration_ko(mock_exists, component, config, socket_exist, socket_class,
                                      expected_error, expected_id):
     """Test all raised exceptions"""
     mock_exists.return_value = socket_exist
@@ -503,9 +475,84 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
                        return_value=b'test 1' if expected_id == 1116 else b'test No such file or directory'):
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
-                        configuration.get_active_configuration(
-                            agent_id=agent_id, component=component, configuration=config
-                        )
+                        configuration.get_active_configuration(component=component, configuration=config)
+
+
+async def test_get_agent_active_configuration():
+    """Test get_agent_active_configuration returns the matching module's config from the indexed document."""
+    client = AsyncMock()
+    client.search.return_value = {
+        'hits': {
+            'hits': [
+                {
+                    '_id': '001',
+                    '_source': {
+                        'wazuh': {
+                            'agent': {
+                                'configuration': {
+                                    'content': [
+                                        {'module': 'fim', 'config': {'a': 1}},
+                                        {'module': 'logcollector', 'config': {'b': 2}},
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                }
+            ]
+        }
+    }
+
+    with patch('wazuh.core.indexer.indexer.get_indexer_client') as mock_get_indexer_client:
+        mock_get_indexer_client.return_value.__aenter__.return_value = client
+
+        result = await configuration.get_agent_active_configuration(agent_id='001', module='logcollector')
+
+    assert result == {'b': 2}
+    query = client.search.call_args.kwargs
+    assert query['index'] == 'wazuh-agent-config'
+    assert query['body']['query'] == {'term': {'wazuh.agent.id': '001'}}
+
+
+async def test_get_agent_active_configuration_no_module():
+    """Test get_agent_active_configuration raises 1307 when no module is given."""
+    with pytest.raises(WazuhError, match='.* 1307 .*'):
+        await configuration.get_agent_active_configuration(agent_id='001', module='')
+
+
+async def test_get_agent_active_configuration_agent_not_reported_yet():
+    """Test get_agent_active_configuration raises 1130 when the agent has no indexed document at all."""
+    client = AsyncMock()
+    client.search.return_value = {'hits': {'hits': []}}
+
+    with patch('wazuh.core.indexer.indexer.get_indexer_client') as mock_get_indexer_client:
+        mock_get_indexer_client.return_value.__aenter__.return_value = client
+
+        with pytest.raises(WazuhError, match='.* 1130 .*'):
+            await configuration.get_agent_active_configuration(agent_id='001', module='fim')
+
+
+async def test_get_agent_active_configuration_module_not_found():
+    """Test get_agent_active_configuration raises 1101 when the agent exists but not this module."""
+    client = AsyncMock()
+    client.search.return_value = {
+        'hits': {
+            'hits': [
+                {
+                    '_id': '001',
+                    '_source': {
+                        'wazuh': {'agent': {'configuration': {'content': [{'module': 'fim', 'config': {}}]}}}
+                    },
+                }
+            ]
+        }
+    }
+
+    with patch('wazuh.core.indexer.indexer.get_indexer_client') as mock_get_indexer_client:
+        mock_get_indexer_client.return_value.__aenter__.return_value = client
+
+        with pytest.raises(WazuhError, match='.* 1101 .*'):
+            await configuration.get_agent_active_configuration(agent_id='001', module='does-not-exist')
 
 
 def test_write_ossec_conf():

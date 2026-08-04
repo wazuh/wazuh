@@ -14,7 +14,7 @@ from io import StringIO
 from os import path as os_path
 from os import remove
 from types import MappingProxyType
-from typing import List, Optional, Union
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -933,17 +933,15 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(component: str, configuration: str, agent_id: Optional[str] = None) -> dict:
-    """Get server or agent component active configuration.
+def get_active_configuration(component: str, configuration: str) -> dict:
+    """Get manager component active configuration.
 
     Parameters
     ----------
     component : str
-        Selected agent's component.
+        Selected component.
     configuration : str
         Configuration to get, written on disk.
-    agent_id : Optional[str], default None
-        Agent ID. If None, gets manager configuration.
 
     Raises
     ------
@@ -958,14 +956,14 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
     WazuhInternalError(1118)
         If the socket is not able to receive a response.
     WazuhError(1117)
-        If there's no such file or directory in agent node, or the socket cannot send the request.
+        If there's no such file or directory, or the socket cannot send the request.
     WazuhError(1116)
         If the reply from the node contains an error.
 
     Returns
     -------
     dict
-        The active configuration the agent is currently using.
+        The active configuration the manager is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
@@ -1050,37 +1048,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
 
             return response['error'], response['data']
 
-    def get_active_configuration_agent():
-        """Get agent active configuration"""
-        # Always communicate with remote socket
-        dest_socket = common.REMOTED_SOCKET
-
-        # Simple socket message
-        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
-
-        # Socket connection
-        try:
-            s = wazuh_socket.WazuhSocket(dest_socket)
-        except WazuhInternalError:
-            raise
-        except Exception as unhandled_exc:
-            raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
-        except ValueError:
-            raise WazuhInternalError(1118, extra_message="Data could not be received")
-        finally:
-            s.close()
-
-        return rec_msg_ok, rec_msg
-
-    rec_error, rec_data = get_active_configuration_agent() if agent_id is not None else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
@@ -1097,6 +1065,67 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
                          extra_message=f'{component}:{configuration}')
+
+
+AGENT_CONFIG_INDEX = 'wazuh-agent-config'
+
+
+async def get_agent_active_configuration(agent_id: str, module: str) -> dict:
+    """Get the agent's last reported configuration for a module.
+
+    Reads the document the agent itself pushed through `POST /config`, persisted under its own
+    agent ID in `wazuh-agent-config`, instead of querying the agent live. A module is unique within
+    a report: the agent does not send two entries for the same module with different configurations.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    module : str
+        Selected agent's module.
+
+    Raises
+    ------
+    WazuhError(1307)
+        If the module is not specified.
+    WazuhError(1130)
+        If the agent has not reported its configuration yet.
+    WazuhError(1101)
+        If the module is not present in the agent's reported configuration.
+
+    Returns
+    -------
+    dict
+        The module's last reported configuration.
+    """
+    # Local import: wazuh.core.indexer.indexer imports get_ossec_conf from this module, so a
+    # module-level import here would be circular.
+    from wazuh.core.indexer.indexer import get_indexer_client
+
+    if not module:
+        raise WazuhError(1307)
+
+    # A field search rather than a get-by-id. `content` is a plain object array (not `nested`): that
+    # would only be needed to combine a filter on `module` with one on `config` in the same element,
+    # which this never does, so the module lookup happens in Python instead of a `nested` query.
+    query = {
+        'query': {'term': {'wazuh.agent.id': agent_id}},
+        '_source': ['wazuh.agent.configuration.content'],
+    }
+
+    async with get_indexer_client() as client:
+        response = await client.search(index=AGENT_CONFIG_INDEX, body=query)
+
+    hits = response['hits']['hits']
+    if not hits:
+        raise WazuhError(1130)
+
+    content = hits[0]['_source'].get('wazuh', {}).get('agent', {}).get('configuration', {}).get('content', [])
+    for entry in content:
+        if entry.get('module') == module:
+            return entry.get('config', {})
+
+    raise WazuhError(1101, extra_message=f"Module '{module}' not found in the agent's reported configuration")
 
 
 def write_ossec_conf(new_conf: str):

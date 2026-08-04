@@ -1257,44 +1257,28 @@ class Agent:
             " Agent reassigned to group default." if set_default else ""
         )
 
-    def get_config(
-        self, component: str = "", config: str = "", agent_version: str = ""
-    ) -> dict:
-        """Read agent's loaded configuration.
+    async def get_config(self, module: str = "") -> dict:
+        """Read the agent's last reported configuration for a module.
 
         Parameters
         ----------
-        component : str
-            Selected component of the agent configuration.
-        config : str
-            Agent's active configuration to get.
-        agent_version : str
-            Agent version to compare with the required version. The format is vX.Y.Z or Wazuh vX.Y.Z.
+        module : str
+            Selected agent's module.
 
         Raises
         ------
         WazuhError(1703)
             Action not available for manager (000).
-        WazuhError(1735)
-            The agent version is older than the minimum required version.
 
         Returns
         -------
         dict
-            Agent's active configuration.
+            The module's last reported configuration.
         """
         if self.id == '000':
             raise WazuhError(1703)
 
-        if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
-            raise WazuhInternalError(
-                1735,
-                extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}",
-            )
-
-        return configuration.get_active_configuration(
-            agent_id=self.id, component=component, configuration=config
-        )
+        return await configuration.get_agent_active_configuration(agent_id=self.id, module=module)
 
     def get_stats(self, component: str) -> dict:
         """Read the agent's component stats.

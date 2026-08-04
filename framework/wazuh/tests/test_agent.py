@@ -1258,50 +1258,38 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             assert expected_errors_and_items == errors_and_items
 
 
-@pytest.mark.parametrize('agent_list, component, configuration', [
-    (['001'], 'logcollector', 'internal')
+@pytest.mark.parametrize('agent_list, module', [
+    (['001'], 'logcollector')
 ])
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
+@patch('wazuh.core.agent.configuration.get_agent_active_configuration', new_callable=AsyncMock)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-@patch('os.path.exists')
-def test_agent_get_agent_config(mock_exists, socket_mock, send_mock, wazuh_socket_mock, agent_list, component, configuration):
+async def test_agent_get_agent_config(socket_mock, send_mock, mock_get_agent_active_configuration, agent_list, module):
     """Test `get_agent_config` function from agent module.
 
     Parameters
     ----------
     agent_list : List of str
         List of agent ID's.
-    component : str
-        Name of the component.
-    configuration : str
-        Name of the configuration file.
+    module : str
+        Name of the module.
     """
-    wazuh_socket_mock.return_value.receive.return_value = b'ok {"test": "conf"}'
+    mock_get_agent_active_configuration.return_value = {"test": "conf"}
 
-    result = get_agent_config(agent_list=agent_list, component=component, config=configuration)
+    result = await get_agent_config(agent_list=agent_list, module=module)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
 
 
-@pytest.mark.parametrize('agent_list', [
-    ['005']
-])
+@patch('wazuh.core.agent.Agent.get_config', new_callable=AsyncMock)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
-    """Test `get_agent_config` function from agent module raises the expected exceptions when using invalid parameters.
+async def test_agent_get_agent_config_exceptions(socket_mock, send_mock, mock_get_config):
+    """Test `get_agent_config` propagates the exceptions `Agent.get_config` raises."""
+    mock_get_config.side_effect = WazuhError(1703)
 
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    """
-    try:
-        get_agent_config(agent_list=agent_list)
-        pytest.fail('An exception should be raised.')
-    except WazuhError as error:
-        assert error == WazuhError(1740)
+    with pytest.raises(WazuhError, match=r'\b1703\b'):
+        await get_agent_config(agent_list=['001'])
 
 
 @pytest.mark.parametrize('filename, group_list', [

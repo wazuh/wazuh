@@ -215,21 +215,18 @@ async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-@patch('api.controllers.agent_controller.check_component_configuration_pair')
-async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
-                               mock_request):
+async def test_get_agent_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'get_agent_config' endpoint is working as expected."""
-    kwargs_param = {'configuration': 'configuration_value'
+    kwargs_param = {'module': 'logcollector'
                     }
     result = await get_agent_config(**kwargs_param)
     f_kwargs = {'agent_list': [None],
-                'component': None,
-                'config': kwargs_param.get('configuration', None)
+                'module': kwargs_param.get('module')
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agent_config,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
