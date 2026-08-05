@@ -111,7 +111,12 @@ void stop_wmodules()
 
     // Generous relative to each module's own internal shutdown-wait timeout (e.g.
     // syscollector's 10 s), so this join is the actual gate and not a race against it.
-    const DWORD MODULE_JOIN_TIMEOUT_MS = 20000;
+    // Shared across every module in the loop below (not reset per module), so total
+    // time spent in stop_wmodules() is bounded regardless of how many wodles are
+    // configured -- otherwise N modules could each burn a fresh timeout and the sum
+    // could outlast the SCM's own patience (WaitToKillServiceTimeout).
+    const DWORD MODULE_JOIN_BUDGET_MS = 20000;
+    const ULONGLONG budget_start = GetTickCount64();
 
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -120,11 +125,17 @@ void stop_wmodules()
         }
 
         if (cur_module->win_thread) {
-            if (WaitForSingleObject(cur_module->win_thread, MODULE_JOIN_TIMEOUT_MS) == WAIT_TIMEOUT) {
-                mterror(ARGV0,
-                        "Module '%s' worker thread did not exit within %lu ms after stop(); "
-                        "shutdown will proceed while it may still be running.",
-                        cur_module->context->name, MODULE_JOIN_TIMEOUT_MS);
+            const ULONGLONG elapsed = GetTickCount64() - budget_start;
+            const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;
+            const DWORD wait_result = remaining ? WaitForSingleObject(cur_module->win_thread, remaining) : WAIT_TIMEOUT;
+
+            if (wait_result == WAIT_TIMEOUT) {
+                merror("Module '%s' worker thread did not exit within the %lu ms shutdown budget; "
+                       "shutdown will proceed while it may still be running.",
+                       cur_module->context->name, MODULE_JOIN_BUDGET_MS);
+            } else if (wait_result == WAIT_FAILED) {
+                merror("Module '%s' worker thread wait failed (error %lu); closing handle and proceeding.",
+                       cur_module->context->name, GetLastError());
             }
 
             CloseHandle(cur_module->win_thread);
