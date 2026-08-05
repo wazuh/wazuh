@@ -66,7 +66,8 @@ if(UNIT_TEST)
   target_compile_options(authd_lib PRIVATE -O0 -g)
 endif()
 
-target_link_libraries(authd_lib PUBLIC wazuhext pthread router config
+# No router: agent deletions go to the inventory sync server over HTTP/UDS (uhttp_*, in wazuh).
+target_link_libraries(authd_lib PUBLIC wazuhext pthread config
                                        wazuh_modulesd_lib wazuh)
 
 if(UNIX)

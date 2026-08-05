@@ -364,6 +364,31 @@ namespace invsync::sync
                 continue;
             }
 
+            if (item.kind == Item::Kind::DeleteAgent)
+            {
+                // Same batch-cut rule as an Immediate session: the deletion executes its own I/O
+                // now, and staged writes of an EARLIER session of this agent must reach the indexer
+                // first or the delete-then-reinsert order would invert.
+                flushAndRespond(batch, batchBytes, connector);
+
+                try
+                {
+                    auto outcome = m_processor.executeDeleteAgent(item.session.agentId, connector);
+                    respond(item, outcome.status, outcome.body);
+                }
+                catch (const std::exception& e)
+                {
+                    LOGFN_WARN(logFn(),
+                               "Deleting the state documents of agent %s failed: %s. The caller may retry.",
+                               item.session.agentId.c_str(),
+                               e.what());
+                    std::vector<Item> just;
+                    just.push_back(std::move(item));
+                    respondConnectorFailure(just, connector);
+                }
+                continue;
+            }
+
             if (classify(item.session) == SessionKind::Immediate)
             {
                 // Batch cut: an immediate session executes its own I/O NOW, so the staged batch

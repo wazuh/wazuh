@@ -26,6 +26,7 @@
 #include "common/clusterIdentity.hpp"
 #include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
+#include "endpoints/deleteAgentEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
 #include "http_server/IUdsHttpServer.hpp"
@@ -423,14 +424,30 @@ namespace invsync
                                    invsync::endpoints::config::path(),
                                    invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity));
 
+            // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
+            // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
+            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST.
+            {
+                const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
+                                                                                 m_indexerConnectorSync};
+                m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
+                                       invsync::endpoints::delete_agent::path(),
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
+                                       invsync::endpoints::delete_agent::altPath(),
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+            }
+
             m_httpServer->start(config);
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, %s, %s and %s; %zu sync worker(s)).",
+                       "inventory sync server listening on '%s' (routes: GET /, %s, %s, %s and DELETE %s; %zu sync "
+                       "worker(s)).",
                        config.socketPath.c_str(),
                        invsync::endpoints::sync::path(),
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
+                       invsync::endpoints::delete_agent::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 

@@ -21,6 +21,11 @@ namespace invsync::sync
     /// produced exclusively by the vulnerability scanner on the manager.
     constexpr std::string_view VULNERABILITIES_INDEX {"wazuh-states-vulnerabilities"};
 
+    /// Query scope of a whole-agent deletion (DELETE /agents): every state index at once, the same
+    /// pattern the legacy module used (inventory_sync/src/inventorySyncFacade.hpp:47). A pattern,
+    /// not the allowlist above: deletion is manager-initiated (authd), not an agent session.
+    constexpr std::string_view WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
+
     /**
      * @brief Allowlist of state indices an agent session may target (its own scope).
      *

@@ -382,3 +382,78 @@ TEST(SyncPipelineTest, SameAgentSessionsKeepTheirOrderWithManyWorkers)
         EXPECT_EQ("test-cluster_001_doc-" + std::to_string(i), std::get<1>(ops[i]));
     }
 }
+
+// --- DeleteAgent items (DELETE /agents, design doc 04) ------------------------------------------
+
+namespace
+{
+    /// A whole-agent deletion item, exactly as deleteAgentEndpoint builds it: no FlatBuffer, only
+    /// the (already padded) agent id.
+    SyncPipeline::Item makeDeleteItem(const std::string& paddedAgentId, std::shared_ptr<FutureResponder> responder)
+    {
+        SyncPipeline::Item item;
+        item.request = std::make_shared<HttpRequest>();
+        item.responder = std::move(responder);
+        item.kind = SyncPipeline::Item::Kind::DeleteAgent;
+        item.session.agentId = paddedAgentId;
+        return item;
+    }
+} // namespace
+
+TEST(SyncPipelineTest, ADeleteAgentItemDeletesTheStatePatternAndFlushes)
+{
+    PipelineUnderTest fixture;
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("005", responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ(R"({"status":"ok"})", response.body);
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
+    EXPECT_EQ("005", std::get<1>(ops[0]));
+    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0])) << "one pattern query, not the per-index Cleans loop";
+    EXPECT_EQ(CLUSTER, std::get<3>(ops[0])) << "scoped to this cluster";
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means the delete was FLUSHED";
+}
+
+TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
+{
+    PipelineUnderTest fixture;
+
+    // Same agent (001) -> same shard FIFO: the delta's write must reach the op log before the
+    // deletion, whatever the flush grouping -- otherwise a delete-then-reenroll could resurrect.
+    auto delta = std::make_shared<FutureResponder>();
+    auto deletion = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-1"), delta)));
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("001", deletion)));
+
+    EXPECT_EQ(200, delta->get().status);
+    EXPECT_EQ(200, deletion->get().status);
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(2U, ops.size());
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[1]));
+}
+
+TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
+{
+    // The legacy path lost this silently (doc 04 §1's key improvement): a connector throw must
+    // surface as a retriable status, mapped by availability like every other failure.
+    PipelineUnderTest fixture;
+    fixture.events->m_syncThrowOn = "deleteByQuery";
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("005", responder)));
+    EXPECT_EQ(500, responder->get().status) << "connector available but failing -> 500";
+
+    fixture.events->m_syncThrowOn.clear();
+    fixture.events->m_syncAvailable.store(false);
+    auto second = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
+    EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
+}

@@ -237,6 +237,33 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetr
     EXPECT_TRUE(m_events->syncOps().empty());
 }
 
+TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
+{
+    // The canonical DELETE /agents (design doc 04) and its POST alias -- the alias is load-bearing:
+    // authd's uhttp_* helper only speaks POST, so a route drift would silently orphan deletions.
+    const std::string deleteHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
+                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
+    const auto response = invsync::test::sendRaw(m_path, deleteHead);
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_EQ(R"({"status":"ok"})", response.body);
+
+    const std::string aliasHead = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 10\r\n"
+                                  "Content-Length: 0\r\nConnection: close\r\n\r\n";
+    EXPECT_EQ(200, invsync::test::sendRaw(m_path, aliasHead).status);
+
+    const auto ops = m_events->syncOps();
+    ASSERT_EQ(2U, ops.size());
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
+    EXPECT_EQ("009", std::get<1>(ops[0])) << "padded like every document _id";
+    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0])) << "the whole state family, one pattern query";
+    EXPECT_EQ("010", std::get<1>(ops[1]));
+    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each 200 means its delete was flushed";
+
+    const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
+                                "Content-Length: 0\r\nConnection: close\r\n\r\n";
+    EXPECT_EQ(400, invsync::test::sendRaw(m_path, badHead).status);
+}
+
 TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)
 {
     const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}});
