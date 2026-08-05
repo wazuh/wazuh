@@ -65,8 +65,8 @@ STATIC void wm_agent_upgrade_check_status(void);
  * operation and reports it as a stateless event, erasing the file afterwards (#38103).
  * @param queue_fd file descriptor of the queue where the event will be sent
  * @return a flag indicating whether the file should be read again
- * @retval true the file exists but carried no complete code yet, so retry
- * @retval false the result was reported and erased, or there is no result file
+ * @retval true the installer has not written a complete code yet, so retry
+ * @retval false the result was reported and erased, or the file holds no usable code
  * */
 STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd);
 
@@ -198,6 +198,17 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void* arg)
 STATIC void wm_agent_upgrade_check_status(void)
 {
     /**
+     * Nothing to report unless an upgrade just ran. The installer creates its in-progress
+     * lock before it restarts this agent and removes it only after writing
+     * upgrade_result, so anywhere between those two points at least one of the two files
+     * is on disk. Neither present is an ordinary restart
+     */
+    if (!w_is_file(WM_AGENT_UPGRADE_RESULT_FILE) && !w_is_file(WM_AGENT_UPGRADE_LOCK_FILE))
+    {
+        return;
+    }
+
+    /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
      *  the upgrade result. The predicate aborts the retry loop on shutdown so the module
      *  does not block past the cooperative cancellation deadline.
@@ -209,43 +220,32 @@ STATIC void wm_agent_upgrade_check_status(void)
         return;
     }
 
-    // Wait until pkg_installer script verifies the agent was connected and writes the upgrade_result file
-    wm_sleep_interruptible(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
-    if (wm_shutdown_requested)
-    {
-        return;
-    }
-
     if (queue_fd < 0)
     {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
+        return;
     }
-    else
-    {
-        bool result_available = true;
-        /**
-         * The result is reported as a stateless event and the file is erased in the same
-         * pass (#38103), so this runs at most once per upgrade. The loop is kept for the
-         * case where the file exists but is still empty: pkg_installer.sh writes it after
-         * the agent reconnects, so a partial read is retried on a fixed interval.
-         * */
-        while (result_available)
-        {
-            result_available = wm_upgrade_agent_search_upgrade_result(&queue_fd);
 
-            if (result_available)
-            {
-                wm_sleep_interruptible(WM_AGENT_UPGRADE_RESULT_RETRY_TIME);
-                if (wm_shutdown_requested)
-                {
-                    break;
-                }
-            }
+    /**
+     * The result is reported as a stateless event and the file is erased in the same pass
+     */
+    for (int reads = 0; reads < WM_AGENT_UPGRADE_RESULT_MAX_READS; reads++)
+    {
+        wm_sleep_interruptible(reads == 0 ? WM_AGENT_UPGRADE_RESULT_WAIT_TIME : WM_AGENT_UPGRADE_RESULT_RETRY_TIME);
+        if (wm_shutdown_requested)
+        {
+            break;
         }
-#ifndef WIN32
-        close(queue_fd);
-#endif
+
+        if (!wm_upgrade_agent_search_upgrade_result(&queue_fd))
+        {
+            break;
+        }
     }
+
+#ifndef WIN32
+    close(queue_fd);
+#endif
 }
 
 STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd)
@@ -254,35 +254,40 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd)
     const char* PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 
     FILE* result_file = wfopen(PATH, "r");
-    if (result_file)
+    if (!result_file)
     {
-        if (fgets(buffer, 20, result_file) == NULL)
-        {
-            fclose(result_file);
-            return true;
-        }
-        fclose(result_file);
-
-        char* endptr;
-        unsigned long raw_code = strtoul(buffer, &endptr, 10);
-        if (endptr != buffer && (*endptr == '\0' || *endptr == '\n' || *endptr == '\r'))
-        {
-            wm_upgrade_agent_state state =
-                (raw_code < WM_UPGRADE_MAX_STATE) ? (wm_upgrade_agent_state)raw_code : WM_UPGRADE_FAILED;
-            wm_upgrade_agent_send_result_event(queue_fd, state, (unsigned int)raw_code);
-
-            /* The manager used to clear this file by answering the ack with
-             * clear_upgrade_result (#38103). A stateless event is not answered, so the
-             * result is reported once and dropped here instead of retried forever. */
-            if (remove(WM_AGENT_UPGRADE_RESULT_FILE) != 0)
-            {
-                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ERASE_FILE_ERROR, "check_status",
-                         WM_AGENT_UPGRADE_RESULT_FILE);
-            }
-
-            return false;
-        }
+        /* The installer writes this only after the upgraded agent reconnects, so an
+         * absent file means "not written yet", not "no upgrade to report". */
+        return true;
     }
+
+    if (fgets(buffer, 20, result_file) == NULL)
+    {
+        fclose(result_file);
+        return true;
+    }
+    fclose(result_file);
+
+    char* endptr;
+    unsigned long raw_code = strtoul(buffer, &endptr, 10);
+    if (endptr == buffer || (*endptr != '\0' && *endptr != '\n' && *endptr != '\r'))
+    {
+        // Not a partial write but content no code can be made of: nothing to wait for
+        return false;
+    }
+
+    wm_upgrade_agent_state state =
+        (raw_code < WM_UPGRADE_MAX_STATE) ? (wm_upgrade_agent_state)raw_code : WM_UPGRADE_FAILED;
+    wm_upgrade_agent_send_result_event(queue_fd, state, (unsigned int)raw_code);
+
+    /* The manager used to clear this file by answering the ack with
+     * clear_upgrade_result (#38103). A stateless event is not answered, so the
+     * result is reported once and dropped here instead of retried forever. */
+    if (remove(WM_AGENT_UPGRADE_RESULT_FILE) != 0)
+    {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ERASE_FILE_ERROR, "check_status", WM_AGENT_UPGRADE_RESULT_FILE);
+    }
+
     return false;
 }
 

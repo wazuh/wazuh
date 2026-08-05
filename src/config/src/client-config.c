@@ -236,11 +236,14 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
  * only has <client> (#38103). The address is taken when <agent> did not already provide
  * one - so <agent> wins whichever block comes first - and everything else under <client>
  * is ignored rather than rejected, since the block is 4.x's and its options are not.
+ *
+ * Repeated addresses resolve the same way as under <agent>: the last one prevails
  */
 int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     const char *xml_agent_server = "server";
     const char *xml_agent_addr = "address";
+    char * address = NULL;
 
     agent * logr = (agent *)d1;
 
@@ -265,24 +268,28 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
                 continue;
             }
 
-            os_calloc(2, sizeof(agent_server), logr->server);
-            os_strdup(chld_node[j]->content, logr->server[0].rip);
-            if (strchr(logr->server[0].rip, ':') != NULL) {
-                os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-                OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-            }
-            logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
-            logr->server_count = 1;
-
-            minfo("<agent><server><address> is not configured. Using <client><server><address> '%s' "
-                  "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
-
-            OS_ClearNode(chld_node);
-            return (0);
+            os_free(address);
+            os_strdup(chld_node[j]->content, address);
         }
 
         OS_ClearNode(chld_node);
     }
+
+    if (!address) {
+        return (0);
+    }
+
+    os_calloc(2, sizeof(agent_server), logr->server);
+    logr->server[0].rip = address;
+    if (strchr(logr->server[0].rip, ':') != NULL) {
+        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
+        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+    }
+    logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
+    logr->server_count = 1;
+
+    minfo("<agent><server><address> is not configured. Using <client><server><address> '%s' "
+          "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
 
     return (0);
 }
