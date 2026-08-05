@@ -196,7 +196,6 @@ int test_setup_w_enrollment_request_key(void **state) {
     local_target->centralized_group = strdup("test_group");
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
-    local_cert->auto_method = 0;
     local_cert->authpass = strdup("test_password");
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
@@ -228,7 +227,7 @@ int test_teardown_w_enrollment_request_key(void **state) {
 }
 
 int test_setup_ssl_context(void **state) {
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
     SSL *ssl = __real_SSL_new(ctx);
     SSL_CTX_free(ctx);
     *state = ssl;
@@ -459,7 +458,6 @@ void test_w_enrollment_connect_could_not_setup(void **state) {
     expect_string(__wrap_os_ssl_keys, cert, "CERT");
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-    expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Could not set up SSL connection! Check certification configuration.");
@@ -469,7 +467,7 @@ void test_w_enrollment_connect_could_not_setup(void **state) {
 
 void test_w_enrollment_connect_socket_error(void **state) {
     w_enrollment_ctx *cfg = *state;
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
 
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
@@ -481,7 +479,6 @@ void test_w_enrollment_connect_socket_error(void **state) {
     expect_string(__wrap_os_ssl_keys, cert, "CERT");
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-    expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, ctx);
     // OS_ConnectTCP
     expect_value(__wrap_OS_ConnectTCP, _port, 1234);
@@ -496,7 +493,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
 
 void test_w_enrollment_connect_set_timeout_error(void **state) {
     w_enrollment_ctx *cfg = *state;
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
@@ -507,7 +504,6 @@ void test_w_enrollment_connect_set_timeout_error(void **state) {
     expect_string(__wrap_os_ssl_keys, cert, "CERT");
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-    expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, ctx);
     // OS_ConnectTCP
     expect_value(__wrap_OS_ConnectTCP, _port, 1234);
@@ -538,7 +534,7 @@ void test_w_enrollment_connect_set_timeout_error(void **state) {
 
 void test_w_enrollment_connect_SSL_connect_error(void **state) {
     w_enrollment_ctx *cfg = *state;
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
@@ -549,7 +545,6 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
     expect_string(__wrap_os_ssl_keys, cert, "CERT");
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-    expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, ctx);
     // OS_ConnectTCP
     expect_value(__wrap_OS_ConnectTCP, _port, 1234);
@@ -578,7 +573,7 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
 
 void test_w_enrollment_connect_success(void **state) {
     w_enrollment_ctx *cfg = *state;
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
     // GetHost
     expect_string(__wrap_OS_GetHost, host, cfg->target_cfg->manager_name);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
@@ -589,7 +584,6 @@ void test_w_enrollment_connect_success(void **state) {
     expect_string(__wrap_os_ssl_keys, cert, "CERT");
     expect_string(__wrap_os_ssl_keys, key, "KEY");
     expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-    expect_value(__wrap_os_ssl_keys, auto_method, 0);
     will_return(__wrap_os_ssl_keys, ctx);
     // OS_ConnectTCP
     expect_value(__wrap_OS_ConnectTCP, _port, 1234);
@@ -1088,7 +1082,7 @@ void test_w_enrollment_request_key_null_cfg(void **state) {
 
 void test_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state;
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
     char buff[128];
 
     expect_string(__wrap__minfo, formatted_msg, "Requesting a key from server: valid_hostname");
@@ -1109,7 +1103,6 @@ void test_w_enrollment_request_key(void **state) {
         expect_string(__wrap_os_ssl_keys, cert, "CERT");
         expect_string(__wrap_os_ssl_keys, key, "KEY");
         expect_string(__wrap_os_ssl_keys, ca_cert, "CA_CERT");
-        expect_value(__wrap_os_ssl_keys, auto_method, 0);
         will_return(__wrap_os_ssl_keys, ctx);
         // OS_ConnectTCP
         expect_value(__wrap_OS_ConnectTCP, _port, 1234);
