@@ -37,17 +37,16 @@ void SysNormalizer::removeExcluded(const std::string& type,
 
                 if (data.is_array())
                 {
-                    for (auto item{data.begin()}; item != data.end();)
-                    {
-                        const auto fieldIt{item->find(fieldName)};
+                    auto& arr{data.get_ref<nlohmann::json::array_t&>()};
 
-                        if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    for (size_t i{arr.size()}; i-- > 0;)
+                    {
+                        const auto fieldIt{arr[i].find(fieldName)};
+
+                        if (fieldIt != arr[i].end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                         {
-                            item = data.erase(item);
-                        }
-                        else
-                        {
-                            ++item;
+                            std::swap(arr[i], arr.back());
+                            arr.pop_back();
                         }
                     }
                 }
