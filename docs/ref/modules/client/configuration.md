@@ -181,11 +181,11 @@ Agent's IP address to use for enrollment (overrides auto-detected address).
 
 #### ssl_cipher
 
-SSL/TLS cipher suite for enrollment connection.
+TLS 1.3 ciphersuite list for the enrollment connection. Enrollment requires TLS 1.3, so this must be a colon-separated list of TLS 1.3 ciphersuite names.
 
-- **Default value:** System default
-- **Allowed values:** Valid OpenSSL cipher string
-- **Example:** `HIGH:!aNULL:!MD5`
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** Colon-separated TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`)
+- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 
 #### server_ca_path
 
@@ -209,14 +209,6 @@ Path to agent's private key for mutual TLS authentication during enrollment.
 - **Default value:** None
 - **Allowed values:** Valid file path
 - **Note:** Must correspond to `agent_certificate_path`
-
-#### auto_method
-
-Automatic enrollment method selection.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agent automatically selects best enrollment method
 
 #### delay_after_enrollment
 
