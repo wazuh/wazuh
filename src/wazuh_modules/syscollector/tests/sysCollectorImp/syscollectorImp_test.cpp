@@ -523,7 +523,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
@@ -1204,7 +1204,7 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
@@ -2627,7 +2627,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
@@ -4717,7 +4717,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -4824,7 +4824,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -4918,7 +4918,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -5127,7 +5127,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -5225,7 +5225,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -5338,7 +5338,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Reset and initialize factory with mock BEFORE initSyncProtocol
             SchemaValidator::SchemaValidatorFactory::getInstance().reset();
@@ -5478,7 +5478,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Reset and initialize factory with mock for DIFFERENT index
             SchemaValidator::SchemaValidatorFactory::getInstance().reset();
