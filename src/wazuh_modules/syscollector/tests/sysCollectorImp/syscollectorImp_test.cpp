@@ -278,6 +278,27 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
 
+// Waits for the scan spawned on another thread to actually finish before the caller
+// proceeds to Syscollector::instance().destroy(). A fixed sleep_for() here would race
+// against destroy() setting m_stopping mid-scan: TRY_CATCH_TASK checks m_stopping between
+// tasks (see #38111), so a scan interrupted by an early destroy() would skip whichever
+// collectors hadn't run yet, failing their EXPECT_CALL(...).Times(1) expectations.
+//
+// The short fixed sleep at the start is a grace period for the freshly-spawned thread to
+// reach scan() and set m_scanning=true - it covers thread-scheduling latency, not scan
+// duration, so it doesn't reintroduce the race it's meant to avoid.
+void waitForScanToFinish(std::chrono::milliseconds maxWait = std::chrono::seconds(10))
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    const auto deadline = std::chrono::steady_clock::now() + maxWait;
+
+    while (Syscollector::instance().isScanning() && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+}
+
 // Log capturing structure for testing
 struct LogEntry
 {
@@ -529,7 +550,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -738,7 +759,7 @@ TEST_F(SyscollectorImpTest, noHardware)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -860,7 +881,7 @@ TEST_F(SyscollectorImpTest, noOs)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -973,7 +994,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1089,7 +1110,7 @@ TEST_F(SyscollectorImpTest, noPackages)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1210,7 +1231,7 @@ TEST_F(SyscollectorImpTest, noPorts)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1336,7 +1357,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1452,7 +1473,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1573,7 +1594,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1694,7 +1715,7 @@ TEST_F(SyscollectorImpTest, noUsers)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1815,7 +1836,7 @@ TEST_F(SyscollectorImpTest, noGroups)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1936,7 +1957,7 @@ TEST_F(SyscollectorImpTest, noServices)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2057,7 +2078,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2245,7 +2266,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2421,7 +2442,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2503,7 +2524,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2633,7 +2654,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -3506,7 +3527,7 @@ TEST_F(SyscollectorImpTest, scanSetsFirstScanCompletedMarkerAfterFullScan)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -3600,7 +3621,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4740,7 +4761,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4847,7 +4868,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4941,7 +4962,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5055,7 +5076,7 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     };
 
     // interval=1s: initial scan at t=0, second (noise-only-change) scan at ~t=1s.
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5150,7 +5171,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5248,7 +5269,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5365,7 +5386,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5505,7 +5526,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5604,7 +5625,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidInput_NotAnObject)
     };
 
     // Wait for syncLoop to attempt fetching and applying limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5690,7 +5711,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5778,7 +5799,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidLimitValue_NotANumber)
     };
 
     // Wait for syncLoop to fetch and attempt to apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5867,7 +5888,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_UnknownIndexName)
     };
 
     // Wait for syncLoop to fetch and attempt to apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5957,7 +5978,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -6049,7 +6070,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    waitForScanToFinish();
     Syscollector::instance().destroy();
 
     if (t.joinable())
