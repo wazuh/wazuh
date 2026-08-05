@@ -2,12 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+
 from wazuh.core import common
 from wazuh.core import exception
-from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
+from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.engine_http import EngineHTTPClient
 from wazuh.core.exception import WazuhException
+from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_socket
 from wazuh.rbac.decorators import expose_resources
@@ -185,8 +188,12 @@ def get_engine_metrics() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
+async def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
     """Get statistics of an agent's component.
+
+    Read from the `wazuh-agent-stats` index, where the manager keeps the last report each agent pushed
+    over `POST /stats`. There is no live query: HTTPS has no manager-to-agent channel to ask over, so an
+    agent that has not reported has nothing to serve and is a failed item.
 
     Parameters
     ----------
@@ -203,14 +210,28 @@ def get_agents_component_stats_json(agent_list: list = None, component: str = No
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each agent was successfully read',
                                       some_msg='Could not read statistical information for some agents',
                                       none_msg='Could not read statistical information for any agent')
-    system_agents = get_agents_info()
+    # Blocking: reads the agent list out of wazuh-db. This coroutine is awaited on the API's event loop.
+    system_agents = await asyncio.to_thread(get_agents_info)
+    known_agents = []
+
     for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise exception.WazuhResourceNotFound(1701)
-            result.affected_items.append(Agent(agent_id).get_stats(component=component))
-        except exception.WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
+        if agent_id in system_agents:
+            known_agents.append(agent_id)
+        else:
+            result.add_failed_item(id_=agent_id, error=exception.WazuhResourceNotFound(1701))
+
+    if known_agents:
+        # One request for the whole list rather than one per agent: the read is an access by document id.
+        async with get_indexer_client() as indexer:
+            reported = await indexer.agent_stats.get_component(known_agents, component)
+
+        for agent_id in known_agents:
+            stats = reported.get(agent_id)
+            if stats is None:
+                result.add_failed_item(id_=agent_id, error=exception.WazuhError(1762))
+            else:
+                result.affected_items.append(stats)
+
     result.total_affected_items = len(result.affected_items)
 
     return result

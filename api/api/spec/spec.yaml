@@ -4579,7 +4579,9 @@ paths:
       tags:
         - Agents
       summary: "Get agent's component stats"
-      description: "Return Wazuh's {component} statistical information from agent {agent_id}"
+      description: "Return Wazuh's {component} statistical information from agent {agent_id}, as of the last
+        report the agent pushed to the manager. Read from the `wazuh-agent-stats` index: an agent that has
+        never reported has nothing stored and is returned as a failed item"
       operationId: api.controllers.agent_controller.get_component_stats
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
