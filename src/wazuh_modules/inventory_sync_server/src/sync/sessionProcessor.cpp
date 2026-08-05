@@ -334,6 +334,21 @@ namespace invsync::sync
         return ok();
     }
 
+    ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
+                                                        indexer::IIndexerConnectorSync& connector) const
+    {
+        // One pattern query instead of the Cleans-style per-index loop: this is a whole-agent
+        // deletion (the agent is GONE from client.keys), so it must also reach indices no current
+        // session writes to. deleteByQuery stages; the flush is the durability of the 200, exactly
+        // like executeCleans() -- a 404 for a not-yet-created index counts as success inside the
+        // connector, so re-running a delete is harmless (that is authd's retry contract).
+        connector.deleteByQuery(std::string {WAZUH_STATES_INDEX_PATTERN}, agentId, m_managerClusterName);
+        connector.flush();
+
+        LOGFN_INFO(logFn(), "Deleted every state document of agent %s (%s).", agentId.c_str(), "wazuh-states-*");
+        return ok();
+    }
+
     ProcessOutcome SessionProcessor::executeChecksum(const ValidatedSession& session,
                                                      indexer::IIndexerConnectorSync& connector) const
     {

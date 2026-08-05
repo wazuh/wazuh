@@ -38,27 +38,6 @@ namespace
         return value ? value->string_view() : std::string_view {};
     }
 
-    /// Same predicate the router's legacy anti-spoofing uses (router.cpp:354-358): digits only,
-    /// non-empty. Applied to BOTH sides so a non-numeric header (a remoted bug, not agent input)
-    /// cannot be confused with spoofing.
-    bool isNumeric(std::string_view value)
-    {
-        return !value.empty() &&
-               std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
-    }
-
-    /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form (legacy
-    /// agentSession.hpp:126-131).
-    std::string padAgentId(std::string_view agentId)
-    {
-        std::string padded {agentId};
-        if (padded.length() < 3)
-        {
-            padded.insert(0, 3 - padded.length(), '0');
-        }
-        return padded;
-    }
-
     /// The mode x payload matrix (design doc 02 §2). Any combination outside it is a 400.
     bool modeAcceptsPayload(fb::Mode mode, fb::SessionPayload payload)
     {
@@ -80,6 +59,22 @@ namespace
 
 namespace invsync::sync
 {
+
+    bool isNumericAgentId(std::string_view value)
+    {
+        return !value.empty() &&
+               std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
+    }
+
+    std::string padAgentId(std::string_view agentId)
+    {
+        std::string padded {agentId};
+        if (padded.length() < 3)
+        {
+            padded.insert(0, 3 - padded.length(), '0');
+        }
+        return padded;
+    }
 
     ValidationResult validateFullSession(std::string_view body,
                                          std::string_view authenticatedAgentId,
@@ -116,7 +111,7 @@ namespace invsync::sync
         // carries the id remoted AUTHENTICATED via AES-CMAC; the session claims one. Compared as
         // integers so leading zeros cannot defeat the check.
         const auto claimedAgentId = viewOf(start->agentid());
-        if (!isNumeric(claimedAgentId) || !isNumeric(authenticatedAgentId))
+        if (!isNumericAgentId(claimedAgentId) || !isNumericAgentId(authenticatedAgentId))
         {
             return badRequest("Agent id must be numeric");
         }
