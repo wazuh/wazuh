@@ -875,6 +875,14 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
 static void bridge_on_manager_config_hash(const char *config_hash, void *user_data)
 {
     (void)user_data;
+
+    /* An accepted Notify is the agent's keepalive: it is the same event the
+     * manager records as one. Taken here rather than at send time (where the
+     * legacy notify.c put it, right after send_msg(), so it advanced even with
+     * the network down) so the value proves a completed round trip. */
+    time_t now = time(NULL);
+    w_agentd_state_update(UPDATE_KEEPALIVE, &now);
+
     startup_gate_check_manager_config_hash(config_hash);
 }
 

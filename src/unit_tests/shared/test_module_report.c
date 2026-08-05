@@ -72,37 +72,41 @@ static void test_merge_consumes_the_section_even_without_a_body(void** state)
     module_report_merge(NULL, wrapped_section("syscheck", "frequency", "43200"));
 }
 
-/* --- module_report_add_config / _add_stats --- */
-static void test_add_config_names_the_module_and_nests_its_body(void** state)
+/* --- module_report_add --- */
+static void test_add_keys_the_body_by_module_name(void** state)
 {
     (void)state;
-    cJSON* report = cJSON_CreateArray();
+    cJSON* report = cJSON_CreateObject();
     cJSON* body = cJSON_CreateObject();
 
     cJSON_AddStringToObject(body, "disabled", "no");
-    module_report_add_config(report, "fim", body);
+    module_report_add(report, "fim", body);
 
-    assert_int_equal(cJSON_GetArraySize(report), 1);
-    cJSON* entry = cJSON_GetArrayItem(report, 0);
-    assert_string_equal(cJSON_GetObjectItem(entry, "module")->valuestring, "fim");
-    assert_string_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(entry, "config"), "disabled")->valuestring, "no");
+    /* Keyed by name, with the body directly under it: no {"module": ...}
+     * wrapper for the manager to walk. */
+    cJSON* stored = cJSON_GetObjectItem(report, "fim");
+    assert_non_null(stored);
+    assert_string_equal(cJSON_GetObjectItem(stored, "disabled")->valuestring, "no");
 
     cJSON_Delete(report);
 }
 
-static void test_add_stats_files_the_body_under_stats(void** state)
+static void test_add_keeps_each_module_separate(void** state)
 {
     (void)state;
-    cJSON* report = cJSON_CreateArray();
-    cJSON* body = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    cJSON* fim = cJSON_CreateObject();
+    cJSON* lc = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(body, "events", 12);
-    module_report_add_stats(report, "logcollector", body);
+    cJSON_AddStringToObject(fim, "disabled", "no");
+    cJSON_AddNumberToObject(lc, "events", 12);
+    module_report_add(report, "fim", fim);
+    module_report_add(report, "logcollector", lc);
 
-    cJSON* entry = cJSON_GetArrayItem(report, 0);
-    assert_null(cJSON_GetObjectItem(entry, "config"));
-    assert_non_null(cJSON_GetObjectItem(entry, "stats"));
+    assert_non_null(cJSON_GetObjectItem(report, "fim"));
+    assert_non_null(cJSON_GetObjectItem(report, "logcollector"));
+    assert_int_equal(
+        cJSON_GetObjectItem(cJSON_GetObjectItem(report, "logcollector"), "events")->valueint, 12);
 
     cJSON_Delete(report);
 }
@@ -110,14 +114,15 @@ static void test_add_stats_files_the_body_under_stats(void** state)
 static void test_add_leaves_out_a_module_that_reported_nothing(void** state)
 {
     (void)state;
-    cJSON* report = cJSON_CreateArray();
+    cJSON* report = cJSON_CreateObject();
 
     /* An empty body and a missing one both mean "this module said nothing", so
      * neither may appear: absent and empty must stay distinguishable. */
-    module_report_add_config(report, "fim", cJSON_CreateObject());
-    module_report_add_config(report, "logcollector", NULL);
+    module_report_add(report, "fim", cJSON_CreateObject());
+    module_report_add(report, "logcollector", NULL);
 
-    assert_int_equal(cJSON_GetArraySize(report), 0);
+    assert_null(cJSON_GetObjectItem(report, "fim"));
+    assert_null(cJSON_GetObjectItem(report, "logcollector"));
 
     cJSON_Delete(report);
 }
@@ -126,17 +131,17 @@ static void test_add_leaves_out_a_module_that_reported_nothing(void** state)
 static void test_reply_prefixes_the_serialized_report_with_ok(void** state)
 {
     (void)state;
-    cJSON* report = cJSON_CreateArray();
+    cJSON* report = cJSON_CreateObject();
     cJSON* body = cJSON_CreateObject();
     char* output = NULL;
 
     cJSON_AddStringToObject(body, "disabled", "no");
-    module_report_add_config(report, "fim", body);
+    module_report_add(report, "fim", body);
 
     size_t length = module_report_reply(report, &output);
 
     assert_non_null(output);
-    assert_string_equal(output, "ok [{\"module\":\"fim\",\"config\":{\"disabled\":\"no\"}}]");
+    assert_string_equal(output, "ok {\"fim\":{\"disabled\":\"no\"}}");
     assert_int_equal((int)length, (int)strlen(output));
 
     free(output);
@@ -147,11 +152,11 @@ static void test_reply_still_answers_when_no_module_reported(void** state)
     (void)state;
     char* output = NULL;
 
-    /* An empty array is a valid answer: the daemon is up and hosts nothing
+    /* An empty object is a valid answer: the daemon is up and hosts nothing
      * worth reporting. The caller must not read that as a failure. */
-    size_t length = module_report_reply(cJSON_CreateArray(), &output);
+    size_t length = module_report_reply(cJSON_CreateObject(), &output);
 
-    assert_string_equal(output, "ok []");
+    assert_string_equal(output, "ok {}");
     assert_int_equal((int)length, (int)strlen(output));
 
     free(output);
@@ -163,8 +168,8 @@ int main(void)
         cmocka_unit_test(test_merge_moves_every_section_under_one_body),
         cmocka_unit_test(test_merge_ignores_a_getter_that_returned_nothing),
         cmocka_unit_test(test_merge_consumes_the_section_even_without_a_body),
-        cmocka_unit_test(test_add_config_names_the_module_and_nests_its_body),
-        cmocka_unit_test(test_add_stats_files_the_body_under_stats),
+        cmocka_unit_test(test_add_keys_the_body_by_module_name),
+        cmocka_unit_test(test_add_keeps_each_module_separate),
         cmocka_unit_test(test_add_leaves_out_a_module_that_reported_nothing),
         cmocka_unit_test(test_reply_prefixes_the_serialized_report_with_ok),
         cmocka_unit_test(test_reply_still_answers_when_no_module_reported),

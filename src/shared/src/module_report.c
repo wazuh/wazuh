@@ -33,16 +33,7 @@ void module_report_merge(cJSON *body, cJSON *section) {
     cJSON_Delete(section);
 }
 
-/**
- * @brief Append a {"module": name, <key>: body} entry, dropping empty bodies.
- * @param report Destination array.
- * @param module Module name.
- * @param key Name under which the body is stored.
- * @param body Module body. Consumed by this call.
- */
-static void module_report_add(cJSON *report, const char *module, const char *key, cJSON *body) {
-    cJSON *entry = NULL;
-
+void module_report_add(cJSON *report, const char *module, cJSON *body) {
     if (!report || !module || !body) {
         cJSON_Delete(body);
         return;
@@ -53,22 +44,7 @@ static void module_report_add(cJSON *report, const char *module, const char *key
         return;
     }
 
-    if (entry = cJSON_CreateObject(), !entry) {
-        cJSON_Delete(body);
-        return;
-    }
-
-    cJSON_AddStringToObject(entry, "module", module);
-    cJSON_AddItemToObject(entry, key, body);
-    cJSON_AddItemToArray(report, entry);
-}
-
-void module_report_add_config(cJSON *report, const char *module, cJSON *body) {
-    module_report_add(report, module, "config", body);
-}
-
-void module_report_add_stats(cJSON *report, const char *module, cJSON *body) {
-    module_report_add(report, module, "stats", body);
+    cJSON_AddItemToObject(report, module, body);
 }
 
 size_t module_report_reply(cJSON *report, char **output) {

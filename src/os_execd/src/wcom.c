@@ -193,7 +193,7 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
 
 size_t wcom_getallconfig(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     cJSON *body = cJSON_CreateObject();
 
     /* No "cluster" section here: it is manager-only and reaching it depends on
@@ -202,7 +202,7 @@ size_t wcom_getallconfig(char ** output) {
     module_report_merge(body, getLoggingConfig());
     module_report_merge(body, getExecdInternalOptions());
 
-    module_report_add_config(report, WCOM_MODULE_NAME, body);
+    module_report_add(report, WCOM_MODULE_NAME, body);
     return module_report_reply(report, output);
 }
 
