@@ -296,9 +296,9 @@ TEST(ConfigEndpointTest, EmptyArrayIsAcceptedAndIndexedWithEmptyContent)
 }
 
 /**
- * wazuh-agent-config's template is dynamic:strict: an extra key on an element would make the
- * (fire-and-forget) write fail with no way to report that back to the caller. Every element is
- * therefore rebuilt from just module/config rather than validated in place.
+ * A stray sibling key on an array element (anything besides `module`/`config`) is not part of the
+ * `POST /config` wire contract, so it never reaches `content` -- each element is rebuilt from just
+ * those two keys rather than validated in place.
  */
 TEST(ConfigEndpointTest, ExtraKeysOnAnElementAreDroppedBeforeIndexing)
 {

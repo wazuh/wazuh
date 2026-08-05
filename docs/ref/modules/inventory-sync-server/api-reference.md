@@ -14,10 +14,10 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | `GET` | `/` | `200` | Liveness probe. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `POST` | `/inventory/sync` | `202` | **Provisional.** Accepts and discards the payload; the ingestion pipeline is not implemented yet. |
 | `POST` | `/stats` | `200` | **Temporary.** Echoes the enriched document back. |
-| `POST` | `/config` | `200` | **Temporary.** Echoes the enriched document back. |
+| `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). The response is a bare `{}` acknowledgment, not an echo. |
 
-`/stats` and `/config` exist to prove the enrichment dependencies reach the handler; they will be
-rewritten when the real payloads are defined.
+`/stats` still exists only to prove the enrichment dependencies reach the handler and will be
+rewritten when its real payload is defined; `/config` is implemented for real (issue #38023).
 
 ## Request headers
 
@@ -26,10 +26,10 @@ rewritten when the real payloads are defined.
 | `X-Wazuh-Agent-Id` | Yes, for `/inventory/sync`, `/stats` and `/config` | The agent identity remoted authenticated. Its absence is a contract violation, not agent input, so it is answered `400`. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
-## Enrichment
+## Enrichment (`/stats`)
 
-For `/stats` and `/config`, the module overwrites four fields on the document before echoing it. All four
-are authoritative and replace whatever the agent sent:
+For `/stats`, the module overwrites four fields on the document before echoing it back. All four are
+authoritative and replace whatever the agent sent:
 
 | JSON pointer | Source |
 |---|---|
@@ -41,13 +41,48 @@ are authoritative and replace whatever the agent sent:
 A cluster name or node name containing bytes that are not valid UTF-8 is sanitized once at startup, with
 a warning, rather than being allowed to break the serialization of every request.
 
+## Indexing `/config`
+
+Unlike `/stats`, the body is a JSON **array** of `{"module": <string>, "config": <object>}` pairs, one
+per agent module (e.g. `fim`, `logcollector`) -- not a single JSON object. Each element is reduced to
+exactly those two keys (anything else the agent sent on that element is dropped) and folded into a
+`{"<module>": <config>}` object: a module is unique per report, so a later entry for the same module
+name overwrites an earlier one rather than being treated as an error. `config` itself is never
+validated against a schema here -- it is copied through as an opaque JSON value; per-module field
+typing lives entirely in the `wazuh-agent-config` index mapping.
+
+The result is indexed under the agent id as `_id`, via a plain upsert -- each report replaces the
+previous one for that agent in full, there is no delete step:
+
+```json
+{
+  "state": { "modified_at": "<manager clock, ISO 8601 UTC>", "document_version": 1 },
+  "wazuh": {
+    "schema": { "version": "1.0.0" },
+    "agent": { "id": "<authenticated X-Wazuh-Agent-Id>",
+               "configuration": { "modules": ["fim", "logcollector", ...],
+                                  "content": { "fim": {...}, "logcollector": {...}, ... } } },
+    "cluster": { "name": "<cluster><name>", "node": "<cluster><node_name>" }
+  }
+}
+```
+
+`modules` is derived from `content`'s keys (never collected separately), so the two can never drift
+apart. `wazuh.agent.id` and `wazuh.cluster.*` are authoritative and always overwrite anything the
+agent's payload might claim; there is no per-request source for the cluster identity, it is this
+manager's own configuration read once at registration time.
+
+A `POST /config` that fails indexer-availability validation (see status codes below) never reaches the
+write path; a request that passes validation but whose serialization later fails (e.g. an agent id
+header that is not valid UTF-8) is answered `400` rather than crashing the handler.
+
 ## Status codes
 
 These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a body that is not a JSON object, or a missing agent id header |
+| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a JSON object for `/stats`, a JSON array of `{"module", "config"}` entries for `/config`) |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |
@@ -63,9 +98,18 @@ purpose, so a malformed document is never masked as a transient failure the agen
 
 ## Manual testing
 
-`tools/send_sync.py` in the module's source directory drives every route over the socket. The equivalent
-with curl:
+`tools/send_sync.py` in the module's source directory drives every route over the socket at the
+transport level (health check, oversized bodies, malformed encodings) but does not build a
+route-specific payload. The liveness probe with curl:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/
+```
+
+A `/config` report, simulating what remoted forwards for an authenticated agent:
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/config \
+  -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
+  -d '[{"module":"fim","config":{"frequency":43200}},{"module":"logcollector","config":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}]'
 ```

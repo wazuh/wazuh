@@ -4245,24 +4245,24 @@ paths:
                       $ref: '#/components/schemas/AgentConfiguration'
               example:
                 data:
-                  config-profile: "ubuntu, ubuntu20, ubuntu20.04"
-                  notify_time: 20
-                  time-reconnect: 60
-                  ip_update_interval: 0
-                  auto_restart: "yes"
-                  remote_conf: "yes"
-                  manager:
-                    - address: "nginx-lb/172.25.0.4"
+                  client:
+                    config-profile: "ubuntu, ubuntu24, ubuntu24.04"
+                    notify_time: 20
+                    auto_restart: "yes"
+                    remote_conf: "yes"
+                    manager:
+                      address: "127.0.0.1"
                       port: 1514
-                      max_retries: 5
-                      retry_interval: 10
-                      protocol: tcp
-                  enrollment:
-                    - enabled: "yes"
+                    enrollment:
+                      enabled: "yes"
                       delay_after_enrollment: 20
                       port: 1515
                       ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
                       auto_method: "no"
+                  internal:
+                    agent:
+                      debug: 0
+                      warn_level: 1
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
