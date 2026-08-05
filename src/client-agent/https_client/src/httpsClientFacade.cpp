@@ -217,6 +217,11 @@ void HttpsClientFacade::stop()
 
 void HttpsClientFacade::controlLoop()
 {
+    // The hashes and any pending tasks only ever arrive on Notify, so a Startup that
+    // just got accepted (first connect, reconnect, or a settings-refresh in place)
+    // shouldn't sit idle for a full notify cycle before the first one is sent.
+    constexpr std::chrono::seconds FAST_FOLLOWUP_INTERVAL {1};
+
     while (true)
     {
         const bool registered = m_control.step(m_controlWaiter);
@@ -226,7 +231,9 @@ void HttpsClientFacade::controlLoop()
             m_gate.open();
         }
 
-        if (!m_controlWaiter.waitFor(controlInterval()))
+        const auto interval = m_control.consumeFastFollowup() ? FAST_FOLLOWUP_INTERVAL : controlInterval();
+
+        if (!m_controlWaiter.waitFor(interval))
         {
             break;
         }
