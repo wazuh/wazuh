@@ -590,7 +590,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync_server.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libvulnerability_scanner.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librocksdb.so.8

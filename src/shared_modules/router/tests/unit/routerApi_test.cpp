@@ -659,6 +659,8 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId, const
     auto moduleOffset = builder.CreateString("test-module");
     auto clusterNameOffset = clusterName.empty() ? 0 : builder.CreateString(clusterName);
 
+    // FullSession-era Start (no `size`, no ModuleFull); the router's anti-spoofing only reads
+    // agentid and cluster_name, so the rest stays defaulted.
     auto startMsg = Wazuh::SyncSchema::CreateStart(builder,
                                                    moduleOffset,                        // module
                                                    Wazuh::SyncSchema::Mode_ModuleDelta, // mode
