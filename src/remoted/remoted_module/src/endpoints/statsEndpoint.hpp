@@ -35,10 +35,9 @@ namespace remoted::endpoints::stats
     /**
      * @brief Map the downstream result onto the agent's response.
      *
-     * Passes the downstream body through on success, unlike /stateless which discards it: the point
-     * of this endpoint today is that the caller can see what modulesd added to the document. Failure
-     * statuses are still collapsed to fixed local messages so an arbitrary downstream string is never
-     * reflected back to an agent.
+     * Every body is built here, never forwarded: success is the protocol's empty acknowledgment and
+     * the failure statuses collapse to fixed local messages, so an arbitrary downstream string is
+     * never reflected back to an agent.
      */
     remoted::http::HttpResponse postProcess(remoted::downstream::DownstreamError error,
                                             const remoted::downstream::DownstreamResponse& response);

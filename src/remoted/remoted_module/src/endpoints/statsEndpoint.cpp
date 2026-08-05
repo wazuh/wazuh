@@ -42,14 +42,13 @@ namespace remoted::endpoints::stats
         const int status = response.status;
         if (status >= 200 && status < 300)
         {
-            // Pass the enriched document straight through. Safe to reflect: modulesd produced it
-            // from the agent's own document plus two fields it added itself.
-            return HttpResponse::json(200, response.body);
+            // The protocol's acknowledgment, built here rather than forwarded: the agent has nothing
+            // to read back, and a fixed body keeps an arbitrary downstream string off the wire.
+            return HttpResponse::json(200, "{}");
         }
         if (status == 400)
         {
-            // modulesd rejected the document (not a JSON object). Answer with our own message rather
-            // than its body, so an arbitrary downstream string is never reflected to an agent.
+            // modulesd rejected the document.
             return HttpResponse::json(400, R"({"error":"Invalid stats document","code":400})");
         }
         if (status == 413)
