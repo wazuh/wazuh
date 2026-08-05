@@ -11,10 +11,10 @@ from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
 
-from wazuh.core import common, stats
+from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
+from wazuh.core.common import DATE_FORMAT
 from wazuh.core.exception import (
     WazuhException,
     WazuhError,
@@ -1256,43 +1256,6 @@ class Agent:
         return f"Agent '{agent_id}' removed from '{group_id}'." + (
             " Agent reassigned to group default." if set_default else ""
         )
-
-    def get_stats(self, component: str) -> dict:
-        """Read the agent's component stats.
-
-        Parameters
-        ----------
-        component : str
-            Name of the component to get stats from.
-
-        Raises
-        ------
-        WazuhInternalError(1015)
-            Agent version is null.
-        WazuhInternalError(1735)
-            Agent version is not compatible with this feature.
-
-        Returns
-        -------
-        dict
-            Object with component's stats.
-        """
-        # Check if agent version is compatible with this feature
-        self.load_info_from_db()
-        if self.version is None:
-            raise WazuhInternalError(1015)
-        agent_version = WazuhVersion(self.version)
-        required_version = WazuhVersion(
-            AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component)
-        )
-        if agent_version < required_version:
-            raise WazuhInternalError(
-                1735,
-                extra_message="Minimum required version is " + str(required_version),
-            )
-
-        return stats.get_daemons_stats_from_socket(self.id, component)
-
 
 def unify_wazuh_upgrade_version_format(upgrade_version: str) -> str:
     """Format the specified upgrade version into the 'vX.Y.Z' standard.

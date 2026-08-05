@@ -16,6 +16,7 @@ from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core import common
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
+from wazuh.core.indexer.agent_stats import AgentStatsIndex
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.states_components import StatesIndex
 from wazuh.core.indexer.metrics import MetricsIndex
@@ -250,6 +251,7 @@ class Indexer:
         self._client = self._get_opensearch_client()
         self.states = StatesIndex(client=self._client)
         self.metrics = MetricsIndex(client=self._client)
+        self.agent_stats = AgentStatsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """
