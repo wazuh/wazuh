@@ -119,25 +119,59 @@ namespace invsync::endpoints::sync
 
             auto& session = std::get<invsync::sync::ValidatedSession>(result);
 
-            if (session.isVD)
+            // VD DATA sessions ride the scan lane (D22: scan -> ok -> index -> 200). Only data
+            // sessions: a Cleans/Check that happens to carry a VD option has nothing to scan and
+            // follows the normal pipeline below.
+            if (session.isVD && session.payloadType == invsync::schema::fb::SessionPayload_SyncData)
             {
-                // D17 gate, and in THIS build the whole story for VD sessions: the synchronous
-                // scan lane (D22) lands with the VD integration, and indexing a VD session without
-                // its scan would break the "200 means scan + ingest" contract. Rejected WITHOUT
-                // processing, with the Retry-After the agent must honor.
-                if (const auto decision = vdThrottle.record())
+                const auto scanner = deps.scanner.lock();
+                const auto lane = deps.scanLane.lock();
+                if (!scanner || !lane)
                 {
-                    LOGFN_DEBUG1(logFn(),
-                                 "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the last "
-                                 "%d s: the scan lane is not available in this build.",
-                                 static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
+                    responder->send(serviceUnavailable()); // stopping (or the lane never came up)
+                    return;
                 }
-                auto response = errorResponse(503, "vulnerability feed not ready");
-                response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));
-                // STATS-PLACEHOLDER: retry_after_total
-                responder->send(std::move(response));
-                return;
+
+                // D17: while the CVE feed is downloading, VD sessions are rejected WITHOUT
+                // processing -- the re-POST applies scan and ingest together, and nobody blocks
+                // waiting for the feed (the lane re-checks at dispatch too).
+                if (!scanner->feedReady())
+                {
+                    if (const auto decision = vdThrottle.record())
+                    {
+                        LOGFN_DEBUG1(logFn(),
+                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
+                                     "last %d s: the CVE feed is not ready.",
+                                     static_cast<unsigned long long>(decision.total),
+                                     invsync::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    auto response = errorResponse(503, "vulnerability feed not ready");
+                    response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));
+                    // STATS-PLACEHOLDER: retry_after_total
+                    responder->send(std::move(response));
+                    return;
+                }
+
+                switch (lane->tryEnqueue(invsync::sync::SyncPipeline::Item {request, responder, std::move(session)}))
+                {
+                    case invsync::vd::VdScanLane::Admission::Accepted:
+                        return; // the lane worker owns the response from here
+                    case invsync::vd::VdScanLane::Admission::Full:
+                        if (const auto decision = vdThrottle.record())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Rejected %llu vulnerability-detection session(s) with 503 in the last %d s: "
+                                       "the scan lane queue is full (scans are slow; the agents retry next cycle). "
+                                       "Consider raising 'inventory_sync_server_vd_scan_queue_slots'.",
+                                       static_cast<unsigned long long>(decision.total),
+                                       invsync::common::LogThrottle::kDefaultWindowSeconds);
+                        }
+                        // STATS-PLACEHOLDER: vd_capacity_503
+                        responder->send(errorResponse(503, "scan capacity exhausted"));
+                        return;
+                    case invsync::vd::VdScanLane::Admission::Stopping:
+                    default: responder->send(serviceUnavailable()); return;
+                }
             }
 
             // Admission availability gate (re-checked per session at dispatch by the worker): an

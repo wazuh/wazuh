@@ -195,12 +195,41 @@ TEST_F(StatefulEndpointE2ETest, GarbageIs400AndAForeignIdentityIs403)
     EXPECT_TRUE(m_events->syncOps().empty()) << "rejections must never reach the indexer";
 }
 
-TEST_F(StatefulEndpointE2ETest, AVDSessionIsRefusedWithRetryAfter)
+TEST_F(StatefulEndpointE2ETest, AVDSessionWithTheScannerDisabledIndexesAndAnswers200)
 {
+    // The PRODUCTION scanner adapter against an uninitialized vulnerability scanner (this test
+    // process never starts it): the D22 legitimate-skip row -- the scan is skipped, the inventory
+    // still lands, the agent gets its 200.
     SessionSpec spec;
     spec.option = invsync::test::fb::Option_VDSync;
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
     const auto response = invsync::test::sendRaw(m_path, statefulRequest(body));
+
+    EXPECT_EQ(200, response.status) << response.body;
+    const auto ops = m_events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
+    EXPECT_EQ(1, m_events->m_syncFlushes.load());
+}
+
+TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetryAfter)
+{
+    // Same wiring, FAKE scanner reporting "feed not ready" (D17): rejected without processing.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+
+    invsync::test::installFakeVdScanner(m_events);
+    m_events->m_vdFeedReady.store(false);
+
+    const auto path = uniqueSocketPath("vdfeed");
+    const auto config = makeConfig(path);
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDSync;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
 
     EXPECT_EQ(503, response.status);
     ASSERT_TRUE(response.hasHeader("Retry-After")) << response.raw;

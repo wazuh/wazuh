@@ -131,7 +131,8 @@ TEST_F(IndexerGatingTest, SessionAndBothConnectorsAreConstructedBeforeTheSocketO
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
     EXPECT_EQ(1, events->m_sessionBuilds.load());
-    EXPECT_EQ(1, events->m_syncBuilds.load());
+    // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's own worker.
+    EXPECT_EQ(2, events->m_syncBuilds.load());
     EXPECT_EQ(1, events->m_asyncBuilds.load());
 }
 
@@ -275,7 +276,8 @@ TEST_F(IndexerGatingTest, EachSlotIsConstructedOnlyOnceAcrossRetries)
     invsync::test_hooks::forceRetryForTests();
 
     EXPECT_EQ(1, events->m_sessionBuilds.load()) << "a successful construction must never be repeated";
-    EXPECT_EQ(1, events->m_syncBuilds.load());
+    // 2 = the slot + the VD scan lane's worker; both memoised, neither repeated across retries.
+    EXPECT_EQ(2, events->m_syncBuilds.load());
     EXPECT_EQ(1, events->m_asyncBuilds.load());
 }
 
@@ -296,7 +298,9 @@ TEST_F(IndexerGatingTest, TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries)
     invsync::test_hooks::forceRetryForTests(); // async attempt 3: succeeds
 
     EXPECT_EQ(1, events->m_sessionBuilds.load());
-    EXPECT_EQ(1, events->m_syncBuilds.load());
+    // The slot built on attempt 1 and stayed put; the lane's worker connector only builds after
+    // the async slot finally succeeds (attempt 3) -- hence 2, not 3+.
+    EXPECT_EQ(2, events->m_syncBuilds.load());
     EXPECT_EQ(3, events->m_asyncBuilds.load());
 
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
@@ -323,7 +327,9 @@ TEST_F(IndexerGatingTest, StopTearsDownEverythingInReverseOrder)
 
     inventory_sync_server_stop();
 
-    const std::vector<std::string> expected {"async", "sync", "session"};
+    // The scan lane goes down FIRST (its worker connector with it), then the async slot, the sync
+    // slot and the session -- reverse construction order with the lane on top.
+    const std::vector<std::string> expected {"sync", "async", "sync", "session"};
     EXPECT_EQ(expected, events->destroyed());
 }
 

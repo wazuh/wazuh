@@ -16,6 +16,8 @@
 #include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
+#include "vd/IVdScanner.hpp"
+#include "vd/vdScanLane.hpp"
 
 #include <memory>
 
@@ -67,6 +69,10 @@ namespace invsync::endpoints::sync
         invsync::common::ClusterIdentity cluster;
         /// Retry-After seconds attached to the 503 for vulnerability-detection sessions (D17).
         int vdRetryAfterSeconds {60};
+        /// The D22 scan lane for VD data sessions and its feed gate. Both weak, like the rest;
+        /// either expiring means the module is stopping (503).
+        std::weak_ptr<invsync::vd::VdScanLane> scanLane;
+        std::weak_ptr<invsync::vd::IVdScanner> scanner;
     };
 
     /**

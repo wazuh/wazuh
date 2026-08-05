@@ -12,12 +12,22 @@
 #include "inventorySync.hpp"
 #include "cjsonSmartDeleter.hpp"
 #include "inventorySyncFacade.hpp"
+#include "scanCoordinatorAdapter.hpp"
+
+#include <memory>
 
 namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 } // namespace Log
+
+namespace
+{
+    /// This module's registration in the scanner's neutral coordination registry. Held here so
+    /// stop() removes EXACTLY what start() added (the registry matches by pointer identity).
+    std::shared_ptr<InventorySyncScanCoordinatorAdapter> gScanCoordinator;
+} // namespace
 
 void InventorySync::start(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
@@ -26,10 +36,26 @@ void InventorySync::start(
 {
 
     InventorySyncFacade::instance().start(logFunction, configuration);
+
+    // AFTER the facade is up: the adapter answers over its session/lock machinery. This is how
+    // the vulnerability scanner keeps coordinating with THIS module's sessions now that its call
+    // sites go through the neutral registry instead of including our facade.
+    if (!gScanCoordinator)
+    {
+        gScanCoordinator = std::make_shared<InventorySyncScanCoordinatorAdapter>();
+        vd_sync::ScanCoordinatorRegistry::instance().add(gScanCoordinator);
+    }
 }
 
 void InventorySync::stop() const
 {
+    // BEFORE the facade goes down, so no scanner call races the teardown.
+    if (gScanCoordinator)
+    {
+        vd_sync::ScanCoordinatorRegistry::instance().remove(gScanCoordinator);
+        gScanCoordinator.reset();
+    }
+
     InventorySyncFacade::instance().stop();
 }
 

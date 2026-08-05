@@ -38,9 +38,11 @@ namespace invsync::sync
 
     SyncPipeline::SyncPipeline(SyncPipelineConfig config,
                                std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
-                               std::string managerClusterName)
+                               std::string managerClusterName,
+                               std::shared_ptr<vd::AgentInFlightRegistry> registry)
         : m_config {config}
         , m_processor {std::move(managerClusterName)}
+        , m_registry {std::move(registry)}
         , m_connectors {std::move(connectors)}
     {
         if (m_connectors.empty())
@@ -60,6 +62,22 @@ namespace invsync::sync
         for (std::size_t i = 0; i < m_connectors.size(); ++i)
         {
             m_workers.emplace_back(&SyncPipeline::workerLoop, this, i);
+        }
+
+        if (m_registry)
+        {
+            // A scan-lane release may be exactly what a parked shard waits for. The registry
+            // outlives this pipeline (facade teardown order), and by the time it is destroyed no
+            // lane is left to fire this.
+            m_registry->addReleaseListener(
+                [this]
+                {
+                    for (auto& shard : m_shards)
+                    {
+                        std::lock_guard<std::mutex> lock(shard->mutex);
+                        shard->cv.notify_all();
+                    }
+                });
         }
 
         LOGFN_DEBUG1(logFn(), "Sync pipeline running with %zu worker(s).", m_connectors.size());
@@ -160,6 +178,43 @@ namespace invsync::sync
             // STATS-PLACEHOLDER: requests_total{code}, session_duration{mode}
             item.responder->send(http::HttpResponse::json(status, body));
         }
+        if (m_registry)
+        {
+            // Lane-checked: for a never-acquired item (the stop() drain) this is a no-op and can
+            // never free the scan lane's hold on the same agent.
+            m_registry->release(item.session.agentId, vd::AgentInFlightRegistry::Lane::Pipeline);
+        }
+    }
+
+    bool SyncPipeline::popDispatchable(Shard& shard, Item& item)
+    {
+        // Caller holds shard.mutex.
+        if (!m_registry)
+        {
+            if (shard.queue.empty())
+            {
+                return false;
+            }
+            item = std::move(shard.queue.front());
+            shard.queue.pop_front();
+            return true;
+        }
+
+        // First item whose agent the registry lets the pipeline take. Skipping a busy agent's
+        // item keeps per-agent FIFO (its items stay queued, in order) without head-of-line
+        // blocking the shard's OTHER agents while a scan runs. Reentrant: with group commit,
+        // several staged sessions of one agent hold it at once, released one by one on respond.
+        for (auto it = shard.queue.begin(); it != shard.queue.end(); ++it)
+        {
+            if (m_registry->tryAcquire(
+                    it->session.agentId, vd::AgentInFlightRegistry::Lane::Pipeline, /*reentrant=*/true))
+            {
+                item = std::move(*it);
+                shard.queue.erase(it);
+                return true;
+            }
+        }
+        return false;
     }
 
     void SyncPipeline::respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector)

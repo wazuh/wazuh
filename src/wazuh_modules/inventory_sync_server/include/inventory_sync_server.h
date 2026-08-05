@@ -179,10 +179,16 @@ extern "C"
                                     ///< transport budget is exhausted so probes/other routes keep
                                     ///< admitting. Range 1048576..1073741824. <=0 -> 64 MiB.
         int vd_feed_retry_after_seconds; ///< Value of the `Retry-After` header attached to the 503
-                                         ///< returned for vulnerability-detection sessions the
-                                         ///< server cannot take yet (CVE feed still downloading; in
-                                         ///< this build, always -- the scan lane lands with the VD
-                                         ///< integration). Range 10..1800. <=0 -> 60.
+                                         ///< returned for vulnerability-detection sessions while
+                                         ///< the CVE feed is still downloading.
+                                         ///< Range 10..1800. <=0 -> 60.
+        int vd_workers;                  ///< Workers of the vulnerability-detection scan lane
+                                         ///< (scan -> index -> respond, one connector each). The
+                                         ///< scanner serializes scans globally, so more than 1
+                                         ///< only helps once that changes. Range 0..16. <=0 -> 1.
+        int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
+                                         ///< "scan capacity exhausted". Range 0..256.
+                                         ///< <=0 -> 2x vd_workers.
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same
