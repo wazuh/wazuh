@@ -30,6 +30,20 @@ using invsync::http::Method;
 
 namespace
 {
+    /**
+     * @brief A report shaped exactly like the agent's, for the tests that are not about the payload.
+     *
+     * Both modules come in clean and already named the way the index declares them: this is the wire
+     * format agreed with the agent side (#37843), which is also what the document stores.
+     */
+    constexpr auto kAgentReport {
+        R"({"modules":{)"
+        R"("agent":{"status":"connected","last_keepalive":"2026-08-02T10:06:50Z",)"
+        R"("messages":{"count":602},)"
+        R"("tasks":{"dispatched":{"total":4},"discarded_duplicate":{"total":0},"failed":{"total":0}}},)"
+        R"("logcollector":{"global":{"files":[{"location":"df -P","events":32}]}})"
+        R"(},"agent_id":"001","cluster":{"name":"claimed","node":"claimed"}})"};
+
     /// Captures whatever the handler sends, so the endpoint can be tested with no socket at all.
     class CapturingResponder final : public IHttpResponder
     {
@@ -88,8 +102,7 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
-        /// Recorded writes. Empty today -- the endpoints do not write yet -- which is exactly what the
-        /// NothingIsIndexedYet test pins, so the day someone starts writing, the test says so.
+        /// Recorded writes, as (document id, index, document).
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
 
@@ -127,6 +140,31 @@ namespace
     {
         return run(request, std::make_shared<FakeAsyncConnector>(), testClusterIdentity());
     }
+
+    /// The single document the connector was handed. The response no longer carries it, so every
+    /// assertion about content reads it from here.
+    nlohmann::json onlyIndexedDocument(const std::shared_ptr<FakeAsyncConnector>& connector)
+    {
+        EXPECT_EQ(1U, connector->indexed.size()) << "expected exactly one write";
+        if (connector->indexed.size() != 1U)
+        {
+            return nlohmann::json::object();
+        }
+        auto document = nlohmann::json::parse(std::get<2>(connector->indexed.front()), nullptr, false);
+        EXPECT_FALSE(document.is_discarded());
+        return document;
+    }
+
+    /// Sends one report through a fresh handler, asserts the 200, and returns what got indexed, so a
+    /// test that only cares about the document's content stays a single line.
+    nlohmann::json indexedDocument(const char* body,
+                                   const char* agentId,
+                                   invsync::common::ClusterIdentity cluster = testClusterIdentity())
+    {
+        auto connector = std::make_shared<FakeAsyncConnector>();
+        EXPECT_EQ(200, run(makeRequest(body, agentId), connector, std::move(cluster)).status);
+        return onlyIndexedDocument(connector);
+    }
 } // namespace
 
 /**
@@ -145,69 +183,127 @@ TEST(StatsEndpointTest, AgentIdHeaderNameIsLowerCase)
     EXPECT_STREQ("x-wazuh-agent-id", invsync::endpoints::stats::agentIdHeader());
 }
 
-TEST(StatsEndpointTest, EnrichesTheDocumentAndEchoesItBack)
+/// The index name is a contract with whoever reads it, from another codebase entirely.
+TEST(StatsEndpointTest, IndexNameIsStable)
 {
-    const auto response = run(makeRequest(R"({"cpu":42})", "007"));
-
-    ASSERT_EQ(200, response.status);
-
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    // The agent's own field survives untouched.
-    EXPECT_EQ(42, document.at("cpu").get<int>());
-    // ...and both stamps landed at the documented JSON pointers.
-    ASSERT_TRUE(document.contains("wazuh"));
-    EXPECT_EQ("007", document["/wazuh/agent/id"_json_pointer].get<std::string>());
-    ASSERT_TRUE(document.contains("@timestamp"));
-    EXPECT_FALSE(document.at("@timestamp").get<std::string>().empty());
+    EXPECT_STREQ("wazuh-agent-stats", invsync::endpoints::stats::indexName());
 }
 
 /**
- * The timestamp shape is what makes the document indexable, so pin it rather than just its presence:
+ * The whole point of the endpoint: what the agent keys by module lands under
+ * `wazuh.agent.statistics`, keyed the same way, so a reader fetches one module out of the document by
+ * key.
+ */
+TEST(StatsEndpointTest, StoresTheReportedModulesUnderWazuhAgentStatistics)
+{
+    const auto document = indexedDocument(kAgentReport, "007");
+
+    EXPECT_FALSE(document.contains("modules")) << "the agent's own key must not survive at the root";
+    EXPECT_EQ(602, document["/wazuh/agent/statistics/agent/messages/count"_json_pointer].get<int>());
+    EXPECT_EQ("df -P",
+              document["/wazuh/agent/statistics/logcollector/global/files/0/location"_json_pointer].get<std::string>());
+}
+
+/// The document id IS the agent id: that is what makes every push replace the previous report.
+TEST(StatsEndpointTest, IndexesUnderTheAuthenticatedAgentIdAsDocumentId)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(kAgentReport, "007"), connector).status);
+
+    ASSERT_EQ(1U, connector->indexed.size());
+    EXPECT_EQ("007", std::get<0>(connector->indexed.front()));
+    EXPECT_EQ("wazuh-agent-stats", std::get<1>(connector->indexed.front()));
+    EXPECT_TRUE(connector->dataStreamed.empty()) << "a data stream cannot carry a stable document id";
+}
+
+/**
+ * Moving `modules` is the only thing that happens to a report: each module's body is stored as it
+ * arrives, so every metric name in the index is the agent's own and a metric it adds needs no change
+ * here. Not even fields shaped like a transport envelope are touched.
+ */
+TEST(StatsEndpointTest, StoresEachModuleBodyVerbatim)
+{
+    const auto report = nlohmann::json::parse(kAgentReport);
+    const auto document = indexedDocument(kAgentReport, "001");
+
+    EXPECT_EQ(report.at("modules"), document["/wazuh/agent/statistics"_json_pointer]);
+
+    const auto wrapped = indexedDocument(R"({"modules":{"fim":{"error":0,"data":{}}}})", "001");
+    EXPECT_TRUE(wrapped["/wazuh/agent/statistics/fim"_json_pointer].contains("error"));
+    EXPECT_TRUE(wrapped["/wazuh/agent/statistics/fim"_json_pointer].contains("data"));
+}
+
+/**
+ * Every report that leaves nothing to store is a 400, never an empty document: indexing one would
+ * wipe the agent's last good report. A module whose body is not an object is rejected here because
+ * the index mapping would reject it silently -- the write is fire-and-forget.
+ */
+TEST(StatsEndpointTest, AReportWithNothingToStoreIsRejected)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    for (const auto* body : {R"({})",
+                             R"({"modules":{}})",
+                             R"({"modules":"agent"})",
+                             R"({"modules":[{"module":"agent","stats":{}}]})",
+                             R"({"modules":{"agent":[]}})",
+                             R"({"modules":{"agent":42}})",
+                             R"({"modules":{"agent":null}})",
+                             R"({"modules":{"agent":{"messages":{}},"logcollector":"x"}})"})
+    {
+        EXPECT_EQ(400, run(makeRequest(body, "001"), connector).status) << "body: " << body;
+    }
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
+/**
+ * The document is built from scratch, so the identity the agent's reporter writes at the root of its
+ * own document is left behind instead of being indexed next to the authoritative one.
+ */
+TEST(StatsEndpointTest, TheAgentsOwnRootFieldsAreNotIndexed)
+{
+    const auto document = indexedDocument(kAgentReport, "001");
+
+    EXPECT_FALSE(document.contains("agent_id"));
+    EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>());
+    EXPECT_EQ("test-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+}
+
+/**
+ * The time field is `state.modified_at` and not `@timestamp`: this index follows the schema's
+ * stateful convention, because the document id is stable and every push replaces the previous state.
+ * Its shape is what makes the document indexable, so pin it rather than just its presence:
  * Utils::getCurrentISO8601() yields YYYY-MM-DDTHH:MM:SS.mmmZ (24 chars, milliseconds, trailing Z).
  */
-TEST(StatsEndpointTest, TimestampIsIso8601WithMillisecondsAndZulu)
+TEST(StatsEndpointTest, StampsStateModifiedAtIso8601WithMillisecondsAndZulu)
 {
-    const auto response = run(makeRequest("{}", "001"));
+    const auto document = indexedDocument(kAgentReport, "001");
+    const auto modifiedAt = document["/state/modified_at"_json_pointer].get<std::string>();
 
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    const auto timestamp = document.at("@timestamp").get<std::string>();
-
-    ASSERT_EQ(24U, timestamp.size()) << "unexpected timestamp: " << timestamp;
-    EXPECT_EQ('T', timestamp[10]);
-    EXPECT_EQ('.', timestamp[19]);
-    EXPECT_EQ('Z', timestamp.back());
+    EXPECT_FALSE(document.contains("@timestamp")) << "the stateful convention replaces it";
+    ASSERT_EQ(24U, modifiedAt.size()) << "unexpected timestamp: " << modifiedAt;
+    EXPECT_EQ('T', modifiedAt[10]);
+    EXPECT_EQ('.', modifiedAt[19]);
+    EXPECT_EQ('Z', modifiedAt.back());
+    EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
 }
 
 /**
- * The authenticated id must win. A document claiming a different agent cannot override what remoted
- * verified -- otherwise the enrichment would be worthless as an identity.
+ * `wazuh.schema.version` is a string, not a number: `wazuh-metrics-agents` declares it `keyword`, and
+ * this index follows it so one schema marker does not come back in two types depending on the index.
  */
-TEST(StatsEndpointTest, TheAuthenticatedAgentIdOverridesOneClaimedInTheDocument)
+TEST(StatsEndpointTest, StampsTheSchemaVersionAsAKeyword)
 {
-    const auto response = run(makeRequest(R"({"wazuh":{"agent":{"id":"999"}}})", "001"));
+    const auto version = indexedDocument(kAgentReport, "001")["/wazuh/schema/version"_json_pointer];
 
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>());
-}
-
-/// Same for a pre-existing @timestamp: the server's clock is the authoritative one.
-TEST(StatsEndpointTest, APreExistingTimestampIsOverwritten)
-{
-    const auto response = run(makeRequest(R"({"@timestamp":"1999-01-01T00:00:00.000Z"})", "001"));
-
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_NE("1999-01-01T00:00:00.000Z", document.at("@timestamp").get<std::string>());
+    ASSERT_TRUE(version.is_string()) << version.dump();
+    EXPECT_EQ("1", version.get<std::string>());
 }
 
 TEST(StatsEndpointTest, NonObjectBodiesAreRejected)
 {
-    // Each of these parses as valid JSON but is not an object, so there is nothing to stamp onto.
+    // Each of these parses as valid JSON but is not an object, so it cannot carry a `modules` member.
     for (const auto* body : {"[]", R"("a string")", "42", "true", "null"})
     {
         const auto response = run(makeRequest(body, "001"));
@@ -231,7 +327,7 @@ TEST(StatsEndpointTest, MalformedJsonIsRejected)
  */
 TEST(StatsEndpointTest, AMissingAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("{}", "", /*withAgentHeader=*/false));
+    const auto response = run(makeRequest(kAgentReport, "", /*withAgentHeader=*/false));
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -239,14 +335,16 @@ TEST(StatsEndpointTest, AMissingAgentIdHeaderIsRejected)
 
 TEST(StatsEndpointTest, AnEmptyAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("{}", ""));
-
-    EXPECT_EQ(400, response.status);
+    EXPECT_EQ(400, run(makeRequest(kAgentReport, "")).status);
 }
 
-TEST(StatsEndpointTest, ResponseIsJson)
+/// The protocol's acknowledgment: an empty object, so the agent has nothing to parse out of it.
+TEST(StatsEndpointTest, SuccessAnswersAnEmptyJsonObject)
 {
-    const auto response = run(makeRequest("{}", "001"));
+    const auto response = run(makeRequest(kAgentReport, "001"));
+
+    ASSERT_EQ(200, response.status);
+    EXPECT_EQ("{}", response.body);
 
     bool hasJsonContentType {false};
     for (const auto& [name, value] : response.headers)
@@ -273,15 +371,15 @@ TEST(StatsEndpointTest, NullRequestIsToleratedAndStillAnswered)
     EXPECT_EQ(400, responder->captured->status);
 }
 
-// The handler must not retain the payload: it discards the document, and holding the request would
-// silently pin the transport's in-flight byte reservation.
+// The handler must not retain the payload: the document it builds owns its own copy, and holding the
+// request would silently pin the transport's in-flight byte reservation.
 TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
     auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
-    auto request = makeRequest(R"({"a":1})", "001");
+    auto request = makeRequest(kAgentReport, "001");
     std::weak_ptr<const HttpRequest> observer {request};
 
     handler(request, responder);
@@ -292,16 +390,17 @@ TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 
 /**
  * The indexer gate. An unreachable indexer is a transient, server-side condition, so the caller gets a
- * 503 to retry rather than a 200 that pretends the document was handled.
+ * 503 to retry rather than a 200 that pretends the document was stored.
  */
 TEST(StatsEndpointTest, UnavailableIndexerYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector);
+    const auto response = run(makeRequest(kAgentReport, "001"), connector);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
 }
 
 /**
@@ -316,7 +415,7 @@ TEST(StatsEndpointTest, AnExpiredConnectorYields503)
 
     connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
 
-    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+    handler(makeRequest(kAgentReport, "001"), responder);
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
@@ -331,7 +430,7 @@ TEST(StatsEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    for (const auto* body : {"", "{", "[]", R"("a string")", "not json at all"})
+    for (const auto* body : {"", "{", "[]", R"("a string")", "not json at all", R"({"modules":{}})"})
     {
         const auto response = run(makeRequest(body, "001"), connector);
         EXPECT_EQ(400, response.status) << "body: " << body;
@@ -342,7 +441,7 @@ TEST(StatsEndpointTest, AMissingAgentIdHeaderIsRejectedEvenWhenTheIndexerIsDown)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest("{}", "", /*withAgentHeader=*/false), connector);
+    const auto response = run(makeRequest(kAgentReport, "", /*withAgentHeader=*/false), connector);
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -363,7 +462,7 @@ TEST(StatsEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
 
     auto handler = invsync::endpoints::stats::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
-    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+    handler(makeRequest(kAgentReport, "001"), responder);
     ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
 
     connector.reset();
@@ -373,55 +472,16 @@ TEST(StatsEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
 }
 
 /**
- * The endpoints are still dummies: the connector is injected and gated on, but nothing writes through
- * it yet. Pinned so that the day real processing lands, this test fails and has to be updated
- * deliberately rather than the behaviour changing silently.
- */
-TEST(StatsEndpointTest, NothingIsIndexedYet)
-{
-    auto connector = std::make_shared<FakeAsyncConnector>();
-
-    ASSERT_EQ(200, run(makeRequest(R"({"cpu":42})", "001"), connector).status);
-
-    EXPECT_TRUE(connector->indexed.empty()) << "this endpoint does not index yet";
-    EXPECT_TRUE(connector->dataStreamed.empty()) << "this endpoint does not index yet";
-}
-
-/**
  * The cluster identity is injected at registration time (makeHandler()'s `cluster` parameter), not
  * read from anything the caller sends -- unlike the agent id, there is no per-request source for it.
+ * The report used here claims its own, which must not survive.
  */
 TEST(StatsEndpointTest, StampsTheInjectedClusterNameAndNode)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
+    const auto document = indexedDocument(kAgentReport, "001", {"prod-cluster", "node-03"});
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, cluster);
-
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
     EXPECT_EQ("node-03", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
-}
-
-/**
- * A document claiming its own cluster identity must not survive: this manager's configured identity
- * is authoritative, mirroring the same override rule already pinned for the agent id.
- */
-TEST(StatsEndpointTest, TheInjectedClusterIdentityOverridesOneClaimedInTheDocument)
-{
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    invsync::common::ClusterIdentity cluster {"real-cluster", "real-node"};
-
-    const auto response =
-        run(makeRequest(R"({"wazuh":{"cluster":{"name":"fake","node":"fake"}}})", "001"), connector, cluster);
-
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_EQ("real-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("real-node", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
 
 /**
@@ -432,13 +492,8 @@ TEST(StatsEndpointTest, TheInjectedClusterIdentityOverridesOneClaimedInTheDocume
  */
 TEST(StatsEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto document = indexedDocument(kAgentReport, "001", invsync::common::ClusterIdentity {});
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, invsync::common::ClusterIdentity {});
-
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
     EXPECT_EQ("", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
