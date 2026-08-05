@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <json.hpp>
 #include <memory>
 #include <optional>
@@ -178,31 +179,86 @@ TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexN
     ASSERT_FALSE(document.is_discarded());
     EXPECT_EQ("007", document["/wazuh/agent/id"_json_pointer].get<std::string>());
     const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
-    ASSERT_TRUE(content.is_array());
+    ASSERT_TRUE(content.is_object());
     ASSERT_EQ(2U, content.size());
-    EXPECT_EQ("fim", content[0].at("module").get<std::string>());
-    EXPECT_EQ(42, content[0].at("config").at("cpu").get<int>());
-    EXPECT_EQ("logcollector", content[1].at("module").get<std::string>());
+    EXPECT_EQ(42, content.at("fim").at("cpu").get<int>());
+    EXPECT_EQ(1, content.at("logcollector").at("lines").get<int>());
+}
+
+/// `modules` is derived from `content`'s keys, so the two can never drift apart.
+TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"([{"module":"fim","config":{}},{"module":"logcollector","config":{}}])";
+
+    ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
+    ASSERT_TRUE(modules.is_array());
+    ASSERT_EQ(2U, modules.size());
+    EXPECT_NE(std::find(modules.begin(), modules.end(), "fim"), modules.end());
+    EXPECT_NE(std::find(modules.begin(), modules.end(), "logcollector"), modules.end());
 }
 
 /**
- * The timestamp shape is what makes the document indexable, so pin it rather than just its presence:
- * Utils::getCurrentISO8601() yields YYYY-MM-DDTHH:MM:SS.mmmZ (24 chars, milliseconds, trailing Z).
+ * A module is unique per report: if the agent ever sends two entries for the same module, the
+ * later one wins (object semantics on `content`) rather than the request being rejected.
  */
-TEST(ConfigEndpointTest, IndexedDocumentTimestampIsIso8601WithMillisecondsAndZulu)
+TEST(ConfigEndpointTest, ADuplicateModuleNameIsResolvedByTheLastEntryWinning)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"([{"module":"fim","config":{"cpu":1}},{"module":"fim","config":{"cpu":2}}])";
+
+    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_EQ(1U, content.size());
+    EXPECT_EQ(2, content.at("fim").at("cpu").get<int>());
+    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
+    ASSERT_EQ(1U, modules.size());
+    EXPECT_EQ("fim", modules[0].get<std::string>());
+}
+
+TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
     ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
-    ASSERT_TRUE(document.contains("@timestamp"));
-    const auto timestamp = document.at("@timestamp").get<std::string>();
+    EXPECT_EQ("1.0.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
+}
+
+/**
+ * The timestamp shape is what makes the document indexable, so pin it rather than just its presence:
+ * Utils::getCurrentISO8601() yields YYYY-MM-DDTHH:MM:SS.mmmZ (24 chars, milliseconds, trailing Z).
+ */
+TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZulu)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto timestamp = document["/state/modified_at"_json_pointer].get<std::string>();
 
     ASSERT_EQ(24U, timestamp.size()) << "unexpected timestamp: " << timestamp;
     EXPECT_EQ('T', timestamp[10]);
     EXPECT_EQ('.', timestamp[19]);
     EXPECT_EQ('Z', timestamp.back());
+}
+
+/// The layout generation of `configuration`, not a per-report counter -- always 1 for this layout.
+TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
 }
 
 TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
@@ -232,8 +288,11 @@ TEST(ConfigEndpointTest, EmptyArrayIsAcceptedAndIndexedWithEmptyContent)
 
     const auto document = soleIndexedDocument(*connector);
     const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
-    ASSERT_TRUE(content.is_array());
+    ASSERT_TRUE(content.is_object());
     EXPECT_TRUE(content.empty());
+    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
+    ASSERT_TRUE(modules.is_array());
+    EXPECT_TRUE(modules.empty());
 }
 
 /**
@@ -249,10 +308,9 @@ TEST(ConfigEndpointTest, ExtraKeysOnAnElementAreDroppedBeforeIndexing)
     ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
-    const auto entry = document["/wazuh/agent/configuration/content"_json_pointer][0];
-    EXPECT_EQ(2U, entry.size()) << "only module and config must survive: " << entry.dump();
-    EXPECT_TRUE(entry.contains("module"));
-    EXPECT_TRUE(entry.contains("config"));
+    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_EQ(1U, content.size()) << "only the sanitized module must survive: " << content.dump();
+    EXPECT_EQ(1, content.at("fim").at("cpu").get<int>());
 }
 
 TEST(ConfigEndpointTest, NonArrayBodiesAreRejected)

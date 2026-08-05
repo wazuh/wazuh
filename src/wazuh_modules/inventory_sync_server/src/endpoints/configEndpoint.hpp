@@ -31,21 +31,27 @@ namespace invsync::endpoints::config
      *
      * @code
      * {
-     *   "@timestamp": "...",
+     *   "state": { "modified_at": "...", "document_version": 1 },
      *   "wazuh": {
+     *     "schema": { "version": "1.0.0" },
      *     "agent": { "id": "<authenticated id>",
-     *                "configuration": { "content": [ {"module": ..., "config": ...}, ... ] } },
+     *                "configuration": { "modules": ["fim", "logcollector", ...],
+     *                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
      *     "cluster": { "name": "...", "node": "..." }
      *   }
      * }
      * @endcode
      *
+     * `content` is an OBJECT keyed by module name, not the array the agent sends -- a module is
+     * unique per report, so this makes "does agent X have module Y" a single field lookup. `modules`
+     * is derived from `content`'s keys so the two can never drift apart.
+     *
      * The `wazuh-agent-config` index template is `dynamic: strict`: any field outside this exact
      * shape makes the (fire-and-forget) write fail with no way to report it back to the caller, which
      * is why every element is sanitized down to `module`/`config` before it reaches the connector.
      *
-     * The document is indexed under the agent id as its `_id`, so each report replaces the previous
-     * one for that agent -- there is no separate delete step.
+     * The document is indexed under the agent id as its `_id`, via a plain upsert: each report
+     * replaces the previous one for that agent, there is no separate delete step.
      *
      * @warning Do not introduce a local or parameter named `config` inside this unit: it would shadow
      * this namespace and make unqualified lookups inside it resolve to the variable.
