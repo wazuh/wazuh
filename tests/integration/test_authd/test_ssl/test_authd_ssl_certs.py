@@ -91,7 +91,7 @@ OUPUT_MESSAGE = "OSSEC K:'"
 # - Valid certificate, Incorrect Host
 # Variables
 
-receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'ssl_tls')]
 
 monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
@@ -164,7 +164,8 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol, open_at_start=False)
     if option != 'NO CERT':
-        SSL_socket.set_ssl_configuration(certificate=SSL_AGENT_CERT, keyfile=SSL_AGENT_PRIVATE_KEY)
+        SSL_socket.set_ssl_configuration(connection_protocol=connection_protocol, certificate=SSL_AGENT_CERT,
+                                          keyfile=SSL_AGENT_PRIVATE_KEY)
     try:
         SSL_socket.open()
         if option in ['NO CERT', 'INCORRECT CERT']:
