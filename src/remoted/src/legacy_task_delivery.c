@@ -311,8 +311,28 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     const char *wpk_sha1 = wpk_sha1_obj->valuestring;
     const char *installer = installer_obj->valuestring;
 
+    // Mirrors v4.14.6's wm_agent_upgrade_send_wpk_to_agent(): the agent's wire protocol only ever
+    // accepts a bare filename (INCOMING_DIR + basename, wm_agent_upgrade_com.c's _jailfile()), while
+    // wpk_file itself may include a relative subdirectory (custom-WPK uploads can live anywhere
+    // under the install tree, same flexibility v4.14.6's custom_file_path had -- the manager-side
+    // task-creation step already reduced it to a path relative to the install directory, since
+    // this poller runs chrooted there; see wm_agent_upgrade_commands.c). Keep the same split the
+    // old code used -- wpk_basename for every wire "file" field, file_path for the manager's own
+    // local read.
+    char wpk_file_copy[PATH_MAX + 1];
+    strncpy(wpk_file_copy, wpk_file, sizeof(wpk_file_copy) - 1);
+    wpk_file_copy[sizeof(wpk_file_copy) - 1] = '\0';
+    const char *wpk_basename = basename_ex(wpk_file_copy);
+
+    // A bare basename (no '/') is the repo-resolved case, always relative to the default upgrade
+    // path; anything with a directory component is already relative to the install root (the
+    // custom-WPK case, post-chroot-adjustment) and is used as-is.
     char file_path[PATH_MAX + 1];
-    snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
+    if (strchr(wpk_file, '/')) {
+        snprintf(file_path, sizeof(file_path), "%s", wpk_file);
+    } else {
+        snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
+    }
 
     minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s' (wpk: '%s')", agent_id, wpk_file);
 
@@ -326,7 +346,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     {
         cJSON *params = cJSON_CreateObject();
         cJSON_AddStringToObject(params, "mode", "wb");
-        cJSON_AddStringToObject(params, "file", wpk_file);
+        cJSON_AddStringToObject(params, "file", wpk_basename);
 
         if (!legacy_task_send_upgrade_step(agent_id, "open", params, NULL)) {
             merror("legacy_task_delivery: agent '%s': 'open' step failed, aborting push", agent_id);
@@ -361,7 +381,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
             cJSON *params = cJSON_CreateObject();
             cJSON_AddStringToObject(params, "buffer", base64);
             cJSON_AddNumberToObject(params, "length", (double)bytes_read);
-            cJSON_AddStringToObject(params, "file", wpk_file);
+            cJSON_AddStringToObject(params, "file", wpk_basename);
             os_free(base64);
 
             write_ok = legacy_task_send_upgrade_step(agent_id, "write", params, NULL);
@@ -382,7 +402,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     // Step 4: close
     {
         cJSON *params = cJSON_CreateObject();
-        cJSON_AddStringToObject(params, "file", wpk_file);
+        cJSON_AddStringToObject(params, "file", wpk_basename);
 
         if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL)) {
             merror("legacy_task_delivery: agent '%s': 'close' step failed, aborting push", agent_id);
@@ -393,7 +413,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     // Step 5: sha1 -- compare the agent-reported hash against the expected one
     {
         cJSON *params = cJSON_CreateObject();
-        cJSON_AddStringToObject(params, "file", wpk_file);
+        cJSON_AddStringToObject(params, "file", wpk_basename);
 
         char *reported_sha1 = NULL;
         bool ok = legacy_task_send_upgrade_step(agent_id, "sha1", params, &reported_sha1);
@@ -417,7 +437,7 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     // Step 6: upgrade
     {
         cJSON *params = cJSON_CreateObject();
-        cJSON_AddStringToObject(params, "file", wpk_file);
+        cJSON_AddStringToObject(params, "file", wpk_basename);
         cJSON_AddStringToObject(params, "installer", installer);
 
         char *exit_status = NULL;
