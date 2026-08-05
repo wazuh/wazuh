@@ -72,7 +72,7 @@ static void wmcom_report_wodles(cJSON * report, const cJSON * modules) {
 
     cJSON_ArrayForEach(wodle, wodles) {
         if (wodle->child) {
-            module_report_add_config(report, wodle->child->string,
+            module_report_add(report, wodle->child->string,
                                      cJSON_Duplicate(wodle->child, true));
         }
     }
@@ -80,7 +80,7 @@ static void wmcom_report_wodles(cJSON * report, const cJSON * modules) {
 
 size_t wmcom_getallconfig(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     cJSON *modules = getModulesConfig();
     cJSON *internal = cJSON_CreateObject();
 
@@ -88,7 +88,7 @@ size_t wmcom_getallconfig(char ** output) {
     cJSON_Delete(modules);
 
     module_report_merge(internal, getModulesInternalOptions());
-    module_report_add_config(report, WMCOM_MODULE_NAME, internal);
+    module_report_add(report, WMCOM_MODULE_NAME, internal);
     return module_report_reply(report, output);
 }
 

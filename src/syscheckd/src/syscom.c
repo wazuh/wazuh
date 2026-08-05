@@ -272,7 +272,7 @@ error:
 size_t syscom_getallconfig(char ** output) {
     assert(output != NULL);
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     cJSON *body = cJSON_CreateObject();
 
     /* rootcheck ships inside this daemon, so it rides along in fim's body
@@ -281,7 +281,7 @@ size_t syscom_getallconfig(char ** output) {
     module_report_merge(body, getRootcheckConfig());
     module_report_merge(body, getSyscheckInternalOptions());
 
-    module_report_add_config(report, SYSCOM_MODULE_NAME, body);
+    module_report_add(report, SYSCOM_MODULE_NAME, body);
     return module_report_reply(report, output);
 }
 

@@ -136,6 +136,13 @@ size_t agcom_getallconfig(char ** output);
 size_t agcom_getallstats(char ** output);
 
 /**
+ * @brief Answer "getstate" with the agent state wrapped in the socket envelope.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
+size_t agcom_getstate(char ** output);
+
+/**
  * @brief Collect every module's configuration into one /config document.
  *
  * Queries each agent daemon once and concatenates what they report.

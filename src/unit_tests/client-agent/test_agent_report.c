@@ -166,18 +166,8 @@ static void expecting_debug_logs(void)
 
 static cJSON* module_named(cJSON* document, const char* name)
 {
-    cJSON* modules = cJSON_GetObjectItem(document, "modules");
-    cJSON* entry = NULL;
-
-    cJSON_ArrayForEach(entry, modules) {
-        cJSON* module = cJSON_GetObjectItem(entry, "module");
-
-        if (module && strcmp(module->valuestring, name) == 0) {
-            return entry;
-        }
-    }
-
-    return NULL;
+    /* "modules" is keyed by module name, so this is a direct lookup. */
+    return cJSON_GetObjectItem(cJSON_GetObjectItem(document, "modules"), name);
 }
 
 /* --- Tests --- */
@@ -185,13 +175,12 @@ static void test_collect_config_merges_every_daemon_into_one_document(void** sta
 {
     (void)state;
     const answer_t answers[] = {
-        {"agent", "ok [{\"module\":\"agent\",\"config\":{\"client\":{}}}]"},
-        {"syscheck", "ok [{\"module\":\"fim\",\"config\":{\"syscheck\":{}}}]"},
-        {"logcollector", "ok [{\"module\":\"logcollector\",\"config\":{\"localfile\":[]}}]"},
+        {"agent", "ok {\"agent\":{\"client\":{}}}"},
+        {"syscheck", "ok {\"fim\":{\"syscheck\":{}}}"},
+        {"logcollector", "ok {\"logcollector\":{\"localfile\":[]}}"},
         /* One daemon, two modules: modulesd reports each wodle separately. */
-        {"wmodules", "ok [{\"module\":\"syscollector\",\"config\":{}},"
-                     "{\"module\":\"sca\",\"config\":{}}]"},
-        {"com", "ok [{\"module\":\"execd\",\"config\":{\"active-response\":[]}}]"},
+        {"wmodules", "ok {\"syscollector\":{},\"sca\":{}}"},
+        {"com", "ok {\"execd\":{\"active-response\":[]}}"},
     };
 
     given(answers, 5);
@@ -205,7 +194,7 @@ static void test_collect_config_merges_every_daemon_into_one_document(void** sta
 
     /* One query per daemon, and every module they named is present. */
     assert_int_equal(g_connect_calls, 5);
-    assert_int_equal(cJSON_GetArraySize(cJSON_GetObjectItem(parsed, "modules")), 6);
+    assert_int_equal(cJSON_GetArraySize(cJSON_GetObjectItem(parsed, "modules")), 6); /* object members */
     assert_non_null(module_named(parsed, "agent"));
     assert_non_null(module_named(parsed, "fim"));
     assert_non_null(module_named(parsed, "logcollector"));
@@ -221,10 +210,10 @@ static void test_collect_config_reports_the_daemons_that_are_up(void** state)
 {
     (void)state;
     const answer_t answers[] = {
-        {"agent", "ok [{\"module\":\"agent\",\"config\":{\"client\":{}}}]"},
+        {"agent", "ok {\"agent\":{\"client\":{}}}"},
         {"syscheck", NULL},         /* not running */
         {"logcollector", "err Could not get requested section"},
-        {"wmodules", "ok [{\"module\":\"sca\",\"config\":{}}]"},
+        {"wmodules", "ok {\"sca\":{}}"},
         {"com", NULL},
     };
 
@@ -270,9 +259,9 @@ static void test_collect_config_ignores_a_reply_that_is_not_a_report(void** stat
 {
     (void)state;
     const answer_t answers[] = {
-        {"agent", "ok {\"module\":\"agent\"}"},   /* an object, not an array */
+        {"agent", "ok [{\"module\":\"agent\"}]"},  /* the old array shape */
         {"syscheck", "ok not json at all"},
-        {"logcollector", "ok [{\"module\":\"logcollector\",\"config\":{}}]"},
+        {"logcollector", "ok {\"logcollector\":{}}"},
         {"wmodules", NULL},
         {"com", NULL},
     };
@@ -294,8 +283,8 @@ static void test_collect_stats_only_asks_the_daemons_that_produce_them(void** st
 {
     (void)state;
     const answer_t answers[] = {
-        {"agent", "ok [{\"module\":\"agent\",\"stats\":{\"status\":\"connected\"}}]"},
-        {"logcollector", "ok [{\"module\":\"logcollector\",\"stats\":{}}]"},
+        {"agent", "ok {\"agent\":{\"status\":\"connected\"}}"},
+        {"logcollector", "ok {\"logcollector\":{}}"},
     };
 
     given(answers, 2);

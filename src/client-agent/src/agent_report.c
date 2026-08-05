@@ -183,7 +183,7 @@ static cJSON *report_entries(const char *target, char *reply) {
         return NULL;
     }
 
-    if (entries = cJSON_Parse(reply + 3), !entries || !cJSON_IsArray(entries)) {
+    if (entries = cJSON_Parse(reply + 3), !entries || !cJSON_IsObject(entries)) {
         mdebug1("Component '%s' answered with something other than a report.", target);
         cJSON_Delete(entries);
         entries = NULL;
@@ -194,16 +194,18 @@ static cJSON *report_entries(const char *target, char *reply) {
 }
 
 /**
- * @brief Move every entry of a component's array into the combined report.
- * @param report Destination array.
- * @param entries Source array. Consumed by this call.
+ * @brief Move every module of a component's report into the combined one.
+ * @param report Destination object, keyed by module name.
+ * @param entries Source object. Consumed by this call.
  */
 static void report_absorb(cJSON *report, cJSON *entries) {
     cJSON *entry = NULL;
 
     while (entries && (entry = entries->child)) {
         cJSON_DetachItemViaPointer(entries, entry);
-        cJSON_AddItemToArray(report, entry);
+        /* Same key-lifetime rule as module_report_merge(): cJSON copies the key
+         * before releasing the item's own, so passing entry->string is safe. */
+        cJSON_AddItemToObject(report, entry->string, entry);
     }
 
     cJSON_Delete(entries);
@@ -217,7 +219,7 @@ static void report_absorb(cJSON *report, cJSON *entries) {
  */
 static char *report_collect(const report_source_t *sources, size_t count) {
     cJSON *root = cJSON_CreateObject();
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     char *document = NULL;
     size_t i;
 

@@ -18,10 +18,13 @@
 
 #ifdef WIN32
 #define localtime_r(x, y) localtime_s(y, x)
+/* No portable gmtime_r on the mingw C runtime; same shim the other C callers
+ * use (see syscheckd/src/file/events.c). */
+#define gmtime_r(x, y) (gmtime_s(y, x) == 0 ? (y) : NULL)
 #endif
 
-#define W_LC_STATE_TIME_FORMAT "%Y-%m-%d %H:%M:%S" ///< Time format for the JSON and the file output
-#define W_LC_STATE_TIME_LENGHT (19 + 1)            ///< Maximum time size
+#define W_LC_STATE_TIME_FORMAT "%Y-%m-%dT%H:%M:%SZ" ///< ISO 8601 UTC, for the JSON and the file output
+#define W_LC_STATE_TIME_LENGHT (20 + 1)              ///< Maximum time size
 
 /* Global variables */
 
@@ -411,12 +414,12 @@ cJSON * _w_logcollector_generate_state(w_lc_state_storage_t * state, bool restar
     }
 
     // Convert timestamp to string
-    localtime_r(&state->start, &tm);
+    gmtime_r(&state->start, &tm);
     strftime(timestamp_tmp, sizeof(timestamp_tmp), W_LC_STATE_TIME_FORMAT, &tm);
     cJSON_AddStringToObject(lc_stats_json, "start", timestamp_tmp);
 
     time_t now = time(NULL);
-    localtime_r(&now, &tm);
+    gmtime_r(&now, &tm);
     strftime(timestamp_tmp, sizeof(timestamp_tmp), W_LC_STATE_TIME_FORMAT, &tm);
     cJSON_AddStringToObject(lc_stats_json, "end", timestamp_tmp);
 

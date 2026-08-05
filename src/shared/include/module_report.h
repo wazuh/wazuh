@@ -14,15 +14,19 @@
 #include <stddef.h>
 #include "cJSON.h"
 
-/* A report is a JSON array where each entry names one module and carries its
- * body:
+/* A report is a JSON object keyed by module name:
  *
- *   [{"module": "fim", "config": {...}}, {"module": "logcollector", ...}]
+ *   {"fim": {...}, "logcollector": {...}}
  *
  * Every agent daemon answers "getallconfig" / "getallstats" with the report for
  * the modules it hosts, so the HTTPS client needs one query per daemon instead
- * of one per configuration section. The client concatenates the arrays into the
- * document it pushes to /config and /stats. */
+ * of one per configuration section. The client merges the objects into the
+ * document it pushes to /config and /stats.
+ *
+ * Keyed rather than an array of {"module": name, ...} entries so the manager
+ * only has to validate the object and move it under wazuh.agent.statistics:
+ * one entry per module is already the invariant, and a stored array cannot be
+ * read back by key without a `nested` mapping. */
 
 /**
  * @brief Move every member of a section into a module body.
@@ -37,25 +41,16 @@
 void module_report_merge(cJSON *body, cJSON *section);
 
 /**
- * @brief Append a {"module": name, "config": body} entry to a report.
+ * @brief Store a module's body in a report under its own name.
  *
  * A module that produced nothing is left out rather than reported empty, so the
  * manager can tell "not configured" from "configured with no options".
  *
- * @param report Destination array.
+ * @param report Destination object.
  * @param module Module name as the manager knows it, e.g. "fim".
  * @param body Module body. Consumed by this call.
  */
-void module_report_add_config(cJSON *report, const char *module, cJSON *body);
-
-/**
- * @brief Append a {"module": name, "stats": body} entry to a report.
- *
- * @param report Destination array.
- * @param module Module name as the manager knows it, e.g. "logcollector".
- * @param body Module body. Consumed by this call.
- */
-void module_report_add_stats(cJSON *report, const char *module, cJSON *body);
+void module_report_add(cJSON *report, const char *module, cJSON *body);
 
 /**
  * @brief Serialize a report into the "ok <json>" reply a dispatcher returns.
