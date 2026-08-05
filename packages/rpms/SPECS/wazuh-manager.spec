@@ -350,11 +350,11 @@ if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedi
   %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
 fi
 
-# Both sslmanager.cert/key and https-manager.cert/key are owned by wazuh-manager for
-# consistent least-privilege file ownership, even though authd itself never drops
-# privileges (root can still read/write them regardless of owner). Re-applied
-# unconditionally (not just on fresh generation) so upgrades from packages that shipped
-# these root-owned also get corrected.
+# Both sslmanager.cert/key and https-manager.cert/key must be owned by wazuh-manager:
+# both authd and remoted now drop privileges to that user before loading these files,
+# so root-owned files would make either daemon fail to start. Re-applied unconditionally
+# (not just on fresh generation) so upgrades from packages that shipped these root-owned
+# also get corrected.
 chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
 chmod 640 %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
 chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
