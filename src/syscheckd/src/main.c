@@ -122,7 +122,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
          * (stop-aware waits, predicated sends, 1-second sleeps), so it reports its exit
          * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
          * join and the teardown below — destroying the handle under a live thread is the
-         * use-after-free this waiter exists to prevent — and let HandleSIG() exit. */
+         * use-after-free this waiter exists to prevent — and proceed to _exit(). */
         struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
         int poll_ret;
 
