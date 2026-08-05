@@ -13,11 +13,55 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 |---|---|---|---|
 | `GET` | `/` | `200` | Liveness probe. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `POST` | `/inventory/sync` | `202` | **Provisional.** Accepts and discards the payload; the ingestion pipeline is not implemented yet. |
-| `POST` | `/stats` | `200` | **Temporary.** Echoes the enriched document back. |
-| `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). The response is a bare `{}` acknowledgment, not an echo. |
+| `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
+| `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
 
-`/stats` still exists only to prove the enrichment dependencies reach the handler and will be
-rewritten when its real payload is defined; `/config` is implemented for real (issue #38023).
+Both endpoints are implemented for real (issues #38024 and #38023): each takes the agent's
+`modules`-keyed report, moves it under its own subtree, and indexes one document per agent.
+
+### `POST /stats`
+
+The agent reports every module it can collect statistics from in one push, keyed by module:
+
+```json
+{
+  "modules": {
+    "agent":        {"status": "connected", "last_keepalive": "2026-08-02T10:06:50Z",
+                     "messages": {"count": 602},
+                     "tasks": {"dispatched": {"total": 4}, "discarded_duplicate": {"total": 0},
+                               "failed": {"total": 0}}},
+    "logcollector": {"global": {"files": []}, "interval": {"files": []}}
+  }
+}
+```
+
+The module moves `modules` under `wazuh.agent.statistics`, adds the envelope below, and indexes one
+document into `wazuh-agent-stats` whose **document id is the agent id**, so every push replaces the
+agent's previous report:
+
+```json
+{
+  "state": {"modified_at": "2026-08-02T10:07:12.431Z", "document_version": 1},
+  "wazuh": {
+    "schema": {"version": "1"},
+    "cluster": {"name": "wazuh", "node": "node01"},
+    "agent": {"id": "001", "statistics": {"agent": {…}, "logcollector": {…}}}
+  }
+}
+```
+
+Two details worth knowing:
+
+- The document is built from scratch, so an `agent_id` or `cluster` the agent writes at the root of its
+  own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`.
+- The report is stored as it arrives. The module renames no metric and reshapes no module body, so the
+  field names in the index are the ones the agent emits, and a metric the agent adds needs no change
+  here.
+
+`400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
+holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
+report with no statistics would replace the agent's last good one.
+>>>>>>> beb5a272de5 (docs: document POST /stats and the index it writes)
 
 ## Request headers
 
@@ -28,15 +72,21 @@ rewritten when its real payload is defined; `/config` is implemented for real (i
 
 ## Enrichment (`/stats`)
 
-For `/stats`, the module overwrites four fields on the document before echoing it back. All four are
-authoritative and replace whatever the agent sent:
+For `/stats` and `/config`, the module writes the identity and the time itself. Every one of these is
+authoritative and replaces whatever the agent sent:
 
-| JSON pointer | Source |
-|---|---|
-| `/wazuh/agent/id` | The authenticated `X-Wazuh-Agent-Id` header |
-| `/wazuh/cluster/name` | `<cluster><name>` in the manager configuration |
-| `/wazuh/cluster/node` | `<cluster><node_name>` |
-| `/@timestamp` | The manager's clock, ISO 8601 with milliseconds, UTC |
+| JSON pointer | Endpoint | Source |
+|---|---|---|
+| `/wazuh/agent/id` | both | The authenticated `X-Wazuh-Agent-Id` header |
+| `/wazuh/cluster/name` | both | `<cluster><name>` in the manager configuration |
+| `/wazuh/cluster/node` | both | `<cluster><node_name>` |
+| `/state/modified_at` | `/stats` | The manager's clock, ISO 8601 with milliseconds, UTC |
+| `/state/document_version` | `/stats` | Constant. Versions the stored layout, not the report |
+| `/wazuh/schema/version` | `/stats` | Constant, and a **string**: `wazuh-metrics-agents` declares it `keyword`, so this index follows |
+| `/@timestamp` | `/config` | The manager's clock, same format |
+
+`/stats` writes `state.modified_at` rather than `@timestamp` because its index follows the schema's
+stateful convention: a stable document id, replaced in place, with no time series behind it.
 
 A cluster name or node name containing bytes that are not valid UTF-8 is sanitized once at startup, with
 a warning, rather than being allowed to break the serialization of every request.
@@ -82,7 +132,7 @@ These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a JSON object for `/stats`, a JSON array of `{"module", "config"}` entries for `/config`) |
+| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a non-empty `modules`-keyed object whose every module value is an object, for both `/stats` and `/config`) |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |
