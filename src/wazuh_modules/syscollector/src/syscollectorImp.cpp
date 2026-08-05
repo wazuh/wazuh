@@ -2247,9 +2247,9 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 
 // Sync protocol methods implementation
 void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
-                                    std::chrono::seconds timeout, unsigned int retries, uint32_t integrityInterval)
+                                    uint32_t integrityInterval)
 {
-    m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
+    m_dataCleanRetries = 3;  // Fixed default; the transport handles HTTP-level retries.
     m_integrityIntervalValue = integrityInterval;
 
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
@@ -2265,12 +2265,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     try
     {
         // Initialize regular sync protocol
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func, timeout, retries);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize VD sync protocol with different module name to avoid routing conflicts
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd, timeout, retries);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
@@ -4699,7 +4699,16 @@ void Syscollector::runRecoveryProcess()
                     return;
                 }
 
-                m_spSyncProtocol->clearInMemoryData();
+                // Clear the manager's index before resending: a full-replace sync is now a
+                // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
+                // (which used to make the manager unconditionally deleteByQuery over a
+                // byte-capped/truncated payload and could permanently drop whatever didn't
+                // fit in that one session).
+                if (!m_spSyncProtocol->notifyDataClean({index}))
+                {
+                    m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+                    return;
+                }
 
                 for (const auto& item : items)
                 {
@@ -4722,7 +4731,7 @@ void Syscollector::runRecoveryProcess()
 
                     if (shouldPersist)
                     {
-                        m_spSyncProtocol->persistDifferenceInMemory(
+                        m_spSyncProtocol->persistDifference(
                             calculateHashId(item, tableName),
                             Operation::CREATE,
                             index,
@@ -4732,9 +4741,9 @@ void Syscollector::runRecoveryProcess()
                     }
                 }
 
-                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
+                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool recoverySucceeded = syncModule(Mode::FULL).success;
+                bool recoverySucceeded = syncModule(Mode::DELTA).success;
 
                 if (recoverySucceeded)
                 {

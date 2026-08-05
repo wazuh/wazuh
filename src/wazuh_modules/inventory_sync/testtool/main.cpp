@@ -86,13 +86,12 @@ struct AgentTestData
      *     "osversion": "22.04",
      *     "groups": ["default", "extra-group"],
      *
-     *     // Optional; if omitted, indices and size are computed automatically
+     *     // Optional; if omitted, indices are computed automatically
      *     "indices": [
      *       "wazuh-states-inventory-packages",
      *       "wazuh-states-inventory-system",
      *       "wazuh-states-inventory-hotfixes"
-     *     ],
-     *     "size": 5
+     *     ]
      *   },
      *   "data_values": [
      *     {
@@ -258,7 +257,13 @@ public:
 };
 
 /**
- * @brief Response server for receiving StartAck/EndAck/ReqRet messages.
+ * @brief Response server listening on the legacy ARQUEUE socket.
+ *
+ * TODO(#38117): StartAck/EndAck removed from FlatBuffer schema/agent side - the manager
+ * no longer acknowledges sessions via either, so nothing this server could receive here
+ * is a valid response anymore (see handleFlatBufferMessage). Kept listening (rather than
+ * removed outright) in case future testtool work needs a socket to receive on; the real
+ * /stateful HTTP response is the server team's own follow-up.
  */
 class ResponseServer
 {
@@ -267,28 +272,11 @@ private:
     std::thread m_serverThread;
     std::atomic<bool> m_shouldStop {false};
     std::string m_path;
-
-    uint64_t& m_sessionId;
-    std::promise<void>& m_startAckPromise;
-    std::promise<void>& m_endAckPromise;
-    std::atomic<bool>& m_receivedStartAck;
-    std::atomic<bool>& m_receivedEndAck;
     bool m_verbose;
 
 public:
-    ResponseServer(std::string path,
-                   uint64_t& sessionId,
-                   std::promise<void>& startAckPromise,
-                   std::promise<void>& endAckPromise,
-                   std::atomic<bool>& receivedStartAck,
-                   std::atomic<bool>& receivedEndAck,
-                   bool verbose = false)
+    ResponseServer(std::string path, bool verbose = false)
         : m_path(std::move(path))
-        , m_sessionId(sessionId)
-        , m_startAckPromise(startAckPromise)
-        , m_endAckPromise(endAckPromise)
-        , m_receivedStartAck(receivedStartAck)
-        , m_receivedEndAck(receivedEndAck)
         , m_verbose(verbose)
     {
         m_socketFd = socket(AF_UNIX, SOCK_DGRAM, 0);
@@ -448,62 +436,10 @@ private:
 
         auto message = Wazuh::SyncSchema::GetMessage(data);
 
-        switch (message->content_type())
-        {
-            case Wazuh::SyncSchema::MessageType_StartAck: handleStartAck(message->content_as_StartAck()); break;
-            case Wazuh::SyncSchema::MessageType_EndAck: handleEndAck(message->content_as_EndAck()); break;
-            case Wazuh::SyncSchema::MessageType_ReqRet: handleReqRet(message->content_as_ReqRet()); break;
-            default:
-                std::cout << "[WARN] Unknown message type: " << static_cast<int>(message->content_type()) << std::endl;
-        }
-    }
-
-    void handleStartAck(const Wazuh::SyncSchema::StartAck* startAck)
-    {
-        m_sessionId = startAck->session();
-
-        std::cout << "[INFO] ✓ StartAck received" << std::endl;
-        std::cout << "       Session: " << m_sessionId << std::endl;
-        std::cout << "       Status: " << static_cast<int>(startAck->status()) << std::endl;
-
-        if (!m_receivedStartAck.exchange(true))
-        {
-            try
-            {
-                m_startAckPromise.set_value();
-            }
-            catch (const std::future_error&)
-            {
-            }
-        }
-    }
-
-    void handleEndAck(const Wazuh::SyncSchema::EndAck* endAck)
-    {
-        std::cout << "[INFO] ✓ EndAck received" << std::endl;
-        std::cout << "       Session: " << endAck->session() << std::endl;
-        std::cout << "       Status: " << static_cast<int>(endAck->status()) << std::endl;
-
-        if (!m_receivedEndAck.exchange(true))
-        {
-            try
-            {
-                m_endAckPromise.set_value();
-            }
-            catch (const std::future_error&)
-            {
-            }
-        }
-    }
-
-    void handleReqRet(const Wazuh::SyncSchema::ReqRet* reqRet)
-    {
-        std::cout << "[INFO] ✓ ReqRet received - Session: " << reqRet->session();
-        if (reqRet->seq())
-        {
-            std::cout << ", Missing ranges: " << reqRet->seq()->size();
-        }
-        std::cout << std::endl;
+        // TODO(#38117): StartAck/EndAck removed from FlatBuffer schema/agent side - the
+        // manager no longer acknowledges sessions via either, so no message type this
+        // testtool could receive here is a valid response anymore.
+        std::cout << "[WARN] Unknown message type: " << static_cast<int>(message->content_type()) << std::endl;
     }
 };
 
@@ -512,10 +448,6 @@ private:
  */
 inline Wazuh::SyncSchema::Mode parseMode(const std::string& modeStr)
 {
-    if (modeStr == "full" || modeStr == "ModuleFull")
-    {
-        return Wazuh::SyncSchema::Mode_ModuleFull;
-    }
     if (modeStr == "delta" || modeStr == "ModuleDelta")
     {
         return Wazuh::SyncSchema::Mode_ModuleDelta;
@@ -594,11 +526,10 @@ public:
      * @brief Build Start message from JSON description.
      *
      * @param startJson   "Start" object from the input file.
-     * @param defaultSize Number of messages (data_values + data_context) if size is not set in JSON.
      * @param defaultIndices Indices inferred from data_values/data_context if not set in JSON.
      */
-    static std::vector<uint8_t>
-    buildStart(const nlohmann::json& startJson, uint64_t defaultSize, const std::vector<std::string>& defaultIndices)
+    static std::vector<uint8_t> buildStart(const nlohmann::json& startJson,
+                                           const std::vector<std::string>& defaultIndices)
     {
         flatbuffers::FlatBufferBuilder builder;
 
@@ -620,8 +551,6 @@ public:
 
         std::string optionStr = startJson.value("option", std::string("VDSync"));
         auto option = parseOption(optionStr);
-
-        uint64_t size = startJson.value("size", defaultSize);
 
         // Indices: either provided in Start or inferred from messages
         std::vector<std::string> indices;
@@ -678,7 +607,6 @@ public:
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(mode);
-        startBuilder.add_size(size);
         startBuilder.add_index(indicesOffset);
         startBuilder.add_option(option);
         startBuilder.add_agentid(agentIdStr);
@@ -704,7 +632,7 @@ public:
     /**
      * @brief Build DataValue message from payload JSON.
      *
-     * @param session   Session ID from StartAck
+     * @param session   Unused (session field removed from FlatBuffer schema)
      * @param seq       Sequence number
      * @param payload   Complete JSON payload (checksum/package/host/state...)
      * @param index     Index name (wazuh-states-inventory-packages/system/hotfixes)
@@ -727,8 +655,9 @@ public:
         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataValueBuilder dataBuilder(builder);
-        dataBuilder.add_session(session);
-        dataBuilder.add_seq(seq);
+        // TODO(#38117): session field removed from agent FlatBuffer schema
+        // TODO(#38117): seq field removed from agent FlatBuffer schema
+        (void)seq;
         dataBuilder.add_operation(operation);
         dataBuilder.add_index(indexStr);
         dataBuilder.add_id(idStr);
@@ -745,7 +674,7 @@ public:
     /**
      * @brief Build DataContext message from payload JSON.
      *
-     * @param session   Session ID from StartAck
+     * @param session   Unused (session field removed from FlatBuffer schema)
      * @param seq       Sequence number
      * @param payload   Complete JSON payload
      * @param index     Index name
@@ -763,8 +692,9 @@ public:
         auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(sourceJson.data()), sourceJson.size());
 
         Wazuh::SyncSchema::DataContextBuilder dataBuilder(builder);
-        dataBuilder.add_session(session);
-        dataBuilder.add_seq(seq);
+        // TODO(#38117): session field removed from agent FlatBuffer schema
+        // TODO(#38117): seq field removed from agent FlatBuffer schema
+        (void)seq;
         dataBuilder.add_index(indexStr);
         dataBuilder.add_id(idStr);
         dataBuilder.add_data(dataVec);
@@ -772,23 +702,6 @@ public:
         auto dataOffset = dataBuilder.Finish();
         auto message =
             Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_DataContext, dataOffset.Union());
-        builder.Finish(message);
-
-        return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
-    }
-
-    /**
-     * @brief Build End message.
-     */
-    static std::vector<uint8_t> buildEnd(uint64_t session)
-    {
-        flatbuffers::FlatBufferBuilder builder;
-
-        Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        endBuilder.add_session(session);
-        auto endOffset = endBuilder.Finish();
-
-        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_End, endOffset.Union());
         builder.Finish(message);
 
         return {builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize()};
@@ -838,21 +751,9 @@ void sendEvent(bool verbose,
                uint32_t waitTime,
                RouterProvider& routerProvider,
                FakeReportServer& fakeReportServer,
-               uint64_t& sessionId,
-               std::promise<void>& startAckPromise,
-               std::promise<void>& endAckPromise,
-               std::atomic<bool>& receivedStartAck,
-               std::atomic<bool>& receivedEndAck)
+               uint64_t& sessionId)
 {
-    // Reset promises for new iteration
-    startAckPromise = std::promise<void>();
-    endAckPromise = std::promise<void>();
-    receivedStartAck = false;
-    receivedEndAck = false;
     sessionId = 0;
-
-    auto startAckFuture = startAckPromise.get_future();
-    auto endAckFuture = endAckPromise.get_future();
 
     // Load test data
     AgentTestData testData;
@@ -893,13 +794,11 @@ void sendEvent(bool verbose,
 
     // Send START
     std::cout << "[SEND] Start message" << std::endl;
-    auto startMsg = MessageBuilder::buildStart(testData.start, totalMessages, indices);
+    auto startMsg = MessageBuilder::buildStart(testData.start, indices);
     routerProvider.send(std::vector<char>(startMsg.begin(), startMsg.end()));
 
-    if (startAckFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-    {
-        throw std::runtime_error("Timeout waiting for StartAck");
-    }
+    // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
+    // acknowledges Start at all, so proceed directly to sending data messages.
 
     // Send DataValue messages
     uint64_t seq = 0;
@@ -956,10 +855,9 @@ void sendEvent(bool verbose,
         routerProvider.send(std::vector<char>(msg.begin(), msg.end()));
     }
 
-    // Send END
-    std::cout << "[SEND] End message" << std::endl;
-    auto endMsg = MessageBuilder::buildEnd(sessionId);
-    routerProvider.send(std::vector<char>(endMsg.begin(), endMsg.end()));
+    // TODO(#38117): End removed from FlatBuffer schema/agent side - the real agent no
+    // longer sends a standalone End message (or any of the chunked messages this testtool
+    // simulates above); it sends one FullSession. Nothing to send here anymore.
 
     std::cout << "\n[INFO] Waiting " << waitTime << " seconds for VD processing..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(waitTime));
@@ -1069,18 +967,8 @@ int main(int argc, char* argv[])
         fakeReportServer.start();
 
         uint64_t sessionId = 0;
-        std::promise<void> startAckPromise;
-        std::promise<void> endAckPromise;
-        std::atomic<bool> receivedStartAck {false};
-        std::atomic<bool> receivedEndAck {false};
 
-        ResponseServer responseServer(DEFAULT_ARQUEUE,
-                                      sessionId,
-                                      startAckPromise,
-                                      endAckPromise,
-                                      receivedStartAck,
-                                      receivedEndAck,
-                                      config.verbose);
+        ResponseServer responseServer(DEFAULT_ARQUEUE, config.verbose);
         responseServer.start();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -1097,27 +985,14 @@ int main(int argc, char* argv[])
                               config.waitTime,
                               routerProvider,
                               fakeReportServer,
-                              sessionId,
-                              startAckPromise,
-                              endAckPromise,
-                              receivedStartAck,
-                              receivedEndAck);
+                              sessionId);
                 }
             }
         }
         else
         {
             // Single file
-            sendEvent(config.verbose,
-                      config.input,
-                      config.waitTime,
-                      routerProvider,
-                      fakeReportServer,
-                      sessionId,
-                      startAckPromise,
-                      endAckPromise,
-                      receivedStartAck,
-                      receivedEndAck);
+            sendEvent(config.verbose, config.input, config.waitTime, routerProvider, fakeReportServer, sessionId);
         }
 
         // Cleanup

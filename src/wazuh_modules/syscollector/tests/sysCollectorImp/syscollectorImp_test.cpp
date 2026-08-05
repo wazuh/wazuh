@@ -2805,12 +2805,7 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
                                   3600, false, false, false, false, false, false,
                                   false, false, false, false, false, false, false, false);
 
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              std::chrono::seconds(1),
-                                              1,
-                                              0);
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 0);
 
     // No sync intake socket is available in the test environment, so the flush
     // synchronization fails and the query must report completed with error.
@@ -3510,14 +3505,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -3561,14 +3550,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -3612,14 +3595,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(5),
-            3,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -3663,14 +3640,9 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
     // Test with different parameter values
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(15),  // Different timeout
-            5,                          // Different retries
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", // Different retries
+                                                  86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -4145,14 +4117,8 @@ TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 
     // Initialize sync protocol with integrity interval
     EXPECT_NO_THROW(
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            std::chrono::seconds(30),
-            3,
-            86400  // 24 hours integrity interval
-        )
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400  // 24 hours integrity interval
+                                                 )
     );
 
     Syscollector::instance().destroy();
@@ -4191,14 +4157,8 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
                                   3600, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
     // Initialize sync protocol
-    Syscollector::instance().initSyncProtocol(
-        "syscollector",
-        ":memory:",
-        ":memory:",
-        std::chrono::seconds(30),
-        3,
-        86400
-    );
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                             );
 
     // Run recovery process - should execute without throwing
     EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
@@ -4262,14 +4222,8 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
                                           5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4362,14 +4316,8 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
                                           5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4449,14 +4397,8 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
                                           5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4651,14 +4593,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
                                           5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4742,14 +4678,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
                                           5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4852,14 +4782,8 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4985,14 +4909,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                std::chrono::seconds(5),
-                3,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }

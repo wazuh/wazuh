@@ -52,11 +52,7 @@ bool hc_submit_event(void *handle, const uint8_t *frame, size_t length)
     return false;
 }
 
-/* Windows delivers /stateful sessions in-process, so the bridge calls this
- * one only there -- which is why its absence broke the winagent test link
- * while the POSIX build, whose sessions arrive over the sync socket, was fine. */
-bool hc_submit_sync_session(void *handle, const char *session_id, const uint8_t *buffer,
-                            size_t length)
+bool hc_submit_sync_session(void *handle, const char *session_id, const uint8_t *buffer, size_t length)
 {
     (void)handle;
     (void)session_id;

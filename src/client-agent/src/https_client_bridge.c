@@ -1058,10 +1058,6 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
     mdebug1("https_client /stateful session=%s result=%d (%zu byte answer)",
             session_id ? session_id : "?", result, body_len);
 
-    if (body == NULL || body_len == 0) {
-        return;
-    }
-
     size_t module_len = 0;
     const char *module = bridge_module_of_session(session_id, &module_len);
 
@@ -1077,27 +1073,44 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             continue;
         }
 
-        /* Hand it back exactly as the legacy path does: the manager answers a
-         * session with the same EndAck it always has, so the module parses it
-         * unchanged - only the transport that carried it here is different. */
+        /* ACK-less flow: route the raw HTTP status code and body with the session's
+         * numeric ID so the receiving module can discard stale callbacks (responses
+         * for a previous timed-out session that arrives while a newer one is active)
+         * and interpret the /stateful contract itself (a 409 means checksum mismatch,
+         * a 200 body may carry {"noop":true}, etc - see agent_sync_protocol's HTTP
+         * result handling; this bridge does not interpret the body, only carries it).
+         * Format: HCRESULT:<session_number>:<result_code>:<body>
+         *
+         * session_id format is "<module>-<decimal_uint64>" so the numeric part is
+         * everything after module_len + 1 (the '-'). The body is copied verbatim
+         * after the second colon: the receiving parser only looks for the first two
+         * colons, so a JSON body containing its own colons is never misread. */
         const size_t header_len = strlen(SYNC_ROUTES[i].header);
+        const char *session_num = module + module_len + 1; /* points to numeric suffix */
 
-        if (body_len > SIZE_MAX - header_len - 1) {
-            mdebug2("https_client: sync answer for session '%s' is too large to frame; dropping it.",
-                    session_id);
+        char prefix[64];
+        int prefix_len = snprintf(prefix, sizeof(prefix), "HCRESULT:%s:%d:", session_num, result);
+
+        if (prefix_len <= 0 || (size_t)prefix_len >= sizeof(prefix)) {
+            mdebug2("https_client: could not encode sync result for session '%s'; dropping it.",
+                    session_id ? session_id : "?");
             return;
         }
 
+        const size_t payload_len = (size_t)prefix_len + body_len;
         char *framed = NULL;
-        os_malloc(header_len + body_len + 1, framed);
+        os_malloc(header_len + payload_len + 1, framed);
         memcpy(framed, SYNC_ROUTES[i].header, header_len);
-        memcpy(framed + header_len, body, body_len);
-        framed[header_len + body_len] = '\0';
+        memcpy(framed + header_len, prefix, (size_t)prefix_len);
+        if (body_len > 0) {
+            memcpy(framed + header_len + (size_t)prefix_len, body, body_len);
+        }
+        framed[header_len + payload_len] = '\0';
 
         if (SYNC_ROUTES[i].syscheck) {
-            ag_send_syscheck(framed, header_len + body_len);
+            ag_send_syscheck(framed, header_len + payload_len);
         } else {
-            wmcom_send(framed, header_len + body_len);
+            wmcom_send(framed, header_len + payload_len);
         }
 
         os_free(framed);

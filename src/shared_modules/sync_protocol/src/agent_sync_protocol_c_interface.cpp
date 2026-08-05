@@ -11,7 +11,7 @@
 // LCOV_EXCL_START
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
         {
@@ -25,8 +25,7 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper),
-                                                                                           std::chrono::seconds(timeout), retries));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper)));
         }
         catch (const std::exception& ex)
         {
@@ -69,32 +68,6 @@ extern "C" {
             wrapper->impl->persistDifference(id,
                                              static_cast<Operation>(operation),
                                              index, data, version);
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
-        }
-    }
-
-    void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                    const char* id,
-                                    Operation_t operation,
-                                    const char* index,
-                                    const char* data,
-                                    uint64_t version)
-    {
-        try
-        {
-            if (!handle || !id || !index || !data) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->persistDifferenceInMemory(id,
-                                                     static_cast<Operation>(operation),
-                                                     index, data, version);
         }
         catch (const std::exception& ex)
         {
@@ -180,25 +153,6 @@ extern "C" {
         catch (...)
         {
             return false;
-        }
-    }
-
-    void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle)
-    {
-        try
-        {
-            if (!handle) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->clearInMemoryData();
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
         }
     }
 

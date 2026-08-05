@@ -302,7 +302,7 @@ The module subscribes to the Router and expects FlatBuffer messages on the `inve
 **Requirements:**
 - Router must be active on the manager
 - Agents must emit the synchronization protocol
-- Response path must be available for `StartAck`, `EndAck`, and retransmission messages
+- Response path must be available for `EndAck` messages
 
 ### Indexer Dependency
 

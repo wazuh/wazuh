@@ -87,11 +87,6 @@ class AgentInfoImpl
         /// @param moduleName Name of the module
         void initSyncProtocol(const std::string& moduleName);
 
-        /// @brief Set synchronization parameters
-        /// @param timeout Response timeout in seconds
-        /// @param retries Number of retries
-        void setSyncParameters(uint32_t timeout, uint32_t retries);
-
         /// @brief Set the predicate used to detect that a shutdown is in progress.
         /// It complements the module's own stop flag so that failures caused by the global agent
         /// shutdown (which happens before this module receives its own stop) are logged at a lower
@@ -343,12 +338,6 @@ class AgentInfoImpl
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
-
-        /// @brief Sync configuration: response timeout in seconds
-        uint32_t m_syncResponseTimeout = 30;
-
-        /// @brief Sync configuration: number of retries
-        uint32_t m_syncRetries = 5;
 
         /// @brief Flag to track if module has been stopped.
         /// Atomic so the poll loops can read it without holding m_mutex while

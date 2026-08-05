@@ -25,8 +25,6 @@ static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
 
 static const char* g_module_name = NULL;
 static const char* g_sync_db_path = NULL;
-static unsigned int g_sync_timeout = 30;
-static unsigned int g_sync_retries = 3;
 static unsigned int g_integrity_interval = 86400;
 
 /// @brief Sets the message pushing functions for SCA module.
@@ -52,13 +50,10 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 /// @param timeout Default timeout for synchronization operations in seconds
 /// @param retries Default number of retries for synchronization operations
 /// @param integrity_interval Interval in seconds between integrity checks (0 = disabled)
-void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, unsigned int timeout, unsigned int retries, unsigned int integrity_interval)
+void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, unsigned int integrity_interval)
 {
     g_module_name = module_name;
     g_sync_db_path = sync_db_path;
-
-    g_sync_timeout = timeout;
-    g_sync_retries = retries;
     g_integrity_interval = integrity_interval;
 }
 
@@ -237,7 +232,7 @@ void SCA::init()
         {
             m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, std::chrono::seconds(g_sync_timeout), g_sync_retries,
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path,
                                     std::chrono::seconds(g_integrity_interval));
 
             auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
@@ -430,16 +425,18 @@ std::string SCA::query(const std::string& jsonQuery)
 /// @brief C-style wrapper for SCA module synchronization.
 ///
 /// Provides a C-compatible interface for triggering database synchronization
-/// of the SCA module with configurable parameters.
+/// of the SCA module.
 ///
-/// @param mode Synchronization mode (MODE_FULL or MODE_DELTA)
+/// @param mode Synchronization mode (only MODE_DELTA is meaningful here; a full
+///        replace is now a DataClean + DELTA sequence handled internally by
+///        performRecovery(), not by this entry point).
 /// @return true if synchronization succeeds, false otherwise
 bool sca_sync_module(Mode_t mode)
 {
-    Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    (void)mode;
     // The C++ syncModule() already logs a WARNING with the failure reason before returning.
     // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
-    return SCA::instance().syncModule(syncMode);
+    return SCA::instance().syncModule(Mode::DELTA);
 }
 
 /// @brief C-style wrapper for persisting SCA differences.

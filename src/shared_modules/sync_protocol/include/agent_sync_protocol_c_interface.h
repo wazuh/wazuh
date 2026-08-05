@@ -22,12 +22,10 @@ extern "C" {
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.
-/// @param db_path Optional full path to the SQLite database file to be used (nullptr for in-memory only).
+/// @param db_path Optional full path to the SQLite database file (nullptr for in-memory only).
 /// @param logger Callback function used for logging messages.
-/// @param timeout Default timeout for synchronization operations in seconds.
-/// @param retries Default number of retries for synchronization operations.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger, unsigned int timeout, unsigned int retries);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
@@ -49,29 +47,13 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* data,
                       uint64_t version);
 
-/// @brief Persists a difference to in-memory vector instead of database.
-///
-/// This method is used for recovery scenarios where data should be kept in memory.
-/// @param handle Pointer to the AgentSyncProtocol handle.
-/// @param id Unique identifier for the data item.
-/// @param operation Type of operation (create, modify, delete).
-/// @param index Logical index for the data item.
-/// @param data Serialized content of the message.
-/// @param version Version of the data (64-bit unsigned integer).
-void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                const char* id,
-                                Operation_t operation,
-                                const char* index,
-                                const char* data,
-                                uint64_t version);
-
 /// @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (e.g., full, delta).
 /// @return SyncModuleResult_t with success flag and an optional failure reason string.
 SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
-                     Mode_t mode);
+                                   Mode_t mode);
 
 /// @brief Checks if a module index requires full synchronization.
 ///
@@ -89,10 +71,6 @@ bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
 /// @param length Size of the FlatBuffer message in bytes.
 /// @return true if parsed successfully, false on error.
 bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
-
-/// @brief Clears the in-memory data queue.
-/// @param handle Protocol handle.
-void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 
 /// @brief Synchronizes metadata or groups with the server without sending data.
 ///

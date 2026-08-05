@@ -488,7 +488,7 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction, syscheck.sync_response_timeout, FIM_SYNC_RETRIES);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
