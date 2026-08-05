@@ -191,9 +191,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-deb-arm64
-    # `-small` overrides the instance size for this job only: no compilation
-    # happens here, so the 2 vCPU tier is sufficient. See #38174.
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Test DEB package
 
@@ -539,9 +537,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-rpm-arm64
-    # `-small` overrides the instance size for this job only: no compilation
-    # happens here, so the 2 vCPU tier is sufficient. See #38174.
-    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}-small
+    runs-on: codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Test RPM package
 
