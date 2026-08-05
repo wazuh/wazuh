@@ -44,7 +44,10 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        task();                                                         \
+        if (!m_stopping.load())                                         \
+        {                                                               \
+            task();                                                     \
+        }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
