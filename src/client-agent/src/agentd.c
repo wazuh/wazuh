@@ -110,6 +110,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     w_agentd_state_init();
     w_create_thread(state_main, NULL);
 
+    /* Enrollment (blocking until a valid key exists) and the startup gate
+     * must both be ready before the HTTPS client is ever started: it reads
+     * client.keys exactly once, at creation, with no retry on failure. */
+    start_agent_prepare();
+
     /* HTTPS client: the agent's only transport. It owns the connection
      * lifecycle, the keepalives, the buffering and the shutdown notification. */
     w_https_client_start();

@@ -116,4 +116,9 @@ bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10
 
+/* Port used when <server><port> is unspecified. Must mirror the manager's
+ * DEFAULT_HTTPS_PORT (src/remoted/remoted_module/src/http_server/httpServerConfig.cpp)
+ * since the agent has no legacy-transport fallback to default to instead. */
+#define DEFAULT_HTTPS_CLIENT_PORT 1517
+
 #endif /* CAGENTD_H */
