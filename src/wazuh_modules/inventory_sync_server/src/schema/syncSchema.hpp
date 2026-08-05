@@ -12,18 +12,19 @@
 #ifndef _INVSYNC_SCHEMA_SYNC_SCHEMA_HPP
 #define _INVSYNC_SCHEMA_SYNC_SCHEMA_HPP
 
-#include <inventorySyncSession_generated.h>
+#include "flatbuffers/include/inventorySync_generated.h"
 
 namespace invsync::schema
 {
 
     /**
      * The single place that names the generated FlatBuffers namespace. All server code refers to the
-     * schema as `invsync::schema::fb::...` so that when the legacy inventorySync schema is retired and
-     * this one becomes the shared inventorySync.fbs (back under Wazuh.SyncSchema), only this alias
-     * changes. The rationale for the temporary namespace lives in schemas/inventorySyncSession.fbs.
+     * schema as `invsync::schema::fb::...`. Since the FullSession contract replaced the legacy
+     * session-based schema as the single shared inventorySync.fbs, this aliases the shared
+     * Wazuh.SyncSchema namespace directly -- the transitional own-copy schema (Wazuh.SyncSchemaServer,
+     * which existed to dodge cross-DSO ODR clashes with the legacy headers) is gone.
      */
-    namespace fb = Wazuh::SyncSchemaServer;
+    namespace fb = Wazuh::SyncSchema;
 
 } // namespace invsync::schema
 

@@ -55,6 +55,9 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/include
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
+  # inventory_sync (legacy) is retired from the BUILD (no subdirectory, no link) but its headers
+  # stay includable: the wm_inventory_sync.c shim still compiles (it dlopens at runtime and is no
+  # longer registered), and the sources remain in the tree until the removal phase.
   ${SRC_FOLDER}/wazuh_modules/inventory_sync/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync_server/include
   ${SRC_FOLDER}/wazuh_modules/keystore_server/include
@@ -93,7 +96,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Modules - Server only
-  add_subdirectory(inventory_sync)
+  # add_subdirectory(inventory_sync) -- legacy, retired: inventory_sync_server replaced it (the
+  # FullSession schema is not additive, so the old module cannot compile against it).
   add_subdirectory(inventory_sync_server)
   add_subdirectory(keystore_server)
   add_subdirectory(vulnerability_scanner)
@@ -132,8 +136,7 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Server build
   target_link_libraries(
     wazuh_modulesd_lib
-    PUBLIC inventory_sync
-           inventory_sync_server
+    PUBLIC inventory_sync_server
            keystore_server
            vulnerability_scanner
            wazuhext
