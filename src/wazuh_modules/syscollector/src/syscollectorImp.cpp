@@ -1623,8 +1623,8 @@ void Syscollector::scanPackages()
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
-            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
             rawData["checksum"] = getItemChecksum(rawData);
+            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
 
             input["table"] = PACKAGES_TABLE;
             m_spNormalizer->normalize("packages", rawData);
@@ -1771,8 +1771,8 @@ void Syscollector::scanProcesses()
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
-            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
             rawData["checksum"] = getItemChecksum(rawData);
+            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
 
             input["table"] = PROCESSES_TABLE;
             input["data"] = nlohmann::json::array( { rawData } );
