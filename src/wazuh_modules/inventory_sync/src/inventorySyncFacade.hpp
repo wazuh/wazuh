@@ -1407,8 +1407,11 @@ public:
                 }
             });
 
-        // Init the socket server to attend keystore requests
-        initializeKeystoreSocket();
+        // The keystore socket (queue/sockets/keystore) is now hosted by the keystore_server
+        // module, registered before this one -- two binds of the same path cannot coexist, so the
+        // flip happens in the same change that adds that module. initializeKeystoreSocket() stays
+        // below, uncalled (this is a template: an uninstantiated member costs nothing), until the
+        // whole module retires.
 
         LOGFN_DEBUG1(m_logFn, "InventorySyncFacade started.");
     }

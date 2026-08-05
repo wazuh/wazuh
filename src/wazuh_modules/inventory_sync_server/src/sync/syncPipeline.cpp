@@ -13,6 +13,7 @@
 
 #include "loggerHelper.h"
 
+#include <algorithm>
 #include <exception>
 #include <functional>
 #include <stdexcept>
@@ -286,16 +287,32 @@ namespace invsync::sync
                 std::unique_lock<std::mutex> lock(shard.mutex);
                 if (batch.empty())
                 {
+                    // Wait for stop, or for SOMETHING dispatchable: a non-empty queue whose every
+                    // agent is scan-busy must keep sleeping (the registry's release listener wakes
+                    // this cv), or the worker would spin.
                     shard.cv.wait(lock,
                                   [this, &shard]
-                                  { return m_stopping.load(std::memory_order_acquire) || !shard.queue.empty(); });
+                                  {
+                                      if (m_stopping.load(std::memory_order_acquire))
+                                      {
+                                          return true;
+                                      }
+                                      if (!m_registry)
+                                      {
+                                          return !shard.queue.empty();
+                                      }
+                                      return std::any_of(shard.queue.begin(),
+                                                         shard.queue.end(),
+                                                         [this](const Item& queued)
+                                                         {
+                                                             return m_registry->couldAcquire(
+                                                                 queued.session.agentId,
+                                                                 vd::AgentInFlightRegistry::Lane::Pipeline,
+                                                                 /*reentrant=*/true);
+                                                         });
+                                  });
                 }
-                if (!shard.queue.empty())
-                {
-                    item = std::move(shard.queue.front());
-                    shard.queue.pop_front();
-                    hasItem = true;
-                }
+                hasItem = popDispatchable(shard, item);
             }
 
             if (!hasItem)

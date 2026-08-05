@@ -80,6 +80,7 @@ typedef enum crypto_type {
 #include "wm_ms_graph.h"
 #include "wm_inventory_sync.h"
 #include "wm_inventory_sync_server.h"
+#include "wm_keystore_server.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
