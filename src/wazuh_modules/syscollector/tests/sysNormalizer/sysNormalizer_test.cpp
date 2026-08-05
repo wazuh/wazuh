@@ -67,6 +67,35 @@ TEST_F(SysNormalizerTest, excludeSiriAndiTunes)
     EXPECT_EQ(size, inputJson.size() + 2);
 }
 
+TEST_F(SysNormalizerTest, excludeConsecutiveMatches)
+{
+    auto inputJson(nlohmann::json::parse(R"(
+        [
+            {
+                "description": "com.apple.siri.launcher",
+                "group": "public.app-category.utilities",
+                "name": "Siri",
+                "version_": "1.0"
+            },
+            {
+                "description": "com.apple.siri.support",
+                "group": "public.app-category.utilities",
+                "name": "Siri",
+                "version_": "1.1"
+            },
+            {
+                "description": "com.apple.facetime",
+                "group": "public.app-category.social-networking",
+                "name": "FaceTime",
+                "version_": "3.0"
+            }
+        ])"));
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    normalizer.removeExcluded("packages", inputJson);
+    ASSERT_EQ(inputJson.size(), 1u);
+    EXPECT_EQ(inputJson[0]["name"], "FaceTime");
+}
+
 TEST_F(SysNormalizerTest, excludeSingleItemNoMatch)
 {
     const auto& origJson{nlohmann::json::parse(R"(

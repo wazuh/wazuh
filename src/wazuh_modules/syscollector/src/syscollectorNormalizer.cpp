@@ -37,13 +37,17 @@ void SysNormalizer::removeExcluded(const std::string& type,
 
                 if (data.is_array())
                 {
-                    for (auto item{data.begin()}; item != data.end(); ++item)
+                    for (auto item{data.begin()}; item != data.end();)
                     {
                         const auto fieldIt{item->find(fieldName)};
 
                         if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                         {
-                            data.erase(item);
+                            item = data.erase(item);
+                        }
+                        else
+                        {
+                            ++item;
                         }
                     }
                 }
