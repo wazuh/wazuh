@@ -300,6 +300,12 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
     rm_config->downstream_write_timeout = getDefine_Int_default("remoted", "downstream_write_timeout", 1, 300, 5);
     rm_config->downstream_response_timeout = getDefine_Int_default("remoted", "downstream_response_timeout", 1, 300, 5);
+    // /stateful gets its own (longer) response deadline: a sync session is indexed and flushed
+    // within the request. The default (2+5+20 s) deliberately stays inside http_request_timeout's
+    // default (30 s); raising this past that also requires raising remoted.http_request_timeout
+    // (the module warns at startup otherwise).
+    rm_config->downstream_stateful_response_timeout =
+        getDefine_Int_default("remoted", "downstream_stateful_response_timeout", 1, 3600, 20);
     rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
     rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
     rm_config->downstream_max_response_body_size =
