@@ -65,6 +65,11 @@ namespace invsync::indexer
             m_inner.indexDataStream(index, data);
         }
 
+        void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName) override
+        {
+            m_inner.deleteByQuery(index, agentId, clusterName);
+        }
+
     private:
         IndexerConnectorAsync m_inner;
     };

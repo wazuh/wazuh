@@ -17,6 +17,7 @@
 #include <json.hpp>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -81,15 +82,30 @@ namespace
         void index(std::string_view id, std::string_view index, std::string_view data) override
         {
             indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
+            callOrder.emplace_back("index");
         }
 
         void indexDataStream(std::string_view index, std::string_view data) override
         {
             dataStreamed.emplace_back(std::string {index}, std::string {data});
+            callOrder.emplace_back("indexDataStream");
+        }
+
+        void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName) override
+        {
+            callOrder.emplace_back("deleteByQuery");
+            if (deleteByQueryShouldThrow)
+            {
+                throw std::runtime_error("simulated deleteByQuery failure");
+            }
+            deletedByQuery.emplace_back(std::string {index}, std::string {agentId}, std::string {clusterName});
         }
 
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
+        std::vector<std::tuple<std::string, std::string, std::string>> deletedByQuery;
+        std::vector<std::string> callOrder;
+        bool deleteByQueryShouldThrow {false};
 
     private:
         bool m_available;
@@ -189,20 +205,31 @@ TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexN
  * The timestamp shape is what makes the document indexable, so pin it rather than just its presence:
  * Utils::getCurrentISO8601() yields YYYY-MM-DDTHH:MM:SS.mmmZ (24 chars, milliseconds, trailing Z).
  */
-TEST(ConfigEndpointTest, IndexedDocumentTimestampIsIso8601WithMillisecondsAndZulu)
+TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZulu)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
     ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
-    ASSERT_TRUE(document.contains("@timestamp"));
-    const auto timestamp = document.at("@timestamp").get<std::string>();
+    const auto timestamp = document["/state/modified_at"_json_pointer].get<std::string>();
 
     ASSERT_EQ(24U, timestamp.size()) << "unexpected timestamp: " << timestamp;
     EXPECT_EQ('T', timestamp[10]);
     EXPECT_EQ('.', timestamp[19]);
     EXPECT_EQ('Z', timestamp.back());
+}
+
+/// document_version never carries over from whatever deleteByQuery just removed: each report
+/// replaces the previous document outright, so there is no revision count to continue.
+TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
 }
 
 TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
@@ -372,6 +399,45 @@ TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
 TEST(ConfigEndpointTest, UnavailableIndexerYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+
+    const auto response = run(makeRequest(R"([{"module":"fim","config":{}}])", "001"), connector);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
+    EXPECT_TRUE(connector->deletedByQuery.empty()) << "an unhealthy indexer must not even be asked to delete";
+}
+
+/**
+ * The load-bearing ordering guarantee: deleteByQuery must complete before index() is even attempted,
+ * so a document left over for this agent under a stale _id cannot survive alongside the fresh one.
+ */
+TEST(ConfigEndpointTest, DeleteByQueryRunsBeforeIndexingWithTheSameAgentIdAndClusterName)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
+
+    const auto response = run(makeRequest(R"([{"module":"fim","config":{}}])", "007"), connector, cluster);
+
+    ASSERT_EQ(200, response.status);
+    ASSERT_EQ(1U, connector->deletedByQuery.size());
+    const auto& [index, agentId, clusterName] = connector->deletedByQuery.front();
+    EXPECT_EQ("wazuh-agent-config", index);
+    EXPECT_EQ("007", agentId);
+    EXPECT_EQ("prod-cluster", clusterName);
+
+    ASSERT_EQ(std::vector<std::string>({"deleteByQuery", "index"}), connector->callOrder);
+}
+
+/**
+ * A deleteByQuery failure is the same kind of transient, server-side condition as an unavailable
+ * indexer: the caller gets 503 to retry, and nothing gets indexed on top of whatever deleteByQuery
+ * may or may not have removed.
+ */
+TEST(ConfigEndpointTest, ADeleteByQueryFailureYields503AndSkipsIndexing)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    connector->deleteByQueryShouldThrow = true;
 
     const auto response = run(makeRequest(R"([{"module":"fim","config":{}}])", "001"), connector);
 

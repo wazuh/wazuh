@@ -44,6 +44,7 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     }
 }
 
+constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -673,6 +674,71 @@ public:
         bulkData.append(data);
         bulkData.append("\n");
         m_queue->push(std::move(bulkData));
+    }
+
+    /**
+     * @brief Delete every document matching wazuh.agent.id (and, optionally, wazuh.cluster.name) in
+     *        `index`. Fires a single blocking `_delete_by_query` request -- unlike bulkIndex(), this
+     *        does not go through m_queue: the caller needs the deletion to have already happened
+     *        before it enqueues whatever replaces it, and the bulk queue gives no such ordering
+     *        guarantee against its own auto-flush cadence.
+     */
+    void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName = {})
+    {
+        nlohmann::json query;
+        auto& boolQuery = query["query"]["bool"];
+
+        if (clusterName.empty())
+        {
+            boolQuery["filter"]["terms"]["wazuh.agent.id"] = nlohmann::json::array({std::string(agentId)});
+        }
+        else
+        {
+            nlohmann::json agentClause;
+            agentClause["terms"]["wazuh.agent.id"] = nlohmann::json::array({std::string(agentId)});
+            nlohmann::json clusterClause;
+            clusterClause["term"]["wazuh.cluster.name"] = std::string(clusterName);
+            boolQuery["filter"] = nlohmann::json::array({agentClause, clusterClause});
+        }
+
+        std::string url {m_selector->getNext()};
+        url += "/";
+        url += index;
+        url += "/_delete_by_query";
+
+        std::string errorMessage;
+
+        const auto onSuccess = [this](std::string&& response)
+        { LOGFN_DEBUG2(m_logFn, "deleteByQuery response: %s", response.c_str()); };
+
+        const auto onError =
+            [this, &errorMessage](const std::string& error, const long statusCode, const std::string& /*responseBody*/)
+        {
+            if (statusCode == HTTP_NOT_FOUND)
+            {
+                LOGFN_DEBUG2(m_logFn, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
+            }
+            else if (statusCode == HTTP_VERSION_CONFLICT || statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                LOGFN_DEBUG2(m_logFn, "deleteByQuery got status %ld - continuing.", statusCode);
+            }
+            else
+            {
+                LOGFN_WARN(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
+                errorMessage = error;
+            }
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = query.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!errorMessage.empty())
+        {
+            throw IndexerConnectorException(errorMessage);
+        }
     }
 
     bool isAvailable() const

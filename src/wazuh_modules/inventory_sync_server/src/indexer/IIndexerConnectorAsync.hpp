@@ -55,6 +55,16 @@ namespace invsync::indexer
 
         /// @brief Queue a document for a data stream. Fire-and-forget, same as index().
         virtual void indexDataStream(std::string_view index, std::string_view data) = 0;
+
+        /**
+         * @brief Delete every document matching wazuh.agent.id (and, optionally, wazuh.cluster.name)
+         *        in `index`. UNLIKE index()/indexDataStream(), this is NOT fire-and-forget: it blocks
+         *        until the `_delete_by_query` request completes, so a caller relying on "delete before
+         *        the next index()" can do so without any queue-ordering assumption.
+         * @throws whatever the real connector throws on a genuine failure (see indexerConnector.hpp).
+         */
+        virtual void
+        deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName = {}) = 0;
     };
 
 } // namespace invsync::indexer

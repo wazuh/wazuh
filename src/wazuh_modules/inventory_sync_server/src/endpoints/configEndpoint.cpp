@@ -191,18 +191,39 @@ namespace invsync::endpoints::config
 
             try
             {
+                // Blocking, and deliberately BEFORE the index() below: guarantees any document left
+                // over for this agent (under whatever _id it was written with) is gone before the
+                // fresh one lands, rather than racing the write against the connector's own bulk
+                // queue. Indexing under the agent id as _id already makes this redundant in the
+                // common case (index() upserts by id), but it is the only thing that also catches a
+                // stray document under a different _id -- e.g. left over from a prior id scheme.
+                indexer->deleteByQuery(AGENT_CONFIG_INDEX_NAME, agentIdIt->second, cluster.clusterName);
+            }
+            catch (const std::exception& e)
+            {
+                LOGFN_DEBUG1(logFn(),
+                             "deleteByQuery failed for agent '%s' ahead of indexing its config: %s.",
+                             agentIdIt->second.c_str(),
+                             e.what());
+                responder->send(serviceUnavailable());
+                return;
+            }
+
+            try
+            {
                 // Shaped to match the wazuh-agent-config template exactly (dynamic:strict): the
-                // authenticated id, this manager's own identity and the server's clock, plus the
+                // authenticated id, this manager's own identity, the server's clock/version, plus the
                 // sanitized module array -- nothing else.
                 nlohmann::json indexedDocument;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = *sanitizedContent;
                 indexedDocument["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
                 indexedDocument["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
-                indexedDocument["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
+                indexedDocument["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
+                // Always 1, never carried over from whatever deleteByQuery just removed: each report
+                // replaces the previous document outright, there is no revision history to continue.
+                indexedDocument["/state/document_version"_json_pointer] = 1;
 
-                // Indexed under the agent id as _id: each report replaces the previous one for that
-                // agent, so there is no separate delete step.
                 indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, indexedDocument.dump());
 
                 if (const auto decision = acceptedThrottle.record())

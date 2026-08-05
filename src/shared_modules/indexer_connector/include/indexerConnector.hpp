@@ -463,6 +463,23 @@ public:
     void indexDataStream(std::string_view index, std::string_view data);
 
     /**
+     * @brief Delete every document matching `wazuh.agent.id` (and, optionally, `wazuh.cluster.name`)
+     *        in `index`, via a single `_delete_by_query` request.
+     *
+     * Unlike index()/indexDataStream(), this is NOT queued: it is a genuinely blocking call that
+     * completes (or throws) before returning, so a caller that needs a delete to land before a
+     * subsequent write can rely on ordering without touching the bulk queue at all.
+     *
+     * @param index Target index name.
+     * @param agentId `wazuh.agent.id` filter.
+     * @param clusterName Manager-side cluster name; when set, also filters by `wazuh.cluster.name`.
+     * @throws IndexerConnectorException if the request fails for a reason other than the index not
+     *         existing yet (404), a document-level version conflict (409), or backpressure (429) --
+     *         those three are treated as nothing to worry about.
+     */
+    void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName = {});
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.

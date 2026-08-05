@@ -88,10 +88,16 @@ namespace
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
+        void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName) override
+        {
+            deletedByQuery.emplace_back(std::string {index}, std::string {agentId}, std::string {clusterName});
+        }
+
         /// Recorded writes. Empty today -- the endpoints do not write yet -- which is exactly what the
         /// NothingIsIndexedYet test pins, so the day someone starts writing, the test says so.
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
+        std::vector<std::tuple<std::string, std::string, std::string>> deletedByQuery;
 
     private:
         bool m_available;

@@ -61,6 +61,11 @@ public:
         m_impl.bulkIndexDataStream(index, data);
     }
 
+    void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName)
+    {
+        m_impl.deleteByQuery(index, agentId, clusterName);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
@@ -142,6 +147,11 @@ void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 void IndexerConnectorAsync::indexDataStream(std::string_view index, std::string_view data)
 {
     m_impl->indexDataStream(index, data);
+}
+
+void IndexerConnectorAsync::deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName)
+{
+    m_impl->deleteByQuery(index, agentId, clusterName);
 }
 
 bool IndexerConnectorAsync::isAvailable() const

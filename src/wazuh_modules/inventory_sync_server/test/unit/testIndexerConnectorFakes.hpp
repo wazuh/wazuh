@@ -185,6 +185,14 @@ namespace invsync::test
             }
         }
 
+        void deleteByQuery(std::string_view index, std::string_view agentId, std::string_view clusterName) override
+        {
+            if (m_events)
+            {
+                m_events->recordWrite(std::string {agentId}, std::string {index}, std::string {clusterName});
+            }
+        }
+
     private:
         std::shared_ptr<ConnectorEvents> m_events;
         const char* m_name;

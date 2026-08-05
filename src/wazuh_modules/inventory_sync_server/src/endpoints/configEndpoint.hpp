@@ -31,7 +31,7 @@ namespace invsync::endpoints::config
      *
      * @code
      * {
-     *   "@timestamp": "...",
+     *   "state": { "modified_at": "...", "document_version": 1 },
      *   "wazuh": {
      *     "agent": { "id": "<authenticated id>",
      *                "configuration": { "content": [ {"module": ..., "config": ...}, ... ] } },
@@ -44,8 +44,12 @@ namespace invsync::endpoints::config
      * shape makes the (fire-and-forget) write fail with no way to report it back to the caller, which
      * is why every element is sanitized down to `module`/`config` before it reaches the connector.
      *
-     * The document is indexed under the agent id as its `_id`, so each report replaces the previous
-     * one for that agent -- there is no separate delete step.
+     * Before indexing, the handler blocks on a `deleteByQuery` filtering by `wazuh.agent.id` (and this
+     * manager's cluster name), so any document previously left for this agent is gone before the fresh
+     * one is enqueued. The document is also indexed under the agent id as its `_id`, so the common case
+     * is already an upsert; the delete is what also catches a stray document under a different `_id`.
+     * `state.document_version` is always `1`: each report replaces the previous document outright,
+     * there is no revision history to continue.
      *
      * @warning Do not introduce a local or parameter named `config` inside this unit: it would shadow
      * this namespace and make unqualified lookups inside it resolve to the variable.
