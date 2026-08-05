@@ -54,6 +54,12 @@ namespace remoted::downstream
     {
         int status {0};
         std::string body;
+        /// Response headers as they came off the wire, in order, with names lower-cased (values
+        /// verbatim). Capped by the client (see kMaxResponseHeaderBytes in asioUdsHttpClient.cpp) so
+        /// a misbehaving local service cannot grow this unboundedly. What -- if anything -- gets
+        /// reflected to the agent is each endpoint's PostProcessor's decision: /stateful forwards
+        /// only Retry-After (the one header in the sync contract), everything else stays internal.
+        std::vector<std::pair<std::string, std::string>> headers;
     };
 
     /**

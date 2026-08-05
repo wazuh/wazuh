@@ -305,6 +305,45 @@ TEST(AsioUdsHttpClientTest, OversizedResponseBodyAbortsSession)
     EXPECT_EQ(result.error, DownstreamError::ResponseTooLarge);
 }
 
+TEST(AsioUdsHttpClientTest, ParsesResponseHeadersWithLowerCasedNames)
+{
+    // /stateful's postProcess relays Retry-After to the agent, so the client must surface response
+    // headers -- names lower-cased (like HttpRequest::headers), values verbatim, order preserved.
+    StubUdsServer server {uniqueSocketPath("hdrs"),
+                          "HTTP/1.1 503 Service Unavailable\r\n"
+                          "Content-Type: application/json\r\n"
+                          "Retry-After: 60\r\n"
+                          "Content-Length: 2\r\n\r\n{}",
+                          false};
+
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "body");
+    ASSERT_EQ(result.error, DownstreamError::None);
+    EXPECT_EQ(result.response.status, 503);
+    ASSERT_EQ(result.response.headers.size(), 3U);
+    EXPECT_EQ(result.response.headers[0], (std::pair<std::string, std::string> {"content-type", "application/json"}));
+    EXPECT_EQ(result.response.headers[1], (std::pair<std::string, std::string> {"retry-after", "60"}));
+    EXPECT_EQ(result.response.headers[2], (std::pair<std::string, std::string> {"content-length", "2"}));
+}
+
+TEST(AsioUdsHttpClientTest, OversizedResponseHeadersAbortSession)
+{
+    // Headers are capped by a fixed constant (kMaxResponseHeaderBytes, 16 KiB) rather than the
+    // body tunable: a local service streaming an absurd header block must abort the session, not
+    // grow the response allocation unboundedly.
+    const std::string hugeValue(20U * 1024U, 'h');
+    const std::string response = "HTTP/1.1 200 OK\r\nX-Huge: " + hugeValue + "\r\nContent-Length: 0\r\n\r\n";
+    StubUdsServer server {uniqueSocketPath("hugehdr"), response, false};
+
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "body");
+    EXPECT_EQ(result.error, DownstreamError::ResponseTooLarge);
+}
+
 TEST(AsioUdsHttpClientTest, IoThreadGuardSurvivesUnexpectedException)
 {
     // Defense-in-depth pattern check for the io_context worker thread wrapper: an uncaught

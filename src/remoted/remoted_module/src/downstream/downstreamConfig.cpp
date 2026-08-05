@@ -18,6 +18,11 @@ namespace
     constexpr int DEFAULT_CONNECT_TIMEOUT_SEC {2};
     constexpr int DEFAULT_WRITE_TIMEOUT_SEC {5};
     constexpr int DEFAULT_RESPONSE_TIMEOUT_SEC {5};
+    // Not 5: /stateful's downstream (the inventory sync server) validates, indexes and flushes the
+    // whole session inside the request. 20 s keeps the default budget (2+5+20) inside the default
+    // http_request_timeout (30 s) so a stock install starts warning-free; calibration with real
+    // session sizes is F9's job (inventory_sync_server_docs 13 §3.3).
+    constexpr int DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC {20};
     // 11 MiB, not 10: strictly larger than the agent-request cap because /stats and /config echo
     // the agent's document back enriched (see DownstreamConfig::maxResponseBodySize).
     constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {11U * 1024U * 1024U};
@@ -53,6 +58,8 @@ namespace remoted::downstream
         result.writeTimeoutMs = resolveSeconds(config.downstream_write_timeout, DEFAULT_WRITE_TIMEOUT_SEC) * 1000;
         result.responseTimeoutMs =
             resolveSeconds(config.downstream_response_timeout, DEFAULT_RESPONSE_TIMEOUT_SEC) * 1000;
+        result.statefulResponseTimeoutMs =
+            resolveSeconds(config.downstream_stateful_response_timeout, DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC) * 1000;
         result.ioThreads = resolveThreadCount(config.downstream_io_threads);
         result.postProcessThreads = resolveThreadCount(config.downstream_post_process_threads);
         result.maxResponseBodySize =

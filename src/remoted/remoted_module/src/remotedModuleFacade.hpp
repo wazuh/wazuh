@@ -40,6 +40,7 @@
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
+#include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "http_server/IHttpServer.hpp"
@@ -332,6 +333,26 @@ private:
             "/stats", downstreamConfig, config, remoted::endpoints::stats::target(inventorySyncSocketPath, "0"));
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/config", downstreamConfig, config, remoted::endpoints::config::target(inventorySyncSocketPath, "0"));
+
+        // /stateful: inventory synchronization sessions (FlatBuffer FullSession, opaque to
+        // remoted). Same authenticated pipeline, forwarded to the sync server with the
+        // authenticated agent id as X-Wazuh-Agent-Id; the downstream result is passed through to
+        // the agent (status + body + Retry-After) -- it IS the session result, unlike the
+        // enqueue-style endpoints above. Sessions index within the request, so the route carries
+        // its own, longer response deadline (remoted.downstream_stateful_response_timeout).
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/stateful",
+            remoted::endpoints::stateful::makeHandler(
+                *m_forwarder, inventorySyncSocketPath, downstreamConfig.statefulResponseTimeoutMs));
+
+        warnIfDownstreamBudgetExceedsRequestTimeout(
+            "/stateful",
+            downstreamConfig,
+            config,
+            remoted::endpoints::stateful::target(
+                inventorySyncSocketPath, "0", downstreamConfig.statefulResponseTimeoutMs));
 
         // /control: agent lifecycle (startup / notify / shutdown). Same auth path as /stateless
         // -- the gateway runs the full AES-CMAC validation and only calls this handler once auth
