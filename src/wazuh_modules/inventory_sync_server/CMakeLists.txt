@@ -32,6 +32,12 @@ if(TARGET flatbuffers_external)
 endif()
 add_dependencies(inventory_sync_server generate_inventory_sync_server_schema)
 
+# The VD adapter TU compiles the scanner's headers, which include the LEGACY generated schema; in
+# a whole-project build that header is produced by this target (same guard as inventory_sync's).
+if(TARGET compile_schemas_input)
+  add_dependencies(inventory_sync_server compile_schemas_input)
+endif()
+
 target_include_directories(
   inventory_sync_server
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -45,7 +51,13 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp, proc.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
-          ${SRC_FOLDER}/external/nlohmann) # json.hpp
+          ${SRC_FOLDER}/external/nlohmann # json.hpp
+          # ONLY for src/vd/vdScannerAdapter.cpp: the scanner facade's header transitively pulls
+          # the legacy module's Context, the legacy generated schema, and headers spelled relative
+          # to the source root ("external/nlohmann/json.hpp"). Contained to that one TU (see
+          # vd/vdScannerFactory.hpp); goes away when the legacy module retires.
+          ${SRC_FOLDER}/wazuh_modules/inventory_sync/src
+          ${SRC_FOLDER})
 
 # ext_asio: header-only standalone Asio (INTERFACE target). ext_llhttp: static HTTP parser.
 # Both are linked PRIVATE and confined to the .cpp files behind the PImpl, so neither leaks
@@ -56,7 +68,12 @@ target_include_directories(
 # calls cJSON_Print/cJSON_free to convert the borrowed <indexer> subtree. Taking it from the shared
 # library rather than linking ext_cjson statically avoids a second copy of cJSON inside this .so,
 # which would sit alongside the one modulesd already has loaded.
-target_link_libraries(inventory_sync_server PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector)
+# vulnerability_scanner: the VD scan lane calls its neutral entry points (runScannerFromViews,
+# the vd_sync coordination registry). The dependency is one-way -- the scanner never includes a
+# header of this module -- so no cycle: the scanner's own coordination needs are served through
+# vd_sync::IScanCoordinator implementations REGISTERED by the sync modules.
+target_link_libraries(inventory_sync_server PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector
+                                                    vulnerability_scanner)
 
 # Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides Boost,
 # so leaving it to be inferred just makes the build depend on what happens to be installed.

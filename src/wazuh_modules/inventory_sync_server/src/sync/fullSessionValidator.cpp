@@ -204,6 +204,7 @@ namespace invsync::sync
         // Effective cluster: the session's (already validated equal to the manager's) with the
         // manager's as fallback -- same expression the legacy `_id` builder used.
         validated.clusterName = claimedCluster.empty() ? managerClusterName : std::string {claimedCluster};
+        validated.clusterNode = std::string {viewOf(start->cluster_node())};
 
         if (start->groups() != nullptr)
         {

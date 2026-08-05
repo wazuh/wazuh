@@ -13,6 +13,8 @@
 
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
+#include "vd/agentInFlightRegistry.hpp"
+#include "vd/vdScanLane.hpp"
 
 #include <gtest/gtest.h>
 
@@ -21,6 +23,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 using invsync::http::HttpRequest;
@@ -89,15 +92,33 @@ namespace
         std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
         std::shared_ptr<FakeIndexerConnectorSync> admission {
             std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+        std::shared_ptr<invsync::vd::AgentInFlightRegistry> registry {
+            std::make_shared<invsync::vd::AgentInFlightRegistry>()};
+        std::shared_ptr<invsync::vd::IVdScanner> scanner {std::make_shared<invsync::test::FakeVdScanner>(events)};
         std::shared_ptr<invsync::sync::SyncPipeline> pipeline;
+        std::shared_ptr<invsync::vd::VdScanLane> lane;
         invsync::http::RouteHandler handler;
 
-        explicit HandlerUnderTest(invsync::sync::SyncPipelineConfig config = {}, int retryAfter = 60)
+        explicit HandlerUnderTest(invsync::sync::SyncPipelineConfig config = {},
+                                  int retryAfter = 60,
+                                  invsync::vd::VdScanLaneConfig laneConfig = {})
         {
             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {admission};
-            pipeline = std::make_shared<invsync::sync::SyncPipeline>(config, std::move(connectors), CLUSTER);
-            handler = invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, "test-node", false}, retryAfter});
+            pipeline = std::make_shared<invsync::sync::SyncPipeline>(config, std::move(connectors), CLUSTER, registry);
+            lane = std::make_shared<invsync::vd::VdScanLane>(
+                laneConfig,
+                scanner,
+                std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+                    std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
+                registry,
+                CLUSTER);
+            handler = invsync::endpoints::sync::makeHandler(
+                invsync::endpoints::sync::Dependencies {pipeline,
+                                                        admission,
+                                                        invsync::common::ClusterIdentity {CLUSTER, "test-node", false},
+                                                        retryAfter,
+                                                        lane,
+                                                        scanner});
         }
     };
 
@@ -164,9 +185,10 @@ TEST(SyncEndpointTest, AnIdentityMismatchIs403)
     EXPECT_NE(std::string::npos, responder->captured->body.find("identity mismatch"));
 }
 
-TEST(SyncEndpointTest, AVDSessionGets503WithRetryAfterAndNothingIsProcessed)
+TEST(SyncEndpointTest, AVDSessionWhileTheFeedIsNotReadyGets503WithRetryAfter)
 {
     HandlerUnderTest fixture {{}, 120};
+    fixture.events->m_vdFeedReady.store(false);
     auto responder = std::make_shared<CapturingResponder>();
 
     SessionSpec spec;
@@ -188,6 +210,67 @@ TEST(SyncEndpointTest, AVDSessionGets503WithRetryAfterAndNothingIsProcessed)
     }
     EXPECT_TRUE(hasRetryAfter);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a rejected VD session must not touch the indexer";
+}
+
+TEST(SyncEndpointTest, AVDSessionWithTheFeedReadyRidesTheScanLane)
+{
+    HandlerUnderTest fixture;
+    auto responder = std::make_shared<CapturingResponder>();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDSync;
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}})), responder);
+
+    const auto response = responder->await();
+    EXPECT_EQ(200, response.status);
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(2U, ops.size());
+    EXPECT_EQ("scan", std::get<0>(ops[0])) << "D22: the scan must gate the indexing";
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
+}
+
+TEST(SyncEndpointTest, AVDSessionAgainstAFullLaneGets503ScanCapacity)
+{
+    invsync::vd::VdScanLaneConfig laneConfig;
+    laneConfig.workers = 1;
+    laneConfig.queueSlots = 1;
+    HandlerUnderTest fixture {{}, 60, laneConfig};
+    fixture.events->closeScanGate();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+
+    // One in the worker (parked at the scan gate), one filling the single slot, the third bounces.
+    auto first = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}})), first);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+    while (fixture.events->m_scanEntered.load() < 1 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+    }
+    ASSERT_EQ(1, fixture.events->m_scanEntered.load());
+
+    SessionSpec second;
+    second.option = invsync::test::fb::Option_VDFirst;
+    second.agentId = "2";
+    auto queued = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "2"),
+                    queued);
+
+    SessionSpec third;
+    third.option = invsync::test::fb::Option_VDFirst;
+    third.agentId = "3";
+    auto rejected = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "3"),
+                    rejected);
+
+    ASSERT_TRUE(rejected->captured.has_value());
+    EXPECT_EQ(503, rejected->captured->status);
+    EXPECT_NE(std::string::npos, rejected->captured->body.find("scan capacity exhausted"));
+
+    fixture.events->openScanGate();
+    EXPECT_EQ(200, first->await().status);
+    EXPECT_EQ(200, queued->await().status);
 }
 
 TEST(SyncEndpointTest, AnUnavailableIndexerShedsAtAdmission)

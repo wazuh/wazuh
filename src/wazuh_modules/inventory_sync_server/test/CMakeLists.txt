@@ -48,7 +48,10 @@ target_include_directories(
           # test includes llhttp. inventory_sync_server links both PRIVATE, so neither propagates
           # to this target.
           ${SRC_FOLDER}/external/asio/include
-          ${SRC_FOLDER}/external/llhttp/include)
+          ${SRC_FOLDER}/external/llhttp/include
+          # vulnerabilityScannerSync.hpp: the NEUTRAL coordination header the coordinator tests
+          # exercise -- never the scanner's facade.
+          ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include)
 
 target_compile_definitions(inventory_sync_server_utest PRIVATE ASIO_STANDALONE)
 

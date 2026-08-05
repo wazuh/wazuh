@@ -68,10 +68,13 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->drain_timeout);
 
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "sync pipeline: sync_workers=%d, sync_queue_bytes=%lld, vd_feed_retry_after_seconds=%d",
+             "sync pipeline: sync_workers=%d, sync_queue_bytes=%lld, vd_feed_retry_after_seconds=%d, vd_workers=%d, "
+             "vd_scan_queue_slots=%d",
              config->sync_workers,
              config->sync_queue_bytes,
-             config->vd_feed_retry_after_seconds);
+             config->vd_feed_retry_after_seconds,
+             config->vd_workers,
+             config->vd_scan_queue_slots);
 
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
@@ -185,6 +188,9 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                                          64 * 1024 * 1024);
     config->vd_feed_retry_after_seconds =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_feed_retry_after_seconds", 10, 1800, 60);
+    config->vd_workers = getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_workers", 0, 16, 0);
+    config->vd_scan_queue_slots =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_scan_queue_slots", 0, 256, 0);
 
     /* ---- Indexer connector tunables. Unlike the transport options above these carry real
      * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
@@ -429,6 +435,8 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
     cJSON_AddNumberToObject(config, "sync_workers", data->config->sync_workers);
     cJSON_AddNumberToObject(config, "sync_queue_bytes", (double)data->config->sync_queue_bytes);
     cJSON_AddNumberToObject(config, "vd_feed_retry_after_seconds", data->config->vd_feed_retry_after_seconds);
+    cJSON_AddNumberToObject(config, "vd_workers", data->config->vd_workers);
+    cJSON_AddNumberToObject(config, "vd_scan_queue_slots", data->config->vd_scan_queue_slots);
     cJSON_AddNumberToObject(config, "indexer_sync_max_bulk_size", data->config->indexer_sync_max_bulk_size);
     cJSON_AddNumberToObject(
         config, "indexer_sync_flush_interval_seconds", data->config->indexer_sync_flush_interval_seconds);

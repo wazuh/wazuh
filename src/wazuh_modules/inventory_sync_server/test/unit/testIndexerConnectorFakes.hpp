@@ -19,6 +19,8 @@
 #include "indexer/indexerConnectorSyncAdapter.hpp"
 #include "indexer/indexerSessionAdapter.hpp"
 #include "inventorySyncServerTestHooks.hpp"
+#include "vd/IVdScanner.hpp"
+#include "vd/vdScannerFactory.hpp"
 
 #include <json.hpp>
 
@@ -78,6 +80,14 @@ namespace invsync::test
         /// Times flush() was ENTERED (before the gate/injection). A test polls this to know a
         /// worker is parked at the closed gate before queueing more work behind it.
         std::atomic<int> m_flushEntered {0};
+        /// What the VD scanner fake reports from feedReady() (D17 gates).
+        std::atomic<bool> m_vdFeedReady {true};
+        /// When true, the scanner fake's scan() reports a legitimate skip instead of running.
+        std::atomic<bool> m_vdScanSkip {false};
+        /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
+        bool m_scanGateClosed {false};
+        std::condition_variable m_scanGateCv;
+        std::atomic<int> m_scanEntered {0}; ///< Times scan() was entered (before gate/injection).
 
         void recordDestruction(const char* what)
         {
@@ -156,6 +166,28 @@ namespace invsync::test
             m_flushEntered.fetch_add(1);
             std::unique_lock<std::mutex> lock(m_mutex);
             m_flushGateCv.wait(lock, [this] { return !m_flushGateClosed; });
+        }
+
+        void closeScanGate()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_scanGateClosed = true;
+        }
+
+        void openScanGate()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_scanGateClosed = false;
+            }
+            m_scanGateCv.notify_all();
+        }
+
+        void waitAtScanGate()
+        {
+            m_scanEntered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_scanGateCv.wait(lock, [this] { return !m_scanGateClosed; });
         }
     };
 
@@ -348,6 +380,46 @@ namespace invsync::test
     };
 
     /**
+     * @brief VD scanner fake for the scan lane: the D22 gating without a CVE feed.
+     *
+     * scan() records itself as a "scan" op on the SAME timeline as the connector ops, which is
+     * what lets a test assert the scan-BEFORE-index ordering with one vector. Failure is injected
+     * through m_syncThrowOn ("scan"); skips through m_vdScanSkip; the feed gate through
+     * m_vdFeedReady; and m_scanGate parks the lane worker mid-scan deterministically.
+     */
+    class FakeVdScanner final : public invsync::vd::IVdScanner
+    {
+    public:
+        explicit FakeVdScanner(std::shared_ptr<ConnectorEvents> events)
+            : m_events {std::move(events)}
+        {
+        }
+
+        bool feedReady() const override
+        {
+            return m_events->m_vdFeedReady.load();
+        }
+
+        invsync::vd::ScanVerdict scan(const invsync::sync::ValidatedSession& session) override
+        {
+            m_events->waitAtScanGate();
+            m_events->throwIfInjected("scan");
+            m_events->recordSyncOp("scan", session.agentId, {}, {}, {});
+            return m_events->m_vdScanSkip.load() ? invsync::vd::ScanVerdict::Skipped : invsync::vd::ScanVerdict::Ok;
+        }
+
+    private:
+        std::shared_ptr<ConnectorEvents> m_events;
+    };
+
+    /// Installs a FakeVdScanner (sharing @p events) as the module's scan lane seam.
+    inline void installFakeVdScanner(const std::shared_ptr<ConnectorEvents>& events)
+    {
+        invsync::test_hooks::setVdScannerFactoryForTests([events]() -> std::shared_ptr<invsync::vd::IVdScanner>
+                                                         { return std::make_shared<FakeVdScanner>(events); });
+    }
+
+    /**
      * @brief Installs fakes for all three slots that succeed instantly, bypassing the real objects'
      *        synchronous, network-bound construction entirely.
      *
@@ -471,6 +543,7 @@ namespace invsync::test
                 return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
                     config, adapter.session(), std::move(logging));
             });
+        invsync::test_hooks::setVdScannerFactoryForTests([]() { return invsync::vd::makeProductionVdScanner(); });
     }
 
 } // namespace invsync::test
