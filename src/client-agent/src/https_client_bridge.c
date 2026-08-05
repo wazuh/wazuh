@@ -1501,9 +1501,13 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
  * when unspecified. HTTPS is the only transport on offer, so there is
  * nothing left to gate.
  *
- * Called at agentd startup and again after the initial enrollment, 
- * which is when a first-boot agent finally has a key to
- * validate. No-ops when a client is already running. */
+ * Called at agentd startup and again after the initial enrollment, which is
+ * when a first-boot agent finally has a key to validate. No-ops when a client
+ * is already running.
+ *
+ * The handle is published under g_https_client_lock as soon as hc_create()
+ * succeeds, before hc_start(): the dispatcher thread that call launches can
+ * fire callbacks that read g_https_client. */
 void w_https_client_start(void)
 {
     w_mutex_lock(&g_https_client_lock);
@@ -1541,15 +1545,22 @@ void w_https_client_start(void)
     callbacks.on_collect_host = bridge_on_collect_host;
     callbacks.on_producer_pause = bridge_on_producer_pause;
 
-    g_https_client = hc_create(&config, &callbacks);
-    if (!g_https_client) {
+    hc_handle *client = hc_create(&config, &callbacks);
+    if (!client) {
         merror("https_client: failed to create the client instance.");
         return;
     }
-    if (!hc_start(g_https_client)) {
+
+    w_mutex_lock(&g_https_client_lock);
+    g_https_client = client;
+    w_mutex_unlock(&g_https_client_lock);
+
+    if (!hc_start(client)) {
         merror("https_client: failed to start (configuration rejected).");
-        hc_destroy(g_https_client);
+        w_mutex_lock(&g_https_client_lock);
         g_https_client = NULL;
+        w_mutex_unlock(&g_https_client_lock);
+        hc_destroy(client);
         return;
     }
 
@@ -1564,9 +1575,15 @@ void w_https_client_stop(void)
      * enroll thread's key reload: we either block behind an in-flight
      * hc_set_agent_key() (which finishes on the still-valid handle before we
      * continue) or set the flag before the thread checks it (so it abandons
-     * without touching the handle). Only then is it safe to destroy. */
+     * without touching the handle). Only then is it safe to destroy.
+     *
+     * The handle is cleared in the same critical section, so a reader sees
+     * either a valid handle or NULL, never one mid-destruction. hc_destroy()
+     * runs outside the lock: it joins module threads. */
     w_mutex_lock(&g_https_client_lock);
     g_https_client_stopping = true;
+    hc_handle *client = g_https_client;
+    g_https_client = NULL;
     w_mutex_unlock(&g_https_client_lock);
 
 #ifdef WIN32
@@ -1576,9 +1593,8 @@ void w_https_client_stop(void)
     asp_set_session_sender(NULL);
 #endif
 
-    if (g_https_client) {
-        hc_destroy(g_https_client); /* Implies stop + join. */
-        g_https_client = NULL;
+    if (client) {
+        hc_destroy(client); /* Implies stop + join. */
     }
 }
 
