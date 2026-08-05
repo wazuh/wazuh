@@ -421,11 +421,58 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncByteBudgetAlwaysReturnsAtL
 
     capStorage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
 
-    // Budget of 1 byte — the item is far larger than that.
+    // Budget of 1 byte ï¿½ the item is far larger than that.
     const auto block = capStorage->fetchAndMarkForSync(1);
     ASSERT_EQ(block.size(), static_cast<size_t>(1));
     EXPECT_EQ(block[0].id, "id1");
     EXPECT_TRUE(warnEmitted) << "Expected LOG_WARNING when a single item exceeds the byte cap";
+}
+
+// A single item that keeps exceeding the byte cap across consecutive cycles (e.g.
+// the manager keeps rejecting it with a real 413) must not block the queue behind
+// it forever: past MAX_OVERSIZED_ATTEMPTS (5) cycles it is dropped instead of
+// resent, freeing up whatever was stuck behind it.
+TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncDropsPersistentlyOversizedItemAfterMaxAttempts)
+{
+    int errorCount = 0;
+    LoggerFunc capturingLogger = [&errorCount](modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_ERROR && msg.find("Dropping") != std::string::npos)
+        {
+            ++errorCount;
+        }
+    };
+    auto capStorage = std::make_unique<PersistentQueueStorage>(":memory:", capturingLogger);
+
+    capStorage->submitOrCoalesce(PersistedData{0, "stuck_id", "index1", "payload1", Operation::CREATE, 1});
+    capStorage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+
+    // Simulate consecutive failed sync cycles: each one selects the oversized item
+    // alone, then the caller resets it back to PENDING (as agent_sync_protocol does
+    // on a rejected/failed session) so it is reselected next cycle.
+    for (int cycle = 0; cycle < 5; ++cycle)
+    {
+        const auto block = capStorage->fetchAndMarkForSync(1);
+        ASSERT_EQ(block.size(), static_cast<size_t>(1));
+        EXPECT_EQ(block[0].id, "stuck_id");
+        capStorage->resetAllSyncing();
+    }
+
+    EXPECT_EQ(errorCount, 0) << "Should not drop before exceeding MAX_OVERSIZED_ATTEMPTS";
+
+    // One more cycle crosses the threshold: the item is dropped, and the second
+    // item (previously starved behind it) is now free to be selected.
+    const auto finalBlock = capStorage->fetchAndMarkForSync(1);
+    EXPECT_GE(errorCount, 1) << "Expected LOG_ERROR when the item is finally dropped";
+    ASSERT_EQ(finalBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(finalBlock[0].id, "id2");
+
+    capStorage->resetAllSyncing();
+
+    // stuck_id must be gone for good; only id2 remains pending.
+    const auto afterDrop = capStorage->fetchAndMarkForSync(1000);
+    ASSERT_EQ(afterDrop.size(), static_cast<size_t>(1));
+    EXPECT_EQ(afterDrop[0].id, "id2");
 }
 
 TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAllPendingRows)

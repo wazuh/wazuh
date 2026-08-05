@@ -881,29 +881,31 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
 
         // Session successfully handed off to the transport. The HTTPS client now
         // owns the send and will fire on_sync_response for EVERY outcome (200,
-        // error, timeout, abort). The module therefore waits indefinitely here —
-        // no module-level response timeout exists. Only shouldStop() (agent
-        // shutdown) interrupts the wait early; items are reset to PENDING and
-        // the next periodic cycle retries them.
+        // error, timeout, abort) WITHIN wazuh-agentd, but that result still has to
+        // cross the bridge and a module-local socket to reach this wait, and that
+        // hop can silently drop it. SESSION_RESPONSE_TIMEOUT is a safety net for
+        // that case, not a normal-path timeout. shouldStop() (agent shutdown)
+        // still interrupts the wait early; either way, items are reset to PENDING
+        // and the next periodic cycle retries them.
         std::unique_lock<std::mutex> lock(m_syncState.mtx);
 #ifdef WAZUH_UNIT_TESTING
-        const bool conditionMet = m_syncState.cv.wait_for(lock, std::chrono::seconds(2), [&]
+        const auto waitTimeout = std::chrono::seconds(2);
+#else
+        const auto waitTimeout = SESSION_RESPONSE_TIMEOUT;
+#endif
+        const bool conditionMet = m_syncState.cv.wait_for(lock, waitTimeout, [&]
         {
             return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
         });
 
         if (!conditionMet)
         {
+            m_logger(LOG_WARNING, "Session " + std::to_string(session) + " got no response within " +
+                     std::to_string(std::chrono::duration_cast<std::chrono::seconds>(waitTimeout).count()) +
+                     "s; treating as failed so the next cycle can retry.");
             m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
             m_syncState.lastSyncManagerNotReady = true;
         }
-
-#else
-        m_syncState.cv.wait(lock, [&]
-        {
-            return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
-        });
-#endif
 
         if (m_syncState.syncFailed)
         {
@@ -916,7 +918,7 @@ bool AgentSyncProtocol::runSession(const SessionContent& content)
             return true;
         }
 
-        return false; // Woken by stop().
+        return false; // Woken by stop(), or by the SESSION_RESPONSE_TIMEOUT safety net.
     }
 
     // All hand-off attempts failed: the local sync intake is unavailable.
@@ -999,7 +1001,11 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
 
     // The HTTP status code alone fully determines the outcome; the body (already
     // valid JSON text from the manager) is only ever used here for logging context.
-    if (httpCode == 200)
+    // Any 2xx is success, not just 200: the /stateful contract already documents a
+    // future 202 (queued-processing endpoint) as a deliberate accepted-but-not-200
+    // answer (see syncEndpoint.cpp), and this must not fall into the default
+    // protocol-error branch below when the manager starts sending it.
+    if (httpCode >= 200 && httpCode < 300)
     {
         m_syncState.lastSyncResult = SyncResult::SUCCESS;
         m_syncState.responseReceived = true;
