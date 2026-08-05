@@ -308,8 +308,8 @@ static void bridge_apply_cluster_identity(const cJSON *root)
 }
 
 /* agent_groups: HTTPS nests the array under "agent":{"groups":[...]} (see
- * ControlStream's firstGroup(), which reads the same object for /download's
- * group parameter) rather than start_agent.c's flat "agent_groups" array.
+ * ControlStream's groupsCsv(), which reads the same object for /download's
+ * resource_id) rather than start_agent.c's flat "agent_groups" array.
  * Builds the same CSV shape agent_agent_groups already holds for legacy. */
 static void bridge_apply_agent_groups(const cJSON *root)
 {
