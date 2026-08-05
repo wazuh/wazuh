@@ -472,10 +472,10 @@ async def test_get_agent_active_configuration():
                         'wazuh': {
                             'agent': {
                                 'configuration': {
-                                    'content': [
-                                        {'module': 'fim', 'config': {'a': 1}},
-                                        {'module': 'logcollector', 'config': {'b': 2}},
-                                    ]
+                                    'content': {
+                                        'fim': {'a': 1},
+                                        'logcollector': {'b': 2},
+                                    }
                                 }
                             }
                         }
@@ -523,7 +523,7 @@ async def test_get_agent_active_configuration_module_not_found():
                 {
                     '_id': '001',
                     '_source': {
-                        'wazuh': {'agent': {'configuration': {'content': [{'module': 'fim', 'config': {}}]}}}
+                        'wazuh': {'agent': {'configuration': {'content': {'fim': {}}}}}
                     },
                 }
             ]

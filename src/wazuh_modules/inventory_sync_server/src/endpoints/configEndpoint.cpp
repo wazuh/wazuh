@@ -29,6 +29,16 @@ namespace
     // with that template's index_patterns.
     constexpr auto AGENT_CONFIG_INDEX_NAME {"wazuh-agent-config"};
 
+    // WCS (Wazuh Common Schema) field naming convention, per docs/ref/glossary.md. Local to this
+    // module: there is no shared cross-module constant for it (vulnerability_scanner defines its
+    // own the same way).
+    constexpr auto WAZUH_SCHEMA_VERSION {"1.0.0"};
+
+    // Generation of the *layout* this handler produces under `wazuh.agent.configuration` -- bump
+    // this if that shape ever changes, not on every report. Always 1 today: this is the first
+    // layout.
+    constexpr auto AGENT_CONFIG_DOCUMENT_VERSION {1};
+
     // One shared instance rather than a per-call temporary: this runs on EVERY request.
     // loggerHelper.h stays out of configEndpoint.hpp, which the tests include.
     const LogFn& logFn()
@@ -51,15 +61,17 @@ namespace
     }
 
     /**
-     * @brief Validate the reported body shape and reduce it to the sanitized `{module, config}` array
-     *        the wazuh-agent-config template expects.
+     * @brief Validate the reported body shape and reduce it to the sanitized `{"<module>": <config>}`
+     *        object the wazuh-agent-config template expects for `configuration.content`.
      *
-     * Every element is rebuilt from scratch with exactly these two keys rather than validated in
-     * place: the template is dynamic:strict, so any extra key the agent sent would otherwise reach
-     * the (fire-and-forget) indexer write and fail it with no way to report that back to the caller.
+     * The agent still reports an array of `{"module": <string>, "config": <object>}` pairs, but the
+     * template maps `content` as a `flat_object` clavado por módulo (never an array): a module is
+     * unique per report, so keying by module name up front is what makes "does agent X have module Y"
+     * a single field lookup instead of a scan. If the agent ever sent two entries for the same
+     * module, the later one wins -- object semantics, not an error.
      *
-     * @return The sanitized array on success; std::nullopt if any element fails validation, in which
-     * case @p reason is set to a caller-facing 400 message.
+     * @return The sanitized `{module: config}` object on success; std::nullopt if any element fails
+     * validation, in which case @p reason is set to a caller-facing 400 message.
      */
     std::optional<nlohmann::json> sanitizeReportedModules(const nlohmann::json& document, const char*& reason)
     {
@@ -69,7 +81,7 @@ namespace
             return std::nullopt;
         }
 
-        auto sanitized = nlohmann::json::array();
+        auto content = nlohmann::json::object();
         for (const auto& element : document)
         {
             if (!element.is_object())
@@ -92,10 +104,10 @@ namespace
                 return std::nullopt;
             }
 
-            sanitized.push_back({{"module", *moduleIt}, {"config", *configIt}});
+            content[moduleIt->get<std::string>()] = *configIt;
         }
 
-        return sanitized;
+        return content;
     }
 } // namespace
 
@@ -191,18 +203,30 @@ namespace invsync::endpoints::config
 
             try
             {
-                // Shaped to match the wazuh-agent-config template exactly (dynamic:strict): the
-                // authenticated id, this manager's own identity and the server's clock, plus the
-                // sanitized module array -- nothing else.
+                // `modules` lists exactly the keys `content` ends up with -- derived from it rather
+                // than collected while sanitizing, so the two can never drift apart (e.g. if a future
+                // change dedupes or drops an entry in `content` alone).
+                auto modules = nlohmann::json::array();
+                for (const auto& entry : sanitizedContent->items())
+                {
+                    modules.push_back(entry.key());
+                }
+
+                // Shaped to match the wazuh-agent-config template exactly (dynamic:strict): schema
+                // version, the authenticated id, this manager's own identity, the server's clock, and
+                // the sanitized configuration -- nothing else.
                 nlohmann::json indexedDocument;
+                indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
+                indexedDocument["/wazuh/agent/configuration/modules"_json_pointer] = modules;
                 indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = *sanitizedContent;
                 indexedDocument["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
                 indexedDocument["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
-                indexedDocument["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
+                indexedDocument["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
+                indexedDocument["/state/document_version"_json_pointer] = AGENT_CONFIG_DOCUMENT_VERSION;
 
                 // Indexed under the agent id as _id: each report replaces the previous one for that
-                // agent, so there is no separate delete step.
+                // agent by upsert, nothing else to do.
                 indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, indexedDocument.dump());
 
                 if (const auto decision = acceptedThrottle.record())
