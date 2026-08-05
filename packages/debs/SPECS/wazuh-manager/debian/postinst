@@ -128,11 +128,11 @@ case "$1" in
         ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
     fi
 
-    # Both sslmanager.cert/key and https-manager.cert/key are owned by ${USER} for consistent
-    # least-privilege file ownership, even though authd itself never drops privileges (root
-    # can still read/write them regardless of owner). Re-applied unconditionally (not just on
-    # fresh generation) so upgrades from packages that shipped these root-owned also get
-    # corrected.
+    # Both sslmanager.cert/key and https-manager.cert/key must be owned by ${USER}: both
+    # authd and remoted now drop privileges to that user before loading these files, so
+    # root-owned files would make either daemon fail to start. Re-applied unconditionally
+    # (not just on fresh generation) so upgrades from packages that shipped these root-owned
+    # also get corrected.
     chown ${USER}:${GROUP} ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
     chown ${USER}:${GROUP} ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
