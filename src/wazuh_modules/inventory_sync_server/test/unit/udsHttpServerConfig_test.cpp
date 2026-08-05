@@ -60,7 +60,9 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
     EXPECT_EQ(2U, config.concurrentAccepts);
     EXPECT_EQ(8192U, config.bufferSize);
 
-    EXPECT_EQ(16U * 1024U * 1024U, config.maxBodySize);
+    // No own body cap by default (a whole sync session is ONE request); the effective session
+    // limit is the in-flight byte budget, which start() feeds to the parser as a 413 boundary.
+    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(2048U, config.maxUrlSize);
     EXPECT_EQ(256U, config.maxHeaderNameSize);
     EXPECT_EQ(8192U, config.maxHeaderValueSize);
@@ -145,7 +147,7 @@ TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
     const auto config = buildServerConfig(input);
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
-    EXPECT_EQ(16U * 1024U * 1024U, config.maxBodySize);
+    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(10U, config.headerTimeoutSec);
     EXPECT_EQ(1024U, config.maxConnections);
     EXPECT_EQ(0660U, config.socketMode);

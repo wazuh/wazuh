@@ -27,9 +27,17 @@ namespace invsync::indexer
      *
      * This is the connector class the older `inventory_sync` module uses, and the whole point of this
      * module is to eventually replace it -- reusing the class means reusing its config keys
-     * (`max_bulk_size`, `flush_interval_seconds`) and its staged-bulk/query API. Every method is a
-     * 1:1 forward; `scopeLock`/`registerNotify`/`invokePendingCallbacks` stay behind the seam on
-     * purpose (see IIndexerConnectorSync.hpp).
+     * (`max_bulk_size`, `flush_interval_seconds`) and its staged-bulk/query API.
+     * `scopeLock`/`registerNotify`/`invokePendingCallbacks` stay behind the seam on purpose (see
+     * IIndexerConnectorSync.hpp).
+     *
+     * The STAGING forwards (`bulkIndex`/`bulkDelete`/`deleteByQuery`) take the connector's own
+     * scopeLock around the call, and that is load-bearing, not defensive: those methods append to
+     * the shared staging buffers WITHOUT locking (the class's contract is caller-locks, which the
+     * legacy module honored by staging under a held scopeLock), while the connector's internal
+     * flush-timer thread takes the same mutex and READS those buffers on every tick. One worker per
+     * connector serializes the callers, but not the timer -- this lock is what does. `flush()` and
+     * the query methods lock internally and are forwarded bare.
      *
      * `m_inner` is held by value in the member-init-list, so a constructor failure (`hosts` not
      * matching the session's, an unreasonable `max_retry_delay_seconds`) throws out of THIS
@@ -53,23 +61,27 @@ namespace invsync::indexer
 
         void bulkIndex(std::string_view id, std::string_view index, std::string_view data) override
         {
+            const auto lock = m_inner.scopeLock();
             m_inner.bulkIndex(id, index, data);
         }
 
         void
         bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version) override
         {
+            const auto lock = m_inner.scopeLock();
             m_inner.bulkIndex(id, index, data, version);
         }
 
         void bulkDelete(std::string_view id, std::string_view index) override
         {
+            const auto lock = m_inner.scopeLock();
             m_inner.bulkDelete(id, index);
         }
 
         void
         deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) override
         {
+            const auto lock = m_inner.scopeLock();
             m_inner.deleteByQuery(index, agentId, clusterName);
         }
 

@@ -1,0 +1,140 @@
+/*
+ * Wazuh inventory sync server module
+ * Copyright (C) 2015, Wazuh Inc.
+ * August 4, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _INVSYNC_SYNC_SYNC_PIPELINE_HPP
+#define _INVSYNC_SYNC_SYNC_PIPELINE_HPP
+
+#include "http_server/IUdsHttpServer.hpp"
+#include "indexer/IIndexerConnectorSync.hpp"
+#include "sync/fullSessionValidator.hpp"
+#include "sync/sessionProcessor.hpp"
+
+#include <atomic>
+#include <condition_variable>
+#include <cstddef>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+namespace invsync::sync
+{
+
+    struct SyncPipelineConfig
+    {
+        /// Early-rejection cap on payload bytes sitting in the pipeline's queues; enqueue() refuses
+        /// over it (the endpoint answers 503). The memory itself is already bounded by the
+        /// transport's in-flight budget -- this sheds earlier so other routes keep admitting.
+        std::size_t maxQueueBytes {64U * 1024U * 1024U};
+        /// Group-commit threshold: a worker flushes its open batch when the staged payload bytes
+        /// reach this (mirrors the connector's own max_bulk_size) or when its queue drains.
+        std::size_t bulkFlushBytes {10U * 1024U * 1024U};
+    };
+
+    /**
+     * @brief The ingestion pipeline behind POST /stateful: workers sharded by agent id.
+     *
+     * One worker (and ONE IndexerConnectorSync, private to it) per shard; a session lands on
+     * `hash(agentId) % workers`, which makes per-agent ordering a property of the topology instead
+     * of a lock: two requests of the same agent -- a Cleans and the SyncData that re-populates it,
+     * a delta and its checksum -- are applied in arrival order because they traverse the same
+     * FIFO. The private connector is what retires the legacy module's shared-connector machinery
+     * (global notify, stale flags, cross-thread scopeLock) from this path entirely.
+     *
+     * Workers GROUP-COMMIT (design doc 03 §7): bulk sessions stage and their responses wait; the
+     * flush happens when the staged bytes reach `bulkFlushBytes` or the shard's queue drains, and
+     * only then is the whole batch answered. Under low load the queue is empty after every session
+     * (flush-per-request latency); under a burst of small sessions the bulks grow on their own and
+     * the indexer sees a few large requests instead of a thousand tiny ones.
+     */
+    class SyncPipeline final
+    {
+    public:
+        /// One queued request. Holding the HttpRequest keeps the FlatBuffer the ValidatedSession
+        /// points into alive -- and with it the transport's in-flight byte reservation.
+        struct Item
+        {
+            std::shared_ptr<const http::HttpRequest> request;
+            std::shared_ptr<http::IHttpResponder> responder;
+            ValidatedSession session;
+        };
+
+        /**
+         * @param config     Tunables (queue cap, flush threshold).
+         * @param connectors One connector PER WORKER; the vector's size is the worker count.
+         *                   All share one IndexerSession; each is owned (and staged into) by
+         *                   exactly one worker thread.
+         * @param managerClusterName Cluster scope for queries and document ids.
+         */
+        SyncPipeline(SyncPipelineConfig config,
+                     std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
+                     std::string managerClusterName);
+
+        ~SyncPipeline();
+
+        SyncPipeline(const SyncPipeline&) = delete;
+        SyncPipeline& operator=(const SyncPipeline&) = delete;
+
+        /**
+         * @brief Queue a validated session for its agent's shard. Called from I/O strands; O(1).
+         *
+         * @return false when the pipeline is stopping or the queue byte cap is exceeded -- the
+         *         caller answers 503 (the item is NOT consumed).
+         */
+        bool enqueue(Item item);
+
+        /**
+         * @brief Stop the workers and answer 503 to everything still queued.
+         *
+         * Called between the transport's stopAccepting() (so responders still deliver) and the
+         * connector teardown (so no worker touches a dead connector). A worker finishes the
+         * session it is on; an OPEN batch is answered 503 WITHOUT flushing -- shutdown must not
+         * wait on indexer I/O, and the agents re-POST on their next cycle (the same restart
+         * semantics RF-13 already prescribes). Idempotent.
+         */
+        void stop();
+
+        std::size_t workerCount() const noexcept
+        {
+            return m_shards.size();
+        }
+
+    private:
+        struct Shard
+        {
+            std::mutex mutex;
+            std::condition_variable cv;
+            std::deque<Item> queue;
+        };
+
+        void workerLoop(std::size_t index);
+        void respond(Item& item, int status, const std::string& body);
+        /// 503 when the worker's connector reports unavailable (retriable), 500 otherwise.
+        void respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector);
+        void
+        flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
+
+        SyncPipelineConfig m_config;
+        SessionProcessor m_processor;
+        std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> m_connectors;
+        std::vector<std::unique_ptr<Shard>> m_shards;
+        std::vector<std::thread> m_workers;
+        std::atomic<std::size_t> m_queuedBytes {0};
+        std::atomic<bool> m_stopping {false};
+        std::mutex m_stopMutex; ///< Serializes stop() against itself (facade + destructor).
+        bool m_stopped {false};
+    };
+
+} // namespace invsync::sync
+
+#endif // _INVSYNC_SYNC_SYNC_PIPELINE_HPP

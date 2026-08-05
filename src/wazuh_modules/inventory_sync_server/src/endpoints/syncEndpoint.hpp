@@ -12,23 +12,23 @@
 #ifndef _INVSYNC_ENDPOINTS_SYNC_ENDPOINT_HPP
 #define _INVSYNC_ENDPOINTS_SYNC_ENDPOINT_HPP
 
+#include "common/clusterIdentity.hpp"
 #include "http_server/IUdsHttpServer.hpp"
+#include "indexer/IIndexerConnectorSync.hpp"
+#include "sync/syncPipeline.hpp"
+
+#include <memory>
 
 namespace invsync::endpoints::sync
 {
 
     /**
-     * @brief The inventory synchronization ingress endpoint.
+     * @brief The inventory synchronization ingress endpoint: POST /stateful.
      *
-     * STUB. Today this route accepts a request, counts its bytes, and answers 202 -- it does not
-     * decode the payload and it DISCARDS it. This is the seam where FlatBuffer decoding, the agent
-     * session table and the indexer connector land; keeping it a separate unit from the start means
-     * that work is a change to one file plus its test, not a change to the facade.
-     *
-     * @warning The path is PROVISIONAL. It has to match the target remoted's downstream
-     * configuration will point at, and that side lands in a separate change. Until both agree,
-     * treat a change here as a wire-protocol change: syncEndpoint_test.cpp pins the value so a
-     * silent drift is caught.
+     * One request = one whole session (Message{FullSession}); the HTTP response IS the result the
+     * agent acts on. The handler runs only the CPU-bound part on the I/O strand -- FlatBuffers
+     * verification, identity, shape -- and defers the indexer work to the SyncPipeline, answering
+     * later through the retained responder.
      */
 
     /// @brief The verb this endpoint answers.
@@ -37,22 +37,46 @@ namespace invsync::endpoints::sync
         return http::Method::Post;
     }
 
-    /// @brief The path this endpoint answers. PROVISIONAL -- see the note above.
+    /// @brief The path this endpoint answers. Mirrors the `POST /stateful` route remoted exposes
+    /// to agents (remoted forwards the body here verbatim); syncEndpoint_test.cpp pins the value
+    /// so a silent drift is caught before it breaks that forwarding.
     constexpr const char* path()
     {
-        return "/inventory/sync";
+        return "/stateful";
     }
+
+    /// @brief The header carrying remoted's authenticated agent id. Lower-case: the transport
+    /// normalizes header names, so a handler may look this up unconditionally.
+    constexpr const char* agentIdHeader()
+    {
+        return "x-wazuh-agent-id";
+    }
+
+    /**
+     * @brief Everything the handler needs, captured by value at registration.
+     *
+     * The pipeline and the connector are held WEAKLY: the facade's stop() resets both, and a weak
+     * capture is what keeps that reset destructive (same pattern as /stats and /config). The
+     * connector here is only the ADMISSION availability check; the pipeline workers re-check their
+     * own connectors at dispatch.
+     */
+    struct Dependencies
+    {
+        std::weak_ptr<invsync::sync::SyncPipeline> pipeline;
+        std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
+        invsync::common::ClusterIdentity cluster;
+        /// Retry-After seconds attached to the 503 for vulnerability-detection sessions (D17).
+        int vdRetryAfterSeconds {60};
+    };
 
     /**
      * @brief Build the endpoint's route handler.
      *
-     * The returned handler replies inline and holds no state, so it is safe to register on any
-     * server instance and outlives nothing. When the real pipeline lands it will instead move the
-     * responder onto a queue and return without answering -- which is exactly what the transport's
-     * deferred-response contract exists to support, and why the handler signature already takes a
-     * responder rather than returning a response.
+     * The handler validates on the strand and either rejects inline (400/403/413-at-transport/503)
+     * or enqueues {request, responder, session} on the pipeline and returns without answering --
+     * the transport's deferred-response contract is what makes that safe.
      */
-    http::RouteHandler makeHandler();
+    http::RouteHandler makeHandler(Dependencies dependencies);
 
 } // namespace invsync::endpoints::sync
 
