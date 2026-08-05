@@ -1378,8 +1378,17 @@ static bool bridge_build_config(hc_config_t *config)
      * local test it explores a path where the key is NULL and reports the
      * strncpy() below, plus the keys.keyentries[0]->id read above it. */
     if (raw_key == NULL || !bridge_key_is_valid(raw_key)) {
-        merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
-               "(expected 32, 48 or 64 hex characters); refusing to start.");
+        /* keys.keysize == 0 means "never enrolled" (start_agent_prepare()
+         * blocks on enrollment before this ever runs, so this should not be
+         * reachable in practice -- kept as defense-in-depth against a future
+         * ordering regression). A non-zero keysize with an invalid raw_key is
+         * a genuinely corrupt client.keys, worth an ERROR. */
+        if (keys.keysize == 0) {
+            mdebug1("https_client: not enrolled yet (no client.keys); deferring start.");
+        } else {
+            merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
+                   "(expected 32, 48 or 64 hex characters); refusing to start.");
+        }
         return false;
     }
     if (keys.keyentries[0]->id) {

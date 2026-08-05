@@ -34,7 +34,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group) __attrib
 /* Event Forwarder */
 void *EventForward(void);
 
-/* Read the keys, arm the startup gate and report the agent start */
+/* Arm the startup gate and block until the agent has a valid key (enrolling
+ * if needed). Must run before the HTTPS client is ever started: it validates
+ * the key once, with no retry, so it must never see an empty keystore. */
+void start_agent_prepare(void);
+
+/* Publish the agent metadata and report the agent start. Must run after the
+ * HTTPS client has started: it submits the start event through it. */
 void start_agent(int is_startup);
 
 /* Publish the agent metadata into shared memory */
