@@ -67,6 +67,19 @@ class ControlStream final
         hc_conn_state_t connState() const;
         bool isRegistered() const;
 
+        /// True exactly once after either: (a) the step() whose Startup was just
+        /// accepted (first connect, reconnect, or a settings-refresh in place), so the
+        /// Notify that reveals the hashes/tasks isn't delayed a full cycle, or (b) a
+        /// Notify that just armed a settings-refresh Startup, so that refresh itself
+        /// isn't delayed a full cycle either. Consumed on read: the caller acts on it
+        /// for one interval only.
+        bool consumeFastFollowup()
+        {
+            const bool value = m_fastFollowup;
+            m_fastFollowup = false;
+            return value;
+        }
+
         /// True while retrying Startup (Rejected/AuthError): use the slow cadence.
         bool useSlowCadence() const
         {
@@ -89,6 +102,9 @@ class ControlStream final
         OutcomeClass sendNotify(Waiter& waiter);
         void sendShutdown(Waiter& waiter);
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
+        /// SHA-256 of limits + cluster only, extracted from the startup response --
+        /// see the .cpp for why agent.groups is deliberately excluded.
+        std::string computeSettingsHash(const std::string& startupBody) const;
         void applyClusterIdentity(const std::string& startupBody);
         void handleNotifyBody(const std::string& body, Waiter& waiter);
         void dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter);
@@ -145,6 +161,9 @@ class ControlStream final
         /// own transitions, so it starts false even though agentd arms the lock
         /// at boot for its own reasons.
         bool m_producersPaused {false};
+
+        /// Set from Effects::resetCadence; see consumeFastFollowup().
+        bool m_fastFollowup {false};
 };
 
 #endif // _HC_CONTROL_STREAM_HPP
