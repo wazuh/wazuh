@@ -208,6 +208,15 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
+    /* A verifying <ssl><verification_mode> without a readable CA can never connect (the
+     * https_client module fails closed on this, per its own validation) -- caught here, before
+     * any module thread is created, instead of failing much later inside w_https_client_start(). */
+    if (agt->ssl.verification_mode != AGENT_VERIFY_NONE &&
+        (!agt->ssl.certificate_authorities || !w_is_file(agt->ssl.certificate_authorities))) {
+        merror(AG_INV_SSL_CA, agt->ssl.certificate_authorities ? agt->ssl.certificate_authorities : "");
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
@@ -218,8 +227,6 @@ int local_start()
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-
-    startup_gate_initialize();
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
@@ -251,6 +258,11 @@ int local_start()
 
     /* Set wait lock before starting threads */
     os_setwait();
+
+    /* Enrollment (blocking until a valid key exists) and the startup gate
+     * must both be ready before the HTTPS client is ever started: it reads
+     * client.keys exactly once, at creation, with no retry on failure. */
+    start_agent_prepare();
 
     /* HTTPS client: the agent's only transport (mirrors AgentdStart on POSIX;
      * the Windows startup path is separate). Started before any producer

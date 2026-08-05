@@ -202,6 +202,17 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
+    /* A verifying <ssl><verification_mode> without a readable CA can never connect (the
+     * https_client module fails closed on this, per its own validation) -- caught here, before
+     * daemonizing, so wazuh-client.sh's sequential daemon-start check (which polls for this
+     * process's PID file before starting syscheckd/logcollector/modulesd) halts the whole start
+     * instead of launching the other daemons around a transport that will never come up. */
+    if (agt->ssl.verification_mode != AGENT_VERIFY_NONE &&
+        (!agt->ssl.certificate_authorities || !w_is_file(agt->ssl.certificate_authorities))) {
+        merror(AG_INV_SSL_CA, agt->ssl.certificate_authorities ? agt->ssl.certificate_authorities : "");
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }

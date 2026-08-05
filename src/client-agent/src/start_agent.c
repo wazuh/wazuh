@@ -30,6 +30,17 @@
 static void w_agentd_keys_init (void);
 STATIC void send_msg_on_startup(void);
 
+/* Arm the startup gate and block until the agent has a usable key, enrolling
+ * if needed (see w_agentd_keys_init()). Must complete before the HTTPS client
+ * is ever started: bridge_build_config() reads client.keys exactly once, at
+ * hc_create() time, with no retry -- if it sees an empty keystore there the
+ * client never runs, silently, for the rest of the process's life. */
+void start_agent_prepare(void)
+{
+    startup_gate_initialize();
+    w_agentd_keys_init();
+}
+
 /* Bring the agent up. There is no connection to establish here any more: the
  * HTTPS module owns registration and its retries. What is left is what the
  * legacy handshake did around it. */
@@ -38,9 +49,6 @@ void start_agent(int is_startup)
     if (!is_startup) {
         return;
     }
-
-    startup_gate_initialize();
-    w_agentd_keys_init();
 
     /* Published from the legacy handshake ACK before; everything but the
      * cluster/groups fields is local, and the bridge republishes those from
