@@ -463,25 +463,25 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
 
 size_t lccom_getallconfig(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     cJSON *body = cJSON_CreateObject();
 
     module_report_merge(body, getLocalfileConfig());
     module_report_merge(body, getSocketConfig());
     module_report_merge(body, getLogcollectorInternalOptions());
 
-    module_report_add_config(report, LCCOM_MODULE_NAME, body);
+    module_report_add(report, LCCOM_MODULE_NAME, body);
     return module_report_reply(report, output);
 }
 
 size_t lccom_getallstats(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
 
     /* Straight from the state rather than through lccom_getstate(): the report
      * wants the statistics themselves, without that path's error envelope or
      * its 64k paging, which a single reply cannot carry anyway. */
-    module_report_add_stats(report, LCCOM_MODULE_NAME, w_logcollector_state_get());
+    module_report_add(report, LCCOM_MODULE_NAME, w_logcollector_state_get());
     return module_report_reply(report, output);
 }
 
