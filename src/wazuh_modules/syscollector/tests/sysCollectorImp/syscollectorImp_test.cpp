@@ -284,14 +284,21 @@ void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/
 // tasks (see #38111), so a scan interrupted by an early destroy() would skip whichever
 // collectors hadn't run yet, failing their EXPECT_CALL(...).Times(1) expectations.
 //
-// The short fixed sleep at the start is a grace period for the freshly-spawned thread to
-// reach scan() and set m_scanning=true - it covers thread-scheduling latency, not scan
-// duration, so it doesn't reintroduce the race it's meant to avoid.
-void waitForScanToFinish(std::chrono::milliseconds maxWait = std::chrono::seconds(10))
+// Waits for isScanning() to become true BEFORE waiting for it to become false. A fixed
+// grace period before the first check isn't enough: init() itself (real SQLite/DBSync
+// setup) can take longer than any short grace period under Valgrind, so isScanning()
+// can still read false while init() is simply still in progress, not because the scan
+// already finished. Treating that as "done" and calling destroy() early races
+// releaseResources() against the other thread's still-running init()/start(), which
+// segfaults on a null m_spInfo once that thread reaches scanHardware().
+void waitForScanToFinish(std::chrono::milliseconds maxWait = std::chrono::seconds(30))
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
     const auto deadline = std::chrono::steady_clock::now() + maxWait;
+
+    while (!Syscollector::instance().isScanning() && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
 
     while (Syscollector::instance().isScanning() && std::chrono::steady_clock::now() < deadline)
     {
