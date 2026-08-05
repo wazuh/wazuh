@@ -62,7 +62,11 @@ class ControlStateMachine final
             bool applyHandshake {false}; ///< Apply the returned handshake JSON.
             bool stateChanged {false};   ///< The published hc_conn_state_t changed.
             bool slowCadence {false};    ///< Use the rejected-retry interval, not notify.
-            bool resetCadence {false};   ///< Return to the normal Notify cadence.
+            /// Startup was just accepted (first connect, reconnect, or a settings-refresh
+            /// in place): the hashes and any pending tasks only ever arrive on Notify, so
+            /// the caller should send one immediately instead of waiting a full notify
+            /// cycle for it.
+            bool resetCadence {false};
         };
 
         ControlStateMachine() = default;
