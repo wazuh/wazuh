@@ -330,6 +330,29 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+static void test_legacy_client_takes_the_last_address(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.2</address></server>";
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><server><address> is not configured. Using <client><server><address> "
+                  "'10.0.0.2' with the default port 1517.");
+
+    assert_int_equal(parse_legacy_client(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.2");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_legacy_client_without_an_address_sets_no_server(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -735,6 +758,7 @@ int main(void) {
         cmocka_unit_test(test_agent_server_port_defaults_to_1517),
         cmocka_unit_test(test_legacy_client_address_is_the_fallback),
         cmocka_unit_test(test_legacy_client_reads_nothing_but_the_address),
+        cmocka_unit_test(test_legacy_client_takes_the_last_address),
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),
         cmocka_unit_test(test_agent_block_replaces_a_legacy_address),
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),

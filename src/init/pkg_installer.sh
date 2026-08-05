@@ -47,17 +47,29 @@ else
     exit 1
 fi
 
-# Read the first <tag> nested in <block> from the agent configuration
+# Read <block><sub><tag> from the agent configuration, taking the last match.
 xml_value() {
     tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
-        grep -o "<$2>[^<]*</$2>" | head -1 | sed -e "s|<$2>||" -e "s|</$2>||" -e 's|^ *||' -e 's| *$||'
+        grep -o "<$2>.*</$2>" | grep -o "<$3>[^<]*</$3>" | tail -1 | \
+        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
 }
 
-# Check that the server accepts connections on the HTTPS control port. There is
-# no `timeout` on macOS, so the connection attempt runs in the background and is
-# killed after PROBE_TIMEOUT seconds.
+# Check that the manager answers on the HTTPS control port. GET / is remoted's
+# unauthenticated health probe and returns 200 {"status":"ok","module":"remoted"}
 probe_server() {
     PROBE_TIMEOUT=5
+
+    if command -v curl > /dev/null 2>&1; then
+        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}/"
+        return $?
+    fi
+
+    if command -v wget > /dev/null 2>&1; then
+        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}/"
+        return $?
+    fi
+
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
     ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
     PROBE_PID=$!
     WAITED=0
@@ -75,13 +87,13 @@ probe_server() {
 }
 
 # The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-SERVER_ADDRESS=$(xml_value agent address)
+SERVER_ADDRESS=$(xml_value agent server address)
 if [ -z "${SERVER_ADDRESS}" ]; then
-    SERVER_ADDRESS=$(xml_value client address)
+    SERVER_ADDRESS=$(xml_value client server address)
 fi
 
 # The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-SERVER_PORT=$(xml_value agent port)
+SERVER_PORT=$(xml_value agent server port)
 if [ -z "${SERVER_PORT}" ]; then
     SERVER_PORT=1517
 fi

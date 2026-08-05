@@ -69,6 +69,19 @@ int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
     return 1;
 }
 
+/* w_is_file() is wfopen() plus fclose(), and both are wrapped here, so an upgrade
+ * marker is made to look present or absent through those. */
+static void expect_marker_probe(const char *path, int exists) {
+    expect_string(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, exists ? (FILE*)1 : NULL);
+
+    if (exists) {
+        expect_value(__wrap_fclose, _File, (FILE*)1);
+        will_return(__wrap_fclose, 1);
+    }
+}
+
 // Tests
 
 void test_wm_upgrade_agent_send_result_event_successful(void **state)
@@ -409,16 +422,40 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
     assert_int_equal(queue, 0);
 }
 
-void test_wm_upgrade_agent_search_upgrade_result_error_open(void **state)
+void test_wm_upgrade_agent_search_upgrade_result_not_written_yet(void **state)
 {
     (void) state;
     int queue = 0;
-    int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
+
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(queue, 0);
+}
+
+void test_wm_upgrade_agent_search_upgrade_result_unusable_content(void **state)
+{
+    (void) state;
+    int queue = 0;
+
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
+
+#ifdef TEST_WINAGENT
+    expect_value(wrap_fgets, __stream, (FILE*)1);
+    will_return(wrap_fgets, "not-a-code\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)1);
+    will_return(__wrap_fgets, "not-a-code\n");
+#endif
+
+    expect_value(__wrap_fclose, _File, (FILE*)1);
+    will_return(__wrap_fclose, 1);
 
     int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
@@ -480,6 +517,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     int queue = 0;
     int result = 0;
 
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 1);
+
     expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQPredicated, type, WRITE);
     expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
@@ -534,6 +573,8 @@ void test_wm_agent_upgrade_check_status_retries_an_empty_result_file(void **stat
 {
     int queue = 0;
     int result = 0;
+
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 1);
 
     expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQPredicated, type, WRITE);
@@ -604,6 +645,35 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
 {
     int queue = -1;
 
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 1);
+
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
+
+    wm_agent_upgrade_check_status();
+}
+
+void test_wm_agent_upgrade_check_status_returns_when_no_upgrade_ran(void **state)
+{
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 0);
+    expect_marker_probe(WM_AGENT_UPGRADE_LOCK_FILE, 0);
+
+    wm_agent_upgrade_check_status();
+}
+
+void test_wm_agent_upgrade_check_status_waits_for_a_result_file_that_does_not_exist_yet(void **state)
+{
+    int queue = 0;
+    int result = 0;
+
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 0);
+    expect_marker_probe(WM_AGENT_UPGRADE_LOCK_FILE, 1);
+
     expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQPredicated, type, WRITE);
     expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
@@ -613,8 +683,72 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_any_always(__wrap_sleep, seconds);
 #endif
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8113): Could not open default queue to send upgrade notification.");
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
+
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
+
+#ifdef TEST_WINAGENT
+    expect_value(wrap_fgets, __stream, (FILE*)1);
+    will_return(wrap_fgets, "0\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)1);
+    will_return(__wrap_fgets, "0\n");
+#endif
+
+    expect_value(__wrap_fclose, _File, (FILE*)1);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"collector\":\"upgrade_result\","
+                                               "\"module\":\"agent-upgrade\","
+                                               "\"data\":{\"error\":0,"
+                                                       "\"message\":\"Upgrade was successful\","
+                                                       "\"status\":\"Done\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, AGENT_UPGRADE_WM_NAME);
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"collector\":\"upgrade_result\","
+                                                     "\"module\":\"agent-upgrade\","
+                                                     "\"data\":{\"error\":0,"
+                                                             "\"message\":\"Upgrade was successful\","
+                                                             "\"status\":\"Done\"}}'");
+
+    expect_string(__wrap_remove, filename, WM_AGENT_UPGRADE_RESULT_FILE);
+    will_return(__wrap_remove, 0);
+
+    wm_agent_upgrade_check_status();
+}
+
+void test_wm_agent_upgrade_check_status_gives_up_after_the_read_budget(void **state)
+{
+    int queue = 0;
+
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 0);
+    expect_marker_probe(WM_AGENT_UPGRADE_LOCK_FILE, 1);
+
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
+
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap_sleep, seconds);
+#endif
+
+    for (int i = 0; i < WM_AGENT_UPGRADE_RESULT_MAX_READS; i++) {
+        expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+        expect_string(__wrap_wfopen, mode, "r");
+        will_return(__wrap_wfopen, NULL);
+    }
 
     wm_agent_upgrade_check_status();
 }
@@ -962,18 +1096,8 @@ void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
     expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_listen_messages, sizeof(wm_agent_upgrade_listen_messages));
 #endif
 
-    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQPredicated, type, WRITE);
-    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
-    will_return(__wrap_StartMQPredicated, 0);
-
-#ifndef TEST_WINAGENT
-    expect_any_always(__wrap_sleep, seconds);
-#endif
-
-    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, NULL);
+    expect_marker_probe(WM_AGENT_UPGRADE_RESULT_FILE, 0);
+    expect_marker_probe(WM_AGENT_UPGRADE_LOCK_FILE, 0);
 
     wm_agent_upgrade_start_agent_module(config, 1);
 
@@ -1009,12 +1133,16 @@ int main(void) {
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_failed, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency, setup_test_executions),
-        cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_error_open, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_not_written_yet, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_unusable_content, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_error_code, setup_test_executions),
         // wm_agent_upgrade_check_status
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_retries_an_empty_result_file, setup_test_executions),
         cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_queue_error, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_returns_when_no_upgrade_ran, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_waits_for_a_result_file_that_does_not_exist_yet, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_agent_upgrade_check_status_gives_up_after_the_read_budget, setup_test_executions),
 #ifndef TEST_WINAGENT
         // wm_agent_upgrade_listen_messages
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_ok),

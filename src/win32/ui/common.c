@@ -331,7 +331,10 @@ int get_ossec_server()
     char *str = NULL;
     int success = 0;
 
-    /* Definitions */
+    /* Definitions. <agent> is the 5.x name of the block; the <client> paths are kept
+     * because a WPK upgrade never rewrites ossec.conf
+     */
+    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "server", "address", NULL};
     const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
     const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
     const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
@@ -349,7 +352,13 @@ int get_ossec_server()
     }
     config_inst.server_type = 0;
 
-    /* Get IP address of manager */
+    /* Get IP address of the server */
+    if (str = OS_GetOneContentforElement(&xml, xml_agentaddr), str) {
+        config_inst.server_type = OS_IsValidIP(str, NULL) == 1 ? SERVER_IP_USED : SERVER_HOST_USED;
+        config_inst.server = str;
+        success = 1;
+        goto ret;
+    }
     if (str = OS_GetOneContentforElement(&xml, xml_manageraddr), str) {
         if (OS_IsValidIP(str, NULL) == 1) {
             config_inst.server_type = SERVER_IP_USED;
@@ -451,12 +460,17 @@ int run_cmd(char *cmd, HWND hwnd)
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd)
 {
-    const char **xml_pt = NULL;
-    const char **xml_alt_pt = NULL;
     OS_XML xml;
     char *str = NULL;
+    const char *(xml_agentaddr[]) = {"ossec_config", "agent", "server", "address", NULL};
     const char *(xml_manageraddr[]) = {"ossec_config", "client", "manager", "address", NULL};
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
+    /* Write order. The block that already holds an address is tried first so an
+     * upgraded 4.x file keeps its <client> shape and a 5.x file gets <agent>.
+     * The remaining paths are the fallback for a config that has neither. */
+    const char **xml_paths[] = {xml_agentaddr, xml_manageraddr, xml_serveraddr};
+    const size_t xml_paths_len = sizeof(xml_paths) / sizeof(xml_paths[0]);
+    size_t i;
     char config_tmp[] = CONFIG;
     char *conf_file = basename_ex(config_tmp);
 
@@ -478,23 +492,20 @@ int set_ossec_server(char *ip, HWND hwnd)
         config_inst.server_type = SERVER_IP_USED;
     }
 
-    /* Keep manager/server tag compatibility depending on current config. */
+    /* Keep agent/manager/server tag compatibility depending on current config: move the
+     * block that already carries an address to the front of the write order. */
     if (OS_ReadXML(CONFIG, &xml) == 0) {
-        if (str = OS_GetOneContentforElement(&xml, xml_manageraddr), str) {
-            xml_pt = xml_manageraddr;
-            free(str);
-        } else if (str = OS_GetOneContentforElement(&xml, xml_serveraddr), str) {
-            xml_pt = xml_serveraddr;
-            free(str);
-        } else {
-            xml_pt = xml_manageraddr;
+        for (i = 0; i < xml_paths_len; i++) {
+            if (str = OS_GetOneContentforElement(&xml, xml_paths[i]), str) {
+                free(str);
+                const char **found = xml_paths[i];
+                xml_paths[i] = xml_paths[0];
+                xml_paths[0] = found;
+                break;
+            }
         }
         OS_ClearXML(&xml);
-    } else {
-        xml_pt = xml_manageraddr;
     }
-
-    xml_alt_pt = (xml_pt == xml_manageraddr) ? xml_serveraddr : xml_manageraddr;
 
     /* Create temporary file */
     if (mkstemp_ex(tmp_path) == -1) {
@@ -504,8 +515,12 @@ int set_ossec_server(char *ip, HWND hwnd)
     }
 
     /* Read the XML. Print error and line number. */
-    if (OS_WriteXML(CONFIG, tmp_path, xml_pt, NULL, ip) != 0 &&
-        OS_WriteXML(CONFIG, tmp_path, xml_alt_pt, NULL, ip) != 0) {
+    int written = 0;
+    for (i = 0; i < xml_paths_len && !written; i++) {
+        written = OS_WriteXML(CONFIG, tmp_path, xml_paths[i], NULL, ip) == 0;
+    }
+
+    if (!written) {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
                    "(Internal error on the XML Write).",
                    "Error -- Failure Setting IP", MB_OK);

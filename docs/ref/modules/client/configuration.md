@@ -430,14 +430,6 @@ Full example with all sections:
       <address>manager1.example.com</address>
       <port>1517</port>
     </server>
-    <ssl>
-      <certificate_authorities>/var/ossec/etc/manager-ca.pem</certificate_authorities>
-      <verification_mode>full</verification_mode>
-    </ssl>
-    <batch>
-      <size>1MB</size>
-      <interval>10s</interval>
-    </batch>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
     <time-reconnect>60</time-reconnect>

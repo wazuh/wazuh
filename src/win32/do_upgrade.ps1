@@ -278,8 +278,8 @@ if ($msi_new_version -ne $null) {
     }
 }
 
-# Read the first <tag> nested in <block> from the agent configuration
-function get_conf_value($block, $tag) {
+# Read <block><sub><tag> from the agent configuration, taking the last match.
+function get_conf_value($block, $sub, $tag) {
     $conf_path = Join-Path $wazuhDir "ossec.conf"
     if (-Not (Test-Path $conf_path)) {
         return $null
@@ -291,38 +291,43 @@ function get_conf_value($block, $tag) {
     if (-Not $block_match.Success) {
         return $null
     }
-    $tag_match = [regex]::Match($block_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
-    if (-Not $tag_match.Success) {
+    $sub_match = [regex]::Match($block_match.Groups[1].Value, "<$sub>(.*)</$sub>")
+    if (-Not $sub_match.Success) {
         return $null
     }
-    return $tag_match.Groups[1].Value.Trim()
+    $tag_matches = [regex]::Matches($sub_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
+    if ($tag_matches.Count -eq 0) {
+        return $null
+    }
+    return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
 }
 
-# Check that the server accepts connections on the HTTPS control port
+# Check that the manager answers on the HTTPS control port. GET / is remoted's
+# unauthenticated health probe and returns 200 {"status":"ok","module":"remoted"}
 function probe_server($server, $port) {
-    $client = New-Object System.Net.Sockets.TcpClient
+    $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    $saved_protocol = [System.Net.ServicePointManager]::SecurityProtocol
     try {
-        $async = $client.BeginConnect($server, [int]$port, $null, $null)
-        if (-Not $async.AsyncWaitHandle.WaitOne(5000, $false)) {
-            return $false
-        }
-        $client.EndConnect($async)
-        return $true
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
+        return ($response.StatusCode -eq 200)
     } catch {
         return $false
     } finally {
-        $client.Close()
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
+        [System.Net.ServicePointManager]::SecurityProtocol = $saved_protocol
     }
 }
 
 # The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-$server_address = get_conf_value "agent" "address"
+$server_address = get_conf_value "agent" "server" "address"
 if ([string]::IsNullOrEmpty($server_address)) {
-    $server_address = get_conf_value "client" "address"
+    $server_address = get_conf_value "client" "server" "address"
 }
 
 # The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-$server_port = get_conf_value "agent" "port"
+$server_port = get_conf_value "agent" "server" "port"
 if ([string]::IsNullOrEmpty($server_port)) {
     $server_port = "1517"
 }
