@@ -152,7 +152,9 @@ TEST(BuildProcessJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(id, "cid2:42");
 
     const auto j = nlohmann::json::parse(json_str);
-    EXPECT_EQ(j.at("process").at("pid"), "42");
+    // schema: process.pid is `long` — SetNumericIfDigits() converts the all-digit
+    // string to a real JSON number so the strict validator accepts it.
+    EXPECT_EQ(j.at("process").at("pid"), 42);
     EXPECT_EQ(j.at("process").at("name"), "nginx");
     EXPECT_EQ(j.at("process").at("parent").at("pid"), 1);
     EXPECT_EQ(j.at("container").at("id"), "cid2");

@@ -1,6 +1,8 @@
 #include "reconcile/container_inventory_reconciler.hpp"
 #include "reconcile/sqlite_prior_state_store.hpp"
 
+#include <stdexcept>
+
 #include <gtest/gtest.h>
 
 using namespace wazuh::container_baseline;
@@ -42,6 +44,37 @@ int countOps(const std::vector<EmittedRow>& rows, int op)
     }
     return n;
 }
+
+/// @brief Forwards every call to a real store except applyDelta(), which throws
+/// once (simulating a crash between the sink call and persisting prior state)
+/// instead of delegating. Used to verify emit-first ordering: the sink must have
+/// already run by the time this throws, and prior state must be left exactly as
+/// it was, so the next pass safely re-emits rather than losing the row.
+class ThrowOnceDecoratorStore : public IPriorStateStore
+{
+public:
+    explicit ThrowOnceDecoratorStore(IPriorStateStore& inner) : m_inner(inner) {}
+
+    bool throwOnNextApply = false;
+
+    FingerprintMap load(const std::string& container_id) override { return m_inner.load(container_id); }
+    std::vector<std::string> knownContainerIds() override { return m_inner.knownContainerIds(); }
+    std::unordered_map<std::string, std::size_t> countByIndex() override { return m_inner.countByIndex(); }
+    void purgeContainer(const std::string& container_id) override { m_inner.purgeContainer(container_id); }
+
+    void applyDelta(const std::string& container_id, const RowDelta& delta) override
+    {
+        if (throwOnNextApply)
+        {
+            throwOnNextApply = false;
+            throw std::runtime_error("simulated crash before persisting prior state");
+        }
+        m_inner.applyDelta(container_id, delta);
+    }
+
+private:
+    IPriorStateStore& m_inner;
+};
 
 } // namespace
 
@@ -227,4 +260,37 @@ TEST(ContainerInventoryReconciler, TargetedScopeReconcilesOnlyOneContainer)
     EXPECT_EQ(stats.containers_scanned, 1);
     ASSERT_EQ(scanned.size(), 1u);
     EXPECT_EQ(scanned[0], "c2");
+}
+
+TEST(ContainerInventoryReconciler, EmitFirstOrderingSurvivesCrashBeforeApplyDelta)
+{
+    FakeLister lister;
+    lister.listing.available  = true;
+    lister.listing.identities = {ident("c1")};
+    SqlitePriorStateStore realStore(":memory:");
+    ThrowOnceDecoratorStore store(realStore);
+    std::vector<EmittedRow> emitted;
+
+    CollectFn collect = [](const ContainerIdentity&) -> std::optional<std::vector<CollectorResult>> {
+        return std::vector<CollectorResult>{okDim("idx", {erow("c1:new", "idx", R"({"a":1})")})};
+    };
+    ContainerInventoryReconciler rec(lister, store, collect, [&](const EmittedRow& r) { emitted.push_back(r); });
+
+    store.throwOnNextApply = true;
+    EXPECT_THROW(rec.reconcile(ReconcileScope{}), std::runtime_error);
+
+    // Emit-first ordering: the sink already received the row before applyDelta()
+    // "crashed", so the row was never actually lost from the caller's point of view.
+    ASSERT_EQ(emitted.size(), 1u);
+    EXPECT_EQ(emitted[0].id, "c1:new");
+
+    // The crash happened before delegating to the real store, so prior state was
+    // never written — the next pass must not have "already sent" this row and
+    // must re-emit it, not silently drop it.
+    emitted.clear();
+    const auto stats = rec.reconcile(ReconcileScope{});
+
+    EXPECT_EQ(stats.creates, 1);
+    ASSERT_EQ(emitted.size(), 1u);
+    EXPECT_EQ(emitted[0].id, "c1:new");
 }

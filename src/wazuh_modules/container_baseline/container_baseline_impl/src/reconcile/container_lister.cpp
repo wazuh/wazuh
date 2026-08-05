@@ -9,9 +9,6 @@
 
 namespace wazuh::container_baseline {
 
-namespace {
-
-/// @brief True when a status() reply shows the Container Instances module is up.
 bool ModuleUp(const std::string& status_json)
 {
     if (status_json.empty())
@@ -21,8 +18,6 @@ bool ModuleUp(const std::string& status_json)
     const auto j = nlohmann::json::parse(status_json, nullptr, false);
     return !j.is_discarded() && j.is_object() && j.value("status", "") == "ok";
 }
-
-} // namespace
 
 ContainerLister::ContainerLister(std::string socket_path, std::chrono::milliseconds timeout)
     : m_socket_path(std::move(socket_path))
