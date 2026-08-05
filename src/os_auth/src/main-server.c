@@ -573,7 +573,7 @@ int main(int argc, char **argv)
         }
 
         /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, 0), !ctx) {
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
             merror("SSL context setup failed. Exiting.");
             exit(1);
         }

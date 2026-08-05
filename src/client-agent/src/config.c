@@ -148,7 +148,6 @@ cJSON *getClientConfig(void) {
         if(agt->enrollment_cfg->cert_cfg->authpass)
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
 
-        cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
         cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
     }
     /* The two periodic report pushes (#37843). Reported so the /config document

@@ -100,7 +100,7 @@ void test_wrap_SSL_read_multi_record(void **state) {
 }
 
 void test_get_ssl_context_default_min_version_is_tls13(void **state) {
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 0);
+    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS);
 
     assert_non_null(ctx);
     assert_int_equal(SSL_CTX_get_min_proto_version(ctx), TLS1_3_VERSION);
@@ -108,17 +108,8 @@ void test_get_ssl_context_default_min_version_is_tls13(void **state) {
     SSL_CTX_free(ctx);
 }
 
-void test_get_ssl_context_auto_negotiate_allows_tls10(void **state) {
-    SSL_CTX *ctx = get_ssl_context(DEFAULT_CIPHERS, 1);
-
-    assert_non_null(ctx);
-    assert_int_equal(SSL_CTX_get_min_proto_version(ctx), TLS1_VERSION);
-
-    SSL_CTX_free(ctx);
-}
-
 void test_get_ssl_context_accepts_tls13_ciphersuites(void **state) {
-    SSL_CTX *ctx = get_ssl_context("TLS_AES_128_GCM_SHA256", 0);
+    SSL_CTX *ctx = get_ssl_context("TLS_AES_128_GCM_SHA256");
 
     assert_non_null(ctx);
 
@@ -129,7 +120,7 @@ void test_get_ssl_context_rejects_legacy_cipher_list(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid TLS 1.3 cipher suite list: 'HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH'");
 
-    SSL_CTX *ctx = get_ssl_context("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH", 0);
+    SSL_CTX *ctx = get_ssl_context("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
 
     assert_null(ctx);
 }
@@ -143,7 +134,6 @@ int main(void) {
         cmocka_unit_test(test_wrap_SSL_read_full_single_record),
         cmocka_unit_test(test_wrap_SSL_read_multi_record),
         cmocka_unit_test(test_get_ssl_context_default_min_version_is_tls13),
-        cmocka_unit_test(test_get_ssl_context_auto_negotiate_allows_tls10),
         cmocka_unit_test(test_get_ssl_context_accepts_tls13_ciphersuites),
         cmocka_unit_test(test_get_ssl_context_rejects_legacy_cipher_list),
     };
