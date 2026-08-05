@@ -271,7 +271,7 @@ void send_container_stateless_event(const char* event_type, const cJSON* row_dat
 // tracked for this container untouched. Reserving the full scope+
 // deleted_rows sweep for whole-container reconciliation (baseline runs,
 // container removal) is intentional, not an oversight.
-void upsert_container_file_row(const std::string& container_id, const std::string& row_json)
+void upsert_container_file_row(const std::string& container_id, const fim_entry* entry)
 {
     nlohmann::json txn_json;
     txn_json["tables"] = nlohmann::json::array({"file_entry"});
@@ -337,7 +337,7 @@ void upsert_container_file_row(const std::string& container_id, const std::strin
         return;
     }
 
-    fim_db_transaction_sync_row_json(txn, "file_entry", row_json.c_str());
+    fim_db_transaction_sync_row(txn, entry);
 }
 
 void delete_container_file_row(const std::string& container_id, const std::string& path, const std::string& container_json)
@@ -450,7 +450,18 @@ void catch_up_container_baseline(const std::string& container_id, const std::str
         return;
     }
 
-    std::vector<std::string> rows_json;
+    // Holds each row's strings by value so the fim_file_data/fim_entry built
+    // from them further down (raw pointers into these strings) stays valid --
+    // built fresh from each entry immediately before its own sync call, never
+    // stored itself.
+    struct PreparedRow
+    {
+        std::string path, permissions, uid, gid, owner, group;
+        std::string hash_md5, hash_sha1, hash_sha256, checksum;
+        uint64_t size{0}, inode{0}, device{0};
+        int64_t mtime{0};
+    };
+    std::vector<PreparedRow> rows;
     for (size_t i = 0; i < path_count; ++i)
     {
         const auto walk = wazuh::container_baseline::WalkContainerPath(
@@ -458,47 +469,65 @@ void catch_up_container_baseline(const std::string& container_id, const std::str
 
         for (const auto& row : walk.rows)
         {
-            nlohmann::json j;
-            j["container_id"] = container_id;
-            j["container_json"] = container_json;
-            j["path"] = row.path;
-            j["permissions"] = row.permissions;
-            j["uid"] = row.uid;
-            j["gid"] = row.gid;
-            j["size"] = row.size;
-            j["inode"] = row.inode;
-            j["device"] = row.device;
-            j["mtime"] = row.mtime;
-            j["version"] = 1;
+            PreparedRow prepared;
+            prepared.path = row.path;
+            prepared.permissions = row.permissions;
+            prepared.uid = row.uid;
+            prepared.gid = row.gid;
+            prepared.owner = row.owner;
+            prepared.group = row.group;
+            prepared.size = row.size;
+            prepared.inode = row.inode;
+            prepared.device = row.device;
+            prepared.mtime = row.mtime;
             if (!row.hash_md5.empty())
             {
-                j["hash_md5"] = row.hash_md5;
-                j["hash_sha1"] = row.hash_sha1;
-                j["hash_sha256"] = row.hash_sha256;
+                prepared.hash_md5 = row.hash_md5;
+                prepared.hash_sha1 = row.hash_sha1;
+                prepared.hash_sha256 = row.hash_sha256;
             }
 
             // file_entry.checksum is NOT NULL -- matches the single-event row
-            // built further down in fim_handle_container_whodata_event() and
+            // built in fim_handle_container_whodata_event() and
             // container_baseline_fim.cpp's own dbsync_sink(), both of which
             // compute this the same way (sha1 of the row dump so far) before
             // adding it. Missed on an earlier pass of this function; without
             // it, most rows in a multi-row transaction like this one failed
-            // to persist even though fim_db_transaction_sync_row_json()
-            // itself never reported an error.
-            const std::string row_dump_so_far = j.dump();
+            // to persist even though the sync call itself never reported an
+            // error. Computed over the same logical field set as before the
+            // switch to FileItem below, so existing rows' checksums stay
+            // comparable.
+            nlohmann::json checksum_input;
+            checksum_input["container_id"] = container_id;
+            checksum_input["container_json"] = container_json;
+            checksum_input["path"] = prepared.path;
+            checksum_input["permissions"] = prepared.permissions;
+            checksum_input["uid"] = prepared.uid;
+            checksum_input["gid"] = prepared.gid;
+            checksum_input["size"] = prepared.size;
+            checksum_input["inode"] = prepared.inode;
+            checksum_input["device"] = prepared.device;
+            checksum_input["mtime"] = prepared.mtime;
+            checksum_input["version"] = 1;
+            if (!prepared.hash_md5.empty())
+            {
+                checksum_input["hash_md5"] = prepared.hash_md5;
+                checksum_input["hash_sha1"] = prepared.hash_sha1;
+                checksum_input["hash_sha256"] = prepared.hash_sha256;
+            }
             char row_checksum[41] = {0};
-            fim_compute_row_checksum(row_dump_so_far.c_str(), row_checksum);
-            j["checksum"] = row_checksum;
+            fim_compute_row_checksum(checksum_input.dump().c_str(), row_checksum);
+            prepared.checksum = row_checksum;
 
-            rows_json.push_back(j.dump());
+            rows.push_back(std::move(prepared));
         }
     }
     fim_free_container_monitored_paths(paths);
 
     mdebug2("catch_up_container_baseline: container_id=%s walked %zu file(s) across %zu monitored path(s)",
-            container_id.c_str(), rows_json.size(), path_count);
+            container_id.c_str(), rows.size(), path_count);
 
-    if (rows_json.empty())
+    if (rows.empty())
     {
         return;
     }
@@ -518,9 +547,36 @@ void catch_up_container_baseline(const std::string& container_id, const std::str
         return;
     }
 
-    for (const auto& row_json : rows_json)
+    for (const auto& row : rows)
     {
-        fim_db_transaction_sync_row_json(txn, "file_entry", row_json.c_str());
+        fim_file_data data{};
+        data.permissions = const_cast<char*>(row.permissions.c_str());
+        data.attributes = const_cast<char*>("");
+        data.uid = const_cast<char*>(row.uid.c_str());
+        data.gid = const_cast<char*>(row.gid.c_str());
+        data.owner = const_cast<char*>(row.owner.c_str());
+        data.group = const_cast<char*>(row.group.c_str());
+        data.container_id = const_cast<char*>(container_id.c_str());
+        data.container_json = const_cast<char*>(container_json.c_str());
+        data.size = row.size;
+        data.inode = row.inode;
+        data.device = static_cast<unsigned long int>(row.device);
+        data.mtime = static_cast<time_t>(row.mtime);
+        data.version = 1;
+        if (!row.hash_md5.empty())
+        {
+            std::snprintf(data.hash_md5, sizeof(data.hash_md5), "%s", row.hash_md5.c_str());
+            std::snprintf(data.hash_sha1, sizeof(data.hash_sha1), "%s", row.hash_sha1.c_str());
+            std::snprintf(data.hash_sha256, sizeof(data.hash_sha256), "%s", row.hash_sha256.c_str());
+        }
+        std::snprintf(data.checksum, sizeof(data.checksum), "%s", row.checksum.c_str());
+
+        fim_entry entry{};
+        entry.type = FIM_TYPE_FILE;
+        entry.file_entry.path = const_cast<char*>(row.path.c_str());
+        entry.file_entry.data = &data;
+
+        fim_db_transaction_sync_row(txn, &entry);
     }
 
     // Required to actually flush/commit the synced rows -- confirmed on real
@@ -704,36 +760,77 @@ extern "C" void fim_handle_container_whodata_event(uint64_t cgroup_id,
     char permissions_buf[8];
     std::snprintf(permissions_buf, sizeof(permissions_buf), "0%o", static_cast<unsigned int>(st.st_mode & 07777));
 
-    nlohmann::json row;
-    row["container_id"] = container_id;
-    row["container_json"] = container_json;
-    row["path"] = path;
-    row["permissions"] = permissions_buf;
-    row["uid"] = std::to_string(st.st_uid);
-    row["gid"] = std::to_string(st.st_gid);
-    row["size"] = static_cast<uint64_t>(st.st_size);
-    row["inode"] = static_cast<uint64_t>(st.st_ino);
-    row["device"] = static_cast<uint64_t>(st.st_dev);
-    row["mtime"] = static_cast<int64_t>(st.st_mtime);
-    row["version"] = 1;
+    const std::string uid_str = std::to_string(st.st_uid);
+    const std::string gid_str = std::to_string(st.st_gid);
 
+    os_md5 md5 = {0};
+    os_sha1 sha1 = {0};
+    os_sha256 sha256 = {0};
+    bool have_hashes = false;
     if (static_cast<size_t>(st.st_size) < syscheck.file_max_size)
     {
-        os_md5 md5 = {0};
-        os_sha1 sha1 = {0};
-        os_sha256 sha256 = {0};
-        if (OS_MD5_SHA1_SHA256_File(host_path.c_str(), md5, sha1, sha256, OS_BINARY, syscheck.file_max_size) == 0)
-        {
-            row["hash_md5"] = md5;
-            row["hash_sha1"] = sha1;
-            row["hash_sha256"] = sha256;
-        }
+        have_hashes = (OS_MD5_SHA1_SHA256_File(host_path.c_str(), md5, sha1, sha256, OS_BINARY, syscheck.file_max_size) == 0);
     }
 
-    const std::string dump = row.dump();
-    char checksum[41] = {0};
-    fim_compute_row_checksum(dump.c_str(), checksum);
-    row["checksum"] = checksum;
+    // Checksum computed over the same logical field set this row has always
+    // used (container_id/container_json/path/permissions/uid/gid/size/inode/
+    // device/mtime/version/hashes) -- unchanged by the switch to FileItem
+    // below, so pre-existing rows' checksums remain comparable.
+    nlohmann::json checksum_input;
+    checksum_input["container_id"] = container_id;
+    checksum_input["container_json"] = container_json;
+    checksum_input["path"] = path;
+    checksum_input["permissions"] = permissions_buf;
+    checksum_input["uid"] = uid_str;
+    checksum_input["gid"] = gid_str;
+    checksum_input["size"] = static_cast<uint64_t>(st.st_size);
+    checksum_input["inode"] = static_cast<uint64_t>(st.st_ino);
+    checksum_input["device"] = static_cast<uint64_t>(st.st_dev);
+    checksum_input["mtime"] = static_cast<int64_t>(st.st_mtime);
+    checksum_input["version"] = 1;
+    if (have_hashes)
+    {
+        checksum_input["hash_md5"] = md5;
+        checksum_input["hash_sha1"] = sha1;
+        checksum_input["hash_sha256"] = sha256;
+    }
 
-    upsert_container_file_row(container_id, row.dump());
+    char checksum[41] = {0};
+    fim_compute_row_checksum(checksum_input.dump().c_str(), checksum);
+
+    // Typed row instead of a hand-built JSON string, so this goes through the
+    // same FileItem/fim_db_transaction_sync_row() path host rows use (also
+    // closes the drift where this row used to omit attributes/owner/group
+    // entirely and skip FileItem's string normalization).
+    // Named file_data, not data: an outer `const nlohmann::json& data` is
+    // already in scope in this function (the resolveByCgroupId() enrichment
+    // record) and must not be shadowed.
+    fim_file_data file_data{};
+    file_data.permissions = permissions_buf;
+    file_data.attributes = const_cast<char*>("");
+    file_data.uid = const_cast<char*>(uid_str.c_str());
+    file_data.gid = const_cast<char*>(gid_str.c_str());
+    file_data.owner = const_cast<char*>("");
+    file_data.group = const_cast<char*>("");
+    file_data.container_id = const_cast<char*>(container_id.c_str());
+    file_data.container_json = const_cast<char*>(container_json.c_str());
+    file_data.size = static_cast<unsigned long long int>(st.st_size);
+    file_data.inode = static_cast<unsigned long long int>(st.st_ino);
+    file_data.device = static_cast<unsigned long int>(st.st_dev);
+    file_data.mtime = static_cast<time_t>(st.st_mtime);
+    file_data.version = 1;
+    if (have_hashes)
+    {
+        std::snprintf(file_data.hash_md5, sizeof(file_data.hash_md5), "%s", md5);
+        std::snprintf(file_data.hash_sha1, sizeof(file_data.hash_sha1), "%s", sha1);
+        std::snprintf(file_data.hash_sha256, sizeof(file_data.hash_sha256), "%s", sha256);
+    }
+    std::snprintf(file_data.checksum, sizeof(file_data.checksum), "%s", checksum);
+
+    fim_entry entry{};
+    entry.type = FIM_TYPE_FILE;
+    entry.file_entry.path = const_cast<char*>(path.c_str());
+    entry.file_entry.data = &file_data;
+
+    upsert_container_file_row(container_id, &entry);
 }

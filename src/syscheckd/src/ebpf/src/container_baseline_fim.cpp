@@ -120,7 +120,53 @@ void sync_container(const std::string& container_id,
     if (!txn) return;
 
     for (const auto& row_json : rows) {
-        fim_db_transaction_sync_row_json(txn, "file_entry", row_json.c_str());
+        // Parsed back into a typed row (instead of synced as raw JSON) so this
+        // goes through the same FileItem/fim_db_transaction_sync_row() path
+        // host rows use. Fields match BuildFimFileDbsyncRow()'s shape
+        // (baseline_rows.cpp) plus the checksum dbsync_sink() adds above.
+        const auto row = nlohmann::json::parse(row_json, nullptr, false);
+        if (row.is_discarded() || !row.is_object()) continue;
+
+        const std::string path = row.value("path", "");
+        const std::string permissions = row.value("permissions", "");
+        const std::string attributes = row.value("attributes", "");
+        const std::string uid = row.value("uid", "");
+        const std::string gid = row.value("gid", "");
+        const std::string owner = row.value("owner", "");
+        const std::string group = row.value("group_", "");
+        const std::string row_container_json = row.value("container_json", "");
+        const std::string hash_md5 = row.value("hash_md5", "");
+        const std::string hash_sha1 = row.value("hash_sha1", "");
+        const std::string hash_sha256 = row.value("hash_sha256", "");
+        const std::string checksum = row.value("checksum", "");
+
+        fim_file_data data{};
+        data.permissions = const_cast<char*>(permissions.c_str());
+        data.attributes = const_cast<char*>(attributes.c_str());
+        data.uid = const_cast<char*>(uid.c_str());
+        data.gid = const_cast<char*>(gid.c_str());
+        data.owner = const_cast<char*>(owner.c_str());
+        data.group = const_cast<char*>(group.c_str());
+        data.container_id = const_cast<char*>(container_id.c_str());
+        data.container_json = const_cast<char*>(row_container_json.c_str());
+        data.size = row.value<unsigned long long int>("size", 0);
+        data.inode = row.value<unsigned long long int>("inode", 0);
+        data.device = static_cast<unsigned long int>(row.value<unsigned long long int>("device", 0));
+        data.mtime = static_cast<time_t>(row.value<int64_t>("mtime", 0));
+        data.version = 1;
+        if (!hash_md5.empty()) {
+            std::snprintf(data.hash_md5, sizeof(data.hash_md5), "%s", hash_md5.c_str());
+            std::snprintf(data.hash_sha1, sizeof(data.hash_sha1), "%s", hash_sha1.c_str());
+            std::snprintf(data.hash_sha256, sizeof(data.hash_sha256), "%s", hash_sha256.c_str());
+        }
+        std::snprintf(data.checksum, sizeof(data.checksum), "%s", checksum.c_str());
+
+        fim_entry entry{};
+        entry.type = FIM_TYPE_FILE;
+        entry.file_entry.path = const_cast<char*>(path.c_str());
+        entry.file_entry.data = &data;
+
+        fim_db_transaction_sync_row(txn, &entry);
     }
 
     fim_db_transaction_deleted_rows(txn, container_txn_callback, &ctx);

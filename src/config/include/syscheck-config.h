@@ -287,6 +287,11 @@ typedef struct fim_file_data {
     char * gid;
     char * owner;
     char * group;
+    // Container scope: '' for host rows (the PK's default), the owning
+    // container's id/enrichment blob for container rows. See FileItem
+    // (dbFileItem.hpp/.cpp) for how these round-trip through the typed path.
+    char * container_id;
+    char * container_json;
     time_t mtime;
     unsigned long long int size;
     unsigned long long int inode;
