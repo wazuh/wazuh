@@ -1105,9 +1105,8 @@ async def get_agent_active_configuration(agent_id: str, module: str) -> dict:
     if not module:
         raise WazuhError(1307)
 
-    # A field search rather than a get-by-id. `content` is a plain object array (not `nested`): that
-    # would only be needed to combine a filter on `module` with one on `config` in the same element,
-    # which this never does, so the module lookup happens in Python instead of a `nested` query.
+    # A field search rather than a get-by-id. `content` is a `flat_object` keyed by module name, so
+    # the requested module is a single key lookup rather than a scan.
     query = {
         'query': {'term': {'wazuh.agent.id': agent_id}},
         '_source': ['wazuh.agent.configuration.content'],
@@ -1120,12 +1119,11 @@ async def get_agent_active_configuration(agent_id: str, module: str) -> dict:
     if not hits:
         raise WazuhError(1130)
 
-    content = hits[0]['_source'].get('wazuh', {}).get('agent', {}).get('configuration', {}).get('content', [])
-    for entry in content:
-        if entry.get('module') == module:
-            return entry.get('config', {})
+    content = hits[0]['_source'].get('wazuh', {}).get('agent', {}).get('configuration', {}).get('content', {})
+    if module not in content:
+        raise WazuhError(1101, extra_message=f"Module '{module}' not found in the agent's reported configuration")
 
-    raise WazuhError(1101, extra_message=f"Module '{module}' not found in the agent's reported configuration")
+    return content[module]
 
 
 def write_ossec_conf(new_conf: str):
