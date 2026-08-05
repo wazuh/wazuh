@@ -1263,6 +1263,133 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
+/* Feed the mocks needed to reach the macOS branch of get_unix_version(), so the caller only has to
+ * provide the sw_vers product version and the uname -r output under test. */
+static void expect_darwin_version_calls(const char *product_version, const char *kernel_release)
+{
+    static const char *RELEASE_FILES[] = {
+        "/etc/os-release", "/usr/lib/os-release", "/etc/centos-release", "/etc/fedora-release",
+        "/etc/redhat-release", "/etc/arch-release", "/etc/gentoo-release", "/etc/SuSE-release",
+        "/etc/lsb-release", "/etc/debian_version", "/etc/slackware-version", "/etc/alpine-release",
+    };
+
+    for (unsigned i = 0; i < sizeof(RELEASE_FILES) / sizeof(char *); i++) {
+        expect_string(__wrap_wfopen, path, RELEASE_FILES[i]);
+        expect_string(__wrap_wfopen, mode, "r");
+        will_return(__wrap_wfopen, 0);
+    }
+
+    // uname
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Darwin\n");
+
+    // system_profiler SPSoftwareDataType
+    char *system_profiler_path = NULL;
+    os_strdup("/path/to/system_profiler", system_profiler_path);
+    expect_string(__wrap_get_binary_path, command, "system_profiler");
+    will_return(__wrap_get_binary_path, system_profiler_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/system_profiler SPSoftwareDataType");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Software:\n");
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "    System Version: macOS 26.5.1 (25F74)\n");
+
+    expect_value(__wrap_pclose, __stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // sw_vers -productVersion
+    char *sw_vers_path = NULL;
+    os_strdup("/path/to/sw_vers", sw_vers_path);
+    expect_string(__wrap_get_binary_path, command, "sw_vers");
+    will_return(__wrap_get_binary_path, sw_vers_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -productVersion");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, product_version);
+
+    expect_value(__wrap_pclose, __stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // sw_vers -buildVersion
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -buildVersion");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "25F74\n");
+
+    expect_value(__wrap_pclose, __stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    // uname -r
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, kernel_release);
+
+    expect_value(__wrap_pclose, __stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    expect_value(__wrap_pclose, __stream, 1);
+    will_return(__wrap_pclose, 1);
+}
+
+void test_get_unix_version_darwin_mapped_codename(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // macOS 26 Tahoe runs Darwin 25
+    expect_darwin_version_calls("26.5.1\n", "25.5.0\n");
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_string_equal(ret->os_codename, "Tahoe");
+    assert_string_equal(ret->os_version, "26.5.1 (Tahoe)");
+}
+
+void test_get_unix_version_darwin_unmapped_codename(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Darwin version newer than the release name table: no codename, and no "(Unknown)" suffix
+    expect_darwin_version_calls("28.0\n", "27.0.0\n");
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_null(ret->os_codename);
+    assert_string_equal(ret->os_version, "28.0");
+}
+
 void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
 {
     (void) state;
@@ -1648,7 +1775,9 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(22), "Ventura");
     assert_string_equal(OSX_ReleaseName(23), "Sonoma");
     assert_string_equal(OSX_ReleaseName(24), "Sequoia");
-    assert_string_equal(OSX_ReleaseName(25), "Unknown");
+    assert_string_equal(OSX_ReleaseName(25), "Tahoe");
+    assert_string_equal(OSX_ReleaseName(26), "Golden Gate");
+    assert_string_equal(OSX_ReleaseName(27), "Unknown");
 }
 
 #endif
@@ -1844,6 +1973,8 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_alpine, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
