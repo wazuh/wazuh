@@ -210,17 +210,17 @@ TEST(StatsEndpoint, PostProcessMapsDownstreamResults)
 }
 
 /**
- * The success path passes the downstream body through -- unlike /stateless, which discards it. That
- * is the whole point of the dummy: the caller can see what modulesd stamped onto the document.
+ * The success body is the protocol's empty acknowledgment, built here rather than forwarded: the
+ * agent has nothing to read back, and modulesd's body never reaches the wire.
  */
-TEST(StatsEndpoint, PostProcessPassesTheEnrichedBodyThroughOnSuccess)
+TEST(StatsEndpoint, PostProcessAnswersTheEmptyAcknowledgmentOnSuccess)
 {
-    constexpr auto enriched {R"({"a":1,"wazuh":{"agent":{"id":"001"}},"@timestamp":"2026-07-30T00:00:00.000Z"})"};
+    constexpr auto indexed {R"({"wazuh":{"agent":{"id":"001","statistics":{"agent":{"messages":{"count":1}}}}}})"};
 
-    const auto response = stats::postProcess(DownstreamError::None, DownstreamResponse {200, enriched});
+    const auto response = stats::postProcess(DownstreamError::None, DownstreamResponse {200, indexed});
 
     EXPECT_EQ(response.status, 200);
-    EXPECT_EQ(response.body, enriched);
+    EXPECT_EQ(response.body, "{}");
 }
 
 /// A downstream error body must NOT be reflected to the agent: it is arbitrary text from another
@@ -278,10 +278,10 @@ TEST(StatsMakeHandler, ForwardsTheDocumentAndTheAgentIdThenPostProcesses)
     // The id the gateway authenticated, not anything read out of the document.
     EXPECT_EQ(headerValue(req, "X-Wazuh-Agent-Id"), "042");
 
-    client->fire(DownstreamError::None, DownstreamResponse {200, R"({"cpu":1,"@timestamp":"x"})"});
+    client->fire(DownstreamError::None, DownstreamResponse {200, "{}"});
 
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
     const auto response = fut.get();
     EXPECT_EQ(response.status, 200);
-    EXPECT_EQ(response.body, R"({"cpu":1,"@timestamp":"x"})");
+    EXPECT_EQ(response.body, "{}");
 }
