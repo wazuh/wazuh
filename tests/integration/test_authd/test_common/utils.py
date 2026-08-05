@@ -82,12 +82,16 @@ def create_diff(name):
     diff_folder = os.path.join(QUEUE_DIFF_PATH, name)
     try:
         os.mkdir(diff_folder)
+        # authd now drops privileges to the wazuh-manager user, so the folders this fixture
+        # simulates must be writable by it, not just by whoever runs the test.
+        os.chmod(diff_folder, 0o777)
     except IOError:
         raise
 
     sigid_folder = os.path.join(diff_folder, SIGID)
     try:
         os.mkdir(sigid_folder)
+        os.chmod(sigid_folder, 0o777)
     except IOError:
         raise
 

@@ -72,7 +72,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
-receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'ssl_tls'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 receiver_sockets = None  # Set in the fixtures
 test_group = "TestGroup"

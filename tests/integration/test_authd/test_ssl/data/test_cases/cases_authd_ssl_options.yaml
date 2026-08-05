@@ -6,9 +6,9 @@
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers:
+    ciphers: null
     protocol: ssl_tls
-    error:
+    error: null
 
 - name: SSL - TLS 1.2 rejected
   description: wazuh-manager-authd enforces TLS 1.3 as the minimum protocol version; a client offering only TLS 1.2 must be rejected
@@ -16,9 +16,9 @@
     CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: open_error
-    input:
-    output:
-    ciphers:
+    input: null
+    output: null
+    ciphers: null
     protocol: ssl_tlsv1_2
     error: alert protocol version
 
@@ -28,9 +28,9 @@
     CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: open_error
-    input:
-    output:
-    ciphers:
+    input: null
+    output: null
+    ciphers: null
     protocol: ssl_tlsv1_1
     error: alert protocol version
 
@@ -42,9 +42,9 @@
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers:
+    ciphers: null
     protocol: ssl_tls
-    error:
+    error: null
 
 - name: SSL - Incompatible ciphersuite from Manager (CCM)
   description: >
@@ -56,9 +56,9 @@
     CIPHERS: "TLS_AES_128_CCM_SHA256"
   metadata:
     expect: open_error
-    input:
-    output:
-    ciphers:
+    input: null
+    output: null
+    ciphers: null
     protocol: ssl_tls
     error: alert handshake failure
 
@@ -70,6 +70,6 @@
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers:
+    ciphers: null
     protocol: ssl_tls
-    error:
+    error: null
