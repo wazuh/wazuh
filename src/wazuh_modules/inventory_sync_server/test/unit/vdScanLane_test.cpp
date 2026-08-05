@@ -133,6 +133,14 @@ namespace
                                                 registry,
                                                 CLUSTER);
         }
+
+        ~LaneUnderTest()
+        {
+            // A test that failed an ASSERT may leave a worker parked at a closed gate; the lane's
+            // stop() would then join forever. Opening the gates first makes teardown unconditional.
+            events->openScanGate();
+            events->openFlushGate();
+        }
     };
 } // namespace
 
@@ -210,12 +218,14 @@ TEST(VdScanLaneTest, AFullQueueRefusesAtAdmission)
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto second = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), second)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), second, "2")));
 
     auto third = std::make_shared<FutureResponder>();
-    EXPECT_EQ(VdScanLane::Admission::Full,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), third)));
+    EXPECT_EQ(
+        VdScanLane::Admission::Full,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), third, "3")));
     EXPECT_FALSE(third->answered()) << "the caller answers a refused admission, not the lane";
 
     fixture.events->openScanGate();
@@ -236,8 +246,9 @@ TEST(VdScanLaneTest, FeedTurningUnreadyBetweenAdmissionAndDispatchAnswers503With
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto queued = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2")));
 
     fixture.events->m_vdFeedReady.store(false);
     fixture.events->openScanGate();
@@ -367,8 +378,9 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto vdSync = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDSync, "2"), vdSync)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDSync, "2"), vdSync, "2")));
 
     const auto agents = coordinator.agentsWithActiveVDFirstSessions();
     EXPECT_EQ(1U, agents.count("001")) << "the feed update must know which agents a VDFirst already covers";
@@ -402,8 +414,9 @@ TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
     auto queued = std::make_shared<FutureResponder>();
-    ASSERT_EQ(VdScanLane::Admission::Accepted,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued)));
+    ASSERT_EQ(
+        VdScanLane::Admission::Accepted,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2")));
 
     std::thread opener {[&fixture]
                         {
@@ -417,6 +430,7 @@ TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
     EXPECT_EQ(503, queued->get().status);
 
     auto late = std::make_shared<FutureResponder>();
-    EXPECT_EQ(VdScanLane::Admission::Stopping,
-              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), late)));
+    EXPECT_EQ(
+        VdScanLane::Admission::Stopping,
+        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), late, "3")));
 }

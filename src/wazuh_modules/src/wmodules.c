@@ -136,6 +136,13 @@ int wm_config() {
         wm_add(module);
     }
 
+    // Keystore server: hosts queue/sockets/keystore for the Python framework's credential
+    // manager. Registered BEFORE inventory_sync -- the socket used to live inside that module
+    // (an accident of history) and moved here so inventory_sync can retire without taking the
+    // API's indexer access down with it.
+    if ((module = wm_keystore_server_read()))
+        wm_add(module);
+
     // Inventory sync
     if ((module = wm_inventory_sync_read()))
         wm_add(module);
