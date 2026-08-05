@@ -62,7 +62,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 # Variables
 ossec_authd_socket_path = ("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
-receiver_sockets_params = [(ossec_authd_socket_path, 'AF_INET', 'SSL_TLSv1_2')]
+receiver_sockets_params = [(ossec_authd_socket_path, 'AF_INET', 'ssl_tls')]
 
 mitm_master = WorkerMID(address=MODULESD_C_INTERNAL_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
 monitored_sockets_params = [(CLUSTER_DAEMON, mitm_master, True), (AUTHD_DAEMON, None, True)]
