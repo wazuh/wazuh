@@ -54,6 +54,10 @@ namespace
         std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", socketPath.c_str());
         config.io_threads = 1;
         config.drain_timeout = 1;
+        // One pipeline worker, deterministically: 0 would resolve to half the machine's cores and
+        // the tests that count connector builds (the pipeline builds one per EXTRA worker) would
+        // depend on the hardware they run on.
+        config.sync_workers = 1;
         return config;
     }
 
@@ -392,8 +396,13 @@ TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModule
     EXPECT_NE(std::string::npos, liveness.body.find("inventory_sync_server"))
         << "the liveness body must identify this module: " << liveness.body;
 
-    // POST /inventory/sync -- accepts and discards, so 202.
-    EXPECT_EQ(202, sendModuleRequest(path, "POST", "/inventory/sync", "payload", "007").status);
+    // POST /stateful -- the REAL ingestion endpoint: garbage is rejected by the FlatBuffers
+    // verifier with 400, which proves the route is wired to the validator (a stub would 202).
+    // The full happy path is exercised in statefulEndpointE2E_test.cpp.
+    EXPECT_EQ(400, sendModuleRequest(path, "POST", "/stateful", "not-a-flatbuffer", "007").status);
+
+    // The provisional path is gone; nothing must answer there.
+    EXPECT_EQ(404, sendModuleRequest(path, "POST", "/inventory/sync", "payload", "007").status);
 
     // POST /stats -- indexes for real and answers the protocol's empty acknowledgment.
     {

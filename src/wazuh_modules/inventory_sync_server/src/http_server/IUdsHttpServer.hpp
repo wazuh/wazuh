@@ -179,7 +179,13 @@ namespace invsync::http
         std::size_t concurrentAccepts {2};
         std::size_t bufferSize {8192}; ///< Per-connection read buffer, bytes.
 
-        std::size_t maxBodySize {16U * 1024U * 1024U};
+        /// Sentinel meaning "no body cap of this server's own".
+        static constexpr std::size_t UNLIMITED_BODY_SIZE {static_cast<std::size_t>(-1)};
+        /// No own cap BY DEFAULT: a session is bounded by the in-flight byte budget instead, and
+        /// start() feeds that budget to the parser so a request that declares more than could ever
+        /// be admitted is refused with 413 at headers-complete (the peer must split the session)
+        /// rather than shed with a retriable 503 it would retry forever.
+        std::size_t maxBodySize {UNLIMITED_BODY_SIZE};
         std::size_t maxUrlSize {2048};
         std::size_t maxHeaderNameSize {256};
         std::size_t maxHeaderValueSize {8192};

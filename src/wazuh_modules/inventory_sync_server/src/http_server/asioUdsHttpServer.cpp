@@ -112,8 +112,10 @@ namespace
             case 200: return "OK";
             case 202: return "Accepted";
             case 400: return "Bad Request";
+            case 403: return "Forbidden";
             case 404: return "Not Found";
             case 405: return "Method Not Allowed";
+            case 409: return "Conflict";
             case 411: return "Length Required";
             case 413: return "Content Too Large";
             case 414: return "URI Too Long";
@@ -1780,21 +1782,43 @@ namespace invsync::http
         m_impl->state->config = config;
         m_impl->socketPath = config.socketPath;
 
-        // A budget below one maximum-size body would reject every request, so clamp it up and say so
-        // rather than silently serving nothing.
         m_impl->state->perRequestOverhead = perRequestOverhead(m_impl->state->config);
 
         if (m_impl->state->config.maxInFlightBytes > 0)
         {
-            const auto floorBytes = m_impl->state->config.maxBodySize + m_impl->state->perRequestOverhead;
-            if (m_impl->state->config.maxInFlightBytes < floorBytes)
+            if (m_impl->state->config.maxBodySize != UdsHttpServerConfig::UNLIMITED_BODY_SIZE)
             {
-                LOGFN_WARN(logFn(),
-                           "The in-flight byte budget (%zu) is below one maximum-size request (%zu); raising it, "
-                           "otherwise every request would be rejected.",
-                           m_impl->state->config.maxInFlightBytes,
-                           floorBytes);
-                m_impl->state->config.maxInFlightBytes = floorBytes;
+                // Explicit body cap: a budget below one maximum-size body would reject every
+                // request, so clamp it up and say so rather than silently serving nothing.
+                const auto floorBytes = m_impl->state->config.maxBodySize + m_impl->state->perRequestOverhead;
+                if (m_impl->state->config.maxInFlightBytes < floorBytes)
+                {
+                    LOGFN_WARN(logFn(),
+                               "The in-flight byte budget (%zu) is below one maximum-size request (%zu); raising it, "
+                               "otherwise every request would be rejected.",
+                               m_impl->state->config.maxInFlightBytes,
+                               floorBytes);
+                    m_impl->state->config.maxInFlightBytes = floorBytes;
+                }
+            }
+            else
+            {
+                // No body cap of its own (the default): the in-flight budget IS the effective
+                // session limit. Feeding it to the parser turns "declares more than could EVER be
+                // admitted" into a 413 at headers-complete -- a contract error the peer must fix by
+                // splitting the session -- instead of an eternal 503 the peer would retry forever.
+                constexpr std::size_t MIN_UNCAPPED_BODY {1024U * 1024U};
+                if (m_impl->state->config.maxInFlightBytes < m_impl->state->perRequestOverhead + MIN_UNCAPPED_BODY)
+                {
+                    LOGFN_WARN(logFn(),
+                               "The in-flight byte budget (%zu) cannot fit one request's fixed overhead (%zu) plus a "
+                               "minimal body; raising it, otherwise every request would be rejected.",
+                               m_impl->state->config.maxInFlightBytes,
+                               m_impl->state->perRequestOverhead);
+                    m_impl->state->config.maxInFlightBytes = m_impl->state->perRequestOverhead + MIN_UNCAPPED_BODY;
+                }
+                m_impl->state->config.maxBodySize =
+                    m_impl->state->config.maxInFlightBytes - m_impl->state->perRequestOverhead;
             }
         }
         m_impl->state->budget = std::make_unique<InFlightBudget>(m_impl->state->config.maxInFlightBytes);
