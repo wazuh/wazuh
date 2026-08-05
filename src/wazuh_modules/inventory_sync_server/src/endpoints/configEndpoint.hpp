@@ -44,11 +44,13 @@ namespace invsync::endpoints::config
      *
      * `content` is an OBJECT keyed by module name, not the array the agent sends -- a module is
      * unique per report, so this makes "does agent X have module Y" a single field lookup. `modules`
-     * is derived from `content`'s keys so the two can never drift apart.
+     * is derived from `content`'s keys so the two can never drift apart. The template also declares
+     * an explicit per-module sub-schema under `content` (`content.fim.syscheck.frequency`, etc.).
      *
-     * The `wazuh-agent-config` index template is `dynamic: strict`: any field outside this exact
-     * shape makes the (fire-and-forget) write fail with no way to report it back to the caller, which
-     * is why every element is sanitized down to `module`/`config` before it reaches the connector.
+     * The `wazuh-agent-config` index template is `dynamic: false`: a field outside that per-module
+     * sub-schema (an unrecognized module, or a legacy/undeclared key within a known one) is still
+     * written and kept in `_source`, just not indexed for search -- so this endpoint only sanitizes
+     * the outer `{module, config}` shape, never the fields inside `config` itself.
      *
      * The document is indexed under the agent id as its `_id`, via a plain upsert: each report
      * replaces the previous one for that agent, there is no separate delete step.

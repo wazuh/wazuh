@@ -1095,7 +1095,7 @@ async def get_agent_active_configuration(agent_id: str, module: str) -> dict:
     if not module:
         raise WazuhError(1307)
 
-    # A field search rather than a get-by-id. `content` is a `flat_object` keyed by module name, so
+    # A field search rather than a get-by-id. `content` is an object keyed by module name, so
     # the requested module is a single key lookup rather than a scan.
     query = {
         'query': {'term': {'wazuh.agent.id': agent_id}},

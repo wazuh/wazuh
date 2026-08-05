@@ -25,8 +25,7 @@ namespace
 {
     constexpr auto CONFIG_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
 
-    // The wazuh-agent-config index template is dynamic:strict -- this literal has to stay in sync
-    // with that template's index_patterns.
+    // This literal has to stay in sync with the wazuh-agent-config template's index_patterns.
     constexpr auto AGENT_CONFIG_INDEX_NAME {"wazuh-agent-config"};
 
     // WCS (Wazuh Common Schema) field naming convention, per docs/ref/glossary.md. Local to this
@@ -65,10 +64,15 @@ namespace
      *        object the wazuh-agent-config template expects for `configuration.content`.
      *
      * The agent still reports an array of `{"module": <string>, "config": <object>}` pairs, but the
-     * template maps `content` as a `flat_object` clavado por módulo (never an array): a module is
-     * unique per report, so keying by module name up front is what makes "does agent X have module Y"
-     * a single field lookup instead of a scan. If the agent ever sent two entries for the same
-     * module, the later one wins -- object semantics, not an error.
+     * template maps `content` as an object keyed by module name (never an array), with an explicit
+     * per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a module is unique per report,
+     * so keying by module name up front is what makes "does agent X have module Y" a single field
+     * lookup instead of a scan. If the agent ever sent two entries for the same module, the later
+     * one wins -- object semantics, not an error. The template is `dynamic: false`: a field this
+     * handler emits that isn't in that per-module sub-schema (a module the template doesn't know
+     * about yet, or a legacy/undeclared key within a known module) still gets written and stored in
+     * `_source`, it just isn't indexed for search -- so nothing here needs to validate individual
+     * `config` fields against that schema, only the outer `{module, config}` shape.
      *
      * @return The sanitized `{module: config}` object on success; std::nullopt if any element fails
      * validation, in which case @p reason is set to a caller-facing 400 message.
@@ -212,9 +216,10 @@ namespace invsync::endpoints::config
                     modules.push_back(entry.key());
                 }
 
-                // Shaped to match the wazuh-agent-config template exactly (dynamic:strict): schema
-                // version, the authenticated id, this manager's own identity, the server's clock, and
-                // the sanitized configuration -- nothing else.
+                // Shaped to match the wazuh-agent-config template: schema version, the
+                // authenticated id, this manager's own identity, the server's clock, and the
+                // sanitized configuration -- nothing else. `dynamic: false` means an unmapped field
+                // here would not fail the write, but there is still no reason to send one.
                 nlohmann::json indexedDocument;
                 indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
