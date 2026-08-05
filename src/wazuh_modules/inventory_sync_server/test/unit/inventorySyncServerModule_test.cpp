@@ -395,18 +395,14 @@ TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModule
     // POST /inventory/sync -- accepts and discards, so 202.
     EXPECT_EQ(202, sendModuleRequest(path, "POST", "/inventory/sync", "payload", "007").status);
 
-    // POST /stats -- still the enriched-echo dummy, so the agent id and this manager's identity
-    // come back in the body.
+    // POST /stats -- indexes for real and answers the protocol's empty acknowledgment.
     {
-        const auto response = sendModuleRequest(path, "POST", "/stats", R"({"cpu":42})", "007");
+        const auto response = sendModuleRequest(path, "POST", "/stats", R"({"modules":{"agent":{"a":1}}})", "007");
         ASSERT_EQ(200, response.status) << "/stats -> " << response.body;
-        EXPECT_NE(std::string::npos, response.body.find(R"("id":"007")")) << "/stats -> " << response.body;
-        EXPECT_NE(std::string::npos, response.body.find("test-cluster")) << "/stats -> " << response.body;
-        EXPECT_NE(std::string::npos, response.body.find("test-node")) << "/stats -> " << response.body;
+        EXPECT_EQ("{}", response.body);
     }
 
-    // POST /config -- indexes for real now: a modules-keyed object in, a bare {}
-    // acknowledgment out (not an echo of the enriched document).
+    // POST /config -- indexes for real too: a modules-keyed object in, a bare {} acknowledgment out.
     {
         const auto response = sendModuleRequest(path, "POST", "/config", R"({"modules":{"agent":{"cpu":42}}})", "007");
         ASSERT_EQ(200, response.status) << "/config -> " << response.body;
@@ -440,11 +436,11 @@ TEST_F(InventorySyncServerModuleTest, AnAgentIdThatIsNotUtf8IsRejectedRatherThan
 
     const std::string invalidId = "00\xff"
                                   "7";
-    // Each body must be valid for its endpoint's shape (an object for both, keyed by module for
-    // /config and /stats) so the request gets PAST body validation and actually reaches
-    // the id-embedding/serialization step this test means to exercise -- an invalid body would
-    // already answer 400 on its own, for the wrong reason.
-    for (const auto& [target, body] : {std::pair {"/stats", std::string {R"({"cpu":42})"}},
+    // Each body must be valid for its endpoint's shape (a modules-keyed object for both /stats and
+    // /config) so the request gets PAST body validation and actually reaches the id-embedding/
+    // serialization step this test means to exercise -- an invalid body would already answer 400 on
+    // its own, for the wrong reason.
+    for (const auto& [target, body] : {std::pair {"/stats", std::string {R"({"modules":{"agent":{"a":1}}})"}},
                                        std::pair {"/config", std::string {R"({"modules":{"agent":{"cpu":42}}})"}}})
     {
         const auto response = sendModuleRequest(path, "POST", target, body, invalidId);
