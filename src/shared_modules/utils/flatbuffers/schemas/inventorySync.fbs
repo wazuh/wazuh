@@ -1,3 +1,13 @@
+// Inventory synchronization schema (manager side) -- the FINAL wire contract
+// agreed with the agent team: a whole synchronization session travels as ONE
+// Message{FullSession} request over remoted's POST /stateful route, and the
+// HTTP response IS the session result. There are no acks, no End, no
+// retransmission and no per-item sequence numbers (design decisions D1-D4/D19
+// in inventory_sync_server_docs).
+//
+// This file replaced the legacy session-based schema when the inventory_sync
+// module was retired from the build; inventory_sync_server and the router's
+// anti-spoofing (which only reads Start) are its manager-side consumers.
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {
@@ -88,10 +98,8 @@ union SessionPayload {
     ChecksumModule
 }
 
-/// A whole synchronization session as ONE message.
-///
-/// The session id is chosen by the AGENT here, not handed back by an ack,
-/// so a retried session keeps the same id and the manager can dedup it.
+/// A whole synchronization session as ONE message. Re-applying the same
+/// session is idempotent, so a retry is simply a re-POST of the same buffer.
 table FullSession {
     start: Start;
     payload: SessionPayload;

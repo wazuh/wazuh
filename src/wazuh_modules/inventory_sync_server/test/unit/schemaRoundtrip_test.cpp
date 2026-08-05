@@ -20,12 +20,13 @@
 #include <vector>
 
 /*
- * Locks the FINAL wire contract agreed with the agent team (schemas/inventorySyncSession.fbs).
+ * Locks the FINAL wire contract agreed with the agent team (the shared
+ * shared_modules/utils/flatbuffers/schemas/inventorySync.fbs since the legacy schema retired).
  *
- * The enum-discriminant tests are not busywork: the schema is a COPY of the agreed contract, so an
- * innocent-looking reordering here (or a divergence introduced while merging upstream changes) would
- * silently produce buffers the agent misreads. Pinning the numeric values makes such a drift a test
- * failure instead of a fleet-wide protocol bug.
+ * The enum-discriminant tests are not busywork: an innocent-looking reordering of the schema (or a
+ * divergence introduced while merging upstream changes) would silently produce buffers the agent
+ * misreads. Pinning the numeric values makes such a drift a test failure instead of a fleet-wide
+ * protocol bug.
  */
 
 namespace fb = invsync::schema::fb;
