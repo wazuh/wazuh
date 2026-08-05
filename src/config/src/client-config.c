@@ -348,7 +348,6 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     const char *xml_agent_certif_path = "agent_certificate_path";
     const char *xml_agent_key_path = "agent_key_path";
     const char *xml_auth_password_path = "authorization_pass_path";
-    const char *xml_auto_method = "auto_method";
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
     char * remote_ip = NULL;
@@ -465,17 +464,6 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
         } else if (strcmp(node[j]->element, xml_auth_password_path) == 0) {
             os_free(cert_cfg->authpass_file);
             os_strdup(node[j]->content, cert_cfg->authpass_file);
-        } else if (strcmp(node[j]->element, xml_auto_method) == 0) {
-            if (!strcmp(node[j]->content, "yes")) {
-                cert_cfg->auto_method = 1;
-            } else if (!strcmp(node[j]->content, "no")) {
-                cert_cfg->auto_method = 0;
-            } else {
-                merror("Invalid content for tag '%s'.", node[j]->element);
-                w_enrollment_target_destroy(target_cfg);
-                w_enrollment_cert_destroy(cert_cfg);
-                return OS_INVALID;
-            }
         } else if (strcmp(node[j]->element, xml_delay_after_enrollment) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
