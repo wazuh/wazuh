@@ -24,6 +24,16 @@ namespace
 {
     constexpr auto STATS_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
 
+    /// `state.document_version` versions the stored layout, not the agent's report: every push
+    /// replaces the previous document whole, and OpenSearch's `_version` already counts the writes.
+    /// Bump it when the shape under `wazuh.agent.statistics` changes in a way a reader must notice.
+    constexpr int STATS_DOCUMENT_VERSION {1};
+
+    /// `wazuh.schema.version` is the schema-wide marker, kept as a string because that is how
+    /// `wazuh-metrics-agents` declares it (keyword, not a number). Distinct from the layout version
+    /// above: this one tracks the schema the document claims to follow.
+    constexpr auto STATS_SCHEMA_VERSION {"1"};
+
     // One shared instance rather than a per-call temporary: this runs on EVERY request.
     // loggerHelper.h stays out of statsEndpoint.hpp, which the tests include.
     const LogFn& logFn()
@@ -44,6 +54,36 @@ namespace
     {
         return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
     }
+
+    /**
+     * @brief Whether the agent's `modules` object can be stored as it stands.
+     *
+     * Validation only: the object is indexed as it arrives, so this decides between storing it and
+     * answering 400, and never rewrites it. An empty object is rejected because indexing it would
+     * replace the agent's last good report with one carrying no statistics.
+     *
+     * @param modules The `modules` member of the agent's document.
+     */
+    bool isStorableReport(const nlohmann::json& modules)
+    {
+        if (!modules.is_object() || modules.empty())
+        {
+            return false;
+        }
+
+        // A scalar under a module key would be rejected by the index mapping anyway, silently: the
+        // write is fire-and-forget, so catching it here is the only way the agent hears about it.
+        for (const auto& body : modules)
+        {
+            if (!body.is_object())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 } // namespace
 
 namespace invsync::endpoints::stats
@@ -58,7 +98,7 @@ namespace invsync::endpoints::stats
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
             // One slot per condition, so a persistent one cannot mask a newly-appearing different one.
-            static invsync::common::LogThrottle acceptedThrottle;
+            static invsync::common::LogThrottle indexedThrottle;
             static invsync::common::LogThrottle goneThrottle;
             static invsync::common::LogThrottle unavailableThrottle;
 
@@ -80,10 +120,17 @@ namespace invsync::endpoints::stats
 
             // Non-throwing parse: a malformed document is ordinary input here, not an error condition,
             // and letting nlohmann throw would cost an exception per bad request.
-            auto document = nlohmann::json::parse(request->body, nullptr, /*allow_exceptions=*/false);
-            if (document.is_discarded() || !document.is_object())
+            auto payload = nlohmann::json::parse(request->body, nullptr, /*allow_exceptions=*/false);
+            if (payload.is_discarded() || !payload.is_object())
             {
                 responder->send(badRequest("Body must be a JSON object"));
+                return;
+            }
+
+            const auto modules = payload.find("modules");
+            if (modules == payload.end() || !isStorableReport(*modules))
+            {
+                responder->send(badRequest("Body must carry a usable modules object"));
                 return;
             }
 
@@ -130,34 +177,39 @@ namespace invsync::endpoints::stats
 
             try
             {
-                // JSON pointers rather than bracket chaining, so `wazuh.agent.id` reads the same way
-                // it is spelled everywhere else in the schema. All four overwrite whatever the agent
-                // sent: the authenticated id, this manager's own identity and the server's clock are
-                // the authoritative ones.
+                // JSON pointers so `wazuh.agent.id` reads the way it is spelled everywhere else in
+                // the schema.
+                nlohmann::json document;
+                document["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
+                document["/state/document_version"_json_pointer] = STATS_DOCUMENT_VERSION;
+                document["/wazuh/schema/version"_json_pointer] = STATS_SCHEMA_VERSION;
                 document["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 document["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
                 document["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
-                document["/@timestamp"_json_pointer] = Utils::getCurrentISO8601();
+                // Moved, not copied: the payload is dead once the response is sent, and a copy would
+                // be one allocation per node of every module's subtree, per agent report.
+                document["/wazuh/agent/statistics"_json_pointer] = std::move(*modules);
 
-                if (const auto decision = acceptedThrottle.record())
+                indexer->index(agentIdIt->second, indexName(), document.dump());
+
+                if (const auto decision = indexedThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Enriched and discarded %llu stats document(s) in the last %d s. This endpoint is a "
-                                 "dummy: the document is echoed back but NOT indexed -- `indexer` is available and "
-                                 "injected, but nothing writes through it yet.",
+                                 "Queued %llu agent stats document(s) for indexing in the last %d s.",
                                  static_cast<unsigned long long>(decision.total),
                                  invsync::common::LogThrottle::kDefaultWindowSeconds);
                 }
 
-                // Echoed back so the caller can see what was added; the document itself is dropped.
-                responder->send(http::HttpResponse::json(200, document.dump()));
+                // The protocol's acknowledgment: an empty object. The agent has nothing to read back.
+                responder->send(http::HttpResponse::json(200, "{}"));
             }
             catch (const std::exception& e)
             {
-                // Serializing back out can still fail on input we accepted -- e.g. a string field
-                // holding invalid UTF-8, which nlohmann rejects at dump() time, not at parse time.
-                LOGFN_DEBUG1(logFn(), "Could not serialize an enriched stats document: %s.", e.what());
-                responder->send(badRequest("Body must be a JSON object"));
+                // Serializing can still fail on input we accepted -- invalid UTF-8 in the agent id
+                // header or anywhere inside the report, which nlohmann rejects at dump() time rather
+                // than at parse time.
+                LOGFN_DEBUG1(logFn(), "Could not serialize an agent stats document: %s.", e.what());
+                responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
             }
         };
     }

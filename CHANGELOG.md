@@ -17,6 +17,7 @@
 | [#37052](https://github.com/wazuh/wazuh/issues/37052) | Added byte-based capacity limits to wazuh-manager-remoted. |
 | [#37706](https://github.com/wazuh/wazuh/issues/37706) | Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. |
 | [#38023](https://github.com/wazuh/wazuh/issues/38023) | Added the `POST /config` HTTPS endpoint, which receives an agent's reported configuration and indexes it into `wazuh-agent-config`. |
+| [#38024](https://github.com/wazuh/wazuh/issues/38024) | Added the `POST /stats` HTTPS endpoint, which persists the statistics an agent reports as one document per agent in the `wazuh-agent-stats` index, replacing the previous report on every push. |
 
 #### Changed
 
