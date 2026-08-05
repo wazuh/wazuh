@@ -1013,27 +1013,6 @@ async def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_
             await Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"global":{}, "interval":{}}}'
-    result = agent.get_stats('logcollector')
-    assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method raises expected exception when the agent's version is lower than required."""
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
-        agent.get_stats('logcollector')
-
-
 def test_get_agents_info():
     """Test that get_agents_info() returns expected agent IDs"""
     with open(os.path.join(test_data_path, 'client.keys')) as f:

@@ -224,6 +224,10 @@ class WazuhException(Exception):
                },
         1761: {'message': 'Could not send restart/reload command. This operation via API requires agent version 5.0 or higher.'
                },
+        1762: {'message': 'The agent has not reported statistics yet',
+               'remediation': 'Statistics are read from what the agent pushes to the manager. Check that '
+                              '<client><stats_report><enabled> is set on the agent and that it is connected'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

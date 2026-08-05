@@ -696,7 +696,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']

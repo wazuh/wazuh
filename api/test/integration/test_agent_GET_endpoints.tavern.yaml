@@ -1949,11 +1949,15 @@ stages:
           affected_items:
             - status: !anystr
               last_keepalive: !anystr
-              last_ack: !anystr
-              msg_count: !anyint
-              msg_sent: !anyint
-              msg_buffer: !anyint
-              buffer_enabled: !anything
+              messages:
+                count: !anyint
+              tasks:
+                dispatched:
+                  total: !anyint
+                discarded_duplicate:
+                  total: !anyint
+                failed:
+                  total: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
