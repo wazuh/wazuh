@@ -55,11 +55,15 @@ namespace remoted::endpoints
          * @param method  HTTP method to match.
          * @param path    Path to match (the query string is not matched, but IS part of the MAC).
          * @param handler Invoked only after authentication succeeds; owns sending the response.
+         * @param mode    Whether the handler may answer with a streamed body. Forwarded verbatim to
+         *                IHttpServer::addRoute(): the transport fixes a response's output mode when
+         *                the request is dispatched, so a route that streams must declare it here.
          */
         void addAuthenticatedRoute(remoted::http::IHttpServer& server,
                                    Method method,
                                    const std::string& path,
-                                   AuthenticatedHandler handler);
+                                   AuthenticatedHandler handler,
+                                   remoted::http::ResponseMode mode = remoted::http::ResponseMode::Buffered);
 
     private:
         std::shared_ptr<remoted::auth::AuthMiddleware> m_middleware;

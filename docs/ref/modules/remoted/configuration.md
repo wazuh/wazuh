@@ -571,6 +571,48 @@ Socket read buffer size for the HTTPS agent server, in bytes.
 - **Default value:** `8192`
 - **Allowed values:** Integer from `1` to `1048576` (1 MiB)
 
+#### remoted.max_inflight_bytes
+
+Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sheds load with HTTP 503.
+
+- **Default value:** `268435456` (256 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB)
+- **Note:** The C++ side clamps this up to at least one max-size request at startup, so a too-small
+  value cannot reject everything. This is NOT `legacy.queue_size` (that is an event COUNT, not bytes).
+
+#### remoted.max_parallel_connections
+
+Maximum simultaneous HTTPS connections.
+
+- **Default value:** `512`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
+  the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
+  `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a transfer open
+  indefinitely and there is no per-stream limiter. A mass upgrade (the whole fleet fetching a WPK
+  at once, many over slow links) is therefore bounded only by this value.
+
+#### remoted.max_deferred_requests
+
+Maximum requests parked awaiting a downstream service before replying with HTTP 503.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
+  see warnings about this limit being reached, consider increasing it or investigating why the
+  downstream service is slow.
+
+#### remoted.http_stream_chunk_size
+
+Bytes per chunk when streaming a response body (`POST /download`).
+
+- **Default value:** `65536` (64 KiB)
+- **Allowed values:** Integer from `4096` to `1048576` (1 MiB)
+- **Note:** Charged per *in-flight transfer*, so the worst case is roughly this value times the
+  number of simultaneous downloads. A larger chunk buys fewer read/write round trips (less CPU per
+  byte) at the cost of more memory while transfers are running. It does not change the bytes
+  delivered -- only how they are framed on the wire.
+
 > **The three timeouts below are sequential phases of one request, and the sum matters.**
 > `remoted.http_request_timeout` bounds the *whole* request and its clock starts before the
 > downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request

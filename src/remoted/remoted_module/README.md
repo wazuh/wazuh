@@ -160,6 +160,7 @@ src/endpoints/
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ├── statsEndpoint.hpp/.cpp    # /stats policy (DUMMY): forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
+└── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
 ```
 
 - **Endpoint handler (async):**
@@ -489,6 +490,48 @@ and clients, which are all thread-safe internally.
 3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
    then stops the wazuh-db and task-manager clients (drains their queues), then destroys the
    registry (eviction thread stops automatically on destruction).
+
+## Streamed responses — `POST /download`
+
+Most endpoints answer with one in-memory body. `/download` serves `merged.mg` and WPK packages,
+which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
+chunks) and memory that does not grow with file size.
+
+- **Declared at registration, not per response.** The transport creates a request's response builder
+  when the request is dispatched — that is what lets it release the received body before the request
+  is queued — and a builder's output mode is fixed at creation. So a streaming route registers with
+  `ResponseMode::Streamable`; its responder then keeps the request handle and builds *buffered* for
+  an error (a 404 is a normal response, not a chunked one) or *chunked* for a transfer. The cost is
+  that the received request survives into the worker queue, which is why it is opt-in per route.
+  `IHttpResponder::stream()` has a fail-loud default (answer `500`) so a `Buffered` mis-registration
+  is obvious instead of silently buffering a large body.
+- **Pull, not push.** The handler hands the transport an `IByteSource`; the transport drives the
+  loop, because only it owns both the connection's I/O strand and the worker pool. Read a chunk on a
+  worker, write it, and read the next only once the write completes. One chunk is resident, and a
+  worker slot is held only for the duration of a single read — never for the whole transfer.
+  Measured on a live manager: 2 GiB streamed for a 0.6 MiB RSS delta.
+- **Failure is truncation, not a short success.** A read error propagates out of `read()` and the
+  builder is dropped *without* `done()`, so the terminating `0\r\n\r\n` is never sent and the agent
+  sees an incomplete body it will retry. Returning 0 instead would emit the terminator and hand over
+  a truncated file that looks complete. RESTinio always fires the write callback (with
+  `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
+  descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
+- **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
+  request names either one group (`etc/shared/<group>/merged.mg`) or several, comma-separated —
+  wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:8]>/merged.mg`.
+  A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
+  lets an agent in several groups fetch its *effective* configuration rather than one member
+  group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
+  There is no group lookup and no membership check (protocol decision on #38022), so **any
+  authenticated agent can fetch any group's or multigroup's merged configuration**. `/control` must
+  report `config_hash` over the file this resolves to for the selector it hands the agent, or that
+  agent re-downloads on every notify.
+- **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
+  traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
+  there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
+  `.wpk` suffix. With no separator admitted, the joined path has exactly one component below the
+  base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component being a symlink.
+  Loosening either grammar would break that and require a `realpath()` containment check instead.
 
 ## Deferred forwarding (async UDS) — `src/downstream/`
 
@@ -850,7 +893,7 @@ skipped without blocking the rest of the file).
 ctest --test-dir <build> -R remoted_module_utest -V
 ```
 
-### Manual / end-to-end (`tools/send_stateless.py`)
+### Manual / end-to-end (`tools/send_stateless.py`, `tools/send_download.py`)
 
 Signs and sends `POST /stateless` requests exactly as `AuthMiddleware` expects (AES-CMAC over the
 canonical byte sequence, agent key read straight from `client.keys`). Requires
