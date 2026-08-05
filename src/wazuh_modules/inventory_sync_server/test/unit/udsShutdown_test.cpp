@@ -461,7 +461,10 @@ TEST(UdsShutdownTest, StopAcceptingThenStopUnderManyLiveDeferrals)
     const auto path = uniqueSocketPath("scale");
     auto config = configFor(path);
     config.maxConnections = 512;
-    config.drainTimeoutSec = 2;
+    // 5 s, not the module's production 2: with 200 client threads on a loaded test box, the last
+    // few response READS can straddle a 2 s drain window and the tail reply gets force-closed --
+    // a 99/100 flake. What this test pins is "every reply SENT is DELIVERED", not the window size.
+    config.drainTimeoutSec = 5;
 
     Parking parking;
     auto server = makeUdsHttpServer();

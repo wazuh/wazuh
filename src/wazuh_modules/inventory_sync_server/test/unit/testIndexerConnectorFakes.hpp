@@ -23,6 +23,8 @@
 #include <json.hpp>
 
 #include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -62,6 +64,20 @@ namespace invsync::test
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
         nlohmann::json m_searchResponse = nlohmann::json::object();
+        /// When non-empty, executeSearchQuery() pops from here instead (front first) -- lets a test
+        /// drive the checksum pagination with a different page per call. Guarded by m_mutex.
+        std::deque<nlohmann::json> m_searchResponses;
+        /// Seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
+        /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables. Guarded by
+        /// m_mutex.
+        std::string m_syncThrowOn;
+        /// While true, the sync fake's flush() BLOCKS until openFlushGate(). Lets a test hold a
+        /// worker inside its batch flush deterministically (group-commit accumulation).
+        bool m_flushGateClosed {false};
+        std::condition_variable m_flushGateCv;
+        /// Times flush() was ENTERED (before the gate/injection). A test polls this to know a
+        /// worker is parked at the closed gate before queueing more work behind it.
+        std::atomic<int> m_flushEntered {0};
 
         void recordDestruction(const char* what)
         {
@@ -102,7 +118,44 @@ namespace invsync::test
         nlohmann::json searchResponse()
         {
             std::lock_guard<std::mutex> lock(m_mutex);
+            if (!m_searchResponses.empty())
+            {
+                auto response = std::move(m_searchResponses.front());
+                m_searchResponses.pop_front();
+                return response;
+            }
             return m_searchResponse;
+        }
+
+        void throwIfInjected(const char* op)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_syncThrowOn == op)
+            {
+                throw std::runtime_error {std::string {"injected failure in "} + op};
+            }
+        }
+
+        void closeFlushGate()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_flushGateClosed = true;
+        }
+
+        void openFlushGate()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_flushGateClosed = false;
+            }
+            m_flushGateCv.notify_all();
+        }
+
+        void waitAtFlushGate()
+        {
+            m_flushEntered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_flushGateCv.wait(lock, [this] { return !m_flushGateClosed; });
         }
     };
 
@@ -168,6 +221,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->throwIfInjected("bulkIndex");
                 m_events->recordSyncOp("bulkIndex", std::string {id}, std::string {index}, std::string {data}, {});
             }
         }
@@ -177,6 +231,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->throwIfInjected("bulkIndex");
                 m_events->recordSyncOp(
                     "bulkIndex", std::string {id}, std::string {index}, std::string {data}, std::string {version});
             }
@@ -186,6 +241,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->throwIfInjected("bulkDelete");
                 m_events->recordSyncOp("bulkDelete", std::string {id}, std::string {index}, {}, {});
             }
         }
@@ -195,6 +251,7 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->throwIfInjected("deleteByQuery");
                 // agentId rides in the id column; clusterName in the data column.
                 m_events->recordSyncOp("deleteByQuery", agentId, index, clusterName, {});
             }
@@ -209,6 +266,7 @@ namespace invsync::test
                 {
                     joined += joined.empty() ? index : ("," + index);
                 }
+                m_events->throwIfInjected("executeUpdateByQuery");
                 m_events->recordSyncOp("executeUpdateByQuery", {}, joined, updateQuery.dump(), {});
             }
         }
@@ -219,6 +277,7 @@ namespace invsync::test
             {
                 return nlohmann::json::object();
             }
+            m_events->throwIfInjected("executeSearchQuery");
             m_events->recordSyncOp("executeSearchQuery", {}, index, searchQuery.dump(), {});
             return m_events->searchResponse();
         }
@@ -227,6 +286,8 @@ namespace invsync::test
         {
             if (m_events)
             {
+                m_events->waitAtFlushGate();
+                m_events->throwIfInjected("flush");
                 m_events->m_syncFlushes.fetch_add(1);
             }
         }

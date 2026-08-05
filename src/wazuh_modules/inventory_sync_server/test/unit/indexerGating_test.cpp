@@ -46,6 +46,9 @@ namespace
         std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", socketPath.c_str());
         config.io_threads = 1;
         config.drain_timeout = 1;
+        // One pipeline worker, deterministically: 0 would resolve to half the machine's cores and
+        // these tests count connector builds (the pipeline builds one per EXTRA worker).
+        config.sync_workers = 1;
         return config;
     }
 
