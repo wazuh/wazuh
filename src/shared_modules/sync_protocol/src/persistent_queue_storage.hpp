@@ -98,6 +98,16 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Filesystem wrapper for operations
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 
+        /// @brief Id of the pending item currently stuck as a lone oversized block, if any.
+        std::string m_oversizedItemId;
+
+        /// @brief Consecutive fetchAndMarkForSync() calls in which m_oversizedItemId was
+        ///        resent alone because it exceeds the byte cap on its own. Reset once a
+        ///        different item takes its place. Past MAX_OVERSIZED_ATTEMPTS the item is
+        ///        dropped instead of resent, so a size it can never fit into cannot block
+        ///        every item behind it forever.
+        unsigned int m_oversizedItemAttempts = 0;
+
         /// @brief Creates the persistent_queue table if it doesn't already exist.
         void createTableIfNotExists();
 

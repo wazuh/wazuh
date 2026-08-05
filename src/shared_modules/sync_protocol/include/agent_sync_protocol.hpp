@@ -110,6 +110,18 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// Fixed; the HTTP-level retry count lives in the transport layer.
         static constexpr unsigned int SYNC_HANDOFF_RETRIES = 3;
 
+        /// @brief Safety-net ceiling on how long runSession() waits for on_sync_response.
+        ///
+        /// The HTTPS client fires on_sync_response for every outcome WITHIN wazuh-agentd,
+        /// but the result still has to cross the bridge (https_client_bridge.c) and a
+        /// module-local socket to reach this wait - a hop that can silently drop it (no
+        /// route for the session, a full module socket, a send() failure). Without a
+        /// ceiling here that drop wedges this module's sync forever. The value is set well
+        /// above https_client's own worst case for one /stateful session (5 attempts *
+        /// 120s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~14 minutes) so it only
+        /// fires on an actual delivery failure, never on a slow-but-alive manager.
+        static constexpr auto SESSION_RESPONSE_TIMEOUT = std::chrono::minutes(15);
+
         /// @brief Total attempts for a module integrity check (requiresFullSync()) before
         ///        trusting a checksum mismatch (409) as genuine.
         ///
