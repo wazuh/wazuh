@@ -149,6 +149,24 @@ EXPORTED int cbaseline_run_fim_dbsync(const char*                connector_socke
                                       int                        path_count,
                                       cb_dbsync_row_sink_t       sink,
                                       void*                      user_data);
+/* Per-dimension row ceiling for the container-inventory reconciler (NFR3,
+ * #37534). Each field caps that dimension's CREATE rows across every
+ * container on the agent combined (not per-container) — mirrors
+ * syscollector_containers_limits_t on the config side. 0 means unlimited,
+ * same convention as the host syscollector.* limits. */
+typedef struct cb_document_limits_t {
+    size_t processes;
+    size_t ports;
+    size_t packages;
+    size_t users;
+    size_t groups;
+    size_t os_info;
+    size_t network_iface;
+    size_t network_protocol;
+    size_t network_address;
+    size_t hardware;
+} cb_document_limits_t;
+
 /* Stateful container-inventory reconciler (#37534). Unlike the one-shot
  * cbaseline_run_syscollector() above, this drives a *reconciled state* source:
  * each run re-scans every live container and emits CREATE/MODIFY/DELETE rows by
@@ -162,13 +180,16 @@ typedef struct cbaseline_reconciler cbaseline_reconciler_t;
 
 /* Create a reconciler over the containers known at `connector_socket_path`,
  * persisting prior state at `prior_state_db_path` (parent dir created on demand;
- * pass CB_DEFAULT_PRIOR_STATE_DB_PATH for the default). Returns NULL on failure
+ * pass CB_DEFAULT_PRIOR_STATE_DB_PATH for the default). `limits` may be NULL,
+ * meaning every dimension is unlimited (all-zero cb_document_limits_t);
+ * otherwise its fields are applied per NFR3. Returns NULL on failure
  * (e.g. the prior-state DB could not be opened) — the caller should then skip
  * container inventory rather than crash. */
-EXPORTED cbaseline_reconciler_t* cbaseline_reconciler_create(const char*   connector_socket_path,
-                                                             const char*   prior_state_db_path,
-                                                             cb_row_sink_t sink,
-                                                             void*         user_data);
+EXPORTED cbaseline_reconciler_t* cbaseline_reconciler_create(const char*                connector_socket_path,
+                                                             const char*                prior_state_db_path,
+                                                             cb_row_sink_t              sink,
+                                                             void*                      user_data,
+                                                             const cb_document_limits_t* limits);
 
 /* Run one reconcile pass over every live container. Returns the number of
  * containers reconciled, or -1 when the pass was skipped because the Container

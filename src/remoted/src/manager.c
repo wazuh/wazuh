@@ -321,6 +321,22 @@ STATIC char* build_handshake_json(const module_limits_t *limits, const char *age
         cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
     }
 
+    /* Syscollector container-inventory limits (#37534) */
+    cJSON *syscollector_containers = cJSON_CreateObject();
+    if (syscollector_containers) {
+        cJSON_AddNumberToObject(syscollector_containers, "processes", limits->syscollector_containers.processes);
+        cJSON_AddNumberToObject(syscollector_containers, "ports", limits->syscollector_containers.ports);
+        cJSON_AddNumberToObject(syscollector_containers, "packages", limits->syscollector_containers.packages);
+        cJSON_AddNumberToObject(syscollector_containers, "users", limits->syscollector_containers.users);
+        cJSON_AddNumberToObject(syscollector_containers, "groups", limits->syscollector_containers.groups);
+        cJSON_AddNumberToObject(syscollector_containers, "os_info", limits->syscollector_containers.os_info);
+        cJSON_AddNumberToObject(syscollector_containers, "network_iface", limits->syscollector_containers.network_iface);
+        cJSON_AddNumberToObject(syscollector_containers, "network_protocol", limits->syscollector_containers.network_protocol);
+        cJSON_AddNumberToObject(syscollector_containers, "network_address", limits->syscollector_containers.network_address);
+        cJSON_AddNumberToObject(syscollector_containers, "hardware", limits->syscollector_containers.hardware);
+        cJSON_AddItemToObject(limits_obj, "syscollector_containers", syscollector_containers);
+    }
+
     /* SCA limits */
     cJSON *sca = cJSON_CreateObject();
     if (sca) {

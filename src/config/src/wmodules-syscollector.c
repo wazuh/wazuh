@@ -24,6 +24,7 @@ static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
 static const char *XML_HOTFIXES = "hotfixes";
 static const char *XML_SYNC = "synchronization";
+static const char *XML_CONTAINERS = "containers";
 static const char *XML_GROUPS = "groups";
 static const char *XML_USERS = "users";
 static const char *XML_SERVICES = "services";
@@ -93,6 +94,36 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
     }
 }
 
+// Independent container-inventory reconcile cadence (#37534): a <containers>
+// sub-block mirroring the pattern already used for <synchronization>, so the
+// container reconcile pass doesn't have to reuse the host's own <interval>.
+static void parse_containers_section(wm_sys_t * syscollector, XML_NODE node) {
+    const char *XML_CONTAINERS_ENABLED = "enabled";
+    const char *XML_CONTAINERS_INTERVAL = "interval";
+
+    for (int i = 0; node[i]; ++i) {
+        if (strcmp(node[i]->element, XML_CONTAINERS_ENABLED) == 0) {
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscollector->containers.enabled = r;
+            }
+        } else if (strcmp(node[i]->element, XML_CONTAINERS_INTERVAL) == 0) {
+            long t = w_parse_time(node[i]->content);
+
+            if (t <= 0 || (unsigned long)t > UINT32_MAX) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscollector->containers.interval = (uint32_t) t;
+            }
+        } else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
+
 // Parse XML configuration
 int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
     wm_sys_t *syscollector;
@@ -126,6 +157,13 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->sync.sync_response_timeout = 60;
         syscollector->sync.sync_max_eps = 75;
         syscollector->sync.integrity_interval = 86400;  // Integrity check every 24 hours (86400 seconds)
+
+        // Container-inventory reconcile cadence (#37534). Enabled by default to
+        // preserve prior behavior (the reconcile pass used to run unconditionally,
+        // gated only by the host interval); interval defaults to 5 minutes since a
+        // container's whole lifetime can be much shorter than a sensible host cadence.
+        syscollector->containers.enabled = 1;
+        syscollector->containers.interval = 300;
 
         syscollector->max_eps = 50;
         syscollector->flags.notify_first_scan = 0; // Default value, no notification on first scan
@@ -313,6 +351,13 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children) {
                 parse_synchronization_section(syscollector, children);
+                OS_ClearNode(children);
+            }
+        } else if (!strcmp(node[i]->element, XML_CONTAINERS)) {
+            // Container-inventory reconcile cadence section
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children) {
+                parse_containers_section(syscollector, children);
                 OS_ClearNode(children);
             }
         } else {

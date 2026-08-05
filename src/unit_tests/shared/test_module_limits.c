@@ -72,6 +72,36 @@ static void test_syscollector_limits_init_null(void **state) {
     syscollector_limits_init(NULL);
 }
 
+/* syscollector_containers_limits_init tests */
+
+static void test_syscollector_containers_limits_init_success(void **state) {
+    (void)state;
+    syscollector_containers_limits_t syscollector_containers;
+
+    /* Initialize with garbage to ensure function sets values */
+    memset(&syscollector_containers, 0xFF, sizeof(syscollector_containers));
+
+    syscollector_containers_limits_init(&syscollector_containers);
+
+    assert_int_equal(syscollector_containers.processes, DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT);
+    assert_int_equal(syscollector_containers.ports, DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT);
+    assert_int_equal(syscollector_containers.packages, DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT);
+    assert_int_equal(syscollector_containers.users, DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT);
+    assert_int_equal(syscollector_containers.groups, DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT);
+    assert_int_equal(syscollector_containers.os_info, DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT);
+    assert_int_equal(syscollector_containers.network_iface, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT);
+    assert_int_equal(syscollector_containers.network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT);
+    assert_int_equal(syscollector_containers.network_address, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT);
+    assert_int_equal(syscollector_containers.hardware, DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT);
+}
+
+static void test_syscollector_containers_limits_init_null(void **state) {
+    (void)state;
+
+    /* Should not crash when passed NULL */
+    syscollector_containers_limits_init(NULL);
+}
+
 /* sca_limits_init tests */
 
 static void test_sca_limits_init_success(void **state) {
@@ -124,6 +154,18 @@ static void test_module_limits_init_success(void **state) {
     assert_int_equal(limits.syscollector.services, DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT);
     assert_int_equal(limits.syscollector.browser_extensions, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
 
+    /* Verify Syscollector container-inventory limits */
+    assert_int_equal(limits.syscollector_containers.processes, DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT);
+    assert_int_equal(limits.syscollector_containers.ports, DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.packages, DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT);
+    assert_int_equal(limits.syscollector_containers.users, DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.groups, DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.os_info, DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_iface, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_address, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT);
+    assert_int_equal(limits.syscollector_containers.hardware, DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT);
+
     /* Verify SCA limits */
     assert_int_equal(limits.sca.checks, DEFAULT_SCA_CHECKS_LIMIT);
 
@@ -161,6 +203,16 @@ static void test_module_limits_reset_success(void **state) {
     limits.syscollector.groups = 66;
     limits.syscollector.services = 55;
     limits.syscollector.browser_extensions = 44;
+    limits.syscollector_containers.processes = 22;
+    limits.syscollector_containers.ports = 21;
+    limits.syscollector_containers.packages = 20;
+    limits.syscollector_containers.users = 19;
+    limits.syscollector_containers.groups = 18;
+    limits.syscollector_containers.os_info = 17;
+    limits.syscollector_containers.network_iface = 16;
+    limits.syscollector_containers.network_protocol = 15;
+    limits.syscollector_containers.network_address = 14;
+    limits.syscollector_containers.hardware = 13;
     limits.sca.checks = 33;
     limits.limits_received = true;
 
@@ -183,6 +235,16 @@ static void test_module_limits_reset_success(void **state) {
     assert_int_equal(limits.syscollector.groups, DEFAULT_SYSCOLLECTOR_GROUPS_LIMIT);
     assert_int_equal(limits.syscollector.services, DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT);
     assert_int_equal(limits.syscollector.browser_extensions, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.processes, DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT);
+    assert_int_equal(limits.syscollector_containers.ports, DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.packages, DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT);
+    assert_int_equal(limits.syscollector_containers.users, DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.groups, DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT);
+    assert_int_equal(limits.syscollector_containers.os_info, DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_iface, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_protocol, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT);
+    assert_int_equal(limits.syscollector_containers.network_address, DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT);
+    assert_int_equal(limits.syscollector_containers.hardware, DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT);
     assert_int_equal(limits.sca.checks, DEFAULT_SCA_CHECKS_LIMIT);
     assert_false(limits.limits_received);
 }
@@ -202,6 +264,9 @@ int main(void) {
         /* syscollector_limits_init tests */
         cmocka_unit_test(test_syscollector_limits_init_success),
         cmocka_unit_test(test_syscollector_limits_init_null),
+        /* syscollector_containers_limits_init tests */
+        cmocka_unit_test(test_syscollector_containers_limits_init_success),
+        cmocka_unit_test(test_syscollector_containers_limits_init_null),
         /* sca_limits_init tests */
         cmocka_unit_test(test_sca_limits_init_success),
         cmocka_unit_test(test_sca_limits_init_null),

@@ -503,7 +503,9 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.users,
                               sys->flags.services,
                               sys->flags.browser_extensions,
-                              sys->flags.notify_first_scan);
+                              sys->flags.notify_first_scan,
+                              sys->containers.enabled,
+                              sys->containers.interval);
 
         MQ_Functions mq_funcs =
         {
@@ -688,7 +690,9 @@ void* wm_sys_main(wm_sys_t* sys)
                               sys->flags.users,
                               sys->flags.services,
                               sys->flags.browser_extensions,
-                              sys->flags.notify_first_scan);
+                              sys->flags.notify_first_scan,
+                              sys->containers.enabled,
+                              sys->containers.interval);
 
         // Set agentd query function for communication (AFTER init, BEFORE start)
         // Syscollector will fetch document limits from agentd
@@ -921,6 +925,13 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     cJSON_AddNumberToObject(synchronization, "integrity_interval", sys->sync.integrity_interval);
 
     cJSON_AddItemToObject(wm_sys, "synchronization", synchronization);
+
+    // Container-inventory reconcile cadence (#37534)
+    cJSON* containers = cJSON_CreateObject();
+    cJSON_AddStringToObject(containers, "enabled", sys->containers.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(containers, "interval", sys->containers.interval);
+
+    cJSON_AddItemToObject(wm_sys, "containers", containers);
 
     cJSON_AddItemToObject(root, "syscollector", wm_sys);
 

@@ -40,7 +40,9 @@ void syscollector_init(const unsigned int inverval,
                        const bool users,
                        const bool services,
                        const bool browserExtensions,
-                       const bool notifyOnFirstScan)
+                       const bool notifyOnFirstScan,
+                       const bool containersEnabled,
+                       const unsigned int containersInterval)
 {
     std::function<void(const std::string&)> callbackDiffWrapper
     {
@@ -99,7 +101,9 @@ void syscollector_init(const unsigned int inverval,
                                       users,
                                       services,
                                       browserExtensions,
-                                      notifyOnFirstScan);
+                                      notifyOnFirstScan,
+                                      containersEnabled,
+                                      containersInterval);
     }
     catch (const std::exception& ex)
     {

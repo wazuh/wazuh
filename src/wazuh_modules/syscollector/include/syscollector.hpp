@@ -71,7 +71,16 @@ class EXPORTED Syscollector final
                   const bool users = true,
                   const bool services = true,
                   const bool browserExtensions = true,
-                  const bool notifyOnFirstScan = false);
+                  const bool notifyOnFirstScan = false,
+                  // Unlike the flags above, enabling this reaches out over a real IPC
+                  // socket to the Container Instances module — callers that don't pass
+                  // an explicit value (e.g. this file's ~100 unit test call sites) get
+                  // it off by default, so a test double doesn't silently hit real
+                  // infrastructure. Production (wm_syscollector.c) always passes an
+                  // explicit value from <containers><enabled>, so this default never
+                  // applies there.
+                  const bool containersEnabled = false,
+                  const unsigned int containersInterval = 300ul);
 
         /**
          * @brief Set agentd query function for agentd communication (cross-platform)
@@ -416,6 +425,27 @@ class EXPORTED Syscollector final
         std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
 
         /**
+         * @brief Sets document limits for the container-inventory reconciler (#37534)
+         *
+         * Unlike setDocumentLimits(), there is no dbsync table to recount or
+         * promote against — the container reconciler owns its own counts.
+         *
+         * @param limits JSON object mapping index names to limit values (0 = unlimited)
+         * @return true if limits were set successfully, false otherwise
+         */
+        bool setContainerDocumentLimits(const nlohmann::json& limits);
+
+        /**
+         * @brief Fetches container-inventory document limits from agentd (#37534)
+         *
+         * Sends "getdoclimits syscollector_containers" to agentd. A single attempt,
+         * no retry loop (see implementation comment) — never blocks module startup.
+         *
+         * @return Optional JSON with limits if available, empty optional otherwise
+         */
+        std::optional<nlohmann::json> fetchContainerDocumentLimitsFromAgentd();
+
+        /**
          * @brief Initializes document counts from database for all tables
          */
         void initializeDocumentCounts();
@@ -470,6 +500,12 @@ class EXPORTED Syscollector final
         // Linux-only). Held as void* so container_baseline.h stays out of this
         // header; created lazily on the first container scan, destroyed in destroy().
         void*                                                                    m_containerReconciler {nullptr};
+        // Independent container-inventory reconcile cadence (#37534), decoupled
+        // from m_intervalValue (the host scan interval). syncLoop() wakes itself
+        // for whichever of the two interval deadlines elapses first, so the
+        // container pass isn't bounded by the (possibly much longer) host interval.
+        bool                                                                     m_containerScanEnabled {true};
+        unsigned int                                                             m_containerIntervalValue {300};
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
@@ -482,6 +518,11 @@ class EXPORTED Syscollector final
 
         // Current document counts per index (tracks items with sync=1)
         std::map<std::string, size_t>                                            m_documentCounts;
+
+        // Container-inventory document limits (#37534): per-index cap shared across
+        // every container on the agent (0/absent = unlimited). Full index names,
+        // same keys as m_documentLimits. Guarded by m_limitsMutex.
+        std::map<std::string, size_t>                                            m_containerDocumentLimits;
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;

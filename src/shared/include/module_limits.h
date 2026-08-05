@@ -32,6 +32,21 @@
 #define DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT             0
 #define DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT   0
 
+/* Syscollector container-inventory default values (#37534). Separate from the
+ * host limits above: one cap per dimension, shared across every container on
+ * the agent (not per-container), since the container reconciler skips dbsync
+ * entirely and cannot reuse the host counters. */
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PROCESSES_LIMIT        0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PORTS_LIMIT             0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_PACKAGES_LIMIT          0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_USERS_LIMIT             0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_GROUPS_LIMIT            0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_OS_INFO_LIMIT           0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_IFACE_LIMIT     0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_PROTO_LIMIT     0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_NETWORK_ADDR_LIMIT      0
+#define DEFAULT_SYSCOLLECTOR_CONTAINERS_HARDWARE_LIMIT          0
+
 /* SCA default values */
 #define DEFAULT_SCA_CHECKS_LIMIT                        0
 
@@ -64,6 +79,24 @@ typedef struct syscollector_limits_t {
 } syscollector_limits_t;
 
 /**
+ * @brief Syscollector container-inventory module limits structure (#37534).
+ * Per-dimension row ceiling shared across every container on the agent; 0 means
+ * unlimited, the same convention as syscollector_limits_t.
+ */
+typedef struct syscollector_containers_limits_t {
+    int processes;
+    int ports;
+    int packages;
+    int users;
+    int groups;
+    int os_info;
+    int network_iface;
+    int network_protocol;
+    int network_address;
+    int hardware;
+} syscollector_containers_limits_t;
+
+/**
  * @brief SCA module limits structure
  */
 typedef struct sca_limits_t {
@@ -76,6 +109,7 @@ typedef struct sca_limits_t {
 typedef struct module_limits_t {
     fim_limits_t fim;
     syscollector_limits_t syscollector;
+    syscollector_containers_limits_t syscollector_containers;
     sca_limits_t sca;
     bool limits_received;
 } module_limits_t;
@@ -103,6 +137,12 @@ void fim_limits_init(fim_limits_t *fim);
  * @param syscollector Pointer to Syscollector limits structure
  */
 void syscollector_limits_init(syscollector_limits_t *syscollector);
+
+/**
+ * @brief Initialize Syscollector container-inventory limits with defaults
+ * @param syscollector_containers Pointer to Syscollector container-inventory limits structure
+ */
+void syscollector_containers_limits_init(syscollector_containers_limits_t *syscollector_containers);
 
 /**
  * @brief Initialize SCA limits with defaults

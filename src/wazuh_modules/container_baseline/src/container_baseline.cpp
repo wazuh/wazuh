@@ -7,6 +7,7 @@
 #include "reconcile/sqlite_prior_state_store.hpp"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 using wazuh::container_baseline::CollectContainer;
@@ -31,6 +32,32 @@ wazuh::container_baseline::RowSink MakeSink(cb_row_sink_t sink, void* user_data)
     };
 }
 
+// Index strings mirror the literals CollectContainer() (container_baseline_scanner.cpp)
+// hardcodes for each dimension. Only nonzero fields are inserted — limitFor()
+// already treats an absent key as unlimited, same as an explicit 0.
+wazuh::container_baseline::DocumentLimits MakeDocumentLimits(const cb_document_limits_t* limits)
+{
+    wazuh::container_baseline::DocumentLimits out;
+    if (limits == nullptr) return out;
+
+    const std::pair<std::size_t, const char*> fields[] = {
+        {limits->processes,        "wazuh-states-inventory-processes"},
+        {limits->ports,            "wazuh-states-inventory-ports"},
+        {limits->packages,         "wazuh-states-inventory-packages"},
+        {limits->users,            "wazuh-states-inventory-users"},
+        {limits->groups,           "wazuh-states-inventory-groups"},
+        {limits->os_info,          "wazuh-states-inventory-system"},
+        {limits->network_iface,    "wazuh-states-inventory-interfaces"},
+        {limits->network_protocol, "wazuh-states-inventory-protocols"},
+        {limits->network_address,  "wazuh-states-inventory-networks"},
+        {limits->hardware,         "wazuh-states-inventory-hardware"},
+    };
+    for (const auto& [value, index] : fields) {
+        if (value != 0) out[index] = value;
+    }
+    return out;
+}
+
 } // namespace
 
 // Owns the reconciler's collaborators for the lifetime of the C handle. Member
@@ -42,10 +69,11 @@ struct cbaseline_reconciler
     ContainerLister              lister;
     ContainerInventoryReconciler reconciler;
 
-    cbaseline_reconciler(const char* socket, const char* db, cb_row_sink_t sink, void* user_data)
+    cbaseline_reconciler(const char* socket, const char* db, cb_row_sink_t sink, void* user_data,
+                         const cb_document_limits_t* limits)
         : store(db)
         , lister(socket)
-        , reconciler(lister, store, CollectContainer, MakeSink(sink, user_data))
+        , reconciler(lister, store, CollectContainer, MakeSink(sink, user_data), MakeDocumentLimits(limits))
     {
     }
 };
@@ -132,15 +160,16 @@ extern "C" int cbaseline_run_fim_dbsync(const char*                connector_soc
         });
 }
 
-extern "C" cbaseline_reconciler_t* cbaseline_reconciler_create(const char*   connector_socket_path,
-                                                               const char*   prior_state_db_path,
-                                                               cb_row_sink_t sink,
-                                                               void*         user_data)
+extern "C" cbaseline_reconciler_t* cbaseline_reconciler_create(const char*                connector_socket_path,
+                                                               const char*                prior_state_db_path,
+                                                               cb_row_sink_t              sink,
+                                                               void*                      user_data,
+                                                               const cb_document_limits_t* limits)
 {
     if (connector_socket_path == nullptr || prior_state_db_path == nullptr) return nullptr;
     try
     {
-        return new cbaseline_reconciler(connector_socket_path, prior_state_db_path, sink, user_data);
+        return new cbaseline_reconciler(connector_socket_path, prior_state_db_path, sink, user_data, limits);
     }
     catch (...)
     {

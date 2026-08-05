@@ -39,6 +39,12 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
         <max_eps>75</max_eps>                    <!-- Max sync events per second (0 = unlimited) -->
         <integrity_interval>86400</integrity_interval>  <!-- Integrity check interval in seconds (24 hours) -->
     </synchronization>
+
+    <!-- Container-inventory reconcile cadence (Linux only, #37534) -->
+    <containers>
+        <enabled>yes</enabled>                    <!-- Enable/disable the container-inventory reconcile pass -->
+        <interval>5m</interval>                   <!-- Independent cadence, decoupled from the host <interval> above -->
+    </containers>
 </wodle>
 ```
 
@@ -75,6 +81,17 @@ Syscollector is configured in the agent's `ossec.conf` file using the `<wodle na
 **Note**: The `ports` element accepts an optional `all` attribute:
 - `<ports all="yes">`: Scan all ports
 - `<ports all="no">`: Scan only listening ports
+
+### Container Inventory Settings (Linux only)
+
+| Option | Default | Range | Description |
+|--------|---------|-------|-------------|
+| `containers.enabled` | `yes` | `yes`/`no` | Enable/disable the container-inventory reconcile pass |
+| `containers.interval` | `5m` (`300`) | `>= 1s` | Container reconcile cadence, independent of the host `interval` above |
+
+The container-inventory reconciler diffs every live container's inventory against durable prior state each pass and emits CREATE/MODIFY/DELETE rows (including deletes for containers that exited), rather than the host scan's checksum-based dbsync diff. Its own cadence exists because a container's whole lifetime can be much shorter than a sensible host scan interval (e.g. a 1h host `interval` would miss short-lived pods entirely if the two were coupled).
+
+Per-dimension row limits for the container path (`syscollector_containers.processes`, `.ports`, `.packages`, `.users`, `.groups`, `.os_info`, `.network_iface`, `.network_protocol`, `.network_address`, `.hardware`) are **not** set in `ossec.conf`: like the host `syscollector.*` limits, they are manager-pushed via `internal_options.conf` (`syscollector_containers.<field>_limit`) and delivered to the agent through the same startup handshake. Each is a single cap per dimension shared across every container on the agent (not per-container); `0` means unlimited.
 
 ---
 

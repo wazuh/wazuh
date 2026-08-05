@@ -52,11 +52,20 @@ typedef struct wm_sys_db_sync_flags_t {
     uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
 } wm_sys_db_sync_flags_t;
 
+// Container-inventory reconcile cadence (#37534), independent of the host `interval`
+// above: a container's whole lifetime can be shorter than a sensible host scan
+// interval, so it gets its own knob instead of being coupled 1:1 to the host cadence.
+typedef struct wm_sys_containers_flags_t {
+    unsigned int enabled:1;                 // Enable the container-inventory reconcile pass
+    uint32_t interval;                      // Container reconcile interval (seconds)
+} wm_sys_containers_flags_t;
+
 typedef struct wm_sys_t {
     unsigned int interval;                  // Time interval between cycles (seconds)
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
     wm_sys_db_sync_flags_t sync;            // Database synchronization value
+    wm_sys_containers_flags_t containers;   // Container-inventory reconcile cadence
     int max_eps;                            // Maximum events per second.
 } wm_sys_t;
 

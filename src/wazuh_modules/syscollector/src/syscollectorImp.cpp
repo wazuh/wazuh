@@ -152,6 +152,30 @@ static const std::map<std::string, std::string> AGENTD_TO_INDEX_MAP
     // LCOV_EXCL_STOP
 };
 
+// Builds the C struct cbaseline_reconciler_create() expects out of the
+// container-limits map (already normalized to full index names by
+// setContainerDocumentLimits(), same AGENTD_TO_INDEX_MAP keys as the host map).
+static cb_document_limits_t BuildContainerDocumentLimits(const std::map<std::string, size_t>& limits)
+{
+    cb_document_limits_t out{};
+    const auto lookup = [&limits](const char* index) -> size_t
+    {
+        const auto it = limits.find(index);
+        return it == limits.end() ? 0 : it->second;
+    };
+    out.processes        = lookup(SYSCOLLECTOR_SYNC_INDEX_PROCESSES);
+    out.ports            = lookup(SYSCOLLECTOR_SYNC_INDEX_PORTS);
+    out.packages         = lookup(SYSCOLLECTOR_SYNC_INDEX_PACKAGES);
+    out.users            = lookup(SYSCOLLECTOR_SYNC_INDEX_USERS);
+    out.groups           = lookup(SYSCOLLECTOR_SYNC_INDEX_GROUPS);
+    out.os_info          = lookup(SYSCOLLECTOR_SYNC_INDEX_SYSTEM);
+    out.network_iface    = lookup(SYSCOLLECTOR_SYNC_INDEX_INTERFACES);
+    out.network_protocol = lookup(SYSCOLLECTOR_SYNC_INDEX_PROTOCOLS);
+    out.network_address  = lookup(SYSCOLLECTOR_SYNC_INDEX_NETWORKS);
+    out.hardware         = lookup(SYSCOLLECTOR_SYNC_INDEX_HARDWARE);
+    return out;
+}
+
 static void sanitizeJsonValue(nlohmann::json& input)
 {
     if (input.is_object())
@@ -502,7 +526,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool users,
                         const bool services,
                         const bool browserExtensions,
-                        const bool notifyOnFirstScan)
+                        const bool notifyOnFirstScan,
+                        const bool containersEnabled,
+                        const unsigned int containersInterval)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
@@ -523,6 +549,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_users = users;
     m_services = services;
     m_browserExtensions = browserExtensions;
+    m_containerScanEnabled = containersEnabled;
+    m_containerIntervalValue = containersInterval;
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
@@ -651,6 +679,16 @@ void Syscollector::start()
                 return;
             }
         }
+    }
+
+    // Best-effort: container document limits (#37534). Never blocks startup —
+    // see fetchContainerDocumentLimitsFromAgentd()'s comment on why a single
+    // attempt is enough here.
+    auto containerLimits = fetchContainerDocumentLimitsFromAgentd();
+
+    if (containerLimits.has_value())
+    {
+        setContainerDocumentLimits(containerLimits.value());
     }
 
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
@@ -1915,6 +1953,13 @@ void Syscollector::ContainerBaselineSink(const char* id, int operation, const ch
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)
+    // syncLoop() only calls this when its own <containers><interval> deadline has
+    // elapsed, so there is no enabled/interval gate here — this function always runs
+    // when called. The guard still needs to be set here (not just inside scan()):
+    // this is called standalone, not nested inside scan() anymore, so pause()'s wait
+    // on m_scanning would otherwise miss an in-flight reconcile pass entirely.
+    ScanGuard scanGuard(m_scanning, m_pauseCv);
+
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container inventory reconcile");
 
     // Reconciled state, not a one-shot baseline: each pass re-scans every live
@@ -1926,8 +1971,15 @@ void Syscollector::scanContainerBaseline()
     // sync protocol via ContainerBaselineSink (pending #37203-4's schema).
     if (m_containerReconciler == nullptr)
     {
+        cb_document_limits_t containerLimits;
+        {
+            std::lock_guard<std::mutex> lock(m_limitsMutex);
+            containerLimits = BuildContainerDocumentLimits(m_containerDocumentLimits);
+        }
+
         m_containerReconciler = cbaseline_reconciler_create(
-            CB_DEFAULT_CONNECTOR_SOCKET_PATH, CB_DEFAULT_PRIOR_STATE_DB_PATH, &Syscollector::ContainerBaselineSink, this);
+            CB_DEFAULT_CONNECTOR_SOCKET_PATH, CB_DEFAULT_PRIOR_STATE_DB_PATH, &Syscollector::ContainerBaselineSink, this,
+            &containerLimits);
 
         if (m_containerReconciler == nullptr)
         {
@@ -2006,12 +2058,8 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container inventory (#37534) is a reconciled state source, so it runs every
-    // scan (not just the first): processes/packages/etc. that appear, change, or
-    // vanish inside a container — and containers that exit — surface as
-    // CREATE/MODIFY/DELETE. The reconciler suppresses deletes on its first pass
-    // after (re)start (reload guard) and reconciles fully thereafter.
-    TRY_CATCH_TASK(scanContainerBaseline);
+    // Container inventory (#37534) is no longer called from here — it runs on its
+    // own <containers><interval> cadence, dispatched directly by syncLoop().
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries
@@ -2053,20 +2101,69 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
     if (m_scanOnStart)
     {
         scan();
+
+        if (m_containerScanEnabled)
+        {
+            scanContainerBaseline();
+        }
     }
 
-    while (!m_cv.wait_for(scan_lock, std::chrono::seconds{m_intervalValue}, [&]()
-{
-    return m_stopping.load();
-    }))
+    // Independent cadence (#37534, Proposal A): rather than a second thread, this one
+    // loop wakes for whichever of the two interval deadlines elapses first, so the
+    // container pass isn't bounded by the (possibly much longer) host interval. Both
+    // deadlines are local here, not class members — their lifetime never outlives
+    // this loop. When disabled, nextContainerScan stays at time_point::max() and
+    // never wins against nextHostScan.
+    auto nextHostScan = std::chrono::steady_clock::now() + std::chrono::seconds{m_intervalValue};
+    auto nextContainerScan = m_containerScanEnabled
+                              ? std::chrono::steady_clock::now() + std::chrono::seconds{m_containerIntervalValue}
+                              : std::chrono::steady_clock::time_point::max();
+
+    while (!m_stopping.load())
     {
+        const auto wakeAt = nextHostScan < nextContainerScan ? nextHostScan : nextContainerScan;
+
+        if (m_cv.wait_until(scan_lock, wakeAt, [&]()
+        {
+            return m_stopping.load();
+        }))
+        {
+            break;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+
         if (m_paused)
         {
             m_logFunction(LOG_DEBUG, "Syscollector scanning paused, skipping scan iteration");
+
+            // Push forward any deadline that already elapsed so the loop doesn't spin
+            // on it while paused — wait_for's old relative-duration semantics used to
+            // give this for free; wait_until's absolute deadline needs it explicit.
+            if (now >= nextHostScan)
+            {
+                nextHostScan = now + std::chrono::seconds{m_intervalValue};
+            }
+
+            if (m_containerScanEnabled && now >= nextContainerScan)
+            {
+                nextContainerScan = now + std::chrono::seconds{m_containerIntervalValue};
+            }
+
             continue;
         }
 
-        scan();
+        if (now >= nextHostScan)
+        {
+            scan();
+            nextHostScan = now + std::chrono::seconds{m_intervalValue};
+        }
+
+        if (m_containerScanEnabled && now >= nextContainerScan)
+        {
+            scanContainerBaseline();
+            nextContainerScan = now + std::chrono::seconds{m_containerIntervalValue};
+        }
     }
     m_cv.notify_all();
 }
@@ -3735,6 +3832,101 @@ std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
     }
 
     return std::nullopt;
+}
+
+bool Syscollector::setContainerDocumentLimits(const nlohmann::json& limits)
+{
+    if (!limits.is_object())
+    {
+        return false;
+    }
+
+    // Unlike the host path (setDocumentLimits), there is no dbsync table to
+    // recount or promote against here — the container reconciler tracks its
+    // own per-index counts from the prior-state store, so this just needs to
+    // normalize agentd's short names into the full index names it expects.
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+
+    for (const auto& [shortName, limit] : limits.items())
+    {
+        if (!limit.is_number_unsigned())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Invalid container document limit value for index: " + shortName);
+            }
+
+            return false;
+        }
+
+        const auto it = AGENTD_TO_INDEX_MAP.find(shortName);
+
+        if (it == AGENTD_TO_INDEX_MAP.end())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Unknown container document limit index from agentd: " + shortName);
+            }
+
+            return false;
+        }
+
+        m_containerDocumentLimits[it->second] = limit.get<size_t>();
+    }
+
+    return true;
+}
+
+std::optional<nlohmann::json> Syscollector::fetchContainerDocumentLimitsFromAgentd()
+{
+    if (!m_agentdQuery)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING, "Agentd query function not set, cannot fetch container document limits");
+        }
+
+        return std::nullopt;
+    }
+
+    // Single attempt, no retry loop: by the time start() calls this, the host
+    // limits fetch above has already blocked until agent_module_limits.limits_received
+    // is true, so this data is already available agent-side.
+    constexpr auto REQUEST_COMMAND = "getdoclimits syscollector_containers";
+
+    std::string response_buffer;
+    response_buffer.resize(OS_MAXSTR);
+
+    if (!m_agentdQuery(REQUEST_COMMAND, response_buffer.data(), response_buffer.size()))
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Failed to fetch container document limits from agentd");
+        }
+
+        return std::nullopt;
+    }
+
+    try
+    {
+        auto limitsJson = nlohmann::json::parse(response_buffer);
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "Container document limits received: " + limitsJson.dump());
+        }
+
+        return limitsJson;
+    }
+    catch (const nlohmann::json::exception& ex)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to parse container document limits JSON: " + std::string(ex.what()));
+        }
+
+        return std::nullopt;
+    }
 }
 
 void Syscollector::initializeDocumentCounts()

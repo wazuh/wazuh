@@ -125,7 +125,9 @@ int main(int argc, const char* argv[])
                                       true,
                                       true,
                                       true,
-                                      true);
+                                      true,
+                                      true,
+                                      15ul);
 
         Syscollector::instance().start();
     }

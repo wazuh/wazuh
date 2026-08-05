@@ -245,6 +245,17 @@ cJSON *getDocumentLimits(const char *module) {
         cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector.groups);
         cJSON_AddNumberToObject(cfg, "services", agent_module_limits.syscollector.services);
         cJSON_AddNumberToObject(cfg, "browser_extensions", agent_module_limits.syscollector.browser_extensions);
+    } else if (strcmp(module, "syscollector_containers") == 0) {
+        cJSON_AddNumberToObject(cfg, "processes", agent_module_limits.syscollector_containers.processes);
+        cJSON_AddNumberToObject(cfg, "ports", agent_module_limits.syscollector_containers.ports);
+        cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector_containers.packages);
+        cJSON_AddNumberToObject(cfg, "users", agent_module_limits.syscollector_containers.users);
+        cJSON_AddNumberToObject(cfg, "groups", agent_module_limits.syscollector_containers.groups);
+        cJSON_AddNumberToObject(cfg, "os_info", agent_module_limits.syscollector_containers.os_info);
+        cJSON_AddNumberToObject(cfg, "network_iface", agent_module_limits.syscollector_containers.network_iface);
+        cJSON_AddNumberToObject(cfg, "network_protocol", agent_module_limits.syscollector_containers.network_protocol);
+        cJSON_AddNumberToObject(cfg, "network_address", agent_module_limits.syscollector_containers.network_address);
+        cJSON_AddNumberToObject(cfg, "hardware", agent_module_limits.syscollector_containers.hardware);
     } else if (strcmp(module, "sca") == 0) {
         cJSON_AddNumberToObject(cfg, "checks", agent_module_limits.sca.checks);
     } else {

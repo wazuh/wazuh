@@ -105,6 +105,36 @@ STATIC bool parse_syscollector_limits(const cJSON *root, syscollector_limits_t *
 }
 
 /**
+ * @brief Parse Syscollector container-inventory limits from JSON (#37534)
+ *
+ * Unlike parse_syscollector_limits(), this object is treated as optional: a
+ * manager that hasn't been upgraded yet simply won't send it, and that must
+ * not fail the rest of the handshake.
+ *
+ * @param root Root JSON object
+ * @param syscollector_containers Pointer to Syscollector container-inventory limits structure
+ * @return true if the object was present and fully parsed, false otherwise
+ */
+STATIC bool parse_syscollector_containers_limits(const cJSON *root, syscollector_containers_limits_t *syscollector_containers) {
+    cJSON *module = cJSON_GetObjectItem(root, "syscollector_containers");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'syscollector_containers' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "processes", &syscollector_containers->processes) &&
+           get_required_int(module, "ports", &syscollector_containers->ports) &&
+           get_required_int(module, "packages", &syscollector_containers->packages) &&
+           get_required_int(module, "users", &syscollector_containers->users) &&
+           get_required_int(module, "groups", &syscollector_containers->groups) &&
+           get_required_int(module, "os_info", &syscollector_containers->os_info) &&
+           get_required_int(module, "network_iface", &syscollector_containers->network_iface) &&
+           get_required_int(module, "network_protocol", &syscollector_containers->network_protocol) &&
+           get_required_int(module, "network_address", &syscollector_containers->network_address) &&
+           get_required_int(module, "hardware", &syscollector_containers->hardware);
+}
+
+/**
  * @brief Parse SCA limits from JSON
  * @param root Root JSON object
  * @param sca Pointer to SCA limits structure
@@ -138,6 +168,9 @@ STATIC bool parse_limits(const cJSON *root, module_limits_t *limits) {
         !parse_sca_limits(limits_obj, &limits->sca)) {
         return false;
     }
+
+    /* Optional: older managers won't send this object yet. */
+    parse_syscollector_containers_limits(limits_obj, &limits->syscollector_containers);
 
     limits->limits_received = true;
     return true;
@@ -780,6 +813,18 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                         agent_module_limits.syscollector.services,
                                         agent_module_limits.syscollector.browser_extensions);
                                 mdebug2("Received SCA limits: checks=%d", agent_module_limits.sca.checks);
+                                mdebug2("Received Syscollector container-inventory limits: processes=%d, ports=%d, packages=%d, users=%d, groups=%d",
+                                        agent_module_limits.syscollector_containers.processes,
+                                        agent_module_limits.syscollector_containers.ports,
+                                        agent_module_limits.syscollector_containers.packages,
+                                        agent_module_limits.syscollector_containers.users,
+                                        agent_module_limits.syscollector_containers.groups);
+                                mdebug2("Received Syscollector container-inventory limits: os_info=%d, net_iface=%d, net_proto=%d, net_addr=%d, hw=%d",
+                                        agent_module_limits.syscollector_containers.os_info,
+                                        agent_module_limits.syscollector_containers.network_iface,
+                                        agent_module_limits.syscollector_containers.network_protocol,
+                                        agent_module_limits.syscollector_containers.network_address,
+                                        agent_module_limits.syscollector_containers.hardware);
 
                                 /* Store cluster_name in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
