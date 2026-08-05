@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the LLMNR SCA check expected value on Windows Server 2016 and 2012. ([#37765](https://github.com/wazuh/wazuh/pull/37765))
 - Fixed typo in `/etc/shells` permission check on Debian 10, Ubuntu 20.04 and Ubuntu 22.04 SCA rules. ([#37770](https://github.com/wazuh/wazuh/pull/37770))
 - Fixed MITRE ATT&CK tactic IDs being used instead of technique IDs in Microsoft Graph rules. ([#37950](https://github.com/wazuh/wazuh/pull/37950))
+- Fixed FortiAuth decoders mapping to incorrect fields. ([#38195](https://github.com/wazuh/wazuh/pull/38195))
 
 ## [v4.14.7]
 
