@@ -109,10 +109,26 @@ void stop_wmodules()
     // handler sets this; on Windows shutdown flows through here instead.
     wm_shutdown_requested = 1;
 
+    // Generous relative to each module's own internal shutdown-wait timeout (e.g.
+    // syscollector's 10 s), so this join is the actual gate and not a race against it.
+    const DWORD MODULE_JOIN_TIMEOUT_MS = 20000;
+
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {
             cur_module->context->stop(cur_module->data);
+        }
+
+        if (cur_module->win_thread) {
+            if (WaitForSingleObject(cur_module->win_thread, MODULE_JOIN_TIMEOUT_MS) == WAIT_TIMEOUT) {
+                mterror(ARGV0,
+                        "Module '%s' worker thread did not exit within %lu ms after stop(); "
+                        "shutdown will proceed while it may still be running.",
+                        cur_module->context->name, MODULE_JOIN_TIMEOUT_MS);
+            }
+
+            CloseHandle(cur_module->win_thread);
+            cur_module->win_thread = NULL;
         }
     }
 }
@@ -309,12 +325,12 @@ int local_start()
             module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
             snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
 
-            w_create_thread(NULL,
-                            0,
-                            win_module_thread,
-                            start_ctx,
-                            0,
-                            (LPDWORD)&threadID2);
+            cur_module->win_thread = w_create_thread(NULL,
+                                                      0,
+                                                      win_module_thread,
+                                                      start_ctx,
+                                                      0,
+                                                      (LPDWORD)&threadID2);
         }
     }
 
