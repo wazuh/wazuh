@@ -47,8 +47,10 @@ int w_authd_validate_ciphers(const char *ciphers) {
     char *copy = strdup(ciphers);
     char *token = strtok(copy, ":");
     int result = 0;
+    int token_seen = 0;
 
     while (token) {
+        token_seen = 1;
         int valid = 0;
 
         for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
@@ -65,6 +67,11 @@ int w_authd_validate_ciphers(const char *ciphers) {
         }
 
         token = strtok(NULL, ":");
+    }
+
+    if (!token_seen) {
+        merror("Invalid TLS 1.3 cipher suite list: '%s'", ciphers);
+        result = OS_INVALID;
     }
 
     free(copy);

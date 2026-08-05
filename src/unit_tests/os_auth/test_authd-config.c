@@ -240,6 +240,16 @@ static void test_w_authd_validate_ciphers_null(void **state) {
     assert_int_equal(w_authd_validate_ciphers(NULL), OS_INVALID);
 }
 
+static void test_w_authd_validate_ciphers_colon_only(void **state) {
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite list: ':'");
+    assert_int_equal(w_authd_validate_ciphers(":"), OS_INVALID);
+}
+
+static void test_w_authd_validate_ciphers_multiple_colons_only(void **state) {
+    expect_string(__wrap__merror, formatted_msg, "Invalid TLS 1.3 cipher suite list: ':::'");
+    assert_int_equal(w_authd_validate_ciphers(":::"), OS_INVALID);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -258,6 +268,8 @@ int main(void)
         cmocka_unit_test(test_w_authd_validate_ciphers_invalid_token),
         cmocka_unit_test(test_w_authd_validate_ciphers_empty),
         cmocka_unit_test(test_w_authd_validate_ciphers_null),
+        cmocka_unit_test(test_w_authd_validate_ciphers_colon_only),
+        cmocka_unit_test(test_w_authd_validate_ciphers_multiple_colons_only),
 
     };
 
