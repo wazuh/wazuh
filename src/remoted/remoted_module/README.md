@@ -169,6 +169,7 @@ src/endpoints/
 │                            #   to the endpoint handler. Authentication only — body decoding is an
 │                            #   injected IBodyDecoder it knows nothing about
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
 └── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
@@ -231,6 +232,24 @@ src/endpoints/
   the same shape only because both are dummies; their real payloads, validation and downstream
   semantics will diverge, and separating them now makes that divergence a change to one file. Keep them
   in sync until they must not be.
+- **`POST /stateful` (`statefulEndpoint`) — inventory synchronization sessions.** Same authenticated
+  pipeline, same downstream service as `/stats`/`/config`, but the body is the agent's FlatBuffer
+  `Message{FullSession}` (`application/octet-stream`) and remoted treats it as **opaque** — no
+  identity parsing here; the sync server cross-checks the FlatBuffer's `Start.agentid` against the
+  forwarded `X-Wazuh-Agent-Id` (403 on mismatch). Two policy differences from every other endpoint:
+  - **The downstream result IS the session result**, so `postProcess` passes the sync contract's
+    statuses and bodies through verbatim (`200` ok/noop, `400`, `403`, `409` checksum mismatch,
+    `413`, `500` scan failed, `503` + `Retry-After`). The bodies are produced by the manager's own
+    sync server (never echoed agent input), which is what makes reflecting them safe; anything
+    outside that set — plus every transport failure — still collapses to a neutral `503`. Of the
+    downstream headers only a digits-only `Retry-After` on a `503` is relayed (the one header in the
+    contract); this is why `DownstreamResponse` grew a `headers` field (names lower-cased, capped by
+    `kMaxResponseHeaderBytes`).
+  - **A dedicated, longer response deadline** (`remoted.downstream_stateful_response_timeout`,
+    default 20 s) flows into the target's `responseTimeoutMs` override: sessions are validated,
+    indexed and flushed *within* the request, unlike the enqueue-style endpoints on the global 5 s
+    default. Its default budget (2+5+20 s) deliberately stays inside `http_request_timeout` (30 s);
+    raising it past that requires raising the request cap too (the facade warns at startup).
 - **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
   warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
