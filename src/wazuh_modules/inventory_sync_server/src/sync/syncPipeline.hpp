@@ -16,6 +16,7 @@
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "sync/sessionProcessor.hpp"
+#include "vd/agentInFlightRegistry.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -75,10 +76,16 @@ namespace invsync::sync
          *                   All share one IndexerSession; each is owned (and staged into) by
          *                   exactly one worker thread.
          * @param managerClusterName Cluster scope for queries and document ids.
+         * @param registry   OPTIONAL cross-lane per-agent exclusion (D22): when set, a worker
+         *                   skips (leaves queued) items of an agent the VD scan lane is applying,
+         *                   holding each dispatched item's agent until its response. Null keeps
+         *                   the standalone behavior. The registry must OUTLIVE this pipeline (the
+         *                   facade resets it last).
          */
         SyncPipeline(SyncPipelineConfig config,
                      std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
-                     std::string managerClusterName);
+                     std::string managerClusterName,
+                     std::shared_ptr<vd::AgentInFlightRegistry> registry = nullptr);
 
         ~SyncPipeline();
 
@@ -118,7 +125,12 @@ namespace invsync::sync
         };
 
         void workerLoop(std::size_t index);
+        /// Sends the response AND releases the item's agent from the registry (a release of a
+        /// never-acquired agent is a harmless no-op, so the stop() drain path may share this).
         void respond(Item& item, int status, const std::string& body);
+        /// Pops the first queued item whose agent the registry lets this lane take (front, when
+        /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
+        bool popDispatchable(Shard& shard, Item& item);
         /// 503 when the worker's connector reports unavailable (retriable), 500 otherwise.
         void respondConnectorFailure(std::vector<Item>& items, indexer::IIndexerConnectorSync& connector);
         void
@@ -126,6 +138,7 @@ namespace invsync::sync
 
         SyncPipelineConfig m_config;
         SessionProcessor m_processor;
+        std::shared_ptr<vd::AgentInFlightRegistry> m_registry;
         std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> m_connectors;
         std::vector<std::unique_ptr<Shard>> m_shards;
         std::vector<std::thread> m_workers;

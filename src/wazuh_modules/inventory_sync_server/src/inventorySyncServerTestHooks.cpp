@@ -33,6 +33,11 @@ namespace invsync::test_hooks
         invsync::InventorySyncServerFacade::instance().setIndexerConnectorAsyncFactoryForTests(std::move(factory));
     }
 
+    void setVdScannerFactoryForTests(VdScannerFactory factory)
+    {
+        invsync::InventorySyncServerFacade::instance().setVdScannerFactoryForTests(std::move(factory));
+    }
+
     void forceRetryForTests()
     {
         invsync::InventorySyncServerFacade::instance().forceRetryForTests();
