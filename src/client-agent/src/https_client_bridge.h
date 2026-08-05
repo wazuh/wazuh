@@ -18,6 +18,8 @@
  * @brief Start the HTTPS client module unconditionally. Relies on
  *        client-agent/src/main.c having already refused to start the agent
  *        (a hard exit) unless a validated server address is configured.
+ *        No-ops if a client is already running, so it is safe to call more
+ *        than once.
  */
 void w_https_client_start(void);
 

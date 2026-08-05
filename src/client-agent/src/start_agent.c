@@ -85,6 +85,10 @@ static void w_agentd_keys_init (void) {
                     sleep(delay_sleep);
                 }
             }
+
+            /* The startup call had no signing key to validate yet. No-ops if
+             * a client is already running. */
+            w_https_client_start();
         }
         /* If autoenrollment is disabled, stop daemon */
         else {

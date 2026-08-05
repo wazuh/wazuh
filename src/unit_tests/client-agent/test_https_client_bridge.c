@@ -466,9 +466,8 @@ static void test_missing_key_refuses_to_start(void **state)
     keys.keyentries[0]->raw_key = NULL;
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
-    expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
-                  "(expected 32, 48 or 64 hex characters); refusing to start.");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: no agent key yet; deferring start until enrollment provides one.");
 
     w_https_client_start();
     /* No hc_create expectation: must not be reached. */
@@ -482,7 +481,7 @@ static void test_wrong_length_key_refuses_to_start(void **state)
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
+                  "https_client: agent key is not valid for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
 
     w_https_client_start();
@@ -497,7 +496,7 @@ static void test_non_hex_key_refuses_to_start(void **state)
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: agent key is missing or has an invalid length for AES-CMAC "
+                  "https_client: agent key is not valid for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
 
     w_https_client_start();
@@ -576,6 +575,22 @@ static void start_client_successfully(void)
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
     will_return(__wrap_hc_start, true);
     w_https_client_start();
+}
+
+/* start_agent.c calls w_https_client_start() again after enrollment: no second
+ * handle may be created (cmocka fails on any unexpected hc_create/hc_start). */
+static void test_second_start_call_is_a_noop_while_already_running(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "https_client: already running; ignoring redundant start request.");
+
+    w_https_client_start();
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
 }
 
 static void test_reenroll_callback_disabled_enrollment_logs_error_only(void **state)
@@ -1918,6 +1933,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_valid_48_char_key_is_accepted, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_create_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_hc_start_failure_destroys_and_logs, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_second_start_call_is_a_noop_while_already_running, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),

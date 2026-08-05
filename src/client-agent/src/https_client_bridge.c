@@ -1359,13 +1359,14 @@ static bool bridge_build_config(hc_config_t *config)
     }
 
     const char *raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
-    /* The NULL test is redundant with bridge_key_is_valid()'s own, and is here
-     * so it is visible at the point of use: the static analyzer does not inline
-     * the validator (its hex loop exhausts the inlining budget), so without a
-     * local test it explores a path where the key is NULL and reports the
-     * strncpy() below, plus the keys.keyentries[0]->id read above it. */
-    if (raw_key == NULL || !bridge_key_is_valid(raw_key)) {
-        merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
+    /* Expected on a first boot: enrollment has not produced a key yet, and the
+     * caller retries once it has. */
+    if (raw_key == NULL || *raw_key == '\0') {
+        mdebug1("https_client: no agent key yet; deferring start until enrollment provides one.");
+        return false;
+    }
+    if (!bridge_key_is_valid(raw_key)) {
+        merror("https_client: agent key is not valid for AES-CMAC "
                "(expected 32, 48 or 64 hex characters); refusing to start.");
         return false;
     }
@@ -1498,14 +1499,23 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
  * validated address; the port always has a default (DEFAULT_REMOTE_PORT)
  * when unspecified. HTTPS is the only transport on offer, so there is
- * nothing left to gate. */
+ * nothing left to gate.
+ *
+ * Called at agentd startup and again after the initial enrollment, 
+ * which is when a first-boot agent finally has a key to
+ * validate. No-ops when a client is already running. */
 void w_https_client_start(void)
 {
-    minfo("https_client: starting.");
-
     w_mutex_lock(&g_https_client_lock);
+    if (g_https_client) {
+        w_mutex_unlock(&g_https_client_lock);
+        mdebug2("https_client: already running; ignoring redundant start request.");
+        return;
+    }
     g_https_client_stopping = false;
     w_mutex_unlock(&g_https_client_lock);
+
+    minfo("https_client: starting.");
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
