@@ -28,7 +28,7 @@ remoted_module/
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
-    └── send_agent_json.py          # CLI to sign + POST /stats and /config, and verify the echo
+    └── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
@@ -158,7 +158,7 @@ src/endpoints/
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler
 ├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
-├── statsEndpoint.hpp/.cpp    # /stats policy (DUMMY): forwards to modulesd's inventory sync server
+├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 └── configEndpoint.hpp/.cpp  # /config policy (DUMMY): near-duplicate of statsEndpoint, on purpose
 └── downloadEndpoint.hpp/.cpp  # /download policy: request grammar + resource resolution + file streaming
 ```
@@ -874,11 +874,12 @@ target/body forwarded, post-processor result delivered + slot released, keep-ali
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
 `validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
 `makeHandler()` short-circuits before `forward()` on a validation failure and still forwards +
-post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two dummy
-endpoints, one file each mirroring their duplicated implementations: the target's socket/path/
-content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the full
-`postProcess` mapping table, **that a success passes the enriched body through and a downstream error
-body is NOT reflected**, and that an empty body answers 400 without ever reaching `forward()`),
+post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two
+forwarding endpoints, one file each mirroring their near-duplicate implementations: the target's
+socket/path/content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the
+full `postProcess` mapping table, **that no downstream body is ever reflected to an agent** — `/stats`
+answers a fixed `{}`, `/config` still passes its dummy's enriched echo through — and that an empty body
+answers 400 without ever reaching `forward()`),
 `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
 **and that caller-supplied headers are actually serialized onto the wire without displacing
 Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
@@ -909,25 +910,27 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
 
 ### Manual / end-to-end (`tools/send_agent_json.py`)
 
-Same signing, for the two dummy endpoints — `POST /stats` and `POST /config`. This one is the
-end-to-end check of the *whole* forwarding path, because those endpoints echo the document back: a
-successful run prints it with `wazuh.agent.id` and `@timestamp` added, which only happens if the UDS
-hop and the `X-Wazuh-Agent-Id` header propagation both worked.
+Same signing, for `POST /stats` and `POST /config`. This one is the end-to-end check of the *whole*
+forwarding path.
 
-**It verifies that, not just the status code.** A `200` whose body is missing either stamp, or whose
-`wazuh.agent.id` is not the authenticated agent, is reported as a FAIL — otherwise a server that
-answered `200` without enriching anything would look like a pass.
+**It verifies the body, not just the status code**, and the two endpoints prove themselves
+differently. `/config` is still a dummy that echoes the document back, so a successful run prints it
+with `wazuh.agent.id` and `@timestamp` added — which only happens if the UDS hop and the
+`X-Wazuh-Agent-Id` header propagation both worked, and a `200` missing either stamp is a FAIL.
+`/stats` indexes instead, so its `200` carries the protocol's empty acknowledgment and a body with
+anything in it is a FAIL; the document itself is read back from the indexer at
+`wazuh-agent-stats/_doc/<agent_id>`.
 
 Requires `wazuh-manager-modulesd` running with the `inventory_sync_server` module; without it every
 forwarded request answers `503` and the tool says so explicitly (distinct from remoted itself being
 unreachable, which it also reports separately).
 
 ```bash
-python3 tools/send_agent_json.py                          # one signed /stats -> 200 + enriched echo
-python3 tools/send_agent_json.py --endpoint config        # same, against /config
-python3 tools/send_agent_json.py --body '{"cpu":42}'      # must be a JSON OBJECT for a 200
+python3 tools/send_agent_json.py                          # one signed /stats -> 200 + {}
+python3 tools/send_agent_json.py --endpoint config        # same, against /config -> enriched echo
+python3 tools/send_agent_json.py --body '{"cpu":42}'      # /stats also needs a `modules` object
 python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
-python3 tools/send_agent_json.py --all                    # 13 scenarios x BOTH endpoints
+python3 tools/send_agent_json.py --all                    # 14 scenarios x BOTH endpoints
 # options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
 ```
 
