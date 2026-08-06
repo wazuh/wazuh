@@ -446,8 +446,8 @@ TEST_F(InventorySyncServerModuleTest, AnAgentIdThatIsNotUtf8IsRejectedRatherThan
     // the id-embedding/serialization step this test means to exercise -- an invalid body would
     // already answer 400 on its own, for the wrong reason.
     for (const auto& [target, body] :
-        {std::pair {"/stats", std::string {R"({"cpu":42})"}},
-         std::pair {"/config", std::string {R"([{"module":"agent","config":{"cpu":42}}])"}}})
+         {std::pair {"/stats", std::string {R"({"cpu":42})"}},
+          std::pair {"/config", std::string {R"([{"module":"agent","config":{"cpu":42}}])"}}})
     {
         const auto response = sendModuleRequest(path, "POST", target, body, invalidId);
         EXPECT_EQ(400, response.status) << target << " must not answer 200 with an unserializable id";
