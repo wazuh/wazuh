@@ -405,11 +405,10 @@ TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModule
         EXPECT_NE(std::string::npos, response.body.find("test-node")) << "/stats -> " << response.body;
     }
 
-    // POST /config -- indexes for real now: an array of {module, config} pairs in, a bare {}
+    // POST /config -- indexes for real now: a modules-keyed object in, a bare {}
     // acknowledgment out (not an echo of the enriched document).
     {
-        const auto response =
-            sendModuleRequest(path, "POST", "/config", R"([{"module":"agent","config":{"cpu":42}}])", "007");
+        const auto response = sendModuleRequest(path, "POST", "/config", R"({"modules":{"agent":{"cpu":42}}})", "007");
         ASSERT_EQ(200, response.status) << "/config -> " << response.body;
         EXPECT_EQ("{}", response.body);
     }
@@ -441,13 +440,12 @@ TEST_F(InventorySyncServerModuleTest, AnAgentIdThatIsNotUtf8IsRejectedRatherThan
 
     const std::string invalidId = "00\xff"
                                   "7";
-    // Each body must be valid for its endpoint's shape (an object for /stats, an array of
-    // {module, config} for /config) so the request gets PAST body validation and actually reaches
+    // Each body must be valid for its endpoint's shape (an object for both, keyed by module for
+    // /config and /stats) so the request gets PAST body validation and actually reaches
     // the id-embedding/serialization step this test means to exercise -- an invalid body would
     // already answer 400 on its own, for the wrong reason.
-    for (const auto& [target, body] :
-         {std::pair {"/stats", std::string {R"({"cpu":42})"}},
-          std::pair {"/config", std::string {R"([{"module":"agent","config":{"cpu":42}}])"}}})
+    for (const auto& [target, body] : {std::pair {"/stats", std::string {R"({"cpu":42})"}},
+                                       std::pair {"/config", std::string {R"({"modules":{"agent":{"cpu":42}}})"}}})
     {
         const auto response = sendModuleRequest(path, "POST", target, body, invalidId);
         EXPECT_EQ(400, response.status) << target << " must not answer 200 with an unserializable id";
