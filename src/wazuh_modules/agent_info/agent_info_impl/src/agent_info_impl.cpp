@@ -93,6 +93,18 @@ static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
         }
     }};
 
+// Indices tagged with agent metadata (cluster_name, cluster_node, groups) that are not owned by
+// any single coordinatable module -- wazuh-agent-config/wazuh-agent-stats are written by the
+// manager's /config and /stats endpoints (inventory_sync_server's configEndpoint/statsEndpoint)
+// from the periodic push in https_client's reporterStream, not by a wodle this module ever pauses.
+// A metadata/groups change must still re-tag them, so they are added unconditionally alongside
+// whatever COORDINATION_MODULES were actually paused this cycle.
+static const std::vector<std::string> AGENT_LEVEL_INDICES
+{
+    "wazuh-agent-config",
+    "wazuh-agent-stats"
+};
+
 const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_metadata ("
                                            "agent_id          TEXT NOT NULL PRIMARY KEY,"
                                            "agent_name        TEXT,"
@@ -1941,6 +1953,11 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
             }
         }
 
+        // Not owned by any single coordinatable module, so never reached via the loop above --
+        // a metadata/groups change still needs to re-tag them regardless of which modules were
+        // actually paused this cycle.
+        indicesToSync.insert(indicesToSync.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
+
         if (m_spSyncProtocol)
         {
             SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
@@ -2526,6 +2543,8 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         {
             indicesToCheck.insert(indicesToCheck.end(), indices.begin(), indices.end());
         }
+
+        indicesToCheck.insert(indicesToCheck.end(), AGENT_LEVEL_INDICES.begin(), AGENT_LEVEL_INDICES.end());
 
         // Perform integrity check - no globalVersion needed for CHECK modes
         SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
