@@ -334,7 +334,8 @@ namespace
         void addRoute(Method method,
                       const std::string& path,
                       remoted::http::RouteHandler handler,
-                      bool /*countAgainstBudget*/) override
+                      bool /*countAgainstBudget*/,
+                      remoted::http::ResponseMode /*mode*/) override
         {
             m_routes[{method, path}] = std::move(handler);
         }
