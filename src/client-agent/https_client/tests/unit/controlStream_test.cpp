@@ -142,8 +142,8 @@ TEST_F(ControlStreamTest, FastFollowupArmedOnceAfterStartupAccepted)
     .WillOnce(Return(response(TransportStatus::Ok, 200, R"({})")));
 
     m_stream.step(m_waiter); // Startup accepted: hashes/tasks only arrive on the
-                             // Notify that follows, so the caller shouldn't idle a
-                             // full notify cycle before sending one.
+    // Notify that follows, so the caller shouldn't idle a
+    // full notify cycle before sending one.
     EXPECT_TRUE(m_stream.consumeFastFollowup());
     EXPECT_FALSE(m_stream.consumeFastFollowup()); // Consume-once: not re-armed on read.
 
@@ -515,15 +515,19 @@ TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
     const std::string notifySame = R"({"agent":{"groups":["default"]}})";
     const std::string notifyChanged = R"({"agent":{"groups":["default","test"]}})";
 
-    testing::InSequence seq;
-    EXPECT_CALL(m_sink, onAgentGroups("default"));
-    EXPECT_CALL(m_sink, onAgentGroups("default,test"));
-
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))             // Startup.
     .WillOnce(Return(response(TransportStatus::Ok, 200, notifyDefault)))    // First report.
     .WillOnce(Return(response(TransportStatus::Ok, 200, notifySame)))       // Unchanged: no re-fire.
     .WillOnce(Return(response(TransportStatus::Ok, 200, notifyChanged)));   // Changed: re-fires.
+
+    {
+        // Scoped so only the two reports are ordered: an InSequence covering the
+        // transport too would demand every perform() happen after them.
+        testing::InSequence seq;
+        EXPECT_CALL(m_sink, onAgentGroups("default"));
+        EXPECT_CALL(m_sink, onAgentGroups("default,test"));
+    }
 
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify: first report.

@@ -381,12 +381,14 @@ std::string ControlStream::computeSettingsHash(const std::string& startupBody) c
     if (!parsed.is_discarded() && parsed.is_object())
     {
         const auto limits = parsed.find("limits");
+
         if (limits != parsed.end())
         {
             envelope["limits"] = *limits;
         }
 
         const auto cluster = parsed.find("cluster");
+
         if (cluster != parsed.end())
         {
             envelope["cluster"] = *cluster;
