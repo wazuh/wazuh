@@ -17,23 +17,74 @@ namespace
 {
     constexpr uint32_t STATELESS_MAX_ATTEMPTS = 5;
 
-    /// The H metadata line that opens every /stateless body (#37732). Built
-    /// through the JSON library rather than concatenated, so an agent id
+    /// Builds the H metadata line that opens every /stateless body (#37732).
+    ///
+    /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
+    /// validatePayloadIdentity() reads exactly that pointer to cross-check the
+    /// payload against the authenticated connection, so this key must never
+    /// move or disappear. When collectHost is set and returns a parseable
+    /// JSON object (see bridge_on_collect_stateless_host()), its "agent" keys
+    /// (name/version/groups/host, already nested the way the manager's
+    /// strict_allow_templates wazuh.* mapping requires) are merged into
+    /// wazuh.agent alongside "id", and its "cluster" key is copied in as a
+    /// sibling of "agent" -- so cluster_name here is read from the exact same
+    /// agent_metadata_t the Start table's cluster_name comes from on
+    /// /stateful, not re-derived. This nesting is not cosmetic: the indexer
+    /// rejects (strict_dynamic_mapping_exception) any wazuh.* path it doesn't
+    /// already map, so groups/host/os MUST stay nested under agent exactly as
+    /// bridge_on_collect_stateless_host() builds them -- do not "flatten" this
+    /// merge to make it simpler.
+    ///
+    /// Built through the JSON library rather than concatenated, so a value
     /// carrying a quote, a backslash or a newline cannot escape the string it
-    /// sits in -- controlStream.cpp builds its payloads the same way. The line
-    /// is fixed for the life of the stream and is built once: its length is
-    /// needed on every submitted event, not just on every flush.
-    std::string headerLineFor(const std::string& agentId)
+    /// sits in -- controlStream.cpp builds its payloads the same way.
+    std::string buildHeaderLine(const std::string& agentId,
+                                const std::function<std::string()>& collectHost)
     {
+        nlohmann::json extra;
+
+        if (collectHost)
+        {
+            auto parsed = nlohmann::json::parse(collectHost(), nullptr, false);
+
+            if (!parsed.is_discarded() && parsed.is_object())
+            {
+                extra = std::move(parsed);
+            }
+        }
+
+        nlohmann::json agent;
+        agent["id"] = agentId;
+
+        if (const auto it = extra.find("agent"); it != extra.end() && it->is_object())
+        {
+            for (auto& [key, value] : it->items())
+            {
+                agent[key] = std::move(value);
+            }
+        }
+
+        nlohmann::json wazuh;
+        wazuh["agent"] = std::move(agent);
+
+        // cluster is agent's sibling under wazuh, not nested under it -- see
+        // append_header()'s cJSON_AddItemToObject(wazuh, "cluster", cluster)
+        // in remoted/src/secure.c, the shape this mirrors.
+        if (const auto it = extra.find("cluster"); it != extra.end())
+        {
+            wazuh["cluster"] = std::move(*it);
+        }
+
         nlohmann::json header;
-        header["wazuh"]["agent"]["id"] = agentId;
+        header["wazuh"] = std::move(wazuh);
         return "H " + header.dump() + "\n";
     }
 }
 
 StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& performer,
                                  const ISigner& signer, IClock& clock, IRandom& random,
-                                 ICallbackSink& sink, AuthGate& authGate)
+                                 ICallbackSink& sink, AuthGate& authGate,
+                                 std::function<std::string()> collectHost)
     : m_config(config)
     , m_clock(clock)
     , m_authGate(authGate)
@@ -42,7 +93,8 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
     , m_sink(sink)
-    , m_headerLine(headerLineFor(config.agentId))
+    , m_collectHost(std::move(collectHost))
+    , m_headerLine(buildHeaderLine(config.agentId, m_collectHost))
     , m_lastFlush(clock.steadyNow())
     , m_ladder(config.bufferWarnLevel, config.bufferNormalLevel, config.bufferFloodToleranceS)
 {
@@ -129,15 +181,22 @@ bool StatelessStream::flushDue(bool force) const
 bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts)
 {
     uint64_t eventBudget;
+    std::string headerLine;
     {
         std::lock_guard<std::mutex> lock(m_stateMutex);
+        // Refreshed here, not per event: cluster name/node and groups can only
+        // arrive after the first /control handshake, which may postdate this
+        // stream's construction. Once per flush is enough to pick that up
+        // without paying a metadata_provider read on every submit().
+        refreshHeaderLineLocked();
+        headerLine = m_headerLine;
         eventBudget = eventBytesBudgetLocked();
     }
     const auto snapshot = m_accumulator.snapshot(eventBudget);
 
     HttpRequestSpec spec;
     spec.target = "/stateless";
-    const std::string body = m_headerLine + snapshot.body;
+    const std::string body = headerLine + snapshot.body;
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
     spec.timeoutMs = timeoutMs;
@@ -265,4 +324,9 @@ uint64_t StatelessStream::eventBytesBudgetLocked() const
     const uint64_t requestBudget = m_payload.effectiveBytes();
     const size_t headerBytes = m_headerLine.size();
     return requestBudget > headerBytes ? requestBudget - headerBytes : 0;
+}
+
+void StatelessStream::refreshHeaderLineLocked()
+{
+    m_headerLine = buildHeaderLine(m_config.agentId, m_collectHost);
 }

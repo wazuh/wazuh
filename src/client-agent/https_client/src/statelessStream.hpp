@@ -23,6 +23,7 @@
 #include "sysSeams.hpp"
 
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <string>
 
@@ -44,8 +45,13 @@ class StatelessStream final
             bool shouldWakeSender;
         };
 
+        /// @param collectHost Pull-source for the H line's host block (agent name/version,
+        ///        hostname, architecture, os.*, cluster name/node, groups -- see
+        ///        bridge_on_collect_stateless_host()). Optional: unset (the default) means the H
+        ///        line carries only wazuh.agent.id, as before this field existed.
         StatelessStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                        IClock& clock, IRandom& random, ICallbackSink& sink, AuthGate& authGate);
+                        IClock& clock, IRandom& random, ICallbackSink& sink, AuthGate& authGate,
+                        std::function<std::string()> collectHost = {});
 
         /// Intake entry point (from agentd's EventForward seam). Emits a buffer
         /// level change if the append crosses a ladder threshold and tells the
@@ -70,6 +76,10 @@ class StatelessStream final
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot);
         void publishLevelLocked(bool eventDropped);
         uint64_t eventBytesBudgetLocked() const;
+        /// Recomputes m_headerLine from the freshest available host metadata. Caller must hold
+        /// m_stateMutex: the line is read from other threads (submit()'s budget check) and this
+        /// keeps that read race-free without making every read take the collectHost round trip.
+        void refreshHeaderLineLocked();
 
         const ModuleConfig& m_config;
         IClock& m_clock;
@@ -79,7 +89,15 @@ class StatelessStream final
         Backoff m_backoff;
         RetrySender m_sender;
         ICallbackSink& m_sink;
-        const std::string m_headerLine; ///< Fixed H line prefixed to every batch.
+        /// Pull-source for the H line's host block; see the constructor parameter of the same name.
+        const std::function<std::string()> m_collectHost;
+        /// H line prefixed to every batch. Refreshed under m_stateMutex at the start of each flush
+        /// (not per event) so metadata that only becomes available after construction -- cluster
+        /// name/node arrive from the manager's own /control handshake, which can land after this
+        /// stream starts sending -- is picked up without restarting the stream. A one-flush-old
+        /// value is used for the budget check in between flushes; harmless, since the accumulator
+        /// self-corrects at the very next flush either way.
+        std::string m_headerLine;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::chrono::steady_clock::time_point m_lastFlush;
         mutable std::mutex m_stateMutex;

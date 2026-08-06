@@ -18,11 +18,15 @@
 
 namespace
 {
-    /// Wraps the C on_collect_host callback as the pull-source ControlStream
-    /// uses for the Notify host block. Returns "" when the callback is unset.
-    std::function<std::string()> makeHostCollector(const hc_callbacks_t& callbacks)
+    /// Wraps a `void(char*, size_t, void*)`-shaped C metadata callback as the
+    /// `std::function<std::string()>` pull-source both ControlStream (Notify's
+    /// host block) and StatelessStream (the H line's host block) take. Returns
+    /// "" when fn is null, so an unset callback degrades to "no extra metadata"
+    /// rather than a crash.
+    std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*),
+                                                        void* userData)
     {
-        return [fn = callbacks.on_collect_host, userData = callbacks.user_data]() -> std::string
+        return [fn, userData]() -> std::string
         {
             if (fn == nullptr)
             {
@@ -34,6 +38,20 @@ namespace
             buffer[sizeof(buffer) - 1] = '\0';
             return std::string(buffer);
         };
+    }
+
+    std::function<std::string()> makeHostCollector(const hc_callbacks_t& callbacks)
+    {
+        return makeMetadataCollector(callbacks.on_collect_host, callbacks.user_data);
+    }
+
+    /// Pull-source for the /stateless H line's host block -- a separate C
+    /// callback from on_collect_host (Notify's), so the two endpoints' host
+    /// blocks can carry different fields and evolve independently without
+    /// either risking the other's already-shipped contract.
+    std::function<std::string()> makeStatelessHostCollector(const hc_callbacks_t& callbacks)
+    {
+        return makeMetadataCollector(callbacks.on_collect_stateless_host, callbacks.user_data);
     }
 } // namespace
 
@@ -47,7 +65,8 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_configHash(m_config.configChecksum)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_collectors(callbacks)
-    , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate)
+    , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate,
+                  makeStatelessHostCollector(callbacks))
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
                  m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,

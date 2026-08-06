@@ -14,6 +14,8 @@
 #include "mockHttpPerformer.hpp"
 #include "statelessStream.hpp"
 
+#include "external/nlohmann/json.hpp"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -37,6 +39,21 @@ namespace
         value.httpCode = code;
         value.retryAfterSeconds = retryAfter;
         return value;
+    }
+
+    /// Parses the "wazuh" object out of a sent body's H line, the same slice
+    /// statelessEndpoint.cpp's headerLineJson() takes on the manager side
+    /// ("H " prefix, JSON up to the first '\n').
+    nlohmann::json parseWazuhHeader(const std::string& sentBody)
+    {
+        constexpr std::string_view prefix = "H ";
+        const auto start = sentBody.find(prefix);
+        EXPECT_NE(std::string::npos, start) << "sent body has no H line: " << sentBody;
+        const auto jsonStart = start + prefix.size();
+        const auto newline = sentBody.find('\n', jsonStart);
+        const auto jsonText = sentBody.substr(
+            jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
+        return nlohmann::json::parse(jsonText)["wazuh"];
     }
 
     class StatelessStreamTest : public ::testing::Test
@@ -142,6 +159,144 @@ TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
     stream.tick(m_waiter, true);
 
     EXPECT_EQ(0u, sentBody.find(R"(H {"wazuh":{"agent":{"id":"0\"01"}}})"));
+}
+
+TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
+{
+    // agent.id always comes from ModuleConfig, never from collectHost -- even
+    // though collectHost's "agent" object below carries its own name/version,
+    // it must not be able to override id. groups/host/os nest under agent
+    // (not as siblings of it) because that is the ONLY shape the indexer's
+    // strict_allow_templates wazuh.* mapping accepts -- it mirrors the legacy
+    // manager's own append_header() (remoted/src/secure.c) exactly.
+    const std::string hostJson =
+        R"({"agent":{"name":"myagent","version":"5.0.0","groups":["g1","g2"],)"
+        R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
+        R"("cluster":{"name":"c1","node":"n1"}})";
+    StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
+                            m_sink,    m_authGate, [&hostJson] { return hostJson; }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto wazuh = parseWazuhHeader(sentBody);
+    const auto& agent = wazuh.at("agent");
+    EXPECT_EQ("001", agent.at("id").get<std::string>());
+    EXPECT_EQ("myagent", agent.at("name").get<std::string>());
+    EXPECT_EQ("5.0.0", agent.at("version").get<std::string>());
+    EXPECT_EQ("h1", agent.at("host").at("hostname").get<std::string>());
+    EXPECT_EQ("x86_64", agent.at("host").at("architecture").get<std::string>());
+    ASSERT_TRUE(agent.at("groups").is_array());
+    EXPECT_EQ(2u, agent.at("groups").size());
+    EXPECT_EQ("g1", agent.at("groups")[0].get<std::string>());
+    EXPECT_EQ("g2", agent.at("groups")[1].get<std::string>());
+    // The invariant the feature exists for: this must be byte-identical to
+    // whatever the Start table's cluster_name carries on /stateful, because
+    // both read the same agent_metadata_t.cluster_name. cluster is agent's
+    // sibling under wazuh, not nested under agent.
+    EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
+    EXPECT_EQ("n1", wazuh.at("cluster").at("node").get<std::string>());
+}
+
+TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenCollectHostIsEmpty)
+{
+    // Mirrors bridge_on_collect_stateless_host() writing "" when
+    // metadata_provider has nothing yet (e.g. before the first /control
+    // handshake): the H line must still be well-formed, carrying only id.
+    StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
+                            m_sink,    m_authGate, [] { return std::string(); }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
+    EXPECT_FALSE(wazuh.at("agent").contains("host"));
+    EXPECT_FALSE(wazuh.at("agent").contains("groups"));
+    EXPECT_FALSE(wazuh.contains("cluster"));
+}
+
+TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
+{
+    // A torn shared-memory read or an unexpected shape must degrade to
+    // "agent.id only", never corrupt the H line or crash the stream.
+    StatelessStream stream {m_config,  m_performer, m_signer,  m_clock, m_random,
+                            m_sink,    m_authGate, [] { return std::string("not json"); }};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event"), 5);
+    stream.tick(m_waiter, true);
+
+    const auto wazuh = parseWazuhHeader(sentBody);
+    EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
+    EXPECT_FALSE(wazuh.at("agent").contains("host"));
+}
+
+TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruction)
+{
+    // Cluster identity typically arrives only after the first /control
+    // handshake, which can postdate this stream's construction -- so the H
+    // line must reflect collectHost's CURRENT return value at each flush, not
+    // whatever was available when the stream was built.
+    std::string clusterName = "";
+    StatelessStream stream {
+        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+        [&clusterName]
+        {
+            return clusterName.empty() ? std::string() : R"({"cluster":{"name":")" + clusterName + "\"}}";
+        }};
+
+    std::string firstBody;
+    std::string secondBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        firstBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        secondBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    stream.submit(reinterpret_cast<const uint8_t*>("event1"), 6);
+    stream.tick(m_waiter, true); // No cluster identity yet.
+
+    clusterName = "c1"; // The handshake just landed.
+    stream.submit(reinterpret_cast<const uint8_t*>("event2"), 6);
+    stream.tick(m_waiter, true);
+
+    EXPECT_FALSE(parseWazuhHeader(firstBody).contains("cluster"));
+    EXPECT_EQ("c1", parseWazuhHeader(secondBody).at("cluster").at("name").get<std::string>());
 }
 
 TEST_F(StatelessStreamTest, SuccessConsumesTheSentPrefix)
