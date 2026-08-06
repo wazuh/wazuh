@@ -14,6 +14,8 @@
 #include "os_net.h"
 #include "state.h"
 
+/** @brief Set by reload_handler() on SIGUSR1; polled by the main loop to reconnect the
+ *         execd queue and release the startup gate after wazuh-control has completed a reload. */
 bool needs_config_reload = false;
 void reload_handler(int signum) {
     if (signum == SIGUSR1) {
