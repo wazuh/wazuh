@@ -16,6 +16,7 @@
 | [#35579](https://github.com/wazuh/wazuh/issues/35579) | Added manager watermarks. |
 | [#37052](https://github.com/wazuh/wazuh/issues/37052) | Added byte-based capacity limits to wazuh-manager-remoted. |
 | [#37706](https://github.com/wazuh/wazuh/issues/37706) | Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. |
+| [#38023](https://github.com/wazuh/wazuh/issues/38023) | Added the `POST /config` HTTPS endpoint, which receives an agent's reported configuration and indexes it into `wazuh-agent-config`. |
 
 #### Changed
 

@@ -14,7 +14,7 @@ from io import StringIO
 from os import path as os_path
 from os import remove
 from types import MappingProxyType
-from typing import List, Optional, Union
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -923,17 +923,15 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(component: str, configuration: str, agent_id: Optional[str] = None) -> dict:
-    """Get server or agent component active configuration.
+def get_active_configuration(component: str, configuration: str) -> dict:
+    """Get manager component active configuration.
 
     Parameters
     ----------
     component : str
-        Selected agent's component.
+        Selected component.
     configuration : str
         Configuration to get, written on disk.
-    agent_id : Optional[str], default None
-        Agent ID. If None, gets manager configuration.
 
     Raises
     ------
@@ -948,14 +946,14 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
     WazuhInternalError(1118)
         If the socket is not able to receive a response.
     WazuhError(1117)
-        If there's no such file or directory in agent node, or the socket cannot send the request.
+        If there's no such file or directory, or the socket cannot send the request.
     WazuhError(1116)
         If the reply from the node contains an error.
 
     Returns
     -------
     dict
-        The active configuration the agent is currently using.
+        The active configuration the manager is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
@@ -1040,37 +1038,7 @@ def get_active_configuration(component: str, configuration: str, agent_id: Optio
 
             return response['error'], response['data']
 
-    def get_active_configuration_agent():
-        """Get agent active configuration"""
-        # Always communicate with remote socket
-        dest_socket = common.REMOTED_SOCKET
-
-        # Simple socket message
-        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
-
-        # Socket connection
-        try:
-            s = wazuh_socket.WazuhSocket(dest_socket)
-        except WazuhInternalError:
-            raise
-        except Exception as unhandled_exc:
-            raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
-        except ValueError:
-            raise WazuhInternalError(1118, extra_message="Data could not be received")
-        finally:
-            s.close()
-
-        return rec_msg_ok, rec_msg
-
-    rec_error, rec_data = get_active_configuration_agent() if agent_id is not None else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data

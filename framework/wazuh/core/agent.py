@@ -11,7 +11,7 @@ from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
 
-from wazuh.core import common, configuration, stats
+from wazuh.core import common, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
@@ -1255,45 +1255,6 @@ class Agent:
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (
             " Agent reassigned to group default." if set_default else ""
-        )
-
-    def get_config(
-        self, component: str = "", config: str = "", agent_version: str = ""
-    ) -> dict:
-        """Read agent's loaded configuration.
-
-        Parameters
-        ----------
-        component : str
-            Selected component of the agent configuration.
-        config : str
-            Agent's active configuration to get.
-        agent_version : str
-            Agent version to compare with the required version. The format is vX.Y.Z or Wazuh vX.Y.Z.
-
-        Raises
-        ------
-        WazuhError(1703)
-            Action not available for manager (000).
-        WazuhError(1735)
-            The agent version is older than the minimum required version.
-
-        Returns
-        -------
-        dict
-            Agent's active configuration.
-        """
-        if self.id == '000':
-            raise WazuhError(1703)
-
-        if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
-            raise WazuhInternalError(
-                1735,
-                extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}",
-            )
-
-        return configuration.get_active_configuration(
-            agent_id=self.id, component=component, configuration=config
         )
 
     def get_stats(self, component: str) -> dict:

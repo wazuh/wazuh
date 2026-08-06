@@ -1016,44 +1016,6 @@ async def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
-    assert result == {"test": "conf"}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method raises expected exceptions."""
-    # Invalid component
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1101 .*"):
-        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
-
-    # Component or config is none
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1307 .*"):
-        agent.get_config('com', None, 'Wazuh v4.0.0')
-        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
-
-    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
-
-    # Action not available for manager (000)
-    agent = Agent('000')
-    with pytest.raises(WazuhError, match=".* 1703 .*"):
-        agent.get_config('auth', 'auth', 'Wazuh v4.0.0')
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
 def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     """Test get_stats method returns expected message."""
     agent = Agent('001')

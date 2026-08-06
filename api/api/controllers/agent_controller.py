@@ -16,7 +16,6 @@ from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -285,49 +284,6 @@ async def restart_agents_by_node(node_id: str, pretty: bool = False,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                           component: str = None, **kwargs: dict) -> ConnexionResponse:
-    """Get agent active configuration.
-
-    Returns the active configuration the agent is currently using. This can be different from the configuration present
-    in the configuration file, if it has been modified and the agent has not been restarted yet.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID.
-    component : str
-        Selected agent's component which configuration is got.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the agent configuration.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component,
-                'config': kwargs.get('configuration', None)
-                }
-
-    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
-
-    dapi = DistributedAPI(f=agent.get_agent_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -24,13 +24,36 @@ namespace invsync::endpoints::config
     /**
      * @brief The agent configuration ingress endpoint, reached through remoted's `POST /config`.
      *
-     * DUMMY. It does the full request/response cycle and the enrichment, but nothing durable: the
-     * document is parsed, checked to be a JSON object, stamped with `wazuh.agent.id`, `@timestamp`,
-     * `wazuh.cluster.name` and `wazuh.cluster.node`, echoed back, and then DISCARDED. Nothing is
-     * indexed or stored.
+     * The body is a JSON array of `{"module": <string>, "config": <object>}` pairs -- one per agent
+     * module (e.g. `fim`, `logcollector`). Each valid element is reduced to exactly those two keys
+     * (anything else the agent sent is dropped) and wrapped into the document indexed under
+     * `wazuh-agent-config`:
      *
-     * @note A deliberate near-duplicate of statsEndpoint -- see the note there. Identical today only
-     * because both are dummies; keep them in sync until their real payloads force them apart.
+     * @code
+     * {
+     *   "state": { "modified_at": "...", "document_version": 1 },
+     *   "wazuh": {
+     *     "schema": { "version": "1.0.0" },
+     *     "agent": { "id": "<authenticated id>",
+     *                "configuration": { "modules": ["fim", "logcollector", ...],
+     *                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
+     *     "cluster": { "name": "...", "node": "..." }
+     *   }
+     * }
+     * @endcode
+     *
+     * `content` is an OBJECT keyed by module name, not the array the agent sends -- a module is
+     * unique per report, so this makes "does agent X have module Y" a single field lookup. `modules`
+     * is derived from `content`'s keys so the two can never drift apart. The template also declares
+     * an explicit per-module sub-schema under `content` (`content.fim.syscheck.frequency`, etc.).
+     *
+     * The `wazuh-agent-config` index template is `dynamic: false`: a field outside that per-module
+     * sub-schema (an unrecognized module, or a legacy/undeclared key within a known one) is still
+     * written and kept in `_source`, just not indexed for search -- so this endpoint only sanitizes
+     * the outer `{module, config}` shape, never the fields inside `config` itself.
+     *
+     * The document is indexed under the agent id as its `_id`, via a plain upsert: each report
+     * replaces the previous one for that agent, there is no separate delete step.
      *
      * @warning Do not introduce a local or parameter named `config` inside this unit: it would shadow
      * this namespace and make unqualified lookups inside it resolve to the variable.
@@ -73,11 +96,6 @@ namespace invsync::endpoints::config
 
     /**
      * @brief Build the endpoint's route handler.
-     *
-     * The returned handler replies inline. When real configuration handling lands it may instead move the
-     * responder onto a queue and return without answering -- which is what the transport's
-     * deferred-response contract exists to support, and why the signature already takes a responder
-     * rather than returning a response.
      *
      * @param connector The async indexer connector, held WEAKLY and locked at each point of use.
      *

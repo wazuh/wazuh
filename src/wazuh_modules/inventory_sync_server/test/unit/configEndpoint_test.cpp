@@ -14,9 +14,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <json.hpp>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -78,18 +80,25 @@ namespace
             return m_available;
         }
 
+        // Simulates a transient write-time failure (e.g. a queue/broker error) on an otherwise
+        // healthy, available connector -- distinct from isAvailable()==false, which the handler
+        // checks beforehand and never even reaches this call.
         void index(std::string_view id, std::string_view index, std::string_view data) override
         {
+            if (throwOnIndex)
+            {
+                throw std::runtime_error {"simulated indexer write failure"};
+            }
             indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
         }
+
+        bool throwOnIndex {false};
 
         void indexDataStream(std::string_view index, std::string_view data) override
         {
             dataStreamed.emplace_back(std::string {index}, std::string {data});
         }
 
-        /// Recorded writes. Empty today -- the endpoints do not write yet -- which is exactly what the
-        /// NothingIsIndexedYet test pins, so the day someone starts writing, the test says so.
         std::vector<std::tuple<std::string, std::string, std::string>> indexed;
         std::vector<std::pair<std::string, std::string>> dataStreamed;
 
@@ -127,6 +136,17 @@ namespace
     {
         return run(request, std::make_shared<FakeAsyncConnector>(), testClusterIdentity());
     }
+
+    /// Parses the data half of the single write a test expects `connector` to have received.
+    nlohmann::json soleIndexedDocument(const FakeAsyncConnector& connector)
+    {
+        if (connector.indexed.size() != 1)
+        {
+            return nlohmann::json {};
+        }
+        const auto document = nlohmann::json::parse(std::get<2>(connector.indexed.front()), nullptr, false);
+        return document.is_discarded() ? nlohmann::json {} : document;
+    }
 } // namespace
 
 /**
@@ -145,34 +165,95 @@ TEST(ConfigEndpointTest, AgentIdHeaderNameIsLowerCase)
     EXPECT_STREQ("x-wazuh-agent-id", invsync::endpoints::config::agentIdHeader());
 }
 
-TEST(ConfigEndpointTest, EnrichesTheDocumentAndEchoesItBack)
+/**
+ * The core positive path: a report with two modules lands, sanitized, under the agent id, in
+ * wazuh-agent-config, and the agent gets the protocol-defined empty acknowledgment rather than the
+ * document echoed back.
+ */
+TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexName)
 {
-    const auto response = run(makeRequest(R"({"cpu":42})", "007"));
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{"cpu":42},"logcollector":{"lines":1}}})";
+
+    const auto response = run(makeRequest(body, "007"), connector);
 
     ASSERT_EQ(200, response.status);
+    EXPECT_EQ("{}", response.body);
 
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
+    ASSERT_EQ(1U, connector->indexed.size());
+    const auto& [id, index, data] = connector->indexed.front();
+    EXPECT_EQ("007", id);
+    EXPECT_EQ("wazuh-agent-config", index);
+
+    const auto document = nlohmann::json::parse(data, nullptr, false);
     ASSERT_FALSE(document.is_discarded());
-    // The agent's own field survives untouched.
-    EXPECT_EQ(42, document.at("cpu").get<int>());
-    // ...and both stamps landed at the documented JSON pointers.
-    ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("007", document["/wazuh/agent/id"_json_pointer].get<std::string>());
-    ASSERT_TRUE(document.contains("@timestamp"));
-    EXPECT_FALSE(document.at("@timestamp").get<std::string>().empty());
+    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
+    ASSERT_TRUE(content.is_object());
+    ASSERT_EQ(2U, content.size());
+    EXPECT_EQ(42, content.at("fim").at("cpu").get<int>());
+    EXPECT_EQ(1, content.at("logcollector").at("lines").get<int>());
+}
+
+/// `modules` is derived from `content`'s keys, so the two can never drift apart.
+TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{},"logcollector":{}}})";
+
+    ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
+    ASSERT_TRUE(modules.is_array());
+    ASSERT_EQ(2U, modules.size());
+    EXPECT_NE(std::find(modules.begin(), modules.end(), "fim"), modules.end());
+    EXPECT_NE(std::find(modules.begin(), modules.end(), "logcollector"), modules.end());
+}
+
+/**
+ * A module is unique per report by construction: `modules` is a JSON object, so a duplicate key in
+ * the raw body resolves to the last value (nlohmann's parse semantics) rather than reaching `content`
+ * twice or being rejected.
+ */
+TEST(ConfigEndpointTest, ADuplicateModuleNameIsResolvedByTheLastEntryWinning)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{"cpu":1},"fim":{"cpu":2}}})";
+
+    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_EQ(1U, content.size());
+    EXPECT_EQ(2, content.at("fim").at("cpu").get<int>());
+    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
+    ASSERT_EQ(1U, modules.size());
+    EXPECT_EQ("fim", modules[0].get<std::string>());
+}
+
+TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    EXPECT_EQ("1.0.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
 }
 
 /**
  * The timestamp shape is what makes the document indexable, so pin it rather than just its presence:
  * Utils::getCurrentISO8601() yields YYYY-MM-DDTHH:MM:SS.mmmZ (24 chars, milliseconds, trailing Z).
  */
-TEST(ConfigEndpointTest, TimestampIsIso8601WithMillisecondsAndZulu)
+TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZulu)
 {
-    const auto response = run(makeRequest("{}", "001"));
+    auto connector = std::make_shared<FakeAsyncConnector>();
 
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    const auto timestamp = document.at("@timestamp").get<std::string>();
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto timestamp = document["/state/modified_at"_json_pointer].get<std::string>();
 
     ASSERT_EQ(24U, timestamp.size()) << "unexpected timestamp: " << timestamp;
     EXPECT_EQ('T', timestamp[10]);
@@ -180,35 +261,82 @@ TEST(ConfigEndpointTest, TimestampIsIso8601WithMillisecondsAndZulu)
     EXPECT_EQ('Z', timestamp.back());
 }
 
+/// The layout generation of `configuration`, not a per-report counter -- always 1 for this layout.
+TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
+}
+
+TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
+{
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"));
+
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ("{}", response.body);
+
+    bool hasJsonContentType {false};
+    for (const auto& [name, value] : response.headers)
+    {
+        if (name == "Content-Type" && value == "application/json")
+        {
+            hasJsonContentType = true;
+        }
+    }
+    EXPECT_TRUE(hasJsonContentType);
+}
+
 /**
- * The authenticated id must win. A document claiming a different agent cannot override what remoted
- * verified -- otherwise the enrichment would be worthless as an identity.
+ * An empty `modules` object is rejected, not indexed: the document `_id` is the agent id, so a push
+ * with no modules would replace the agent's last good configuration with an empty one. The agent's
+ * collector skips a cycle rather than send an empty report, so this is a protocol violation. Same
+ * rule POST /stats applies to its own empty report.
  */
-TEST(ConfigEndpointTest, TheAuthenticatedAgentIdOverridesOneClaimedInTheDocument)
+TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
 {
-    const auto response = run(makeRequest(R"({"wazuh":{"agent":{"id":"999"}}})", "001"));
+    auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>());
+    const auto response = run(makeRequest(R"({"modules":{}})", "001"), connector);
+
+    EXPECT_EQ(400, response.status);
+    EXPECT_TRUE(connector->indexed.empty()) << "an empty report must never overwrite the stored document";
 }
 
-/// Same for a pre-existing @timestamp: the server's clock is the authoritative one.
-TEST(ConfigEndpointTest, APreExistingTimestampIsOverwritten)
+/**
+ * The endpoint stores each module's configuration verbatim: it never judges or rewrites the inner
+ * `config` object (the template is `dynamic: false`, so an undeclared key is stored in `_source` and
+ * simply not indexed). Only the outer shape -- a `modules` object whose every value is an object --
+ * is validated.
+ */
+TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 {
-    const auto response = run(makeRequest(R"({"@timestamp":"1999-01-01T00:00:00.000Z"})", "001"));
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"({"modules":{"fim":{"cpu":1,"undeclared":"kept"}}})";
 
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_NE("1999-01-01T00:00:00.000Z", document.at("@timestamp").get<std::string>());
+    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+
+    const auto document = soleIndexedDocument(*connector);
+    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_EQ(1U, content.size()) << content.dump();
+    EXPECT_EQ(1, content.at("fim").at("cpu").get<int>());
+    EXPECT_EQ("kept", content.at("fim").at("undeclared").get<std::string>());
 }
 
-TEST(ConfigEndpointTest, NonObjectBodiesAreRejected)
+TEST(ConfigEndpointTest, BodiesWithoutAModulesObjectAreRejected)
 {
-    // Each of these parses as valid JSON but is not an object, so there is nothing to stamp onto.
-    for (const auto* body : {"[]", R"("a string")", "42", "true", "null"})
+    // Each parses as valid JSON but does not carry a `modules` object, so there is nothing to store.
+    for (const auto* body : {R"({"modules":{"fim":{}}})", // the legacy array wire, no longer accepted
+                             R"({"modules":[]})",         // modules must be an object, not an array
+                             R"({"modules":42})",
+                             R"({"nope":{}})",
+                             R"("a string")",
+                             "42",
+                             "true",
+                             "null"})
     {
         const auto response = run(makeRequest(body, "001"));
         EXPECT_EQ(400, response.status) << "body: " << body;
@@ -224,6 +352,29 @@ TEST(ConfigEndpointTest, MalformedJsonIsRejected)
     }
 }
 
+TEST(ConfigEndpointTest, NonObjectModuleConfigurationsAreRejected)
+{
+    for (const auto* body : {R"({"modules":{"fim":"not an object"}})",
+                             R"({"modules":{"fim":42}})",
+                             R"({"modules":{"fim":[]}})",
+                             R"({"modules":{"fim":null}})"})
+    {
+        const auto response = run(makeRequest(body, "001"));
+        EXPECT_EQ(400, response.status) << "body: " << body;
+    }
+}
+
+TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
+{
+    const auto response = run(makeRequest(R"({"modules":{"fim":42}})", "001"));
+
+    ASSERT_EQ(400, response.status);
+    const auto parsed = nlohmann::json::parse(response.body, nullptr, /*allow_exceptions=*/false);
+    ASSERT_FALSE(parsed.is_discarded()) << "400 body is not valid JSON: " << response.body;
+    EXPECT_EQ(400, parsed.value("code", 0));
+    EXPECT_NE(parsed.value("error", std::string {}).find("object"), std::string::npos) << response.body;
+}
+
 /**
  * A request without the header did not come through remoted's authenticated route, so it is a
  * contract violation rather than agent input. Rejecting it is what stops the endpoint from inventing
@@ -231,7 +382,7 @@ TEST(ConfigEndpointTest, MalformedJsonIsRejected)
  */
 TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("{}", "", /*withAgentHeader=*/false));
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false));
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -239,24 +390,9 @@ TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejected)
 
 TEST(ConfigEndpointTest, AnEmptyAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("{}", ""));
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", ""));
 
     EXPECT_EQ(400, response.status);
-}
-
-TEST(ConfigEndpointTest, ResponseIsJson)
-{
-    const auto response = run(makeRequest("{}", "001"));
-
-    bool hasJsonContentType {false};
-    for (const auto& [name, value] : response.headers)
-    {
-        if (name == "Content-Type" && value == "application/json")
-        {
-            hasJsonContentType = true;
-        }
-    }
-    EXPECT_TRUE(hasJsonContentType);
 }
 
 // A null request must not crash the handler: the transport never passes one today, but a null deref
@@ -273,15 +409,15 @@ TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)
     EXPECT_EQ(400, responder->captured->status);
 }
 
-// The handler must not retain the payload: it discards the document, and holding the request would
-// silently pin the transport's in-flight byte reservation.
+// The handler must not retain the payload: it does not need it once the sanitized copy is built, and
+// holding the request would silently pin the transport's in-flight byte reservation.
 TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
     auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
-    auto request = makeRequest(R"({"a":1})", "001");
+    auto request = makeRequest(R"({"modules":{"fim":{}}})", "001");
     std::weak_ptr<const HttpRequest> observer {request};
 
     handler(request, responder);
@@ -298,10 +434,23 @@ TEST(ConfigEndpointTest, UnavailableIndexerYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
+TEST(ConfigEndpointTest, AWriteFailureOnAnAvailableIndexerYields503NotBadRequest)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    connector->throwOnIndex = true;
+
+    const auto response = run(makeRequest(R"({"modules":{"fim":{"cpu":1}}})", "001"), connector);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
 }
 
 /**
@@ -316,7 +465,7 @@ TEST(ConfigEndpointTest, AnExpiredConnectorYields503)
 
     connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
 
-    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+    handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
@@ -331,7 +480,7 @@ TEST(ConfigEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    for (const auto* body : {"", "{", "[]", R"("a string")", "not json at all"})
+    for (const auto* body : {"", "{", "{}", R"("a string")", "not json at all", R"({"modules":{"fim":42}})"})
     {
         const auto response = run(makeRequest(body, "001"), connector);
         EXPECT_EQ(400, response.status) << "body: " << body;
@@ -342,7 +491,7 @@ TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejectedEvenWhenTheIndexerIsDown
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest("{}", "", /*withAgentHeader=*/false), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false), connector);
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -363,7 +512,7 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
 
     auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
-    handler(makeRequest(R"({"cpu":42})", "001"), responder);
+    handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
     ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
 
     connector.reset();
@@ -373,55 +522,20 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
 }
 
 /**
- * The endpoints are still dummies: the connector is injected and gated on, but nothing writes through
- * it yet. Pinned so that the day real processing lands, this test fails and has to be updated
- * deliberately rather than the behaviour changing silently.
- */
-TEST(ConfigEndpointTest, NothingIsIndexedYet)
-{
-    auto connector = std::make_shared<FakeAsyncConnector>();
-
-    ASSERT_EQ(200, run(makeRequest(R"({"cpu":42})", "001"), connector).status);
-
-    EXPECT_TRUE(connector->indexed.empty()) << "this endpoint does not index yet";
-    EXPECT_TRUE(connector->dataStreamed.empty()) << "this endpoint does not index yet";
-}
-
-/**
  * The cluster identity is injected at registration time (makeHandler()'s `cluster` parameter), not
- * read from anything the caller sends -- unlike the agent id, there is no per-request source for it.
+ * read from anything the caller sends -- there is no per-request source for it in the new array body
+ * shape either.
  */
 TEST(ConfigEndpointTest, StampsTheInjectedClusterNameAndNode)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
     invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, cluster);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, cluster).status);
 
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
+    const auto document = soleIndexedDocument(*connector);
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
     EXPECT_EQ("node-03", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
-}
-
-/**
- * A document claiming its own cluster identity must not survive: this manager's configured identity
- * is authoritative, mirroring the same override rule already pinned for the agent id.
- */
-TEST(ConfigEndpointTest, TheInjectedClusterIdentityOverridesOneClaimedInTheDocument)
-{
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    invsync::common::ClusterIdentity cluster {"real-cluster", "real-node"};
-
-    const auto response =
-        run(makeRequest(R"({"wazuh":{"cluster":{"name":"fake","node":"fake"}}})", "001"), connector, cluster);
-
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
-    EXPECT_EQ("real-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("real-node", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
 
 /**
@@ -434,11 +548,11 @@ TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    const auto response = run(makeRequest(R"({"cpu":42})", "001"), connector, invsync::common::ClusterIdentity {});
+    ASSERT_EQ(
+        200,
+        run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, invsync::common::ClusterIdentity {}).status);
 
-    ASSERT_EQ(200, response.status);
-    const auto document = nlohmann::json::parse(response.body, nullptr, false);
-    ASSERT_FALSE(document.is_discarded());
+    const auto document = soleIndexedDocument(*connector);
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
     EXPECT_EQ("", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
