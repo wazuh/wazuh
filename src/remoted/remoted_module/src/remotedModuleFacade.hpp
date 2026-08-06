@@ -24,6 +24,7 @@
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
 #include "control/controlConfig.hpp"
 #include "control/controlHandler.hpp"
@@ -40,6 +41,7 @@
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
+#include "endpoints/scanVdEndpoint.hpp"
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
@@ -48,6 +50,7 @@
 #include "http_server/httpServerFactory.hpp"
 #include "loggerHelper.h"
 #include "remoted_module.h"
+#include "scanvd/scanVdHandler.hpp"
 #include "singleton.hpp"
 
 constexpr auto REMOTED_MODULE_LOGTAG {"wazuh-manager-remoted:communication"}; ///< Tag used for remoted module logging.
@@ -174,14 +177,15 @@ public:
                 m_httpServer->stopAccepting();
             }
 
-            // Phase 1b: tear down the /control state. Its dtor stops the eviction thread, then
-            // drops the wdb/task async clients -- their dtors join workers and fail any pending
-            // callbacks, which invoke the endpoint's responder->send() with a 500 body. The
-            // HTTP server's I/O runtime is still alive (phase 4 hasn't run), so those late
-            // sends are safe. This runs BEFORE the downstream client stop so that its own
-            // stop() does not race with wdb-worker joins that touch the same io_context runtime
-            // via the response send path.
+            // Phase 1b: tear down the /control and /scan/vd state. The /control handler's dtor
+            // stops the eviction thread, then drops the wdb/task async clients -- their dtors
+            // join workers and fail any pending callbacks, which invoke the endpoint's
+            // responder->send() with a 500 body. The HTTP server's I/O runtime is still alive
+            // (phase 4 hasn't run), so those late sends are safe. This runs BEFORE the downstream
+            // client stop so that its own stop() does not race with wdb-worker joins that touch
+            // the same io_context runtime via the response send path.
             m_controlHandler.reset();
+            m_scanVdHandler.reset();
 
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
             if (m_downstreamClient)
@@ -369,6 +373,7 @@ private:
         // member on this facade, so its address stays stable across HTTP-server retries and
         // counters carry over -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
+        auto vdClient = std::make_shared<remoted::common::VdClient>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             std::make_shared<remoted::control::AgentRegistry>(),
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
@@ -382,6 +387,7 @@ private:
                                                            controlConfig.tmMaxQueueSize,
                                                            m_controlMetrics),
             std::make_shared<remoted::control::HashCache>(controlConfig),
+            vdClient,
             m_controlMetrics,
             controlConfig);
 
@@ -389,6 +395,14 @@ private:
                                              remoted::http::Method::Post,
                                              "/control",
                                              remoted::endpoints::control::makeHandler(*m_controlHandler));
+
+        // /scan/vd: agent-initiated VD scans. Uses the same vdClient as /control for offset queries.
+        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient);
+
+        m_authGateway->addAuthenticatedRoute(*m_httpServer,
+                                             remoted::http::Method::Post,
+                                             "/scan/vd",
+                                             remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
         m_httpServer->start(config);
     }
@@ -517,6 +531,9 @@ private:
     // their threads in the right order (see ControlHandler::Impl's dtor).
     remoted::control::ControlMetrics m_controlMetrics {};               ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
+
+    // /scan/vd lifecycle: handles VD scan requests from agents.
+    std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
