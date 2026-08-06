@@ -4,7 +4,7 @@
 
 import sys
 from json import dumps
-from unittest.mock import AsyncMock, call, MagicMock, patch
+from unittest.mock import call, MagicMock, patch
 
 import pytest
 
@@ -156,61 +156,6 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     assert not result.failed_items
 
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
-
-
-REPORTED_STATS = {'global': {'files': []}, 'interval': {'files': []}}
-
-
-def _indexer_returning(reported):
-    """A get_indexer_client() context manager whose agent_stats.get_component() answers `reported`."""
-    indexer = MagicMock()
-    indexer.agent_stats.get_component = AsyncMock(return_value=reported)
-    client = MagicMock()
-    client.return_value.__aenter__ = AsyncMock(return_value=indexer)
-    client.return_value.__aexit__ = AsyncMock(return_value=False)
-    return client, indexer
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('component', ['logcollector', 'agent'])
-@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
-async def test_get_agents_component_stats_json(mock_agents_info, component):
-    """The stored report is served straight from the index, in one request for the whole list."""
-    client, indexer = _indexer_returning({'001': REPORTED_STATS})
-
-    with patch('wazuh.stats.get_indexer_client', client):
-        response = await stats.get_agents_component_stats_json(agent_list=['001'], component=component)
-
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
-    assert response.affected_items == [REPORTED_STATS]
-    indexer.agent_stats.get_component.assert_awaited_once_with(['001'], component)
-
-
-@pytest.mark.asyncio
-@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
-async def test_get_agents_component_stats_json_ko(mock_agents_info):
-    """An agent that does not exist is 1701, and the indexer is never asked about it."""
-    client, indexer = _indexer_returning({})
-
-    with patch('wazuh.stats.get_indexer_client', client):
-        response = await stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
-
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
-    assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'
-    indexer.agent_stats.get_component.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
-async def test_get_agents_component_stats_json_without_a_report(mock_agents_info):
-    """A known agent that has never pushed is 1762: there is no live query left to fall back to."""
-    client, _ = _indexer_returning({'001': None, '002': REPORTED_STATS})
-
-    with patch('wazuh.stats.get_indexer_client', client):
-        response = await stats.get_agents_component_stats_json(agent_list=['001', '002'], component='agent')
-
-    assert response.affected_items == [REPORTED_STATS]
-    assert response.render()['data']['failed_items'][0]['error']['code'] == 1762
 
 
 METRICS_DUMP_DATA = {

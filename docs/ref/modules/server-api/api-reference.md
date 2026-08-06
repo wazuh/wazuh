@@ -341,7 +341,6 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
 | GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
-| GET | `/agents/{agent_id}/stats/{component}` | Component stats |
 | PUT | `/agents/restart` | Restart all (v5.0.0+) |
 | PUT | `/agents/reload` | Reload all agents config (v5.0.0+) |
 | PUT | `/agents/group` | Bulk assign to group |

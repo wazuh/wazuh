@@ -26,8 +26,6 @@ class IndexerKey(str, Enum):
     BOOL = "bool"
     MUST = "must"
     HITS = "hits"
-    DOCS = "docs"
-    FOUND = "found"
     TOTAL = "total"
     DELETED = "deleted"
     FAILURES = "failures"
