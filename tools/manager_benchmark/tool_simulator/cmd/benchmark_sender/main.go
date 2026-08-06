@@ -41,6 +41,7 @@ func run() int {
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
 		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
 		seed         = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
+		validate     = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
 	)
 	flag.Parse()
 
@@ -54,6 +55,14 @@ func run() int {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
+	}
+
+	// --validate loads and strictly checks the scenario (unknown fields, unknown
+	// step kinds, mode/kind constraints) and exits without sending anything.
+	// This is what the orchestration and CI use to gate the scenario library.
+	if *validate {
+		fmt.Printf("ok: %s (mode=%s, fleets=%d, lanes=%d)\n", scn.Name, scn.Mode, len(scn.Fleets), len(scn.Lanes))
+		return 0
 	}
 
 	usedSeed := *seed
