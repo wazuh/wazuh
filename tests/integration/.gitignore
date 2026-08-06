@@ -2,6 +2,9 @@
 __pycache__
 .pytest_cache
 
+# Wazuh log snapshots taken on test failure (conftest.pytest_runtest_makereport)
+failure-logs/
+
 # Python bytecode files
 *.pyc
 .idea

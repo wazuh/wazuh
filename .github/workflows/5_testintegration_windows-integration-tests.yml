@@ -205,12 +205,23 @@ jobs:
             Copy-Item -Path "C:\wazuh\tests\integration\$file" -Destination $dest -ErrorAction SilentlyContinue
           }
 
+          # Per-test snapshots taken by the pytest_runtest_makereport hook in
+          # tests/integration/conftest.py. These are the useful ones: the live
+          # ossec.log is truncated by the truncate_monitored_files fixture on
+          # teardown, so copying it here would always yield an empty file.
+          $snapshots = "C:\wazuh\tests\integration\failure-logs"
+          if (Test-Path $snapshots) {
+            Copy-Item -Path $snapshots -Destination (Join-Path $dest 'failure-logs') -Recurse -ErrorAction SilentlyContinue
+          }
+
+          # Kept for tests that do not use truncate_monitored_files, and for the
+          # agent configuration actually in force when the failure happened.
           $agentPath = Join-Path ${env:ProgramFiles(x86)} 'ossec-agent'
           foreach ($file in @('ossec.log', 'wazuh-agent.state', 'ossec.conf', 'local_internal_options.conf')) {
             Copy-Item -Path (Join-Path $agentPath $file) -Destination $dest -ErrorAction SilentlyContinue
           }
 
-          Get-ChildItem $dest | Format-Table Name, Length
+          Get-ChildItem $dest -Recurse | Format-Table FullName, Length
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: ./.github/actions/upload_s3_artifact

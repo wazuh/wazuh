@@ -5,6 +5,7 @@ This program is free software; you can redistribute it and/or modify it under th
 """
 
 import os
+import shutil
 import subprocess
 import pytest
 import sys
@@ -125,6 +126,37 @@ def pytest_collection_modifyitems(
 
     config.hook.pytest_deselected(items=deselected_tests)
     items[:] = selected_tests
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    """Snapshot the Wazuh log of a failing test before its fixtures tear down.
+
+    `truncate_monitored_files` truncates WAZUH_LOG_PATH on teardown as well as
+    on setup, so anything collected after the pytest process exits is empty.
+    That leaves CI failures with no agent log at all, which is what blocked the
+    investigation of the flaky agentd reconnection tests.
+
+    Copying here, while the 'call' phase report is being built, runs before any
+    fixture teardown and therefore before the truncation.
+    """
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when != 'call' or not report.failed:
+        return
+
+    try:
+        if not os.path.isfile(os.path.join(ROOT_PREFIX, WAZUH_LOG_PATH)):
+            return
+
+        destination_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failure-logs')
+        os.makedirs(destination_dir, exist_ok=True)
+
+        safe_name = ''.join(char if char.isalnum() or char in '-_.' else '_' for char in report.nodeid)
+        shutil.copyfile(WAZUH_LOG_PATH, os.path.join(destination_dir, f'{safe_name[:150]}.log'))
+    except OSError as error:
+        logger.warning(f'Could not snapshot the Wazuh log for {report.nodeid}: {error}')
 
 
 @pytest.hookimpl(optionalhook=True)
