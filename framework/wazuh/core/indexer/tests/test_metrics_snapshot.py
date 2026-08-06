@@ -181,25 +181,23 @@ def _deep_keys(doc, prefix=""):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-async def test_collect_agents(mock_wazuh_db_query_agents):
+@patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client")
+async def test_collect_agents(mock_get_wdb_http_client):
     mock_server = _make_server(node_name="node01")
 
-    mock_query_instance = MagicMock()
-    mock_query_instance.run.return_value = {
-        "items": [
-            {"id": "001", "name": "ubuntu-agent"},
-            {"id": "002", "name": "windows-agent"},
-        ]
-    }
-    mock_wazuh_db_query_agents.return_value = mock_query_instance
+    mock_wdb_client = AsyncMock()
+    mock_wdb_client.get_all_agents.return_value = [
+        {"id": "001", "name": "ubuntu-agent"},
+        {"id": "002", "name": "windows-agent"},
+    ]
+    mock_get_wdb_http_client.return_value.__aenter__.return_value = mock_wdb_client
 
     task = MetricsSnapshotTasks(server=mock_server, cluster_items=CLUSTER_ITEMS)
     TEST_TIMESTAMP = "2026-03-13T10:00:00Z"
 
     result = await task._collect_agents(TEST_TIMESTAMP)
 
-    mock_wazuh_db_query_agents.assert_called_once_with(limit=None)
+    mock_wdb_client.get_all_agents.assert_called_once()
 
     assert len(result) == 2
     for agent_doc in result:
