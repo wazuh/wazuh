@@ -329,8 +329,8 @@ TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 TEST(ConfigEndpointTest, BodiesWithoutAModulesObjectAreRejected)
 {
     // Each parses as valid JSON but does not carry a `modules` object, so there is nothing to store.
-    for (const auto* body : {R"({"modules":{"fim":{}}})", // the legacy array wire, no longer accepted
-                             R"({"modules":[]})",         // modules must be an object, not an array
+    for (const auto* body : {R"({"modules":[{"fim":{}}]})", // the legacy array wire, no longer accepted
+                             R"({"modules":[]})",           // modules must be an object, not an array
                              R"({"modules":42})",
                              R"({"nope":{}})",
                              R"("a string")",
