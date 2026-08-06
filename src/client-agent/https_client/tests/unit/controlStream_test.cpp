@@ -535,6 +535,52 @@ TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
     m_stream.step(m_waiter); // Notify: groups changed, re-fires.
 }
 
+TEST_F(ControlStreamTest, AgentGroupsReReportedAfterARefreshStartupEvenWhenUnchanged)
+{
+    // bridge_apply_agent_groups() (https_client_bridge.c) overwrites the C-side agent_agent_groups
+    // unconditionally on every accepted Startup -- including a settings-refresh one, whose own
+    // body may carry a different group snapshot than the last Notify reported. If the dedupe
+    // latch survives that Startup, a Notify reporting the SAME groups as before the refresh would
+    // be wrongly deduped, leaving the C side pointed at whatever the refresh Startup wrote. The
+    // latch must therefore be cleared on every accepted Startup, not just group changes.
+    const std::string startupV1 = R"({"limits":{"eps":0}})";
+    const std::string startupV2 = R"({"limits":{"eps":100}})";
+    const std::string hashV2 = managerSettingsHash(startupV2);
+    const std::string notifyArmsRefresh =
+        R"({"status":"ok","agent":{"groups":["default"]},"settings_hash":")" + hashV2 + R"("})";
+    const std::string notifyAfterRefresh = R"({"status":"ok","agent":{"groups":["default"]}})";
+
+    std::vector<std::string> requestTypes;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        const std::string body = bodyOf(spec);
+        requestTypes.push_back(body.find("startup") != std::string::npos ? "startup"
+                               : "notify");
+
+        if (requestTypes.size() == 1)
+        {
+            return response(TransportStatus::Ok, 200, startupV1);
+        }
+
+        if (requestTypes.back() == "startup")
+        {
+            return response(TransportStatus::Ok, 200, startupV2);
+        }
+
+        return response(TransportStatus::Ok, 200,
+                        requestTypes.size() == 2 ? notifyArmsRefresh : notifyAfterRefresh);
+    }));
+
+    EXPECT_CALL(m_sink, onAgentGroups("default")).Times(2);
+
+    m_stream.step(m_waiter); // Startup (v1 baseline).
+    m_stream.step(m_waiter); // Notify: reports "default" (1st fire), arms a settings refresh.
+    m_stream.step(m_waiter); // Refresh Startup (v2) -- must clear the groups-reported latch.
+    m_stream.step(m_waiter); // Notify: "default" again -- re-fires despite being unchanged.
+}
+
 TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
 {
     // Unlike /download's resource_id (which substitutes "default" when the agent
