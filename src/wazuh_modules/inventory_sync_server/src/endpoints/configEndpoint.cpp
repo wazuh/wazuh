@@ -48,7 +48,7 @@ namespace
 
     invsync::http::HttpResponse badRequest(const char* reason)
     {
-        return invsync::http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
+        return invsync::http::HttpResponse::json(400, nlohmann::json {{"error", reason}, {"code", 400}}.dump());
     }
 
     /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is
@@ -205,6 +205,7 @@ namespace invsync::endpoints::config
                 return;
             }
 
+            std::string serializedDocument;
             try
             {
                 // `modules` lists exactly the keys `content` ends up with -- derived from it rather
@@ -230,28 +231,46 @@ namespace invsync::endpoints::config
                 indexedDocument["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
                 indexedDocument["/state/document_version"_json_pointer] = AGENT_CONFIG_DOCUMENT_VERSION;
 
-                // Indexed under the agent id as _id: each report replaces the previous one for that
-                // agent by upsert, nothing else to do.
-                indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, indexedDocument.dump());
-
-                if (const auto decision = acceptedThrottle.record())
-                {
-                    LOGFN_DEBUG1(logFn(),
-                                 "Indexed %llu agent config document(s) in the last %d s.",
-                                 static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
-                }
-
-                // The protocol-defined acknowledgment: an empty object, not the enriched document.
-                responder->send(http::HttpResponse::json(200, "{}"));
+                serializedDocument = indexedDocument.dump();
             }
             catch (const std::exception& e)
             {
                 // Building/serializing the document can still fail on input we accepted -- e.g. a
-                // string field holding invalid UTF-8, which nlohmann rejects at dump() time.
+                // string field holding invalid UTF-8, which nlohmann rejects at dump() time. Still the
+                // caller's fault.
                 LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
                 responder->send(badRequest("Body must be a JSON array of {\"module\", \"config\"} entries"));
+                return;
             }
+
+            try
+            {
+                // Indexed under the agent id as _id: each report replaces the previous one for that
+                // agent by upsert, nothing else to do.
+                indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, serializedDocument);
+            }
+            catch (const std::exception& e)
+            {
+                // The body was fine; the write to storage was not. A 400 here would tell the agent
+                // to fix a payload that was never wrong; 503 correctly tells it to retry.
+                LOGFN_DEBUG1(logFn(),
+                             "Could not index agent config document for agent '%s': %s.",
+                             agentIdIt->second.c_str(),
+                             e.what());
+                responder->send(serviceUnavailable());
+                return;
+            }
+
+            if (const auto decision = acceptedThrottle.record())
+            {
+                LOGFN_DEBUG1(logFn(),
+                             "Indexed %llu agent config document(s) in the last %d s.",
+                             static_cast<unsigned long long>(decision.total),
+                             invsync::common::LogThrottle::kDefaultWindowSeconds);
+            }
+
+            // The protocol-defined acknowledgment: an empty object, not the enriched document.
+            responder->send(http::HttpResponse::json(200, "{}"));
         };
     }
 
