@@ -109,6 +109,14 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
                     while True:
                         stats = get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list='all',
                                                          last_id=last_id)
+
+                        # Prefer the raw page boundary reported by remoted, since the version
+                        # filter it applies can drop every agent from a page while more remain.
+                        if 'last_id' in stats['data']:
+                            last_id = stats['data'].pop('last_id')
+                        elif len(stats['data']['agents']) > 0:
+                            last_id = stats['data']['agents'][-1]['id']
+
                         for partial_daemon_result in daemon_results:
                             if partial_daemon_result['name'] == daemon:
                                 partial_daemon_result['agents'].extend(stats['data']['agents'])
@@ -116,8 +124,6 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
                         else:
                             daemon_results.append(stats['data'])
 
-                        if len(stats['data']['agents']) > 0:
-                            last_id = stats['data']['agents'][-1]['id']
                         if stats['message'] != 'due':
                             break
 

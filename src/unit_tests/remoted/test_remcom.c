@@ -319,7 +319,7 @@ void test_remcom_dispatch_getagentsstats_all_due(void ** state) {
     *state = response;
 
     assert_non_null(response);
-    assert_string_equal(response, "{\"error\":1,\"message\":\"due\",\"data\":{}}");
+    assert_string_equal(response, "{\"error\":1,\"message\":\"due\",\"data\":{\"last_id\":150}}");
     assert_int_equal(size, strlen(response));
 }
 
@@ -390,6 +390,84 @@ void test_remcom_dispatch_getagentsstats_all_mixed_versions_filtered(void ** sta
 
     assert_non_null(response);
     assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+/* Reproduces the pagination hang: when a full raw page is entirely version-filtered out, the
+ * response must still report the raw page's last id via "last_id" so the caller advances,
+ * even though the filtered "agents" array is empty. */
+void test_remcom_dispatch_getagentsstats_all_due_fully_filtered(void ** state) {
+    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
+    char *response = NULL;
+    cJSON* data_json = cJSON_CreateObject();
+
+    int *connected_agents;
+    os_calloc(151, sizeof(int), connected_agents);
+    for (size_t i = 0; i < 150; i++) {
+        connected_agents[i] = i+1;
+    }
+    connected_agents[150] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
+    // All 150 agents are >= v5.0.0, so every one is filtered out of the surviving array.
+    for (int i = 1; i <= 150; i++) {
+        expect_agent_version(i, AGENT_VERSION_CHECK_GE_MIN, "Wazuh v5.1.0");
+        expect_any(__wrap__mdebug2, formatted_msg);
+    }
+
+    static int expected_ids[1] = {OS_INVALID};
+    expect_check(__wrap_rem_create_agents_state_json, agents_ids, check_agents_ids_content, (LargestIntegralType)(uintptr_t)expected_ids);
+    will_return(__wrap_rem_create_agents_state_json, data_json);
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":1,\"message\":\"due\",\"data\":{\"last_id\":150}}");
+    assert_int_equal(size, strlen(response));
+}
+
+/* The raw page's last id (150) must be reported even when that specific agent is one of the
+ * ones filtered out -- "last_id" has to come from the raw page boundary, not from the last
+ * surviving agent in the filtered array (which here would incorrectly be 1). */
+void test_remcom_dispatch_getagentsstats_all_due_last_raw_agent_filtered(void ** state) {
+    char* request = "{\"command\":\"getagentsstats\", \"module\":\"api\", \"parameters\": {\"agents\": \"all\", \"last_id\": 0}}";
+    char *response = NULL;
+    cJSON* data_json = cJSON_CreateObject();
+
+    int *connected_agents;
+    os_calloc(151, sizeof(int), connected_agents);
+    for (size_t i = 0; i < 150; i++) {
+        connected_agents[i] = i+1;
+    }
+    connected_agents[150] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, REM_MAX_NUM_AGENTS_STATS);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
+    expect_agent_version(1, AGENT_VERSION_CHECK_LT_MIN, "Wazuh v4.14.6"); // < v5.0.0: kept
+    for (int i = 2; i <= 150; i++) {
+        expect_agent_version(i, AGENT_VERSION_CHECK_GE_MIN, "Wazuh v5.1.0"); // >= v5.0.0: excluded, including id 150
+        expect_any(__wrap__mdebug2, formatted_msg);
+    }
+
+    static int expected_ids[2] = {1, OS_INVALID};
+    expect_check(__wrap_rem_create_agents_state_json, agents_ids, check_agents_ids_content, (LargestIntegralType)(uintptr_t)expected_ids);
+    will_return(__wrap_rem_create_agents_state_json, data_json);
+
+    size_t size = remcom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":1,\"message\":\"due\",\"data\":{\"last_id\":150}}");
     assert_int_equal(size, strlen(response));
 }
 
@@ -844,6 +922,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_due, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_ok, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_mixed_versions_filtered, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_due_fully_filtered, test_teardown),
+        cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_all_due_last_raw_agent_filtered, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_empty_agents, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_getagentsstats_array_ok, test_teardown),
         cmocka_unit_test_teardown(test_remcom_dispatch_assigngroup, test_teardown),

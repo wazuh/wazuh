@@ -188,12 +188,19 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                             for (count = 0; agents_ids[count] != -1; count++);
                             bool due = (count >= REM_MAX_NUM_AGENTS_STATS);
 
+                            // Captured before the filter frees/overwrites agents_ids: the version
+                            // filter can drop every agent in the page, and the caller still needs
+                            // the raw page boundary to resume pagination from.
+                            int raw_last_id = due ? agents_ids[count - 1] : 0;
+
                             agents_ids = remcom_filter_pre_v5_agent_ids(agents_ids);
 
+                            cJSON *agents_state_json = rem_create_agents_state_json(agents_ids);
                             if (due) {
-                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], rem_create_agents_state_json(agents_ids));
+                                cJSON_AddNumberToObject(agents_state_json, "last_id", raw_last_id);
+                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], agents_state_json);
                             } else {
-                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
+                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], agents_state_json);
                             }
                             os_free(agents_ids);
                         } else {
