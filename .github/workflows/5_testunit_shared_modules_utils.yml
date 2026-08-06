@@ -23,6 +23,14 @@ permissions:
 jobs:
   shared_modules_utils-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    # NOTE: deliberately NOT downsized to a `small` instance, and neither is -asan below.
+    # utils_utest contains AsyncValueDispatcherTest.CancelFunctionality, which waits for its
+    # counter to reach 5, cancels, then asserts 10 — items 6..10 are unsynchronised, so the
+    # outcome depends on when the worker thread is scheduled. Measured on 2 vCPU: this job
+    # failed 10/10 and -asan failed 1/23, against zero failures on that test at this size.
+    # The race is in the test, not in valgrind; running under valgrind only makes it
+    # near-deterministic. Revisit once the test synchronises on all 10 items.
+    # Data: https://github.com/wazuh/wazuh/pull/38215#issuecomment-5205906176
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     steps:
@@ -68,6 +76,7 @@ jobs:
 
   shared_modules_utils-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    # NOTE: not downsized — see the AsyncValueDispatcherTest note on the job above.
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     steps:

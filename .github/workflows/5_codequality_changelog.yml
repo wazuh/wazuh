@@ -12,7 +12,10 @@ jobs:
   # Enforces the update of a changelog file on every pull request
   verify-changelog:
     if: ${{ !github.event.pull_request.draft && github.repository == 'wazuh/wazuh' }}
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    # `small` instance (2 vCPU, 3.0 GiB usable): this job only diffs the changelog file.
+    # The `-small` suffix keeps this job at one label — read the note in
+    # 5_testcomponent_keystore.yml before switching to a separate `instance-size:` label.
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}-small
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

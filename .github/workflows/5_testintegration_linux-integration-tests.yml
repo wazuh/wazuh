@@ -97,6 +97,11 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
+    # NOTE: deliberately NOT downsized to a `small` instance. These suites are pytest with no
+    # compilation, so they look like obvious candidates, but a measured A/B found that fim
+    # tier-0 fails test_fill_capacity's real-time event-count assertion on 2 vCPU while
+    # passing at this size on the identical package (agentd tier-0-1 passed on both).
+    # Data: https://github.com/wazuh/wazuh/pull/38215#issuecomment-5204406595
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo

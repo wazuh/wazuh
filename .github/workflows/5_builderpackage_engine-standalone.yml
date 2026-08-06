@@ -132,7 +132,11 @@ jobs:
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    # `small` instance (2 vCPU, 3.0 GiB usable): downloads and starts the prebuilt engine,
+    # no compilation. Measured 5/5 passes per architecture, peak 0.9 GiB, duration unchanged
+    # at 0.8 min (x64) / 0.3 min (arm64). The `-small` suffix keeps this job at one label —
+    # read the note in 5_testcomponent_keystore.yml before switching to separate labels.
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}-small', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}-small', github.run_id, github.run_attempt) }}
     permissions:
       id-token: write
       contents: read
