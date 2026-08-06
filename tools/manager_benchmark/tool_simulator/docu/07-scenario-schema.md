@@ -35,7 +35,7 @@ production-shaped pressure.
         "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
     ],
     "engine": [
-      { "kind": "engine", "engine": "sample_payloads/engine/syslog.log", "location": "syslog",
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
         "max_eps": 250, "loop": true, "run_while_siblings_active": true }
     ]
   },
@@ -87,6 +87,18 @@ independent.
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
 | `parallel` | A group of steps sent concurrently by the SAME agent | Breaks per-agent-per-lane sequencing on purpose; the FIFO-ordering scenario |
+
+## Replaying real payloads
+
+A `delta` or `full_resync` step **MAY** carry a `dump` instead of a `documents` spec: a path to a
+captured-session file (`sample_payloads/dumps/`) whose recorded items are sent verbatim, so the wire
+bytes match production shapes rather than a generator's. Its `module`, `option` and `indices` fill
+whatever the scenario left unset (a dump is self-describing), while the fleet's OS/host metadata still
+comes from the `start` block. Document ids are namespaced per agent, exactly as generated documents
+are, so a fleet replaying one dump does not have every agent overwrite the same `_id`. A `full_resync`
+with a `dump` cleans the dump's own indices before replaying it. Paths are resolved relative to the
+scenario file's own directory, so from `scenarios/` a payload is `../sample_payloads/...`; a typo is a
+load-time error (`--validate` stats every referenced file).
 
 ## Per-step timing
 

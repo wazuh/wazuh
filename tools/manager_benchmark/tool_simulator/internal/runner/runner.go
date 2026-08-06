@@ -16,6 +16,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/metrics"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/pacing"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/source"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
@@ -50,8 +51,9 @@ type Runner struct {
 	agentsActive int64
 
 	engineMu    sync.Mutex
-	engineFiles map[string][]string        // cached sample log lines by path
-	engineLim   map[string]*pacing.Limiter // per-lane engine limiter, keyed by lane|eps
+	engineFiles map[string][]string            // cached sample log lines by path
+	engineLim   map[string]*pacing.Limiter     // per-lane engine limiter, keyed by lane|eps
+	dumps       map[string]*source.DumpSession // cached captured-session dumps by path
 
 	failOnce sync.Once
 	failErr  error
@@ -86,6 +88,7 @@ func New(cfg Config) *Runner {
 		seed:           cfg.Seed,
 		engineFiles:    map[string][]string{},
 		engineLim:      map[string]*pacing.Limiter{},
+		dumps:          map[string]*source.DumpSession{},
 	}
 }
 
@@ -245,6 +248,28 @@ func (r *Runner) engineLines(path string) []string {
 	lines := readLines(full)
 	r.engineFiles[path] = lines
 	return lines
+}
+
+// dump loads and caches a captured-session dump, relative to the scenario
+// file's directory. On a load error it invalidates the run (fatalf) and returns
+// an empty session so the caller sends nothing rather than panicking.
+func (r *Runner) dump(path string) *source.DumpSession {
+	r.engineMu.Lock()
+	defer r.engineMu.Unlock()
+	if ds, ok := r.dumps[path]; ok {
+		return ds
+	}
+	full := path
+	if !isAbs(path) {
+		full = joinDir(r.cfg.ScenarioPath, path)
+	}
+	ds, err := source.LoadDump(full)
+	if err != nil {
+		r.fatalf("load dump %s: %v", path, err)
+		ds = &source.DumpSession{}
+	}
+	r.dumps[path] = ds
+	return ds
 }
 
 // Meta assembles the summary metadata after the run.

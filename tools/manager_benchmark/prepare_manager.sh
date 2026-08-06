@@ -23,7 +23,7 @@ set -euo pipefail
 #   sudo ./prepare_manager.sh [--conf PATH] [--max-agents N] [--no-restart]
 # ---------------------------------------------------------------------------
 
-CONF="/var/wazuh-manager/etc/ossec.conf"
+CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
 MAX_AGENTS=""
 RESTART=true
 CONTROL="/var/wazuh-manager/bin/wazuh-manager-control"
@@ -43,7 +43,7 @@ done
 
 if [[ ! -f "$CONF" ]]; then
     echo "Error: config not found: $CONF" >&2
-    echo "  Is the manager installed? Pass --conf to point at ossec.conf." >&2
+    echo "  Is the manager installed? Pass --conf to point at wazuh-manager.conf." >&2
     exit 1
 fi
 
@@ -70,15 +70,20 @@ m = auth_pat.search(text)
 if m:
     block = m.group(0)
 else:
-    # No <auth> block: create one before the last </ossec_config>.
+    # No <auth> block: create one before the closing root tag. The 5.x manager
+    # config root is <wazuh_config>; older configs use <ossec_config>.
     block = ("<auth>\n"
              "    <disabled>no</disabled>\n"
              "    <remote_enrollment>yes</remote_enrollment>\n"
              "    <use_password>no</use_password>\n"
              "  </auth>")
-    idx = text.rfind("</ossec_config>")
+    idx = -1
+    for root_close in ("</wazuh_config>", "</ossec_config>"):
+        idx = text.rfind(root_close)
+        if idx != -1:
+            break
     if idx == -1:
-        sys.stderr.write("no </ossec_config> found; is this an ossec.conf?\n")
+        sys.stderr.write("no </wazuh_config> or </ossec_config> found; is this a manager config?\n")
         sys.exit(2)
     text = text[:idx] + "  " + block + "\n" + text[idx:]
     m = auth_pat.search(text)
