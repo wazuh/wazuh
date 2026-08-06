@@ -5,11 +5,16 @@ and shows what comes back, so the whole forwarding path can be exercised by hand
 
     agent -> remoted (HTTPS, AES-CMAC) -> modulesd's inventory sync server (UDS) -> back
 
-Both endpoints are DUMMIES today: modulesd only checks the body is a JSON object, stamps
-`wazuh.agent.id` (from the authenticated identity, NOT from the document) and `@timestamp`
-onto it, echoes it back and discards it. That echo is what makes this tool useful -- a
-successful run prints the document with both stamps added, which is end-to-end proof that
-the UDS hop and the header propagation work.
+The two endpoints no longer behave the same way:
+
+  /stats   modulesd moves the agent's `modules` object under `wazuh.agent.statistics`, stamps the
+           authenticated identity and its own clock, and indexes one document per agent into
+           `wazuh-agent-stats`. The answer is the protocol's empty acknowledgment, so proof of
+           the round trip is the 200 plus the document showing up in the indexer.
+  /config  still a DUMMY: modulesd only checks the body is a JSON object, stamps
+           `wazuh.agent.id` (from the authenticated identity, NOT from the document) and
+           `@timestamp` onto it, echoes it back and discards it. That echo is what makes this
+           tool end-to-end proof that the UDS hop and the header propagation work.
 
 Signing is identical to send_stateless.py (see authMiddleware.cpp for the authoritative
 canonical string):
@@ -54,9 +59,24 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 DEFAULT_CLIENT_KEYS = "/var/wazuh-manager/etc/client.keys"
-DEFAULT_BODY = b'{"cpu":42,"mem":128,"note":"hello from python"}'
+
+# /stats takes the agent's real shape: `modules` keyed by module name, which modulesd moves under
+# `wazuh.agent.statistics` unchanged before indexing. /config is still a dummy that accepts any
+# JSON object.
+DEFAULT_STATS_BODY = (b'{"modules":{'
+                      b'"agent":{"status":"connected","last_keepalive":"2026-08-02T10:06:50Z",'
+                      b'"messages":{"count":602},'
+                      b'"tasks":{"dispatched":{"total":4},"discarded_duplicate":{"total":0},'
+                      b'"failed":{"total":0}}},'
+                      b'"logcollector":{"global":{"files":[]}}}}')
+DEFAULT_CONFIG_BODY = b'{"cpu":42,"mem":128,"note":"hello from python"}'
 
 ENDPOINTS = ("/stats", "/config")
+
+
+def default_body(target: str) -> bytes:
+    """The body a given endpoint accepts. They no longer take the same shape."""
+    return DEFAULT_STATS_BODY if target.endswith("/stats") else DEFAULT_CONFIG_BODY
 
 # Must match AuthConfig's defaults (auth/authTypes.hpp) unless the manager overrides them --
 # only used to pick offsets that reliably land on the wrong side of each window.
@@ -119,14 +139,23 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 # and already covered by send_stateless.py --all.
 
 def scenario_valid(agent_id, agent_key, target):
-    body = DEFAULT_BODY
+    body = default_body(target)
     return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
 
 
-def scenario_nested_document(agent_id, agent_key, target):
-    # A document that already has a `wazuh` object: modulesd must add agent.id underneath it
-    # without destroying the sibling, and must override any id claimed in the document.
-    body = b'{"wazuh":{"cluster":{"name":"mycluster"},"agent":{"id":"999999"}},"payload":true}'
+def scenario_claimed_identity(agent_id, agent_key, target):
+    # A document that claims an identity of its own. modulesd must keep the authenticated one:
+    # /stats drops the claim when it rebuilds the document, /config overrides it in place.
+    body = (b'{"modules":{"agent":{"messages":{"count":1}}},'
+            b'"agent_id":"999999","cluster":{"name":"claimed","node":"claimed"}}'
+            if target.endswith("/stats")
+            else b'{"wazuh":{"cluster":{"name":"mycluster"},"agent":{"id":"999999"}},"payload":true}')
+    return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
+
+
+def scenario_no_modules_object(agent_id, agent_key, target):
+    # A JSON object with nothing to store. Only /stats rejects it; /config takes any object.
+    body = b'{"cpu":42}'
     return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
 
 
@@ -148,41 +177,41 @@ def scenario_malformed_json(agent_id, agent_key, target):
 
 
 def scenario_missing_protocol_version(agent_id, agent_key, target):
-    body = DEFAULT_BODY
+    body = default_body(target)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
     del headers["protocol-version"]
     return headers, body
 
 
-def scenario_missing_authorization(_agent_id, _agent_key, _target):
-    return {"protocol-version": "1", "Content-Type": "application/json"}, DEFAULT_BODY
+def scenario_missing_authorization(_agent_id, _agent_key, target):
+    return {"protocol-version": "1", "Content-Type": "application/json"}, default_body(target)
 
 
-def scenario_malformed_authorization(_agent_id, _agent_key, _target):
+def scenario_malformed_authorization(_agent_id, _agent_key, target):
     return ({"protocol-version": "1", "Content-Type": "application/json",
-             "Authorization": "Wazuh not-even-close"}, DEFAULT_BODY)
+             "Authorization": "Wazuh not-even-close"}, default_body(target))
 
 
 def scenario_unknown_agent(_agent_id, _agent_key, target):
-    body = DEFAULT_BODY
+    body = default_body(target)
     fake_id, fake_key = "999999", bytes(32)  # an id that (almost certainly) isn't enrolled
     return _auth_header(fake_id, fake_key, "1", "POST", target, int(time.time()), body), body
 
 
 def scenario_expired_request(agent_id, agent_key, target):
-    body = DEFAULT_BODY
+    body = default_body(target)
     ts = int(time.time()) - (MAX_REQUEST_AGE_SECONDS + 1)
     return _auth_header(agent_id, agent_key, "1", "POST", target, ts, body), body
 
 
 def scenario_future_request(agent_id, agent_key, target):
-    body = DEFAULT_BODY
+    body = default_body(target)
     ts = int(time.time()) + (MAX_FUTURE_SKEW_SECONDS + 1)
     return _auth_header(agent_id, agent_key, "1", "POST", target, ts, body), body
 
 
 def scenario_invalid_mac(agent_id, agent_key, target):
-    signed_body = DEFAULT_BODY
+    signed_body = default_body(target)
     headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), signed_body)
     return headers, b'{"tampered":true}'  # transmit different bytes than what was signed
 
@@ -194,9 +223,12 @@ def scenario_body_too_large(agent_id, agent_key, target):
     return _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body), body
 
 
+# The expected status is either one code for both endpoints, or {target: code} where they
+# legitimately differ -- /stats validates the report's shape, /config still takes any object.
 SCENARIOS = [
     ("valid_request", 200, scenario_valid),
-    ("nested_document", 200, scenario_nested_document),
+    ("claimed_identity", 200, scenario_claimed_identity),
+    ("no_modules_object", {"/stats": 400, "/config": 200}, scenario_no_modules_object),
     ("empty_body", 400, scenario_empty_body),
     ("body_not_an_object", 400, scenario_not_an_object),
     ("malformed_json", 400, scenario_malformed_json),
@@ -211,9 +243,19 @@ SCENARIOS = [
 ]
 
 
-def check_enrichment(response_text: str, agent_id: str) -> str:
-    """For a 200, confirms modulesd actually stamped the document. Returns '' when the
-    enrichment is correct, or a human-readable reason when it is not."""
+def check_success_body(target: str, response_text: str, agent_id: str) -> str:
+    """For a 200, confirms the endpoint answered what it should. Returns '' when it did, or a
+    human-readable reason when it did not.
+
+    The two endpoints prove themselves differently: /stats indexes and answers the protocol's
+    empty acknowledgment, so there is nothing to inspect and the check is that nothing came back;
+    /config is still a dummy and echoes the enriched document, which is what makes its own 200
+    evidence that the UDS hop and the header propagation work.
+    """
+    if target.endswith("/stats"):
+        return "" if response_text.strip() in ("", "{}") \
+            else f"/stats must answer an empty acknowledgment, got {response_text[:80]!r}"
+
     try:
         document = json.loads(response_text)
     except ValueError as exc:
@@ -241,8 +283,9 @@ def check_enrichment(response_text: str, agent_id: str) -> str:
     return ""
 
 
-def run_scenario(base_url, agent_id, agent_key, target, name, expected_status, build):
+def run_scenario(base_url, agent_id, agent_key, target, name, expected, build):
     headers, body = build(agent_id, agent_key, target)
+    expected_status = expected[target] if isinstance(expected, dict) else expected
     url = base_url.rstrip("/") + target
     label = f"{target} {name}"
     try:
@@ -260,9 +303,9 @@ def run_scenario(base_url, agent_id, agent_key, target, name, expected_status, b
               f"({len(body)} byte body) -- {response.text[:160]}{hint}")
         return False
 
-    # A 200 that is not actually enriched would otherwise look like a pass.
+    # A 200 with the wrong body would otherwise look like a pass.
     if expected_status == 200:
-        problem = check_enrichment(response.text, agent_id)
+        problem = check_success_body(target, response.text, agent_id)
         if problem:
             print(f"[FAIL] {label}: got 200 but {problem} -- {response.text[:160]}")
             return False
@@ -294,8 +337,9 @@ def main():
     parser.add_argument("--client-keys", default=DEFAULT_CLIENT_KEYS, help="Path to client.keys.")
     parser.add_argument("--endpoint", default="stats", choices=("stats", "config"),
                         help="Which endpoint to send to (ignored with --all, which runs both).")
-    parser.add_argument("--body", default=DEFAULT_BODY.decode(),
-                        help="Raw request body to sign and send. Must be a JSON OBJECT for a 200.")
+    parser.add_argument("--body", default=None,
+                        help="Raw request body to sign and send. Defaults to a report for /stats "
+                             "and any JSON object for /config; /stats needs a `modules` object.")
     parser.add_argument("--tamper", action="store_true",
                         help="Transmit a different body than the one signed, to prove the server "
                              "rejects a modified body with 401 InvalidMac.")
@@ -310,7 +354,7 @@ def main():
         return 0 if run_all(args.url, args.agent_id, agent_key) else 1
 
     method, target, protocol_version = "POST", f"/{args.endpoint}", "1"
-    signed_body = args.body.encode()
+    signed_body = args.body.encode() if args.body is not None else default_body(target)
     timestamp = int(time.time())
     headers = _auth_header(args.agent_id, agent_key, protocol_version, method, target, timestamp, signed_body)
     sent_body = b'{"tampered":true}' if args.tamper else signed_body
@@ -340,9 +384,14 @@ def main():
         print("\n    503 means remoted could not reach the downstream. Is wazuh-manager-modulesd "
               "running with the inventory_sync_server module?")
     elif response.ok:
-        problem = check_enrichment(response.text, args.agent_id)
-        print(f"\n    enrichment: {problem}" if problem
-              else "\n    enrichment OK: wazuh.agent.id and @timestamp were added by modulesd.")
+        problem = check_success_body(target, response.text, args.agent_id)
+        if problem:
+            print(f"\n    {problem}")
+        elif target.endswith("/stats"):
+            print("\n    accepted: the report was queued for indexing under this agent's id. "
+                  "Read it back with GET wazuh-agent-stats/_doc/<agent_id> on the indexer.")
+        else:
+            print("\n    enrichment OK: wazuh.agent.id and @timestamp were added by modulesd.")
 
     return 0 if response.ok else 1
 

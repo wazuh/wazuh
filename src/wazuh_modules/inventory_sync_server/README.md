@@ -38,8 +38,8 @@ inventory_sync_server/
 │   │   └── clusterIdentity.hpp          # ClusterIdentity + buildClusterIdentity() from the C-ABI config
 │   ├── endpoints/
 │   │   ├── syncEndpoint.{hpp,cpp}       # POST /inventory/sync policy (a stub today)
-│   │   ├── statsEndpoint.{hpp,cpp}      # POST /stats policy (dummy: enrich + echo + discard)
-│   │   └── configEndpoint.{hpp,cpp}     # POST /config policy (dummy, duplicate of stats on purpose)
+│   │   ├── statsEndpoint.{hpp,cpp}      # POST /stats policy: validate + enrich + index
+│   │   └── configEndpoint.{hpp,cpp}     # POST /config policy (dummy: enrich + echo + discard)
 │   ├── indexer/
 │   │   ├── IIndexerSession.hpp          # seam over the shared session (construction IS the contract)
 │   │   ├── IIndexerConnectorSync.hpp    # seam, isAvailable() only -- deliberately NOT a shared base
@@ -347,24 +347,31 @@ the response-phase timer (504); and shutdown force-closes whatever is left after
 |---|---|---|---|---|
 | GET | `/` | 200 | `{"status":"ok","module":"inventory_sync_server"}` | liveness probe; **exempt from the byte budget** so it keeps answering under memory pressure |
 | POST | `/inventory/sync` | 202 | `{"status":"accepted"}` | **STUB — accepts and DISCARDS the payload.** The path is **PROVISIONAL**: it must match the target remoted's downstream configuration will point at, which lands separately. `syncEndpoint_test.cpp` pins it so a silent drift fails. |
-| POST | `/stats` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Echoes the document back with `wazuh.agent.id`, `wazuh.cluster.name`, `wazuh.cluster.node` and `@timestamp` added, then **discards** it. 400 on a missing/empty agent-id header, malformed JSON, or a body that is not a JSON *object*; **503 when no indexer host is healthy** (or the module is shutting down). |
-| POST | `/config` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — identical behaviour to `/stats`, deliberately implemented as a separate unit. |
+| POST | `/stats` | 200 / 400 / 503 | `{}` | Reached through remoted's authenticated `POST /stats`. Requires `X-Wazuh-Agent-Id`. Moves the agent's `modules` object under `wazuh.agent.statistics` and indexes one document per agent into `wazuh-agent-stats`, with the agent id as the document id. 400 on a missing/empty agent-id header, malformed JSON, a body that is not a JSON *object*, or a report with nothing to store; **503 when no indexer host is healthy** (or the module is shutting down). |
+| POST | `/config` | 200 / 400 / 503 | the request document, enriched | **DUMMY** — same pipeline as `/stats` up to the enrichment, but echoes the document back and drops it. Deliberately a separate unit. |
 
 Anything else is 404; a known path with the wrong verb is 405 with an `Allow` header.
 
-### `/stats` and `/config` (dummies)
+### `/stats` and `/config`
 
-Both take a JSON object from an agent, stamp two fields onto it, echo it back, and drop it. Nothing is
-indexed or stored. The pieces worth knowing:
+Both take a JSON object from an agent and attach the same authoritative identity to it — the agent id
+from the `X-Wazuh-Agent-Id` header, this manager's cluster name and node from its own configuration,
+never anything read out of the document. From there they diverge: `/config` stamps them onto the
+agent's object, adds `@timestamp`, echoes it and drops it; `/stats` validates, builds its own document
+with a `state`/`wazuh.schema` envelope and indexes it. The pieces worth knowing:
 
 - **The agent id comes from the `X-Wazuh-Agent-Id` header, never from the document.** remoted sets it
   from the identity it verified by AES-CMAC. Taking it from the body would make the enrichment
   worthless as an identity — a document claiming `"999"` cannot override the authenticated `"001"`, and
   a test pins exactly that. A request without the header did not come through remoted's authenticated
   route, so it is a contract violation rather than agent input, and answers 400.
-- **`@timestamp` is `Utils::getCurrentISO8601()`** (`shared_modules/utils/timeHelper.h`), i.e.
-  `YYYY-MM-DDTHH:MM:SS.mmmZ`. A pre-existing `@timestamp` in the document is overwritten: the server's
-  clock is the authoritative one. The tests pin the shape, not just the presence.
+- **The time stamp is `Utils::getCurrentISO8601()`** (`shared_modules/utils/timeHelper.h`), i.e.
+  `YYYY-MM-DDTHH:MM:SS.mmmZ`, and the server's clock is the authoritative one, so whatever the document
+  claimed is overwritten. The tests pin the shape, not just the presence. `/config` writes it to
+  `@timestamp`; `/stats` writes it to `state.modified_at` alongside a constant `state.document_version`,
+  because its index follows the schema's stateful convention: a stable document id replaced in place,
+  with no time series behind it. `/stats` also stamps a constant `wazuh.schema.version`, as a string
+  rather than a number, because that is how `wazuh-metrics-agents` declares it.
 - **Both stamps are written with JSON pointers** (`"/wazuh/agent/id"_json_pointer`), so the paths read
   the way they are spelled everywhere else in the schema.
 - **Parsing is non-throwing** (`nlohmann::json::parse(..., allow_exceptions=false)`): a malformed
@@ -388,9 +395,25 @@ indexed or stored. The pieces worth knowing:
   hold keeps the documented teardown ordering true, and stays correct once these handlers start
   deferring their replies. `IndexerGatingTest.StopTearsDownEverythingInReverseOrder` plus two
   per-endpoint tests fail if it is ever made strong (verified by mutation).
-- **Nothing is indexed yet.** The dependency is injected and gated on, but neither `index()` nor
-  `indexDataStream()` is called — a `NothingIsIndexedYet` test per endpoint pins that, so the day real
-  processing lands it has to be updated deliberately.
+- **`/stats` indexes, `/config` does not yet.** `/stats` calls `index(agentId, "wazuh-agent-stats",
+  document)`: a regular index, not a data stream, because the replace-on-push semantics need a stable
+  document id. `/config` still only gates on the connector — a `NothingIsIndexedYet` test pins that, so
+  the day its real processing lands it has to be updated deliberately.
+- **`/stats` builds its document from scratch rather than stamping onto the agent's.** That is what
+  drops the `agent_id` and `cluster` the agent's reporter writes at the root of its own report, instead
+  of indexing them next to the authoritative `wazuh.agent.id`. `modules` moves under
+  `wazuh.agent.statistics` untouched: the module renames no metric and reshapes no module body, so the
+  field names in the index are the agent's own and a metric the agent adds needs no change here.
+- **"Untouched" is about this module, not about what reaches the index.** The `wazuh-agent-stats`
+  mapping is `dynamic: strict` with every leaf declared, so a module or a metric it does not declare
+  makes the indexer reject the whole document with `strict_dynamic_mapping_exception`. Nothing here
+  hears about it: the write is fire-and-forget and the agent already has its `200`. So an agent-side
+  addition needs no change *here* and does need one in the index template, and the only way to see a
+  rejected write today is to read the document back off the indexer.
+- **A report with nothing to store is a 400, not an empty document.** A missing, non-object or empty
+  `modules` would otherwise replace the agent's last good report with one carrying no statistics at
+  all. A module whose body is not an object is rejected for a different reason: it is the one bad shape
+  this side can catch before the mapping rejects it silently.
 - **The cluster name and node name are injected too, the same way as the indexer connector: at
   registration time, via `makeHandler()`'s `cluster` parameter** (`common/clusterIdentity.hpp`'s
   `ClusterIdentity`, built once per attempt by `buildClusterIdentity()` from

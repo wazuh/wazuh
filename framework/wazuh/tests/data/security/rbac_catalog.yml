@@ -82,7 +82,6 @@ get_rbac_actions:
           - GET /agents/{agent_id}/config/{component}/{configuration}
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/daemons/stats
-          - GET /agents/{agent_id}/stats/{component}
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct

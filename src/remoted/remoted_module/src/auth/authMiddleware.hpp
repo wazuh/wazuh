@@ -86,7 +86,8 @@ namespace remoted::auth
              */
             std::variant<AuthenticatedRequest, AuthError> finish();
 
-            /// @return The agent id resolved for this session, valid even before finish().
+            /// @return The agent id resolved for this session, in canonical form, valid even before
+            /// finish(). Not the text the agent signed: see m_signedAgentId.
             const std::string& agentId() const
             {
                 return m_agentId;
@@ -96,7 +97,16 @@ namespace remoted::auth
             friend class AuthMiddleware;
             Session() = default;
 
+            /// The identity every consumer downstream sees, canonicalized (authTypes.hpp's AgentId is
+            /// the numeric truth; client.keys spells it zero-padded to three digits). The wire form is
+            /// NOT canonical: the key lookup resolves numerically, so "1", "001" and "0001" all
+            /// authenticate as agent 1. Propagating the wire form would make three identities out of
+            /// one -- and `POST /stats` uses this value as the id of the agent's document.
             std::string m_agentId;
+            /// The agent id exactly as it appeared in the Authorization header. Only the MAC may use
+            /// it: the agent signed those bytes, so canonicalizing before hashing would break every
+            /// request from an agent that pads differently.
+            std::string m_signedAgentId;
             std::string m_protocolVersion;
             std::string m_method;
             std::string m_requestTarget;

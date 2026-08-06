@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cstddef>
+#include <string>
 
 namespace remoted::auth
 {
@@ -93,6 +95,22 @@ namespace remoted::auth
             }
             return std::all_of(
                 s.begin(), s.end(), [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
+        }
+
+        /**
+         * @brief The agent id as client.keys spells it: decimal, zero-padded to three digits.
+         *
+         * authd assigns ids in this form and every reader matches on it -- the API's agent list, and
+         * the document id `POST /stats` writes into `wazuh-agent-stats`. Derived from the numeric id
+         * rather than from the header text, because the header text is not canonical: the key lookup
+         * resolves numerically, so an agent signing "1" instead of "001" authenticates fine and would
+         * otherwise reach the endpoints as a second, unmatchable identity.
+         */
+        std::string canonicalAgentId(AgentId numericId)
+        {
+            constexpr std::size_t kMinWidth {3};
+            auto text = std::to_string(numericId);
+            return text.size() >= kMinWidth ? text : std::string(kMinWidth - text.size(), '0').append(text);
         }
 
         struct ParsedAuthorization
@@ -237,12 +255,14 @@ namespace remoted::auth
             return AuthError::MissingKey;
         }
 
-        // Step 5: initialize AES-CMAC with the canonical prefix. The timestamp
-        // is re-used verbatim as the substring parsed from the header, not
-        // reformatted from the integer, so agent and manager can never diverge
-        // on padding/formatting.
+        // Step 5: initialize AES-CMAC with the canonical prefix. The timestamp and the agent id are
+        // re-used verbatim as the substrings parsed from the header, not reformatted from their
+        // integers, so agent and manager can never diverge on padding/formatting. The id the request
+        // CARRIES onwards is canonicalized instead -- signing and identifying want opposite things
+        // here, which is why the session keeps both.
         Session session;
-        session.m_agentId = agentId;
+        session.m_agentId = canonicalAgentId(numericAgentId);
+        session.m_signedAgentId = agentId;
         session.m_protocolVersion = std::string(protocolVersionHeader);
         session.m_method = toUpper(method);
         session.m_requestTarget = std::string(requestTarget);
@@ -294,7 +314,7 @@ namespace remoted::auth
         session.m_cmac->update("\n");
         session.m_cmac->update(session.m_requestTarget);
         session.m_cmac->update("\n");
-        session.m_cmac->update(session.m_agentId);
+        session.m_cmac->update(session.m_signedAgentId);
         session.m_cmac->update("\n");
         session.m_cmac->update(parsed->timestamp);
         session.m_cmac->update("\n");

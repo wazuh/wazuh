@@ -158,27 +158,6 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
 
 
-@pytest.mark.parametrize('component', [
-    'logcollector', 'test'
-])
-@patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
-def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
-    """Test `get_agents_component_stats_json` function from agent module."""
-    response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
-    mock_getstats.assert_called_once_with(component=component)
-
-
-@patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
-def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
-    """Test `get_agents_component_stats_json` function from agent module."""
-    response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
-    assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'
-
-
 METRICS_DUMP_DATA = {
     "status": 0,
     "name": "engine",

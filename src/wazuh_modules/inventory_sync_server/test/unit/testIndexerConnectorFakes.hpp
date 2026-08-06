@@ -49,7 +49,7 @@ namespace invsync::test
         /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
         /// without an unreachable host, since the fake never touches a network.
         std::atomic<bool> m_asyncAvailable {true};
-        /// Writes seen by the async fake: (id, index, data). Empty while the endpoints are dummies.
+        /// Writes seen by the async fake: (id, index, data).
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
 
         void recordDestruction(const char* what)
@@ -143,8 +143,8 @@ namespace invsync::test
      * for the sync alias they would be overrides of virtuals that do not exist. Duplicating the
      * destruction bookkeeping is the cheaper of the two costs.
      *
-     * Writes are recorded but nothing in the module calls them yet -- that is what the endpoints'
-     * NothingIsIndexedYet tests pin.
+     * Writes are recorded so the facade tests can assert on them; the per-endpoint suites use their
+     * own local fakes instead, which record per instance.
      */
     class FakeIndexerConnectorAsync final : public invsync::indexer::IIndexerConnectorAsync
     {

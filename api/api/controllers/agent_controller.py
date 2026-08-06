@@ -670,42 +670,6 @@ async def get_daemon_stats(agent_id: str, pretty: bool = False, wait_for_complet
     return json_response(data, pretty=pretty)
 
 
-async def get_component_stats(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                              component: str = None) -> ConnexionResponse:
-    """Get a specified agent's component stats.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID for which the specified component's stats are got.
-    component : str
-        Selected agent's component which stats are got.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the module stats.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component}
-
-    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def post_new_agent(agent_name: str, pretty: bool = False,
                          wait_for_complete: bool = False) -> ConnexionResponse:
     """Add agent (quick method).

@@ -24,16 +24,42 @@ namespace invsync::endpoints::stats
     /**
      * @brief The agent statistics ingress endpoint, reached through remoted's `POST /stats`.
      *
-     * DUMMY. It does the full request/response cycle and the enrichment, but nothing durable: the
-     * document is parsed, checked to be a JSON object, stamped with `wazuh.agent.id`, `@timestamp`,
-     * `wazuh.cluster.name` and `wazuh.cluster.node`, echoed back, and then DISCARDED. Nothing is
-     * indexed or stored. This is the seam where the real statistics handling lands; keeping it a
-     * separate unit from the start means that work is a change to one file plus its test.
+     * The agent reports every module it can collect statistics from in one push, keyed by module:
+     *
+     * ```json
+     * {"modules": {"agent": {…}, "logcollector": {…}}}
+     * ```
+     *
+     * This endpoint indexes one document per agent, whose id IS the agent id, so every push replaces
+     * the previous one:
+     *
+     * ```json
+     * {"state": {"modified_at": …, "document_version": 1},
+     *  "wazuh": {"schema": {"version": "1"}, "cluster": {…},
+     *            "agent": {"id": …, "statistics": {"agent": {…}, …}}}}
+     * ```
+     *
+     * `modules` moves under `wazuh.agent.statistics` untouched. Nothing here renames a metric or
+     * reshapes a module's body: the agent sends the document ready to index, so a mapping table on
+     * this side would have to be edited for every metric the agent ever adds, and only the agent
+     * knows which of its counters are cumulative.
+     *
+     * That does NOT make an agent-side addition free. The `wazuh-agent-stats` mapping is
+     * `dynamic: strict` with every leaf declared, so a module or metric it does not declare makes the
+     * indexer reject the whole document with `strict_dynamic_mapping_exception`. The write is
+     * fire-and-forget and the agent already has its 200, so that rejection is silent: a new metric
+     * needs no change HERE, but it does need one in the index template.
+     *
+     * The document is built from scratch rather than by stamping onto the agent's, so the `agent_id`
+     * and `cluster` the agent's reporter writes at the root are dropped instead of ending up indexed
+     * next to the authoritative `wazuh.agent.id`.
+     *
+     * A report is all or nothing: one malformed module rejects the whole thing with 400, rather than
+     * indexing a partial report the agent has no way to tell apart from a complete one.
      *
      * @note `/stats` and `/config` are deliberate near-duplicates rather than one shared handler
-     * registered twice. They are identical today only because both are dummies; their real payloads
-     * and semantics will diverge, and separating them now means that divergence is a change to one
-     * file instead of a refactor of a shared one. Keep them in sync until they must not be.
+     * registered twice. Their payloads and semantics differ, and separating them means a divergence is
+     * a change to one file instead of a refactor of a shared one.
      *
      * ## Where the agent id comes from
      *
@@ -71,13 +97,19 @@ namespace invsync::endpoints::stats
         return "x-wazuh-agent-id";
     }
 
+    /// @brief The index holding one live statistics document per agent. A regular index, not a data
+    /// stream, because a data stream forbids the stable document id the replacement relies on.
+    constexpr const char* indexName()
+    {
+        return "wazuh-agent-stats";
+    }
+
     /**
      * @brief Build the endpoint's route handler.
      *
-     * The returned handler replies inline. When real statistics handling lands it may instead move the
-     * responder onto a queue and return without answering -- which is what the transport's
-     * deferred-response contract exists to support, and why the signature already takes a responder
-     * rather than returning a response.
+     * The returned handler replies inline: the write is fire-and-forget through the async connector,
+     * so there is nothing to wait for. The signature still takes a responder because the transport's
+     * deferred-response contract is what a later, acknowledged write would need.
      *
      * @param connector The async indexer connector, held WEAKLY and locked at each point of use.
      *
