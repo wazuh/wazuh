@@ -377,28 +377,13 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     const char *wpk_sha1 = wpk_sha1_obj->valuestring;
     const char *installer = installer_obj->valuestring;
 
-    // Mirrors v4.14.6's wm_agent_upgrade_send_wpk_to_agent(): the agent's wire protocol only ever
-    // accepts a bare filename (INCOMING_DIR + basename, wm_agent_upgrade_com.c's _jailfile()), while
-    // wpk_file itself may include a relative subdirectory (custom-WPK uploads can live anywhere
-    // under the install tree, same flexibility v4.14.6's custom_file_path had -- the manager-side
-    // task-creation step already reduced it to a path relative to the install directory, since
-    // this poller runs chrooted there; see wm_agent_upgrade_commands.c). Keep the same split the
-    // old code used -- wpk_basename for every wire "file" field, file_path for the manager's own
-    // local read.
-    char wpk_file_copy[PATH_MAX + 1];
-    strncpy(wpk_file_copy, wpk_file, sizeof(wpk_file_copy) - 1);
-    wpk_file_copy[sizeof(wpk_file_copy) - 1] = '\0';
-    const char *wpk_basename = basename_ex(wpk_file_copy);
-
-    // A bare basename (no '/') is the repo-resolved case, always relative to the default upgrade
-    // path; anything with a directory component is already relative to the install root (the
-    // custom-WPK case, post-chroot-adjustment) and is used as-is.
+    // wpk_file is always a bare filename (both the repo-resolved and custom-WPK task-creation
+    // paths in wm_agent_upgrade_commands.c only ever emit a basename), so the wire "file" field to
+    // the agent and the manager's own local read both resolve it the same way, against this
+    // poller's fixed default upgrade path.
     char file_path[PATH_MAX + 1];
-    if (strchr(wpk_file, '/')) {
-        snprintf(file_path, sizeof(file_path), "%s", wpk_file);
-    } else {
-        snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
-    }
+    snprintf(file_path, sizeof(file_path), "%s%s", LEGACY_TASK_WPK_DEFAULT_PATH, wpk_file);
+    const char *wpk_basename = wpk_file;
 
     minfo("legacy_task_delivery: delivering remote_upgrade task to agent '%s' (wpk: '%s')", agent_id, wpk_file);
 
