@@ -1,0 +1,110 @@
+package scenario
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+// Known step kinds, so a typo is a load-time error, not a silent no-op.
+var validKinds = map[string]bool{
+	"delta": true, "cleans": true, "checksum": true,
+	"metadata": true, "groups": true, "full_resync": true,
+	"delete_agent": true, "engine": true, "raw": true, "parallel": true,
+}
+
+// Load reads and strictly validates a scenario file. Unknown fields and unknown
+// step kinds are refused: a typo must not silently produce a different
+// measurement (docu/07). modeOverride, when non-empty, replaces the file's mode.
+func Load(path, modeOverride string) (*Scenario, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var s Scenario
+	if err := dec.Decode(&s); err != nil {
+		return nil, fmt.Errorf("scenario %s: %w", path, err)
+	}
+
+	if modeOverride != "" {
+		s.Mode = modeOverride
+	}
+	if err := s.validate(); err != nil {
+		return nil, fmt.Errorf("scenario %s: %w", path, err)
+	}
+	return &s, nil
+}
+
+func (s *Scenario) validate() error {
+	switch s.Mode {
+	case "uds", "agent":
+	default:
+		return fmt.Errorf("mode must be \"uds\" or \"agent\", got %q", s.Mode)
+	}
+	if len(s.Fleets) == 0 {
+		return fmt.Errorf("no fleets")
+	}
+
+	for _, fleet := range s.Fleets {
+		if fleet.Agents <= 0 {
+			return fmt.Errorf("fleet %q: agents must be > 0", fleet.Name)
+		}
+		if len(fleet.Lanes) == 0 {
+			return fmt.Errorf("fleet %q: no lanes", fleet.Name)
+		}
+		for _, laneName := range fleet.Lanes {
+			steps, ok := s.Lanes[laneName]
+			if !ok {
+				return fmt.Errorf("fleet %q references unknown lane %q", fleet.Name, laneName)
+			}
+			for i, step := range steps {
+				if err := s.validateStep(fleet.Name, laneName, i, step); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
+	where := fmt.Sprintf("fleet %q lane %q step %d", fleet, lane, i)
+	if !validKinds[step.Kind] {
+		return fmt.Errorf("%s: unknown kind %q", where, step.Kind)
+	}
+	if step.Kind == "engine" {
+		if s.Mode != "agent" {
+			return fmt.Errorf("%s: engine streams need agent mode", where)
+		}
+		if step.Engine == "" || step.Location == "" {
+			return fmt.Errorf("%s: engine step needs \"engine\" and \"location\"", where)
+		}
+	}
+	if step.Kind == "delete_agent" && s.Mode != "uds" {
+		return fmt.Errorf("%s: delete_agent is uds-mode only", where)
+	}
+	if (step.Kind == "metadata" || step.Kind == "groups") && len(step.Indices) == 0 {
+		return fmt.Errorf("%s: %s needs indices", where, step.Kind)
+	}
+	return nil
+}
+
+// LaneModule returns the module for a step, falling back to the defaults.
+func (s *Scenario) LaneModule(step Step) string {
+	if step.Module != "" {
+		return step.Module
+	}
+	return s.Defaults.Module
+}
+
+// LaneOption returns the option for a step, falling back to the defaults.
+func (s *Scenario) LaneOption(step Step) string {
+	if step.Option != "" {
+		return step.Option
+	}
+	return s.Defaults.Option
+}
