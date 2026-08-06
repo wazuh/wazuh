@@ -1,0 +1,130 @@
+# 07 — Scenario schema
+
+A scenario is one JSON file: it fully determines a run, so a run is reproducible from the file plus
+the CLI overrides recorded with the artifacts. The sender **MUST** validate it up front and refuse
+to start on an unknown field — a typo must not silently produce a different measurement.
+
+The model is **lanes and fleets**, so that a single run can put *heterogeneous* load on the manager
+at once — the realistic case, where a Windows fleet and a Linux fleet each run several modules in
+parallel and stream logs, all simultaneously. This is the structure the retired simulator's
+`mixed_fleet_windows_linux_full` scenario used, kept because it is the only way to reproduce
+production-shaped pressure.
+
+```json
+{
+  "name": "mixed_fleet_windows_linux",
+  "description": "Two fleets, each running FIM + SCA + syscollector + VD inventory lanes and a syslog engine lane in parallel.",
+  "mode": "agent",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "max_eps": 75,
+    "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "fim_windows": [
+      { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 500, "size_bytes": 512, "with_checksum": true } },
+      { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 20 }, "repeat_count": 10, "repeat_delay": "3s", "initial_delay": "0s" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "module": "syscollector", "option": "VDFirst",
+        "indices": ["wazuh-states-inventory-packages"], "documents": { "count": 300 } },
+      { "kind": "delta", "option": "VDSync", "documents": { "count": 30 },
+        "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "engine": [
+      { "kind": "engine", "engine": "sample_payloads/engine/syslog.log", "location": "syslog",
+        "max_eps": 250, "loop": true, "run_while_siblings_active": true }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 50, "first_id": 1000, "lanes": ["fim_windows", "vd_windows", "engine"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "architecture": "x86_64" } },
+    { "name": "linux", "agents": 50, "first_id": 2000, "lanes": ["fim_linux", "vd_linux", "engine"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+}
+```
+
+## Blocks
+
+| Block | Meaning |
+|---|---|
+| `mode` | `uds` or `agent`. **MAY** be omitted and supplied per run by the orchestration, which is how the relay overhead is measured. `engine` lanes are `agent`-mode only (see [13](13-engine-event-streams.md)) |
+| `defaults` | Inherited by every lane step and every fleet unless overridden. Includes the default `control` block |
+| `lanes` | A named map of **lane definitions**. A lane is an ordered list of steps one agent walks (see below). Lanes are the reusable unit — many fleets reference the same lane |
+| `fleets` | One or more fleets. Each names its agent count, id range, the lanes its agents run in parallel, and a `start` block of per-fleet metadata (OS, arch) stamped onto that fleet's sessions |
+| `pacing` | Run-level load shape: concurrency, request rate, how long to run, drain window |
+
+Anything a fleet or a step does not set is taken from `defaults`; anything `defaults` does not set
+has a built-in default. This three-level inheritance (built-in → `defaults` → fleet/step) is what
+lets one file carry a Windows fleet and a Linux fleet with different metadata but shared lane logic.
+
+## Lanes run in parallel
+
+Within one agent, **every lane the fleet lists runs concurrently**, each on its own goroutine
+([08](08-concurrency-and-pacing.md)). A `windows` agent above runs `fim_windows`, `vd_windows` and
+`engine` at the same time — first-scan bursts, VD deltas and a syslog stream overlapping — which is
+what a real agent does and what stresses the manager's cross-lane paths (the sync pipeline and the
+scan lane sharing one agent's ordering, plus the engine ingress).
+
+Steps **within** a lane are sequential; lanes **within** an agent are parallel; agents are
+independent.
+
+## Step kinds
+
+| `kind` | Session built | Notes |
+|---|---|---|
+| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count/size/`checksum.hash.sha1`; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync` |
+| `cleans` | `ModuleDelta` + `Cleans` | `indices` overrides the defaults |
+| `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
+| `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |
+| `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
+| `delete_agent` | `DELETE /agents` | `uds` mode only |
+| `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
+| `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
+| `parallel` | A group of steps sent concurrently by the SAME agent | Breaks per-agent-per-lane sequencing on purpose; the FIFO-ordering scenario |
+
+## Per-step timing
+
+A lane step **MAY** carry:
+
+| Field | Meaning |
+|---|---|
+| `repeat_count` | Send the step this many times (0 or absent = once). A steady delta stream is `delta` with a high `repeat_count` |
+| `repeat_delay` | Wait this long between repeats |
+| `initial_delay` | Wait this long before the step's first send — how lanes are staggered (VD starting after FIM has seeded, say) |
+
+Durations are Go duration strings (`"3s"`, `"5m"`).
+
+## Pacing
+
+| Field | Meaning |
+|---|---|
+| `concurrent_agents` | How many agents are Active at once. `0` = all of them |
+| `requests_per_second` | Aggregate session rate through a shared leaky bucket. `0` = unlimited (correct for saturation, wrong for latency) |
+| `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
+| `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
+
+Per-lane `max_eps` bounds that lane's own rate independently of the global session bucket — an
+engine lane at 250 EPS alongside inventory lanes at 75, for instance. Both are recorded.
+
+## Conventions
+
+- `documents.size_bytes` is the approximate serialized size of one document; the generator pads a
+  realistic shape rather than one giant string, because document count and document size stress
+  different parts of the pipeline (per-document overlay vs bulk bytes).
+- Document generation is deterministic from a seed recorded in the run metadata: two runs of one
+  scenario send byte-identical payloads, or the comparison is not one.
+- **There is no pass/fail gate.** A scenario declares *what to send*, not *what counts as success*:
+  the sender records every outcome (every status code, every latency, per lane and per fleet) and
+  reports it, and it is the operator — or F9c-4's report — who judges. This keeps a run from being
+  silently "green" while hiding a shift in the status distribution, and it means a saturation run
+  that is *supposed* to produce `503`s is not mislabeled a failure. What the sender still fails on
+  is a broken run (a `401`, a `400 invalid_json` to `/control`, transport errors past the
+  threshold), because those mean the measurement itself is invalid — see [10](10-error-handling-and-shutdown.md).
+- The scenario file used **MUST** be copied into the run's artifacts verbatim (F9c-3), together with
+  the effective CLI parameters.
