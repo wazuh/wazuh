@@ -27,7 +27,7 @@ static cJSON *g_anti_tampering_cfg = NULL;
 static cJSON *g_state_body = NULL;
 
 /* --- Stub implementations --- */
-cJSON* __wrap_getClientConfig(void)
+cJSON* __wrap_getAgentConfig(void)
 {
     cJSON* ret = g_client_cfg;
     g_client_cfg = NULL;
@@ -138,7 +138,7 @@ static void test_agcom_getconfig_client_ok(void** state)
     char command[] = "getconfig client";
     char* output = NULL;
 
-    g_client_cfg = make_simple_json("client", "ok");
+    g_client_cfg = make_simple_json("agent", "ok");
 
     size_t len = agcom_dispatch(command, &output);
 
@@ -226,7 +226,7 @@ static void test_agcom_getallconfig_reports_every_section_as_one_module(void** s
     char command[] = "getallconfig";
     char* output = NULL;
 
-    g_client_cfg = make_simple_json("client", "ok");
+    g_client_cfg = make_simple_json("agent", "ok");
     g_internal_cfg = make_simple_json("internal", "ok");
 #ifndef WIN32
     g_anti_tampering_cfg = make_simple_json("anti_tampering", "ok");
@@ -245,7 +245,7 @@ static void test_agcom_getallconfig_reports_every_section_as_one_module(void** s
     /* Keyed by module name, body directly under it. */
     cJSON* config = cJSON_GetObjectItem(report, "agent");
     assert_non_null(config);
-    assert_non_null(cJSON_GetObjectItem(config, "client"));
+    assert_non_null(cJSON_GetObjectItem(config, "agent"));
     assert_non_null(cJSON_GetObjectItem(config, "internal"));
 #ifndef WIN32
     assert_non_null(cJSON_GetObjectItem(config, "anti_tampering"));
@@ -262,7 +262,7 @@ static void test_agcom_getallconfig_omits_sections_that_are_unset(void** state)
     char* output = NULL;
 
     /* Only the client section is configured; the rest return NULL. */
-    g_client_cfg = make_simple_json("client", "ok");
+    g_client_cfg = make_simple_json("agent", "ok");
 
     size_t len = agcom_dispatch(command, &output);
 
@@ -270,7 +270,7 @@ static void test_agcom_getallconfig_omits_sections_that_are_unset(void** state)
 
     cJSON* report = cJSON_Parse(output + 3);
     cJSON* config = cJSON_GetObjectItem(report, "agent");
-    assert_non_null(cJSON_GetObjectItem(config, "client"));
+    assert_non_null(cJSON_GetObjectItem(config, "agent"));
     assert_null(cJSON_GetObjectItem(config, "internal"));
 
     cJSON_Delete(report);

@@ -81,8 +81,11 @@ size_t agcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "client") == 0){
-        if (cfg = getClientConfig(), cfg) {
+    /* "client" is the 4.x name of this section and stays accepted so the Server
+     * API's existing /config/agent/client path keeps working; the document it
+     * returns is keyed "agent" either way. */
+    if (strcmp(section, "agent") == 0 || strcmp(section, "client") == 0){
+        if (cfg = getAgentConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
@@ -130,7 +133,7 @@ size_t agcom_getallconfig(char ** output) {
     cJSON *report = cJSON_CreateObject();
     cJSON *body = cJSON_CreateObject();
 
-    module_report_merge(body, getClientConfig());
+    module_report_merge(body, getAgentConfig());
     module_report_merge(body, getAgentInternalOptions());
 #ifndef WIN32
     module_report_merge(body, getAntiTamperingConfig());
