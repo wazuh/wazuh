@@ -329,7 +329,6 @@ static void mock_remoted_internal_options(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 37);     // pass_empty_keyfile
     will_return(__wrap_getDefine_Int_default, 41);     // ctrl_msg_queue_size
     will_return(__wrap_getDefine_Int_default, 43);     // keyupdate_interval
-    will_return(__wrap_getDefine_Int_default, 47);     // router_forwarding_disabled
     will_return(__wrap_getDefine_Int_default, 53);     // state_interval
     will_return(__wrap_getDefine_Int_default, 59);     // nofile
     will_return(__wrap_getDefine_Int_default, 61);     // sender_pool
@@ -405,7 +404,6 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "pass_empty_keyfile")->valueint, 37);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "control_msg_queue_size")->valueint, 41);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "keyupdate_interval")->valueint, 43);
-    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "router_forwarding_disabled")->valueint, 47);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "state_interval")->valueint, 53);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "rlimit_nofile")->valueint, 59);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "sender_pool")->valueint, 61);

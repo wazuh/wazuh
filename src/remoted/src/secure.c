@@ -16,7 +16,6 @@
 #include "remoted_op.h"
 #include "state.h"
 #include "wazuhdb_queries_op.h"
-#include "router.h"
 #include "sym_load.h"
 #include "remoted_module.h"
 #include "indexed_queue_op.h"
@@ -95,7 +94,6 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -122,8 +120,8 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
 #define DBSYNC_HEADER "5:"
 #define DBSYNC_HEADER_SIZE 2
 
-// Router message forwarder - returns true if message was forwarded to router
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
+// Detects (and logs) legacy agent messages the 5.x manager no longer processes.
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -520,13 +518,9 @@ void HandleSecure()
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
-    // Router module logging initialization
-    router_initialize(taggedLogFunction, ARGV0);
-
-    // Router providers initialization
-    if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
-        mdebug2("Failed to create router handle for 'inventory synchronization'.");
-    }
+    // No router provider anymore: the stateful-sync path is the C++ module's authenticated
+    // POST /stateful route (relayed to inventory_sync_server over UDS); the legacy
+    // 'inventory-states' topic has neither publishers nor subscribers left.
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
@@ -1264,120 +1258,61 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
-    // Check if message should be forwarded to router instead of analysisd
-    bool forwarded_to_router = false;
-    if (router_forwarding_disabled != 1) {
-        forwarded_to_router = router_message_forward(tmp_msg, msg_length, agentid_str);
+    // Legacy message types the 5.x manager no longer processes are discarded here, BEFORE the
+    // analysisd enqueue: letting them fall through would inject binary payloads as events.
+    if (discard_legacy_agent_message(tmp_msg, agentid_str)) {
+        os_free(agentid_str);
+        return;
     }
 
-    // Only send to analysisd if not forwarded to router
-    if (!forwarded_to_router) {
-        /* Router-bound messages may be binary; trim only analysisd events. */
-        size_t stripped_nulls = 0;
-        while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
-            msg_length--;
-            stripped_nulls++;
-        }
-        if (stripped_nulls > 0) {
-            mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
-                    stripped_nulls, agentid_str);
-        }
+    /* Trim trailing nulls from analysisd-bound events. */
+    size_t stripped_nulls = 0;
+    while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+        msg_length--;
+        stripped_nulls++;
+    }
+    if (stripped_nulls > 0) {
+        mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                stripped_nulls, agentid_str);
+    }
 
-        evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length + 1, sizeof(char), e->raw);
-        memcpy(e->raw, tmp_msg, msg_length);
-        e->len = msg_length;
+    evt_item_t *e; os_calloc(1, sizeof(*e), e);
+    os_calloc(msg_length + 1, sizeof(char), e->raw);
+    memcpy(e->raw, tmp_msg, msg_length);
+    e->len = msg_length;
 
-        int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
-        if (rc < 0) {
-            dispose_evt_item(e);
-            rem_inc_recv_events_failed();
-            maybe_log_events_queue_drop();
-        } else {
-            rem_inc_recv_events(agentid_str);
-        }
+    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
+    if (rc < 0) {
+        dispose_evt_item(e);
+        rem_inc_recv_events_failed();
+        maybe_log_events_queue_drop();
+    } else {
+        rem_inc_recv_events(agentid_str);
     }
 
     os_free(agentid_str);
 }
 
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) {
 
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
-    int message_header_size = 0;
-    msg_type message_type = MT_INVALID;
-
-    if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        if (!router_sync_handle) {
-            mdebug2("Router handle for 'inventory synchronization' not available.");
-            return false;
-        }
-        router_handle = router_sync_handle;
-        message_header_size = INVENTORY_SYNC_HEADER_SIZE;
-        message_type = MT_INV_SYNC;
+    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
+        // The 'inventory-states' router topic retired with the legacy inventory_sync module:
+        // since 5.x, stateful synchronization only enters through remoted's authenticated
+        // POST /stateful route as a whole FullSession, so the old chunked wire protocol has
+        // nowhere to go. Discarded, not an error: it is a not-yet-updated agent, not an attack.
+        mdebug2("Discarding legacy stateful-sync message from agent '%s' (since 5.x the manager only accepts "
+                "whole sessions over POST /stateful)", agent_id);
+        return true;
     }
-    else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
+
+    if (strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
         // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
         // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
-        // legacy_task_delivery.c). This is additive: the ack is not router-bound, so it still
-        // falls through to the normal analysisd/Engine event path (batch_queue_enqueue_ex) like
-        // any other agent message, instead of being silently discarded.
+        // legacy_task_delivery.c). NOT discarded: the ack still falls through to the normal
+        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message.
         legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
         mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
         return false;
-    }
-
-    if (!router_handle) {
-        return false;
-    }
-
-    mdebug2("Forwarding message to router");
-
-    char* msg_start = msg + message_header_size;
-    if (message_type == MT_INV_SYNC) {
-        // Validate minimum message length: header + "x:y" (4 chars minimum after header)
-        if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
-            mdebug2("Message too short for expected format.");
-            return false;
-        }
-
-        size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
-
-        // Find colon separator between module and message
-        // Format after header: {module}:{msg}
-        char* colon = (char*)memchr(msg_start, ':', remaining_len);
-        if (!colon || colon == msg_start) {
-            mdebug2("Invalid message format: missing or empty module.");
-            return false;
-        }
-
-        // Calculate module length and validate it's reasonable
-        size_t module_len = colon - msg_start;
-        if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
-            mdebug2("Invalid module length.");
-            return false;
-        }
-
-        // Calculate message payload position
-        char* msg_to_send = colon + 1;
-        size_t payload_offset = msg_to_send - msg;
-
-        if (payload_offset >= msg_length) {
-            mdebug2("Invalid message format: no payload data.");
-            return false;
-        }
-
-        // Calculate safe message size
-        size_t msg_size = msg_length - payload_offset;
-
-        // Send the raw flatbuffer to inventory sync with anti-spoofing validation
-        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id, cluster_name) != 0) {
-            mdebug2("Unable to forward message for agent '%s'.", agent_id);
-            return false;
-        }
-
-        rem_inc_recv_states(agent_id);
-        return true;
     }
 
     return false;
