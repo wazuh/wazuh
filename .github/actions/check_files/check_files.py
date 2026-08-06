@@ -258,6 +258,31 @@ def get_current_items(scan_path='/var/ossec', size_check=False, ignore_names=[])
 """
 
 
+def path_match(filename, pattern):
+    """Match a filename against a glob pattern segment by segment.
+
+    A wildcard is not allowed to span path separators: both the filename
+    and the pattern are split into their components and each pair is
+    matched independently. This keeps a '*' from crossing a directory
+    boundary regardless of how many characters it expands to. Both '/'
+    (Unix) and '\\' (Windows) separators are supported.
+
+    Args:
+        filename (str): The current file path being checked.
+        pattern (str): The expected path, possibly containing glob wildcards.
+
+    Returns:
+        bool: True if the filename matches the pattern.
+    """
+    file_parts = filename.replace('\\', '/').split('/')
+    pattern_parts = pattern.replace('\\', '/').split('/')
+
+    if len(file_parts) != len(pattern_parts):
+        return False
+
+    return all(fnmatch.fnmatch(f, p) for f, p in zip(file_parts, pattern_parts))
+
+
 def csv_to_dict(file_path, key_column):
     data_dict = {}
 
@@ -466,9 +491,10 @@ if __name__ == "__main__":
             # 2. Check for matches with glob patterns if no exact match found
             if not matched:
                 for pattern, expected_item_fields in glob_patterns.items():
-                    # Check if the pattern matches the current file name
-                    # Note: Only the current directory is considered (no subdirectories)
-                    if fnmatch.fnmatch(current_file_name, pattern) and '/' not in current_file_name[len(pattern)-1:]:
+                    # Check if the pattern matches the current file name.
+                    # Matching is done per path segment so a wildcard never
+                    # spans a directory separator.
+                    if path_match(current_file_name, pattern):
                         matched = True
                         matches[pattern] = True
 
