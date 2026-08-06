@@ -385,8 +385,9 @@ TEST(ConfigEndpointTest, ElementsMissingConfigAreRejected)
 
 TEST(ConfigEndpointTest, ElementsWithNonObjectConfigAreRejected)
 {
-    for (const auto* body :
-        {R"([{"module":"fim","config":42}])", R"([{"module":"fim","config":[]}])", R"([{"module":"fim","config":"x"}])"})
+    for (const auto* body : {R"([{"module":"fim","config":42}])",
+                             R"([{"module":"fim","config":[]}])",
+                             R"([{"module":"fim","config":"x"}])"})
     {
         const auto response = run(makeRequest(body, "001"));
         EXPECT_EQ(400, response.status) << "body: " << body;
