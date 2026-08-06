@@ -50,18 +50,21 @@ agent's previous report:
 }
 ```
 
-Two details worth knowing:
+Three details worth knowing:
 
 - The document is built from scratch, so an `agent_id` or `cluster` the agent writes at the root of its
   own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`.
 - The report is stored as it arrives. The module renames no metric and reshapes no module body, so the
   field names in the index are the ones the agent emits, and a metric the agent adds needs no change
   here.
+- It does need one in the index template. `wazuh-agent-stats` is mapped `dynamic: strict` with every
+  leaf declared, so a module or metric it does not declare makes the indexer reject the whole document
+  with `strict_dynamic_mapping_exception`. The write is fire-and-forget and the agent already has its
+  `200`, so that rejection is invisible from here — read the document back off the indexer to see it.
 
 `400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
 report with no statistics would replace the agent's last good one.
->>>>>>> beb5a272de5 (docs: document POST /stats and the index it writes)
 
 ## Request headers
 
@@ -93,13 +96,12 @@ a warning, rather than being allowed to break the serialization of every request
 
 ## Indexing `/config`
 
-Unlike `/stats`, the body is a JSON **array** of `{"module": <string>, "config": <object>}` pairs, one
-per agent module (e.g. `fim`, `logcollector`) -- not a single JSON object. Each element is reduced to
-exactly those two keys (anything else the agent sent on that element is dropped) and folded into a
-`{"<module>": <config>}` object: a module is unique per report, so a later entry for the same module
-name overwrites an earlier one rather than being treated as an error. `config` itself is never
-validated against a schema here -- it is copied through as an opaque JSON value; per-module field
-typing lives entirely in the `wazuh-agent-config` index mapping.
+Like `/stats`, the body is a `modules`-keyed object -- `{"modules": {"<module>": <config>, ...}}`,
+one entry per agent module (e.g. `fim`, `logcollector`). A module is unique per report by construction
+(object keys cannot repeat), and its `config` is never validated against a schema here -- it is copied
+through as an opaque JSON value into `configuration.content`; per-module field typing lives entirely in
+the `wazuh-agent-config` index mapping. An empty `modules` object is rejected, for the same reason
+`/stats` rejects an empty report.
 
 The result is indexed under the agent id as `_id`, via a plain upsert -- each report replaces the
 previous one for that agent in full, there is no delete step:
@@ -132,7 +134,7 @@ These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a non-empty `modules`-keyed object whose every module value is an object, for both `/stats` and `/config`) |
+| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a non-empty `modules`-keyed object whose every module value is an object, for both `/stats` and `/config`). An empty `modules` is rejected on purpose: indexing a report with nothing to store would replace the agent's last good document |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |

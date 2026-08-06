@@ -35,6 +35,12 @@ namespace
      *
      * Both modules come in clean and already named the way the index declares them: this is the wire
      * format agreed with the agent side (#37843), which is also what the document stores.
+     *
+     * It also claims an identity three ways -- the reporter's own `agent_id`/`cluster` at the root,
+     * plus a `wazuh.agent.id` and `wazuh.cluster` spelled exactly like the authoritative ones. None
+     * may survive, and the ones under `wazuh` are the interesting half: building the document from
+     * scratch makes them trivially unreachable, and these are what would start leaking the day
+     * someone goes back to stamping onto the agent's payload.
      */
     constexpr auto kAgentReport {
         R"({"modules":{)"
@@ -42,7 +48,9 @@ namespace
         R"("messages":{"count":602},)"
         R"("tasks":{"dispatched":{"total":4},"discarded_duplicate":{"total":0},"failed":{"total":0}}},)"
         R"("logcollector":{"global":{"files":[{"location":"df -P","events":32}]}})"
-        R"(},"agent_id":"001","cluster":{"name":"claimed","node":"claimed"}})"};
+        R"(},"agent_id":"001","cluster":{"name":"claimed","node":"claimed"},)"
+        R"("wazuh":{"agent":{"id":"999"},"cluster":{"name":"claimed","node":"claimed"},)"
+        R"("schema":{"version":"999"}},"state":{"document_version":999}})"};
 
     /// Captures whatever the handler sends, so the endpoint can be tested with no socket at all.
     class CapturingResponder final : public IHttpResponder
@@ -219,8 +227,8 @@ TEST(StatsEndpointTest, IndexesUnderTheAuthenticatedAgentIdAsDocumentId)
 
 /**
  * Moving `modules` is the only thing that happens to a report: each module's body is stored as it
- * arrives, so every metric name in the index is the agent's own and a metric it adds needs no change
- * here. Not even fields shaped like a transport envelope are touched.
+ * arrives, so every metric name in the index is the agent's own. Not even fields shaped like a
+ * transport envelope are touched.
  */
 TEST(StatsEndpointTest, StoresEachModuleBodyVerbatim)
 {
@@ -228,10 +236,24 @@ TEST(StatsEndpointTest, StoresEachModuleBodyVerbatim)
     const auto document = indexedDocument(kAgentReport, "001");
 
     EXPECT_EQ(report.at("modules"), document["/wazuh/agent/statistics"_json_pointer]);
+}
 
-    const auto wrapped = indexedDocument(R"({"modules":{"fim":{"error":0,"data":{}}}})", "001");
-    EXPECT_TRUE(wrapped["/wazuh/agent/statistics/fim"_json_pointer].contains("error"));
-    EXPECT_TRUE(wrapped["/wazuh/agent/statistics/fim"_json_pointer].contains("data"));
+/**
+ * "Verbatim" is about this endpoint, NOT about what survives to the index. The `wazuh-agent-stats`
+ * mapping is `dynamic: strict` with every leaf declared, so a module or a metric it does not declare
+ * makes the indexer reject the WHOLE document with `strict_dynamic_mapping_exception` -- silently,
+ * since the write is fire-and-forget and the agent already has its 200.
+ *
+ * Pinned so the asymmetry is visible here rather than discovered in production: modulesd passes an
+ * undeclared module through untouched, and adding one is a change to the index template, not to this
+ * file.
+ */
+TEST(StatsEndpointTest, AnUndeclaredModuleIsStillPassedThroughForTheIndexerToJudge)
+{
+    const auto document = indexedDocument(R"({"modules":{"fim":{"error":0,"data":{}}}})", "001");
+
+    EXPECT_TRUE(document["/wazuh/agent/statistics/fim"_json_pointer].contains("error"));
+    EXPECT_TRUE(document["/wazuh/agent/statistics/fim"_json_pointer].contains("data"));
 }
 
 /**
@@ -258,16 +280,22 @@ TEST(StatsEndpointTest, AReportWithNothingToStoreIsRejected)
 }
 
 /**
- * The document is built from scratch, so the identity the agent's reporter writes at the root of its
- * own document is left behind instead of being indexed next to the authoritative one.
+ * The document is built from scratch, so nothing the agent claims about its own identity is indexed:
+ * neither the `agent_id`/`cluster` its reporter writes at the root, nor a `wazuh.agent.id` spelled
+ * exactly like the authoritative one. The authenticated id, this manager's identity and the server's
+ * envelope win on every field the report tried to occupy.
  */
-TEST(StatsEndpointTest, TheAgentsOwnRootFieldsAreNotIndexed)
+TEST(StatsEndpointTest, NothingTheAgentClaimsAboutItsIdentityIsIndexed)
 {
     const auto document = indexedDocument(kAgentReport, "001");
 
     EXPECT_FALSE(document.contains("agent_id"));
-    EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>());
+    EXPECT_FALSE(document.contains("cluster")) << "the reporter's root cluster object must not survive";
+    EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>()) << "claimed 999";
     EXPECT_EQ("test-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+    EXPECT_EQ("test-node-01", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
+    EXPECT_EQ("1", document["/wazuh/schema/version"_json_pointer].get<std::string>()) << "claimed 999";
+    EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>()) << "claimed 999";
 }
 
 /**
