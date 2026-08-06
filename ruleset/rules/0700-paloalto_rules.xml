@@ -1,77 +1,64 @@
 <!--
-  Copyright (C) 2015, Wazuh Inc.
--->
-
-<!-- 
-  Palo Alto v8.X - v10.X rules
-    Palo Alto rules ID:           64500 - 64508
+  Palo Alto v11.1 rules.
 -->
 
 <group name="paloalto,">
+    <!-- paltoalto system -->
+    <rule id="64500" level="0">
+        <decoded_as>paloalto-system</decoded_as>
+        <description>paloalto System decoded grouped alerts</description>
+    </rule>
+    <rule id="64501" level="5">
+        <if_sid>64500</if_sid>
 
-  <!-- Generic rule -->
-  <rule id="64500" level="0">
-    <decoded_as>paloalto</decoded_as>
-    <description>Palo Alto $(type) event.</description>
-  </rule>
+        <field name="severity" type="pcre2">^(?!\s*(?i)(informational|low)?\s*$).+</field>
+        <description>System alert has been triggered</description>
+    </rule>
+    
+    <!-- paltoalto iptag -->
+    <rule id="64510" level="0">
+        <decoded_as>paloalto-iptag</decoded_as>
+        <description>paloalto IPtag decoded grouped alerts</description>
+    </rule>
 
-  <!-- Generic by severity(informational, low, medium, high, critical) rules, THREAT and SYSTEM only so far -->
-  <rule id="64501" level="2">
-    <if_sid>64500</if_sid>
-    <field name="severity" type="pcre2">(?i)^(?:informational|low)$</field>
-    <description>Palo Alto $(type): $(severity) event.</description>
-  </rule>
+    <!-- paltoalto userid -->
+    <rule id="64520" level="0">
+        <decoded_as>paloalto-userid</decoded_as>
+        <description>paloalto UserId decoded grouped alerts</description>
+    </rule>
 
-  <rule id="64502" level="3">
-    <if_sid>64500</if_sid>
-    <field name="severity" type="pcre2">(?i)^medium$</field>
-    <description>Palo Alto $(type): $(severity) event.</description>
-  </rule>
+    <!-- paltoalto hipmatch -->
+    <rule id="64530" level="0">
+        <decoded_as>paloalto-hipmatch</decoded_as>
+        <description>paloalto Hipmatch decoded grouped alerts</description>
+    </rule>
 
-  <rule id="64503" level="5">
-    <if_sid>64500</if_sid>
-    <field name="severity" type="pcre2">(?i)^high$</field>
-    <description>Palo Alto $(type): $(severity) event.</description>
-  </rule>
+    <!-- paltoalto threat -->
+    <rule id="64540" level="0">
+        <decoded_as>paloalto-threat</decoded_as>
+        <description>paloalto Threat decoded grouped alerts</description>
+    </rule>
+    <rule id="64541" level="5">
+        <if_sid>64540</if_sid>
+        <field name="severity" type="pcre2">^(?!\s*(?i)(informational|low)?\s*$).+</field>
+        <description>$(threatCategory) threat alert has been triggered</description>
+    </rule>
 
-  <rule id="64504" level="11">
-    <if_sid>64500</if_sid>
-    <field name="severity" type="pcre2">(?i)^critical$</field>
-    <description>Palo Alto $(type): $(severity) event.</description>
-  </rule>
+    <!-- paltoalto traffic -->
+    <rule id="64550" level="0">
+        <decoded_as>paloalto-traffic</decoded_as>
+        <description>paloalto Traffic decoded grouped alerts</description>
+    </rule>
 
-  <!-- Specific rules -->
-  <!-- Traffic -->
-  <rule id="64505" level="0">
-    <if_sid>64500</if_sid>
-    <field name="type">^Traffic$</field>
-    <field name="content_type" type="pcre2">(?i)^.+$</field>
-    <description>Palo Alto Traffic: $(content_type) event.</description>
-  </rule>
-
-  <rule id="64506" level="2">
-    <if_sid>64505</if_sid>
-    <field name="content_type">start</field>
-    <description>Palo Alto Traffic: Session started log on $(device_name).</description>
-    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.b,pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
-  </rule>
-
-  <rule id="64507" level="2">
-    <if_sid>64505</if_sid>
-    <field name="content_type">end</field>
-    <description>Palo Alto Traffic: Session ended on $(device_name) from $(source_address) to $(destination_address). Reason: $(session_end_reason).</description>
-    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.b,pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
-  </rule>
-
-  <rule id="64508" level="6">
-    <if_sid>64505</if_sid>
-    <field name="content_type" type="pcre2">^(?:drop|deny)$</field>
-    <description>Palo Alto Traffic: Session dropped  on $(device_name) from $(source_address) to $(destination_address). Reason: $(session_end_reason). Action: $(action).</description>
-    <mitre>
-      <id>T1072</id>
-      <id>T1190</id>
-    </mitre>
-    <group>gdpr_IV_35.7.d,gpg13_4.12,hipaa_164.312.b,pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
-  </rule>
-
+    <rule id="64551" level="2">
+        <if_sid>64550</if_sid>
+        <field name="subtype" type="pcre2">^(?!\s*(?i)(start|end)?\s*$).+</field>
+        <description>traffic from $(srcip) has been seen dropped or denied</description>
+    </rule>
+    <rule id="64552" level="5" frequency="5" timeframe="180">
+        <if_matched_sid>64551</if_matched_sid>
+        <same_srcip/>
+        <same_dstip/>
+        <description>traffic from $(srcip) to $(dstip) has been denied or dropped for multiple times</description>
+    </rule>
 </group>
