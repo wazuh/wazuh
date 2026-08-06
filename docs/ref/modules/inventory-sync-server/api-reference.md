@@ -130,17 +130,52 @@ A `POST /config` that fails indexer-availability validation (see status codes be
 write path; a request that passes validation but whose serialization later fails (e.g. an agent id
 header that is not valid UTF-8) is answered `400` rather than crashing the handler.
 
+## The `/stateful` session semantics
+
+The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md)):
+`Start` names the agent, the module, the target indices, the mode and the option;
+`SessionPayload` carries exactly ONE of `SyncData`, `Cleans`, or `ChecksumModule`. The valid
+`mode` × `payload` combinations — anything else is a `400`:
+
+| `Start.mode` | Accepted payload | What it does |
+|---|---|---|
+| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
+| `ModuleDelta` | `Cleans` (items ≥ 1) | Deletes this agent's documents from each named index (deduplicated, allowlisted). A full resync is composed by the agent as two requests: a `Cleans` of the module's indices, then a `ModuleDelta` with the complete dataset. |
+| `ModuleCheck` | `ChecksumModule` | Integrity verification of one index: the server pages this agent's documents in deterministic order, aggregates their checksums (SHA-1), and compares with the declared value — `200` on match, `409` on mismatch. One attempt, no retry loop: a mismatch means the agent full-resyncs. |
+| `MetadataDelta` / `GroupDelta` | *(none)* | Reconciles agent metadata (or group membership) across the agent's already-indexed documents with one update-by-query, guarded by `global_version` so a stale update can never overwrite a newer one. |
+| `MetadataCheck` / `GroupCheck` | *(none)* | Same update, conditioned to touch only documents that differ — a cheap "repair if needed". |
+
+Sessions whose `Start.option` is `VDFirst` or `VDSync` additionally run the vulnerability scanner
+synchronously BEFORE indexing (see [Architecture](architecture.md)); only `SyncData` sessions
+scan — a VD-flagged `Cleans`/`ChecksumModule` follows the normal path.
+
+Re-POSTing any session is idempotent: same `_id`s, same overlay, versioned upserts. That is the
+whole retry contract — there are no acknowledgments and no session state to resume.
+
+### Response contract
+
+| Status | Body | The agent... |
+|---|---|---|
+| `200` | `{"status":"ok"}` | marks success. The data is FLUSHED to the indexer (and scanned, for VD sessions), not merely queued. |
+| `200` | `{"status":"ok","noop":true}` | ditto — every document was filtered (e.g. unknown indices). |
+| `409` | `{"status":"checksum_mismatch"}` | triggers a full resync of the module. |
+| `400` | `{"error":"<reason>","code":400}` | has a protocol bug; retrying the same request cannot succeed. |
+| `403` | `{"error":"identity mismatch","code":403}` | claimed an identity that does not match the authenticated one (or a foreign cluster). |
+| `413` | `{"error":...,"code":413}` | declared more bytes than the server's TOTAL in-flight budget; must split the session. |
+| `500` | `{"error":"vulnerability scan failed","code":500}` or `{"error":"Internal error","code":500}` | retries next cycle; NOTHING was indexed for this session. |
+| `503` | `{"error":...,"code":503}` — with `Retry-After: <seconds>` when the CVE feed is still downloading | retries later. Causes: indexer unavailable, queue/budget full, scan capacity exhausted, feed downloading, shutdown. |
+
 ## Status codes
 
 These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing agent id header, or a body that does not match the route's shape (a non-empty `modules`-keyed object whose every module value is an object, for both `/stats` and `/config`). An empty `modules` is rejected on purpose: indexing a report with nothing to store would replace the agent's last good document |
+| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document) |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |
-| `413` | Body over `max_body_size` |
+| `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured) |
 | `414` | Request target over `max_url_size` |
 | `431` | A header name or value over its cap, or more than 32 header lines |
 | `500` | A route handler threw. The server keeps serving |

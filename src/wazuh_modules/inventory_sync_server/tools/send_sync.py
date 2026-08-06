@@ -13,7 +13,7 @@ Examples:
     # Liveness probe
     ./send_sync.py --health
 
-    # One 1 KiB payload to the sync endpoint (expects 202)
+    # One 1 KiB junk payload to the sync endpoint (expects 400: not a FullSession)
     ./send_sync.py --size 1024
 
     # 100 payloads in sequence, to watch the throttled log line aggregate
@@ -38,7 +38,7 @@ import sys
 import time
 
 DEFAULT_SOCKET = "queue/sockets/inventory-sync.sock"
-DEFAULT_PATH = "/inventory/sync"
+DEFAULT_PATH = "/stateful"
 # Mirrors invsync::endpoints::sync::path(). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/endpoints/syncEndpoint.hpp
 HEALTH_PATH = "/"
@@ -58,13 +58,16 @@ class UnixHTTPConnection(http.client.HTTPConnection):
         self.sock = sock
 
 
-def send_once(socket_path, method, path, body, content_type, timeout):
+def send_once(socket_path, method, path, body, content_type, timeout, agent_id=""):
     """Returns (status, reason, headers, body) or raises."""
     connection = UnixHTTPConnection(socket_path, timeout=timeout)
     try:
         headers = {"Host": "localhost", "Connection": "close"}
         if content_type:
             headers["Content-Type"] = content_type
+        if agent_id:
+            # What remoted sets from the identity it authenticated; without it /stateful is a 400.
+            headers["X-Wazuh-Agent-Id"] = agent_id
         # http.client sets Content-Length from the body automatically.
         connection.request(method, path, body=body, headers=headers)
         response = connection.getresponse()
@@ -85,6 +88,8 @@ def main():
     parser.add_argument("--content-type", default="application/octet-stream",
                         help="Content-Type header; pass an empty string to omit it, as the peer does")
     parser.add_argument("--timeout", type=float, default=30.0, help="per-request timeout in seconds")
+    parser.add_argument("--agent-id", default="1",
+                        help="X-Wazuh-Agent-Id header value (default: 1; pass an empty string to omit the header)")
     parser.add_argument("--health", action="store_true", help="probe GET / instead (expects 200)")
     parser.add_argument("--bad-route", action="store_true", help="target an unknown path (expects 404)")
     parser.add_argument("--quiet", action="store_true", help="only print a summary")
@@ -112,7 +117,7 @@ def main():
     for index in range(args.repeat):
         try:
             status, reason, headers, response_body = send_once(
-                args.socket, method, path, body, args.content_type, args.timeout)
+                args.socket, method, path, body, args.content_type, args.timeout, args.agent_id)
         except Exception as error:  # noqa: BLE001 - a manual tool should report, not traceback
             print(f"request {index + 1}: failed: {error}", file=sys.stderr)
             statuses["error"] = statuses.get("error", 0) + 1
