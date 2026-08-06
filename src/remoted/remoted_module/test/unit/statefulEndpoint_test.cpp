@@ -17,9 +17,11 @@
 #include "endpoints/statefulEndpoint.hpp"
 
 #include "auth/cmac.hpp"
+#include "decoding/iBodyDecoder.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "endpoints/authGateway.hpp"
+#include "fakeHttpServer.hpp"
 
 #include <gtest/gtest.h>
 
@@ -28,7 +30,6 @@
 #include <cstdint>
 #include <ctime>
 #include <future>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -45,6 +46,9 @@ using remoted::downstream::DownstreamError;
 using remoted::downstream::DownstreamResponse;
 using remoted::http::HttpResponse;
 using remoted::http::Method;
+// The shared transport fake, rather than a local copy: it already satisfies every IHttpServer
+// virtual (including the in-flight byte reservation) so a new one does not break this test.
+using remoted::testutil::FakeHttpServer;
 namespace stateful = remoted::endpoints::stateful;
 
 namespace
@@ -328,33 +332,25 @@ TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeout
 namespace
 {
     // Minimal fakes for the composition test, same shapes as authGateway_test.cpp's.
-    class FakeHttpServer final : public remoted::http::IHttpServer
+    // The transport fake itself comes from fakeHttpServer.hpp (see the using above).
+
+    // AuthGateway requires a body-decoding step. This test is about the authenticated id reaching
+    // the downstream header, not about content encodings, so it passes bodies through untouched --
+    // the same stub shape authGateway_test.cpp uses.
+    class StubBodyDecoder final : public remoted::decoding::IBodyDecoder
     {
     public:
-        void addRoute(Method method,
-                      const std::string& path,
-                      remoted::http::RouteHandler handler,
-                      bool /*countAgainstBudget*/,
-                      remoted::http::ResponseMode /*mode*/) override
+        remoted::auth::AuthError decode(remoted::decoding::ContentEncoding /*encoding*/,
+                                        Payload& /*payload*/) const override
         {
-            m_routes[{method, path}] = std::move(handler);
+            return remoted::auth::AuthError::None;
         }
-        void start(const remoted::http::HttpServerConfig&) override {}
-        void stopAccepting() noexcept override {}
-        void stop() noexcept override {}
-
-        void dispatch(Method method,
-                      const std::string& path,
-                      const remoted::http::HttpRequest& request,
-                      std::shared_ptr<remoted::http::IHttpResponder> responder)
-        {
-            m_routes.at({method, path})(std::make_shared<const remoted::http::HttpRequest>(request),
-                                        std::move(responder));
-        }
-
-    private:
-        std::map<std::pair<Method, std::string>, remoted::http::RouteHandler> m_routes;
     };
+
+    std::shared_ptr<const remoted::decoding::IBodyDecoder> passthroughDecoder()
+    {
+        return std::make_shared<const StubBodyDecoder>();
+    }
 
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
@@ -381,7 +377,8 @@ TEST(StatefulMakeHandler, AuthenticatedRequestFlowsThroughTheGatewayIntoTheForwa
     DeferredForwarder forwarder {client, limiter, 1};
 
     FakeHttpServer server;
-    remoted::endpoints::AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>()};
+    remoted::endpoints::AuthGateway gateway {
+        remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>(), passthroughDecoder()};
     gateway.addAuthenticatedRoute(server,
                                   Method::Post,
                                   "/stateful",

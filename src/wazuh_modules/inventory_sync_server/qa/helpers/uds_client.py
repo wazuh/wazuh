@@ -45,14 +45,34 @@ class ServerClient:
                  timeout=None):
         connection = UnixHTTPConnection(self.socket_path, timeout=timeout or self.timeout)
         try:
-            headers = {"Host": "localhost", "Connection": "close"}
+            headers = {
+                "Host": "localhost",
+                "Connection": "close",
+                "Content-Length": str(len(body)),
+            }
             if content_type:
                 headers["Content-Type"] = content_type
             if agent_id is not None:
                 # What remoted sets from the identity it authenticated over AES-CMAC.
                 headers["X-Wazuh-Agent-Id"] = agent_id
-            connection.request(method, path, body=body, headers=headers)
-            raw = connection.getresponse()
+
+            # Head and body go out in ONE write, deliberately -- do not go back to
+            # http.client's connection.request(), which sends them as two separate
+            # sendall() calls. The server decides 404/405/411/413/503 at
+            # headers-complete and closes WITHOUT draining the body (see the INTEROP
+            # NOTE in asioUdsHttpServer.cpp: draining a refused body would let a peer
+            # dictate how long the server spends on it). With two writes, that close
+            # can beat the body write and the peer gets EPIPE instead of the status;
+            # with one write a body this size is already in the socket buffer, so the
+            # status is always readable. This is also what the C++ transport tests do
+            # (peerRequest()/sendRaw() in udsHttpServer_test.cpp).
+            connection.connect()
+            head = f"{method} {path} HTTP/1.1\r\n" + "".join(f"{name}: {value}\r\n"
+                                                             for name, value in headers.items())
+            connection.sock.sendall(head.encode("ascii") + b"\r\n" + body)
+
+            raw = http.client.HTTPResponse(connection.sock, method=method)
+            raw.begin()
             return Response(raw.status, raw.getheaders(), raw.read())
         finally:
             connection.close()
