@@ -441,10 +441,6 @@ TEST_F(InventorySyncServerModuleTest, AnAgentIdThatIsNotUtf8IsRejectedRatherThan
 
     const std::string invalidId = "00\xff"
                                   "7";
-    // Each body must be valid for its endpoint's shape (an object for /stats, an array of
-    // {module, config} for /config) so the request gets PAST body validation and actually reaches
-    // the id-embedding/serialization step this test means to exercise -- an invalid body would
-    // already answer 400 on its own, for the wrong reason.
     for (const auto& [target, body] :
         {std::pair {"/stats", std::string {R"({"cpu":42})"}},
          std::pair {"/config", std::string {R"([{"module":"agent","config":{"cpu":42}}])"}}})

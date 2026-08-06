@@ -323,16 +323,26 @@ TEST(ConfigEndpointTest, ExtraKeysOnAnElementAreDroppedBeforeIndexing)
     EXPECT_EQ(1, content.at("fim").at("cpu").get<int>());
 }
 
-TEST(ConfigEndpointTest, NonArrayBodiesAreRejected)
+/**
+ * The manager does not validate what the agent reports: a body that parses as JSON but isn't an
+ * array has nothing sanitizeReportedModules can place under a module key, so it indexes an empty
+ * `content` rather than rejecting the report.
+ */
+TEST(ConfigEndpointTest, NonArrayBodiesAreAcceptedAsEmptyContent)
 {
-    // Each of these parses as valid JSON but is not an array, so there is nothing to sanitize.
+    auto connector = std::make_shared<FakeAsyncConnector>();
     for (const auto* body : {"{}", R"({"module":"fim","config":{}})", R"("a string")", "42", "true", "null"})
     {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
+        connector->indexed.clear();
+        ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status) << "body: " << body;
+        const auto content =
+            soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+        EXPECT_TRUE(content.is_object() && content.empty()) << "body: " << body << " content: " << content.dump();
     }
 }
 
+// Genuinely unparseable JSON is a different failure entirely -- there is no document to interpret
+// at all, sanitized or not -- so this alone still answers 400.
 TEST(ConfigEndpointTest, MalformedJsonIsRejected)
 {
     for (const auto* body : {"", "{", R"({"a":})", "not json at all"})
@@ -342,55 +352,83 @@ TEST(ConfigEndpointTest, MalformedJsonIsRejected)
     }
 }
 
-TEST(ConfigEndpointTest, NonObjectElementsAreRejected)
+TEST(ConfigEndpointTest, NonObjectElementsAreSkipped)
 {
+    auto connector = std::make_shared<FakeAsyncConnector>();
     for (const auto* body : {R"(["not an object"])", "[42]", "[[]]", "[null]"})
     {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
+        connector->indexed.clear();
+        ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status) << "body: " << body;
+        const auto content =
+            soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+        EXPECT_TRUE(content.is_object() && content.empty()) << "body: " << body << " content: " << content.dump();
     }
 }
 
-TEST(ConfigEndpointTest, ElementsMissingModuleAreRejected)
+TEST(ConfigEndpointTest, ElementsMissingModuleAreSkipped)
 {
-    const auto response = run(makeRequest(R"([{"config":{}}])", "001"));
-    EXPECT_EQ(400, response.status);
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"([{"config":{}}])", "001"), connector).status);
+
+    const auto content = soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_TRUE(content.is_object() && content.empty());
 }
 
-TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
+// General regression guard for badRequest(): none of the CURRENT 400 reasons embed a literal
+// quote (the one that used to -- a rejected module shape -- no longer exists, since
+// sanitizeReportedModules never rejects), but the body must stay valid JSON no matter what a
+// future reason string contains.
+TEST(ConfigEndpointTest, The400BodyIsAlwaysValidParseableJson)
 {
-    const auto response = run(makeRequest(R"([{"config":{}}])", "001"));
+    const auto response = run(makeRequest("[]", "", /*withAgentHeader=*/false));
 
     ASSERT_EQ(400, response.status);
     const auto parsed = nlohmann::json::parse(response.body, nullptr, /*allow_exceptions=*/false);
     ASSERT_FALSE(parsed.is_discarded()) << "400 body is not valid JSON: " << response.body;
     EXPECT_EQ(400, parsed.value("code", 0));
-    EXPECT_NE(parsed.value("error", std::string {}).find("module"), std::string::npos) << response.body;
+    EXPECT_FALSE(parsed.value("error", std::string {}).empty());
 }
 
-TEST(ConfigEndpointTest, ElementsWithNonStringOrEmptyModuleAreRejected)
+TEST(ConfigEndpointTest, ElementsWithNonStringOrEmptyModuleAreSkipped)
 {
+    auto connector = std::make_shared<FakeAsyncConnector>();
     for (const auto* body : {R"([{"module":42,"config":{}}])", R"([{"module":"","config":{}}])"})
     {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
+        connector->indexed.clear();
+        ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status) << "body: " << body;
+        const auto content =
+            soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+        EXPECT_TRUE(content.is_object() && content.empty()) << "body: " << body << " content: " << content.dump();
     }
 }
 
-TEST(ConfigEndpointTest, ElementsMissingConfigAreRejected)
+TEST(ConfigEndpointTest, ElementsMissingConfigDefaultToAnEmptyConfig)
 {
-    const auto response = run(makeRequest(R"([{"module":"fim"}])", "001"));
-    EXPECT_EQ(400, response.status);
+    auto connector = std::make_shared<FakeAsyncConnector>();
+
+    ASSERT_EQ(200, run(makeRequest(R"([{"module":"fim"}])", "001"), connector).status);
+
+    const auto content = soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+    ASSERT_TRUE(content.contains("fim"));
+    EXPECT_TRUE(content.at("fim").is_object() && content.at("fim").empty());
 }
 
-TEST(ConfigEndpointTest, ElementsWithNonObjectConfigAreRejected)
+// The manager does not validate what's inside "config" either: whatever the agent sent there is
+// copied through verbatim, object or not. The index template's `dynamic: false` is what decides
+// at write time what gets indexed for search, without ever failing the write over it.
+TEST(ConfigEndpointTest, ElementsWithNonObjectConfigAreStoredVerbatim)
 {
-    for (const auto* body :
-        {R"([{"module":"fim","config":42}])", R"([{"module":"fim","config":[]}])", R"([{"module":"fim","config":"x"}])"})
-    {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
-    }
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    const auto body = R"([{"module":"fim","config":42},{"module":"logcollector","config":[1,2]},)"
+                       R"({"module":"execd","config":"x"}])";
+
+    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+
+    const auto content = soleIndexedDocument(*connector)["/wazuh/agent/configuration/content"_json_pointer];
+    EXPECT_EQ(42, content.at("fim").get<int>());
+    EXPECT_EQ(nlohmann::json::array({1, 2}), content.at("logcollector"));
+    EXPECT_EQ("x", content.at("execd").get<std::string>());
 }
 
 /**
@@ -490,15 +528,17 @@ TEST(ConfigEndpointTest, AnExpiredConnectorYields503)
 }
 
 /**
- * Pins the ORDER of the checks, which is a deliberate design decision rather than an accident: a
- * malformed document is the caller's fault and stays a 400 even while the indexer is down. With the
- * checks reversed the agent would get a 503 and retry forever a payload that can never work.
+ * Pins the ORDER of the checks, which is a deliberate design decision rather than an accident:
+ * unparseable JSON is the caller's fault and stays a 400 even while the indexer is down. With the
+ * checks reversed the agent would get a 503 and retry forever a payload that can never work. Only
+ * genuinely unparseable bodies qualify now -- a body that parses but isn't shaped as expected is no
+ * longer a 400 at all (see NonArrayBodiesAreAcceptedAsEmptyContent), so it is not tested here.
  */
 TEST(ConfigEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    for (const auto* body : {"", "{", "{}", R"("a string")", "not json at all", R"([{"module":"fim"}])"})
+    for (const auto* body : {"", "{", "not json at all"})
     {
         const auto response = run(makeRequest(body, "001"), connector);
         EXPECT_EQ(400, response.status) << "body: " << body;
