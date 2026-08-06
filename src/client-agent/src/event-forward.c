@@ -33,7 +33,22 @@ void *EventForward()
          * frame class left to route. The accumulator owns the back-pressure
          * (drop-newest), so a full one drops this frame and the loop goes on. */
         w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        w_https_client_submit_event(msg, recv_b);
+
+        /* SendMSGAction() (mq_op.c) writes these frames via OS_SendUnix(..., 0),
+         * whose "size == 0 means C string" convention sends strlen(msg) + 1
+         * bytes -- the NUL terminator rides along as part of the datagram.
+         * w_https_client_submit_event() is strictly length-delimited, not
+         * NUL-terminated, so left uncorrected that trailing NUL becomes a real
+         * extra byte of event content on the wire. Trim exactly one, mirroring
+         * what the legacy handshake path used to do (send_msg(msg, -1) ->
+         * strlen()) before 6867e35baa ("route the agent's events to /stateless
+         * only") collapsed both frame classes into this raw datagram length. */
+        ssize_t content_len = recv_b;
+        if (content_len > 0 && msg[content_len - 1] == '\0') {
+            content_len--;
+        }
+
+        w_https_client_submit_event(msg, content_len);
     }
 
     return (NULL);

@@ -879,6 +879,41 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
     startup_gate_check_manager_config_hash(config_hash);
 }
 
+/* Notify-driven groups refresh: a group-only change never re-triggers a Startup
+ * (settings_hash deliberately excludes groups; config_hash covers the group's own
+ * config content, not the manager-side membership list), so without this
+ * agent_agent_groups -- and everything that reads it: agcom_gethandshake(), the
+ * metadata this republishes -- would go stale forever after the first Startup.
+ * Unlike bridge_apply_agent_groups() (Startup-only, walks a cJSON array), this
+ * takes the plain CSV the module already built (ControlStream's rawGroupsCsv())
+ * -- the RAW value, not /download's "default"-substituted one: empty is
+ * meaningful here (see agcom.c's own comment on an empty agent_groups falling
+ * back to merged.mg) and must be preserved as empty, not turned into "default".
+ * Compares before writing so an unchanged report (the module already dedupes,
+ * this is defense in depth) doesn't pay for a metadata republish. */
+static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
+{
+    (void)user_data;
+
+    if (!groups_csv) {
+        return;
+    }
+
+    bool changed = false;
+
+    w_mutex_lock(&agent_handshake_mutex);
+    if (strcmp(agent_agent_groups, groups_csv) != 0) {
+        snprintf(agent_agent_groups, sizeof(agent_agent_groups), "%s", groups_csv);
+        changed = true;
+    }
+    w_mutex_unlock(&agent_handshake_mutex);
+
+    if (changed) {
+        mdebug1("https_client: agent groups -> %s.", agent_agent_groups[0] ? agent_agent_groups : "(none)");
+        w_agentd_populate_metadata();
+    }
+}
+
 /* Applies a downloaded merged configuration and releases the startup gate.
  *
  * file_path is a module-owned temp file valid ONLY until the callback that
@@ -1544,6 +1579,7 @@ void w_https_client_start(void)
     callbacks.on_remote_upgrade_ready = bridge_on_remote_upgrade_ready;
     callbacks.on_task_failed = bridge_on_task_failed;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
+    callbacks.on_agent_groups = bridge_on_agent_groups;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;

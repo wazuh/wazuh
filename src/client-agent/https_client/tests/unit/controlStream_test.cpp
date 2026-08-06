@@ -505,6 +505,51 @@ TEST_F(ControlStreamTest, MultiGroupAgentRequestsAllGroupsCommaJoined)
     EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
 }
 
+TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
+{
+    // A group-only change never re-triggers a Startup (settings_hash excludes
+    // groups by design), so onAgentGroups is the only thing that keeps a
+    // consumer's group set from going stale -- it must fire once for the first
+    // report and again only when the manager-reported set actually changes.
+    const std::string notifyDefault = R"({"agent":{"groups":["default"]}})";
+    const std::string notifySame = R"({"agent":{"groups":["default"]}})";
+    const std::string notifyChanged = R"({"agent":{"groups":["default","test"]}})";
+
+    testing::InSequence seq;
+    EXPECT_CALL(m_sink, onAgentGroups("default"));
+    EXPECT_CALL(m_sink, onAgentGroups("default,test"));
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))             // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyDefault)))    // First report.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifySame)))       // Unchanged: no re-fire.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyChanged)));   // Changed: re-fires.
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: first report.
+    m_stream.step(m_waiter); // Notify: same groups, no call.
+    m_stream.step(m_waiter); // Notify: groups changed, re-fires.
+}
+
+TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
+{
+    // Unlike /download's resource_id (which substitutes "default" when the agent
+    // has no groups, since /download always needs some group to ask for), an
+    // empty group set here must stay empty: agcom.c treats it as a distinct,
+    // meaningful value ("Empty agent_groups is allowed - fallback to merge.mg
+    // will be used"), not a synonym for being in "default".
+    const std::string notifyNoGroups = R"({"agent":{"groups":[]}})";
+
+    EXPECT_CALL(m_sink, onAgentGroups(std::string {}));
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyNoGroups)));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: no groups -> reports empty, not "default".
+}
+
 TEST_F(ControlStreamTest, MatchingConfigHashDoesNotDownload)
 {
     // Local hash is "abc": a notify reporting "abc" triggers nothing, and
