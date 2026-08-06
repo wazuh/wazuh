@@ -918,8 +918,10 @@ differently. `/config` is still a dummy that echoes the document back, so a succ
 with `wazuh.agent.id` and `@timestamp` added — which only happens if the UDS hop and the
 `X-Wazuh-Agent-Id` header propagation both worked, and a `200` missing either stamp is a FAIL.
 `/stats` indexes instead, so its `200` carries the protocol's empty acknowledgment and a body with
-anything in it is a FAIL; the document itself is read back from the indexer at
-`wazuh-agent-stats/_doc/<agent_id>`.
+anything in it is a FAIL. That is all the tool can assert for `/stats`: the document is not echoed, so
+confirming it landed means reading it yourself with `GET wazuh-agent-stats/_doc/<agent_id>` on the
+indexer — which is also the only way to see a write the indexer rejected, since the write is
+fire-and-forget and the agent gets its `200` either way.
 
 Requires `wazuh-manager-modulesd` running with the `inventory_sync_server` module; without it every
 forwarded request answers `503` and the tool says so explicitly (distinct from remoted itself being
