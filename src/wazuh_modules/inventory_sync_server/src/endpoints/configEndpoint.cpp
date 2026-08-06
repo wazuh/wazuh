@@ -17,6 +17,7 @@
 
 #include <exception>
 #include <json.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -59,33 +60,55 @@ namespace
     }
 
     /**
-     * @brief Reduce the reported body to the `{"<module>": <config>}` object the wazuh-agent-config
-     *        template expects for `configuration.content`, without judging the agent's data.
+     * @brief Validate the reported body shape and reduce it to the sanitized `{"<module>": <config>}`
+     *        object the wazuh-agent-config template expects for `configuration.content`.
      *
+     * The agent still reports an array of `{"module": <string>, "config": <object>}` pairs, but the
+     * template maps `content` as an object keyed by module name (never an array), with an explicit
+     * per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a module is unique per report,
+     * so keying by module name up front is what makes "does agent X have module Y" a single field
+     * lookup instead of a scan. If the agent ever sent two entries for the same module, the later
+     * one wins -- object semantics, not an error. The template is `dynamic: false`: a field this
+     * handler emits that isn't in that per-module sub-schema (a module the template doesn't know
+     * about yet, or a legacy/undeclared key within a known module) still gets written and stored in
+     * `_source`, it just isn't indexed for search -- so nothing here needs to validate individual
+     * `config` fields against that schema, only the outer `{module, config}` shape.
+     *
+     * @return The sanitized `{module: config}` object on success; std::nullopt if any element fails
+     * validation, in which case @p reason is set to a caller-facing 400 message.
      */
-    nlohmann::json sanitizeReportedModules(const nlohmann::json& document)
+    std::optional<nlohmann::json> sanitizeReportedModules(const nlohmann::json& document, const char*& reason)
     {
-        auto content = nlohmann::json::object();
         if (!document.is_array())
         {
-            return content;
+            reason = "Body must be a JSON array of {\"module\", \"config\"} entries";
+            return std::nullopt;
         }
 
+        auto content = nlohmann::json::object();
         for (const auto& element : document)
         {
             if (!element.is_object())
             {
-                continue;
+                reason = "Each entry must be a JSON object";
+                return std::nullopt;
             }
 
             const auto moduleIt = element.find("module");
             if (moduleIt == element.end() || !moduleIt->is_string() || moduleIt->get<std::string>().empty())
             {
-                continue;
+                reason = "Each entry must have a non-empty string \"module\"";
+                return std::nullopt;
             }
 
             const auto configIt = element.find("config");
-            content[moduleIt->get<std::string>()] = (configIt != element.end()) ? *configIt : nlohmann::json::object();
+            if (configIt == element.end() || !configIt->is_object())
+            {
+                reason = "Each entry must have an object \"config\"";
+                return std::nullopt;
+            }
+
+            content[moduleIt->get<std::string>()] = *configIt;
         }
 
         return content;
@@ -133,7 +156,13 @@ namespace invsync::endpoints::config
                 return;
             }
 
-            auto sanitizedContent = sanitizeReportedModules(document);
+            const char* rejectionReason = nullptr;
+            auto sanitizedContent = sanitizeReportedModules(document, rejectionReason);
+            if (!sanitizedContent)
+            {
+                responder->send(badRequest(rejectionReason));
+                return;
+            }
 
             /*
              * The indexer gate, deliberately AFTER every 400 above.
@@ -179,17 +208,24 @@ namespace invsync::endpoints::config
             std::string serializedDocument;
             try
             {
+                // `modules` lists exactly the keys `content` ends up with -- derived from it rather
+                // than collected while sanitizing, so the two can never drift apart (e.g. if a future
+                // change dedupes or drops an entry in `content` alone).
                 auto modules = nlohmann::json::array();
-                for (const auto& entry : sanitizedContent.items())
+                for (const auto& entry : sanitizedContent->items())
                 {
                     modules.push_back(entry.key());
                 }
 
+                // Shaped to match the wazuh-agent-config template: schema version, the
+                // authenticated id, this manager's own identity, the server's clock, and the
+                // sanitized configuration -- nothing else. `dynamic: false` means an unmapped field
+                // here would not fail the write, but there is still no reason to send one.
                 nlohmann::json indexedDocument;
                 indexedDocument["/wazuh/schema/version"_json_pointer] = WAZUH_SCHEMA_VERSION;
                 indexedDocument["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 indexedDocument["/wazuh/agent/configuration/modules"_json_pointer] = modules;
-                indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = sanitizedContent;
+                indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = *sanitizedContent;
                 indexedDocument["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
                 indexedDocument["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
                 indexedDocument["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
@@ -199,19 +235,24 @@ namespace invsync::endpoints::config
             }
             catch (const std::exception& e)
             {
-                // Serializing back out can still fail on input we accepted -- e.g. a string field
-                // holding invalid UTF-8, which nlohmann rejects at dump() time, not at parse time.
+                // Building/serializing the document can still fail on input we accepted -- e.g. a
+                // string field holding invalid UTF-8, which nlohmann rejects at dump() time. Still the
+                // caller's fault.
                 LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
-                responder->send(badRequest("Could not process the reported configuration"));
+                responder->send(badRequest("Body must be a JSON array of {\"module\", \"config\"} entries"));
                 return;
             }
 
             try
             {
+                // Indexed under the agent id as _id: each report replaces the previous one for that
+                // agent by upsert, nothing else to do.
                 indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, serializedDocument);
             }
             catch (const std::exception& e)
             {
+                // The body was fine; the write to storage was not. A 400 here would tell the agent
+                // to fix a payload that was never wrong; 503 correctly tells it to retry.
                 LOGFN_DEBUG1(logFn(),
                              "Could not index agent config document for agent '%s': %s.",
                              agentIdIt->second.c_str(),

@@ -25,13 +25,9 @@ namespace invsync::endpoints::config
      * @brief The agent configuration ingress endpoint, reached through remoted's `POST /config`.
      *
      * The body is a JSON array of `{"module": <string>, "config": <object>}` pairs -- one per agent
-     * module (e.g. `fim`, `logcollector`). This endpoint does not validate what the agent reports:
-     * each element is reduced to exactly those two keys (anything else the agent sent on that
-     * element is dropped) and wrapped into the document indexed under `wazuh-agent-config`. An
-     * element this cannot place under a module key -- the body isn't an array, an element isn't an
-     * object, or "module" isn't a non-empty string -- is silently skipped rather than failing the
-     * whole report with a 400; there is nowhere to put it, which is not the same as it being wrong.
-     * A body with nothing usable in it still indexes a valid document with an empty `content`.
+     * module (e.g. `fim`, `logcollector`). Each valid element is reduced to exactly those two keys
+     * (anything else the agent sent is dropped) and wrapped into the document indexed under
+     * `wazuh-agent-config`:
      *
      * @code
      * {
