@@ -66,6 +66,23 @@ in-flight byte budget, scan-lane capacity) are server config, noted in each file
 | `contract_ramp_503` | The in-flight byte budget (`503` + shed): a big unpaced fleet. `503`s here are expected backpressure, not a failure |
 | `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back. The lane is single-worker until F9d, so this measures that limit |
 
+## Real captured payloads
+
+These replay **real** captured sessions from [`sample_payloads/dumps/`](sample_payloads/dumps/)
+instead of generated documents, so the wire bytes match production shapes. The dumps were adapted
+from real FIM, SCA, syscollector and VD captures: each keeps its metadata and a representative,
+stride-sampled slice of its items (the multi-MB first-scans were truncated — the shapes are what
+matter, and volume is reached with `repeat_count` and fleet size). A step names one with `dump`
+(see [`docu/07`](tool_simulator/docu/07-scenario-schema.md#replaying-real-payloads)).
+
+| Scenario | Real payload replayed |
+|---|---|
+| `real_fim_first_sync_ubuntu` (uds) | A real Ubuntu FIM first scan (`full_resync`) + FIM delta stream |
+| `real_syscollector_debian` (uds) | A real Debian syscollector session spanning seven inventory indices, first scan + delta |
+| `real_vd_debian` (uds) | Real VDFirst + VDSync sessions on the VD lane |
+| `real_sca_full` (uds) | Real SCA full syncs for Ubuntu, CentOS and Windows at once (large check documents → bulk-bytes path) |
+| `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
+
 ## First-id ranges
 
 Each scenario uses a distinct `first_id` block so a single run never collides agent ids. Runs are one

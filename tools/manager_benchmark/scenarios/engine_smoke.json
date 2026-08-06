@@ -9,7 +9,7 @@
   },
   "lanes": {
     "engine": [
-      { "kind": "engine", "engine": "sample_payloads/engine/syslog_short.log", "location": "syslog",
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog_short.log", "location": "syslog",
         "max_eps": 100, "loop": false }
     ]
   },

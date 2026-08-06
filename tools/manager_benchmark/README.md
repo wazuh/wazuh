@@ -61,8 +61,12 @@ A scenario is one JSON file describing a run in the lanes-and-fleets model
 ([`docu/07-scenario-schema.md`](tool_simulator/docu/07-scenario-schema.md)). The library lives in
 [`scenarios/`](scenarios/) and its layout — what each file exercises, and how it maps to a manager
 code path — is documented in [`SCENARIOS.md`](SCENARIOS.md). `--validate` strict-checks a file
-(unknown field or unknown step kind is a hard error) without sending anything; the whole library is
-kept green that way.
+(unknown field, unknown step kind, or a missing referenced payload is a hard error) without sending
+anything; the whole library is kept green that way.
+
+Most scenarios generate documents deterministically from a seed, but the `real_*` ones replay **real
+captured payloads** from [`sample_payloads/dumps/`](sample_payloads/dumps/) so the wire bytes match
+production shapes — see the real-payloads section of `SCENARIOS.md`.
 
 ## Manager preparation (agent mode)
 
