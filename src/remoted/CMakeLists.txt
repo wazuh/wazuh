@@ -36,7 +36,6 @@ include_directories(
   ${SRC_FOLDER}/wazuh_db/include/
   ${SRC_FOLDER}/shared_modules/agent_metadata/include/
   ${SRC_FOLDER}/shared_modules/common/
-  ${SRC_FOLDER}/shared_modules/router/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/remoted_module/include/)
@@ -78,7 +77,9 @@ if(UNIT_TEST)
   target_compile_options(remoted_lib PRIVATE -O0 -g)
 endif()
 
-target_link_libraries(remoted_lib PUBLIC wazuhext pthread router config
+# No router: the stateful-sync path is the C++ module's POST /stateful (UDS relay), and legacy
+# router-bound messages are discarded in secure.c.
+target_link_libraries(remoted_lib PUBLIC wazuhext pthread config
                                          wazuh_modulesd_lib wazuh remoted_module)
 
 if(UNIX)

@@ -385,11 +385,13 @@ Allow remoted to start even if client.keys file is empty.
 
 ### remoted.router_forwarding_disabled
 
-Disable forwarding messages to the router component.
+**Obsolete, not read.** The router forwarding path this option disabled retired with the legacy
+inventory_sync module: stateful synchronization enters exclusively through remoted's authenticated
+`POST /stateful` route, and legacy `s:`-headed messages are discarded.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Set to `yes` to disable router integration (standalone manager mode)
+- **Default value:** — (ignored)
+- **Allowed values:** — (ignored)
+- **Note:** Remove it from `wazuh-manager-internal-options.conf`; it has no effect
 
 ### remoted.request_pool
 
