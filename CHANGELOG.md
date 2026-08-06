@@ -39,7 +39,6 @@
 | [#36705](https://github.com/wazuh/wazuh/issues/36705) | Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
-| [#38024](https://github.com/wazuh/wazuh/issues/38024) | Changed `GET /agents/{agent_id}/stats/{component}` to serve the last statistics report the agent pushed, read from the `wazuh-agent-stats` index, instead of querying the agent over the legacy channel. An agent that has never reported is returned as a failed item, and the `agent` component's fields follow the new nested names. |
 
 #### Removed
 
@@ -52,6 +51,7 @@
 | [#31299](https://github.com/wazuh/wazuh/issues/31299) | Removed inventory-related API endpoints. |
 | [#28425](https://github.com/wazuh/wazuh/issues/28425) | Removed legacy API security configuration endpoints. |
 | [#35908](https://github.com/wazuh/wazuh/issues/35908) | Removed SELinux integration from the manager. |
+| [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
 
 #### Fixed
 
