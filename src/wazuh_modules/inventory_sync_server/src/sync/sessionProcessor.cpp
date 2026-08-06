@@ -152,6 +152,7 @@ namespace invsync::sync
 
         std::size_t staged {0};
         std::size_t skipped {0};
+        std::size_t stagedBytes {0};
 
         for (const auto* value : *payload->values())
         {
@@ -244,6 +245,7 @@ namespace invsync::sync
                 document["wazuh"]["cluster"]["name"] = session.clusterName;
 
                 const auto dataString = document.dump();
+                stagedBytes += dataString.size();
 
                 // version > 0 rides the external_gte path (a scripted update that checks
                 // state.document_version); 0/absent uses plain indexing (legacy facade:1263-1272).
@@ -267,7 +269,12 @@ namespace invsync::sync
         // DataContext items are deliberately NOT indexed: they exist to feed the vulnerability
         // scanner's context (the scan lane consumes them when it lands).
 
-        // STATS-PLACEHOLDER: docs_indexed (staged), docs_skipped (skipped), bytes_ingested
+        if (m_docsIndexed)
+        {
+            m_docsIndexed->add(staged);
+            m_docsSkipped->add(skipped);
+            m_bytesIngested->add(stagedBytes);
+        }
 
         if (staged == 0)
         {

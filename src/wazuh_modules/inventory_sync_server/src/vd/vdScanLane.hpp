@@ -68,11 +68,14 @@ namespace invsync::vd
             Stopping ///< shutting down -> 503
         };
 
+        /// @param metrics OPTIONAL registry for the D18 statistics; null falls back to a private
+        ///                disconnected manager (branch-free instrumentation, tests unchanged).
         VdScanLane(VdScanLaneConfig config,
                    std::shared_ptr<IVdScanner> scanner,
                    std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
                    std::shared_ptr<AgentInFlightRegistry> registry,
-                   std::string managerClusterName);
+                   std::string managerClusterName,
+                   std::shared_ptr<wazuh::metrics::IManager> metrics = nullptr);
 
         ~VdScanLane();
 
@@ -115,7 +118,20 @@ namespace invsync::vd
         std::shared_ptr<IVdScanner> m_scanner;
         std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> m_connectors;
         std::shared_ptr<AgentInFlightRegistry> m_registry;
+        /// Declared before m_processor: the processor resolves its counters from it. Never reset.
+        std::shared_ptr<wazuh::metrics::IManager> m_metrics;
         sync::SessionProcessor m_processor;
+
+        // D18 instruments, resolved once at construction (see common/metricNames.hpp).
+        invsync::metrics::RequestCounters m_requestCounters;
+        std::shared_ptr<wazuh::metrics::ICounter> m_capacity503;
+        std::shared_ptr<wazuh::metrics::ICounter> m_retryAfterTotal;
+        std::shared_ptr<wazuh::metrics::ICounter> m_scansOk;
+        std::shared_ptr<wazuh::metrics::ICounter> m_scansFailed;
+        std::shared_ptr<wazuh::metrics::ICounter> m_scansSkipped;
+        std::shared_ptr<wazuh::metrics::IGaugeInt> m_laneDepth;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_laneTime;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_scanDuration;
 
         mutable std::mutex m_mutex;        ///< Guards the queue and the in-flight bookkeeping.
         std::condition_variable m_cv;      ///< Wakes workers on enqueue/release/stop.

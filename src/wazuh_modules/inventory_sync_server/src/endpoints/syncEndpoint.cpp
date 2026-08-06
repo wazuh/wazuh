@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include "sync/fullSessionValidator.hpp"
 
+#include <chrono>
 #include <string>
 #include <utility>
 #include <variant>
@@ -65,6 +66,7 @@ namespace invsync::endpoints::sync
 
             if (!request)
             {
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Empty request"));
                 return;
             }
@@ -75,12 +77,14 @@ namespace invsync::endpoints::sync
             const auto agentIdIt = request->headers.find(agentIdHeader());
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Missing agent id header"));
                 return;
             }
 
             if (request->body.empty())
             {
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Empty body"));
                 return;
             }
@@ -112,7 +116,7 @@ namespace invsync::endpoints::sync
                                  invsync::common::LogThrottle::kDefaultWindowSeconds,
                                  failure->reason.c_str());
                 }
-                // STATS-PLACEHOLDER: requests_total{code} (400/403)
+                deps.requestCounters.count(failure->status);
                 responder->send(errorResponse(failure->status, failure->reason));
                 return;
             }
@@ -128,6 +132,7 @@ namespace invsync::endpoints::sync
                 const auto lane = deps.scanLane.lock();
                 if (!scanner || !lane)
                 {
+                    deps.requestCounters.count(503);
                     responder->send(serviceUnavailable()); // stopping (or the lane never came up)
                     return;
                 }
@@ -147,12 +152,21 @@ namespace invsync::endpoints::sync
                     }
                     auto response = errorResponse(503, "vulnerability feed not ready");
                     response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));
-                    // STATS-PLACEHOLDER: retry_after_total
+                    if (deps.retryAfterTotal)
+                    {
+                        deps.retryAfterTotal->add();
+                    }
+                    deps.requestCounters.count(503);
                     responder->send(std::move(response));
                     return;
                 }
 
-                switch (lane->tryEnqueue(invsync::sync::SyncPipeline::Item {request, responder, std::move(session)}))
+                switch (lane->tryEnqueue(
+                    invsync::sync::SyncPipeline::Item {request,
+                                                       responder,
+                                                       std::move(session),
+                                                       invsync::sync::SyncPipeline::Item::Kind::Session,
+                                                       std::chrono::steady_clock::now()}))
                 {
                     case invsync::vd::VdScanLane::Admission::Accepted:
                         return; // the lane worker owns the response from here
@@ -166,11 +180,15 @@ namespace invsync::endpoints::sync
                                        static_cast<unsigned long long>(decision.total),
                                        invsync::common::LogThrottle::kDefaultWindowSeconds);
                         }
-                        // STATS-PLACEHOLDER: vd_capacity_503
+                        // The lane itself counts vd.capacity.503.total at the refusal.
+                        deps.requestCounters.count(503);
                         responder->send(errorResponse(503, "scan capacity exhausted"));
                         return;
                     case invsync::vd::VdScanLane::Admission::Stopping:
-                    default: responder->send(serviceUnavailable()); return;
+                    default:
+                        deps.requestCounters.count(503);
+                        responder->send(serviceUnavailable());
+                        return;
                 }
             }
 
@@ -181,6 +199,7 @@ namespace invsync::endpoints::sync
             if (!indexer)
             {
                 // The facade cleared the connector: stop() is running. Distinct from an outage.
+                deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
                 return;
             }
@@ -194,6 +213,7 @@ namespace invsync::endpoints::sync
                                static_cast<unsigned long long>(decision.total),
                                invsync::common::LogThrottle::kDefaultWindowSeconds);
                 }
+                deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
                 return;
             }
@@ -201,6 +221,7 @@ namespace invsync::endpoints::sync
             const auto pipeline = deps.pipeline.lock();
             if (!pipeline)
             {
+                deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
                 return;
             }
@@ -208,7 +229,11 @@ namespace invsync::endpoints::sync
             // The item COPIES the two shared_ptrs (cheap) so a refused enqueue can still answer
             // through the original responder. On success the strand's work is done: the worker
             // owns the response from here.
-            if (!pipeline->enqueue(invsync::sync::SyncPipeline::Item {request, responder, std::move(session)}))
+            if (!pipeline->enqueue(invsync::sync::SyncPipeline::Item {request,
+                                                                      responder,
+                                                                      std::move(session),
+                                                                      invsync::sync::SyncPipeline::Item::Kind::Session,
+                                                                      std::chrono::steady_clock::now()}))
             {
                 if (const auto decision = capacityThrottle.record())
                 {
@@ -219,7 +244,8 @@ namespace invsync::endpoints::sync
                                static_cast<unsigned long long>(decision.total),
                                invsync::common::LogThrottle::kDefaultWindowSeconds);
                 }
-                // STATS-PLACEHOLDER: requests_total{503}, pipeline_shed_total
+                // The pipeline itself counts sync.pipeline.shed.total at the refusal.
+                deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
             }
         };

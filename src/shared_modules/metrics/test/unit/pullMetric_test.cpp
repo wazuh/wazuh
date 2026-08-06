@@ -1,0 +1,234 @@
+/*
+ * Wazuh shared metrics
+ * Copyright (C) 2015, Wazuh Inc.
+ * August 6, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include <gtest/gtest.h>
+
+#include <atomic>
+#include <memory>
+#include <stdexcept>
+
+#include <wazuh_metrics/manager.hpp>
+#include <wazuh_metrics/pullMetric.hpp>
+
+using namespace wazuh::metrics;
+
+// ============================================================
+// Helper fixture for PullMetric tests -- a local Manager (no
+// process-wide singleton in wazuh_metrics; each test owns one).
+// ============================================================
+class PullMetricTest : public ::testing::Test
+{
+protected:
+    Manager manager;
+};
+
+// ============================================================
+// PullMetric Tests
+// ============================================================
+
+TEST_F(PullMetricTest, BasicPullMetric)
+{
+    // Simulate a queue with size() method
+    std::atomic<uint64_t> queueSize {0};
+
+    // Register pull metric with lambda
+    manager.registerPullMetric("queue.size", [&queueSize]() { return queueSize.load(); });
+
+    // Initially empty
+    auto metric = manager.get("queue.size");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_EQ(metric->type(), MetricType::PULL);
+    EXPECT_EQ(metric->value(), 0.0);
+
+    // Change underlying value
+    queueSize = 42;
+    EXPECT_EQ(metric->value(), 42.0);
+
+    // Change again
+    queueSize = 100;
+    EXPECT_EQ(metric->value(), 100.0);
+}
+
+TEST_F(PullMetricTest, PullMetricWithSharedPtr)
+{
+    // Safe pattern: capture shared_ptr
+    struct Queue
+    {
+        std::atomic<uint64_t> m_size {0};
+        uint64_t size() const
+        {
+            return m_size.load();
+        }
+    };
+
+    auto queue = std::make_shared<Queue>();
+
+    // Safe: shared_ptr keeps queue alive
+    manager.registerPullMetric("safe.queue.size", [queue]() { return queue->size(); });
+
+    queue->m_size = 123;
+
+    auto metric = manager.get("safe.queue.size");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_EQ(metric->value(), 123.0);
+}
+
+TEST_F(PullMetricTest, PullMetricDerivedValue)
+{
+    // Multiple queues combined
+    std::atomic<uint64_t> queueA {10};
+    std::atomic<uint64_t> queueB {20};
+
+    manager.registerPullMetric("total.queue.size", [&queueA, &queueB]() { return queueA.load() + queueB.load(); });
+
+    auto metric = manager.get("total.queue.size");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_EQ(metric->value(), 30.0);
+
+    queueA = 50;
+    EXPECT_EQ(metric->value(), 70.0);
+}
+
+TEST_F(PullMetricTest, PullMetricEnableDisable)
+{
+    std::atomic<uint64_t> value {42};
+
+    manager.registerPullMetric("test.value", [&value]() { return value.load(); });
+
+    auto metric = manager.get("test.value");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_TRUE(metric->isEnabled());
+    EXPECT_EQ(metric->value(), 42.0);
+
+    // Disable
+    metric->disable();
+    EXPECT_FALSE(metric->isEnabled());
+    EXPECT_EQ(metric->value(), 0.0); // Returns 0 when disabled
+
+    // Enable again
+    metric->enable();
+    EXPECT_TRUE(metric->isEnabled());
+    EXPECT_EQ(metric->value(), 42.0);
+}
+
+TEST_F(PullMetricTest, PullMetricExceptionHandling)
+{
+    // Lambda that throws
+    manager.registerPullMetric("failing.metric", []() -> uint64_t { throw std::runtime_error("oops"); });
+
+    auto metric = manager.get("failing.metric");
+    ASSERT_NE(metric, nullptr);
+
+    // Should return 0 instead of crashing
+    EXPECT_EQ(metric->value(), 0.0);
+}
+
+TEST_F(PullMetricTest, PullMetricTypedAccess)
+{
+    std::atomic<uint64_t> value {12345};
+
+    manager.registerPullMetric("typed.value", [&value]() { return value.load(); });
+
+    auto metric = manager.get("typed.value");
+    ASSERT_NE(metric, nullptr);
+
+    // Cast to specific type to get typed access
+    auto pullMetric = std::dynamic_pointer_cast<PullMetric<uint64_t>>(metric);
+    ASSERT_NE(pullMetric, nullptr);
+
+    // Direct typed access (no double conversion)
+    EXPECT_EQ(pullMetric->getValue(), 12345U);
+}
+
+TEST_F(PullMetricTest, PullMetricDoubleGetter)
+{
+    manager.registerPullMetricDouble("ratio", []() { return 0.5; });
+
+    auto metric = manager.get("ratio");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_EQ(metric->type(), MetricType::PULL);
+    EXPECT_DOUBLE_EQ(metric->value(), 0.5);
+
+    auto pullMetric = std::dynamic_pointer_cast<PullMetric<double>>(metric);
+    ASSERT_NE(pullMetric, nullptr);
+    EXPECT_DOUBLE_EQ(pullMetric->getValue(), 0.5);
+}
+
+TEST_F(PullMetricTest, MixedPushAndPullMetrics)
+{
+    // PUSH metric (maintains state)
+    auto counter = manager.getOrCreateCounter("events.processed");
+    counter->add(100);
+
+    // PULL metric (lazy evaluation)
+    std::atomic<uint64_t> queueSize {42};
+    manager.registerPullMetric("queue.size", [&queueSize]() { return queueSize.load(); });
+
+    // Both should be listable
+    auto names = manager.getAllNames();
+    EXPECT_EQ(names.size(), 2U);
+
+    // Both should be accessible
+    EXPECT_NE(manager.get("events.processed"), nullptr);
+    EXPECT_NE(manager.get("queue.size"), nullptr);
+
+    // Different types
+    EXPECT_EQ(manager.get("events.processed")->type(), MetricType::COUNTER);
+    EXPECT_EQ(manager.get("queue.size")->type(), MetricType::PULL);
+}
+
+TEST_F(PullMetricTest, RealWorldQueueExample)
+{
+    // Simulate orchestrator queue scenario
+    struct EventQueue
+    {
+        std::vector<int> items;
+        uint64_t size() const
+        {
+            return items.size();
+        }
+        void push(int val)
+        {
+            items.push_back(val);
+        }
+    };
+
+    auto queue = std::make_shared<EventQueue>();
+
+    // Register pull metric pointing to real queue
+    manager.registerPullMetric("orchestrator.queue.size", [queue]() { return queue->size(); });
+
+    // Query shows real size
+    auto metric = manager.get("orchestrator.queue.size");
+    EXPECT_EQ(metric->value(), 0.0);
+
+    // Add items
+    queue->push(1);
+    queue->push(2);
+    queue->push(3);
+
+    // Metric automatically reflects current size (no manual update needed!)
+    EXPECT_EQ(metric->value(), 3.0);
+}
+
+TEST_F(PullMetricTest, RegisterPullMetricDoesNotOverwriteExisting)
+{
+    std::atomic<uint64_t> first {1};
+    std::atomic<uint64_t> second {2};
+
+    manager.registerPullMetric("stable.metric", [&first]() { return first.load(); });
+    // Second registration under the same name must be a no-op.
+    manager.registerPullMetric("stable.metric", [&second]() { return second.load(); });
+
+    auto metric = manager.get("stable.metric");
+    ASSERT_NE(metric, nullptr);
+    EXPECT_EQ(metric->value(), 1.0);
+}

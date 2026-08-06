@@ -12,6 +12,7 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | Method | Path | Success | Notes |
 |---|---|---|---|
 | `GET` | `/` | `200` | Liveness probe. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
+| `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` (the agent full-resyncs), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
 | `DELETE` | `/agents` | `200` | Deletes every state document of the agent named by `X-Wazuh-Agent-Id` (`wazuh-states-*`, this cluster's scope). Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means the delete-by-query was flushed. UDS-local only: the production caller is authd. |
 | `POST` | `/agents/delete` | `200` | Alias of `DELETE /agents` with the same handler, for C callers whose HTTP helper only speaks POST. |
@@ -72,7 +73,7 @@ report with no statistics would replace the agent's last good one.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes, for every route except `GET /` | For `/stateful`, `/stats` and `/config`: the agent identity remoted authenticated (the session's own claimed identity must match it, or the answer is `403`). For the deletion routes: the TARGET agent, set by the calling daemon. Missing or non-numeric is answered `400`. |
+| `X-Wazuh-Agent-Id` | Yes, for every route except `GET /` and `GET /metrics` | For `/stateful`, `/stats` and `/config`: the agent identity remoted authenticated (the session's own claimed identity must match it, or the answer is `403`). For the deletion routes: the TARGET agent, set by the calling daemon. Missing or non-numeric is answered `400`. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats`)
@@ -164,6 +165,39 @@ whole retry contract — there are no acknowledgments and no session state to re
 | `413` | `{"error":...,"code":413}` | declared more bytes than the server's TOTAL in-flight budget; must split the session. |
 | `500` | `{"error":"vulnerability scan failed","code":500}` or `{"error":"Internal error","code":500}` | retries next cycle; NOTHING was indexed for this session. |
 | `503` | `{"error":...,"code":503}` — with `Retry-After: <seconds>` when the CVE feed is still downloading | retries later. Causes: indexer unavailable, queue/budget full, scan capacity exhausted, feed downloading, shutdown. |
+
+## `GET /metrics`
+
+The D18 statistics dump. UDS-local like every route here — remoted exposes nothing that reaches
+it, so agents cannot read it; the consumers are operators and the benchmark harness:
+
+```bash
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/metrics
+```
+
+```json
+{
+  "name": "inventory_sync_server",
+  "timestamp": "2026-08-06T14:41:07Z",
+  "metrics": [
+    {"name": "sync.bulk.flushes", "type": "counter", "enabled": true, "value": 41,
+     "description": "Group-commit flushes", "unit": "count"},
+    {"name": "sync.session.duration.bulk", "type": "histogram", "enabled": true, "value": 41,
+     "unit": "microseconds",
+     "summary": {"count": 41, "sum": 5150000, "min": 900, "max": 410000,
+                  "p50": 98304, "p90": 229376, "p99": 393216}}
+  ]
+}
+```
+
+Entries are sorted by name; counters are exact integers; a histogram's `value` is its observation
+count and its `summary` carries bucket-resolution percentiles (~12.5% relative error). The full
+metric catalog and where each is measured is in the
+[architecture page](architecture.md#statistics-get-metrics). Counters accumulate for the life of
+the process (they survive the module's internal restart retries); there is no reset endpoint.
+
+Note it is NOT `POST /stats`: that route is the *ingest* of agent statistics reports, unrelated
+to this module's own runtime metrics.
 
 ## Status codes
 

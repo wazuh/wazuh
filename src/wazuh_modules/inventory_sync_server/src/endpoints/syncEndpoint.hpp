@@ -13,6 +13,7 @@
 #define _INVSYNC_ENDPOINTS_SYNC_ENDPOINT_HPP
 
 #include "common/clusterIdentity.hpp"
+#include "common/metricNames.hpp"
 #include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
@@ -73,6 +74,13 @@ namespace invsync::endpoints::sync
         /// either expiring means the module is stopping (503).
         std::weak_ptr<invsync::vd::VdScanLane> scanLane;
         std::weak_ptr<invsync::vd::IVdScanner> scanner;
+        /// D18: counters for the responses THIS handler sends inline (rejections; deferred
+        /// responses are counted where they are sent, by the pipeline/lane). Pre-resolved
+        /// shared_ptr counters, not the manager: the hot path never does a registry lookup.
+        /// Default (null) counts nothing.
+        invsync::metrics::RequestCounters requestCounters;
+        /// D18: 503-with-Retry-After responses (the strand-side feed gate).
+        std::shared_ptr<wazuh::metrics::ICounter> retryAfterTotal;
     };
 
     /**

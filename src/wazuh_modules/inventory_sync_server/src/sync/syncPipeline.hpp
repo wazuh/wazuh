@@ -12,6 +12,7 @@
 #ifndef _INVSYNC_SYNC_SYNC_PIPELINE_HPP
 #define _INVSYNC_SYNC_SYNC_PIPELINE_HPP
 
+#include "common/metricNames.hpp"
 #include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/fullSessionValidator.hpp"
@@ -19,6 +20,7 @@
 #include "vd/agentInFlightRegistry.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <deque>
@@ -81,6 +83,9 @@ namespace invsync::sync
             /// scope); the FlatBuffer pointer stays null.
             ValidatedSession session;
             Kind kind {Kind::Session};
+            /// Stamped by the endpoint at enqueue; respond() observes the elapsed time into the
+            /// session-duration histograms (D18). Epoch (default) means "not stamped": no sample.
+            std::chrono::steady_clock::time_point enqueuedAt {};
         };
 
         /**
@@ -94,11 +99,15 @@ namespace invsync::sync
          *                   holding each dispatched item's agent until its response. Null keeps
          *                   the standalone behavior. The registry must OUTLIVE this pipeline (the
          *                   facade resets it last).
+         * @param metrics    OPTIONAL registry for the D18 statistics. Null falls back to a private
+         *                   disconnected manager, so the instrumentation stays branch-free and the
+         *                   existing tests need no change.
          */
         SyncPipeline(SyncPipelineConfig config,
                      std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
                      std::string managerClusterName,
-                     std::shared_ptr<vd::AgentInFlightRegistry> registry = nullptr);
+                     std::shared_ptr<vd::AgentInFlightRegistry> registry = nullptr,
+                     std::shared_ptr<wazuh::metrics::IManager> metrics = nullptr);
 
         ~SyncPipeline();
 
@@ -150,11 +159,26 @@ namespace invsync::sync
         flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
 
         SyncPipelineConfig m_config;
+        /// Declared before m_processor: the processor resolves its counters from it. Never reset.
+        std::shared_ptr<wazuh::metrics::IManager> m_metrics;
         SessionProcessor m_processor;
         std::shared_ptr<vd::AgentInFlightRegistry> m_registry;
         std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> m_connectors;
         std::vector<std::unique_ptr<Shard>> m_shards;
         std::vector<std::thread> m_workers;
+
+        // D18 instruments, resolved once at construction (see common/metricNames.hpp).
+        invsync::metrics::RequestCounters m_requestCounters;
+        std::shared_ptr<wazuh::metrics::ICounter> m_shedTotal;
+        std::shared_ptr<wazuh::metrics::ICounter> m_bulkFlushes;
+        std::shared_ptr<wazuh::metrics::ICounter> m_bulkBytesTotal;
+        std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsTotal;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_durationBulk;
+        std::shared_ptr<wazuh::metrics::IHistogram> m_durationImmediate;
+        /// One pair per shard. GAUGES the workers update, not pull metrics: a pull would capture
+        /// a `this` that dies in stop() while the manager persists (there is no remove()).
+        std::vector<std::shared_ptr<wazuh::metrics::IGaugeInt>> m_shardDepth;
+        std::vector<std::shared_ptr<wazuh::metrics::IGaugeInt>> m_shardBytes;
         std::atomic<std::size_t> m_queuedBytes {0};
         std::atomic<bool> m_stopping {false};
         std::mutex m_stopMutex; ///< Serializes stop() against itself (facade + destructor).

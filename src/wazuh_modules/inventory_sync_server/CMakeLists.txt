@@ -54,8 +54,12 @@ target_include_directories(
 # the vd_sync coordination registry). The dependency is one-way -- the scanner never includes a
 # header of this module -- so no cycle: the scanner's own coordination needs are served through
 # vd_sync::IScanCoordinator implementations REGISTERED by the sync modules.
-target_link_libraries(inventory_sync_server PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector
-                                                    vulnerability_scanner)
+# wazuh_metrics is PUBLIC: the D18 instrumentation lives in headers under src/ that the unit-test
+# target compiles too, so its include dirs must propagate through target_link_libraries.
+target_link_libraries(
+  inventory_sync_server
+  PUBLIC wazuh_metrics
+  PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector vulnerability_scanner)
 
 # Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides Boost,
 # so leaving it to be inferred just makes the build depend on what happens to be installed.
