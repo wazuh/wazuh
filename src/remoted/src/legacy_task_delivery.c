@@ -52,6 +52,7 @@
 #include "version_op.h"
 #include "os_net.h"
 #include "legacy_task_delivery.h"
+#include "queue_linked_op.h"
 
 #include <limits.h>
 
@@ -92,6 +93,23 @@
  * never a wait-until-condition loop -- so it can never become unbounded. */
 #define LEGACY_TASK_MAX_PUSH_ATTEMPTS 3
 
+/* How often the poller drains pending clear_upgrade_result replies -- deliberately much shorter
+ * than legacy_task_polling_interval (whose minimum is 300s) and deliberately not configurable.
+ * The full task-delivery sweep still only runs once per legacy_task_polling_interval; only the
+ * lightweight ack-reply drain runs on this tighter cadence, so an agent's own ack/backoff loop
+ * doesn't keep resending for the full, much longer poll interval. */
+#define LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC 5
+
+/* FIFO of agent IDs (heap-allocated strings, owned by the queue until drained) awaiting a
+ * clear_upgrade_result reply. Decouples ack detection -- done inline on a rem_handler worker
+ * thread in secure.c, which must stay fast since that fixed-size pool is what dequeues and
+ * processes every incoming secure message from every connected agent -- from the reply itself,
+ * which needs a blocking round-trip to the agent (req_send_and_wait, up to response_timeout
+ * seconds). Draining a burst of acks inline used to be able to tie up the whole worker pool for
+ * that long, stalling every other agent's traffic; this queue lets this module's own poller
+ * thread perform that blocking wait instead, off the shared pool entirely. */
+static w_linked_queue_t *pending_clear_upgrade_replies = NULL;
+
 /* Distinguishes failures a retry can plausibly fix from ones it can't -- see each return site in
  * legacy_task_deliver_remote_upgrade() for the specific reasoning behind its classification. */
 typedef enum {
@@ -107,6 +125,27 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data) __attribute__((nonnull(1, 2, 3)));
 STATIC void legacy_upgrade_poll_cycle(void);
 STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
+STATIC void legacy_task_drain_clear_upgrade_replies(void);
+
+void legacy_task_delivery_init(void) {
+    pending_clear_upgrade_replies = linked_queue_init();
+}
+
+void legacy_task_delivery_teardown(void) {
+    if (pending_clear_upgrade_replies) {
+        char *agent_id;
+
+        // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
+        // draining must check for a pending node first rather than looping on its NULL return.
+        while (pending_clear_upgrade_replies->first) {
+            agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
+            os_free(agent_id);
+        }
+
+        linked_queue_free(pending_clear_upgrade_replies);
+        pending_clear_upgrade_replies = NULL;
+    }
+}
 
 /**
  * @brief Determine whether a connected agent is confirmed to be below v5.0.0.
@@ -648,11 +687,37 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
 
     cJSON_Delete(ack);
 
-    // Stop the agent's retry loop regardless of the outcome it reported: a lost
-    // clear_upgrade_result on a prior ack must not leave it stuck resending forever.
-    legacy_task_send_clear_upgrade_result(agent_id);
+    // Enqueue rather than reply inline: this function runs on a shared rem_handler worker-pool
+    // thread (secure.c) and must not block it. legacy_task_send_clear_upgrade_result() performs a
+    // synchronous round-trip to the agent (up to response_timeout seconds) -- doing that here,
+    // under a burst of acks (e.g. right after a mass upgrade completes), could occupy every
+    // worker thread at once and stall all other agents' traffic. The poller thread drains this
+    // queue and performs the actual round-trip off the shared pool instead.
+    char *agent_id_copy;
+    os_strdup(agent_id, agent_id_copy);
+    linked_queue_push_ex(pending_clear_upgrade_replies, agent_id_copy);
 
     return true;
+}
+
+/**
+ * @brief Drain and reply to every agent ID currently queued for a clear_upgrade_result reply.
+ *
+ * Runs on this module's own poller thread, off the shared rem_handler worker pool -- see
+ * pending_clear_upgrade_replies' doc comment. No dedup: the same agent ID may appear more than
+ * once (its own backoff loop can resend an ack before this drains), and replying twice is
+ * harmless, so each queued entry is answered independently.
+ */
+STATIC void legacy_task_drain_clear_upgrade_replies(void) {
+    char *agent_id;
+
+    // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
+    // draining must check for a pending node first rather than looping on its NULL return.
+    while (pending_clear_upgrade_replies->first) {
+        agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
+        legacy_task_send_clear_upgrade_result(agent_id);
+        os_free(agent_id);
+    }
 }
 
 void *legacy_upgrade_task_delivery(void *arg) {
@@ -666,7 +731,21 @@ void *legacy_upgrade_task_delivery(void *arg) {
 
     while (1) {
         legacy_upgrade_poll_cycle();
-        sleep(legacy_task_polling_interval);
+        legacy_task_drain_clear_upgrade_replies();
+
+        int slept = 0;
+        while (slept < legacy_task_polling_interval) {
+            int nap = (legacy_task_polling_interval - slept < LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC)
+                      ? (legacy_task_polling_interval - slept)
+                      : LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC;
+            sleep(nap);
+            slept += nap;
+            legacy_task_drain_clear_upgrade_replies();
+
+#ifdef WAZUH_UNIT_TESTING
+            break;
+#endif
+        }
 
 #ifdef WAZUH_UNIT_TESTING
         break;

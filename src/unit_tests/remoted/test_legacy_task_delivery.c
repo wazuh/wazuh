@@ -39,6 +39,7 @@ bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version);
 agent_version_check_t agent_meta_check_version(const char *agent_id_str, const char *min_version, char **out_version);
 legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj);
 void legacy_upgrade_poll_cycle(void);
+void legacy_task_drain_clear_upgrade_replies(void);
 
 /* Must match LEGACY_TASK_MAX_PUSH_ATTEMPTS in legacy_task_delivery.c. */
 #define LEGACY_TASK_MAX_PUSH_ATTEMPTS 3
@@ -65,6 +66,10 @@ void __wrap_key_unlock(void) { }
 static int test_setup(void **state) {
     (void) state;
     test_mode = 1;
+    // Fresh, empty pending-replies queue for every test: this is file-local static state in
+    // legacy_task_delivery.c that would otherwise leak/persist across test invocations.
+    legacy_task_delivery_teardown();
+    legacy_task_delivery_init();
     return 0;
 }
 
@@ -73,6 +78,8 @@ static int test_teardown(void **state) {
     test_mode = 0;
     keys.keyentries = NULL;
     keys.keysize = 0;
+    // Free anything a test left un-drained (checked under ASan/LeakSanitizer).
+    legacy_task_delivery_teardown();
     return 0;
 }
 
@@ -927,16 +934,20 @@ void test_process_upgrade_ack_success_replies_clear_upgrade_result(void **state)
 
     expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
 
-    expect_string(__wrap_req_send_and_wait, agent_id, "001");
-    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
-    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
-    will_return(__wrap_req_send_and_wait, 0);
-
+    // No req_send_and_wait mock queued: proves the ack call only enqueues, it does not block on
+    // the reply round-trip itself.
     bool result = legacy_task_process_upgrade_ack("001",
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
         "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
 
     assert_true(result);
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "001");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 void test_process_upgrade_ack_failure_still_replies_clear_upgrade_result(void **state) {
@@ -944,16 +955,19 @@ void test_process_upgrade_ack_failure_still_replies_clear_upgrade_result(void **
 
     expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
 
-    expect_string(__wrap_req_send_and_wait, agent_id, "002");
-    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
-    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
-    will_return(__wrap_req_send_and_wait, 0);
-
     bool result = legacy_task_process_upgrade_ack("002",
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
         "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
 
     assert_true(result);
+
+    // Reported outcome doesn't matter -- still enqueues and, on drain, still replies.
+    expect_string(__wrap_req_send_and_wait, agent_id, "002");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 void test_process_upgrade_ack_malformed_json_ignored(void **state) {
@@ -966,6 +980,9 @@ void test_process_upgrade_ack_malformed_json_ignored(void **state) {
     bool result = legacy_task_process_upgrade_ack("003", "not json");
 
     assert_false(result);
+
+    // Nothing was enqueued for a rejected ack: draining with no mocks queued must be a no-op.
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 void test_process_upgrade_ack_unexpected_command_ignored(void **state) {
@@ -978,6 +995,8 @@ void test_process_upgrade_ack_unexpected_command_ignored(void **state) {
     bool result = legacy_task_process_upgrade_ack("004", "{\"command\":\"something_else\",\"parameters\":{}}");
 
     assert_false(result);
+
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 void test_process_upgrade_ack_missing_error_field_ignored(void **state) {
@@ -991,6 +1010,8 @@ void test_process_upgrade_ack_missing_error_field_ignored(void **state) {
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"message\":\"x\",\"status\":\"Done\"}}");
 
     assert_false(result);
+
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 void test_process_upgrade_ack_reply_failure_still_returns_true(void **state) {
@@ -998,6 +1019,15 @@ void test_process_upgrade_ack_reply_failure_still_returns_true(void **state) {
 
     expect_any(__wrap__minfo, formatted_msg); // "reported upgrade result ..."
 
+    // The ack itself is well-formed and processed -- true even before any reply is attempted.
+    bool result = legacy_task_process_upgrade_ack("006",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+
+    assert_true(result);
+
+    // The wire round-trip itself fails during drain: the warning must still fire there without
+    // crashing.
     expect_string(__wrap_req_send_and_wait, agent_id, "006");
     expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
     will_return(__wrap_req_send_and_wait, NULL);
@@ -1009,12 +1039,71 @@ void test_process_upgrade_ack_reply_failure_still_returns_true(void **state) {
         "legacy_task_delivery: agent '006': failed to deliver 'clear_upgrade_result', the agent "
         "may keep resending its upgrade acknowledgment");
 
-    bool result = legacy_task_process_upgrade_ack("006",
-        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
-        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+    legacy_task_drain_clear_upgrade_replies();
+}
 
-    // The ack itself was well-formed and processed -- true even though the reply delivery failed.
-    assert_true(result);
+/* Core regression proof: several distinct agents' acks arriving back-to-back must never block on
+ * each other, however many arrive in a row -- the scenario a burst of simultaneous upgrade
+ * completions produces. Expressed as an ordering/non-blocking property (zero req_send_and_wait
+ * mocks queued while processing every ack) rather than real concurrency: cmocka's mocking model
+ * is single-threaded, so a genuine multi-thread stress test would be flaky/non-portable here. */
+void test_process_upgrade_ack_burst_of_agents_does_not_block(void **state) {
+    (void) state;
+
+    const char *agent_ids[] = {"010", "011", "012", "013"};
+    const size_t n = sizeof(agent_ids) / sizeof(agent_ids[0]);
+
+    for (size_t i = 0; i < n; i++) {
+        expect_any(__wrap__minfo, formatted_msg);
+        bool result = legacy_task_process_upgrade_ack(agent_ids[i],
+            "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+            "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+        assert_true(result);
+    }
+
+    // One drain call flushes all of them, in FIFO enqueue order.
+    for (size_t i = 0; i < n; i++) {
+        expect_string(__wrap_req_send_and_wait, agent_id, agent_ids[i]);
+        expect_string(__wrap_req_send_and_wait, payload,
+                      "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+        will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+        will_return(__wrap_req_send_and_wait, 0);
+    }
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
+/* Draining an empty queue must be a safe no-op: no crash, no wire call, no log. */
+void test_drain_clear_upgrade_replies_empty_queue_is_noop(void **state) {
+    (void) state;
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
+/* No dedup by design: two acks queued for the same agent before draining must each get their own
+ * reply, not be collapsed into one. */
+void test_process_upgrade_ack_duplicate_same_agent_replies_twice(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg);
+    assert_true(legacy_task_process_upgrade_ack("020",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}"));
+
+    expect_any(__wrap__minfo, formatted_msg);
+    assert_true(legacy_task_process_upgrade_ack("020",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}"));
+
+    for (int i = 0; i < 2; i++) {
+        expect_string(__wrap_req_send_and_wait, agent_id, "020");
+        expect_string(__wrap_req_send_and_wait, payload,
+                      "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+        will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+        will_return(__wrap_req_send_and_wait, 0);
+    }
+
+    legacy_task_drain_clear_upgrade_replies();
 }
 
 int main(void) {
@@ -1046,6 +1135,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_unexpected_command_ignored, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_missing_error_field_ignored, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_reply_failure_still_returns_true, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_burst_of_agents_does_not_block, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_drain_clear_upgrade_replies_empty_queue_is_noop, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_duplicate_same_agent_replies_twice, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
