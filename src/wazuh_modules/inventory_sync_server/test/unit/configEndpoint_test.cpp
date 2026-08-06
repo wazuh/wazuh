@@ -18,6 +18,7 @@
 #include <json.hpp>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -79,10 +80,19 @@ namespace
             return m_available;
         }
 
+        // Simulates a transient write-time failure (e.g. a queue/broker error) on an otherwise
+        // healthy, available connector -- distinct from isAvailable()==false, which the handler
+        // checks beforehand and never even reaches this call.
         void index(std::string_view id, std::string_view index, std::string_view data) override
         {
+            if (throwOnIndex)
+            {
+                throw std::runtime_error {"simulated indexer write failure"};
+            }
             indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
         }
+
+        bool throwOnIndex {false};
 
         void indexDataStream(std::string_view index, std::string_view data) override
         {
@@ -347,6 +357,17 @@ TEST(ConfigEndpointTest, ElementsMissingModuleAreRejected)
     EXPECT_EQ(400, response.status);
 }
 
+TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
+{
+    const auto response = run(makeRequest(R"([{"config":{}}])", "001"));
+
+    ASSERT_EQ(400, response.status);
+    const auto parsed = nlohmann::json::parse(response.body, nullptr, /*allow_exceptions=*/false);
+    ASSERT_FALSE(parsed.is_discarded()) << "400 body is not valid JSON: " << response.body;
+    EXPECT_EQ(400, parsed.value("code", 0));
+    EXPECT_NE(parsed.value("error", std::string {}).find("module"), std::string::npos) << response.body;
+}
+
 TEST(ConfigEndpointTest, ElementsWithNonStringOrEmptyModuleAreRejected)
 {
     for (const auto* body : {R"([{"module":42,"config":{}}])", R"([{"module":"","config":{}}])"})
@@ -432,6 +453,18 @@ TEST(ConfigEndpointTest, UnavailableIndexerYields503)
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
     const auto response = run(makeRequest(R"([{"module":"fim","config":{}}])", "001"), connector);
+
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
+TEST(ConfigEndpointTest, AWriteFailureOnAnAvailableIndexerYields503NotBadRequest)
+{
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    connector->throwOnIndex = true;
+
+    const auto response = run(makeRequest(R"([{"module":"fim","config":{"cpu":1}}])", "001"), connector);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
