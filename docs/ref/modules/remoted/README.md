@@ -34,4 +34,4 @@ The remoted module serves as the primary entry point for all agent communication
 
 - **wazuh-manager-db**: Stores agent information and connection status
 - **wazuh-manager-analysisd**: Consumes enriched events for rule evaluation
-- **inventory-sync**: Synchronizes agent inventory data
+- **inventory-sync-server**: Receives agent state synchronization sessions relayed by the `POST /stateful` route
