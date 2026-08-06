@@ -26,6 +26,45 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
+### Installation variables
+
+The `<remote>` block of the generated `/var/wazuh-manager/etc/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
+
+```bash
+sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' dpkg -i wazuh-manager_*.deb
+```
+
+```bash
+sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -ivh wazuh-manager-*.rpm
+```
+
+> [!NOTE]
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. The variables only apply when the configuration file is generated (fresh installations); upgrades preserve the existing configuration. Invalid values abort the configuration generation with an error.
+
+| Variable | Configuration option | Default |
+|----------|----------------------|---------|
+| `WAZUH_REMOTE_HTTPS_PORT` | `remote.https.port` | `1517` |
+| `WAZUH_REMOTE_HTTPS_BIND_ADDR` | `remote.https.bind_addr` | `127.0.0.1` |
+| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/https-manager.cert` |
+| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/https-manager.key` |
+| `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
+| `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`none`) |
+| `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
+| `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`20MB`) |
+| `WAZUH_REMOTE_HTTPS_DUAL_STACK` | `remote.https.dual_stack` | not set (`no`) |
+| `WAZUH_REMOTE_LEGACY_PORT` | `remote.legacy.port` | `1514` |
+| `WAZUH_REMOTE_LEGACY_PROTOCOL` | `remote.legacy.protocol` | `tcp` |
+| `WAZUH_REMOTE_LEGACY_LOCAL_IP` | `remote.legacy.local_ip` | `127.0.0.1` |
+| `WAZUH_REMOTE_LEGACY_QUEUE_SIZE` | `remote.legacy.queue_size` | `131072` |
+| `WAZUH_REMOTE_LEGACY_IPV6` | `remote.legacy.ipv6` | not set (`no`) |
+| `WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME` | `remote.legacy.rids_closing_time` | not set (`5m`) |
+| `WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME` | `remote.legacy.connection_overtake_time` | not set (`60`) |
+| `WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS` | `remote.agents.allow_higher_versions` | `no` |
+
+Options marked "not set" are only written to the configuration file when their variable is provided; the value in parentheses is the built-in default applied by `wazuh-manager-remoted`. See the [remoted configuration reference](../modules/remoted/configuration.md) for the meaning and accepted values of each option.
+
+When `WAZUH_REMOTE_HTTPS_CERTIFICATE` or `WAZUH_REMOTE_HTTPS_KEY` is provided, the installer does not generate the default self-signed certificate: the referenced files are managed by the administrator. `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+
 ### Configuration
 
 #### Deploy certificates
