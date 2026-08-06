@@ -290,47 +290,6 @@ async def restart_agents_by_node(node_id: str, pretty: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def get_agent_config(pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                           module: str = None, **kwargs: dict) -> ConnexionResponse:
-    """Get agent active configuration.
-
-    Returns the last configuration the agent reported to the manager for the given module. This can be different
-    from the configuration present in the configuration file, if it has been modified and the agent has not
-    restarted yet.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agent_id : str
-        Agent ID.
-    module : str
-        Selected agent's module which configuration is got.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the agent configuration.
-    """
-    f_kwargs = {'agent_list': [agent_id],
-                'module': module
-                }
-
-    dapi = DistributedAPI(f=agent.get_agent_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = None, pretty: bool = False,
                                               wait_for_complete: bool = False) -> ConnexionResponse:
     """Remove the agent from all groups or a list of them.

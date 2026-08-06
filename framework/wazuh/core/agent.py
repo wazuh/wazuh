@@ -11,7 +11,7 @@ from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
 
-from wazuh.core import common, configuration, stats
+from wazuh.core import common, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
@@ -1256,29 +1256,6 @@ class Agent:
         return f"Agent '{agent_id}' removed from '{group_id}'." + (
             " Agent reassigned to group default." if set_default else ""
         )
-
-    async def get_config(self, module: str = "") -> dict:
-        """Read the agent's last reported configuration for a module.
-
-        Parameters
-        ----------
-        module : str
-            Selected agent's module.
-
-        Raises
-        ------
-        WazuhError(1703)
-            Action not available for manager (000).
-
-        Returns
-        -------
-        dict
-            The module's last reported configuration.
-        """
-        if self.id == '000':
-            raise WazuhError(1703)
-
-        return await configuration.get_agent_active_configuration(agent_id=self.id, module=module)
 
     def get_stats(self, component: str) -> dict:
         """Read the agent's component stats.
