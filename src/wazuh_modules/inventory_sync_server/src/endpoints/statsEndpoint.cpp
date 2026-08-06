@@ -24,9 +24,11 @@ namespace
 {
     constexpr auto STATS_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
 
-    /// `state.document_version` versions the stored layout, not the agent's report: every push
-    /// replaces the previous document whole, and OpenSearch's `_version` already counts the writes.
-    /// Bump it when the shape under `wazuh.agent.statistics` changes in a way a reader must notice.
+    /// `state.document_version` versions the ENVELOPE this module builds -- `state`, `wazuh.cluster`,
+    /// `wazuh.agent.id` and where the report is mounted -- not the report itself, whose shape is the
+    /// agent's and which modulesd cannot track. Every push replaces the previous document whole, and
+    /// OpenSearch's `_version` already counts the writes. Bump it when a reader must notice a change
+    /// to the envelope.
     constexpr int STATS_DOCUMENT_VERSION {1};
 
     /// `wazuh.schema.version` is the schema-wide marker, kept as a string because that is how

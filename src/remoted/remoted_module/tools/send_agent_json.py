@@ -183,13 +183,13 @@ def scenario_missing_protocol_version(agent_id, agent_key, target):
     return headers, body
 
 
-def scenario_missing_authorization(_agent_id, _agent_key, _target):
-    return {"protocol-version": "1", "Content-Type": "application/json"}, default_body(_target)
+def scenario_missing_authorization(_agent_id, _agent_key, target):
+    return {"protocol-version": "1", "Content-Type": "application/json"}, default_body(target)
 
 
-def scenario_malformed_authorization(_agent_id, _agent_key, _target):
+def scenario_malformed_authorization(_agent_id, _agent_key, target):
     return ({"protocol-version": "1", "Content-Type": "application/json",
-             "Authorization": "Wazuh not-even-close"}, default_body(_target))
+             "Authorization": "Wazuh not-even-close"}, default_body(target))
 
 
 def scenario_unknown_agent(_agent_id, _agent_key, target):

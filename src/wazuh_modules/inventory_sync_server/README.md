@@ -354,8 +354,11 @@ Anything else is 404; a known path with the wrong verb is 405 with an `Allow` he
 
 ### `/stats` and `/config`
 
-Both take a JSON object from an agent and stamp the same four authoritative fields onto it. From there
-they diverge: `/stats` validates and indexes, `/config` echoes and drops. The pieces worth knowing:
+Both take a JSON object from an agent and attach the same authoritative identity to it — the agent id
+from the `X-Wazuh-Agent-Id` header, this manager's cluster name and node from its own configuration,
+never anything read out of the document. From there they diverge: `/config` stamps them onto the
+agent's object, adds `@timestamp`, echoes it and drops it; `/stats` validates, builds its own document
+with a `state`/`wazuh.schema` envelope and indexes it. The pieces worth knowing:
 
 - **The agent id comes from the `X-Wazuh-Agent-Id` header, never from the document.** remoted sets it
   from the identity it verified by AES-CMAC. Taking it from the body would make the enrichment
@@ -401,10 +404,16 @@ they diverge: `/stats` validates and indexes, `/config` echoes and drops. The pi
   of indexing them next to the authoritative `wazuh.agent.id`. `modules` moves under
   `wazuh.agent.statistics` untouched: the module renames no metric and reshapes no module body, so the
   field names in the index are the agent's own and a metric the agent adds needs no change here.
+- **"Untouched" is about this module, not about what reaches the index.** The `wazuh-agent-stats`
+  mapping is `dynamic: strict` with every leaf declared, so a module or a metric it does not declare
+  makes the indexer reject the whole document with `strict_dynamic_mapping_exception`. Nothing here
+  hears about it: the write is fire-and-forget and the agent already has its `200`. So an agent-side
+  addition needs no change *here* and does need one in the index template, and the only way to see a
+  rejected write today is to read the document back off the indexer.
 - **A report with nothing to store is a 400, not an empty document.** A missing, non-object or empty
   `modules` would otherwise replace the agent's last good report with one carrying no statistics at
-  all. A module whose body is not an object is rejected for a different reason: the index mapping would
-  reject it silently, and the write is fire-and-forget.
+  all. A module whose body is not an object is rejected for a different reason: it is the one bad shape
+  this side can catch before the mapping rejects it silently.
 - **The cluster name and node name are injected too, the same way as the indexer connector: at
   registration time, via `makeHandler()`'s `cluster` parameter** (`common/clusterIdentity.hpp`'s
   `ClusterIdentity`, built once per attempt by `buildClusterIdentity()` from
