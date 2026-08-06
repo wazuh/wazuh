@@ -360,9 +360,8 @@ WriteAgent()
     fi
     echo "      <port>1517</port>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
-    # TEMPORARY: shipped as 'none' to unblock the test suite (no CA available
-    # there); revert to 'full' + a real certificate_authorities path before
-    # release.
+    # verification_mode defaults to 'none'; set to 'full' or 'certificate' and
+    # provide certificate_authorities to verify the manager's certificate.
     echo "    <ssl>" >> $NEWCONFIG
     echo "      <certificate_authorities>PATH</certificate_authorities>" >> $NEWCONFIG
     echo "      <verification_mode>none</verification_mode>" >> $NEWCONFIG

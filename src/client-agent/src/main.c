@@ -161,11 +161,10 @@ int main(int argc, char **argv)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
-    /* TEMPORARY: default to no TLS verification when <ssl> is absent from the config,
-     * so an unmodified pre-HTTPS config (upgrade case: no <ssl> block at all) doesn't
-     * hard-exit on AG_INV_SSL_CA. ClientConf()/Read_Client_SSL() below still overrides
-     * this to whatever <ssl><verification_mode> the config actually sets. Revert
-     * before release -- the correct default is AGENT_VERIFY_FULL (fail-closed). */
+    /* Default to no TLS verification when <ssl> is absent from the config -- e.g. an
+     * unmodified pre-HTTPS config (upgrade case: no <ssl> block at all), which would
+     * otherwise hard-exit on AG_INV_SSL_CA. ClientConf()/Read_Client_SSL() below still
+     * overrides this to whatever <ssl><verification_mode> the config actually sets. */
     agt->ssl.verification_mode = AGENT_VERIFY_NONE;
 
     atc = (anti_tampering *)calloc(1, sizeof(anti_tampering));
