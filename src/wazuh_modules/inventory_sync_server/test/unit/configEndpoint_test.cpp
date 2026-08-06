@@ -173,7 +173,7 @@ TEST(ConfigEndpointTest, AgentIdHeaderNameIsLowerCase)
 TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexName)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    const auto body = R"([{"module":"fim","config":{"cpu":42}},{"module":"logcollector","config":{"lines":1}}])";
+    const auto body = R"({"modules":{"fim":{"cpu":42},"logcollector":{"lines":1}}})";
 
     const auto response = run(makeRequest(body, "007"), connector);
 
@@ -199,7 +199,7 @@ TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexN
 TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    const auto body = R"([{"module":"fim","config":{}},{"module":"logcollector","config":{}}])";
+    const auto body = R"({"modules":{"fim":{},"logcollector":{}}})";
 
     ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
 
@@ -212,13 +212,14 @@ TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
 }
 
 /**
- * A module is unique per report: if the agent ever sends two entries for the same module, the
- * later one wins (object semantics on `content`) rather than the request being rejected.
+ * A module is unique per report by construction: `modules` is a JSON object, so a duplicate key in
+ * the raw body resolves to the last value (nlohmann's parse semantics) rather than reaching `content`
+ * twice or being rejected.
  */
 TEST(ConfigEndpointTest, ADuplicateModuleNameIsResolvedByTheLastEntryWinning)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    const auto body = R"([{"module":"fim","config":{"cpu":1}},{"module":"fim","config":{"cpu":2}}])";
+    const auto body = R"({"modules":{"fim":{"cpu":1},"fim":{"cpu":2}}})";
 
     ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
 
@@ -235,7 +236,7 @@ TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
     EXPECT_EQ("1.0.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
@@ -249,7 +250,7 @@ TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZu
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
     const auto timestamp = document["/state/modified_at"_json_pointer].get<std::string>();
@@ -265,7 +266,7 @@ TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
     EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
@@ -273,7 +274,7 @@ TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
 
 TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
 {
-    const auto response = run(makeRequest("[]", "001"));
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"));
 
     EXPECT_EQ(200, response.status);
     EXPECT_EQ("{}", response.body);
@@ -289,44 +290,53 @@ TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
     EXPECT_TRUE(hasJsonContentType);
 }
 
-/// An empty array is a legitimate report (an agent with no configured modules), not a validation error.
-TEST(ConfigEndpointTest, EmptyArrayIsAcceptedAndIndexedWithEmptyContent)
+/**
+ * An empty `modules` object is rejected, not indexed: the document `_id` is the agent id, so a push
+ * with no modules would replace the agent's last good configuration with an empty one. The agent's
+ * collector skips a cycle rather than send an empty report, so this is a protocol violation. Same
+ * rule POST /stats applies to its own empty report.
+ */
+TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector).status);
+    const auto response = run(makeRequest(R"({"modules":{}})", "001"), connector);
 
-    const auto document = soleIndexedDocument(*connector);
-    const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
-    ASSERT_TRUE(content.is_object());
-    EXPECT_TRUE(content.empty());
-    const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
-    ASSERT_TRUE(modules.is_array());
-    EXPECT_TRUE(modules.empty());
+    EXPECT_EQ(400, response.status);
+    EXPECT_TRUE(connector->indexed.empty()) << "an empty report must never overwrite the stored document";
 }
 
 /**
- * A stray sibling key on an array element (anything besides `module`/`config`) is not part of the
- * `POST /config` wire contract, so it never reaches `content` -- each element is rebuilt from just
- * those two keys rather than validated in place.
+ * The endpoint stores each module's configuration verbatim: it never judges or rewrites the inner
+ * `config` object (the template is `dynamic: false`, so an undeclared key is stored in `_source` and
+ * simply not indexed). Only the outer shape -- a `modules` object whose every value is an object --
+ * is validated.
  */
-TEST(ConfigEndpointTest, ExtraKeysOnAnElementAreDroppedBeforeIndexing)
+TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    const auto body = R"([{"module":"fim","config":{"cpu":1},"bogus":"should not survive"}])";
+    const auto body = R"({"modules":{"fim":{"cpu":1,"undeclared":"kept"}}})";
 
     ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
     const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
-    EXPECT_EQ(1U, content.size()) << "only the sanitized module must survive: " << content.dump();
+    EXPECT_EQ(1U, content.size()) << content.dump();
     EXPECT_EQ(1, content.at("fim").at("cpu").get<int>());
+    EXPECT_EQ("kept", content.at("fim").at("undeclared").get<std::string>());
 }
 
-TEST(ConfigEndpointTest, NonArrayBodiesAreRejected)
+TEST(ConfigEndpointTest, BodiesWithoutAModulesObjectAreRejected)
 {
-    // Each of these parses as valid JSON but is not an array, so there is nothing to sanitize.
-    for (const auto* body : {"{}", R"({"module":"fim","config":{}})", R"("a string")", "42", "true", "null"})
+    // Each parses as valid JSON but does not carry a `modules` object, so there is nothing to store.
+    for (const auto* body : {R"({"modules":{"fim":{}}})", // the legacy array wire, no longer accepted
+                             R"({"modules":[]})",         // modules must be an object, not an array
+                             R"({"modules":42})",
+                             R"({"nope":{}})",
+                             R"("a string")",
+                             "42",
+                             "true",
+                             "null"})
     {
         const auto response = run(makeRequest(body, "001"));
         EXPECT_EQ(400, response.status) << "body: " << body;
@@ -342,56 +352,27 @@ TEST(ConfigEndpointTest, MalformedJsonIsRejected)
     }
 }
 
-TEST(ConfigEndpointTest, NonObjectElementsAreRejected)
+TEST(ConfigEndpointTest, NonObjectModuleConfigurationsAreRejected)
 {
-    for (const auto* body : {R"(["not an object"])", "[42]", "[[]]", "[null]"})
+    for (const auto* body : {R"({"modules":{"fim":"not an object"}})",
+                             R"({"modules":{"fim":42}})",
+                             R"({"modules":{"fim":[]}})",
+                             R"({"modules":{"fim":null}})"})
     {
         const auto response = run(makeRequest(body, "001"));
         EXPECT_EQ(400, response.status) << "body: " << body;
     }
 }
 
-TEST(ConfigEndpointTest, ElementsMissingModuleAreRejected)
-{
-    const auto response = run(makeRequest(R"([{"config":{}}])", "001"));
-    EXPECT_EQ(400, response.status);
-}
-
 TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
 {
-    const auto response = run(makeRequest(R"([{"config":{}}])", "001"));
+    const auto response = run(makeRequest(R"({"modules":{"fim":42}})", "001"));
 
     ASSERT_EQ(400, response.status);
     const auto parsed = nlohmann::json::parse(response.body, nullptr, /*allow_exceptions=*/false);
     ASSERT_FALSE(parsed.is_discarded()) << "400 body is not valid JSON: " << response.body;
     EXPECT_EQ(400, parsed.value("code", 0));
-    EXPECT_NE(parsed.value("error", std::string {}).find("module"), std::string::npos) << response.body;
-}
-
-TEST(ConfigEndpointTest, ElementsWithNonStringOrEmptyModuleAreRejected)
-{
-    for (const auto* body : {R"([{"module":42,"config":{}}])", R"([{"module":"","config":{}}])"})
-    {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
-    }
-}
-
-TEST(ConfigEndpointTest, ElementsMissingConfigAreRejected)
-{
-    const auto response = run(makeRequest(R"([{"module":"fim"}])", "001"));
-    EXPECT_EQ(400, response.status);
-}
-
-TEST(ConfigEndpointTest, ElementsWithNonObjectConfigAreRejected)
-{
-    for (const auto* body : {R"([{"module":"fim","config":42}])",
-                             R"([{"module":"fim","config":[]}])",
-                             R"([{"module":"fim","config":"x"}])"})
-    {
-        const auto response = run(makeRequest(body, "001"));
-        EXPECT_EQ(400, response.status) << "body: " << body;
-    }
+    EXPECT_NE(parsed.value("error", std::string {}).find("object"), std::string::npos) << response.body;
 }
 
 /**
@@ -401,7 +382,7 @@ TEST(ConfigEndpointTest, ElementsWithNonObjectConfigAreRejected)
  */
 TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("[]", "", /*withAgentHeader=*/false));
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false));
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -409,7 +390,7 @@ TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejected)
 
 TEST(ConfigEndpointTest, AnEmptyAgentIdHeaderIsRejected)
 {
-    const auto response = run(makeRequest("[]", ""));
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", ""));
 
     EXPECT_EQ(400, response.status);
 }
@@ -436,7 +417,7 @@ TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
     auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
 
-    auto request = makeRequest(R"([{"module":"fim","config":{}}])", "001");
+    auto request = makeRequest(R"({"modules":{"fim":{}}})", "001");
     std::weak_ptr<const HttpRequest> observer {request};
 
     handler(request, responder);
@@ -453,7 +434,7 @@ TEST(ConfigEndpointTest, UnavailableIndexerYields503)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest(R"([{"module":"fim","config":{}}])", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
@@ -465,7 +446,7 @@ TEST(ConfigEndpointTest, AWriteFailureOnAnAvailableIndexerYields503NotBadRequest
     auto connector = std::make_shared<FakeAsyncConnector>();
     connector->throwOnIndex = true;
 
-    const auto response = run(makeRequest(R"([{"module":"fim","config":{"cpu":1}}])", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{"cpu":1}}})", "001"), connector);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
@@ -484,7 +465,7 @@ TEST(ConfigEndpointTest, AnExpiredConnectorYields503)
 
     connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
 
-    handler(makeRequest(R"([{"module":"fim","config":{}}])", "001"), responder);
+    handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(503, responder->captured->status);
@@ -499,7 +480,7 @@ TEST(ConfigEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    for (const auto* body : {"", "{", "{}", R"("a string")", "not json at all", R"([{"module":"fim"}])"})
+    for (const auto* body : {"", "{", "{}", R"("a string")", "not json at all", R"({"modules":{"fim":42}})"})
     {
         const auto response = run(makeRequest(body, "001"), connector);
         EXPECT_EQ(400, response.status) << "body: " << body;
@@ -510,7 +491,7 @@ TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejectedEvenWhenTheIndexerIsDown
 {
     auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
 
-    const auto response = run(makeRequest("[]", "", /*withAgentHeader=*/false), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false), connector);
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
@@ -531,7 +512,7 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
 
     auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
     auto responder = std::make_shared<CapturingResponder>();
-    handler(makeRequest(R"([{"module":"fim","config":{}}])", "001"), responder);
+    handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
     ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
 
     connector.reset();
@@ -550,7 +531,7 @@ TEST(ConfigEndpointTest, StampsTheInjectedClusterNameAndNode)
     auto connector = std::make_shared<FakeAsyncConnector>();
     invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector, cluster).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, cluster).status);
 
     const auto document = soleIndexedDocument(*connector);
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
@@ -567,7 +548,9 @@ TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
-    ASSERT_EQ(200, run(makeRequest("[]", "001"), connector, invsync::common::ClusterIdentity {}).status);
+    ASSERT_EQ(
+        200,
+        run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, invsync::common::ClusterIdentity {}).status);
 
     const auto document = soleIndexedDocument(*connector);
     ASSERT_TRUE(document.contains("wazuh"));
