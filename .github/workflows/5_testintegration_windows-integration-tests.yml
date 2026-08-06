@@ -191,12 +191,32 @@ jobs:
             exit $pytestExitCode
           }
       # ================= RESULTS =================
+      # Most Windows IT failures are "the agent did not reach state X before a
+      # deadline". Without the agent log there is no way to tell a product
+      # regression from a slow runner, so collect it alongside the report.
+      - name: Collect failure diagnostics
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
+        shell: pwsh
+        run: |
+          $dest = "C:\wazuh\tests\integration\failure-artifacts"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+          foreach ($file in @('results.html', 'pytest.log')) {
+            Copy-Item -Path "C:\wazuh\tests\integration\$file" -Destination $dest -ErrorAction SilentlyContinue
+          }
+
+          $agentPath = Join-Path ${env:ProgramFiles(x86)} 'ossec-agent'
+          foreach ($file in @('ossec.log', 'wazuh-agent.state', 'ossec.conf', 'local_internal_options.conf')) {
+            Copy-Item -Path (Join-Path $agentPath $file) -Destination $dest -ErrorAction SilentlyContinue
+          }
+
+          Get-ChildItem $dest | Format-Table Name, Length
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
-          path: C:\wazuh\tests\integration\results.html
+          path: C:\wazuh\tests\integration\failure-artifacts
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
