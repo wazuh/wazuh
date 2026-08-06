@@ -70,15 +70,15 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
         return firefoxAddons;
     }
 
-    for (auto userHome : Utils::enumerateDir(homePath))
+    for (const auto& userDir : Utils::enumerateDir(homePath))
     {
         // Ignore ".", ".." and hidden directories
-        if (Utils::startsWith(userHome, "."))
+        if (Utils::startsWith(userDir, "."))
         {
             continue;
         }
 
-        userHome = Utils::joinPaths(homePath, userHome);
+        const std::string userHome = Utils::joinPaths(homePath, userDir);
 
         if (!Utils::existsDir(userHome) || !isValidPath(userHome))
         {
@@ -96,9 +96,9 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                 continue;
             }
 
-            for (auto entity : Utils::enumerateDir(firefoxInstallationPath))
+            for (const auto& entry : Utils::enumerateDir(firefoxInstallationPath))
             {
-                entity = Utils::joinPaths(firefoxInstallationPath, entity);
+                const std::string entity = Utils::joinPaths(firefoxInstallationPath, entry);
 
                 if (!Utils::existsDir(entity) || !isValidPath(entity))
                 {
