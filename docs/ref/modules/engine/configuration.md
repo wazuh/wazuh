@@ -51,6 +51,48 @@ configurable:
 If the user or group change fails, the daemon logs the error and exits at
 startup.
 
+##### Switching back to `true` after running as `root`
+
+While `analysisd.drop_privileges` is `false` the daemon keeps running as
+`root`, so every file and directory it creates under `/var/wazuh-manager`
+belongs to `root:root` and is not group-writable. Setting the option back to
+`true` (or removing it, since `true` is the default) makes the daemon start as
+`wazuh-manager`, which can no longer write that content, and startup fails
+with a permission error naming the offending path. For example:
+
+```
+Cannot create directory in base path: /var/wazuh-manager/data/ruleset: Permission denied
+Failed to create KVDB root directory: Permission denied
+```
+
+The ownership must be fixed manually before restarting the daemon. The paths
+the engine creates or writes at runtime are:
+
+| Path | Contents |
+|------|----------|
+| `/var/wazuh-manager/data/store` | Engine store documents |
+| `/var/wazuh-manager/data/ruleset` | Content Manager ruleset (write-tested at startup) |
+| `/var/wazuh-manager/data/kvdb-ioc` | IOC KVDB (RocksDB files, must be owner-writable) |
+| `/var/wazuh-manager/data/mmdb` | Downloaded geolocation databases |
+| `/var/wazuh-manager/data/tzdb` | Time-zone database |
+| `/var/wazuh-manager/logs/<YYYY>/<MMM>/` | Rotated alert and archive files |
+| `/var/wazuh-manager/var/run` | PID file |
+
+With the daemon stopped, restore the ownership of the affected paths and start
+it again:
+
+```bash
+chown -R wazuh-manager:wazuh-manager \
+  /var/wazuh-manager/data \
+  /var/wazuh-manager/logs \
+  /var/wazuh-manager/var/run
+```
+
+The reverse transition (`true` → `false`) needs no fix, since `root` can write
+files owned by `wazuh-manager`. To avoid the problem altogether, restore the
+ownership right after every debugging session run with
+`analysisd.drop_privileges=false`.
+
 #### Event Queue Management
 
 Control event queue sizing and processing rate limiting:
