@@ -113,6 +113,7 @@ class ControlStream final
         void updateProducerPause(OutcomeClass outcome);
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
+        void maybeReportAgentGroups(const std::string& csv);
         void updateLocalIp(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
@@ -145,6 +146,13 @@ class ControlStream final
         /// refreshing forever (guards a non-deterministic manager hash).
         std::string m_refreshedForSettingsHash;
         bool m_settingsLoopWarned {false};
+
+        /// The agent.groups CSV last reported to the sink (Startup or Notify), raw
+        /// (no "default" fallback -- that substitution is /download's alone). Unset
+        /// until the first Startup/Notify with a groups field; compared against on
+        /// every Notify so onAgentGroups() only fires on an actual change.
+        bool m_groupsReported {false};
+        std::string m_lastReportedGroupsCsv;
 
         /// Background thread for the current/last remote_upgrade's download+dispatch: must not
         /// run inline on the control thread, since that would stall the next Notify for the

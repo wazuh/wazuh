@@ -54,6 +54,7 @@ class CallbackDispatcher final : public ICallbackSink
         void onTaskFailed(const std::string& taskId, const std::string& taskType,
                           const std::string& reason) override;
         void onManagerConfigHash(const std::string& configHash) override;
+        void onAgentGroups(const std::string& groupsCsv) override;
         void onSyncResponse(const std::string& sessionId, int result, const std::string& body) override;
         void onStateChange(hc_conn_state_t state) override;
         void onBufferLevel(hc_buffer_level_t level) override;

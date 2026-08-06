@@ -1332,6 +1332,61 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
     w_https_client_stop();
 }
 
+/* on_agent_groups: the Notify-driven groups refresh (bug #11). Unlike
+ * bridge_apply_agent_groups() (Startup-only), this is the only thing that keeps
+ * agent_agent_groups from going stale after a group-only change, since settings_hash
+ * deliberately excludes groups and never re-triggers a Startup for one. */
+
+static void test_agent_groups_notify_updates_on_change(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,test.");
+
+    g_captured_callbacks.on_agent_groups("default,test", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "default,test");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_agent_groups_notify_no_op_when_unchanged(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default,test");
+
+    /* No "agent groups ->" log expected: unchanged, so the compare-before-write
+     * short-circuits before the log/republish. */
+    g_captured_callbacks.on_agent_groups("default,test", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "default,test");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_agent_groups_notify_preserves_empty(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default");
+
+    /* Empty is a real, meaningful value here (agcom.c: fallback to merged.mg),
+     * never turned into "default" the way /download's own selector would. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> (none).");
+
+    g_captured_callbacks.on_agent_groups("", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 static void test_startup_result_missing_limits_object_leaves_limits_unchanged(void **state)
 {
     (void)state;
@@ -1979,6 +2034,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_startup_result_limits_unchanged_no_reload, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_missing_limits_object_leaves_limits_unchanged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_cluster_and_groups_cleared_when_absent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_updates_on_change, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_no_op_when_unchanged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_preserves_empty, setup_test, teardown_test),
         // Durable check-and-record callback
         cmocka_unit_test_setup_teardown(test_check_and_record_task_new_returns_one, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_duplicate_returns_zero_and_counts_it, setup_test, teardown_test),
