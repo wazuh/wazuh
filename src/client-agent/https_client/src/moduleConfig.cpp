@@ -87,7 +87,9 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 
     if (verifyMode == HC_VERIFY_NONE)
     {
-        LOGFN_WARN(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
+        // The agent's own configured default (client-config.h's agent_verify_mode_t),
+        // not an operator opt-out to flag -- informational, not a WARNING.
+        LOGFN_INFO(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
         return true;
     }
 
