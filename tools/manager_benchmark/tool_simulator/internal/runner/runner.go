@@ -164,7 +164,9 @@ func (r *Runner) buildAgents(ctx context.Context) ([]*agent, error) {
 	for _, fleet := range r.scn.Fleets {
 		for i := 0; i < fleet.Agents; i++ {
 			id := fmt.Sprintf("%d", fleet.FirstID+i)
-			name := fmt.Sprintf("%s-%04d", fleetPrefix(fleet), fleet.FirstID+i)
+			// The "bench-" prefix is the contract cleanup_agents.sh relies on to
+			// delete only benchmark agents (q=name~bench-), never a real one.
+			name := fmt.Sprintf("bench-%s-%04d", fleetPrefix(fleet), fleet.FirstID+i)
 			ag := &agent{r: r, fleet: fleet, id: id, name: name}
 
 			if r.mode == "agent" {

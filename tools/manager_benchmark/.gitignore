@@ -1,0 +1,6 @@
+# Per-run artifacts written by run_benchmark.sh
+results_*/
+
+# Python bytecode
+__pycache__/
+*.pyc
