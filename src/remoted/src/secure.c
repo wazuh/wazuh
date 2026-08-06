@@ -440,6 +440,7 @@ void HandleSecure()
     int n_events = 0;
 
     agent_metadata_init();
+    legacy_task_delivery_init();
 
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);

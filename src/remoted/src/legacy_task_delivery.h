@@ -12,6 +12,23 @@
 #define LEGACY_TASK_DELIVERY_H
 
 /**
+ * @brief Allocate the pending clear_upgrade_result reply queue.
+ *
+ * Must be called before the poller thread (legacy_upgrade_task_delivery) is started and before
+ * the rem_handler worker pool that calls legacy_task_process_upgrade_ack() is created, since both
+ * touch the queue.
+ */
+void legacy_task_delivery_init(void);
+
+/**
+ * @brief Drain and free the pending clear_upgrade_result reply queue.
+ *
+ * Not wired into any daemon shutdown path today; provided for test cleanup, same as
+ * agent_metadata_teardown().
+ */
+void legacy_task_delivery_teardown(void);
+
+/**
  * @brief Poller thread entry point.
  *
  * Periodically walks the currently-connected agents and, for every one
