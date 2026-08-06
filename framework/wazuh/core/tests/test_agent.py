@@ -1013,26 +1013,6 @@ async def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_
             await Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.agent.configuration.get_agent_active_configuration', new_callable=AsyncMock)
-async def test_agent_get_config(mock_get_agent_active_configuration):
-    """Test get_config returns the module's last reported configuration."""
-    mock_get_agent_active_configuration.return_value = {"test": "conf"}
-    agent = Agent('001')
-
-    result = await agent.get_config(module='com')
-
-    assert result == {"test": "conf"}, 'Result message is not as expected.'
-    mock_get_agent_active_configuration.assert_called_once_with(agent_id='001', module='com')
-
-
-async def test_agent_get_config_ko():
-    """Test get_config raises expected exceptions."""
-    # Action not available for manager (000)
-    agent = Agent('000')
-    with pytest.raises(WazuhError, match=".* 1703 .*"):
-        await agent.get_config(module='com')
-
-
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')

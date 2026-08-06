@@ -1016,10 +1016,6 @@ components:
       description: "Node ID"
       format: string
 
-    AgentConfiguration:
-      type: object
-      description: "Last configuration the agent reported for the requested module"
-
     AgentInsertForce:
       type: object
       description: "Remove the old agent with the same name, ID or IP if the configuration is matched"
@@ -3051,14 +3047,6 @@ components:
       schema:
         type: string
         format: symbols_alphanumeric_param
-    agent_module:
-      in: path
-      name: module
-      description: "Selected agent's module whose last reported configuration is to be read (e.g. `fim`,
-      `logcollector`)"
-      required: true
-      schema:
-        type: string
     manager_component:
       in: path
       name: component
@@ -4212,66 +4200,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/{agent_id}/config/{module}:
-    get:
-      tags:
-        - Agents
-      summary: "Get active configuration"
-      description: "Return the last configuration the agent reported to the manager for the given module. This can
-      be different from the configuration present in the configuration file, if it has been modified and the agent
-      has not restarted yet"
-      operationId: api.controllers.agent_controller.get_agent_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/agent_module'
-      responses:
-        '200':
-          description: "Get agent configuration"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/AgentConfiguration'
-              example:
-                data:
-                  client:
-                    config-profile: "ubuntu, ubuntu24, ubuntu24.04"
-                    notify_time: 20
-                    auto_restart: "yes"
-                    remote_conf: "yes"
-                    manager:
-                      address: "127.0.0.1"
-                      port: 1514
-                    enrollment:
-                      enabled: "yes"
-                      delay_after_enrollment: 20
-                      port: 1515
-                      ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-                      auto_method: "no"
-                  internal:
-                    agent:
-                      debug: 0
-                      warn_level: 1
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

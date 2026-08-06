@@ -1067,65 +1067,6 @@ def get_active_configuration(component: str, configuration: str) -> dict:
                          extra_message=f'{component}:{configuration}')
 
 
-AGENT_CONFIG_INDEX = 'wazuh-agent-config'
-
-
-async def get_agent_active_configuration(agent_id: str, module: str) -> dict:
-    """Get the agent's last reported configuration for a module.
-
-    Reads the document the agent itself pushed through `POST /config`, persisted under its own
-    agent ID in `wazuh-agent-config`, instead of querying the agent live. A module is unique within
-    a report: the agent does not send two entries for the same module with different configurations.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID.
-    module : str
-        Selected agent's module.
-
-    Raises
-    ------
-    WazuhError(1307)
-        If the module is not specified.
-    WazuhError(1130)
-        If the agent has not reported its configuration yet.
-    WazuhError(1101)
-        If the module is not present in the agent's reported configuration.
-
-    Returns
-    -------
-    dict
-        The module's last reported configuration.
-    """
-    # Local import: wazuh.core.indexer.indexer imports get_ossec_conf from this module, so a
-    # module-level import here would be circular.
-    from wazuh.core.indexer.indexer import get_indexer_client
-
-    if not module:
-        raise WazuhError(1307)
-
-    # A field search rather than a get-by-id. `content` is an object keyed by module name, so
-    # the requested module is a single key lookup rather than a scan.
-    query = {
-        'query': {'term': {'wazuh.agent.id': agent_id}},
-        '_source': ['wazuh.agent.configuration.content'],
-    }
-
-    async with get_indexer_client() as client:
-        response = await client.search(index=AGENT_CONFIG_INDEX, body=query)
-
-    hits = response['hits']['hits']
-    if not hits:
-        raise WazuhError(1130)
-
-    content = hits[0]['_source'].get('wazuh', {}).get('agent', {}).get('configuration', {}).get('content', {})
-    if module not in content:
-        raise WazuhError(1101, extra_message=f"Module '{module}' not found in the agent's reported configuration")
-
-    return content[module]
-
-
 def write_ossec_conf(new_conf: str):
     """Replace the current wazuh configuration (wazuh-manager.conf) with the provided configuration.
 
