@@ -359,6 +359,14 @@ void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
     if (effects.applyHandshake)
     {
         m_sink.onStartupResult(true, handshake);
+
+        // onStartupResult(true, ...) is what drives bridge_apply_agent_groups() on the C
+        // side (Startup-only, unconditional overwrite) -- so the baseline maybeReportAgentGroups()
+        // dedupes against is now stale by construction if this Startup's groups differ from
+        // whatever the last Notify reported. Clear the latch so the very next Notify
+        // unconditionally re-syncs, instead of silently matching a group set the bridge no
+        // longer holds.
+        m_groupsReported = false;
     }
 
     if (effects.resetCadence)

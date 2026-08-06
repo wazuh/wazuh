@@ -52,7 +52,7 @@ constexpr auto MAXLEN {65536};
 // same log-then-exit(1) sequence as _merror_exit()/_mlerror_exit() (shared/src/debug_op.c), for
 // a config that can never work as given (mirrors client-agent/src/main.c's own hard exit on a
 // missing/invalid <server><address>). It must never be silently dropped.
-#define LOGFN_CRITICAL(fn, fmt, ...) (fn).critical({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+#define LOGFN_CRITICAL(fn, fmt, ...) do { (fn).critical({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } while (0)
 // clang-format on
 
 namespace Log
