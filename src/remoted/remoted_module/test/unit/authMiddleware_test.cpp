@@ -78,9 +78,13 @@ namespace
         }
 
         // Builds the same canonical byte sequence AuthMiddleware verifies, so
-        // tests can sign a request without a production signer.
-        std::string
-        sign(std::string_view method, std::string_view target, std::string_view body, std::int64_t ts = kNow)
+        // tests can sign a request without a production signer. `signedAgentId` is the id text the
+        // agent puts in the header and therefore hashes -- not necessarily the canonical form.
+        std::string sign(std::string_view method,
+                         std::string_view target,
+                         std::string_view body,
+                         std::int64_t ts = kNow,
+                         std::string_view signedAgentId = "001")
         {
             Cmac cmac(kKey);
             cmac.update("WAZUH-REQUEST\n");
@@ -89,7 +93,8 @@ namespace
             cmac.update("\n");
             cmac.update(target);
             cmac.update("\n");
-            cmac.update("001\n");
+            cmac.update(signedAgentId);
+            cmac.update("\n");
             cmac.update(std::to_string(ts));
             cmac.update("\n");
             cmac.update(body);
@@ -109,6 +114,29 @@ namespace
         EXPECT_EQ(req.agentId, "001");
         EXPECT_EQ(req.method, "POST");
         EXPECT_EQ(req.requestTarget, "/stateless");
+    }
+
+    /**
+     * The key lookup is numeric, so an agent that pads its id differently still authenticates. What
+     * the request carries onwards must be the client.keys form regardless: that is the identity the
+     * API's agent list is spelled with, and `POST /stats` uses it as the id of the agent's document,
+     * so a second spelling would be a second, unmatchable agent. The MAC still covers the bytes the
+     * agent actually sent -- that is the whole reason the session keeps the two apart.
+     */
+    TEST(Middleware, ANonCanonicalAgentIdIsCanonicalizedOnTheRequest)
+    {
+        Fixture f;
+        const std::string body = "payload";
+
+        for (const auto* signedId : {"1", "01", "001", "0001"})
+        {
+            const auto mac = f.sign("POST", "/stats", body, kNow, signedId);
+            const auto result = f.run(
+                "1", std::string {"Wazuh "} + signedId + ":" + std::to_string(kNow) + ":" + mac, "POST", "/stats", body);
+
+            ASSERT_TRUE(std::holds_alternative<AuthenticatedRequest>(result)) << "signed id: " << signedId;
+            EXPECT_EQ(std::get<AuthenticatedRequest>(result).agentId, "001") << "signed id: " << signedId;
+        }
     }
 
     TEST(Middleware, ModifiedBodyIsRejected)
