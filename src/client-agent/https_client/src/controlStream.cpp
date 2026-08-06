@@ -46,19 +46,54 @@ namespace
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
 
-    /// The group whose merged config /download serves. Agents can belong to several groups;
-    /// until multi-group reporting settles, the first reported group is used.
-    std::string firstGroup(const nlohmann::json& agent)
+    /// The agent's groups, comma-joined in the exact order the manager reports them
+    /// (never re-sorted -- see groupsCsv() below for why order matters) and, unlike
+    /// groupsCsv(), left EMPTY when the agent has none. Empty is meaningful to
+    /// downstream consumers (agcom.c: "Empty agent_groups is allowed - fallback to
+    /// merge.mg will be used"), so this must not carry /download's own "default"
+    /// substitution.
+    std::string rawGroupsCsv(const nlohmann::json& agent)
     {
         const auto groups = agent.find("groups");
 
-        if (groups != agent.end() && groups->is_array() && !groups->empty() &&
-                groups->front().is_string())
+        if (groups == agent.end() || !groups->is_array())
         {
-            return groups->front().get<std::string>();
+            return {};
         }
 
-        return "default";
+        std::string csv;
+
+        for (const auto& value : *groups)
+        {
+            if (!value.is_string())
+            {
+                continue;
+            }
+
+            if (!csv.empty())
+            {
+                csv.push_back(',');
+            }
+
+            csv += value.get<std::string>();
+        }
+
+        return csv;
+    }
+
+    /// The group selector /download's config resource_id expects. The manager's own
+    /// config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg resolution
+    /// (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
+    /// groups, comma-joined, in the exact order it reports them -- never just the
+    /// first. Preserving that same order (as reported here, not re-sorted) is what
+    /// reproduces the manager's own CSV byte-for-byte; the download endpoint natively
+    /// accepts this selector (downloadEndpoint.cpp's isValidGroupSelector). Unlike
+    /// rawGroupsCsv(), "no groups reported" falls back to "default" here: /download
+    /// needs some group to ask for, and every agent is implicitly in it.
+    std::string groupsCsv(const nlohmann::json& agent)
+    {
+        const std::string csv = rawGroupsCsv(agent);
+        return csv.empty() ? "default" : csv;
     }
 
     /// The Notify batch after dedup: fresh, identifiable tasks only.
@@ -243,11 +278,9 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
     if (result.outcome == OutcomeClass::Ok)
     {
-        // settings_hash baseline: SHA-256 over the exact response bytes. The
-        // manager must hash the serialization it sends; the refresh latch
-        // below degrades a mismatch to a one-time warning instead of a
-        // startup storm.
-        m_settingsHash = sha256Hex(result.response.body.data(), result.response.body.size());
+        m_settingsHash = computeSettingsHash(result.response.body);
+        LOGFN_DEBUG2(m_logFn, "settings_hash baseline computed from the startup response: %s",
+                     m_settingsHash.c_str());
         applyClusterIdentity(result.response.body);
     }
 
@@ -326,7 +359,52 @@ void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
     if (effects.applyHandshake)
     {
         m_sink.onStartupResult(true, handshake);
+
+        // onStartupResult(true, ...) is what drives bridge_apply_agent_groups() on the C
+        // side (Startup-only, unconditional overwrite) -- so the baseline maybeReportAgentGroups()
+        // dedupes against is now stale by construction if this Startup's groups differ from
+        // whatever the last Notify reported. Clear the latch so the very next Notify
+        // unconditionally re-syncs, instead of silently matching a group set the bridge no
+        // longer holds.
+        m_groupsReported = false;
     }
+
+    if (effects.resetCadence)
+    {
+        m_fastFollowup = true;
+    }
+}
+
+std::string ControlStream::computeSettingsHash(const std::string& startupBody) const
+{
+    // Deliberately narrower than the full Startup response: matches the manager's
+    // HashCache::getSettingsHash() (remoted_module/src/control/hashCache.cpp), which
+    // hashes only limits + cluster. agent.groups is excluded on both sides -- a
+    // group's config content is already covered by config_hash/merged.mg, so
+    // settings_hash only needs to track the two fields the agent has no other way
+    // to detect a change in.
+    const auto parsed = nlohmann::json::parse(startupBody, nullptr, false);
+    nlohmann::json envelope;
+
+    if (!parsed.is_discarded() && parsed.is_object())
+    {
+        const auto limits = parsed.find("limits");
+
+        if (limits != parsed.end())
+        {
+            envelope["limits"] = *limits;
+        }
+
+        const auto cluster = parsed.find("cluster");
+
+        if (cluster != parsed.end())
+        {
+            envelope["cluster"] = *cluster;
+        }
+    }
+
+    const std::string body = envelope.dump();
+    return sha256Hex(body.data(), body.size());
 }
 
 void ControlStream::applyClusterIdentity(const std::string& startupBody)
@@ -376,14 +454,19 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // gate waits on the manager-validated configuration and, when the
         // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
-        maybeDownloadConfig(managerHash, firstGroup(*agent), waiter);
+        maybeDownloadConfig(managerHash, groupsCsv(*agent), waiter);
+        maybeReportAgentGroups(rawGroupsCsv(*agent));
     }
 }
 
 void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                         Waiter& waiter)
 {
-    if (managerHash.empty() || managerHash == m_configHash.get())
+    const std::string localHash = m_configHash.get();
+    LOGFN_DEBUG2(m_logFn, "config_hash check: manager=%s local=%s",
+                 managerHash.c_str(), localHash.c_str());
+
+    if (managerHash.empty() || managerHash == localHash)
     {
         return; // Nothing reported, or already in sync.
     }
@@ -404,8 +487,31 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     m_sink.onConfigDownloaded(managerHash, std::move(file));
 }
 
+/* agent.groups is otherwise a Startup-only fact on the C side (see
+ * https_client_bridge.c's bridge_apply_agent_groups(), called only from
+ * on_startup_result). A group-only change never re-triggers a Startup (settings_hash
+ * deliberately excludes groups; config_hash covers the group's actual config content,
+ * not the manager-side membership list itself), so without this the group set the
+ * agent reports downstream (agcom's gethandshake, /stats and /config tagging) would
+ * go stale forever after the first Startup. Fires only on an actual change so a
+ * consumer isn't asked to republish identity data on every Notify for nothing. */
+void ControlStream::maybeReportAgentGroups(const std::string& csv)
+{
+    if (m_groupsReported && csv == m_lastReportedGroupsCsv)
+    {
+        return;
+    }
+
+    m_lastReportedGroupsCsv = csv;
+    m_groupsReported = true;
+    m_sink.onAgentGroups(csv);
+}
+
 void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
 {
+    LOGFN_DEBUG2(m_logFn, "settings_hash check: manager=%s local=%s",
+                 incoming.c_str(), m_settingsHash.c_str());
+
     if (incoming.empty())
     {
         return; // The manager did not report a settings hash.
@@ -436,6 +542,11 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_refreshedForSettingsHash = incoming;
     m_settingsLoopWarned = false;
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
+
+    // Unlike config_hash (maybeDownloadConfig fetches inline, same cycle), the
+    // refresh Startup this arms is only actually sent on the NEXT step() --
+    // don't make that wait a full notify_interval_s too.
+    m_fastFollowup = true;
 }
 
 /* Turns one iteration's outcome into the producer-pause decision. Fed only from

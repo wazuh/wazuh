@@ -86,13 +86,13 @@ public function config()
                 formatted_list = vbCrLf
                 for i=0 to UBound(ip_list)
                     If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <manager>" & vbCrLf
+                        formatted_list = formatted_list & "    <server>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                        formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                        formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
                         if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </manager>"
+                            formatted_list = formatted_list & "    </server>"
                         Else
-                            formatted_list = formatted_list & "    </manager>" & vbCrLf
+                            formatted_list = formatted_list & "    </server>" & vbCrLf
                         End If
                     End If
                 next
@@ -101,7 +101,10 @@ public function config()
 
             If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
                 If InStr(strText, "<port>") > 0 Then
-                    strText = Replace(strText, "<port>1514</port>", "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                    Set re = new regexp
+                    re.Pattern = "<port>.*</port>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
                 End If
 
             End If
@@ -221,7 +224,12 @@ public function config()
         Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
-        re.Pattern = "(</manager>)"
+        ' The shipped template uses <server> (the deprecated <manager> tag only
+        ' survives on an upgraded ossec.conf that predates that migration), so
+        ' this must anchor on either closing tag to keep inserting the profile
+        ' block right after the server/manager block on both fresh installs
+        ' and upgrades.
+        re.Pattern = "(</server>|</manager>)"
         re.Global = False
         strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)
     End If

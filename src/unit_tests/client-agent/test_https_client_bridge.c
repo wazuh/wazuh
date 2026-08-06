@@ -237,6 +237,10 @@ static void set_agent_key(const char *id, const char *raw_key)
     if (raw_key) {
         os_strdup(raw_key, keys.keyentries[0]->raw_key);
     }
+    /* Mirrors OS_AddKey()/OS_ReadKeys(): a real (even if since-corrupted)
+     * entry means keysize is at least 1. keysize == 0 is reserved for "never
+     * enrolled" (see bridge_build_config()'s DEBUG-vs-ERROR split). */
+    keys.keysize = 1;
 }
 
 /* Allocates agt->enrollment_cfg with enabled=true; when manager_name is
@@ -469,6 +473,25 @@ static void test_missing_key_refuses_to_start(void **state)
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: agent key is missing or has an invalid length for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
+
+    w_https_client_start();
+    /* No hc_create expectation: must not be reached. */
+}
+
+/* keysize == 0 is "never enrolled yet" -- an expected transient on a fresh
+ * agent, not an error. start_agent_prepare() blocks on enrollment before
+ * w_https_client_start() ever runs, so this should not be reachable in
+ * practice; kept as defense-in-depth against a future ordering regression. */
+static void test_no_keystore_defers_at_debug(void **state)
+{
+    (void)state;
+    os_free(keys.keyentries[0]->raw_key);
+    keys.keyentries[0]->raw_key = NULL;
+    keys.keysize = 0;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: not enrolled yet (no client.keys); deferring start.");
 
     w_https_client_start();
     /* No hc_create expectation: must not be reached. */
@@ -1309,6 +1332,61 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
     w_https_client_stop();
 }
 
+/* on_agent_groups: the Notify-driven groups refresh (bug #11). Unlike
+ * bridge_apply_agent_groups() (Startup-only), this is the only thing that keeps
+ * agent_agent_groups from going stale after a group-only change, since settings_hash
+ * deliberately excludes groups and never re-triggers a Startup for one. */
+
+static void test_agent_groups_notify_updates_on_change(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,test.");
+
+    g_captured_callbacks.on_agent_groups("default,test", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "default,test");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_agent_groups_notify_no_op_when_unchanged(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default,test");
+
+    /* No "agent groups ->" log expected: unchanged, so the compare-before-write
+     * short-circuits before the log/republish. */
+    g_captured_callbacks.on_agent_groups("default,test", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "default,test");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_agent_groups_notify_preserves_empty(void **state)
+{
+    (void)state;
+    start_client_successfully();
+    strcpy(agent_agent_groups, "default");
+
+    /* Empty is a real, meaningful value here (agcom.c: fallback to merged.mg),
+     * never turned into "default" the way /download's own selector would. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> (none).");
+
+    g_captured_callbacks.on_agent_groups("", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_agent_groups, "");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 static void test_startup_result_missing_limits_object_leaves_limits_unchanged(void **state)
 {
     (void)state;
@@ -1913,6 +1991,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_no_keystore_defers_at_debug, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_wrong_length_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_non_hex_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_valid_48_char_key_is_accepted, setup_test, teardown_test),
@@ -1955,6 +2034,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_startup_result_limits_unchanged_no_reload, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_missing_limits_object_leaves_limits_unchanged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_cluster_and_groups_cleared_when_absent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_updates_on_change, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_no_op_when_unchanged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_groups_notify_preserves_empty, setup_test, teardown_test),
         // Durable check-and-record callback
         cmocka_unit_test_setup_teardown(test_check_and_record_task_new_returns_one, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_duplicate_returns_zero_and_counts_it, setup_test, teardown_test),

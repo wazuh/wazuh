@@ -87,17 +87,22 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 
     if (verifyMode == HC_VERIFY_NONE)
     {
-        LOGFN_WARN(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
+        // The agent's own configured default (client-config.h's agent_verify_mode_t),
+        // not an operator opt-out to flag -- informational, not a WARNING.
+        LOGFN_INFO(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
         return true;
     }
 
-    // Fail closed (H1): a verifying mode without a readable CA never sends.
+    // Fail closed (H1): a verifying mode without a readable CA never sends. This can never
+    // self-resolve without an operator fixing the config (mirrors main.c's hard exit on a
+    // missing/invalid <server><address>) -- CRITICAL terminates the daemon via the bridge's log
+    // callback instead of leaving it running with a permanently dead transport.
     if (caPath.empty() || !fsProbe.isReadableFile(caPath))
     {
-        LOGFN_ERROR(logFn,
-                    "https_client config rejected: verify_mode requires a readable CA file "
-                    "(certificate_authorities='%s').",
-                    caPath.c_str());
+        LOGFN_CRITICAL(logFn,
+                       "https_client config rejected: verify_mode requires a readable CA file "
+                       "(certificate_authorities='%s').",
+                       caPath.c_str());
         return false;
     }
 

@@ -79,9 +79,14 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Config download for group '%s' failed (outcome %d); "
-                   "the next notify re-triggers it.", group.c_str(),
-                   static_cast<int>(result.outcome));
+        // A failed download is expected, self-correcting noise, not an operator-actionable
+        // event: it can legitimately happen whenever the manager's config_hash doesn't (yet)
+        // resolve to real content -- e.g. its "0" sentinel for "nothing resolved yet for this
+        // group set" right after a group membership change (confirmed with the manager team)
+        // -- and the next notify simply re-triggers it either way.
+        LOGFN_DEBUG1(m_logFn, "Config download for group '%s' failed (outcome %d); "
+                     "the next notify re-triggers it.", group.c_str(),
+                     static_cast<int>(result.outcome));
         return nullptr;
     }
 

@@ -48,6 +48,29 @@ namespace
         return std::string {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
     }
 
+    // Mirrors the manager's HashCache::getSettingsHash() (limits + cluster only,
+    // agent.groups excluded) and ControlStream::computeSettingsHash() -- NOT a raw
+    // hash of startupBody's bytes, since nlohmann::json always dumps object keys
+    // alphabetically regardless of the literal source order.
+    std::string managerSettingsHash(const std::string& startupBody)
+    {
+        const auto parsed = nlohmann::json::parse(startupBody);
+        nlohmann::json envelope;
+
+        if (parsed.contains("limits"))
+        {
+            envelope["limits"] = parsed.at("limits");
+        }
+
+        if (parsed.contains("cluster"))
+        {
+            envelope["cluster"] = parsed.at("cluster");
+        }
+
+        const std::string body = envelope.dump();
+        return sha256Hex(body.data(), body.size());
+    }
+
     class ControlStreamTest : public ::testing::Test
     {
         protected:
@@ -112,6 +135,42 @@ TEST_F(ControlStreamTest, StartupBodyCarriesTypeAndVersionOnly)
     EXPECT_EQ(std::string::npos, sent.find("config_checksum"));
 }
 
+TEST_F(ControlStreamTest, FastFollowupArmedOnceAfterStartupAccepted)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({})")));
+
+    m_stream.step(m_waiter); // Startup accepted: hashes/tasks only arrive on the
+    // Notify that follows, so the caller shouldn't idle a
+    // full notify cycle before sending one.
+    EXPECT_TRUE(m_stream.consumeFastFollowup());
+    EXPECT_FALSE(m_stream.consumeFastFollowup()); // Consume-once: not re-armed on read.
+
+    m_stream.step(m_waiter); // Notify: no Startup accepted this cycle.
+    EXPECT_FALSE(m_stream.consumeFastFollowup());
+}
+
+TEST_F(ControlStreamTest, FastFollowupAlsoArmedWhenASettingsRefreshIsQueued)
+{
+    // Arming the refresh (SettingsChanged) is a separate event from StartupAccepted:
+    // without its own fast-followup, the refresh Startup itself would sit queued for
+    // a full notify_interval_s before ever being sent.
+    const std::string startupV1 = R"({"limits":{"eps":0}})";
+    const std::string notifyMismatch =
+        R"({"settings_hash":")" + managerSettingsHash(R"({"limits":{"eps":9}})") + R"("})";
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, startupV1))) // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyMismatch))); // Notify: arms refresh.
+
+    m_stream.step(m_waiter); // Startup accepted.
+    EXPECT_TRUE(m_stream.consumeFastFollowup()); // Consumed here, not left for the assertion below.
+
+    m_stream.step(m_waiter); // Notify: settings_hash mismatch -> arms a refresh Startup.
+    EXPECT_TRUE(m_stream.consumeFastFollowup());
+}
+
 TEST_F(ControlStreamTest, StartupStoresManagerAuthoritativeClusterIdentity)
 {
     EXPECT_CALL(m_performer, perform(_))
@@ -138,7 +197,7 @@ TEST_F(ControlStreamTest, SettingsRefreshStartupAlsoOverwritesCluster)
     const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"c1","node":"n1"}})";
     const std::string startupV2 = R"({"limits":{"eps":9},"cluster":{"name":"c2","node":"n2"}})";
     const std::string notifyV2 =
-        R"({"settings_hash":")" + sha256Hex(startupV2.data(), startupV2.size()) + R"("})";
+        R"({"settings_hash":")" + managerSettingsHash(startupV2) + R"("})";
 
     int calls = 0;
     EXPECT_CALL(m_performer, perform(_))
@@ -306,7 +365,7 @@ TEST_F(ControlStreamTest, SettingsMismatchTriggersOneStartupRefresh)
 {
     const std::string startupV1 = R"({"limits":{"eps":0}})";
     const std::string startupV2 = R"({"limits":{"eps":100}})";
-    const std::string hashV2 = sha256Hex(startupV2.data(), startupV2.size());
+    const std::string hashV2 = managerSettingsHash(startupV2);
     const std::string notifyWithV2 =
         R"({"status":"ok","settings_hash":")" + hashV2 + R"("})";
 
@@ -416,6 +475,129 @@ TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
     const std::string content {std::istreambuf_iterator<char>(file),
                                std::istreambuf_iterator<char>()};
     EXPECT_EQ(blob, content);
+}
+
+TEST_F(ControlStreamTest, MultiGroupAgentRequestsAllGroupsCommaJoined)
+{
+    // A multi-group agent must send every reported group, comma-joined and in the
+    // manager's own order, as resource_id -- the manager's config_hash/merged.mg for
+    // a multi-group agent is keyed by that same CSV (controlHandler.cpp's
+    // toGroupsCsv, hashCache.cpp's getMergedMgPath); requesting only the first group
+    // would fetch a different (single-group) merged.mg that can never match the
+    // hash the manager actually reported, looping forever.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default","test"],"config_hash":"multi-hash"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404); // Content irrelevant to this test.
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
+{
+    // A group-only change never re-triggers a Startup (settings_hash excludes
+    // groups by design), so onAgentGroups is the only thing that keeps a
+    // consumer's group set from going stale -- it must fire once for the first
+    // report and again only when the manager-reported set actually changes.
+    const std::string notifyDefault = R"({"agent":{"groups":["default"]}})";
+    const std::string notifySame = R"({"agent":{"groups":["default"]}})";
+    const std::string notifyChanged = R"({"agent":{"groups":["default","test"]}})";
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))             // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyDefault)))    // First report.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifySame)))       // Unchanged: no re-fire.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyChanged)));   // Changed: re-fires.
+
+    {
+        // Scoped so only the two reports are ordered: an InSequence covering the
+        // transport too would demand every perform() happen after them.
+        testing::InSequence seq;
+        EXPECT_CALL(m_sink, onAgentGroups("default"));
+        EXPECT_CALL(m_sink, onAgentGroups("default,test"));
+    }
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: first report.
+    m_stream.step(m_waiter); // Notify: same groups, no call.
+    m_stream.step(m_waiter); // Notify: groups changed, re-fires.
+}
+
+TEST_F(ControlStreamTest, AgentGroupsReReportedAfterARefreshStartupEvenWhenUnchanged)
+{
+    // bridge_apply_agent_groups() (https_client_bridge.c) overwrites the C-side agent_agent_groups
+    // unconditionally on every accepted Startup -- including a settings-refresh one, whose own
+    // body may carry a different group snapshot than the last Notify reported. If the dedupe
+    // latch survives that Startup, a Notify reporting the SAME groups as before the refresh would
+    // be wrongly deduped, leaving the C side pointed at whatever the refresh Startup wrote. The
+    // latch must therefore be cleared on every accepted Startup, not just group changes.
+    const std::string startupV1 = R"({"limits":{"eps":0}})";
+    const std::string startupV2 = R"({"limits":{"eps":100}})";
+    const std::string hashV2 = managerSettingsHash(startupV2);
+    const std::string notifyArmsRefresh =
+        R"({"status":"ok","agent":{"groups":["default"]},"settings_hash":")" + hashV2 + R"("})";
+    const std::string notifyAfterRefresh = R"({"status":"ok","agent":{"groups":["default"]}})";
+
+    std::vector<std::string> requestTypes;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        const std::string body = bodyOf(spec);
+        requestTypes.push_back(body.find("startup") != std::string::npos ? "startup"
+                               : "notify");
+
+        if (requestTypes.size() == 1)
+        {
+            return response(TransportStatus::Ok, 200, startupV1);
+        }
+
+        if (requestTypes.back() == "startup")
+        {
+            return response(TransportStatus::Ok, 200, startupV2);
+        }
+
+        return response(TransportStatus::Ok, 200,
+                        requestTypes.size() == 2 ? notifyArmsRefresh : notifyAfterRefresh);
+    }));
+
+    EXPECT_CALL(m_sink, onAgentGroups("default")).Times(2);
+
+    m_stream.step(m_waiter); // Startup (v1 baseline).
+    m_stream.step(m_waiter); // Notify: reports "default" (1st fire), arms a settings refresh.
+    m_stream.step(m_waiter); // Refresh Startup (v2) -- must clear the groups-reported latch.
+    m_stream.step(m_waiter); // Notify: "default" again -- re-fires despite being unchanged.
+}
+
+TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
+{
+    // Unlike /download's resource_id (which substitutes "default" when the agent
+    // has no groups, since /download always needs some group to ask for), an
+    // empty group set here must stay empty: agcom.c treats it as a distinct,
+    // meaningful value ("Empty agent_groups is allowed - fallback to merge.mg
+    // will be used"), not a synonym for being in "default".
+    const std::string notifyNoGroups = R"({"agent":{"groups":[]}})";
+
+    EXPECT_CALL(m_sink, onAgentGroups(std::string {}));
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notifyNoGroups)));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: no groups -> reports empty, not "default".
 }
 
 TEST_F(ControlStreamTest, MatchingConfigHashDoesNotDownload)

@@ -358,8 +358,14 @@ WriteAgent()
     else
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
-    echo "      <port>1514</port>" >> $NEWCONFIG
+    echo "      <port>1517</port>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
+    # verification_mode defaults to 'none'; set to 'full' or 'certificate' and
+    # provide certificate_authorities to verify the manager's certificate.
+    echo "    <ssl>" >> $NEWCONFIG
+    echo "      <certificate_authorities>PATH</certificate_authorities>" >> $NEWCONFIG
+    echo "      <verification_mode>none</verification_mode>" >> $NEWCONFIG
+    echo "    </ssl>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG

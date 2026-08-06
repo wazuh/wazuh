@@ -17,6 +17,7 @@
 #include "keyProvider.hpp"
 
 #include "external/cpp-httplib/httplib.h"
+#include "external/nlohmann/json.hpp"
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -29,6 +30,30 @@
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
+
+// Mirrors the real manager's HashCache::getSettingsHash() (remoted_module/src/
+// control/hashCache.cpp) and the agent's ControlStream::computeSettingsHash():
+// limits + cluster only, agent.groups excluded -- NOT a raw hash of the startup
+// body's bytes, since nlohmann::json always dumps object keys alphabetically
+// regardless of the literal source order.
+inline std::string fakeManagerSettingsHash(const std::string& startupBody)
+{
+    const auto parsed = nlohmann::json::parse(startupBody);
+    nlohmann::json envelope;
+
+    if (parsed.contains("limits"))
+    {
+        envelope["limits"] = parsed.at("limits");
+    }
+
+    if (parsed.contains("cluster"))
+    {
+        envelope["cluster"] = parsed.at("cluster");
+    }
+
+    const std::string body = envelope.dump();
+    return sha256Hex(body.data(), body.size());
+}
 
 /**
  * @brief Fork-based plaintext fake manager (the http-request component-test
@@ -427,7 +452,7 @@ class FakeManager final
                         R"({"groups":["default"],"config_hash":")" + configHash + R"("})";
                     response.set_content(
                         R"({"agent":)" + agent + R"(,"settings_hash":")" +
-                        sha256Hex(startupBody.data(), startupBody.size()) + R"("})",
+                        fakeManagerSettingsHash(startupBody) + R"("})",
                         "application/json");
                     return;
                 }

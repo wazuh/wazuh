@@ -45,6 +45,14 @@ constexpr auto MAXLEN {65536};
 #define LOGFN_DEBUG1(fn, fmt, ...) do { if (Log::isDebugEnabled())  { (fn).debug1({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
 #define LOGFN_DEBUG2(fn, fmt, ...) do { if (Log::isDebug2Enabled()) { (fn).debug2({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
 #define LOGFN_ERROR(fn, fmt, ...)  do { if (Log::isErrorEnabled())  { (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+// CRITICAL is unfiltered by design (no isCriticalEnabled() gate): the shared C/C++ logging
+// bridge every module wires in as its log callback (mtLoggingFunctionsWrapper,
+// shared/src/debug_op.c -- used by https_client, remoted_module, inventory_sync,
+// vulnerability_scanner and content_manager alike) logs then exit(1)s on this level, the exact
+// same log-then-exit(1) sequence as _merror_exit()/_mlerror_exit() (shared/src/debug_op.c), for
+// a config that can never work as given (mirrors client-agent/src/main.c's own hard exit on a
+// missing/invalid <server><address>). It must never be silently dropped.
+#define LOGFN_CRITICAL(fn, fmt, ...) do { (fn).critical({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } while (0)
 // clang-format on
 
 namespace Log
@@ -372,6 +380,19 @@ namespace Log
                 std::va_list args;
                 va_start(args, fmt);
                 GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+
+        // Unrecoverable misconfiguration: the caller's log callback is expected to terminate
+        // the process on this level (see mtLoggingFunctionsWrapper). Not level-filtered.
+        __attribute__((visibility("hidden"))) void critical(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_CRITICAL, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
                 va_end(args);
             }
         }

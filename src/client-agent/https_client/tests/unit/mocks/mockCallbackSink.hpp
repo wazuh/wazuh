@@ -35,6 +35,7 @@ class MockCallbackSink : public ICallbackSink
                     (const std::string& taskId, const std::string& taskType, const std::string& reason),
                     (override));
         MOCK_METHOD(void, onManagerConfigHash, (const std::string& configHash), (override));
+        MOCK_METHOD(void, onAgentGroups, (const std::string& groupsCsv), (override));
         MOCK_METHOD(void, onSyncResponse,
                     (const std::string& sessionId, int result, const std::string& body), (override));
         MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
