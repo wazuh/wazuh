@@ -27,6 +27,7 @@
 int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const char *wpk_repository_config);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const char *wpk_repository_config);
 int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade);
+wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_task *agent_task);
 
 /* remoted's <remote><https><verification_mode> is read independently off disk via
  * ReadConfig(CREMOTE, ...) -- mocked here so tests control the resolved verification_mode without
@@ -230,6 +231,55 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, NULL);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+/* ------------------------------------------------------------------------ */
+/* custom WPK task creation - wpk_file must always be a bare filename        */
+/* ------------------------------------------------------------------------ */
+
+static int check_task_message_wpk_file_is_basename(const LargestIntegralType value, const LargestIntegralType check_data) {
+    const cJSON *message_object = (const cJSON *)value;
+    const char *expected_basename = (const char *)check_data;
+
+    const cJSON *payload = cJSON_GetObjectItem(message_object, "payload");
+    assert_non_null(payload);
+
+    const cJSON *wpk_file = cJSON_GetObjectItem(payload, "wpk_file");
+    assert_non_null(wpk_file);
+    assert_true(cJSON_IsString(wpk_file));
+    assert_string_equal(wpk_file->valuestring, expected_basename);
+
+    return 1;
+}
+
+void test_wm_agent_upgrade_create_task_for_agent_custom_wpk_uses_basename(void **state)
+{
+    wm_agent_task *agent_task = *state;
+
+    char *platform = "ubuntu";
+    char *custom_file_path = "/tmp/some/dir/wazuh_agent_v5.0.0_linux_amd64.wpk";
+    char *expected_basename = "wazuh_agent_v5.0.0_linux_amd64.wpk";
+    char *wpk_sha1 = "abcdef0123456789abcdef0123456789abcdef01";
+
+    agent_task->agent_info->agent_id = 55;
+    os_strdup(platform, agent_task->agent_info->platform);
+
+    wm_upgrade_custom_task *upgrade_custom_task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup(custom_file_path, upgrade_custom_task->custom_file_path);
+    os_strdup(wpk_sha1, upgrade_custom_task->wpk_sha1);
+    agent_task->task_info->command = WM_UPGRADE_UPGRADE_CUSTOM;
+    agent_task->task_info->task = upgrade_custom_task;
+
+    cJSON *tm_response = cJSON_CreateObject();
+    cJSON_AddStringToObject(tm_response, "status", "ok");
+
+    expect_check(__wrap_wm_agent_upgrade_send_tasks_information, message_object,
+                 check_task_message_wpk_file_is_basename, (LargestIntegralType)expected_basename);
+    will_return(__wrap_wm_agent_upgrade_send_tasks_information, tm_response);
+
+    wm_upgrade_error_code result = wm_agent_upgrade_create_task_for_agent(agent_task);
+
+    assert_int_equal(result, WM_UPGRADE_SUCCESS);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1338,6 +1388,8 @@ int main(void) {
         // wm_agent_upgrade_validate_agent_task
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_ok, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok, setup_agent_task, teardown_agent_task),
+        // wm_agent_upgrade_create_task_for_agent
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_create_task_for_agent_custom_wpk_uses_basename, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_none_5x_no_force_ok, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_certificate_5x_no_force_rejected, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_certificate_5x_force_ok, setup_agent_task, teardown_agent_task),

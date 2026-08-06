@@ -410,7 +410,7 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
     char *wpk_file = NULL;
     char *wpk_sha1 = NULL;
     const char *installer = NULL;
-    char relative_wpk_path[PATH_MAX + 1] = "";
+    char wpk_basename[PATH_MAX + 1] = "";
 
     if (command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
@@ -431,17 +431,11 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
 
         request_time = task->request_time;
 
-        char cwd[PATH_MAX + 1];
-        const char *relative = task->custom_file_path;
-        if (task->custom_file_path && getcwd(cwd, sizeof(cwd)) &&
-                !strncmp(task->custom_file_path, cwd, strlen(cwd))) {
-            relative = task->custom_file_path + strlen(cwd);
-            while (*relative == '/') {
-                relative++;
-            }
-        }
-        snprintf(relative_wpk_path, sizeof(relative_wpk_path), "%s", relative);
-        wpk_file = relative_wpk_path;
+        char custom_path_copy[PATH_MAX + 1];
+        strncpy(custom_path_copy, task->custom_file_path, sizeof(custom_path_copy) - 1);
+        custom_path_copy[sizeof(custom_path_copy) - 1] = '\0';
+        snprintf(wpk_basename, sizeof(wpk_basename), "%s", basename_ex(custom_path_copy));
+        wpk_file = wpk_basename;
         wpk_sha1 = task->wpk_sha1;  // SHA1 already calculated during validation
 
         // Use custom installer or default
