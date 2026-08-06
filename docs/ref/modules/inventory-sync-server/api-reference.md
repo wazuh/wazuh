@@ -12,12 +12,14 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | Method | Path | Success | Notes |
 |---|---|---|---|
 | `GET` | `/` | `200` | Liveness probe. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
-| `POST` | `/inventory/sync` | `202` | **Provisional.** Accepts and discards the payload; the ingestion pipeline is not implemented yet. |
+| `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` (the agent full-resyncs), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
+| `DELETE` | `/agents` | `200` | Deletes every state document of the agent named by `X-Wazuh-Agent-Id` (`wazuh-states-*`, this cluster's scope). Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means the delete-by-query was flushed. UDS-local only: the production caller is authd. |
+| `POST` | `/agents/delete` | `200` | Alias of `DELETE /agents` with the same handler, for C callers whose HTTP helper only speaks POST. |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
 
-Both endpoints are implemented for real (issues #38024 and #38023): each takes the agent's
-`modules`-keyed report, moves it under its own subtree, and indexes one document per agent.
+The stats and config endpoints take the agent's `modules`-keyed report, move it under their own
+subtree, and index one document per agent (issues #38024 and #38023).
 
 ### `POST /stats`
 
@@ -70,7 +72,7 @@ report with no statistics would replace the agent's last good one.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes, for `/inventory/sync`, `/stats` and `/config` | The agent identity remoted authenticated. Its absence is a contract violation, not agent input, so it is answered `400`. |
+| `X-Wazuh-Agent-Id` | Yes, for every route except `GET /` | For `/stateful`, `/stats` and `/config`: the agent identity remoted authenticated (the session's own claimed identity must match it, or the answer is `403`). For the deletion routes: the TARGET agent, set by the calling daemon. Missing or non-numeric is answered `400`. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats`)

@@ -239,15 +239,17 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
-Forwarded as `flush_interval_seconds`.
+**No effect.** The value is accepted for compatibility but the module overrides the connector's
+periodic flush to one hour regardless: the ingestion workers own every flush (a timer-driven flush
+that fails discards the buffer silently, which would let a worker answer `200` for lost data).
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
 ```
 
-- **Default value:** `20`
+- **Default value:** `20` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Forwarded as `flush_interval_seconds`.
+- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
 
@@ -384,6 +386,17 @@ latter -- but see the descriptor-limit note on that option.
 
 Enable `wazuh_modules.debug=1` and restart: the module logs every resolved tunable at startup. The values
 are also reported by `getconfig wmodules` on the modulesd socket.
+
+## Obsolete options (retired with the legacy module)
+
+These internal options belonged to paths that no longer exist. They are not read by any daemon; a
+value set for them has no effect:
+
+- `wazuh_modules.inventory_sync_*` (the legacy module's options: `queue_size`, `data_value_quota`,
+  `indexer_bulk_size_bytes`, `indexer_flush_interval`, ...) — the module was retired; see
+  [Inventory Sync](../inventory-sync/configuration.md).
+- `remoted.router_forwarding_disabled` — the router forwarding path it disabled retired with the
+  legacy module; legacy `s:`-headed stateful-sync messages are discarded by remoted.
 
 ## See Also
 

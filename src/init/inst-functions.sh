@@ -750,6 +750,15 @@ InstallCommon()
         fi
     fi
 
+    if [ -f build/lib/libkeystore_server.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libkeystore_server.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libkeystore_server.so
+        fi
+    fi
+
     if [ -f build/lib/libvulnerability_scanner.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libvulnerability_scanner.so ${INSTALLDIR}/lib
