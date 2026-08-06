@@ -4,7 +4,7 @@ Complete configuration reference for the Agent Upgrade module.
 
 The Agent Upgrade module handles remote agent upgrades using WPK files. Configuration differs between manager and agent:
 
-- **Manager:** Enables the module and optionally overrides the WPK repository URL. The manager no longer configures per-transfer parameters (chunk size, worker threads) — the manager only creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md); the WPK is served over the manager's HTTPS interface when the agent requests it.
+- **Manager:** Enables the module and optionally overrides the WPK repository URL. The manager no longer configures per-transfer parameters (chunk size, worker threads) — the manager only creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md); the WPK is served over the manager's HTTPS interface when the agent requests it. For agents older than v5.0.0, `remoted`'s own legacy task delivery poller (see [`remoted.legacy_task_polling_interval`](../remoted/configuration.md)) pushes the task instead, over the agent's existing 1514 session — that path does reintroduce WPK chunking, but as a fixed internal 32768-byte constant, not a user-facing option, so no new per-transfer knob is exposed either way.
 - **Agent:** Enables the module and controls WPK signature verification.
 
 For module overview and architecture, see [Agent Upgrade Module](README.md).
@@ -178,7 +178,7 @@ Use one or more custom CAs to sign WPK packages:
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep agent-upgrade
 ```
 
-Successful upgrade requests produce log lines from both the `agent-upgrade` and `task-manager` module tags: the first module validates the request and creates a task, the second stores and delivers it.
+Successful upgrade requests produce log lines from the `agent-upgrade` and `task-manager` module tags: `agent-upgrade` validates the request and creates a task, `task-manager` only stores/tracks it — it never delivers anything itself. For upgrades to an agent below v5.0.0, `remoted`'s own task-polling thread also logs under its own tag, since it — not `agent-upgrade` or `task-manager` — is what actually delivers the WPK to that agent.
 
 ### Inspect pending upgrade tasks
 

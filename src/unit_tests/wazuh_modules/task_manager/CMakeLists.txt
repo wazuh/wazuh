@@ -27,7 +27,8 @@ list(
   task_flags
   "-Wl,--wrap,pthread_exit -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close \
                         -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
-                        -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd -Wl,--wrap,wm_task_cache_init -Wl,--wrap,w_create_thread ${DEBUG_OP_WRAPPERS}"
+                        -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd -Wl,--wrap,wm_task_cache_init -Wl,--wrap,w_create_thread \
+                        -Wl,--wrap,getDefine_Int_default ${DEBUG_OP_WRAPPERS}"
 )
 
 list(APPEND task_names "test_wm_task_manager_parsing")

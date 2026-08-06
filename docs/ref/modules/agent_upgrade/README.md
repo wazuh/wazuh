@@ -65,6 +65,7 @@ download the WPK. If the file is missing on that node, the upgrade will fail.
 | Upgrade target ≥ `v5.0.0` and current agent version < `v4.14.0` | Rejected with `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |
 | Target version ≤ current agent version                          | Rejected unless `force_upgrade` is set                                                     |
 | Target version > manager version                                | Rejected unless `force_upgrade` is set                                                     |
+| Upgrade target ≥ `v5.0.0` and `remoted`'s `<remote><https><verification_mode>` is not `none` | Rejected (repo-based path: unless `force_upgrade` is set, with a logged warning; custom-WPK path: unconditionally, no `force` bypass exists there) |
 
 ### Manager-side sockets
 

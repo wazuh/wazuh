@@ -22,6 +22,7 @@
 #include "indexed_queue_op.h"
 #include "batch_queue_op.h"
 #include "http_op.h"
+#include "legacy_task_delivery.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
 // (remoted_module.h) are two independently-maintained mirrors of the same values, since
@@ -439,6 +440,7 @@ void HandleSecure()
     int n_events = 0;
 
     agent_metadata_init();
+    legacy_task_delivery_init();
 
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
@@ -494,6 +496,9 @@ void HandleSecure()
 
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
+
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
 
     /* Create wait_for_msgs threads */
     {
@@ -1306,10 +1311,14 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         message_type = MT_INV_SYNC;
     }
     else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
-        // Upgrade acknowledgments from agents are no longer processed in 5.x
-        // Fire-and-forget model: agents execute tasks without reporting results
-        mdebug2("Ignoring upgrade acknowledgment from agent '%s' (not processed in 5.x)", agent_id);
-        return true;
+        // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
+        // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
+        // legacy_task_delivery.c). This is additive: the ack is not router-bound, so it still
+        // falls through to the normal analysisd/Engine event path (batch_queue_enqueue_ex) like
+        // any other agent message, instead of being silently discarded.
+        legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
+        mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
+        return false;
     }
 
     if (!router_handle) {

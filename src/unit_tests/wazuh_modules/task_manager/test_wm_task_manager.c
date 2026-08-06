@@ -68,6 +68,15 @@ int __wrap_accept() {
     return mock();
 }
 
+// Helpers
+
+static void expect_legacy_task_polling_interval(int value) {
+    expect_value(__wrap_getDefine_Int_default, min, 300);
+    expect_value(__wrap_getDefine_Int_default, max, 86400);
+    expect_value(__wrap_getDefine_Int_default, default_val, 900);
+    will_return(__wrap_getDefine_Int_default, value);
+}
+
 // Tests
 
 void test_wm_task_manager_dump_enabled(void **state)
@@ -125,6 +134,8 @@ void test_wm_task_manager_init_ok(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "Task cache initialized");
 
+    expect_legacy_task_polling_interval(900);
+
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
@@ -148,6 +159,8 @@ void test_wm_task_manager_init_bind_err(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mtinfo, formatted_msg, "Task cache initialized");
 
+    expect_legacy_task_polling_interval(900);
+
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
@@ -163,6 +176,69 @@ void test_wm_task_manager_init_bind_err(void **state)
     expect_assert_failure(wm_task_manager_init(config));
 }
 
+void test_wm_task_manager_init_polling_interval_safe(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+
+    config->enabled = 1;
+    config->task_ttl = 2000;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "Task cache initialized");
+
+    expect_legacy_task_polling_interval(500);
+
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
+
+    int ret = wm_task_manager_init(config);
+
+    assert_int_equal(ret, sock);
+
+    config->task_ttl = 0;
+}
+
+void test_wm_task_manager_init_polling_interval_equals_task_ttl(void **state)
+{
+    wm_task_manager *config = *state;
+    int sock = 555;
+
+    config->enabled = 1;
+    config->task_ttl = 900;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
+    expect_string(__wrap__mtinfo, formatted_msg, "Task cache initialized");
+
+    expect_legacy_task_polling_interval(900);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:task-manager");
+    expect_string(__wrap__mtwarn, formatted_msg,
+        "remoted.legacy_task_polling_interval (900) is >= task-manager.task_ttl (900). "
+        "A pending task may expire before the legacy task delivery poller ever gets a chance to see it.");
+
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, TASK_QUEUE);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, uid, getuid());
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 0);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+
+    will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
+
+    int ret = wm_task_manager_init(config);
+
+    assert_int_equal(ret, sock);
+
+    config->task_ttl = 0;
+}
+
 void test_wm_task_manager_init_disabled(void **state)
 {
     wm_task_manager *config = *state;
@@ -176,7 +252,6 @@ void test_wm_task_manager_init_disabled(void **state)
     expect_assert_failure(wm_task_manager_init(config));
 }
 
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_dump
@@ -187,9 +262,11 @@ int main(void) {
         // wm_task_manager_init
         cmocka_unit_test(test_wm_task_manager_init_ok),
         cmocka_unit_test(test_wm_task_manager_init_bind_err),
+        // wm_task_manager_init - legacy_task_polling_interval vs task_ttl warning
+        cmocka_unit_test(test_wm_task_manager_init_polling_interval_safe),
+        cmocka_unit_test(test_wm_task_manager_init_polling_interval_equals_task_ttl),
         cmocka_unit_test(test_wm_task_manager_init_disabled),
         // wm_task_manager_dispatch
-        // wm_task_manager_main
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

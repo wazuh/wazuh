@@ -19,6 +19,13 @@
 #include "os_net.h"
 #include "remoted.h"
 #include "state.h"
+#include "agent_metadata_db.h"
+
+/* Agents on/above this version are excluded from the bulk getagentsstats "all" response:
+ * matches legacy_task_delivery.c's own version threshold, kept as a separate named constant since
+ * the two callers are conceptually independent even though they share the underlying check
+ * (agent_metadata_db.h's agent_meta_check_version()). */
+#define REMCOM_STATS_MIN_V5_VERSION "v5.0.0"
 
 typedef enum _error_codes {
     ERROR_OK = 0,
@@ -76,6 +83,17 @@ STATIC size_t remcom_dispatch(char* request, char** output);
  */
 STATIC cJSON* remcom_getconfig(const char* section);
 
+/**
+ * @brief Filter a -1-terminated agent-ID array down to agents confirmed below v5.0.0: getstats
+ * "all" must not report on agents that have their own 5.x /stats path.
+ * Frees `agents_ids` itself; the caller must os_free the returned array instead.
+ * @param agents_ids -1-terminated array of agent IDs (as returned by
+ * wdb_get_agents_ids_of_current_node()); may be NULL.
+ * @return Newly allocated, -1-terminated, filtered array (caller must os_free), or NULL if
+ * `agents_ids` was NULL.
+ */
+STATIC int* remcom_filter_pre_v5_agent_ids(int* agents_ids);
+
 
 STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* data_json) {
     cJSON* root = cJSON_CreateObject();
@@ -88,6 +106,38 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
     cJSON_Delete(root);
 
     return msg_string;
+}
+
+STATIC int* remcom_filter_pre_v5_agent_ids(int* agents_ids) {
+    if (!agents_ids) {
+        return NULL;
+    }
+
+    int total = 0;
+    for (; agents_ids[total] != -1; total++);
+
+    int *filtered;
+    os_calloc(total + 1, sizeof(int), filtered);
+    int kept = 0;
+
+    for (int i = 0; i < total; i++) {
+        char agent_id_str[OS_SIZE_16] = {0};
+        snprintf(agent_id_str, OS_SIZE_16, "%.3d", agents_ids[i]);
+
+        agent_version_check_t result = agent_meta_check_version(agent_id_str, REMCOM_STATS_MIN_V5_VERSION, NULL);
+
+        if (result == AGENT_VERSION_CHECK_LT_MIN) {
+            filtered[kept++] = agents_ids[i];
+        } else {
+            mdebug2("remcom: excluding agent '%s' from bulk getagentsstats response (>= %s or unknown version)",
+                    agent_id_str, REMCOM_STATS_MIN_V5_VERSION);
+        }
+    }
+
+    filtered[kept] = -1;
+    os_free(agents_ids);
+
+    return filtered;
 }
 
 STATIC size_t remcom_dispatch(char* request, char** output) {
@@ -133,11 +183,24 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
                     if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
                         agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS);
                         if (agents_ids != NULL) {
+                            // ERROR_DUE must reflect the raw page size from wdb, before filtering
+                            // -- otherwise a full page could look short and pagination would stop early.
                             for (count = 0; agents_ids[count] != -1; count++);
-                            if (count < REM_MAX_NUM_AGENTS_STATS) {
-                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
+                            bool due = (count >= REM_MAX_NUM_AGENTS_STATS);
+
+                            // Captured before the filter frees/overwrites agents_ids: the version
+                            // filter can drop every agent in the page, and the caller still needs
+                            // the raw page boundary to resume pagination from.
+                            int raw_last_id = due ? agents_ids[count - 1] : 0;
+
+                            agents_ids = remcom_filter_pre_v5_agent_ids(agents_ids);
+
+                            cJSON *agents_state_json = rem_create_agents_state_json(agents_ids);
+                            if (due) {
+                                cJSON_AddNumberToObject(agents_state_json, "last_id", raw_last_id);
+                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], agents_state_json);
                             } else {
-                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], rem_create_agents_state_json(agents_ids));
+                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], agents_state_json);
                             }
                             os_free(agents_ids);
                         } else {

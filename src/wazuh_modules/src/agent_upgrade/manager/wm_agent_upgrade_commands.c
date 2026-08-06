@@ -21,6 +21,7 @@
 #include "wm_agent_upgrade_parsing.h"
 #include "wm_agent_upgrade_validate.h"
 #include "wazuhdb_queries_op.h"
+#include "remote-config.h"
 
 /**
  * Analyze agent information and returns a JSON to be sent to the task manager
@@ -55,6 +56,19 @@ STATIC int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_tas
  * @retval WM_UPGRADE_UNKNOWN_ERROR
  * */
 STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const char *wpk_repository_config) __attribute__((nonnull(1)));
+
+/**
+ * Gate remote_upgrade task creation to v5.0.0+ while remoted's <remote><https><verification_mode>
+ * isn't 'none': no 5.x agent can speak HTTPS yet, so it may be unable to reconnect. Reads
+ * remoted's config independently off disk (ReadConfig(CREMOTE, ...), same as remoted itself) --
+ * no IPC, no shared live config between the two daemons.
+ * @param target_version Resolved target version (e.g. "v5.0.0"), or NULL if unresolvable.
+ * @param force_upgrade Caller requested 'force' (repo-based path only; always false for the
+ * custom-WPK path, which carries no such field -- see the unconditional-reject note below).
+ * @return WM_UPGRADE_SUCCESS if the upgrade may proceed.
+ * @retval WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE if it must be rejected.
+ */
+STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade);
 
 /**
  * Build Task Manager JSON message for upgrade task
@@ -264,6 +278,31 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         return validate_result;
     }
 
+    // HTTPS verification_mode / force gate: repo-based path has its target version resolved
+    // through the repository itself; custom-WPK cannot trust its filename for the same purpose
+    // (see the WM_UPGRADE_UPGRADE_CUSTOM branch below).
+    if (agent_task->task_info->command == WM_UPGRADE_UPGRADE) {
+        wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
+
+        validate_result = wm_agent_upgrade_validate_https_verification_mode(task->wpk_version, task->force_upgrade);
+
+        if (validate_result != WM_UPGRADE_SUCCESS) {
+            return validate_result;
+        }
+    } else if (agent_task->task_info->command == WM_UPGRADE_UPGRADE_CUSTOM) {
+        // Unlike the repo path, a custom WPK's filename is not authoritative -- it can claim any
+        // version regardless of what the file actually installs. The HTTPS-reconnect risk this gate
+        // protects against exists whenever the package might be v5.0.0+, so treat every custom WPK
+        // as if it targets v5.0.0+ here, rather than trusting the (unverifiable) filename. No
+        // force_upgrade field exists on this task type (or 'force' param on /agents/upgrade_custom),
+        // so this is an unconditional reject with no override.
+        validate_result = wm_agent_upgrade_validate_https_verification_mode(WM_UPGRADE_5X_MINIMUM_VERSION, false);
+
+        if (validate_result != WM_UPGRADE_SUCCESS) {
+            return validate_result;
+        }
+    }
+
     // Validate WPK availability and integrity
     if (agent_task->task_info->command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
@@ -286,6 +325,45 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
     }
 
     return validate_result;
+}
+
+STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade) {
+    if (!target_version || compare_wazuh_versions(target_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) < 0) {
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    remoted tmp_remoted_cfg;
+    memset(&tmp_remoted_cfg, 0, sizeof(tmp_remoted_cfg));
+    tmp_remoted_cfg.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+
+    if (ReadConfig(CREMOTE, WAZUHCONF, &tmp_remoted_cfg, NULL) < 0) {
+        // Can't determine verification_mode (e.g. a transient config-parse issue remoted will
+        // surface itself) -- fail open rather than block the upgrade on this unrelated read failing.
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    int verification_mode = tmp_remoted_cfg.https.verification_mode;
+
+    os_free(tmp_remoted_cfg.lip);
+    os_free(tmp_remoted_cfg.https.bind_addr);
+    os_free(tmp_remoted_cfg.https.certificate);
+    os_free(tmp_remoted_cfg.https.key);
+    os_free(tmp_remoted_cfg.https.ca);
+    os_free(tmp_remoted_cfg.https.ciphers);
+
+    if (verification_mode == REMOTED_HTTPS_VERIFY_UNSET || verification_mode == REMOTED_HTTPS_VERIFY_NONE) {
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    if (force_upgrade) {
+        mtwarn(WM_AGENT_UPGRADE_LOGTAG,
+               "Upgrading agent to '%s' while remoted's HTTPS verification_mode is not 'none': the "
+               "agent may be unable to reconnect afterward. Proceeding because 'force' was set "
+               "(accepted risk).", target_version);
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    return WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE;
 }
 
 STATIC cJSON* wm_agent_upgrade_build_task_message(int agent_id, time_t request_time, const char *wpk_file, const char *wpk_sha1, const char *installer) {
@@ -332,6 +410,7 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
     char *wpk_file = NULL;
     char *wpk_sha1 = NULL;
     const char *installer = NULL;
+    char wpk_basename[PATH_MAX + 1] = "";
 
     if (command == WM_UPGRADE_UPGRADE) {
         wm_upgrade_task *task = (wm_upgrade_task *)agent_task->task_info->task;
@@ -351,7 +430,12 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
         }
 
         request_time = task->request_time;
-        wpk_file = task->custom_file_path;
+
+        char custom_path_copy[PATH_MAX + 1];
+        strncpy(custom_path_copy, task->custom_file_path, sizeof(custom_path_copy) - 1);
+        custom_path_copy[sizeof(custom_path_copy) - 1] = '\0';
+        snprintf(wpk_basename, sizeof(wpk_basename), "%s", basename_ex(custom_path_copy));
+        wpk_file = wpk_basename;
         wpk_sha1 = task->wpk_sha1;  // SHA1 already calculated during validation
 
         // Use custom installer or default
