@@ -18,10 +18,19 @@
 
 namespace remoted::endpoints::scanvd
 {
+    enum class ScanVdOutcome
+    {
+        Accepted,        ///< Queued (or refreshed an already-tracked request). -> 200.
+        VersionMismatch, ///< requestedOffset != current VD feed offset. -> 409, carries currentOffset.
+        QueueFull,       ///< Scan tracking table is at capacity; unrelated to feed version. -> 503.
+        InvalidAgent     ///< Defensive: agentId 0 reached the handler directly (bypassing the
+                         ///< endpoint's own parseAgentId check). -> 400.
+    };
+
     struct ScanVdResponse
     {
-        bool success;
-        uint64_t currentOffset;
+        ScanVdOutcome outcome;
+        uint64_t currentOffset; ///< Meaningful only when outcome == VersionMismatch.
     };
 
     using ScanVdCallback = std::function<void(const ScanVdResponse&)>;

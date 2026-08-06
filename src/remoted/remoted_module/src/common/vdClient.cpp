@@ -29,8 +29,10 @@ namespace remoted::common
         constexpr uint64_t DEFAULT_CACHE_TTL_SECONDS = 30;
     } // namespace
 
-    VdClient::VdClient()
-        : m_cachedOffset(0)
+    VdClient::VdClient(std::string socketUri)
+        : m_socketUri(std::move(socketUri))
+        , m_cachedOffset(0)
+        , m_hasValue(false)
         , m_cacheTime(std::chrono::steady_clock::time_point::min())
         , m_cacheTtl(DEFAULT_CACHE_TTL_SECONDS)
     {
@@ -43,7 +45,7 @@ namespace remoted::common
         const auto now = std::chrono::steady_clock::now();
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_cacheTime);
 
-        if (elapsed < m_cacheTtl)
+        if (m_hasValue && elapsed < m_cacheTtl)
         {
             LOGFN_DEBUG2(logFn(), "Returning cached VD offset: %llu", m_cachedOffset);
             return m_cachedOffset;
@@ -53,13 +55,22 @@ namespace remoted::common
         if (result.success)
         {
             m_cachedOffset = result.offset;
+            m_hasValue = true;
             m_cacheTime = now;
             LOGFN_DEBUG2(logFn(), "Queried VD module, offset: %llu", result.offset);
             return result.offset;
         }
+        else if (m_hasValue)
+        {
+            // Keep serving the last known-good offset — a transient failure right after the
+            // cache expires shouldn't make this node suddenly report offset 0 to every agent.
+            // Don't refresh m_cacheTime, so the next call retries the query immediately.
+            LOGFN_DEBUG1(logFn(), "Failed to query VD module, returning last known offset: %llu", m_cachedOffset);
+            return m_cachedOffset;
+        }
         else
         {
-            LOGFN_DEBUG1(logFn(), "Failed to query VD module, returning 0 without caching");
+            LOGFN_DEBUG1(logFn(), "Failed to query VD module, no prior value available, returning 0");
             return 0;
         }
     }
@@ -68,7 +79,7 @@ namespace remoted::common
     {
         try
         {
-            httplib::Client client("unix://queue/sockets/modulesd");
+            httplib::Client client(m_socketUri);
             client.set_read_timeout(1, 0);
             client.set_write_timeout(1, 0);
 

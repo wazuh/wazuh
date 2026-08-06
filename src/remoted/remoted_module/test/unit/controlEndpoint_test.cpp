@@ -16,6 +16,7 @@
  */
 
 #include "auth/authTypes.hpp"
+#include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
 #include "control/controlConfig.hpp"
 #include "control/controlHandler.hpp"
@@ -119,6 +120,7 @@ namespace
         std::shared_ptr<WazuhDBClient> wdbClient;
         std::shared_ptr<TaskClient> taskClient;
         std::shared_ptr<HashCache> hashCache;
+        std::shared_ptr<remoted::common::VdClient> vdClient;
         std::unique_ptr<ControlHandler> handler;
         remoted::endpoints::AuthenticatedHandler endpointHandler;
 
@@ -162,7 +164,9 @@ namespace
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, metrics);
             hashCache = std::make_shared<HashCache>(cfg);
-            handler = std::make_unique<ControlHandler>(registry, wdbClient, taskClient, hashCache, metrics, cfg);
+            vdClient = std::make_shared<remoted::common::VdClient>();
+            handler =
+                std::make_unique<ControlHandler>(registry, wdbClient, taskClient, hashCache, vdClient, metrics, cfg);
             endpointHandler = remoted::endpoints::control::makeHandler(*handler);
         }
         ~DispatchFixture()

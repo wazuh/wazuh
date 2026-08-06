@@ -161,14 +161,25 @@ namespace remoted::endpoints::scanvd
                                  requestedOffset,
                                  [responder](const ScanVdResponse& response)
                                  {
-                                     if (response.success)
+                                     switch (response.outcome)
                                      {
-                                         responder->send(remoted::http::HttpResponse::json(200, "{}"));
-                                     }
-                                     else
-                                     {
-                                         responder->send(
-                                             errorJsonWithOffset(409, "version_mismatch", response.currentOffset));
+                                         case ScanVdOutcome::Accepted:
+                                             responder->send(remoted::http::HttpResponse::json(200, "{}"));
+                                             break;
+                                         case ScanVdOutcome::VersionMismatch:
+                                             responder->send(
+                                                 errorJsonWithOffset(409, "version_mismatch", response.currentOffset));
+                                             break;
+                                         case ScanVdOutcome::QueueFull:
+                                             // Distinct from version_mismatch: the offset matched, but this
+                                             // node's scan tracking table is full. Retrying the same offset
+                                             // against a different node (or once capacity frees up here) can
+                                             // succeed, unlike a real version mismatch.
+                                             responder->send(errorJson(503, "scan_queue_full"));
+                                             break;
+                                         case ScanVdOutcome::InvalidAgent:
+                                             responder->send(errorJson(400, "invalid_agent_id"));
+                                             break;
                                      }
                                  });
         };

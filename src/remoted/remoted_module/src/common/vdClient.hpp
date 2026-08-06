@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdint>
 #include <mutex>
+#include <string>
 
 namespace remoted::common
 {
@@ -26,16 +27,23 @@ namespace remoted::common
     class VdClient
     {
     public:
-        VdClient();
+        /**
+         * @param socketUri VD module UDS endpoint, as an httplib URI (e.g.
+         * "unix://queue/sockets/modulesd"). Defaults to the real modulesd socket; overridable so
+         * tests can point this at a fake server instead.
+         */
+        explicit VdClient(std::string socketUri = "unix://queue/sockets/modulesd");
         ~VdClient() = default;
 
         /**
          * @brief Get the current VD feed offset.
          *
-         * Returns cached value if still valid, otherwise queries VD module.
-         * Only caches successful queries; communication failures return 0 without caching.
+         * Returns the cached value if still valid, otherwise queries the VD module.
+         * On a failed refresh, falls back to the last successfully obtained value
+         * (stale-but-known) instead of discarding it; returns 0 only if no value
+         * has ever been obtained.
          *
-         * @return Current VD feed offset, or 0 if unavailable.
+         * @return Current (or last known) VD feed offset, or 0 if never obtained.
          */
         uint64_t getOffset();
 
@@ -48,8 +56,10 @@ namespace remoted::common
 
         QueryResult queryVdModule() const;
 
+        std::string m_socketUri;
         mutable std::mutex m_mutex;
         uint64_t m_cachedOffset;
+        bool m_hasValue;
         std::chrono::steady_clock::time_point m_cacheTime;
         std::chrono::seconds m_cacheTtl;
     };

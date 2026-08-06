@@ -397,7 +397,7 @@ private:
                                              remoted::endpoints::control::makeHandler(*m_controlHandler));
 
         // /scan/vd: agent-initiated VD scans. Uses the same vdClient as /control for offset queries.
-        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient);
+        m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, m_scanVdMetrics);
 
         m_authGateway->addAuthenticatedRoute(*m_httpServer,
                                              remoted::http::Method::Post,
@@ -532,7 +532,9 @@ private:
     remoted::control::ControlMetrics m_controlMetrics {};               ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
 
-    // /scan/vd lifecycle: handles VD scan requests from agents.
+    // /scan/vd lifecycle: handles VD scan requests from agents. Counters live on the facade for
+    // the same reason as m_controlMetrics: a stable address across HTTP-server retries.
+    remoted::scanvd::ScanVdMetrics m_scanVdMetrics {};                   ///< /scan/vd counters.
     std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
 };
 
