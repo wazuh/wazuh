@@ -88,10 +88,24 @@ class AgentSessionImpl final
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
     const LogFn& m_logFn;               ///< Log function for this session
+    // TODO(#38117): seq field removed from FlatBuffer schema on the agent side (agreed with server team);
+    // this manager-generated arrival-order counter is a temporary placeholder for GapSet completeness
+    // tracking. It does not detect out-of-order delivery or true retransmission the way the agent-supplied
+    // seq did - real support requires the FullSession-based redesign owned by the server team.
+    uint64_t m_seqCounter {0};
 
 public:
+    // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed with server
+    // team) - the manager can no longer read a declared DataValue count off the wire at all.
+    // declaredSize is now a caller-supplied parameter instead of data->size(): the real fix
+    // (deriving it from the actual FullSession payload post-parse, once the FullSession-based
+    // dispatch rewrite lands) is the server team's own follow-up. Until then, production
+    // call sites pass 0 - see the TODO at the InventorySyncFacade construction site for what
+    // that disables (the DataValue quota reservation; GapSet(0) also means the completeness
+    // gate below is trivially satisfied immediately instead of after real items arrive).
     explicit AgentSessionImpl(const uint64_t sessionId,
                               Wazuh::SyncSchema::Start const* data,
+                              const uint64_t declaredSize,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
                               const TResponseDispatcher& responseDispatcher,
@@ -101,6 +115,11 @@ public:
         , m_logFn(logFn)
 
     {
+        // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no longer
+        // acknowledges session establishment. responseDispatcher is kept as a constructor parameter
+        // for call-site compatibility (it's still used by handleEnd()) but unused here.
+        (void)responseDispatcher;
+
         if (data == nullptr)
         {
             throw AgentSessionException("Invalid data");
@@ -171,19 +190,14 @@ public:
         }
 
         // Create new session.
-        // Size validation: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck, ModuleCheck don't send data messages,
-        // so size can be 0
-        if (data->size() == 0 && data->mode() != Wazuh::SyncSchema::Mode_MetadataDelta &&
-            data->mode() != Wazuh::SyncSchema::Mode_MetadataCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_GroupDelta && data->mode() != Wazuh::SyncSchema::Mode_GroupCheck &&
-            data->mode() != Wazuh::SyncSchema::Mode_ModuleCheck)
-        {
-            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
-            throw AgentSessionException("Invalid size");
-        }
+        // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed with
+        // server team) - the manager can no longer validate "size 0 only for modes that don't
+        // send data messages" against a declared wire value. That check belongs in the
+        // FullSession-based rewrite (server team's own follow-up), where a mismatch between
+        // the actual payload item count and the mode can be caught after parsing instead.
 
-        m_declaredSize = data->size();
-        m_gapSet = std::make_unique<GapSet>(data->size());
+        m_declaredSize = declaredSize;
+        m_gapSet = std::make_unique<GapSet>(declaredSize);
 
         m_context =
             std::make_shared<Context>(Context {.mode = data->mode(),
@@ -216,9 +230,6 @@ public:
                      m_context->sessionId,
                      m_context->clusterName.c_str(),
                      m_context->clusterNode.c_str());
-
-        responseDispatcher.sendStartAck(
-            Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -250,8 +261,11 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
@@ -276,7 +290,7 @@ public:
 
         // The validation of the sequence number against declared size is performed above, so if we reach this line
         // the observation should not throw, though if it does the data chunk is already stored.
-        m_gapSet->observe(data->seq());
+        m_gapSet->observe(seq);
 
         LOGFN_DEBUG2(m_logFn,
                      "Data received: %s %llu %llu %s",
@@ -371,8 +385,11 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
 
@@ -435,8 +452,11 @@ public:
 
         std::lock_guard lock(m_mutex);
 
-        const auto seq = data->seq();
-        const auto session = data->session();
+        // TODO(#38117): seq field removed from FlatBuffer schema on the agent side; see m_seqCounter.
+        const auto seq = m_seqCounter++;
+        // TODO(#38117): session field removed from FlatBuffer schema on the agent side;
+        // use the manager-side sessionId as the storage key component instead.
+        const auto session = m_context->sessionId;
 
         LOGFN_DEBUG2(m_logFn, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
 
@@ -497,20 +517,25 @@ public:
     /**
      * @brief Handles the end-of-transmission signal from the agent.
      *
-     * If all chunks were received, pushes the final acknowledgment. Otherwise, triggers missing range dispatch.
+     * If all chunks were received, pushes the final acknowledgment. Otherwise, the session
+     * is left incomplete and pending (see TODO below).
      *
-     * @param responseDispatcher Dispatcher used to report missing sequences (if any).
+     * @param responseDispatcher Dispatcher used to send the final acknowledgment.
      */
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
+        // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the manager no
+        // longer acknowledges End at all. responseDispatcher is kept as a parameter for
+        // call-site compatibility but unused here; the real /stateful HTTP response is the
+        // server team's own follow-up (see the FullSession-handling gap noted throughout).
+        (void)responseDispatcher;
+
         std::lock_guard lock(m_mutex);
         m_endReceived = true;
 
         if (m_endEnqueued)
         {
             LOGFN_DEBUG2(m_logFn, "End already enqueued for session %llu", m_context->sessionId);
-            responseDispatcher.sendEndAck(
-                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
             return;
         }
 
@@ -519,13 +544,21 @@ public:
             LOGFN_DEBUG2(m_logFn, "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
-            responseDispatcher.sendEndAck(
-                Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
         }
         else
         {
-            responseDispatcher.sendEndMissingSeq(
-                m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
+            // TODO(#38117): ReqRet (request-retransmission-of-missing-ranges) removed from the
+            // FlatBuffer schema/agent side - the agent no longer sends chunked DataBatch messages
+            // or handles a ReqRet reply at all, so this "missing sequences" case can no longer be
+            // resolved by asking the agent to resend. This whole chunked/GapSet completeness path
+            // is unreachable under the current one-shot FullSession model; the session is simply
+            // left incomplete/pending here until the server team's FullSession-based rewrite.
+            LOGFN_WARN(m_logFn,
+                       "End received with missing sequences for session %llu (agent '%s', module '%s'); "
+                       "session left incomplete.",
+                       m_context->sessionId,
+                       m_context->agentId.c_str(),
+                       m_context->moduleName.c_str());
         }
     }
 

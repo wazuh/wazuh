@@ -10,10 +10,10 @@
 
 #include "shared.h"
 #include "agentd.h"
-#include "sendmsg.h"
 #include "state.h"
 #include "os_net.h"
 #include "sec.h"
+#include "https_client_bridge.h"
 
 
 /* Receive a message locally on the agent and forward it to the manager */
@@ -28,28 +28,12 @@ void *EventForward()
     msg[OS_MAXSTR] = '\0';
 
     while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
-        if (agt->buffer){
-            if (msg[0] == 's') {
-                if (buffer_append(msg, recv_b) < 0) {
-                    break;
-                }
-            } else {
-                msg[recv_b] = '\0';
-                if (buffer_append(msg, -1) < 0) {
-                    break;
-                }
-            }
-        }else{
-            w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-
-            if (msg[0] == 's') {
-                if (send_msg(msg, recv_b) < 0) break;
-            } else {
-                msg[recv_b] = '\0';
-                if (send_msg(msg, -1) < 0) break;
-            }
-        }
-
+        /* Everything on this queue is a stateless event: sync sessions go
+         * straight to the module's STREAM intake (#37836), so there is no 's'
+         * frame class left to route. The accumulator owns the back-pressure
+         * (drop-newest), so a full one drops this frame and the loop goes on. */
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+        w_https_client_submit_event(msg, recv_b);
     }
 
     return (NULL);

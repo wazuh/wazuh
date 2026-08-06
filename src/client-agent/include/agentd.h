@@ -18,27 +18,11 @@
 #include "state.h"
 #include "module_limits.h"
 
-/* Buffer functions */
-#define full(i, j, n) ((i + 1) % (n) == j)
-#define warn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength >= ((float)warn_level/100.0))
-#define nowarn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)warn_level/100.0))
-#define normal(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)normal_level/100.0))
-#define capacity(i, j) (float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength
-#define empty(i, j) (i == j)
-#define forward(x, n) x = (x + 1) % (n)
-
-/* Buffer statuses */
-#define NORMAL 0
-#define WARNING 1
-#define FULL 2
-#define FLOOD 3
-
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
-cJSON *getBufferConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
@@ -50,98 +34,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group) __attrib
 /* Event Forwarder */
 void *EventForward(void);
 
-/* Receiver messages */
-int receive_msg(void);
-
-/* Receiver messages for Windows */
-#ifdef WIN32
-int receiver_messages(void);
-#endif
-
-/* Message stored in the event buffer. */
-typedef struct {
-    void *data;
-    size_t size;
-} buffered_message;
-
-/* Initialize agent buffer */
-void buffer_init();
-
-/**
- * @brief Appends a message to the event buffer.
- *
- * This function stores a message in the agent's event buffer for later dispatch.
- * It handles both null-terminated text strings and binary data buffers.
- * The buffer has anti-flooding mechanisms.
- *
- * @param msg Pointer to the message data.
- * @param msg_len The length of the message in bytes. If less than 0, `msg` is treated as a null-terminated string.
- * @return 0 on success, -1 if the buffer is full or a memory allocation error occurs.
- */
-int buffer_append(const char *msg, ssize_t msg_len);
-
-/**
- * @brief Resizes the internal circular buffer to a desired capacity.
- *
- * @param current_capacity The current allocated capacity of the buffer before resizing.
- * @param desired_capacity The new capacity to which the buffer should be resized.
- *
- * @retval 0 on success.
- * @retval -1 on failure (e.g., invalid capacity, memory allocation error).
- *
- * @note If the desired capacity is smaller than the current number of messages,
- * the buffer will truncate the newest messages to preserve the oldest ones.
- */
-int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
-
-/**
- * @brief Frees all dynamically allocated memory associated with the agent's message buffer.
- *
- * This function performs a complete cleanup of the circular message buffer.
- * It iterates through all allocated slots up to the provided `current_capacity`,
- * freeing individual messages first to prevent memory leaks. After clearing
- * the contents, it deallocates the buffer array itself. Finally, it resets
- * global buffer-related state variables (like `agt->buflength`, `i`, and `j`)
- * to indicate an unallocated and empty state.
- *
- * This function is thread-safe, utilizing a mutex to protect access to shared buffer state.
- *
- * @param current_capacity The current allocated capacity of the buffer to be freed.
- * This parameter is crucial for iterating over the correct number of slots.
- */
-void w_agentd_buffer_free(unsigned int current_capacity);
-
-/* Thread to dispatch messages from the buffer */
-#ifdef WIN32
-DWORD WINAPI dispatch_buffer(LPVOID arg);
-#else
-void *dispatch_buffer(void * arg);
-#endif
-/**
- * @brief get the number of events in buffer
- *
- * @retval number of events in the buffer
- * @retval -1 if the anti-flooding mechanism is disabled
- */
-int w_agentd_get_buffer_lenght();
-
-/* Initialize sender structure */
-void sender_init();
-
-/* Extract the shared files */
-char *getsharedfiles(void);
-
-/* Get agent IP */
-char *get_agent_ip();
-
-/* Initialize handshake to server */
+/* Read the keys, arm the startup gate and report the agent start */
 void start_agent(int is_startup);
 
-/* Connect to the server */
-bool connect_server(int initial_id, bool verbose);
-
-/* Send agent stopped message to server */
-void send_agent_stopped_message();
+/* Publish the agent metadata into shared memory */
+void w_agentd_populate_metadata(void);
 
 /**
  * Tries to enroll to a server indicated by server_rip
@@ -179,28 +76,11 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
  * */
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
 
-/* Notify server */
-void run_notify(void);
-
-
 // Thread to rotate internal log
 #ifdef WIN32
 DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 #else
 void * w_rotate_log_thread(void * arg);
-#endif
-
-// Initialize request module
-void req_init();
-
-// Push a request message into dispatching queue. Return 0 on success or -1 on error.
-int req_push(char * buffer, size_t length);
-
-// Request receiver thread start
-#ifdef WIN32
-DWORD WINAPI req_receiver(LPVOID arg);
-#else
-void * req_receiver(void * arg);
 #endif
 
 // Reload agent
@@ -212,17 +92,27 @@ void * req_receiver(void * arg);
  * a fallback (e.g. release the startup hash gate directly). */
 bool reloadAgent(void);
 
+// Restart agent (the https_client bridge's agent_restart task_type). Same mechanism and
+// return-value contract as reloadAgent(), with wm_control dispatched
+// "restart" instead of "reload" (systemctl/wazuh-control restart on
+// Linux/macOS, a detached service restart on Windows).
+bool restartAgent(void);
+
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
 // Initialize startup gate state for module workload blocking.
 void startup_gate_initialize(void);
 
-// Update startup gate state from handshake payload.
-void startup_gate_process_handshake(bool is_startup, const char *merged_sum);
+// Release the startup gate from the HTTPS /control apply chain
+// (bridge_on_config_downloaded, once a downloaded config has been verified
+// and applied).
+void startup_gate_release_from_https_apply(void);
 
-// Re-check startup gate state after merged.mg updates.
-void startup_gate_refresh_from_local_hash(void);
+// Release the startup gate from the manager's per-Notify config_hash (SHA-256
+// over merged.mg), independent of any download/reload having happened -- this
+// is what covers an agent that boots already in sync with the manager.
+void startup_gate_check_manager_config_hash(const char *manager_sha256);
 
 // Read current startup gate state.
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
@@ -230,11 +120,28 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 // Query startup gate state.
 bool startup_gate_is_ready(void);
 
-// Check if local hash matches expected without updating gate state.
-bool startup_gate_check_hash_match(void);
-
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+size_t agcom_getallconfig(char ** output);
+size_t agcom_getallstats(char ** output);
+
+/**
+ * @brief Collect every module's configuration into one /config document.
+ *
+ * Queries each agent daemon once and concatenates what they report.
+ *
+ * @return Allocated JSON document the caller frees, or NULL when no component
+ *         answered and the cycle should be skipped.
+ */
+char *w_agent_collect_config(void);
+
+/**
+ * @brief Collect every module's statistics into one /stats document.
+ *
+ * @return Allocated JSON document the caller frees, or NULL when no component
+ *         answered and the cycle should be skipped.
+ */
+char *w_agent_collect_stats(void);
 
 #ifdef WIN32
 size_t control_dispatch(char *command, char **output);
@@ -252,29 +159,18 @@ void * agcom_main(void * arg);
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;
-extern int warn_level;
-extern int normal_level;
-extern int tolerance;
 extern int rotate_log;
-extern int request_pool;
-extern int rto_sec;
-extern int rto_msec;
-extern int max_attempts;
 extern int log_compress;
 extern int keep_log_days;
 extern int day_wait;
 extern int daily_rotations;
 extern int size_rotate_read;
-extern int timeout;
 extern int interval;
 extern int remote_conf;
-extern int min_eps;
 
 
 /* Global variables. Only modified during startup. */
 
-extern time_t available_server;
-extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;

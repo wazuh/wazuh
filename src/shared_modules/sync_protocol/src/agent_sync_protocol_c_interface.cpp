@@ -2,6 +2,7 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_wrapper.hpp"
+#include "sync_socket_transport.hpp"
 #include <cstring>
 #include <memory>
 #include <string>
@@ -10,12 +11,11 @@
 // LCOV_EXCL_START
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int syncEndDelay, unsigned int timeout, unsigned int retries,
-                                        size_t maxEps)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
         {
-            if (!mq_funcs || !module || !logger) return nullptr;
+            if (!module || !logger) return nullptr;
 
             LoggerFunc logger_wrapper =
                 [logger](modules_log_level_t level, const std::string & msg)
@@ -25,9 +25,7 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), *mq_funcs, std::move(logger_wrapper), std::chrono::seconds(syncEndDelay),
-                                                                                           std::chrono::seconds(timeout), retries,
-                                                                                           maxEps));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), std::move(logger_wrapper)));
         }
         catch (const std::exception& ex)
         {
@@ -70,32 +68,6 @@ extern "C" {
             wrapper->impl->persistDifference(id,
                                              static_cast<Operation>(operation),
                                              index, data, version);
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
-        }
-    }
-
-    void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                    const char* id,
-                                    Operation_t operation,
-                                    const char* index,
-                                    const char* data,
-                                    uint64_t version)
-    {
-        try
-        {
-            if (!handle || !id || !index || !data) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->persistDifferenceInMemory(id,
-                                                     static_cast<Operation>(operation),
-                                                     index, data, version);
         }
         catch (const std::exception& ex)
         {
@@ -181,25 +153,6 @@ extern "C" {
         catch (...)
         {
             return false;
-        }
-    }
-
-    void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle)
-    {
-        try
-        {
-            if (!handle) return;
-
-            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            wrapper->impl->clearInMemoryData();
-        }
-        catch (const std::exception& ex)
-        {
-            return;
-        }
-        catch (...)
-        {
-            return;
         }
     }
 
@@ -369,6 +322,11 @@ extern "C" {
         {
             return false;
         }
+    }
+
+    void asp_set_session_sender(asp_sync_session_sender_fn sender)
+    {
+        setInProcessSyncSessionSender(sender);
     }
 
 } // extern "C"

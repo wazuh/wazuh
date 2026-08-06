@@ -15,6 +15,9 @@
 #include "sec.h"
 
 int Read_Client_Server(XML_NODE node, agent *logr);
+int Read_Client_SSL(XML_NODE node, agent *logr);
+int Read_Client_Batch(XML_NODE node, agent *logr);
+int Read_Client_Report(XML_NODE node, agent_report *report);
 int Read_Client_Enrollment(XML_NODE node, agent *logr);
 
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -27,6 +30,10 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     /* XML definitions */
     const char *xml_client_manager = "manager";
     const char *xml_client_server = "server";
+    const char *xml_client_ssl = "ssl";
+    const char *xml_client_batch = "batch";
+    const char *xml_client_stats_report = "stats_report";
+    const char *xml_client_config_report = "config_report";
     const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
@@ -93,10 +100,10 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
         }
         /* Get parameters for each configured manager/server block */
-        else if (strcmp(node[i]->element, xml_client_manager) == 0 ||
-                 strcmp(node[i]->element, xml_client_server) == 0) {
-            if (strcmp(node[i]->element, xml_client_server) == 0) {
-                minfo("The <%s> tag is deprecated, please use <manager> instead.", xml_client_server);
+        else if (strcmp(node[i]->element, xml_client_server) == 0 ||
+                 strcmp(node[i]->element, xml_client_manager) == 0) {
+            if (strcmp(node[i]->element, xml_client_manager) == 0) {
+                minfo("The <%s> tag is deprecated, please use <server> instead.", xml_client_manager);
             }
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
@@ -107,6 +114,43 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
+        } else if (strcmp(node[i]->element, xml_client_ssl) == 0) {
+            /* HTTPS transport TLS settings (sibling of <server>, #37702 §10). */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_SSL(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
+        } else if (strcmp(node[i]->element, xml_client_batch) == 0) {
+            /* <batch><size>/<interval>: the /stateless send-rate model that
+             * replaces the leaky bucket's pacing (#37835). */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Batch(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
+        } else if (strcmp(node[i]->element, xml_client_stats_report) == 0) {
+            /* <stats_report>/<config_report>: the two independent periodic
+             * pushes to /stats and /config (#37843). Both off by default. */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Report(chld_node, &logr->stats_report) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
+        } else if (strcmp(node[i]->element, xml_client_config_report) == 0) {
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Report(chld_node, &logr->config_report) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
         } else if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Client_Enrollment(chld_node, logr) < 0) {
@@ -128,15 +172,10 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_max_time_reconnect_try) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            logr->max_time_reconnect_try = atoi(node[i]->content);
-            if (logr->max_time_reconnect_try < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+            /* Deprecated with the HTTPS transport (#37702 restriction 4): no
+             * persistent connection to reconnect. Accepted so upgraded configs
+             * do not fail; it no longer has any effect. */
+            mwarn("The <%s> option is deprecated and no longer has any effect.", xml_max_time_reconnect_try);
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
@@ -287,26 +326,12 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             network_interface = (uint32_t)interface_numeric;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
             minfo("Ignoring the 'protocol' option. Switching to TCP.");
-        } else if (strcmp(node[j]->element, xml_max_retries) == 0) {
-            if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
-            max_retries = atoi(node[j]->content);
-            if (max_retries <= 0) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
-        } else if (strcmp(node[j]->element, xml_retry_interval) == 0) {
-            if (!OS_StrIsNum(node[j]->content)) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
-            retry_interval = atoi(node[j]->content);
-            if (retry_interval <= 0) {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
+        } else if (strcmp(node[j]->element, xml_max_retries) == 0 ||
+                   strcmp(node[j]->element, xml_retry_interval) == 0) {
+            /* Deprecated with the HTTPS transport (#37702 restriction 4): server
+             * rotation and the connection-retry loop are removed. Accepted so
+             * upgraded configs do not fail; no longer has any effect. */
+            mwarn("The <%s> option is deprecated and no longer has any effect.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
@@ -318,18 +343,170 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         return (OS_INVALID);
     }
 
-    os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
-    os_strdup(rip, logr->server[logr->server_count].rip);
-    if (strchr(logr->server[logr->server_count].rip, ':') != NULL) {
-        os_realloc(logr->server[logr->server_count].rip, IPSIZE + 1, logr->server[logr->server_count].rip);
-        OS_ExpandIPv6(logr->server[logr->server_count].rip, IPSIZE);
+    /* Single <server> block: the last one prevails (#37702 restriction 2) and
+     * server rotation is removed (restriction 3), so replace any previous entry
+     * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
+    if (logr->server) {
+        if (logr->server_count > 0) {
+            mwarn("Only one <server> block is supported; the last one prevails.");
+        }
+        for (int k = 0; logr->server[k].rip; k++) {
+            os_free(logr->server[k].rip);
+        }
+        os_free(logr->server);
+        logr->server = NULL;
+        logr->server_count = 0;
     }
-    logr->server[logr->server_count].network_interface = network_interface;
-    logr->server[logr->server_count].port = port;
-    logr->server[logr->server_count].max_retries = max_retries;
-    logr->server[logr->server_count].retry_interval = retry_interval;
-    memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
-    logr->server_count++;
+
+    os_calloc(2, sizeof(agent_server), logr->server);
+    os_strdup(rip, logr->server[0].rip);
+    if (strchr(logr->server[0].rip, ':') != NULL) {
+        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
+        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+    }
+    logr->server[0].network_interface = network_interface;
+    logr->server[0].port = port;
+    logr->server[0].max_retries = max_retries;
+    logr->server[0].retry_interval = retry_interval;
+    logr->server_count = 1;
+
+    return (0);
+}
+
+int Read_Client_SSL(XML_NODE node, agent * logr)
+{
+    /* XML definitions — the <client><ssl> transport block (#37702 §10). */
+    const char *xml_certificate = "certificate";
+    const char *xml_key = "key";
+    const char *xml_certificate_authorities = "certificate_authorities";
+    const char *xml_verification_mode = "verification_mode";
+    const char *xml_ciphers = "ciphers";
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[j]->element, xml_certificate) == 0) {
+            os_free(logr->ssl.certificate);
+            os_strdup(node[j]->content, logr->ssl.certificate);
+        } else if (strcmp(node[j]->element, xml_key) == 0) {
+            os_free(logr->ssl.key);
+            os_strdup(node[j]->content, logr->ssl.key);
+        } else if (strcmp(node[j]->element, xml_certificate_authorities) == 0) {
+            os_free(logr->ssl.certificate_authorities);
+            os_strdup(node[j]->content, logr->ssl.certificate_authorities);
+        } else if (strcmp(node[j]->element, xml_verification_mode) == 0) {
+            if (strcmp(node[j]->content, "full") == 0) {
+                logr->ssl.verification_mode = AGENT_VERIFY_FULL;
+            } else if (strcmp(node[j]->content, "certificate") == 0) {
+                logr->ssl.verification_mode = AGENT_VERIFY_CERT;
+            } else if (strcmp(node[j]->content, "none") == 0) {
+                logr->ssl.verification_mode = AGENT_VERIFY_NONE;
+            } else {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
+            os_free(logr->ssl.ciphers);
+            os_strdup(node[j]->content, logr->ssl.ciphers);
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}
+
+int Read_Client_Report(XML_NODE node, agent_report * report)
+{
+    /* XML definitions - shared by <stats_report> and <config_report> (#37843);
+     * <interval> takes the usual suffixes: <interval>1h</interval>. */
+    const char *xml_enabled = "enabled";
+    const char *xml_interval = "interval";
+
+    /* Same ceiling as <batch>: a day between snapshots is already past useless,
+     * and it keeps the value the module wants inside 32 bits. */
+    const long max_interval = 86400;
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[j]->element, xml_enabled) == 0) {
+            if (strcmp(node[j]->content, "yes") == 0) {
+                report->enabled = 1;
+            } else if (strcmp(node[j]->content, "no") == 0) {
+                report->enabled = 0;
+            } else {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[j]->element, xml_interval) == 0) {
+            const long interval = w_parse_time(node[j]->content);
+
+            if (interval <= 0 || interval > max_interval) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            report->interval = interval;
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}
+
+int Read_Client_Batch(XML_NODE node, agent * logr)
+{
+    /* XML definitions - the <client><batch> block (#37835). Both accept the
+     * usual suffixes: <size>1MB</size>, <interval>10s</interval>. */
+    const char *xml_size = "size";
+    const char *xml_interval = "interval";
+
+    /* An interval this long already dwarfs any sane batching window, and it
+     * keeps the milliseconds the module wants inside 32 bits. */
+    const long max_interval = 86400;
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[j]->element, xml_size) == 0) {
+            const long long size = w_validate_bytes(node[j]->content);
+
+            if (size <= 0) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            logr->batch.size = size;
+        } else if (strcmp(node[j]->element, xml_interval) == 0) {
+            const long interval = w_parse_time(node[j]->content);
+
+            if (interval <= 0 || interval > max_interval) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            logr->batch.interval = interval;
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
 
     return (0);
 }
@@ -572,6 +749,11 @@ void Free_Client(agent * config){
         }
 
         free(config->profile);
+
+        os_free(config->ssl.certificate);
+        os_free(config->ssl.key);
+        os_free(config->ssl.certificate_authorities);
+        os_free(config->ssl.ciphers);
     }
 }
 

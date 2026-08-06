@@ -10,10 +10,9 @@
 #ifndef AGENT_SYNC_PROTOCOL_HPP
 #define AGENT_SYNC_PROTOCOL_HPP
 
-#include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
-#include "mqueue_transport.hpp"
+#include "sync_socket_transport.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -21,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -30,15 +30,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Constructs the synchronization protocol handler.
         /// @param moduleName Name of the module associated with this instance.
         /// @param dbPath Optional path to the SQLite database file for this protocol instance. If not provided, only in-memory synchronization is available.
-        /// @param mqFuncs Functions used to interact with MQueue.
         /// @param logger Logger function
-        /// @param queue Optional persistent queue to use for message storage and retrieval.
-        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Default timeout for synchronization operations.
         /// @param retries Default number of retries for synchronization operations.
-        /// @param maxEps Default maximum events per second for synchronization operations.
-        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout,
-                                   unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        /// @param queue Optional persistent queue to use for message storage and retrieval.
+        /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
+        explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
+                                   std::shared_ptr<IPersistentQueue> queue = nullptr,
+                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -48,13 +47,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                uint64_t version,
                                bool isDataContext = false) override;
 
-        /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
-        void persistDifferenceInMemory(const std::string& id,
-                                       Operation operation,
-                                       const std::string& index,
-                                       const std::string& data,
-                                       uint64_t version) override;
-
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
@@ -62,18 +54,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool requiresFullSync(const std::string& index,
                               const std::string& checksum) override;
 
-        /// @copydoc IAgentSyncProtocol::clearInMemoryData
-        void clearInMemoryData() override;
-
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
         SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
-
-        /// @copydoc IAgentSyncProtocol::sendDataContextMessages
-        bool sendDataContextMessages(uint64_t session,
-                                     const std::vector<PersistedData>& data) override;
 
         /// @copydoc IAgentSyncProtocol::fetchPendingItems
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
@@ -105,8 +90,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief The MQueue message transport.
-        std::unique_ptr<MQueueTransport> m_transport;
+        /// @brief Carries a whole session to the agent over the queue-sync STREAM
+        ///        socket, which has no 64 KB bound.
+        std::shared_ptr<ISyncSessionTransport> m_syncTransport;
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
@@ -114,23 +100,38 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Delay for synchronization end message in seconds
-        std::chrono::seconds m_syncEndDelay;
-
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};
 
-        /// @brief In-memory vector to store PersistedData for recovery scenarios
-        std::vector<PersistedData> m_inMemoryData;
+        /// @brief Retries for the local sync-socket hand-off.
+        ///
+        /// How many times runSession() re-submits to the HTTPS transport's intake
+        /// socket when that socket is transiently unavailable (e.g. agentd restart).
+        /// Fixed; the HTTP-level retry count lives in the transport layer.
+        static constexpr unsigned int SYNC_HANDOFF_RETRIES = 3;
 
-        /// @brief Default timeout for synchronization operations
-        std::chrono::seconds m_timeout;
+        /// @brief Safety-net ceiling on how long runSession() waits for on_sync_response.
+        ///
+        /// The HTTPS client fires on_sync_response for every outcome WITHIN wazuh-agentd,
+        /// but the result still has to cross the bridge (https_client_bridge.c) and a
+        /// module-local socket to reach this wait - a hop that can silently drop it (no
+        /// route for the session, a full module socket, a send() failure). Without a
+        /// ceiling here that drop wedges this module's sync forever. The value is set well
+        /// above https_client's own worst case for one /stateful session (5 attempts *
+        /// 120s statefulTimeoutMs + 4 backoff gaps capped at 60s, ~14 minutes) so it only
+        /// fires on an actual delivery failure, never on a slow-but-alive manager.
+        static constexpr auto SESSION_RESPONSE_TIMEOUT = std::chrono::minutes(15);
 
-        /// @brief Default number of retries for synchronization operations
-        unsigned int m_retries;
-
-        /// @brief Default maximum events per second for synchronization operations
-        size_t m_maxEps;
+        /// @brief Total attempts for a module integrity check (requiresFullSync()) before
+        ///        trusting a checksum mismatch (409) as genuine.
+        ///
+        /// A bulk write to the indexer may not be visible yet when the manager checks it,
+        /// which used to make the manager retry internally against the indexer up to 5
+        /// times before answering. That loop moved here (2026-08-04, #38117/#38128) so the
+        /// manager stops holding the connection for the whole retry budget: on a 409 the
+        /// agent itself re-sends the same integrity check, spaced by CHECKSUM_RETRY_DELAY,
+        /// and only reports a real mismatch once every attempt in this budget agrees.
+        static constexpr unsigned int CHECKSUM_MISMATCH_MAX_ATTEMPTS = 5;
 
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
@@ -140,86 +141,96 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
         unsigned int trackSyncOutcome(bool success, bool stopped);
 
-        /// @brief Sends a start message to the server
+        /// @brief Waits for agent metadata to become available - indefinitely,
+        ///        unless a stop is requested - then builds the Start table into
+        ///        an existing FlatBuffer builder. Owns the metadata lifetime end
+        ///        to end.
+        /// @param builder Builder to emit the table into.
         /// @param mode Sync mode
-        /// @param dataSize Size of data to send
         /// @param uniqueIndices Vector of unique indices to be synchronized
         /// @param option Synchronization option.
         /// @param globalVersion Optional global version to include in the Start message
-        /// @return True on success, false on failure or timeout
-        bool sendStartAndWaitAck(Mode mode,
-                                 size_t dataSize,
-                                 const std::vector<std::string>& uniqueIndices,
-                                 Option option = Option::SYNC,
-                                 std::optional<uint64_t> globalVersion = std::nullopt);
+        /// @return The Start offset, or a null offset when metadata or groups are
+        ///         unavailable, or a stop was requested.
+        flatbuffers::Offset<Wazuh::SyncSchema::Start> waitMetadataAndBuildStart(
+            flatbuffers::FlatBufferBuilder& builder,
+            Mode mode,
+            const std::vector<std::string>& uniqueIndices,
+            Option option = Option::SYNC,
+            std::optional<uint64_t> globalVersion = std::nullopt);
 
-        /// @brief Receives a startack message from the server
-        /// @param timeout Timeout to wait for Ack
-        /// @return True on success, false on failure
-        bool receiveStartAck(std::chrono::seconds timeout);
+        /// @brief One checksum declaration inside a session.
+        struct ChecksumEntry
+        {
+            std::string index;
+            std::string checksum;
+        };
 
-        /// @brief Sends data messages to the server
-        /// @param session Session id
-        /// @param data Data to send
-        /// @return True on success, false on failure
-        bool sendDataMessages(uint64_t session,
-                              const std::vector<PersistedData>& data);
+        /// @brief Everything a session carries. All four flows (module sync,
+        ///        metadata/groups, integrity check, data clean) differ only in
+        ///        which of these are populated, so they all go through
+        ///        runSession() and produce one FullSession message.
+        struct SessionContent
+        {
+            Mode mode {Mode::DELTA};
+            std::vector<std::string> indices;
+            Option option {Option::SYNC};
+            std::optional<uint64_t> globalVersion;
+            std::vector<PersistedData> dataValues;
+            std::vector<PersistedData> dataContexts;
+            std::vector<PersistedData> dataCleans;
+            std::vector<ChecksumEntry> checksums;
+        };
 
-        /// @brief Sends a checksum module message to the server
-        /// @param session Session id
-        /// @param index Index name
-        /// @param checksum Checksum value
-        /// @return True on success, false on failure
-        bool sendChecksumMessage(uint64_t session,
-                                 const std::string& index,
-                                 const std::string& checksum);
+        /// @brief Sends one whole session and waits for the manager's answer.
+        ///        Retries resend the entire session under the same id, which is
+        ///        what makes the retry safe: the manager dedups on it.
+        /// @param content What the session carries.
+        /// @return True when the manager accepted it.
+        bool runSession(const SessionContent& content);
 
-        /// @brief Sends DataClean messages to the server for each data item
-        /// @param session Session id
-        /// @param data Vector of PersistedData to send as DataClean messages
-        /// @return True on success, false on failure
-        bool sendDataCleanMessages(uint64_t session,
-                                   const std::vector<PersistedData>& data);
+        /// @brief Whether this synchronization option must bypass FullSession size capping.
+        bool isUncappedSyncOption(Option option) const;
 
-        /// @brief Sends an end message to the server
-        /// @param session Session id
-        /// @param dataToSync The complete vector of data items being synchronized in the current session.
-        /// @return True on success, false on failure or timeout
-        bool sendEndAndWaitAck(uint64_t session,
-                               const std::vector<PersistedData>& dataToSync);
+        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue.
+        SyncModuleResult synchronizeDeltaByBlocks(Option option);
 
-        /// @brief Sends a flatbuffer message as a string to the server
-        /// @param fbData Flatbuffer data
-        /// @return True on success, false on failure
-        bool sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData);
+        /// @brief Applies the /stateful HTTP result received from https_client callback
+        ///        routing. This IS the sync protocol's response path: there is no EndAck
+        ///        FlatBuffer message anymore, so every outcome (success or failure) arrives
+        ///        this way.
+        /// @param httpCode Raw HTTP status code the manager answered with (200, 400, 403,
+        ///        409, 413, 500, 503...). 0 means no HTTP response was received at all
+        ///        (timeout/connect/TLS failure/abort), handled like a 503.
+        /// @param body Raw JSON response body (may be empty); used only for logging - the
+        ///        HTTP code alone fully determines the outcome.
+        /// @param expectedSession Session that this result belongs to; 0 skips validation
+        ///        (legacy path). The check is performed under m_syncState.mtx so it is
+        ///        race-free with a concurrent session start.
+        bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+
+        /// @brief Picks the id for a new session. The agent chooses it because the
+        ///        single-message exchange has no StartAck to carry one back; a retry
+        ///        reuses the same value so the manager can dedup on it.
+        /// @return A session id unique within this agent.
+        static uint64_t nextSessionId();
+
+        /// @brief Serializes a whole session as one FullSession message.
+        /// @param content What the session carries.
+        /// @return The serialized message, or an empty vector on failure.
+        std::vector<uint8_t> buildFullSessionMessage(const SessionContent& content);
 
         /// @brief Defines the possible phases of a synchronization process.
         enum class SyncPhase
         {
             /// @brief The protocol is not in an active synchronization process.
             Idle,
-            /// @brief A start message has been sent, waiting for the manager's StartAck.
-            WaitingStartAck,
-            /// @brief An end message has been sent, waiting for the manager's EndAck.
-            WaitingEndAck
+            /// @brief The session has been sent, waiting for the manager's answer.
+            WaitingResponse
         };
-
-        /// @brief Validate phase and session
-        /// @param receivedPhase Received synchronization phase
-        /// @param incomingSession Session received in message
-        /// @return True if current phase and session match the expected ones
-        bool validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession);
 
         /// @brief Safely resets the synchronization state by acquiring a lock.
         void clearSyncState();
-
-        /// @brief Filters a vector of persisted data based on a list of sequence number ranges.
-        /// @param sourceData The complete vector of `PersistedData` items.
-        /// @param ranges A vector of pairs [begin, end] inclusive range of sequence numbers.
-        /// @return A new vector containing only the `PersistedData` items that match the requested ranges.
-        std::vector<PersistedData> filterDataByRanges(
-            const std::vector<PersistedData>& sourceData,
-            const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 
         /// @brief Converts internal Mode enum to protocol schema Mode.
         /// @param mode The internal Mode enum value.
@@ -245,29 +256,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Condition variable used to signal waiting threads.
             std::condition_variable cv;
 
-            /// @brief Indicates whether a StartAck response has been received.
-            bool startAckReceived = false;
-
-            /// @brief Indicates whether an EndAck response has been received.
-            bool endAckReceived = false;
-
-            /// @brief Indicates that a ReqRet message has been received.
-            bool reqRetReceived = false;
+            /// @brief Indicates whether a terminal response has been received.
+            bool responseReceived = false;
 
             /// @brief Indicates that the manager reported a error, forcing the sync to fail.
             bool syncFailed = false;
 
-            /// @brief Indicates that the manager is still processing the session (EndAck with Processing status).
-            bool processingAckReceived = false;
-
-            /// @brief Ranges requested by the manager via ReqRet message.
-            std::vector<std::pair<uint64_t, uint64_t>> reqRetRanges;
-
             /// @brief Current phase of the synchronization process.
             SyncPhase phase = SyncPhase::Idle;
-
-            /// @brief Unique identifier for the current synchronization session, received from the manager.
-            uint64_t session = 0;
 
             /// @brief Last sync operation result for detailed error reporting.
             SyncResult lastSyncResult = SyncResult::SUCCESS;
@@ -277,6 +273,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// it (COMMUNICATION_ERROR is also used for a local send failure in the middle of an
             /// established session).
             bool lastSyncManagerNotReady = false;
+
+            /// @brief Numeric session ID of the current in-flight session.
+            ///
+            /// Set by runSession() before the first send attempt and cleared on reset().
+            /// applyHttpResult() validates incoming HCRESULT payloads against this
+            /// value so that a stale response from a previous (timed-out) session cannot
+            /// satisfy a newer one.
+            uint64_t currentSession = 0;
 
             /// @brief Destructor ensures all waiting threads are woken up before destruction.
             ///
@@ -293,16 +297,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// This should be called before starting a new synchronization cycle.
             void reset()
             {
-                startAckReceived = false;
-                endAckReceived = false;
-                reqRetReceived = false;
+                responseReceived = false;
                 syncFailed = false;
-                processingAckReceived = false;
-                reqRetRanges.clear();
                 phase = SyncPhase::Idle;
-                session = 0;
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
+                currentSession = 0;
             }
         };
 
@@ -335,6 +335,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
+
+        static constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+        static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
+        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
+        static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

@@ -6,9 +6,11 @@
 
 #include <dbsync.hpp>
 
+#include <atomic>
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Forward declare the direct C function
@@ -35,6 +37,17 @@ extern "C"
 // Global instance
 static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 
+// Durable task_id registry: applied against the `tasks` table in
+// g_agent_info_impl's own agent_info.db (see AgentInfoImpl::checkAndRecordTask/
+// cleanupExpiredTasks). Task dispatch is intentionally coupled to g_agent_info_impl's own
+// availability: if AgentInfoImpl/DBSync fails to start, /control task dispatch fails closed
+// too (same as every other agent_info.db-backed feature), which is an accepted trade-off for
+// sharing agent-info's single database instead of a private, independent flat file.
+// The ttl/max_entries bounds themselves live on the AgentInfoImpl instance (see
+// setTaskRegistryLimits()), configured once by agent_info_task_registry_init() below;
+// cleanup itself now runs automatically from within AgentInfoImpl::start()'s own loop,
+// not a separate thread here.
+
 // Global callback function pointers
 static report_callback_t g_report_callback = nullptr;
 static log_callback_t g_log_callback = nullptr;
@@ -43,8 +56,6 @@ static is_shutting_down_callback_t g_is_shutting_down_callback = nullptr;
 
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
-static MQ_Functions g_mq_functions = {nullptr, nullptr};
-static bool g_mq_functions_set = false;
 
 // Global cluster name storage (set from handshake, used by agent_info_impl)
 static char g_cluster_name[256] = {0};
@@ -242,6 +253,63 @@ void agent_info_set_query_handshake_function(query_handshake_callback_t callback
     }
 }
 
+void agent_info_ensure_database(void)
+{
+    if (g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "agent_info_ensure_database: instance already exists, reusing it", "agent-info");
+        }
+
+        return;
+    }
+
+    try
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "agent_info_ensure_database: creating AgentInfoImpl instance", "agent-info");
+        }
+
+        DBSync::initialize(
+            [](const std::string & msg)
+        {
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
+            }
+        });
+
+        // The four nullptrs are the injectable dbSync/sysInfo/fileIO/fileSystem seams, left at
+        // their defaults here; the last argument is the on-demand handshake query, which must be
+        // passed because construction now funnels through this function rather than
+        // agent_info_start().
+        g_agent_info_impl =
+            std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH,
+                                            g_report_function_wrapper,
+                                            g_log_function_wrapper,
+                                            g_query_module_function_wrapper,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            g_query_handshake_function_wrapper);
+        g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
+    }
+    catch (const std::exception& ex)
+    {
+        if (g_log_callback)
+        {
+            std::string error_msg = "agent_info_ensure_database: Failed to initialize agent_info's database: ";
+            error_msg += ex.what();
+            g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
+        }
+
+        g_agent_info_impl.reset();
+    }
+}
+
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 {
     if (!agent_info_config)
@@ -254,90 +322,57 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
         return;
     }
 
+    // Construction is unified through agent_info_ensure_database(): whether this call is the
+    // first to ever touch g_agent_info_impl, or agent_info_task_registry_init() already
+    // constructed it earlier (to make agent_info.db available for task dispatch before this
+    // blocking call runs), the instance either already exists or gets created here.
+    agent_info_ensure_database();
+
     if (!g_agent_info_impl)
     {
-        try
+        // agent_info_ensure_database() already logged the failure reason.
+        return;
+    }
+
+    // Always (re)apply sync configuration, regardless of whether the instance was just
+    // constructed above or is being reused. Previously this only ran inside the "just
+    // constructed" branch, so a reused instance (constructed early by
+    // agent_info_task_registry_init()) silently ran with no sync protocol at all --
+    // metadata/groups synchronization was disabled without any error.
+    try
+    {
+        if (g_module_name)
         {
             if (g_log_callback)
             {
-                g_log_callback(LOG_DEBUG, "agent_info_start: Creating AgentInfoImpl instance", "agent-info");
+                g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
             }
 
-            // Initialize DBSync logging before creating DBSync instances
-            DBSync::initialize(
-                [](const std::string & msg)
-            {
-                if (g_log_callback)
-                {
-                    g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
-                }
-            });
-
-            g_agent_info_impl =
-                std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH,
-                                                g_report_function_wrapper,
-                                                g_log_function_wrapper,
-                                                g_query_module_function_wrapper,
-                                                nullptr,
-                                                nullptr,
-                                                nullptr,
-                                                nullptr,
-                                                g_query_handshake_function_wrapper);
-
-            // Propagate the shutdown predicate if it was registered before the instance existed
-            // (the wm_agent_info wrapper sets the callbacks before calling agent_info_start).
-            g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
-
-            // Set sync parameters from configuration
-            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_end_delay,
-                                                 agent_info_config->sync.sync_response_timeout,
-                                                 agent_info_config->sync.sync_retries,
-                                                 agent_info_config->sync.sync_max_eps);
-
-            // Initialize sync protocol immediately after creating instance
-            if (g_module_name && g_mq_functions_set)
-            {
-                if (g_log_callback)
-                {
-                    g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
-                }
-
-                g_agent_info_impl->initSyncProtocol(
-                    std::string(g_module_name), g_mq_functions);
-            }
-            else
-            {
-                if (g_log_callback)
-                {
-                    g_log_callback(LOG_WARNING,
-                                   "agent_info_start: Sync protocol parameters not set, skipping initialization",
-                                   "agent-info");
-                }
-            }
+            g_agent_info_impl->initSyncProtocol(std::string(g_module_name));
         }
-        catch (const std::exception& ex)
+        else
         {
             if (g_log_callback)
             {
-                std::string error_msg = "agent_info_start: Failed to initialize agent_info module: ";
-                error_msg += ex.what();
-                g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
+                g_log_callback(LOG_WARNING,
+                               "agent_info_start: Sync protocol parameters not set, skipping initialization",
+                               "agent-info");
             }
-
-            // Clean up partial initialization
-            g_agent_info_impl.reset();
-
-            // Module fails gracefully without crashing wazuh-modulesd
-            return;
         }
     }
-    else
+    catch (const std::exception& ex)
     {
         if (g_log_callback)
         {
-            g_log_callback(
-                LOG_DEBUG, "agent_info_start: AgentInfoImpl instance already exists, reusing it", "agent-info");
+            std::string error_msg = "agent_info_start: Failed to configure sync protocol: ";
+            error_msg += ex.what();
+            g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
         }
+
+        // Clean up on failure -- same behavior as a construction failure: the module fails
+        // gracefully without crashing wazuh-modulesd.
+        g_agent_info_impl.reset();
+        return;
     }
 
     try
@@ -371,15 +406,9 @@ void agent_info_cleanup()
     g_agent_info_impl.reset();
 }
 
-void agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs)
+void agent_info_init_sync_protocol(const char* module_name)
 {
     g_module_name = module_name;
-
-    if (mq_funcs)
-    {
-        g_mq_functions = *mq_funcs;
-        g_mq_functions_set = true;
-    }
 }
 
 bool agent_info_parse_response(const uint8_t* data, size_t data_len)
@@ -395,6 +424,47 @@ bool agent_info_parse_response(const uint8_t* data, size_t data_len)
     }
 
     return false;
+}
+
+void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_seconds)
+{
+    // Construct agent_info.db here (as early as wm_agent_info.c's own startup sequence allows
+    // -- well before the blocking agent_info_start_ptr() call), rather than leaving task
+    // dispatch fail-closed until agent_info_start() eventually runs. agent_info_start() will
+    // see this instance already exists and simply reuse it (its own existing idempotent path).
+    agent_info_ensure_database();
+
+    if (g_agent_info_impl)
+    {
+        g_agent_info_impl->setTaskRegistryLimits(ttl_seconds, max_entries);
+    }
+
+    if (g_log_callback)
+    {
+        g_log_callback(LOG_DEBUG, "Durable task_id registry configured (agent_info.db-backed)", "agent-info");
+    }
+}
+
+int agent_info_task_check_and_record(const char* task_id)
+{
+    if (!task_id || !*task_id)
+    {
+        return -1;
+    }
+
+    if (!g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_WARNING,
+                           "task_check_and_record called before agent_info's database is available",
+                           "agent-info");
+        }
+
+        return -1;
+    }
+
+    return g_agent_info_impl->checkAndRecordTask(task_id) ? 1 : 0;
 }
 
 #ifdef __cplusplus

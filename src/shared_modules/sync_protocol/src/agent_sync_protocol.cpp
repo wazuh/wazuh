@@ -10,16 +10,14 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "ipersistent_queue.hpp"
-#include "mqueue_transport.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
 #include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
+#include <cstring>
 #include <memory>
-#include <thread>
 #include <set>
-#include <unistd.h>
 
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
 // We use that to generate a std::string message which will be reported as a warning by each module (FIM, SCA, Syscollector, AgentInfo).
@@ -39,15 +37,19 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             break;
 
         case SyncResult::END_TIMEOUT_ERROR:
-            failureReason = "Timed out waiting for manager response to End message.";
+            failureReason = "Timed out waiting for manager response.";
             break;
 
         case SyncResult::PROTOCOL_ERROR:
-            failureReason = "Manager sent an unexpected or invalid response.";
+            failureReason = "Manager reported synchronization failure.";
             break;
 
         case SyncResult::NO_GROUPS_ERROR:
             failureReason = "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.";
+            break;
+
+        case SyncResult::PAYLOAD_TOO_LARGE:
+            failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
@@ -59,16 +61,12 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
     return failureReason;
 }
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::chrono::seconds syncEndDelay,
-                                     std::chrono::seconds timeout,
-                                     unsigned int retries, size_t maxEps, std::shared_ptr<IPersistentQueue> queue)
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
+                                     std::shared_ptr<IPersistentQueue> queue,
+                                     std::shared_ptr<ISyncSessionTransport> syncTransport)
     : m_moduleName(moduleName),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
-      m_logger(std::move(logger)),
-      m_syncEndDelay(syncEndDelay),
-      m_timeout(timeout),
-      m_retries(retries),
-      m_maxEps(maxEps)
+      m_logger(std::move(logger))
 {
     if (!m_logger)
     {
@@ -88,12 +86,11 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
 
-        m_transport = std::make_unique<MQueueTransport>(moduleName, mqFuncs, m_logger);
-
-        if (!m_transport)
-        {
-            m_logger(LOG_ERROR_EXIT, "Failed to initialize transport.");
-        }
+        // Sessions go over the STREAM socket instead of the DGRAM queue, which is
+        // what removes the 64 KB bound that forced them to be chunked.
+        m_syncTransport = syncTransport
+                          ? std::move(syncTransport)
+                          : std::make_shared<SyncSocketTransport>(SYNCQUEUE, moduleName, m_logger);
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -128,48 +125,21 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
     }
 }
 
-void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
-                                                  Operation operation,
-                                                  const std::string& index,
-                                                  const std::string& data,
-                                                  uint64_t version)
-{
-    try
-    {
-        PersistedData persistedData;
-        persistedData.seq = 0;  // Will be assigned during synchronization
-        persistedData.id = id;
-        persistedData.index = index;
-        persistedData.data = data;
-        persistedData.operation = operation;
-        persistedData.version = version;
-
-        m_inMemoryData.push_back(std::move(persistedData));
-    }
-    // LCOV_EXCL_START
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Failed to persist item in memory: ") + e.what());
-    }
-
-    // LCOV_EXCL_STOP
-}
-
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
     // Validate synchronization mode
-    if (mode != Mode::FULL && mode != Mode::DELTA)
+    if (mode != Mode::DELTA)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
         return {false, {}};
     }
 
-    if (!m_transport->checkStatus())
+    if (!m_syncTransport->checkStatus())
     {
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to open the local message queue.", shouldStop()};
+        return {false, "Failed to reach the sync intake socket.", shouldStop()};
     }
 
     // Guard against concurrent calls. The timer thread and the AsyncFlushController
@@ -195,133 +165,142 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    std::vector<PersistedData> dataToSync;
+    return synchronizeDeltaByBlocks(option);
+}
 
-    if (mode == Mode::FULL)
+bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
+{
+    return option == Option::VDFIRST || option == Option::VDSYNC;
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
+{
+    try
     {
-        // For FULL mode, use in-memory data for recovery scenarios
-        dataToSync = m_inMemoryData;
+        if (!m_persistentQueue)
+        {
+            throw std::runtime_error("DELTA mode requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
+        }
     }
-    else
+    catch (const std::exception& e)
     {
-        // For DELTA mode, use traditional database persistence
+        const std::string reason = std::string("Failed to initialize DELTA sync: ") + e.what();
+        m_logger(LOG_ERROR, reason);
+        return {false, {}};
+    }
+
+    const bool uncapped = isUncappedSyncOption(option);
+    const size_t fetchMaxBytes =
+        uncapped
+        ? 0
+        : (FULLSESSION_MAX_BYTES > FULLSESSION_PREFILTER_GRACE_BYTES
+           ? FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES
+           : FULLSESSION_MAX_BYTES);
+    bool success = true;
+    bool sentAny = false;
+    size_t blocksSent = 0;
+
+    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    {
+        std::vector<PersistedData> dataToSync;
+
         try
         {
-            if (!m_persistentQueue)
-            {
-                throw std::runtime_error("DELTA mode requires a persistent queue. Initialize AgentSyncProtocol with a valid dbPath.");
-            }
-
-            dataToSync = m_persistentQueue->fetchAndMarkForSync();
+            dataToSync = m_persistentQueue->fetchAndMarkForSync(fetchMaxBytes);
         }
         catch (const std::exception& e)
         {
             const std::string reason = std::string("Failed to fetch items for sync: ") + e.what();
             m_logger(LOG_ERROR, reason);
-            return {false, {}};
+            success = false;
+            break;
         }
-    }
 
-    if (dataToSync.empty())
-    {
-        const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
-        m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
-        return {true, {}};
-    }
-
-    for (size_t i = 0; i < dataToSync.size(); ++i)
-    {
-        dataToSync[i].seq = i;
-    }
-
-    // Separate DataValue and DataContext items
-    std::vector<PersistedData> dataValueItems;
-    std::vector<PersistedData> dataContextItems;
-
-    for (const auto& item : dataToSync)
-    {
-        if (item.is_data_context)
+        if (dataToSync.empty())
         {
-            dataContextItems.push_back(item);
-        }
-        else
-        {
-            dataValueItems.push_back(item);
-        }
-    }
-
-    // Extract unique indices from dataToSync
-    std::set<std::string> uniqueIndicesSet;
-
-    for (const auto& item : dataValueItems)
-    {
-        uniqueIndicesSet.insert(item.index);
-    }
-
-    std::vector<std::string> uniqueIndices(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
-
-    bool success = false;
-
-    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, option))
-    {
-        // Send DataValue messages first
-        if (sendDataMessages(m_syncState.session, dataValueItems))
-        {
-            // Then send DataContext messages if any exist
-            bool dataContextSuccess = true;
-
-            if (!dataContextItems.empty())
+            if (!sentAny)
             {
-                dataContextSuccess = sendDataContextMessages(m_syncState.session, dataContextItems);
+                m_logger(LOG_DEBUG, "No items to synchronize in DELTA mode");
             }
 
-            if (dataContextSuccess && sendEndAndWaitAck(m_syncState.session, dataToSync))
-            {
-                success = true;
-            }
+            break;
         }
-    }
 
-    try
-    {
-        if (success)
+        for (size_t i = 0; i < dataToSync.size(); ++i)
         {
-            m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
+            dataToSync[i].seq = i;
+        }
 
-            if (mode == Mode::FULL)
+        std::vector<PersistedData> dataValueItems;
+        std::vector<PersistedData> dataContextItems;
+        dataValueItems.reserve(dataToSync.size());
+        dataContextItems.reserve(dataToSync.size());
+
+        for (auto& item : dataToSync)
+        {
+            if (item.is_data_context)
             {
-                // For FULL mode, clear the in-memory data after successful sync
-                m_inMemoryData.clear();
+                dataContextItems.push_back(std::move(item));
             }
             else
             {
-                // No need to check m_persistentQueue for nullptr here as it was validated earlier
-                // For DELTA mode, clear database synced items
+                dataValueItems.push_back(std::move(item));
+            }
+        }
+
+        std::set<std::string> uniqueIndicesSet;
+
+        for (const auto& item : dataValueItems)
+        {
+            uniqueIndicesSet.insert(item.index);
+        }
+
+        SessionContent content;
+        content.mode = Mode::DELTA;
+        content.indices.assign(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
+        content.option = option;
+        content.dataValues = std::move(dataValueItems);
+        content.dataContexts = std::move(dataContextItems);
+
+        success = runSession(content);
+
+        try
+        {
+            if (success)
+            {
+                sentAny = true;
+                ++blocksSent;
                 m_persistentQueue->clearSyncedItems();
             }
-        }
-        else
-        {
-            if (mode == Mode::FULL)
-            {
-                m_inMemoryData.clear();
-            }
             else
             {
-                // No need to check m_persistentQueue for nullptr here as it was validated earlier
                 m_persistentQueue->resetSyncingItems();
+                break;
             }
         }
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Failed to finalize sync state: ") + e.what());
+        catch (const std::exception& e)
+        {
+            m_logger(LOG_ERROR, std::string("Failed to finalize DELTA sync block: ") + e.what());
+
+            // The upload succeeded but the post-sync DB update failed; rows remain in SYNCING.
+            // Reset them back to PENDING so they are retried on the next cycle.
+            try
+            {
+                m_persistentQueue->resetSyncingItems();
+            }
+            catch (...) {}
+
+            success = false;
+            break;
+        }
     }
 
-    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
-    // Report whether a stop was requested so the caller can demote an expected
-    // shutdown-time failure from WARNING to INFO/DEBUG.
-    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
+    if (shouldStop() && !sentAny)
+    {
+        success = false;
+    }
+
+    const std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
     const bool stopped = shouldStop();
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
@@ -350,63 +329,75 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
                                          const std::string& checksum)
 {
-    if (!m_transport->checkStatus())
+    if (!m_syncTransport->checkStatus())
     {
         return false; // Return false as this is not a checksum error from manager
     }
 
-    clearSyncState();
+#ifdef WAZUH_UNIT_TESTING
+    constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::milliseconds(50);
+#else
+    // The indexer may not have caught up with a recent bulk write yet, so a single
+    // 409 isn't trusted as a genuine mismatch on its own -- see
+    // CHECKSUM_MISMATCH_MAX_ATTEMPTS's doc comment for why this budget exists.
+    constexpr auto CHECKSUM_RETRY_DELAY = std::chrono::seconds(10);
+#endif
 
-    // Step 1: Send Start message with mode ModuleCheck
-    std::vector<std::string> indices = {index};
-
-    if (!sendStartAndWaitAck(Mode::CHECK, 0, indices))
+    for (unsigned int attempt = 1; attempt <= CHECKSUM_MISMATCH_MAX_ATTEMPTS; ++attempt)
     {
-        m_logger(LOG_DEBUG, "Failed to send Start message for integrity check");
-        clearSyncState();
-        return false; // Return false as this is not a checksum error from manager
-    }
-
-    // Step 2: Send ChecksumModule message
-    if (!sendChecksumMessage(m_syncState.session, index, checksum))
-    {
-        m_logger(LOG_DEBUG, "Failed to send ChecksumModule message");
-        clearSyncState();
-        return false; // Return false as this is not a checksum error from manager
-    }
-
-    m_logger(LOG_DEBUG, "ChecksumModule message sent for index: " + index);
-
-    // Step 3: Send End message and wait for EndAck
-    std::vector<PersistedData> emptyData; // No data to send for integrity check
-
-    if (sendEndAndWaitAck(m_syncState.session, emptyData))
-    {
-        m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
-        clearSyncState();
-        return false; // Integrity is valid, no sync required
-    }
-    else
-    {
-        // Only return true if manager explicitly reported Status=Error (CHECKSUM_ERROR)
-        // All other errors (communication, timeout, etc.) should return false
-        bool result = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
-
-        std::string message =
-            (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR)
-            ? "Checksum validation failed, full sync required"
-            : "Manager is offline";
-
-        m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - " + message);
+        if (shouldStop())
+        {
+            return false;
+        }
 
         clearSyncState();
-        return result;
-    }
-}
 
-void AgentSyncProtocol::clearInMemoryData()
-{
-    m_inMemoryData.clear();
+        // The integrity check is Start + ChecksumModule, now one message.
+        SessionContent content;
+        content.mode = Mode::CHECK;
+        content.indices = {index};
+        content.checksums = {{index, checksum}};
+
+        if (runSession(content))
+        {
+            m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index +
+                     " (attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) + ")");
+            clearSyncState();
+            return false; // Integrity is valid, no sync required
+        }
+
+        // Only spend the retry budget on an explicit checksum mismatch (409). Any other
+        // failure (communication error, manager offline, timeout) returns false right
+        // away -- it says nothing about whether the checksum actually matches.
+        const bool isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        clearSyncState();
+
+        if (!isChecksumMismatch)
+        {
+            m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - Manager is offline");
+            return false;
+        }
+
+        if (attempt < CHECKSUM_MISMATCH_MAX_ATTEMPTS)
+        {
+            m_logger(LOG_DEBUG, "Checksum mismatch reported by manager for index: " + index +
+                     " (attempt " + std::to_string(attempt) + "/" +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
+                     "); the indexer may not have caught up with a recent write yet, retrying.");
+
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+            m_syncState.cv.wait_for(lock, CHECKSUM_RETRY_DELAY, [this] { return shouldStop(); });
+        }
+        else
+        {
+            m_logger(LOG_DEBUG, "Checksum validation failed for index: " + index + " after " +
+                     std::to_string(CHECKSUM_MISMATCH_MAX_ATTEMPTS) +
+                     " attempts - full sync required");
+        }
+    }
+
+    return true;
 }
 
 SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
@@ -421,12 +412,12 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         return {false, {}};
     }
 
-    if (!m_transport->checkStatus())
+    if (!m_syncTransport->checkStatus())
     {
         // Propagate the reason so the calling module emits a single, informative message at the
         // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
         // itself only logs the low-level detail at debug.
-        return {false, "Failed to open the local message queue.", shouldStop()};
+        return {false, "Failed to reach the sync intake socket.", shouldStop()};
     }
 
     clearSyncState();
@@ -435,17 +426,12 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     // We only send Start (with Size=0 and the indices array) and End messages
     bool success = false;
 
-    // Step 1: Send Start message and wait for StartAck
-    if (sendStartAndWaitAck(mode, 0, indices, Option::SYNC, globalVersion))
-    {
-        // Step 2: Send End message and wait for EndAck (no Data messages)
-        std::vector<PersistedData> emptyData;
-
-        if (sendEndAndWaitAck(m_syncState.session, emptyData))
-        {
-            success = true;
-        }
-    }
+    // Metadata and group modes carry no items: just Start and End in one message.
+    SessionContent content;
+    content.mode = mode;
+    content.indices = indices;
+    content.globalVersion = globalVersion;
+    success = runSession(content);
 
     if (success)
     {
@@ -481,7 +467,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         return false;
     }
 
-    if (!m_transport->checkStatus())
+    if (!m_syncTransport->checkStatus())
     {
         return false;
     }
@@ -502,21 +488,12 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         dataToSync.push_back(std::move(item));
     }
 
-    bool success = false;
-
-    // Step 1: Send Start message with the indices and size
-    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, option))
-    {
-        // Step 2: Send DataClean message for each index
-        if (sendDataCleanMessages(m_syncState.session, dataToSync))
-        {
-            // Step 3: Send End message and wait for EndAck
-            if (sendEndAndWaitAck(m_syncState.session, dataToSync))
-            {
-                success = true;
-            }
-        }
-    }
+    SessionContent content;
+    content.mode = Mode::DELTA;
+    content.indices = indices;
+    content.option = option;
+    content.dataCleans = std::move(dataToSync);
+    bool success = runSession(content);
 
     try
     {
@@ -550,11 +527,12 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     return success;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
-                                            size_t dataSize,
-                                            const std::vector<std::string>& uniqueIndices,
-                                            Option option,
-                                            std::optional<uint64_t> globalVersion)
+flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAndBuildStart(
+    flatbuffers::FlatBufferBuilder& builder,
+    Mode mode,
+    const std::vector<std::string>& uniqueIndices,
+    Option option,
+    std::optional<uint64_t> globalVersion)
 {
     // Declare metadata variables outside try block for proper cleanup in catch
     agent_metadata_t metadata{};
@@ -562,8 +540,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
     try
     {
-        flatbuffers::FlatBufferBuilder builder;
-
         // Create module name string
         auto module = builder.CreateString(m_moduleName);
 
@@ -579,7 +555,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             {
                 if (m_stopRequested.load(std::memory_order_acquire))
                 {
-                    return false;
+                    return 0;
                 }
 
                 if (!logged)
@@ -613,7 +589,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 metadata_provider_free_metadata(&metadata);
             }
 
-            return false;
+            return 0;
         }
 
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
@@ -646,7 +622,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(protocolMode);
-        startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);
 
         // Translate Option enum to Schema Option
@@ -673,80 +648,12 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         auto startOffset = startBuilder.Finish();
 
-        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Start, startOffset.Union());
-        builder.Finish(message);
-
-        const uint8_t* buffer_ptr = builder.GetBufferPointer();
-        const size_t buffer_size = builder.GetSize();
-        std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
-
-        {
-            std::lock_guard<std::mutex> lock(m_syncState.mtx);
-            m_syncState.phase = SyncPhase::WaitingStartAck;
-        }
-
-        for (unsigned int attempt = 0; attempt <= m_retries; ++attempt)
-        {
-            if (!sendFlatBufferMessageAsString(messageVector))
-            {
-                // Internal transport retry: the calling module owns the user-facing
-                // warning for a failed synchronization, so log this at debug only.
-                m_logger(LOG_DEBUG, "Failed to send Start message.");
-                continue;
-            }
-
-            if (receiveStartAck(m_timeout))
-            {
-                std::lock_guard<std::mutex> lock(m_syncState.mtx);
-
-                if (m_syncState.syncFailed)
-                {
-                    m_logger(LOG_DEBUG, "Synchronization failed due to manager error.");
-
-                    // Clean up metadata before returning
-                    if (has_metadata)
-                    {
-                        metadata_provider_free_metadata(&metadata);
-                    }
-
-                    return false;
-                }
-
-                m_logger(LOG_DEBUG, "StartAck received. Session: " + std::to_string(m_syncState.session));
-
-                // Clean up metadata before returning success
-                if (has_metadata)
-                {
-                    metadata_provider_free_metadata(&metadata);
-                }
-
-                return true;
-            }
-
-            m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
-        }
-
-        // Clean up metadata if we successfully retrieved it
         if (has_metadata)
         {
             metadata_provider_free_metadata(&metadata);
         }
 
-        if (shouldStop())
-        {
-            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
-            m_logger(LOG_DEBUG, "Sync Start message retries exhausted because module is stopping.");
-        }
-        else
-        {
-            m_logger(LOG_DEBUG, "Exceeded maximum retries for Start message.");
-            m_syncState.lastSyncResult = SyncResult::START_TIMEOUT_ERROR;
-            // The manager never acknowledged the handshake: expected while it is not ready for this
-            // agent yet (mostly right after a restart). The module retries on its next cycle.
-            m_syncState.lastSyncManagerNotReady = true;
-        }
-
-        return false;
+        return startOffset;
     }
     catch (const std::exception& e)
     {
@@ -756,413 +663,266 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             metadata_provider_free_metadata(&metadata);
         }
 
-        m_logger(LOG_ERROR, std::string("Exception when sending Start message: ") + e.what());
+        m_logger(LOG_ERROR, std::string("Exception when building the Start message: ") + e.what());
     }
 
-    return false;
+    return 0;
 }
 
-bool AgentSyncProtocol::receiveStartAck(std::chrono::seconds timeout)
+uint64_t AgentSyncProtocol::nextSessionId()
 {
-    std::unique_lock<std::mutex> lock(m_syncState.mtx);
-    return m_syncState.cv.wait_for(lock, timeout, [&]
-    {
-        return m_syncState.startAckReceived || m_syncState.syncFailed || shouldStop();
-    });
+    // The manager used to hand the session id back in the StartAck. With one
+    // message and one response there is no handshake to carry it, so the agent
+    // picks it; a retried session reuses the same value and the manager dedups
+    // on it. Microseconds since the epoch leave room for a counter in the low
+    // bits, so two sessions started in the same microsecond still differ.
+    static std::atomic<uint64_t> counter {0};
+    const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                     .count();
+    return (static_cast<uint64_t>(now) << 12) | (counter.fetch_add(1) & 0xFFF);
 }
 
-bool AgentSyncProtocol::sendDataMessages(uint64_t session,
-                                         const std::vector<PersistedData>& data)
+std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(const SessionContent& content)
 {
     try
     {
-        // OS_MAXSTR is 65536 bytes; reserve 4 KB for queue headers and FlatBuffers alignment.
-        static constexpr size_t MAX_BATCH_PAYLOAD = 60 * 1024;
-        // Conservative per-item overhead: vtable + field slots + string/vector headers + padding.
-        static constexpr size_t FLATBUFFERS_OVERHEAD_PER_ITEM = 80;
-        // DataBatch table + values vector + Message table + FlatBuffer root.
-        static constexpr size_t BATCH_MESSAGE_OVERHEAD = 128;
+        flatbuffers::FlatBufferBuilder builder;
 
-        flatbuffers::FlatBufferBuilder batchBuilder;
-        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataValue>> batchOffsets;
-        size_t batchEstimatedSize = BATCH_MESSAGE_OVERHEAD;
+        // Every nested table has to be finished before the parent builder opens,
+        // so Start and all the item vectors are built up front.
+        const auto startOffset = waitMetadataAndBuildStart(builder,
+                                                           content.mode,
+                                                           content.indices,
+                                                           content.option,
+                                                           content.globalVersion);
 
-        auto flushBatch = [&]() -> bool
+        if (startOffset.IsNull())
         {
-            if (batchOffsets.empty())
-                return true;
+            return {};
+        }
 
-            auto valuesVec = batchBuilder.CreateVector(batchOffsets);
-            Wazuh::SyncSchema::DataBatchBuilder dataBatchBuilder(batchBuilder);
-            dataBatchBuilder.add_values(valuesVec);
-            auto dataBatchOffset = dataBatchBuilder.Finish();
+        // One batch holds the lot: the ~60 KB split existed only to fit OS_MAXSTR
+        // on the DGRAM queue, and the STREAM socket has no such bound. The field
+        // stays a vector so a producer may still group if it ever needs to.
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataValue>> valueOffsets;
+        valueOffsets.reserve(content.dataValues.size());
 
-            auto message = Wazuh::SyncSchema::CreateMessage(
-                batchBuilder, Wazuh::SyncSchema::MessageType::DataBatch, dataBatchOffset.Union());
-            batchBuilder.Finish(message);
-
-            const uint8_t* bufPtr = batchBuilder.GetBufferPointer();
-            std::vector<uint8_t> messageVector(bufPtr, bufPtr + batchBuilder.GetSize());
-
-            m_logger(LOG_DEBUG_VERBOSE,
-                     std::string("Sending DataBatch with ") + std::to_string(batchOffsets.size()) +
-                     " DataValues (~" + std::to_string(batchEstimatedSize) + " bytes).");
-
-            if (!sendFlatBufferMessageAsString(messageVector))
-            {
-                m_logger(LOG_DEBUG, "Failed to send DataBatch message.");
-                return false;
-            }
-
-            batchBuilder.Clear();
-            batchOffsets.clear();
-            batchEstimatedSize = BATCH_MESSAGE_OVERHEAD;
-            return true;
-        };
-
-        for (const auto& item : data)
+        for (const auto& item : content.dataValues)
         {
-            if (shouldStop())
-            {
-                m_logger(LOG_INFO, "Stop requested, aborting data message sending");
-                return false;
-            }
-
-            const size_t itemEstimatedSize =
-                FLATBUFFERS_OVERHEAD_PER_ITEM + item.id.size() + item.index.size() + item.data.size();
-
-            // Flush current batch before adding if this item would overflow it.
-            if (!batchOffsets.empty() && batchEstimatedSize + itemEstimatedSize > MAX_BATCH_PAYLOAD)
-            {
-                if (!flushBatch())
-                    return false;
-            }
-
-            auto idStr = batchBuilder.CreateString(item.id);
-            auto idxStr = batchBuilder.CreateString(item.index);
-            auto dataVec = batchBuilder.CreateVector(
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(
                                reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
-            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(batchBuilder);
-            dataValueBuilder.add_seq(item.seq);
-            dataValueBuilder.add_session(session);
+            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
             dataValueBuilder.add_id(idStr);
             dataValueBuilder.add_index(idxStr);
             dataValueBuilder.add_version(item.version);
-
-            // Translate DB operation to Schema operation
-            const auto protocolOperation = (item.operation == Operation::DELETE_)
+            dataValueBuilder.add_operation((item.operation == Operation::DELETE_)
                                            ? Wazuh::SyncSchema::Operation::Delete
-                                           : Wazuh::SyncSchema::Operation::Upsert;
-            dataValueBuilder.add_operation(protocolOperation);
+                                           : Wazuh::SyncSchema::Operation::Upsert);
             dataValueBuilder.add_data(dataVec);
-            batchOffsets.push_back(dataValueBuilder.Finish());
-            batchEstimatedSize += itemEstimatedSize;
+            valueOffsets.push_back(dataValueBuilder.Finish());
         }
 
-        return flushBatch();
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when sending Data messages: ") + e.what());
-    }
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataContext>> contextOffsets;
+        contextOffsets.reserve(content.dataContexts.size());
 
-    return false;
-}
-
-bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
-                                                const std::vector<PersistedData>& data)
-{
-    try
-    {
-        for (const auto& item : data)
+        for (const auto& item : content.dataContexts)
         {
-            // Check if stop was requested
-            if (shouldStop())
-            {
-                m_logger(LOG_INFO, "Stop requested, aborting DataContext message sending");
-                return false;
-            }
-
-            flatbuffers::FlatBufferBuilder builder;
             auto idStr = builder.CreateString(item.id);
             auto idxStr = builder.CreateString(item.index);
-            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+            auto dataVec = builder.CreateVector(
+                               reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
             Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
-            dataContextBuilder.add_seq(item.seq);
-            dataContextBuilder.add_session(session);
             dataContextBuilder.add_id(idStr);
             dataContextBuilder.add_index(idxStr);
             dataContextBuilder.add_data(dataVec);
-            auto dataContextOffset = dataContextBuilder.Finish();
-
-            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataContext, dataContextOffset.Union());
-            builder.Finish(message);
-
-            const uint8_t* buffer_ptr = builder.GetBufferPointer();
-            const size_t buffer_size = builder.GetSize();
-            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
-
-            if (!sendFlatBufferMessageAsString(messageVector))
-            {
-                m_logger(LOG_DEBUG, "Failed to send Data context message.");
-                return false;
-            }
+            contextOffsets.push_back(dataContextBuilder.Finish());
         }
 
-        return true;
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataClean>> cleanOffsets;
+        cleanOffsets.reserve(content.dataCleans.size());
+
+        for (const auto& item : content.dataCleans)
+        {
+            auto idxStr = builder.CreateString(item.index);
+
+            Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
+            dataCleanBuilder.add_index(idxStr);
+            cleanOffsets.push_back(dataCleanBuilder.Finish());
+        }
+
+        // An integrity check always covers a single index/module (see requiresFullSync()),
+        // so content.checksums never holds more than one entry.
+        flatbuffers::Offset<Wazuh::SyncSchema::ChecksumModule> checksumOffset;
+        bool hasChecksum = false;
+
+        if (!content.checksums.empty())
+        {
+            const auto& entry = content.checksums.front();
+            auto idxStr = builder.CreateString(entry.index);
+            auto checksumStr = builder.CreateString(entry.checksum);
+
+            Wazuh::SyncSchema::ChecksumModuleBuilder checksumBuilder(builder);
+            checksumBuilder.add_index(idxStr);
+            checksumBuilder.add_checksum(checksumStr);
+            checksumOffset = checksumBuilder.Finish();
+            hasChecksum = true;
+        }
+
+        // A session carries exactly one of these: a data sync (values and/or
+        // contexts), a clean notification, or a checksum check - never a mix,
+        // so the three go through one union instead of three optional fields.
+        Wazuh::SyncSchema::SessionPayload payloadType = Wazuh::SyncSchema::SessionPayload::NONE;
+        flatbuffers::Offset<void> payloadOffset;
+
+        if (!cleanOffsets.empty())
+        {
+            auto itemsVec = builder.CreateVector(cleanOffsets);
+            Wazuh::SyncSchema::CleansBuilder cleansBuilder(builder);
+            cleansBuilder.add_items(itemsVec);
+            payloadOffset = cleansBuilder.Finish().Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::Cleans;
+        }
+        else if (hasChecksum)
+        {
+            payloadOffset = checksumOffset.Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::ChecksumModule;
+        }
+        else if (!valueOffsets.empty() || !contextOffsets.empty())
+        {
+            auto valuesVec = builder.CreateVector(valueOffsets);
+            auto contextsVec = builder.CreateVector(contextOffsets);
+            Wazuh::SyncSchema::SyncDataBuilder syncDataBuilder(builder);
+            syncDataBuilder.add_values(valuesVec);
+            syncDataBuilder.add_contexts(contextsVec);
+            payloadOffset = syncDataBuilder.Finish().Union();
+            payloadType = Wazuh::SyncSchema::SessionPayload::SyncData;
+        }
+
+        Wazuh::SyncSchema::FullSessionBuilder fullSessionBuilder(builder);
+        fullSessionBuilder.add_start(startOffset);
+
+        if (payloadType != Wazuh::SyncSchema::SessionPayload::NONE)
+        {
+            fullSessionBuilder.add_payload_type(payloadType);
+            fullSessionBuilder.add_payload(payloadOffset);
+        }
+
+        const auto fullSessionOffset = fullSessionBuilder.Finish();
+
+        auto message = Wazuh::SyncSchema::CreateMessage(
+                           builder, Wazuh::SyncSchema::MessageType::FullSession, fullSessionOffset.Union());
+        builder.Finish(message);
+
+        const uint8_t* bufferPtr = builder.GetBufferPointer();
+        return {bufferPtr, bufferPtr + builder.GetSize()};
     }
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("Exception when sending DataContext messages: ") + e.what());
+        m_logger(LOG_ERROR, std::string("Exception when building the FullSession message: ") + e.what());
     }
 
-    return false;
+    return {};
 }
 
-bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
-                                            const std::string& index,
-                                            const std::string& checksum)
+bool AgentSyncProtocol::runSession(const SessionContent& content)
 {
-    try
+    const uint64_t session = nextSessionId();
+
     {
-        flatbuffers::FlatBufferBuilder builder;
-        auto indexStr = builder.CreateString(index);
-        auto checksumStr = builder.CreateString(checksum);
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        m_syncState.phase = SyncPhase::WaitingResponse;
+        m_syncState.responseReceived = false;
+        m_syncState.syncFailed = false;
+        // Record the session ID so applyHttpResult() can reject stale HCRESULT
+        // callbacks that arrive after a timeout and a subsequent session start.
+        m_syncState.currentSession = session;
+    }
 
-        Wazuh::SyncSchema::ChecksumModuleBuilder checksumBuilder(builder);
-        checksumBuilder.add_session(session);
-        checksumBuilder.add_index(indexStr);
-        checksumBuilder.add_checksum(checksumStr);
-        auto checksumOffset = checksumBuilder.Finish();
+    const auto message = buildFullSessionMessage(content);
 
-        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::ChecksumModule, checksumOffset.Union());
-        builder.Finish(message);
+    if (message.empty())
+    {
+        return false;
+    }
 
-        const uint8_t* buffer_ptr = builder.GetBufferPointer();
-        const size_t buffer_size = builder.GetSize();
-        std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+    m_logger(LOG_DEBUG_VERBOSE,
+             "Sending session " + std::to_string(session) + " as one message (" +
+             std::to_string(message.size()) + " bytes).");
 
-        if (!sendFlatBufferMessageAsString(messageVector))
+    // A refused hand-off usually means the intake socket is briefly down (agentd
+    // restart); a short backoff and a small number of retries avoid burning the
+    // budget in a tight connect-refusal burst. The wait uses the state cv so a
+    // stop() call cuts it short.
+    constexpr auto RESEND_BACKOFF = std::chrono::seconds(1);
+
+    for (unsigned int attempt = 0; attempt <= SYNC_HANDOFF_RETRIES; ++attempt)
+    {
+        if (shouldStop())
         {
-            m_logger(LOG_DEBUG, "Failed to send Checksum message.");
             return false;
         }
 
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when sending Checksum message: ") + e.what());
-    }
-
-    return false;
-}
-
-bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
-                                              const std::vector<PersistedData>& data)
-{
-    try
-    {
-        for (const auto& item : data)
+        if (!m_syncTransport->sendSession(session, message))
         {
-            flatbuffers::FlatBufferBuilder builder;
-            auto indexStr = builder.CreateString(item.index);
-
-            Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
-            dataCleanBuilder.add_seq(item.seq);
-            dataCleanBuilder.add_session(session);
-            dataCleanBuilder.add_index(indexStr);
-            auto dataCleanOffset = dataCleanBuilder.Finish();
-
-            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataClean, dataCleanOffset.Union());
-            builder.Finish(message);
-
-            const uint8_t* buffer_ptr = builder.GetBufferPointer();
-            const size_t buffer_size = builder.GetSize();
-            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
-
-            if (!sendFlatBufferMessageAsString(messageVector))
-            {
-                m_logger(LOG_DEBUG, "Failed to send Dataclean message.");
-                return false;
-            }
-        }
-
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when sending DataClean messages: ") + e.what());
-    }
-
-    return false;
-}
-
-bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
-                                          const std::vector<PersistedData>& dataToSync)
-{
-    try
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        Wazuh::SyncSchema::EndBuilder endBuilder(builder);
-        endBuilder.add_session(session);
-        auto endOffset = endBuilder.Finish();
-
-        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::End, endOffset.Union());
-        builder.Finish(message);
-
-        const uint8_t* buffer_ptr = builder.GetBufferPointer();
-        const size_t buffer_size = builder.GetSize();
-        std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
-
-        // Wait for in-flight messages to settle before sending End.
-        // Interruptible: stop() notifies the cv so the wait wakes on shutdown.
-        {
-            std::unique_lock<std::mutex> lock(m_syncState.mtx);
-            m_syncState.phase = SyncPhase::WaitingEndAck;
-
-            if (m_syncState.cv.wait_for(lock, m_syncEndDelay, [&] { return shouldStop(); }))
-            {
-                m_logger(LOG_DEBUG, "Stop requested during sync_end_delay; aborting End send.");
-                return false;
-            }
-        }
-        m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelay.count()) + " seconds before sending End message.");
-
-        unsigned int attempt = 0;
-        bool resendEnd = true;
-
-        while (attempt <= m_retries)
-        {
-            if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
-            {
-                // Internal transport retry: the calling module owns the user-facing
-                // warning for a failed synchronization, so log this at debug only.
-                m_logger(LOG_DEBUG, "Failed to send End message.");
-                attempt++;
-                continue;
-            }
-
-            // Track whether End was actually sent this iteration.
-            // Only a timeout after sending End consumes a retry; timeouts after
-            // Processing or ReqRet retransmission do not.
-            const bool sentEnd = resendEnd;
-            resendEnd = true;
+            m_logger(LOG_DEBUG, "Failed to hand session " + std::to_string(session) + " to the agent.");
 
             std::unique_lock<std::mutex> lock(m_syncState.mtx);
-            const bool gotResponse = m_syncState.cv.wait_for(lock, m_timeout, [&]
+            m_syncState.cv.wait_for(lock, RESEND_BACKOFF, [&]
             {
-                return m_syncState.endAckReceived || m_syncState.syncFailed
-                || m_syncState.reqRetReceived || m_syncState.processingAckReceived
-                || shouldStop();
+                return shouldStop();
             });
-
-            if (!gotResponse || shouldStop())
-            {
-                if (sentEnd)
-                {
-                    m_logger(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
-                    attempt++;
-                }
-
-                continue;
-            }
-
-            if (m_syncState.syncFailed)
-            {
-                // Don't log error for checksum mismatch - it's an expected condition
-                if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
-                {
-                    m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
-                }
-
-                return false;
-            }
-
-            if (m_syncState.endAckReceived)
-            {
-                m_logger(LOG_DEBUG, "EndAck received.");
-                return true;
-            }
-
-            if (m_syncState.reqRetReceived)
-            {
-                auto ranges = std::move(m_syncState.reqRetRanges);
-                m_syncState.reqRetRanges.clear();
-                m_syncState.reqRetReceived = false;
-                lock.unlock();
-
-                if (ranges.empty())
-                {
-                    m_logger(LOG_DEBUG, "Received ReqRet with empty ranges. Aborting current sync attempt.");
-                    m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
-                    return false;
-                }
-
-                std::vector<PersistedData> rangeData = filterDataByRanges(dataToSync, ranges);
-
-                if (rangeData.empty())
-                {
-                    m_logger(LOG_DEBUG, "ReqRet asked for ranges that yield no data. Aborting.");
-                    m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
-                    return false;
-                }
-
-                if (!sendDataMessages(session, rangeData))
-                {
-                    m_logger(LOG_DEBUG, "Failed to resend data for ReqRet.");
-                    m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                    return false;
-                }
-
-                // Manager auto-enqueues when all gaps are filled and sends EndAck{Ok}
-                // without needing us to resend End. Wait again in the next iteration.
-                /* unique_lock tracks ownership via owns_ flag; destructor will not call
-                 * unlock() again after the explicit lock.unlock() above. */
-                resendEnd = false;
-                // coverity[double_unlock]
-                continue;
-            }
-
-            if (m_syncState.processingAckReceived)
-            {
-                m_syncState.processingAckReceived = false;
-                // Manager confirmed it is processing. Wait again without resending End.
-                // attempt is NOT incremented.
-                resendEnd = false;
-                continue;
-            }
+            continue;
         }
 
-        if (shouldStop())
+        // Session successfully handed off to the transport. The HTTPS client now
+        // owns the send and will fire on_sync_response for EVERY outcome (200,
+        // error, timeout, abort) WITHIN wazuh-agentd, but that result still has to
+        // cross the bridge and a module-local socket to reach this wait, and that
+        // hop can silently drop it. SESSION_RESPONSE_TIMEOUT is a safety net for
+        // that case, not a normal-path timeout. shouldStop() (agent shutdown)
+        // still interrupts the wait early; either way, items are reset to PENDING
+        // and the next periodic cycle retries them.
+        std::unique_lock<std::mutex> lock(m_syncState.mtx);
+#ifdef WAZUH_UNIT_TESTING
+        const auto waitTimeout = std::chrono::seconds(2);
+#else
+        const auto waitTimeout = SESSION_RESPONSE_TIMEOUT;
+#endif
+        const bool conditionMet = m_syncState.cv.wait_for(lock, waitTimeout, [&]
         {
-            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
-            m_logger(LOG_DEBUG, "Sync End message retries exhausted because module is stopping.");
-        }
-        else
+            return m_syncState.responseReceived || m_syncState.syncFailed || shouldStop();
+        });
+
+        if (!conditionMet)
         {
-            m_logger(LOG_DEBUG, "Exceeded maximum retries for End message.");
+            m_logger(LOG_WARNING, "Session " + std::to_string(session) + " got no response within " +
+                     std::to_string(std::chrono::duration_cast<std::chrono::seconds>(waitTimeout).count()) +
+                     "s; treating as failed so the next cycle can retry.");
             m_syncState.lastSyncResult = SyncResult::END_TIMEOUT_ERROR;
-            // The manager never acknowledged the End message: same expected, self-recovering condition
-            // as the Start timeout above.
             m_syncState.lastSyncManagerNotReady = true;
         }
 
-        return false;
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when sending End message: ") + e.what());
+        if (m_syncState.syncFailed)
+        {
+            m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
+            return false;
+        }
+
+        if (m_syncState.responseReceived)
+        {
+            return true;
+        }
+
+        return false; // Woken by stop(), or by the SESSION_RESPONSE_TIMEOUT safety net.
     }
 
+    // All hand-off attempts failed: the local sync intake is unavailable.
     return false;
-}
-
-bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData)
-{
-    return m_transport->sendMessage(fbData, m_maxEps);
 }
 
 bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
@@ -1175,149 +935,35 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
 
     try
     {
-        flatbuffers::Verifier verifier(data, length);
-
-        if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+        // Every sync outcome (success or failure) arrives this way now - there is no
+        // FlatBuffer response message anymore (no EndAck, no per-item acks): the manager
+        // answers a /stateful session with a single HTTP response, routed here as
+        // "HCRESULT:<session>:<http_code>:<body>". The body is the manager's raw JSON
+        // response (may be empty) and may itself contain colons, so only the first two
+        // colons are parsed as delimiters.
+        if (length < HTTP_RESULT_PREFIX.size() ||
+                std::memcmp(data, HTTP_RESULT_PREFIX.data(), HTTP_RESULT_PREFIX.size()) != 0)
         {
-            m_logger(LOG_ERROR, "Invalid FlatBuffer message");
+            m_logger(LOG_ERROR, "Response buffer is not an HCRESULT payload.");
             return false;
         }
 
-        const auto* message = Wazuh::SyncSchema::GetMessage(data);
-        const auto messageType = message->content_type();
+        const std::string remainder(reinterpret_cast<const char*>(data) + HTTP_RESULT_PREFIX.size(),
+                                    length - HTTP_RESULT_PREFIX.size());
+        const auto firstColon = remainder.find(':');
+        const auto secondColon =
+            (firstColon == std::string::npos) ? std::string::npos : remainder.find(':', firstColon + 1);
 
-        std::unique_lock<std::mutex> lock(m_syncState.mtx);
-
-        switch (messageType)
+        if (firstColon == std::string::npos || secondColon == std::string::npos)
         {
-            case Wazuh::SyncSchema::MessageType::StartAck:
-                {
-                    if (m_syncState.phase == SyncPhase::WaitingStartAck)
-                    {
-                        const auto* startAck = message->content_as_StartAck();
-
-                        if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
-                                startAck->status() == Wazuh::SyncSchema::Status::Offline)
-                        {
-                            m_logger(LOG_DEBUG, "Received StartAck with error status. Aborting synchronization.");
-                            m_syncState.lastSyncResult = (startAck->status() == Wazuh::SyncSchema::Status::Offline)
-                                                         ? SyncResult::COMMUNICATION_ERROR
-                                                         : SyncResult::PROTOCOL_ERROR;
-                            // An Offline status means the manager itself reports it cannot serve this
-                            // agent yet: expected and self-recovering. An Error status is not.
-                            m_syncState.lastSyncManagerNotReady = (startAck->status() == Wazuh::SyncSchema::Status::Offline);
-                            m_syncState.syncFailed = true;
-                            m_syncState.cv.notify_all();
-                            break;
-                        }
-
-                        const uint64_t incomingSession = startAck->session();
-                        m_syncState.session = incomingSession;
-                        m_syncState.startAckReceived = true;
-                        m_syncState.cv.notify_all();
-
-                        m_logger(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(m_syncState.session));
-                    }
-                    else
-                    {
-                        m_logger(LOG_DEBUG, "Discarded. Not in WaitingStartAck phase. Current phase: " + std::to_string(static_cast<int>(m_syncState.phase)));
-                    }
-
-                    break;
-                }
-
-            case Wazuh::SyncSchema::MessageType::EndAck:
-                {
-                    const auto* endAck = message->content_as_EndAck();
-                    const uint64_t incomingSession = endAck->session();
-
-                    if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
-                    {
-                        m_logger(LOG_DEBUG, "Parsing EndAck, invalid phase or session.");
-                        break;
-                    }
-
-                    if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
-                            endAck->status() == Wazuh::SyncSchema::Status::Offline ||
-                            endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
-                    {
-                        // Store the specific error type for detailed reporting
-                        if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                            // The manager reports it cannot serve this agent: same condition as the
-                            // Offline StartAck above.
-                            m_syncState.lastSyncManagerNotReady = true;
-                            m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
-                        }
-                        else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
-                            m_logger(LOG_DEBUG, "Checksum mismatch detected by manager, full resync will be triggered.");
-                        }
-                        else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
-                        {
-                            m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
-                            m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
-                        }
-
-                        m_syncState.syncFailed = true;
-                        m_syncState.cv.notify_all();
-                        break;
-                    }
-
-                    if (endAck->status() == Wazuh::SyncSchema::Status::Processing)
-                    {
-                        m_logger(LOG_DEBUG, "Manager is processing session '" + std::to_string(incomingSession) + "'. Waiting...");
-                        m_syncState.processingAckReceived = true;
-                        m_syncState.cv.notify_all();
-                        break;
-                    }
-
-                    m_syncState.lastSyncResult = SyncResult::SUCCESS;
-                    m_syncState.endAckReceived = true;
-                    m_syncState.cv.notify_all();
-
-                    m_logger(LOG_DEBUG, "EndAck session '" + std::to_string(incomingSession) + "' ended" );
-                    break;
-                }
-
-            case Wazuh::SyncSchema::MessageType::ReqRet:
-                {
-                    const auto* reqRet = message->content_as_ReqRet();
-                    const uint64_t incomingSession = reqRet->session();
-
-                    if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
-                    {
-                        m_logger(LOG_DEBUG, "Parsing ReqRet, invalid phase or session.");
-                        break;
-                    }
-
-                    m_syncState.reqRetRanges.clear();
-
-                    if (reqRet->seq())
-                    {
-                        for (const auto* pair : *reqRet->seq())
-                        {
-                            m_syncState.reqRetRanges.emplace_back(pair->begin(), pair->end());
-                        }
-                    }
-
-                    m_syncState.reqRetReceived = true;
-
-                    m_logger(LOG_DEBUG, "ReqRet received '" + std::to_string(m_syncState.reqRetRanges.size()) + "' ranges" );
-                    m_syncState.cv.notify_all();
-                    break;
-                }
-
-            default:
-                {
-                    m_logger(LOG_DEBUG, "Unknown message type: " + std::to_string(static_cast<int>(messageType)));
-                    return false;
-                }
+            m_logger(LOG_ERROR, "Malformed HCRESULT payload.");
+            return false;
         }
 
-        return true;
+        const uint64_t receivedSession = std::stoull(remainder.substr(0, firstColon));
+        const int httpCode = std::stoi(remainder.substr(firstColon + 1, secondColon - firstColon - 1));
+        const std::string_view body(remainder.data() + secondColon + 1, remainder.size() - secondColon - 1);
+        return applyHttpResult(httpCode, body, receivedSession);
     }
     catch (const std::exception& e)
     {
@@ -1326,22 +972,85 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
     }
 }
 
-bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession)
+bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)
 {
-    if (m_syncState.phase != receivedPhase)
+    std::lock_guard<std::mutex> lock(m_syncState.mtx);
+
+    // A response that no longer applies (nothing in flight, or it belongs to a
+    // previous/timed-out session) is an expected race, not a parse failure: return
+    // true so the C-level receiver (wm_sca.c et al.) does not log it as an error.
+    if (m_syncState.phase != SyncPhase::WaitingResponse)
     {
-        m_logger(LOG_DEBUG, "Discarded. Received phase '" + std::to_string(static_cast<int>(receivedPhase)) + "' but current phase is '" + std::to_string(static_cast<int>
-                 (m_syncState.phase)) + "'.");
-        return false;
+        m_logger(LOG_DEBUG, "Discarded response code: protocol is not waiting for a sync answer.");
+        return true;
     }
 
-    if (m_syncState.session != incomingSession)
+    // Transport-level session correlation: reject responses that belong to a
+    // previous (timed-out) session.  A zero expectedSession means the caller
+    // comes from the legacy HCRESULT path (no session number) and skips this check.
+    if (expectedSession != 0 && m_syncState.currentSession != 0 &&
+            expectedSession != m_syncState.currentSession)
     {
-        m_logger(LOG_DEBUG, "Discarded. Session mismatch. Expected session '" + std::to_string(m_syncState.session) + "' but session received is '" + std::to_string(
-                     incomingSession) + "'.");
-        return false;
+        m_logger(LOG_DEBUG,
+                 "Discarded stale HCRESULT: received session " +
+                 std::to_string(expectedSession) +
+                 " does not match current session " +
+                 std::to_string(m_syncState.currentSession) + ".");
+        return true;
     }
 
+    // The HTTP status code alone fully determines the outcome; the body (already
+    // valid JSON text from the manager) is only ever used here for logging context.
+    // Any 2xx is success, not just 200: the /stateful contract already documents a
+    // future 202 (queued-processing endpoint) as a deliberate accepted-but-not-200
+    // answer (see syncEndpoint.cpp), and this must not fall into the default
+    // protocol-error branch below when the manager starts sending it.
+    if (httpCode >= 200 && httpCode < 300)
+    {
+        m_syncState.lastSyncResult = SyncResult::SUCCESS;
+        m_syncState.responseReceived = true;
+        m_syncState.cv.notify_all();
+        m_logger(LOG_DEBUG, "Sync response received with success status: " + std::string(body));
+        return true;
+    }
+
+    m_syncState.syncFailed = true;
+
+    switch (httpCode)
+    {
+        case 409: // checksum_mismatch: full resync will be triggered by the caller.
+            m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+            m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
+            break;
+
+        case 413: // Session larger than the manager's total in-flight budget; must be split.
+            m_syncState.lastSyncResult = SyncResult::PAYLOAD_TOO_LARGE;
+            m_logger(LOG_WARNING, "Session rejected as too large by the manager (413): " + std::string(body));
+            break;
+
+        case 503: // Manager not ready (indexer down, at capacity, shutting down, or a VD
+            // feed still downloading): retried on the next cycle either way.
+            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
+            m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
+            break;
+
+        case 0: // No HTTP response at all (timeout/connect/TLS failure/abort).
+            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
+            m_logger(LOG_DEBUG, "No HTTP response received for the sync session.");
+            break;
+
+        default: // 400/403/500 and anything else: a protocol-level failure the caller
+            // does not blindly retry with identical bytes.
+            m_syncState.lastSyncResult = SyncResult::PROTOCOL_ERROR;
+            m_logger(LOG_DEBUG,
+                     "Manager reported a protocol error (" + std::to_string(httpCode) + "): " +
+                     std::string(body));
+            break;
+    }
+
+    m_syncState.cv.notify_all();
     return true;
 }
 
@@ -1351,43 +1060,10 @@ void AgentSyncProtocol::clearSyncState()
     m_syncState.reset();
 }
 
-std::vector<PersistedData> AgentSyncProtocol::filterDataByRanges(
-    const std::vector<PersistedData>& sourceData,
-    const std::vector<std::pair<uint64_t, uint64_t>>& ranges)
-{
-    std::vector<PersistedData> result;
-
-    if (ranges.empty() || sourceData.empty())
-    {
-        return result;
-    }
-
-    for (const auto& item : sourceData)
-    {
-        for (const auto& range : ranges)
-        {
-            if (range.second < range.first)
-            {
-                m_logger(LOG_ERROR, "Requested set of ranks malformed. Aborting.");
-                return {};
-            }
-
-            if (item.seq >= range.first && item.seq <= range.second)
-            {
-                result.push_back(item);
-                break;
-            }
-        }
-    }
-
-    return result;
-}
-
 Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
 {
     static const std::unordered_map<Mode, Wazuh::SyncSchema::Mode> modeMap =
     {
-        {Mode::FULL, Wazuh::SyncSchema::Mode::ModuleFull},
         {Mode::DELTA, Wazuh::SyncSchema::Mode::ModuleDelta},
         {Mode::CHECK, Wazuh::SyncSchema::Mode::ModuleCheck},
         {Mode::METADATA_DELTA, Wazuh::SyncSchema::Mode::MetadataDelta},

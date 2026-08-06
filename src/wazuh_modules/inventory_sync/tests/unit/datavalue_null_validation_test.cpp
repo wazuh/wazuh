@@ -62,8 +62,6 @@ protected:
         }
 
         Wazuh::SyncSchema::DataValueBuilder dvBuilder(builder);
-        dvBuilder.add_seq(1);
-        dvBuilder.add_session(1);
         dvBuilder.add_operation(operation);
 
         if (includeId)
@@ -215,8 +213,6 @@ TEST_F(DataValueNullValidationTest, EmptyStringId_DifferentFromNullId)
     auto dataOff = builder.CreateVector(reinterpret_cast<const int8_t*>(json), 2);
 
     Wazuh::SyncSchema::DataValueBuilder dvBuilder(builder);
-    dvBuilder.add_seq(1);
-    dvBuilder.add_session(1);
     dvBuilder.add_operation(Wazuh::SyncSchema::Operation_Upsert);
     dvBuilder.add_id(idOff);
     dvBuilder.add_index(indexOff);

@@ -43,17 +43,11 @@
 
     <ossec_config>
         <client>
-          <manager>
+          <server>
             <address>192.168.10.100</address>
-          </manager>
+          </server>
           <config-profile>distribution, distributionVersion</config-profile>
         </client>
-        <client_buffer>
-          <!-- Agent buffer options -->
-          <disabled>no</disabled>
-          <queue_size>5000</queue_size>
-          <events_per_second>600</events_per_second>
-        </client_buffer>
 
         logging.template
 

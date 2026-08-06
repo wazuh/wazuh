@@ -134,16 +134,15 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", data->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle data - pass the raw flatbuffer bytes directly
                 it->second.handleData(data, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Data handled for session %llu", data->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Data handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataClean)
@@ -156,18 +155,16 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(dataClean->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
-                             dataClean->session());
+                LOGFN_DEBUG2(
+                    m_logFn, "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle DataClean - stores index and tracks seq number
                 it->second.handleDataClean(dataClean);
-                LOGFN_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: DataClean handled for session %llu", dataClean->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: DataClean handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
@@ -180,91 +177,17 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
-                             dataContext->session());
+                LOGFN_DEBUG2(
+                    m_logFn, "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle DataContext - stores context in RocksDB and tracks seq number
                 it->second.handleDataContext(
                     dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: DataContext handled for session %llu",
-                             dataContext->session());
-            }
-        }
-        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataBatch)
-        {
-            const auto dataBatch = syncMessage->content_as<Wazuh::SyncSchema::DataBatch>();
-            if (!dataBatch || !dataBatch->values())
-            {
-                throw InventorySyncException("Invalid data batch message");
-            }
-
-            LOGFN_DEBUG2(m_logFn,
-                         "InventorySyncFacade::start: Received DataBatch with %zu DataValues.",
-                         dataBatch->values()->size());
-
-            std::shared_lock lock(m_agentSessionsMutex);
-            for (const auto* dataValue : *dataBatch->values())
-            {
-                if (!dataValue)
-                {
-                    continue;
-                }
-
-                if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
-                {
-                    LOGFN_DEBUG2(m_logFn,
-                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                 dataValue->session());
-                }
-                else
-                {
-                    try
-                    {
-                        // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
-                        // RocksDB consumers (indexer) expect individual DataValue messages per key.
-                        flatbuffers::FlatBufferBuilder dvBuilder;
-                        const auto* idRaw = dataValue->id();
-                        const auto* idxRaw = dataValue->index();
-                        const auto* dataRaw = dataValue->data();
-                        auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
-                        auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
-                        auto dataVec = dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size())
-                                               : dvBuilder.CreateVector<int8_t>({});
-
-                        Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
-                        dataValueBuilder.add_seq(dataValue->seq());
-                        dataValueBuilder.add_session(dataValue->session());
-                        dataValueBuilder.add_id(idStr);
-                        dataValueBuilder.add_index(idxStr);
-                        dataValueBuilder.add_version(dataValue->version());
-                        dataValueBuilder.add_operation(dataValue->operation());
-                        dataValueBuilder.add_data(dataVec);
-                        auto dvOffset = dataValueBuilder.Finish();
-
-                        auto msgOffset = Wazuh::SyncSchema::CreateMessage(
-                            dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
-                        dvBuilder.Finish(msgOffset);
-
-                        it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
-                        LOGFN_DEBUG2(m_logFn,
-                                     "InventorySyncFacade::start: DataBatch item handled for session %llu",
-                                     dataValue->session());
-                    }
-                    catch (const std::exception& e)
-                    {
-                        LOGFN_ERROR(m_logFn,
-                                    "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
-                                    dataValue->session(),
-                                    dataValue->seq(),
-                                    e.what());
-                    }
-                }
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: DataContext handled for session %llu", 0ULL);
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
@@ -288,15 +211,15 @@ class InventorySyncFacadeImpl final
             const bool isVDModule = (moduleNameStr == "syscollector_vd");
             if (isAgentLocked(agentIdStr, isVDModule))
             {
+                // TODO(#38117): StartAck removed from FlatBuffer schema/agent side - the manager no
+                // longer acknowledges this rejection.
                 LOGFN_DEBUG2(m_logFn,
                              "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
                              agentIdStr.c_str());
-                m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, -1, moduleName);
             }
             else if (!m_indexerConnector->isAvailable())
             {
                 LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: No available server");
-                m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
             }
             else
             {
@@ -315,12 +238,17 @@ class InventorySyncFacadeImpl final
                                m_agentSessions.size(),
                                m_maxSessions,
                                std::string(agentId).c_str());
-                    m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                 }
                 else
                 {
-                    // Reserve DataValue quota for this session. Reject if reservation would underflow.
-                    const uint64_t requestedSize = startMsg->size();
+                    // TODO(#38117): size removed from FlatBuffer schema on the agent side (agreed
+                    // with server team) - the manager can no longer read a declared DataValue
+                    // count off the wire before a session is admitted. This reservation is a
+                    // no-op (0) until the FullSession-based rewrite (server team's own follow-up)
+                    // derives it from the actual payload item count after parsing instead of a
+                    // pre-declared Start field. The DataValue quota cap is effectively disabled
+                    // until then.
+                    const uint64_t requestedSize = 0;
                     uint64_t remaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
                     bool admitted = false;
                     while (remaining >= requestedSize)
@@ -340,7 +268,6 @@ class InventorySyncFacadeImpl final
                                    static_cast<unsigned long long>(requestedSize),
                                    static_cast<unsigned long long>(remaining),
                                    std::string(agentId).c_str());
-                        m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                     }
                     else
                     {
@@ -363,6 +290,7 @@ class InventorySyncFacadeImpl final
                             m_agentSessions.try_emplace(sessionId,
                                                         sessionId,
                                                         startMsg,
+                                                        requestedSize,
                                                         *m_dataStore,
                                                         *m_indexerQueue,
                                                         *m_responseDispatcher,
@@ -389,40 +317,15 @@ class InventorySyncFacadeImpl final
 
             // Check if session exists.
             std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(checksumModule->session()); it == m_agentSessions.end())
+            if (auto it = m_agentSessions.find(0ULL); it == m_agentSessions.end())
             {
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                             checksumModule->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", 0ULL);
             }
             else
             {
                 // Handle checksum module.
                 it->second.handleChecksumModule(checksumModule);
-                LOGFN_DEBUG2(m_logFn,
-                             "InventorySyncFacade::start: ChecksumModule handled for session %llu",
-                             checksumModule->session());
-            }
-        }
-        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
-        {
-            const auto end = syncMessage->content_as<Wazuh::SyncSchema::End>();
-            if (!end)
-            {
-                throw InventorySyncException("Invalid end message");
-            }
-
-            // Check if session exists.
-            std::shared_lock lock(m_agentSessionsMutex);
-            if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
-            {
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", end->session());
-            }
-            else
-            {
-                // Handle end.
-                it->second.handleEnd(*m_responseDispatcher);
-                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: End handled for session %llu", end->session());
+                LOGFN_DEBUG2(m_logFn, "InventorySyncFacade::start: ChecksumModule handled for session %llu", 0ULL);
             }
         }
         else
@@ -791,9 +694,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -834,9 +736,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -869,9 +770,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -917,9 +817,8 @@ public:
                                 ctx->ownsAgentLock = false;
                                 unlockAgent(ctx->agentId);
 
-                                // Send ACK to agent.
-                                m_responseDispatcher->sendEndAck(
-                                    Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                // real /stateful HTTP response is the server team's own follow-up.
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -958,10 +857,7 @@ public:
                                 LOGFN_ERROR(m_logFn,
                                             "ModuleCheck: No index specified for agent %s",
                                             res.context->agentId.c_str());
-                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                 res.context->agentId,
-                                                                 res.context->sessionId,
-                                                                 res.context->moduleName);
+                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                             }
                             else
                             {
@@ -1010,10 +906,7 @@ public:
                                     LOGFN_INFO(m_logFn,
                                                "ModuleCheck: Checksums match for agent %s - no full resync needed",
                                                res.context->agentId.c_str());
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                 }
                                 else
                                 {
@@ -1022,10 +915,7 @@ public:
                                                "full resync required",
                                                res.context->agentId.c_str(),
                                                MAX_RETRIES);
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                 }
                             }
                         }
@@ -1033,10 +923,7 @@ public:
                         {
                             LOGFN_ERROR(
                                 m_logFn, "ModuleCheck failed for agent %s: %s", res.context->agentId.c_str(), e.what());
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
+                            // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                         }
 
                         if (eraseSession(res.context->sessionId) == 0)
@@ -1049,12 +936,11 @@ public:
                     else
                     {
                         // Track whether anything was actually enqueued to the indexer connector.
-                        // The Mode_ModuleFull branch and the dataCleanIndices loop both rely on
-                        // res.context->indices / dataCleanIndices being non-empty AFTER the layer-2
-                        // filter; if every entry got dropped (e.g. an agent sent only non-states
-                        // indices) we must NOT register a notify callback that would never fire —
-                        // it would strand the session's final end_ack and leak through to a future
-                        // session's response stream.
+                        // The dataCleanIndices loop relies on dataCleanIndices being non-empty AFTER
+                        // the layer-2 filter; if every entry got dropped (e.g. an agent sent only
+                        // non-states indices) we must NOT register a notify callback that would
+                        // never fire — it would strand the session's final end_ack and leak through
+                        // to a future session's response stream.
                         bool hasDeleteByQueryEnqueued = false;
 
                         // Execute DataClean deletions if any were received during the session
@@ -1070,32 +956,6 @@ public:
                                              "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
                                              index.c_str(),
                                              res.context->agentId.c_str());
-                                try
-                                {
-                                    m_indexerConnector->deleteByQuery(index, res.context->agentId, m_clusterName);
-                                    hasDeleteByQueryEnqueued = true;
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    LOGFN_WARN(m_logFn,
-                                               "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
-                                               "(session %llu): %s",
-                                               index.c_str(),
-                                               res.context->sessionId,
-                                               e.what());
-                                }
-                            }
-                        }
-
-                        // Send delete by query to indexer if mode is full.
-                        if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
-                        {
-                            LOGFN_DEBUG2(m_logFn,
-                                         "InventorySyncFacade::start: Deleting by query for %zu indices...",
-                                         res.context->indices.size());
-                            // Delete from all indices specified in the Start message
-                            for (const auto& index : res.context->indices)
-                            {
                                 try
                                 {
                                     m_indexerConnector->deleteByQuery(index, res.context->agentId, m_clusterName);
@@ -1186,12 +1046,11 @@ public:
                                     // Validate that the data field is present for Upsert operations
                                     if (!data->data())
                                     {
-                                        LOGFN_WARN(
-                                            m_logFn,
-                                            "InventorySyncFacade::start: skipping bulk entry for session "
-                                            "%llu (seq %llu) - DataValue missing required 'data' field for Upsert",
-                                            res.context->sessionId,
-                                            data->seq());
+                                        // TODO(#38117): seq field removed from agent FlatBuffer schema
+                                        LOGFN_WARN(m_logFn,
+                                                   "InventorySyncFacade::start: skipping bulk entry for session "
+                                                   "%llu - DataValue missing required 'data' field for Upsert",
+                                                   res.context->sessionId);
                                         continue;
                                     }
 
@@ -1202,21 +1061,21 @@ public:
                                     }
                                     catch (const nlohmann::json::parse_error& e)
                                     {
+                                        // TODO(#38117): seq field removed from agent FlatBuffer schema
                                         LOGFN_WARN(m_logFn,
                                                    "InventorySyncFacade::start: skipping bulk entry for session "
-                                                   "%llu (seq %llu) - DataValue body is not valid JSON: %s",
+                                                   "%llu - DataValue body is not valid JSON: %s",
                                                    res.context->sessionId,
-                                                   data->seq(),
                                                    e.what());
                                         continue;
                                     }
                                     if (!document.is_object())
                                     {
+                                        // TODO(#38117): seq field removed from agent FlatBuffer schema
                                         LOGFN_WARN(m_logFn,
                                                    "InventorySyncFacade::start: skipping bulk entry for session "
-                                                   "%llu (seq %llu) - DataValue body is not a JSON object",
-                                                   res.context->sessionId,
-                                                   data->seq());
+                                                   "%llu - DataValue body is not a JSON object",
+                                                   res.context->sessionId);
                                         continue;
                                     }
                                 }
@@ -1290,8 +1149,6 @@ public:
                             {
                                 // On the first manager startup the CVE feed may still be downloading.
                                 // Block here until it's ready so the scan doesn't run against empty data.
-                                // The agent stays in Status_Processing (sent at End-message time) and
-                                // gets Status_Ok once the scan finishes.
                                 if (!VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
                                     VulnerabilityScannerFacade::instance().waitForFeedReady();
@@ -1369,10 +1226,7 @@ public:
                                                             "agent %s: %s",
                                                             res.context->agentId.c_str(),
                                                             e.what());
-                                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                                 res.context->agentId,
-                                                                                 res.context->sessionId,
-                                                                                 res.context->moduleName);
+                                                // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                                                 m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                                                 eraseSession(res.context->sessionId);
                                                 m_sessionCompletedCV.notify_all();
@@ -1399,20 +1253,19 @@ public:
 
                         // Only register notify callback if there's bulk data or deleteByQuery
                         // operations actually enqueued. Checking hasDeleteByQueryEnqueued (instead
-                        // of mode == Mode_ModuleFull or dataCleanIndices.empty()) is critical: if
-                        // every potential delete target was filtered out by the inventory_sync
-                        // index allowlist, no HTTP request will be made and no future flush will
-                        // fire the notify — the callback would be stranded and leak its end_ack
-                        // into the next session's response stream.
+                        // of dataCleanIndices.empty()) is critical: if every potential delete target
+                        // was filtered out by the inventory_sync index allowlist, no HTTP request
+                        // will be made and no future flush will fire the notify — the callback
+                        // would be stranded and leak its end_ack into the next session's response
+                        // stream.
                         if (hasBulkData || hasDeleteByQueryEnqueued)
                         {
                             // Register notify callback for bulk operations (after accumulating all data)
                             m_indexerConnector->registerNotify(
                                 [this, ctx = res.context]()
                                 {
-                                    // Send ACK to agent.
-                                    m_responseDispatcher->sendEndAck(
-                                        Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side - the
+                                    // real /stateful HTTP response is the server team's own follow-up.
                                     // Delete data from database.
                                     m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                     // Delete Session.
@@ -1433,10 +1286,7 @@ public:
                                          "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
                                          "response for session %llu",
                                          res.context->sessionId);
-                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
-                                                             res.context->agentId,
-                                                             res.context->sessionId,
-                                                             res.context->moduleName);
+                            // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                             if (eraseSession(res.context->sessionId) == 0)
                             {
@@ -1464,11 +1314,7 @@ public:
                         unlockAgent(res.context->agentId);
                     }
 
-                    // Send ACK to agent.
-                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                     res.context->agentId,
-                                                     res.context->sessionId,
-                                                     res.context->moduleName);
+                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
@@ -1493,11 +1339,7 @@ public:
                         unlockAgent(res.context->agentId);
                     }
 
-                    // Send ACK to agent.
-                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                     res.context->agentId,
-                                                     res.context->sessionId,
-                                                     res.context->moduleName);
+                    // TODO(#38117): EndAck removed from FlatBuffer schema/agent side.
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.

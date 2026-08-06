@@ -23,9 +23,52 @@ typedef struct agent_server {
     char * rip;
     int port;
     uint32_t network_interface;
-    int max_retries; ///< Maximum number of connection retries.
-    int retry_interval; ///< Time interval between connection attempts.
+    int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
+    int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).
 } agent_server;
+
+/* TLS verification posture for the HTTPS transport.
+ * Values mirror the module ABI's hc_verify_mode_t so the bridge can copy them
+ * verbatim into hc_config_t. FULL is 0 so a zero-initialized config fails closed. */
+typedef enum agent_verify_mode_t {
+    AGENT_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname (default).
+    AGENT_VERIFY_CERT = 1, ///< Verify peer against the CA only.
+    AGENT_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+} agent_verify_mode_t;
+
+/* Agent-side HTTPS transport TLS settings: the <client><ssl> block (FR10 / #37702 §10). */
+typedef struct agent_ssl {
+    char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
+    char * key;                     ///< <key>: optional client (mTLS) private key.
+    char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default FULL.
+    char * ciphers;                 ///< <ciphers>: optional cipher list.
+} agent_ssl;
+
+/**
+ * @brief <client><batch>: the /stateless send-rate model (#37835).
+ *
+ * Replaces the leaky bucket's <client_buffer><events_per_second> pacing for
+ * stateless traffic. Zero means "unset": the transport module applies its own
+ * default (1 MiB, 10 s).
+ */
+typedef struct agent_batch {
+    long long size; ///< <size>: max /stateless request payload, in bytes.
+    long interval;  ///< <interval>: longest an event waits before a flush, seconds.
+} agent_batch;
+
+/**
+ * @brief <client><stats_report> / <client><config_report>: the periodic push of
+ *        a whole-agent snapshot to /stats and /config (#37843).
+ *
+ * The two are independent and both stay off until <enabled> says otherwise.
+ * Zero interval means "unset": the transport module applies its own default
+ * (60 s for stats, 3600 s for config).
+ */
+typedef struct agent_report {
+    unsigned char enabled; ///< <enabled>: whether to push at all.
+    long interval;         ///< <interval>: seconds between pushes.
+} agent_report;
 
 /* Configuration structure */
 typedef struct _agent {
@@ -39,11 +82,12 @@ typedef struct _agent {
     int max_time_reconnect_try;
     int main_ip_update_interval;
     char *profile;
-    volatile int buffer;
-    int buflength;
-    int events_persec;
     int package_uninstallation;
     agent_flags_t flags;
+    agent_ssl ssl;     ///< HTTPS transport TLS settings (<client><ssl>).
+    agent_batch batch; ///< /stateless batching limits (<client><batch>).
+    agent_report stats_report;  ///< Periodic /stats push (<client><stats_report>).
+    agent_report config_report; ///< Periodic /config push (<client><config_report>).
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 

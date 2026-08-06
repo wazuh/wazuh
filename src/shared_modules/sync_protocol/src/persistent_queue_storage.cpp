@@ -12,6 +12,23 @@
 #include "logging_helper.hpp"
 #include <filesystem>
 
+namespace
+{
+    constexpr size_t SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES = 8U * 1024U;
+    constexpr size_t SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES = 512U;
+
+    /// @brief Consecutive cycles a lone oversized item is resent before it is dropped.
+    constexpr unsigned int MAX_OVERSIZED_ATTEMPTS = 5U;
+
+    size_t estimateSerializedItemBytes(const PersistedData& data)
+    {
+        return data.id.size()
+               + data.index.size()
+               + data.data.size()
+               + SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES;
+    }
+} // namespace
+
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
@@ -226,16 +243,18 @@ void PersistentQueueStorage::submitBatch(const std::vector<PersistedData>& batch
     // LCOV_EXCL_STOP
 }
 
-std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
+std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t maxBytes)
 {
     std::vector<PersistedData> result;
     std::vector<int64_t> idsToUpdate;
+    std::vector<int64_t> idsToDrop;
+    size_t estimatedBytes = SYNC_BLOCK_ESTIMATED_OVERHEAD_BYTES;
 
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
 
     try
     {
-        std::string selectQuery =
+        const std::string selectQuery =
             "SELECT rowid, id, idx, data, operation, version, is_data_context "
             "FROM persistent_queue "
             "WHERE sync_status = ? "
@@ -254,9 +273,95 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             data.operation = static_cast<Operation>(selectStmt.value<int>(4));
             data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
             data.is_data_context = selectStmt.value<int>(6) != 0;
+            const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
 
+            if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
+            {
+                if (!result.empty())
+                {
+                    // Normal budget exhaustion: stop before adding this item.
+                    break;
+                }
+
+                if (data.id == m_oversizedItemId)
+                {
+                    ++m_oversizedItemAttempts;
+                }
+                else
+                {
+                    m_oversizedItemId = data.id;
+                    m_oversizedItemAttempts = 1;
+                }
+
+                if (m_oversizedItemAttempts > MAX_OVERSIZED_ATTEMPTS)
+                {
+                    // This item alone has exceeded the cap for MAX_OVERSIZED_ATTEMPTS
+                    // consecutive cycles: whatever rejected it before will reject it
+                    // again, and every item behind it (rowid ASC) is starved as long as
+                    // it stays PENDING. Drop it instead of resending it forever.
+                    m_logger(LOG_ERROR,
+                             "PersistentQueueStorage: Dropping pending item (~" +
+                             std::to_string(estimatedItemBytes) +
+                             " B) after " + std::to_string(m_oversizedItemAttempts) +
+                             " consecutive cycles alone over the byte cap (" +
+                             std::to_string(maxBytes) + " B); it was blocking every item behind it.");
+                    idsToDrop.push_back(rowid);
+                    m_oversizedItemId.clear();
+                    m_oversizedItemAttempts = 0;
+                    continue;
+                }
+
+                // First item already exceeds the cap. Enforcing the limit here
+                // would leave the item stuck in PENDING forever, so we accept it
+                // once but emit a WARNING so operators can investigate oversized records.
+                m_logger(LOG_WARNING,
+                         "PersistentQueueStorage: A single pending item (~" +
+                         std::to_string(estimatedItemBytes) +
+                         " B) exceeds the byte cap (" +
+                         std::to_string(maxBytes) +
+                         " B); sending it alone (attempt " +
+                         std::to_string(m_oversizedItemAttempts) + "/" +
+                         std::to_string(MAX_OVERSIZED_ATTEMPTS) +
+                         "). Consider reducing individual item size.");
+            }
+            else if (data.id == m_oversizedItemId)
+            {
+                // No longer alone over the cap (e.g. coalesced smaller): clear its streak.
+                m_oversizedItemId.clear();
+                m_oversizedItemAttempts = 0;
+            }
+
+            estimatedBytes += estimatedItemBytes;
             idsToUpdate.push_back(rowid);
             result.emplace_back(std::move(data));
+        }
+
+        // SQLite has a limit on the number of parameters in a single query
+        // (typically 999). To handle an unlimited number of ids, both batched
+        // statements below process them in chunks.
+        constexpr size_t BATCH_SIZE = 500;
+
+        for (size_t i = 0; i < idsToDrop.size(); i += BATCH_SIZE)
+        {
+            std::string deleteQuery = "DELETE FROM persistent_queue WHERE rowid IN (";
+
+            size_t batch_end = std::min(i + BATCH_SIZE, idsToDrop.size());
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                deleteQuery += (j == i ? "?" : ",?");
+            }
+
+            deleteQuery += ");";
+
+            SQLite3Wrapper::Statement deleteStmt(m_connection, deleteQuery);
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                deleteStmt.bind(static_cast<int32_t>((j - i) + 1), idsToDrop[j]);
+            }
+
+            deleteStmt.step();
         }
 
         if (idsToUpdate.empty())
@@ -264,11 +369,6 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             m_connection.execute("COMMIT;");
             return result;
         }
-
-        // SQLite has a limit on the number of parameters in a single query
-        // (typically 999). To handle an unlimited number of pending items,
-        // we process the UPDATE statement in batches.
-        constexpr size_t BATCH_SIZE = 500;
 
         for (size_t i = 0; i < idsToUpdate.size(); i += BATCH_SIZE)
         {

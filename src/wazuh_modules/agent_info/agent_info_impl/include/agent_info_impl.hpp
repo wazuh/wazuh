@@ -85,15 +85,7 @@ class AgentInfoImpl
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
-        /// @param mqFuncs Message queue functions
-        void initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs);
-
-        /// @brief Set synchronization parameters
-        /// @param syncEndDelay Delay for synchronization end message in seconds
-        /// @param timeout Response timeout in seconds
-        /// @param retries Number of retries
-        /// @param maxEps Maximum events per second
-        void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
+        void initSyncProtocol(const std::string& moduleName);
 
         /// @brief Set the predicate used to detect that a shutdown is in progress.
         /// It complements the module's own stop flag so that failures caused by the global agent
@@ -119,6 +111,37 @@ class AgentInfoImpl
         /// @param table Table name
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
+
+        /// @brief Durable /control task_id dedup guard, backed by the `tasks` table in
+        /// this same agent_info.db (rather than a private flat file), keyed by task_id.
+        /// Atomically checks whether taskId was already recorded and, if not, records it.
+        /// @param taskId The task_id to check and record
+        /// @return true when taskId was new and is now recorded (dispatch it); false when it is
+        ///         a duplicate, or when the check/insert itself failed (fail closed -- callers
+        ///         must not dispatch a task whose durability could not be confirmed).
+        bool checkAndRecordTask(const std::string& taskId);
+
+        /// @brief Prune the `tasks` table: entries older than ttlSeconds, then (if still over
+        /// maxEntries) the oldest surplus entries. Safe to call periodically.
+        /// @param ttlSeconds Entries last recorded more than this many seconds ago are deleted.
+        /// @param maxEntries Entries beyond this count (oldest first) are deleted; 0 is treated as 1.
+        void cleanupExpiredTasks(uint32_t ttlSeconds, uint32_t maxEntries);
+
+        /// @brief Current number of remembered task_ids in the `tasks` table. For tests and
+        /// .state metrics.
+        size_t countTasks();
+
+        /// @brief Configure the bounds cleanupExpiredTasks() enforces on its own periodic call
+        /// from within start()'s loop. Runs on that loop rather than a dedicated cleanup thread,
+        /// which would otherwise race with this instance's destruction since nothing
+        /// synchronizes the two.
+        /// @param ttlSeconds Entries older than this are pruned.
+        /// @param maxEntries Entries beyond this count (oldest first) are pruned.
+        void setTaskRegistryLimits(uint32_t ttlSeconds, uint32_t maxEntries)
+        {
+            m_taskRegistryTtlSeconds = ttlSeconds;
+            m_taskRegistryMaxEntries = maxEntries == 0 ? 1 : maxEntries;
+        }
 
     private:
         /// @brief Determine if a stateless event should be generated based on changed fields
@@ -316,18 +339,6 @@ class AgentInfoImpl
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
-        /// @brief Sync configuration: delay for synchronization end message in seconds
-        uint32_t m_syncEndDelay = 1;
-
-        /// @brief Sync configuration: response timeout in seconds
-        uint32_t m_syncResponseTimeout = 30;
-
-        /// @brief Sync configuration: number of retries
-        uint32_t m_syncRetries = 5;
-
-        /// @brief Sync configuration: maximum events per second
-        long m_syncMaxEps = 10;
-
         /// @brief Flag to track if module has been stopped.
         /// Atomic so the poll loops can read it without holding m_mutex while
         /// stop() writes it from another thread (avoids a data race).
@@ -405,4 +416,11 @@ class AgentInfoImpl
 
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;
+
+        /// @brief Task registry cleanup bounds (see setTaskRegistryLimits()), read once per
+        /// start()'s loop iteration. Defaults match the internal_options.conf defaults
+        /// (agent_info.ttl / agent_info.max_entries) so a call to start() before
+        /// setTaskRegistryLimits() still behaves sanely rather than pruning everything.
+        uint32_t m_taskRegistryTtlSeconds = 86400;
+        uint32_t m_taskRegistryMaxEntries = 4096;
 };

@@ -67,19 +67,19 @@ delete_auto_enrollment_tag() {
 # Change address block of the wazuh configuration file
 add_adress_block() {
 
-    # Remove both manager and legacy server configuration blocks
+    # Remove both server and legacy manager configuration blocks
     ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
-    # Write the client configuration block
-    for i in "${!ADDRESSES[@]}";
-    do
-        {
-            echo "    <manager>"
-            echo "      <address>${ADDRESSES[i]}</address>"
-            echo "      <port>1514</port>"
-            echo "    </manager>"
-        } >> "${TMP_SERVER}"
-    done
+    # Only one <server> block is supported; if WAZUH_MANAGER carries several
+    # comma-separated addresses, the last one prevails (server rotation was
+    # removed, #37702 restrictions 2/3), matching the client parser.
+    last_index=$(( ${#ADDRESSES[@]} - 1 ))
+    {
+        echo "    <server>"
+        echo "      <address>${ADDRESSES[last_index]}</address>"
+        echo "      <port>1514</port>"
+        echo "    </server>"
+    } >> "${TMP_SERVER}"
 
     ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
 

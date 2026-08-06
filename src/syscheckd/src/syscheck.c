@@ -372,18 +372,6 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
     mdebug1("Sent %d %s documents to persistent queue for table %s", count, operation_name, table_name);
 }
 
-static int fim_startmq(const char* key, short type, short attempts) {
-    return StartMQPredicated(key, type, attempts, fim_shutdown_process_on);
-}
-
-static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
-    // returns on shutdown: asp_stop() wakes every wait inside the sync protocol but
-    // cannot interrupt this one, and the shutdown waiter joins the synchronization
-    // thread with no timeout (issue #37334).
-    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, fim_shutdown_process_on);
-}
-
 /**
  * @brief Fetch document sync limits from agentd.
  *
@@ -488,6 +476,7 @@ void fim_initialize() {
 
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
+    syscheck_set_directories_lock_ready();
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
@@ -499,12 +488,7 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
-    MQ_Functions mq_funcs = {
-        .start = fim_startmq,
-        .send_binary = fim_send_binary_msg
-    };
-
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

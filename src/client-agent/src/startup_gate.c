@@ -8,15 +8,21 @@
  * Foundation
  */
 
+/*
+ * One feed: the manager-reported config_hash (SHA-256, #37733) against a
+ * SHA-256 of the local merged.mg. The legacy handshake fed the same decision an
+ * MD5 merged_sum -- two digests that could never agree -- and went with the TCP
+ * data path (#38030). SHA-256 survives: it is what the manager advertises and
+ * what /download already verifies with (configFetcher.cpp).
+ */
+
 #include "shared.h"
 #include "agentd.h"
-#include "../os_crypto/md5/md5_op.h"
-#include <ctype.h>
+#include "sha256_op.h"
 
 static pthread_mutex_t startup_gate_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool startup_gate_enabled = false;
 static bool startup_gate_ready = true;
-static os_md5 startup_gate_expected_sum = {0};
 static char startup_gate_reason[OS_SIZE_128] = "disabled";
 
 static void startup_gate_set_locked(bool ready, const char *reason) {
@@ -29,55 +35,15 @@ static void startup_gate_set_locked(bool ready, const char *reason) {
     }
 }
 
-static bool startup_gate_valid_md5(const char *hash) {
-    size_t i;
-
-    if (!hash || strlen(hash) != 32) {
-        return false;
-    }
-
-    for (i = 0; i < 32; ++i) {
-        if (!isxdigit((unsigned char)hash[i])) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static bool startup_gate_hash_matches_local(void) {
-    bool match = false;
-    char expected[sizeof(os_md5)] = {0};
-    char *current_hash = NULL;
-
-    w_mutex_lock(&startup_gate_mutex);
-    snprintf(expected, sizeof(expected), "%s", startup_gate_expected_sum);
-    w_mutex_unlock(&startup_gate_mutex);
-
-    if (!expected[0]) {
-        return false;
-    }
-
-    current_hash = getsharedfiles();
-    if (!current_hash) {
-        return false;
-    }
-
-    match = strcmp(expected, current_hash) == 0;
-    os_free(current_hash);
-    return match;
-}
-
 void startup_gate_initialize(void) {
     const bool enabled = agt->flags.remote_conf;
 
     w_mutex_lock(&startup_gate_mutex);
 
     startup_gate_enabled = enabled;
-    startup_gate_expected_sum[0] = '\0';
 
     if (enabled) {
-        startup_gate_set_locked(false, "waiting_handshake");
+        startup_gate_set_locked(false, "waiting_config_hash");
     } else {
         startup_gate_set_locked(true, "disabled");
     }
@@ -85,87 +51,60 @@ void startup_gate_initialize(void) {
     w_mutex_unlock(&startup_gate_mutex);
 }
 
-void startup_gate_process_handshake(bool is_startup, const char *merged_sum) {
-    if (!is_startup) {
-        return;
-    }
-
+void startup_gate_release_from_https_apply(void) {
+    // /download already verified the bytes' SHA-256 against the manager's
+    // config_hash before the callback fired, and bridge_on_config_downloaded()
+    // has since written and applied those exact bytes. That is the invariant
+    // the gate exists for, so it opens directly, with no second comparison.
     w_mutex_lock(&startup_gate_mutex);
 
-    if (!startup_gate_enabled) {
-        startup_gate_set_locked(true, "disabled");
+    if (startup_gate_enabled && !startup_gate_ready) {
+        startup_gate_set_locked(true, "https_config_applied");
         w_mutex_unlock(&startup_gate_mutex);
-        mdebug1("Startup hash gate: remote configuration disabled, gate released.");
+        mdebug1("Startup hash gate released via HTTPS configuration apply (https_config_applied).");
         return;
     }
-
-    if (!merged_sum || !merged_sum[0]) {
-        startup_gate_expected_sum[0] = '\0';
-        startup_gate_set_locked(true, "legacy_handshake");
-        w_mutex_unlock(&startup_gate_mutex);
-        mdebug1("Startup hash gate: legacy handshake (no merged_sum), gate released.");
-        return;
-    }
-
-    if (!startup_gate_valid_md5(merged_sum)) {
-        // The gate stays blocked: an invalid merged_sum means the manager
-        // sent us nothing we can validate against, so modules must not
-        // start. Recovery requires a fresh handshake with a valid hash
-        // (typically after an agentd restart).
-        startup_gate_expected_sum[0] = '\0';
-        startup_gate_set_locked(false, "invalid_handshake_hash");
-        w_mutex_unlock(&startup_gate_mutex);
-        mdebug1("Startup hash gate: invalid merged_sum in handshake, gate stays blocked.");
-        return;
-    }
-
-    snprintf(startup_gate_expected_sum, sizeof(startup_gate_expected_sum), "%s", merged_sum);
-    startup_gate_set_locked(false, "waiting_hash_match");
 
     w_mutex_unlock(&startup_gate_mutex);
-
-    mdebug1("Startup hash gate: expected merged_sum set to '%s'.", merged_sum);
-
-    if (startup_gate_hash_matches_local()) {
-        w_mutex_lock(&startup_gate_mutex);
-        startup_gate_set_locked(true, "hash_match");
-        w_mutex_unlock(&startup_gate_mutex);
-        mdebug1("Startup hash gate: local hash matches expected, gate released immediately.");
-    } else {
-        mdebug1("Startup hash gate: local hash does not match expected, waiting for merged.mg update.");
-    }
 }
 
-void startup_gate_refresh_from_local_hash(void) {
-    bool can_check = false;
+void startup_gate_check_manager_config_hash(const char *manager_sha256) {
+    bool should_check = false;
+    os_sha256 local_sha256;
 
     w_mutex_lock(&startup_gate_mutex);
-    can_check = startup_gate_enabled && startup_gate_expected_sum[0];
+    should_check = startup_gate_enabled && !startup_gate_ready;
     w_mutex_unlock(&startup_gate_mutex);
 
-    if (!can_check) {
+    if (!should_check) {
         return;
     }
 
-    if (startup_gate_hash_matches_local()) {
+    if (!manager_sha256 || !manager_sha256[0]) {
+        // An empty config_hash is contract-legal ("Empty when the manager
+        // reported none", hc_callbacks_t): the manager has no configuration for
+        // this agent's groups, so nothing will be downloaded and there is
+        // nothing to wait for. maybeDownloadConfig() also returns early on it,
+        // so without this the gate would never open and every module would
+        // block forever in startup_gate_wait_for_ready(). The legacy handshake
+        // released the gate on an absent merged_sum for the same reason.
         w_mutex_lock(&startup_gate_mutex);
-        startup_gate_set_locked(true, "hash_match");
+        startup_gate_set_locked(true, "no_manager_config");
         w_mutex_unlock(&startup_gate_mutex);
-    }
-}
-
-bool startup_gate_check_hash_match(void) {
-    bool can_check = false;
-
-    w_mutex_lock(&startup_gate_mutex);
-    can_check = startup_gate_enabled && !startup_gate_ready && startup_gate_expected_sum[0];
-    w_mutex_unlock(&startup_gate_mutex);
-
-    if (!can_check) {
-        return false;
+        mdebug1("Startup hash gate: the manager reported no configuration, gate released.");
+        return;
     }
 
-    return startup_gate_hash_matches_local();
+    if (OS_SHA256_File(SHAREDCFG_FILE, local_sha256, OS_BINARY) != 0) {
+        return; // No local merged.mg yet (nothing downloaded so far): nothing to compare.
+    }
+
+    if (strcmp(local_sha256, manager_sha256) == 0) {
+        w_mutex_lock(&startup_gate_mutex);
+        startup_gate_set_locked(true, "https_hash_match");
+        w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: manager config hash (SHA-256) matches local, gate released.");
+    }
 }
 
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size) {

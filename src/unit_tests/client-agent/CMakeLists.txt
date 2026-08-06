@@ -13,7 +13,7 @@ endif()
 if(NOT ${TARGET} STREQUAL "winagent")
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
-add_library(CLIENT-AGENT STATIC ${client-agent_files})
+add_library(CLIENT-AGENT STATIC ${client-agent_files} ${CMAKE_CURRENT_SOURCE_DIR}/https_client_stubs.c)
 
 set_source_files_properties(
     ${client-agent_files}
@@ -40,35 +40,15 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
-set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,OS_ConnectUDP \
-                            -Wl,--wrap,OS_SetKeepalive -Wl,--wrap,OS_SetKeepalive_Options -Wl,--wrap,OS_SetSendTimeout \
-                            -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
-                            -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
+set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
+                            -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                             -Wl,--wrap=_imp__dbsync_initialize \
-                            -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
-                            -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,w_calloc_expression_t -Wl,--wrap,w_expression_compile -Wl,--wrap,w_expression_match \
-                            -Wl,--wrap,w_free_expression_t -Wl,--wrap,OS_CloseSocket \
                             -Wl,--wrap,metadata_provider_update -Wl,--wrap,get_unix_version -Wl,--wrap,get_win_version -Wl,--wrap,free_osinfo")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,w_query_agentd")
 else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS}")
-endif()
-
-list(APPEND client-agent_names "test_notify")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
-                                -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
-                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                                -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
-else()
-list(APPEND client-agent_flags "-Wl,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
-                                -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND client-agent_names "test_agentd_state")
@@ -81,52 +61,75 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                     -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_PrintUnformatted@4 \
                                     -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--wrap,w_query_agentd -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
                                     -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
-                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                    -Wl,--wrap,cJSON_PrintUnformatted \
                                     -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
-endif()
-
-list(APPEND client-agent_names "test_buffer")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,getDefine_Int \
-                                -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap,w_query_agentd")
-else()
-list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 endif()
 
 list(APPEND client-agent_names "test_agcom")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig \
                                 -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get \
                                 -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                                 -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
 else()
-list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig -Wl,--wrap,getBufferConfig \
+list(APPEND client-agent_flags "-Wl,--wrap,getClientConfig \
                                 -Wl,--wrap,getLabelsConfig -Wl,--wrap,getAgentInternalOptions \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
 endif()
 
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
-list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
+                                -Wl,--wrap,w_https_client_start -Wl,--wrap,w_https_client_stop ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_startup_gate")
-list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
-list(APPEND client-agent_names "test_sendmsg")
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
-                                -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,CreateSecMSG \
-                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_CloseSocket")
+list(APPEND client-agent_names "test_https_client_bridge")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
+                                -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
+                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,hc_set_config_hash \
+                                -Wl,--wrap,try_enroll_to_server \
+                                -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
+                                -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
+                                -Wl,--wrap,wfopen \
+                                -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
+                                -Wl,--wrap,w_agentd_populate_metadata \
+                                -Wl,--wrap,startup_gate_release_from_https_apply \
+                                -Wl,--wrap,os_delwait -Wl,--wrap,os_setwait \
+                                -Wl,--wrap,OS_SHA256_File \
+                                -Wl,--wrap,task_registry_check_and_record \
+                                -Wl,--wrap,restartAgent \
+                                -Wl,--wrap,OS_SendUnix -Wl,--wrap,w_ref_parent_folder \
+                                -Wl,--wrap,OS_ConnectUnixDomain \
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
+                                ${DEBUG_OP_WRAPPERS}")
+endif()
+
+# The aggregator reaches the daemons differently per platform, so each side
+# wraps what it actually calls: sockets on POSIX, the dispatchers in-process on
+# Windows. The assertions in the test are shared.
+list(APPEND client-agent_names "test_agent_report")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap,agcom_dispatch -Wl,--wrap,syscom_dispatch \
+                                -Wl,--wrap,lccom_dispatch -Wl,--wrap,wmcom_dispatch \
+                                -Wl,--wrap,wcom_dispatch \
+                                -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=_imp__rsync_initialize ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+                                -Wl,--wrap,OS_RecvSecureTCP ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH client-agent_names count)
@@ -164,3 +167,62 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${client-agent_test_name} COMMAND ${client-agent_test_name})
 endforeach()
+
+if(TARGET test_https_client_bridge)
+    # https_client.h (the module's C ABI) isn't on the global include path.
+    target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+# Component test for the durable dedup + IPC round-trip: wires the
+# REAL client (task_registry_client.c, via CLIENT-AGENT, unwrapped) to the
+# REAL server-side dispatch chain (wmcom_dispatch -> wm_module_query ->
+# wm_agent_info_query -> the real TaskIdRegistry) over a REAL AF_UNIX
+# socket, all in one process. See test_task_registry_ipc_component.cpp's
+# file banner for exactly what is real vs. test harness. Needs real
+# sockets/threads (POSIX) and gtest; agent target, not winagent.
+if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  enable_language(CXX)
+
+  file(GLOB_RECURSE task_registry_ipc_wm_objs
+       ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+  list(REMOVE_ITEM task_registry_ipc_wm_objs
+       ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+
+  add_library(TASK_REGISTRY_IPC_WM_O STATIC ${task_registry_ipc_wm_objs})
+  set_source_files_properties(
+      ${task_registry_ipc_wm_objs}
+      PROPERTIES
+      EXTERNAL_OBJECT true
+      GENERATED true)
+  set_target_properties(TASK_REGISTRY_IPC_WM_O PROPERTIES LINKER_LANGUAGE C)
+  target_link_libraries(TASK_REGISTRY_IPC_WM_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
+
+  link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+  add_executable(test_task_registry_ipc_component test_task_registry_ipc_component.cpp)
+  target_include_directories(
+      test_task_registry_ipc_component
+      PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include/
+              ${SRC_FOLDER}/wazuh_modules/agent_info/include
+              ${SRC_FOLDER}/wazuh_modules/src)
+  target_link_libraries(
+      test_task_registry_ipc_component
+      debug gtestd
+      debug gtest_maind
+      optimized gtest
+      optimized gtest_main
+      CLIENT-AGENT
+      -Wl,--start-group
+      TASK_REGISTRY_IPC_WM_O
+      ${SRC_FOLDER}/build/lib/libagent_info.so
+      ${WAZUHLIB}
+      ${WAZUHEXT}
+      -Wl,--end-group
+      pthread
+      dl
+      cmocka
+      -fprofile-arcs
+      -ftest-coverage)
+  add_test(NAME test_task_registry_ipc_component COMMAND test_task_registry_ipc_component)
+  set_tests_properties(test_task_registry_ipc_component PROPERTIES LABELS "client-agent;agent_info")
+endif()
