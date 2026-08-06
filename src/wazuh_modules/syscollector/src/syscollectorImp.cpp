@@ -44,7 +44,10 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        task();                                                         \
+        if (!m_stopping.load())                                         \
+        {                                                               \
+            task();                                                     \
+        }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
@@ -246,6 +249,13 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     }
     else
     {
+        // Deliberately NOT gated on m_stopping: this is the per-row DBSync callback for
+        // whichever task is currently in flight (wired up by updateChanges() for every
+        // scanX() task, called once per changed row within that task's own transaction).
+        // TRY_CATCH_TASK already guarantees no *new* task starts once m_stopping is true;
+        // gating here as well would let an already-started task report only part of its
+        // own transaction if m_stopping flips mid-transaction, which is a worse outcome
+        // than letting the in-flight task finish reporting everything it found.
         if (data.is_array())
         {
             for (const auto& item : data)

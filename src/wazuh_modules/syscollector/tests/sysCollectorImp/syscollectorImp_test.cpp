@@ -523,13 +523,13 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -738,7 +738,7 @@ TEST_F(SyscollectorImpTest, noHardware)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -860,7 +860,7 @@ TEST_F(SyscollectorImpTest, noOs)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -973,7 +973,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1089,7 +1089,7 @@ TEST_F(SyscollectorImpTest, noPackages)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1204,13 +1204,13 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1336,7 +1336,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1452,7 +1452,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1573,7 +1573,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1694,7 +1694,7 @@ TEST_F(SyscollectorImpTest, noUsers)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1815,7 +1815,7 @@ TEST_F(SyscollectorImpTest, noGroups)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1936,7 +1936,7 @@ TEST_F(SyscollectorImpTest, noServices)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2057,7 +2057,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2245,7 +2245,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2421,7 +2421,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2503,7 +2503,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -2627,13 +2627,13 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
             Syscollector::instance().start();
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -3506,7 +3506,7 @@ TEST_F(SyscollectorImpTest, scanSetsFirstScanCompletedMarkerAfterFullScan)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -3600,7 +3600,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4561,6 +4561,92 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
 
 }
 
+TEST_F(SyscollectorImpTest, stoppingDuringScanSkipsRemainingTasks)
+{
+    auto spInfoWrapper
+    {
+        std::make_shared<MockSysInfo>()
+    };
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+    EXPECT_CALL(wrapper, callbackMock(testing::_)).Times(testing::AnyNumber());
+
+    std::promise<void> hardwareStarted;
+    std::future<void> hardwareStartedFuture { hardwareStarted.get_future() };
+
+    // hardware() backs scanHardware(), the FIRST task scan() runs. Block
+    // inside it long enough to flip m_stopping (via quiesce()) from the
+    // test thread while the scan is still in flight, then verify no LATER
+    // task (os(), networks(), ...) runs afterward. This reproduces the
+    // window that commit 3be02ea5a3 opened by removing the per-task
+    // m_stopping check inside TRY_CATCH_TASK.
+    EXPECT_CALL(*spInfoWrapper, hardware())
+    .WillOnce(testing::Invoke([&]()
+    {
+        hardwareStarted.set_value();
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        return nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON);
+    }));
+
+    // If the per-task stop check works, none of these later tasks should run.
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(testing::_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(testing::_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, users()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, services()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
+
+    std::thread initThread
+    {
+        [&]()
+        {
+            // init() only sets up state; start() is what actually runs the sync
+            // loop (see e.g. noHardware above), so it must be started on its own
+            // thread since it blocks until shutdown.
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, // 1 hour interval: only the scan-on-start run matters here
+                                          true,  // scanOnStart
+                                          true, true, true, true, true, true, true, true,
+                                          true, true, true, true, false);
+            Syscollector::instance().start();
+        }
+    };
+
+    // Wait until scan() is inside hardware(), i.e. mid-scan.
+    hardwareStartedFuture.wait();
+
+    // Request shutdown WHILE the scan is still running.
+    Syscollector::instance().quiesce();
+
+    if (initThread.joinable())
+    {
+        initThread.join();
+    }
+
+    // TearDown() calls Syscollector::instance().destroy() for us.
+}
+
 // Recovery functions tests via public interface
 TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 {
@@ -4717,7 +4803,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -4740,7 +4826,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4824,7 +4910,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -4847,7 +4933,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -4918,7 +5004,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -4941,7 +5027,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5055,7 +5141,7 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
     };
 
     // interval=1s: initial scan at t=0, second (noise-only-change) scan at ~t=1s.
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5127,7 +5213,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -5150,7 +5236,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5225,7 +5311,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
             MQ_Functions mqFuncs;
@@ -5248,7 +5334,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5338,7 +5424,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Reset and initialize factory with mock BEFORE initSyncProtocol
             SchemaValidator::SchemaValidatorFactory::getInstance().reset();
@@ -5365,7 +5451,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5478,7 +5564,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+                                          3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Reset and initialize factory with mock for DIFFERENT index
             SchemaValidator::SchemaValidatorFactory::getInstance().reset();
@@ -5505,7 +5591,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
         }
     };
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5604,7 +5690,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidInput_NotAnObject)
     };
 
     // Wait for syncLoop to attempt fetching and applying limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5690,7 +5776,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5778,7 +5864,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidLimitValue_NotANumber)
     };
 
     // Wait for syncLoop to fetch and attempt to apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5867,7 +5953,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_UnknownIndexName)
     };
 
     // Wait for syncLoop to fetch and attempt to apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -5957,7 +6043,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -6049,7 +6135,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
     };
 
     // Wait for syncLoop to fetch and apply limits
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     Syscollector::instance().destroy();
 
     if (t.joinable())
