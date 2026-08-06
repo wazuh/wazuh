@@ -58,9 +58,32 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 func (a *agent) buildSession(lane string, step scenario.Step) (fbbuild.Start, fbbuild.Payload, int, int) {
 	start := a.startFor(lane, step)
 
+	// A dump names a captured session; its metadata (module, option, indices)
+	// fills whatever the scenario left unset, for BOTH halves of a full_resync —
+	// the cleans half needs the module too, or the server rejects a Start with
+	// no module (400).
+	if step.Dump != "" {
+		a.applyDumpMeta(&start, step)
+	}
+
+	// A delta step naming a dump replays the real payloads instead of generating
+	// documents. (full_resync's delta half arrives here as kind "delta"; its
+	// cleans half is kind "cleans" and only needs the patched Start above.)
+	if step.Kind == "delta" && step.Dump != "" {
+		return a.buildDumpSession(start, step)
+	}
+
 	switch step.Kind {
 	case "cleans":
-		return start, fbbuild.Payload{Cleans: cleanIndices(a.r.scn, step)}, 0, 0
+		idx := cleanIndices(a.r.scn, step)
+		// full_resync's cleans half of a dump replay cleans the dump's own
+		// indices, so a first-scan wipes exactly what the delta then upserts.
+		if step.Dump != "" {
+			if ds := a.r.dump(step.Dump); len(ds.Indices) > 0 {
+				idx = ds.Indices
+			}
+		}
+		return start, fbbuild.Payload{Cleans: idx}, 0, 0
 	case "checksum":
 		start.Mode = fbbuild.ModeModuleCheck
 		index := firstIndex(a.r.scn, step)
@@ -79,6 +102,44 @@ func (a *agent) buildSession(lane string, step scenario.Step) (fbbuild.Start, fb
 		docs, bytes := a.fillDocuments(lane, step, sync)
 		return start, fbbuild.Payload{Sync: sync}, docs, bytes
 	}
+}
+
+// buildDumpSession replays a captured session. Metadata the scenario did not
+// pin (module, option, indices) falls back to the dump's own metadata, so a
+// dump is self-describing; the fleet's OS/host metadata still comes from the
+// Start. Document ids are namespaced per agent (like generated docs) so a fleet
+// replaying one dump does not have every agent overwrite the same _id.
+// applyDumpMeta fills a Start's module, option and indices from the dump's own
+// metadata when the scenario (step or defaults) left them unset.
+func (a *agent) applyDumpMeta(start *fbbuild.Start, step scenario.Step) {
+	scn := a.r.scn
+	ds := a.r.dump(step.Dump)
+	if step.Module == "" && scn.Defaults.Module == "" && ds.Module != "" {
+		start.Module = ds.Module
+	}
+	if step.Option == "" && scn.Defaults.Option == "" && ds.Option != "" {
+		start.Option = optionEnum(ds.Option)
+	}
+	if len(step.Indices) == 0 && len(ds.Indices) > 0 {
+		start.Indices = ds.Indices
+	}
+}
+
+func (a *agent) buildDumpSession(start fbbuild.Start, step scenario.Step) (fbbuild.Start, fbbuild.Payload, int, int) {
+	ds := a.r.dump(step.Dump)
+	sync := &fbbuild.SyncData{Values: make([]fbbuild.Value, 0, len(ds.Items))}
+	total := 0
+	for _, it := range ds.Items {
+		sync.Values = append(sync.Values, fbbuild.Value{
+			ID:      a.id + "-" + it.ID,
+			Index:   it.Index,
+			Version: it.Version,
+			Data:    it.Data,
+			Delete:  it.Operation == "Delete",
+		})
+		total += len(it.Data)
+	}
+	return start, fbbuild.Payload{Sync: sync}, len(ds.Items), total
 }
 
 func (a *agent) fillDocuments(lane string, step scenario.Step, sync *fbbuild.SyncData) (int, int) {

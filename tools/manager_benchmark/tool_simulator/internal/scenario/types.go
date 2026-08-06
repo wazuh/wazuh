@@ -96,6 +96,7 @@ type Step struct {
 	GlobalVer    uint64   `json:"global_version"`
 	Checksum     string   `json:"checksum"` // "correct" | "mismatch" | literal
 	Raw          string   `json:"raw"`      // for kind "raw": not_full_session|garbage|empty|oversized
+	Dump         string   `json:"dump"`     // path to a captured-session dump to replay (kind delta/full_resync)
 	RepeatCount  int      `json:"repeat_count"`
 	RepeatDelay  Duration `json:"repeat_delay"`
 	InitialDelay Duration `json:"initial_delay"`

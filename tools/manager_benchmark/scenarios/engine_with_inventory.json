@@ -21,7 +21,7 @@
         "repeat_count": 10, "repeat_delay": "6s", "initial_delay": "5s" }
     ],
     "engine": [
-      { "kind": "engine", "engine": "sample_payloads/engine/syslog.log", "location": "syslog",
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
         "max_eps": 300, "loop": true, "run_while_siblings_active": true }
     ]
   },

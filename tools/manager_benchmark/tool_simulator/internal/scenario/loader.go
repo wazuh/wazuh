@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // Known step kinds, so a typo is a load-time error, not a silent no-op.
@@ -36,7 +37,35 @@ func Load(path, modeOverride string) (*Scenario, error) {
 	if err := s.validate(); err != nil {
 		return nil, fmt.Errorf("scenario %s: %w", path, err)
 	}
+	if err := s.checkFiles(path); err != nil {
+		return nil, fmt.Errorf("scenario %s: %w", path, err)
+	}
 	return &s, nil
+}
+
+// checkFiles makes --validate catch a typo'd engine or dump path: every
+// referenced file is resolved relative to the scenario's directory and stat'd.
+func (s *Scenario) checkFiles(scenarioPath string) error {
+	base := filepath.Dir(scenarioPath)
+	resolve := func(p string) string {
+		if filepath.IsAbs(p) {
+			return p
+		}
+		return filepath.Join(base, p)
+	}
+	for _, steps := range s.Lanes {
+		for _, step := range steps {
+			for _, ref := range []string{step.Engine, step.Dump} {
+				if ref == "" {
+					continue
+				}
+				if _, err := os.Stat(resolve(ref)); err != nil {
+					return fmt.Errorf("referenced file not found: %s", ref)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Scenario) validate() error {
@@ -89,6 +118,9 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 	}
 	if (step.Kind == "metadata" || step.Kind == "groups") && len(step.Indices) == 0 {
 		return fmt.Errorf("%s: %s needs indices", where, step.Kind)
+	}
+	if step.Dump != "" && step.Kind != "delta" && step.Kind != "full_resync" {
+		return fmt.Errorf("%s: dump is only valid on delta or full_resync (got %q)", where, step.Kind)
 	}
 	return nil
 }
