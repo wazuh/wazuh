@@ -196,6 +196,7 @@ namespace invsync::sync
         validated.ostype = std::string {viewOf(start->ostype())};
         validated.osversion = std::string {viewOf(start->osversion())};
         validated.globalVersion = start->global_version();
+        validated.feedOffset = start->feed_offset();
         // Effective cluster: the session's (already validated equal to the manager's) with the
         // manager's as fallback -- same expression the legacy `_id` builder used.
         validated.clusterName = claimedCluster.empty() ? managerClusterName : std::string {claimedCluster};

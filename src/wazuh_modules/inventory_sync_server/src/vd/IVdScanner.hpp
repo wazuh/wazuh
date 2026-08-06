@@ -13,6 +13,7 @@
 #define _INVSYNC_VD_I_VD_SCANNER_HPP
 
 #include "sync/fullSessionValidator.hpp"
+#include <cstdint>
 
 namespace invsync::vd
 {
@@ -27,16 +28,15 @@ namespace invsync::vd
     enum class ScanVerdict
     {
         Ok,      ///< The scan ran and its findings were delivered by VD itself.
-        Skipped, ///< Legitimate skip: the scanner is disabled, or a feed-update scan covers the
-                 ///< agent. The inventory MUST still be indexed (the fleet scan reads packages
-                 ///< from the indexer).
+        Skipped, ///< Legitimate skip: the scanner is disabled. The inventory MUST still be
+                 ///< indexed.
     };
 
     /**
      * @brief Seam over the vulnerability scanner for the scan lane.
      *
      * The production implementation forwards to the vulnerability_scanner module (feed readiness,
-     * feed-update coverage, and the scan itself through the neutral-view entry point); tests
+     * current feed offset, and the scan itself through the neutral-view entry point); tests
      * substitute a fake so the lane's gating -- the D22 contract -- can be pinned without a feed.
      */
     class IVdScanner
@@ -47,6 +47,11 @@ namespace invsync::vd
         /// @brief Whether the CVE feed is ready for scans. Cheap (an atomic load in production):
         /// the strand calls it at admission and the lane worker re-checks it at dispatch.
         virtual bool feedReady() const = 0;
+
+        /// @brief This node's current VD feed offset, for validating a VDFirst/VDSync session's
+        /// Start.feed_offset before scanning it. Cheap in production (an atomic load behind the
+        /// database feed manager).
+        virtual std::uint64_t currentFeedOffset() const = 0;
 
         /**
          * @brief Run the vulnerability scan for one validated session, SYNCHRONOUSLY.

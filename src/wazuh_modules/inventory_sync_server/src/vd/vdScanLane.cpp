@@ -11,12 +11,14 @@
 
 #include "vd/vdScanLane.hpp"
 
+#include "json.hpp"
 #include "loggerHelper.h"
 
 #include <wazuh_metrics/manager.hpp>
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <exception>
 #include <stdexcept>
 #include <utility>
@@ -34,6 +36,12 @@ namespace
     constexpr auto SHUTTING_DOWN_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto SCAN_FAILED_BODY {R"({"error":"vulnerability scan failed","code":500})"};
     constexpr auto FEED_NOT_READY_BODY {R"({"error":"vulnerability feed not ready","code":503})"};
+
+    /// Same shape as the /scan/vd REST endpoint's 409 body, so agents handle both the same way.
+    std::string versionMismatchBody(std::uint64_t currentOffset)
+    {
+        return nlohmann::json {{"error", "version_mismatch"}, {"current_version", currentOffset}}.dump();
+    }
 
     bool isVDSync(const invsync::sync::ValidatedSession& session)
     {
@@ -83,6 +91,10 @@ namespace invsync::vd
             m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_FAILED, "Vulnerability scans failed", "count");
         m_scansSkipped = m_metrics->getOrCreateCounter(
             invsync::metrics::VD_SCANS_SKIPPED, "Vulnerability scans skipped legitimately", "count");
+        m_offsetMismatchTotal =
+            m_metrics->getOrCreateCounter(invsync::metrics::VD_OFFSET_MISMATCH_TOTAL,
+                                          "VDFirst/VDSync sessions rejected for a stale or ahead-of-node feed offset",
+                                          "count");
         m_laneDepth =
             m_metrics->getOrCreateGaugeInt(invsync::metrics::VD_LANE_DEPTH, "VD sessions queued in the lane", "items");
         m_laneTime = m_metrics->getOrCreateHistogram(invsync::metrics::VD_LANE_TIME,
@@ -363,6 +375,27 @@ namespace invsync::vd
                 }
                 finish(0, "");
                 continue;
+            }
+
+            // Offset gate: reject a VDFirst/VDSync session built against a feed offset this node
+            // doesn't currently have, mirroring /scan/vd's version check on the REST on-demand
+            // path (VD_RESCAN_SOLUTION.md, "Enhanced Flatbuffer Start Structure"). Non-VD sessions
+            // don't carry a meaningful feed_offset, so this only applies to VD ones.
+            if (item.session.isVD)
+            {
+                const auto currentOffset = m_scanner->currentFeedOffset();
+                if (item.session.feedOffset != currentOffset)
+                {
+                    LOGFN_DEBUG1(logFn(),
+                                 "VD session offset mismatch for agent %s: session=%llu, current=%llu. "
+                                 "Rejecting with 409 so the agent retries once offsets align.",
+                                 item.session.agentId.c_str(),
+                                 item.session.feedOffset,
+                                 currentOffset);
+                    m_offsetMismatchTotal->add();
+                    finish(409, versionMismatchBody(currentOffset));
+                    continue;
+                }
             }
 
             // THE gating of D22: scan first; only an OK (or a legitimate skip) may index.

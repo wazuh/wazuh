@@ -13,8 +13,10 @@
 #define SCANVD_HANDLER_HPP
 
 #include "endpoints/scanVdEndpoint.hpp"
+#include "scanvd/scanVdMetrics.hpp"
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace remoted::common
 {
@@ -26,7 +28,14 @@ namespace remoted::scanvd
     class ScanVdHandlerImpl final : public remoted::endpoints::scanvd::ScanVdHandler
     {
     public:
-        explicit ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient);
+        /**
+         * @param vdModulesdSocketUri VD module UDS endpoint used to trigger scans, as an httplib
+         * URI. Defaults to the real modulesd socket; overridable so tests can point this at a
+         * fake server instead.
+         */
+        ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
+                          ScanVdMetrics& metrics,
+                          std::string vdModulesdSocketUri = "unix://queue/sockets/modulesd");
         ~ScanVdHandlerImpl() override;
 
         void handleVdScan(uint32_t agentId,
