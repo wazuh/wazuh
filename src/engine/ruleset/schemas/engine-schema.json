@@ -957,6 +957,9 @@
     "file.device": {
       "type": "keyword"
     },
+    "file.diff": {
+      "type": "text"
+    },
     "file.directory": {
       "type": "keyword"
     },
@@ -2043,6 +2046,9 @@
     "package.path": {
       "type": "keyword"
     },
+    "package.previous.installed": {
+      "type": "date"
+    },
     "package.reference": {
       "type": "keyword"
     },
@@ -3051,7 +3057,22 @@
     "process.previous.args_count": {
       "type": "long"
     },
+    "process.previous.command_line": {
+      "type": "keyword"
+    },
     "process.previous.executable": {
+      "type": "keyword"
+    },
+    "process.previous.name": {
+      "type": "keyword"
+    },
+    "process.previous.parent.pid": {
+      "type": "long"
+    },
+    "process.previous.pid": {
+      "type": "long"
+    },
+    "process.previous.state": {
       "type": "keyword"
     },
     "process.real_group.id": {
@@ -3191,6 +3212,9 @@
     },
     "process.start": {
       "type": "date"
+    },
+    "process.state": {
+      "type": "keyword"
     },
     "process.supplemental_groups.id": {
       "type": "keyword"
@@ -3531,6 +3555,9 @@
     "service.origin.node.roles": {
       "type": "keyword"
     },
+    "service.origin.previous.state": {
+      "type": "keyword"
+    },
     "service.origin.state": {
       "type": "keyword"
     },
@@ -3538,6 +3565,9 @@
       "type": "keyword"
     },
     "service.origin.version": {
+      "type": "keyword"
+    },
+    "service.previous.state": {
       "type": "keyword"
     },
     "service.state": {
@@ -3565,6 +3595,9 @@
       "type": "keyword"
     },
     "service.target.node.roles": {
+      "type": "keyword"
+    },
+    "service.target.previous.state": {
       "type": "keyword"
     },
     "service.target.state": {
