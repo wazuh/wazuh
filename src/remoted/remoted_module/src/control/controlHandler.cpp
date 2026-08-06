@@ -11,6 +11,7 @@
 
 #include "controlHandler.hpp"
 #include "common/logThrottle.hpp"
+#include "common/vdClient.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
 #include <array>
@@ -131,12 +132,14 @@ namespace remoted::control
              std::shared_ptr<WazuhDBClient> wdbClient,
              std::shared_ptr<TaskClient> taskClient,
              std::shared_ptr<HashCache> hashCache,
+             std::shared_ptr<remoted::common::VdClient> vdClient,
              ControlMetrics& metrics,
              Config config)
             : m_registry(std::move(registry))
             , m_wdbClient(std::move(wdbClient))
             , m_taskClient(std::move(taskClient))
             , m_hashCache(std::move(hashCache))
+            , m_vdClient(std::move(vdClient))
             , m_metrics(metrics)
             , m_config(std::move(config))
             , m_stopping(false)
@@ -387,6 +390,11 @@ namespace remoted::control
         }
 
     private:
+        uint64_t getVdFeedOffset() const
+        {
+            return m_vdClient->getOffset();
+        }
+
         void processNotify(AgentId id,
                            std::shared_ptr<const AgentEntry> entry,
                            const NotifyData& data,
@@ -478,6 +486,7 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
+                    response["vd_feed_offset"] = this->getVdFeedOffset();
 
                     HttpResponse httpResp;
                     httpResp.status = 200;
@@ -514,6 +523,7 @@ namespace remoted::control
         std::shared_ptr<WazuhDBClient> m_wdbClient;
         std::shared_ptr<TaskClient> m_taskClient;
         std::shared_ptr<HashCache> m_hashCache;
+        std::shared_ptr<remoted::common::VdClient> m_vdClient;
         ControlMetrics& m_metrics;
         Config m_config;
         std::atomic<bool> m_stopping;
@@ -526,10 +536,16 @@ namespace remoted::control
                                    std::shared_ptr<WazuhDBClient> wdbClient,
                                    std::shared_ptr<TaskClient> taskClient,
                                    std::shared_ptr<HashCache> hashCache,
+                                   std::shared_ptr<remoted::common::VdClient> vdClient,
                                    ControlMetrics& metrics,
                                    const Config& config)
-        : m_impl(std::make_unique<Impl>(
-              std::move(registry), std::move(wdbClient), std::move(taskClient), std::move(hashCache), metrics, config))
+        : m_impl(std::make_unique<Impl>(std::move(registry),
+                                        std::move(wdbClient),
+                                        std::move(taskClient),
+                                        std::move(hashCache),
+                                        std::move(vdClient),
+                                        metrics,
+                                        config))
     {
     }
 
