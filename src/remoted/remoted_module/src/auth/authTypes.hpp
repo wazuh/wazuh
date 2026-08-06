@@ -128,6 +128,9 @@ namespace remoted::auth
                               ///< missing/not-a-string/not-numeric, or doesn't match the authenticated
                               ///< agent id.
         BodyTooLarge,
+        UnsupportedContentEncoding, ///< Content-Encoding present but not (case-insensitively) "zstd".
+        MalformedContentEncoding,   ///< Content-Encoding: zstd, but the body isn't a valid/complete
+                                    ///< zstd frame (bad magic, truncated, oversized window, ...).
     };
 
     /**

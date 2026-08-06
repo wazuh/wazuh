@@ -52,6 +52,7 @@ paths:
         - WazuhAuthentication: []
       parameters:
         - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
       description: |
         Accepts a batch of events using the Wazuh H/E wire protocol.
 
@@ -76,8 +77,19 @@ paths:
         ```
 
         The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
-        reordering, no normalization). The body is authenticated using its exact bytes. The
-        timestamp must be within 300 s in the past and 30 s in the future.
+        reordering, no normalization). The body is authenticated using its exact bytes -- the exact
+        bytes as sent on the wire, i.e. the **compressed** bytes if `Content-Encoding: zstd` is set.
+        The timestamp must be within 300 s in the past and 30 s in the future.
+
+        The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
+        only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
+        decompressing anything. Both the decoder's own buffers (sized from the frame header, so each
+        frame accounts for exactly what it needs) and the decompressed output (tracked incrementally
+        as it is produced) are charged against the server's live in-flight memory capacity -- so a
+        `413` here means the frame didn't fit in the capacity free at that moment, and a
+        highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
+        value other than `zstd` is rejected with `415`; a missing header is treated as an
+        uncompressed body, unchanged from today.
 
         Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
         (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
@@ -94,8 +106,9 @@ paths:
               type: string
               minLength: 1
               description: |
-                Request payload. Authentication is independent of Content-Type; the exact bytes are
-                included in the AES-CMAC calculation and forwarded verbatim to the engine.
+                Request payload. Authentication is independent of Content-Type; the exact wire bytes
+                (compressed, if `Content-Encoding: zstd` is set) are included in the AES-CMAC
+                calculation. The decompressed H/E batch is forwarded verbatim to the engine.
             examples:
               singleLineEvents:
                 summary: H/E batch (two events)
@@ -113,8 +126,9 @@ paths:
           description: |
             Either the `protocol-version` header is missing/unsupported, the payload's
             `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
-            missing/malformed/non-numeric), or the downstream engine rejected the forwarded H/E
-            batch as invalid. The last two share the same `Invalid event batch` message by design.
+            missing/malformed/non-numeric), `Content-Encoding: zstd` is set but the body isn't a
+            valid/complete zstd frame, or the downstream engine rejected the forwarded H/E batch as
+            invalid. The middle two share the same `Invalid event batch` message by design.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -126,6 +140,9 @@ paths:
                 invalidEventBatch:
                   summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
                   value: { error: "Invalid event batch", code: 400 }
+                malformedContentEncoding:
+                  summary: "Content-Encoding: zstd set, but the body isn't a valid zstd frame"
+                  value: { error: "Malformed compressed body", code: 400 }
         "401":
           description: |
             Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
@@ -138,13 +155,28 @@ paths:
                 invalidAuthentication:
                   value: { error: "Invalid client authentication", code: 401 }
         "413":
-          description: The request body exceeds the configured auth body limit (10 MiB).
+          description: |
+            The request body exceeds the configured auth body limit (10 MiB). For
+            `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
+            in-flight memory capacity -- either the decoder's buffers (refused up front, from the
+            frame header) or the decompressed output as it was produced. Retryable: the same request
+            may succeed once the server is less loaded.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
                 payloadTooLarge:
                   value: { error: "Request payload is too large", code: 413 }
+        "415":
+          description: |
+            `Content-Encoding` is present but not (case-insensitively) `zstd`. `gzip` is not
+            supported.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                unsupportedContentEncoding:
+                  value: { error: "Unsupported Content-Encoding", code: 415 }
         "503":
           description: |
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
@@ -194,6 +226,18 @@ components:
         type: string
         enum: ["1"]
       example: "1"
+
+    ContentEncoding:
+      name: Content-Encoding
+      in: header
+      required: false
+      description: |
+        Optional compression applied to the request body. Only `zstd` is supported (case-insensitive);
+        any other value is rejected with `415`. Omit the header to send an uncompressed body.
+      schema:
+        type: string
+        enum: ["zstd"]
+      example: "zstd"
 
   schemas:
     ErrorResponse:

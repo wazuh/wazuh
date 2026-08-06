@@ -26,6 +26,7 @@
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
 #include "endpoints/authGateway.hpp"
+#include "decoding/bodyDecoder.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
 
@@ -305,7 +306,9 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
     auto forwarder = std::make_unique<DeferredForwarder>(client, limiter, 2);
 
     auto server = makeHttpServer();
-    AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>()};
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(*server, /*enabled=*/true)};
 
     auto* forwarderPtr = forwarder.get();
     gateway.addAuthenticatedRoute(
@@ -406,7 +409,9 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightStream)
     auto reads = std::make_shared<std::atomic_int>(0);
 
     auto server = makeHttpServer();
-    AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<remoted::test::FakeKeystore>()};
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<remoted::test::FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(*server, /*enabled=*/true)};
 
     gateway.addAuthenticatedRoute(
         *server,

@@ -20,7 +20,7 @@ The agent key is read straight out of client.keys (same file
 Keystore reads), so this always matches whatever agent is
 currently enrolled -- no need to copy/paste keys by hand.
 
-Requires: pip install requests cryptography
+Requires: pip install -r requirements.txt
 
 Examples:
   python3 send_stateless.py                       # one valid signed request -> 202
@@ -34,6 +34,7 @@ import time
 
 import requests
 import urllib3
+import zstandard
 from cryptography.hazmat.primitives import cmac
 from cryptography.hazmat.primitives.ciphers import algorithms
 
@@ -250,6 +251,57 @@ def scenario_transport_body_too_large(agent_id, agent_key):
     return headers, body, target
 
 
+def scenario_zstd_encoded(agent_id, agent_key):
+    # Content-Encoding: zstd -- sign over the COMPRESSED (wire) bytes, exactly like the manager
+    # does: the MAC always covers what was actually sent, compressed or not.
+    target = "/stateless"
+    plain = DEFAULT_BODY
+    compressed = zstandard.ZstdCompressor().compress(plain)
+    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
+    headers["Content-Encoding"] = "zstd"
+    return headers, compressed, target
+
+
+def scenario_unsupported_content_encoding(agent_id, agent_key):
+    # gzip was intentionally dropped -- zstd is the only supported Content-Encoding now. Any other
+    # value, including a once-supported one, must be rejected as 415.
+    target = "/stateless"
+    body = DEFAULT_BODY
+    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers["Content-Encoding"] = "gzip"
+    return headers, body, target
+
+
+def scenario_malformed_zstd(agent_id, agent_key):
+    # Claims zstd, but the body is not a zstd frame at all.
+    target = "/stateless"
+    body = b"definitely not a zstd frame"
+    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    headers["Content-Encoding"] = "zstd"
+    return headers, body, target
+
+
+def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
+    # auth_max_body_size (10 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
+    # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
+    # that decompresses well past 10 MiB is accepted -- that is the behavior change zstd support
+    # introduced, and what this scenario pins down.
+    #
+    # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the
+    # default 256 MiB budget a single request cannot realistically reach it, and forcing it would
+    # mean making the manager allocate hundreds of MiB. Both 413 paths (the decoder's buffers and
+    # the growing output) are covered by bodyDecoder_test.cpp, and the concurrent-pressure case by
+    # authGateway_test.cpp's 50-request test.
+    target = "/stateless"
+    event = b"E 1:/var/log/syslog:" + b"x" * 1000 + b"\n"
+    header = b'H {"wazuh":{"agent":{"id":"1001"}}}\n'
+    plain = header + event * ((MAX_BODY_SIZE + 1024 * 1024) // len(event) + 1)
+    compressed = zstandard.ZstdCompressor().compress(plain)
+    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), compressed)
+    headers["Content-Encoding"] = "zstd"
+    return headers, compressed, target
+
+
 SCENARIOS = [
     ("valid_request", 202, scenario_valid),
     ("missing_protocol_version", 400, scenario_missing_protocol_version),
@@ -267,6 +319,10 @@ SCENARIOS = [
     ("header_value_too_large", CONN_CLOSED, scenario_header_value_too_large),
     ("too_many_headers", CONN_CLOSED, scenario_too_many_headers),
     ("transport_body_too_large", CONN_CLOSED, scenario_transport_body_too_large),
+    ("zstd_encoded_valid_request", 202, scenario_zstd_encoded),
+    ("unsupported_content_encoding_gzip", 415, scenario_unsupported_content_encoding),
+    ("malformed_zstd_body", 400, scenario_malformed_zstd),
+    ("zstd_body_beyond_the_auth_cap", 202, scenario_zstd_body_beyond_the_auth_cap),
 ]
 
 

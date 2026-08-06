@@ -95,13 +95,17 @@ namespace
         }
         return {};
     }
+
 } // namespace
 
 namespace remoted::endpoints
 {
 
-    AuthGateway::AuthGateway(remoted::auth::AuthConfig config, std::shared_ptr<remoted::auth::IAgentKeystore> keystore)
-        : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(std::move(config), std::move(keystore))}
+    AuthGateway::AuthGateway(remoted::auth::AuthConfig config,
+                             std::shared_ptr<remoted::auth::IAgentKeystore> keystore,
+                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder)
+        : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(config, std::move(keystore))}
+        , m_bodyDecoder {std::move(bodyDecoder)}
     {
     }
 
@@ -111,14 +115,17 @@ namespace remoted::endpoints
                                             AuthenticatedHandler handler,
                                             remoted::http::ResponseMode mode)
     {
-        auto middleware = m_middleware;
         const char* methodStr = methodToCanonical(method);
 
         server.addRoute(
             method,
             path,
-            [middleware, methodStr, handler = std::move(handler)](std::shared_ptr<const HttpRequest> request,
-                                                                  std::shared_ptr<IHttpResponder> responder)
+            // Both dependencies are captured as their own shared_ptr copy (a refcount bump), not by
+            // reference to the member: the lambda lives in the server's route table and runs per
+            // request, long after this call returns. Copying keeps each registered route
+            // self-contained instead of tying its validity to this gateway still being alive.
+            [middleware = m_middleware, methodStr, bodyDecoder = m_bodyDecoder, handler = std::move(handler)](
+                std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
             {
                 // Everything below -- the AES-CMAC auth pipeline (steps 1-7) AND the endpoint
                 // handler -- runs inside one try/catch. beginSession()/Session::update()/finish()
@@ -132,6 +139,10 @@ namespace remoted::endpoints
                 {
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
+                    // Parsed once here, acted on only AFTER authentication succeeds (see below): the
+                    // MAC always covers the wire bytes exactly as sent, compressed or not.
+                    const auto contentEncoding =
+                        remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
                     // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
                     auto begin = middleware->beginSession(protocolVersion,
@@ -181,6 +192,18 @@ namespace remoted::endpoints
                     auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
+
+                    // Body decoding runs here, AFTER authentication: the MAC already covered the
+                    // exact wire bytes above, so an unauthenticated peer never reaches a decoder --
+                    // it cannot spend our CPU or memory on one. What the step actually does (which
+                    // encodings are implemented, how a body is decoded, how the memory that costs is
+                    // accounted for) is deliberately unknown here; see remoted::decoding::IBodyDecoder.
+                    const auto decodeError = bodyDecoder->decode(contentEncoding, authRequest.payload);
+                    if (decodeError != remoted::auth::AuthError::None)
+                    {
+                        responder->send(errorResponseFor(decodeError));
+                        return;
+                    }
 
                     // Hand the handler a shared_ptr<const> so it can retain the verified
                     // request across deferred pipeline stages without copying the payload.

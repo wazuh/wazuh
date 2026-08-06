@@ -5,10 +5,9 @@ for agent-authenticated event ingestion, in addition to the classic AES-encrypte
 on port `1514`. The listener is built on RESTinio + OpenSSL and authenticates every request with a
 per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 
-> **Experimental / work in progress.** The endpoint today performs **authentication and request
-> validation only** — it does **not** parse the H/E payload or ingest events yet. A successful
-> request is authenticated and answered `200` with an empty body; nothing is forwarded downstream.
-> The listener **requires** a TLS certificate and key to be present (see
+> **Experimental / work in progress.** A successful request is authenticated, its H/E batch is
+> forwarded to the engine's event ingress, and the response reflects the downstream result (see
+> [Endpoints](#endpoints)). The listener **requires** a TLS certificate and key to be present (see
 > [Transport and TLS](#transport-and-tls)); a self-signed pair is generated automatically at
 > install time on manager packages, so this is satisfied on a default install.
 
@@ -121,6 +120,64 @@ The manager resolves the agent key by reading `etc/client.keys` directly (the sa
 format `OS_ReadKeys()` uses); the key column is lowercase hex and must decode to 16, 24 or 32 bytes.
 A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
 
+### Content-Encoding (zstd)
+
+The request body MAY optionally be compressed with `Content-Encoding: zstd` (case-insensitive). No
+other value is accepted — **`gzip` is not supported.** Support can be turned off entirely with
+`remoted.http_content_encoding_enabled` (default: enabled) — see [Configuration](#configuration).
+
+**Why zstd and not gzip.** Both were measured on a real 48 MB FIM sync payload before choosing. At
+its default level zstd beats gzip's default on all three axes at once, so there is no trade-off to
+weigh — and decompression speed is the side that matters here, since agents compress while the
+manager decompresses:
+
+| Codec | Compressed | Compress | Decompress |
+|---|---|---|---|
+| `gzip-6` (default) | 4.25 MB | 224 ms | 44.2 ms |
+| `gzip-9` (max) | 4.10 MB | 429 ms | 43.1 ms |
+| **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
+| `zstd-9` | 3.44 MB | 157 ms | 24.3 ms |
+
+Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
+two test matrices for a codec that is dominated on this workload.
+
+- Decompression happens **after** authentication succeeds, never before: the AES-CMAC always covers
+  the exact wire bytes (the compressed body, if `Content-Encoding: zstd` is set), so an
+  unauthenticated request never costs CPU/memory decompressing anything.
+- `remoted.auth_max_body_size` (the 10 MiB cap that bounds an *uncompressed* body) plays **no part**
+  in the zstd path at all. Instead, **both** of the decoder's memory costs are charged as real
+  reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
+  [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
+  mostly-idle server admits requests one already near its memory ceiling refuses, and concurrent
+  zstd requests genuinely compete for that pool rather than each reading the same "free" figure and
+  all proceeding at once:
+  - **The decoder's own buffers**, which zstd allocates *before* producing any output. Unlike
+    gzip/DEFLATE (fixed 32 KiB window by spec), a zstd frame's header declares its own window size,
+    so the amount needed is read straight off that header — each frame reserves exactly what it
+    needs, not a blanket worst case. A frame is refused with `413` if that doesn't fit, before
+    anything is decoded; a frame whose header can't even be read is rejected without consulting the
+    budget at all. This reservation is released as soon as decompression finishes, since zstd frees
+    those buffers then.
+  - **The decompressed output buffer.** What is charged is the memory the buffer actually takes from
+    the allocator, always reserved *before* it grows — so the figure can never lag behind real usage.
+    A frame header normally declares its decompressed size, in which case that is charged once and
+    the buffer sized to it exactly (one allocation, nothing to copy as it fills, and such a frame is
+    refused up front if the declaration alone doesn't fit). A frame that omits the size — streaming
+    compression with no pledged size — grows in doubling blocks instead, each block charged before it
+    is allocated; that over-allocates relative to the data, but the over-allocation is charged rather
+    than hidden. Either way a highly-compressed "decompression bomb" is rejected the moment a
+    reservation is refused, before the full payload is ever materialized in memory. These bytes stay
+    charged for as long as the decompressed body is held (released once the handler is done with it),
+    the same way the compressed wire body's own reservation already works.
+- A missing `Content-Encoding` header is treated exactly like today: the body is passed through
+  unchanged.
+- Any `Content-Encoding` value other than `zstd` — including `gzip`, which was intentionally dropped
+  in favor of zstd-only support — is rejected with `415`. The same happens to `zstd` itself when
+  `remoted.http_content_encoding_enabled` is disabled.
+- A `Content-Encoding: zstd` body that isn't a valid, complete zstd frame (bad magic, truncated,
+  unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
+  frame itself is bad, `413` means the frame is fine but there isn't capacity for it right now.
+
 ### Error responses
 
 On rejection the body is `{"error":"<message>","code":<status>}`. Credential-related failures all
@@ -131,7 +188,9 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
-| Body exceeds the auth body limit (10 MiB) | `413` | `Request payload is too large` |
+| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
+| `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
+| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
 | Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
 | Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
@@ -199,6 +258,7 @@ notes).
 | Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
 | Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
+| Accept `Content-Encoding: zstd` | enabled | `remoted.http_content_encoding_enabled` |
 
 I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
 set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
@@ -312,7 +372,7 @@ investigate why the downstream service is not keeping up.
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
 | Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
 
 Three more that are not about tuning:
@@ -525,7 +585,7 @@ from repeated errors; see
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
 same way the manager verifies them (AES-CMAC over the canonical sequence, key read from
-`client.keys`). Requires `pip install requests cryptography`.
+`client.keys`). Requires `pip install -r requirements.txt` (in the same `tools/` directory).
 
 ```bash
 # one valid signed request -> 202
@@ -534,7 +594,9 @@ python3 send_stateless.py --agent-id 1001
 # tamper the body after signing -> 401 (invalid MAC)
 python3 send_stateless.py --agent-id 1001 --tamper
 
-# run every success/failure scenario and check the expected status codes
+# run every success/failure scenario and check the expected status codes, including
+# Content-Encoding: zstd (valid, malformed, and a body decompressing past the 10 MiB auth cap --
+# which is accepted, since that cap does not apply to decompressed bodies) and the unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
 ```

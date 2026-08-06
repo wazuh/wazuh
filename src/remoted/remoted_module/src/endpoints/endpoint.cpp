@@ -14,11 +14,15 @@
 #include "common/logThrottle.hpp"
 #include "loggerHelper.h"
 
+#include <cctype>
+#include <cstddef>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
 {
+
     constexpr auto ENDPOINT_LOGTAG {"wazuh-manager-remoted:endpoints"};
 
     // One shared instance rather than a per-call temporary: this runs on EVERY rejected request.
