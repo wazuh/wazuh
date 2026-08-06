@@ -286,6 +286,27 @@ typedef struct hc_callbacks_t
     /// it must be a fast, non-blocking read. Null means no host block is sent.
     void (*on_collect_host)(char* json_out, size_t cap, void* user_data);
 
+    /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
+    /// object for the /stateless H line: {"agent":{"name":..,"version":..,
+    /// "groups":[..],"host":{"hostname":..,"architecture":..,"os":{"name":..,
+    /// "version":..,"platform":..,"type":..}}},"cluster":{"name":..,"node":..}}.
+    /// This exact nesting -- groups/host/os under agent, cluster as agent's
+    /// sibling -- is not arbitrary: it mirrors what the legacy manager's own
+    /// append_header() (remoted/src/secure.c) already builds and indexes
+    /// today, and the indexer's wazuh.* mapping is strict_allow_templates
+    /// (an unmapped path is rejected, not ignored), so this is the only shape
+    /// that will actually index. cluster.name/node come from the same
+    /// agent_metadata_t cluster_name/cluster_node that /stateful's Start table
+    /// uses, so the two transports never disagree on cluster identity. A
+    /// separate callback from on_collect_host (not reused) so the /stateless
+    /// and /control host blocks can carry different fields without either
+    /// risking the other's already-shipped contract. Write an empty string
+    /// when metadata is not yet available; the H line then carries only
+    /// agent.id, as it always has. Called on the stateless sender thread
+    /// before each flush (not the dispatcher), so it must be a fast,
+    /// non-blocking read. Null means the H line carries only agent.id.
+    void (*on_collect_stateless_host)(char* json_out, size_t cap, void* user_data);
+
     /// /control has been unreachable at the TRANSPORT level for a threshold
     /// number of consecutive attempts (paused=true), or has succeeded again
     /// (paused=false). The consumer arms/disarms its producer lock so modules

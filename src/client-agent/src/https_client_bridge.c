@@ -1348,6 +1348,112 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
     metadata_provider_free_metadata(&metadata);
 }
 
+/* Host metadata source for the /stateless H line. Pulled fresh from the same
+ * shared metadata_provider as bridge_on_collect_host() above, but as its own
+ * callback (not a reuse) so this endpoint's shape can grow without touching
+ * Notify's already-shipped contract.
+ *
+ * Shape (agent.name/version/groups/host.{architecture,hostname,os.*},
+ * cluster.{name,node}) mirrors EXACTLY what the legacy manager's own
+ * append_header() (remoted/src/secure.c) already builds and indexes today --
+ * not a new design. The indexer's wazuh.* mapping is strict_allow_templates
+ * (unmapped paths are rejected, not ignored), so groups/host/os MUST nest
+ * under agent as shown here, not as siblings of it: that shape is what the
+ * mapping is actually built for. cluster.name/node here are the exact same
+ * metadata.cluster_name/cluster_node that feed the Start table's cluster_name
+ * on /stateful, so the two transports can never disagree on cluster identity.
+ * Writes an empty string when metadata is not yet available, so the module
+ * falls back to an H line carrying only agent.id. Runs on the module's
+ * stateless sender thread, once per flush (not per event); a shared-memory
+ * read, fast and non-blocking. */
+static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *user_data)
+{
+    (void)user_data;
+
+    if (json_out == NULL || cap == 0) {
+        return;
+    }
+
+    json_out[0] = '\0';
+
+    agent_metadata_t metadata = {0};
+
+    if (metadata_provider_get(&metadata) != 0) {
+        mdebug2("https_client: host metadata not available yet; /stateless H line carries only agent.id.");
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+
+    if (root == NULL) {
+        metadata_provider_free_metadata(&metadata);
+        return;
+    }
+
+    cJSON *agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "agent", agent);
+
+    if (metadata.agent_name[0]) {
+        cJSON_AddStringToObject(agent, "name", metadata.agent_name);
+    }
+    if (metadata.agent_version[0]) {
+        cJSON_AddStringToObject(agent, "version", metadata.agent_version);
+    }
+
+    if (metadata.groups_count > 0 && metadata.groups != NULL) {
+        cJSON *groups = cJSON_CreateArray();
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            if (metadata.groups[i] != NULL) {
+                cJSON_AddItemToArray(groups, cJSON_CreateString(metadata.groups[i]));
+            }
+        }
+        cJSON_AddItemToObject(agent, "groups", groups);
+    }
+
+    cJSON *host = cJSON_CreateObject();
+    cJSON_AddItemToObject(agent, "host", host);
+
+    if (metadata.architecture[0]) {
+        cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+    }
+    if (metadata.hostname[0]) {
+        cJSON_AddStringToObject(host, "hostname", metadata.hostname);
+    }
+
+    cJSON *os = cJSON_CreateObject();
+    if (metadata.os_name[0]) {
+        cJSON_AddStringToObject(os, "name", metadata.os_name);
+    }
+    if (metadata.os_version[0]) {
+        cJSON_AddStringToObject(os, "version", metadata.os_version);
+    }
+    if (metadata.os_platform[0]) {
+        cJSON_AddStringToObject(os, "platform", metadata.os_platform);
+    }
+    if (metadata.os_type[0]) {
+        cJSON_AddStringToObject(os, "type", metadata.os_type);
+    }
+    cJSON_AddItemToObject(host, "os", os);
+
+    cJSON *cluster = cJSON_CreateObject();
+    if (metadata.cluster_name[0]) {
+        cJSON_AddStringToObject(cluster, "name", metadata.cluster_name);
+    }
+    if (metadata.cluster_node[0]) {
+        cJSON_AddStringToObject(cluster, "node", metadata.cluster_node);
+    }
+    cJSON_AddItemToObject(root, "cluster", cluster);
+
+    char *printed = cJSON_PrintUnformatted(root);
+    if (printed) {
+        snprintf(json_out, cap, "%s", printed);
+        os_free(printed);
+    }
+
+    cJSON_Delete(root);
+    metadata_provider_free_metadata(&metadata);
+}
+
 /* Maps the agent config parser's verification_mode enum onto the module
  * ABI's hc_verify_mode_t. The two are defined in independent headers with
  * matching values by convention (both documented "FULL is 0, fails closed");
@@ -1587,6 +1693,7 @@ void w_https_client_start(void)
     callbacks.collect_stats = bridge_collect_stats;
     callbacks.collect_config = bridge_collect_config;
     callbacks.on_collect_host = bridge_on_collect_host;
+    callbacks.on_collect_stateless_host = bridge_on_collect_stateless_host;
     callbacks.on_producer_pause = bridge_on_producer_pause;
 
     g_https_client = hc_create(&config, &callbacks);
