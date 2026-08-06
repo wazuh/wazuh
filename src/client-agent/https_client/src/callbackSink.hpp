@@ -50,6 +50,9 @@ class ICallbackSink
         virtual void onTaskFailed(const std::string& taskId, const std::string& taskType,
                                   const std::string& reason) = 0;
         virtual void onManagerConfigHash(const std::string& configHash) = 0;
+        /// The agent's current group set (comma-joined, manager's own order, empty
+        /// meaning none), fired only when it changed since the last report.
+        virtual void onAgentGroups(const std::string& groupsCsv) = 0;
         virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
         virtual void onStateChange(hc_conn_state_t state) = 0;
         virtual void onBufferLevel(hc_buffer_level_t level) = 0;
