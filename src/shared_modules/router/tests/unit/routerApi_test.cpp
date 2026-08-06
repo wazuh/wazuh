@@ -662,7 +662,6 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId, const
     auto startMsg = Wazuh::SyncSchema::CreateStart(builder,
                                                    moduleOffset,                        // module
                                                    Wazuh::SyncSchema::Mode_ModuleDelta, // mode
-                                                   100,                                 // size
                                                    0,                                   // index
                                                    Wazuh::SyncSchema::Option_Sync,      // option
                                                    0,                                   // architecture
