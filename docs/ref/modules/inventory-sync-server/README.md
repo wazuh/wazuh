@@ -1,11 +1,10 @@
 # Inventory Sync Server Module
 
-Manager-side ingress for agent state synchronization, exposed over an HTTP/1.1 Unix domain socket
-(`queue/sockets/inventory-sync.sock`) by `wazuh-manager-modulesd`. It replaced the retired
-[Inventory Sync](../inventory-sync/README.md) module: a whole synchronization session travels as
-ONE FlatBuffers `Message{FullSession}` request through [Remoted](../remoted/README.md)'s
-authenticated `POST /stateful` route, and the HTTP response relayed back to the agent IS the
-session result — no acks, no retransmission, no session store.
+Manager-side synchronization service for agent state data, exposed over an HTTP/1.1 Unix domain
+socket (`queue/sockets/inventory-sync.sock`) by `wazuh-manager-modulesd`. A whole synchronization
+session travels as ONE FlatBuffers `Message{FullSession}` request through
+[Remoted](../remoted/README.md)'s authenticated `POST /stateful` route, and the HTTP response
+relayed back to the agent IS the session result — no acks, no retransmission, no session store.
 
 ## Key Features
 
@@ -31,9 +30,12 @@ session result — no acks, no retransmission, no session store.
 
 ## Components
 
-- [Architecture](architecture.md) - transport, startup gate and shutdown protocol
-- [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Architecture](architecture.md) - the request pipeline, the sync workers, the vulnerability
+  scan lane, agent deletion, transport, startup gate, shutdown, and the design decisions
 - [API Reference](api-reference.md) - the routes, their statuses and their bodies
+- [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Schemas](flatbuffers.md) - the FullSession FlatBuffers contract
+- [Test Tools](test-tools.md) - the UDS smoke sender and the integration test driver
 
 ## Routes
 
@@ -59,10 +61,8 @@ session result — no acks, no retransmission, no session store.
 
 ## Related Modules
 
-- [Inventory Sync](../inventory-sync/README.md) - the RETIRED module this one replaced.
 - [Remoted](../remoted/README.md) - relays agent sessions to this module.
 - [Vulnerability Scanner](../vulnerability-scanner/README.md) - executed synchronously by the scan
   lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
-- [Keystore Server](../keystore/README.md) - hosts the `queue/sockets/keystore` socket that used to
-  live inside the legacy module.
+- [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
 - [Indexer Connector](../indexer_connector/README.md) - the library used to reach the indexer.

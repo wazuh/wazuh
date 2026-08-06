@@ -387,19 +387,17 @@ latter -- but see the descriptor-limit note on that option.
 Enable `wazuh_modules.debug=1` and restart: the module logs every resolved tunable at startup. The values
 are also reported by `getconfig wmodules` on the modulesd socket.
 
-## Obsolete options (retired with the legacy module)
+## Related options in other daemons
 
-These internal options belonged to paths that no longer exist. They are not read by any daemon; a
-value set for them has no effect:
-
-- `wazuh_modules.inventory_sync_*` (the legacy module's options: `queue_size`, `data_value_quota`,
-  `indexer_bulk_size_bytes`, `indexer_flush_interval`, ...) — the module was retired; see
-  [Inventory Sync](../inventory-sync/configuration.md).
-- `remoted.router_forwarding_disabled` — the router forwarding path it disabled retired with the
-  legacy module; legacy `s:`-headed stateful-sync messages are discarded by remoted.
+The ingress side of the same pipeline is tuned in remoted: see
+[`remoted.downstream_stateful_response_timeout`](../remoted/configuration.md) (how long remoted
+waits for this module's answer to a relayed `/stateful` request — sessions are indexed and flushed
+within the request, so it is deliberately longer than remoted's global downstream default) and the
+`remoted.downstream_*` family it belongs to.
 
 ## See Also
 
 - [Architecture](architecture.md)
 - [API Reference](api-reference.md)
-- [Inventory Sync](../inventory-sync/configuration.md)
+- [Schemas](flatbuffers.md)
+- [Test Tools](test-tools.md)
