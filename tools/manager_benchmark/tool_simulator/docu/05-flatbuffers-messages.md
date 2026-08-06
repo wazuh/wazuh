@@ -1,0 +1,82 @@
+# 05 — FlatBuffers messages
+
+The body of every `/stateful` request is one `Message{FullSession}`. The schema is shared with the
+manager: `src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs`, namespace
+`Wazuh.SyncSchema`; the field-by-field reference is
+`docs/ref/modules/inventory-sync-server/flatbuffers.md`.
+
+## Generated bindings
+
+The Go bindings **MUST** be generated from that schema at build time
+(`flatc --go -o internal/fb <schema>`) and **MUST NOT** be committed. The retired simulator
+committed its generated package and it silently drifted from the schema — regenerating is the only
+way a schema change becomes a compile error instead of a wrong wire.
+
+## The envelope
+
+```text
+Message { content: MessageType }        // root type
+FullSession { start: Start, payload: SessionPayload }
+union SessionPayload { SyncData, Cleans, ChecksumModule }
+```
+
+The sender **MUST** set `Message.content_type = FullSession`. Every other union member exists for
+historical reasons and is answered `400` by the server; a scenario **MAY** send one deliberately to
+measure the rejection path.
+
+## Start
+
+Built once per session from the scenario's agent identity plus its `start` block. Fields the sender
+**MUST** fill:
+
+| Field | Value |
+|---|---|
+| `agentid` | The agent's id. In `agent` mode it **MUST** equal the authenticated identity, or the answer is `403` |
+| `cluster_name` | The manager's cluster name, from the run configuration (mismatch → `403`) |
+| `mode` | The scenario's mode (see the matrix below) |
+| `option` | `Sync`, `VDFirst` or `VDSync` — this is what routes a data session to the scan lane |
+| `index` | The indices the session targets. Required for the metadata/group modes, which have no payload |
+| `module` | e.g. `syscollector`, `fim`, `sca` — recorded, and part of what the scenario describes |
+
+Fields that are metadata stamped onto documents (`agentname`, `agentversion`, `architecture`,
+`hostname`, `osname`, `osplatform`, `ostype`, `osversion`, `groups`) **SHOULD** be filled with
+plausible per-agent values: they inflate the session and are overlaid onto every document, so
+omitting them makes payload sizes unrealistic. `global_version` **MUST** be set for the
+metadata/group modes (it is the stale-writer guard). `feed_offset` **MAY** be set; the sender does
+not interpret it.
+
+## Payload by mode
+
+| `mode` | payload | What the scenario is measuring |
+|---|---|---|
+| `ModuleDelta` | `SyncData{values[], contexts[]}` | The bulk ingestion path: sharded workers, group commit. `values` **MUST** be ≥ 1 |
+| `ModuleDelta` | `Cleans{items[]}` | Agent-scoped deletion by index; also the first half of a full resync |
+| `ModuleCheck` | `ChecksumModule{index, checksum}` | The integrity path: a paged search plus a SHA-1 aggregate, the most read-heavy session there is |
+| `MetadataDelta` / `MetadataCheck` | *(none)* | One update-by-query across the declared indices |
+| `GroupDelta` / `GroupCheck` | *(none)* | Same, for group membership |
+
+Anything outside that matrix is `400` before any I/O — cheap, and therefore useful only as a
+deliberate rejection scenario.
+
+There is **no `ModuleFull`**: a full resync is composed by the client as two ordinary sessions, a
+`Cleans` of the module's indices followed by a `ModuleDelta` with the complete dataset (D19). The
+sender **MUST** model it that way, and **SHOULD** send both on the same connection sequence so the
+ordering guarantee (same agent → same shard → FIFO) is what is exercised.
+
+## Documents
+
+Each `DataValue` carries `operation` (`Upsert`/`Delete`), `id`, `index`, an optional `version`
+(> 0 selects a versioned upsert) and `data`: the document as **JSON bytes**. The sender **MUST**
+generate documents whose size is controlled by the scenario (payload-size knob) and **SHOULD** make
+them realistic in shape for the target index, including a `checksum.hash.sha1` field when the
+scenario later verifies with `ModuleCheck` — that is the field the manager aggregates.
+
+`DataContext` items are the vulnerability-detection context: they are consumed by the scan lane and
+never indexed as state documents. A VD scenario **SHOULD** include them, since they add bytes and
+work without adding documents.
+
+## What is NOT in the schema
+
+No acknowledgments, no `End`, no per-item sequence numbers, no `ReqRet`, no session id. Re-POSTing
+the identical buffer is idempotent, and that is the entire retry story. A sender that keeps
+per-session state beyond "this request is in flight" is modeling a protocol that does not exist.
