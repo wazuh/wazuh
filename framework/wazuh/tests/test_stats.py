@@ -187,6 +187,86 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
 
 
+def side_effect_test_get_daemons_stats_all_fully_migrated(daemon_path, agents_list, last_id):
+    """Simulates a fully migrated fleet: every raw page is entirely version-filtered by remoted,
+    so 'agents' is always empty but 'last_id' still advances through the raw page boundaries.
+
+    Asserts (not just fails silently) if called more than expected -- a regression that drops the
+    'last_id' fast-path would otherwise hang this test in a real infinite loop instead of failing.
+    """
+    calls = side_effect_test_get_daemons_stats_all_fully_migrated.history
+    calls.append(last_id)
+    assert len(calls) <= 5, f'pagination did not terminate; last_id history: {calls}'
+
+    if last_id == 0:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [], 'last_id': 150},
+                'message': 'due', 'error': 1}
+    elif last_id == 150:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [], 'last_id': 300},
+                'message': 'due', 'error': 1}
+    else:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': []},
+                'message': 'ok', 'error': 0}
+
+
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats_all_fully_migrated)
+def test_get_daemons_stats_all_agents_fully_migrated_fleet(mock_get_daemons_stats_socket):
+    """A fully migrated fleet (every connected agent >= v5.0.0) must still terminate pagination
+    using remoted's raw 'last_id', since the filtered 'agents' list never advances on its own.
+    """
+    side_effect_test_get_daemons_stats_all_fully_migrated.history = []
+
+    result = stats.get_daemons_stats_agents(['wazuh-manager-remoted'], ['all'])
+
+    calls = mock_get_daemons_stats_socket.call_args_list
+    assert len(calls) == 3
+    assert [c.kwargs['last_id'] for c in calls] == [0, 150, 300]
+
+    assert result.affected_items == [{'name': 'wazuh-manager-remoted', 'agents': []}]
+    assert result.total_affected_items == 1
+    assert not result.failed_items
+
+
+def side_effect_test_get_daemons_stats_all_mixed_due_pages(daemon_path, agents_list, last_id):
+    """Mixes a 'due' page with survivors and an explicit last_id, a 'due' page with no survivors
+    relying solely on last_id, and a final 'ok' page -- confirms the 'last_id' fast-path and the
+    'agents[-1]["id"]' fallback don't fight each other across consecutive pages.
+    """
+    calls = side_effect_test_get_daemons_stats_all_mixed_due_pages.history
+    calls.append(last_id)
+    assert len(calls) <= 5, f'pagination did not terminate; last_id history: {calls}'
+
+    if last_id == 0:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [{'id': 5}], 'last_id': 150},
+                'message': 'due', 'error': 1}
+    elif last_id == 150:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': [], 'last_id': 300},
+                'message': 'due', 'error': 1}
+    else:
+        return {'data': {'name': SOCKET_PATH_DAEMONS_MAPPING[daemon_path], 'agents': []},
+                'message': 'ok', 'error': 0}
+
+
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats_all_mixed_due_pages)
+def test_get_daemons_stats_all_agents_mixed_due_pages(mock_get_daemons_stats_socket):
+    """A due page with survivors plus an explicit last_id, followed by an empty due page relying
+    only on last_id, followed by a final ok page: pagination must advance correctly at each step.
+    """
+    side_effect_test_get_daemons_stats_all_mixed_due_pages.history = []
+
+    result = stats.get_daemons_stats_agents(['wazuh-manager-remoted'], ['all'])
+
+    calls = mock_get_daemons_stats_socket.call_args_list
+    assert len(calls) == 3
+    assert [c.kwargs['last_id'] for c in calls] == [0, 150, 300]
+
+    assert result.affected_items == [{'name': 'wazuh-manager-remoted', 'agents': [{'id': 5}]}]
+    assert result.total_affected_items == 1
+    assert not result.failed_items
+
+
 METRICS_DUMP_DATA = {
     "status": 0,
     "name": "engine",
