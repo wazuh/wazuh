@@ -24,6 +24,11 @@
  * CLI (kept compatible with the legacy tool so the QA driver changes only the binary name):
  *   inventory_sync_server_testtool <input.json>|<directory> [--config <file>]
  *                                  [--logFile <file>] [--wait <seconds>] [--verbose]
+ *
+ * It is also the QA suite's server harness: --serve boots the modules and keeps the socket
+ * open until SIGTERM/SIGINT (no inputs), and --no-vd skips the vulnerability scanner facade --
+ * the server's scanner seam degrades gracefully (feedReady() passes, scans report a legitimate
+ * skip), so plain ingestion scenarios run without paying the CVE feed bring-up.
  */
 
 #include "flatbuffers/include/inventorySync_generated.h"
@@ -33,6 +38,7 @@
 #include "external/nlohmann/json.hpp"
 #include <cJSON.h>
 
+#include <csignal>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -79,6 +85,8 @@ namespace
         uint32_t waitTime = 3;          ///< settle time after the last session (VD's async indexing)
         uint32_t feedTimeoutSecs = 300; ///< how long to retry 503 "feed not ready" answers
         bool verbose = false;
+        bool serve = false; ///< boot the modules and wait for SIGTERM/SIGINT instead of feeding inputs
+        bool noVd = false;  ///< do not start the vulnerability scanner facade (QA ingestion runs)
     };
 
     TestConfig parseArgs(int argc, char* argv[])
@@ -87,12 +95,19 @@ namespace
         {
             throw std::runtime_error("Usage: " + std::string(argv[0]) +
                                      " <input.json>|<directory> [--config <file>] [--logFile <file>]"
-                                     " [--wait <seconds>] [--feed-timeout <seconds>] [--verbose]");
+                                     " [--wait <seconds>] [--feed-timeout <seconds>] [--verbose]\n"
+                                     "       " +
+                                     std::string(argv[0]) + " --serve [--no-vd] [--config <file>] [--logFile <file>]");
         }
 
         TestConfig config;
-        config.input = argv[1];
-        for (int i = 2; i < argc; ++i)
+        int first = 1;
+        if (std::string(argv[1]).rfind("--", 0) != 0)
+        {
+            config.input = argv[1];
+            first = 2;
+        }
+        for (int i = first; i < argc; ++i)
         {
             const std::string arg = argv[i];
             if (arg == "--config" && i + 1 < argc)
@@ -115,6 +130,18 @@ namespace
             {
                 config.verbose = true;
             }
+            else if (arg == "--serve")
+            {
+                config.serve = true;
+            }
+            else if (arg == "--no-vd")
+            {
+                config.noVd = true;
+            }
+        }
+        if (config.input.empty() && !config.serve)
+        {
+            throw std::runtime_error("An input file/directory is required unless --serve is given");
         }
         return config;
     }
@@ -127,6 +154,13 @@ namespace
 
     std::ofstream gLogFile;
     std::mutex gLogMutex;
+
+    volatile std::sig_atomic_t gStopRequested = 0;
+
+    void onStopSignal(int)
+    {
+        gStopRequested = 1;
+    }
 
     void logSink(int /*level*/,
                  const char* tag,
@@ -508,10 +542,14 @@ int main(int argc, char* argv[])
         std::filesystem::create_directories("queue/sockets");
 
         // VD first: the server's start registers its scan coordinator and resolves the production
-        // scanner adapter against the running facade.
-        std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
+        // scanner adapter against the running facade. Under --no-vd the facade never starts and
+        // the server's adapter degrades to "skip legitimately, index anyway" (D22's skip row).
         auto& vulnerabilityScanner = VulnerabilityScannerFacade::instance();
-        vulnerabilityScanner.start(logSink, moduleConfig, false, true, true);
+        if (!config.noVd)
+        {
+            std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
+            vulnerabilityScanner.start(logSink, moduleConfig, false, true, true);
+        }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only
         // opens once its indexer session and connectors are up, so waiting for the file IS the
@@ -534,6 +572,31 @@ int main(int argc, char* argv[])
         if (!waitForFile(DEFAULT_SOCKET_PATH, 60))
         {
             throw std::runtime_error("The server socket never appeared (is the indexer reachable?)");
+        }
+
+        if (config.serve)
+        {
+            // QA harness mode: the suite talks to the socket itself; this process only keeps the
+            // modules alive. The marker line is the suite's readiness probe (the socket file
+            // already existed at this point, so "marker printed" implies "accepting").
+            std::signal(SIGTERM, onStopSignal);
+            std::signal(SIGINT, onStopSignal);
+            std::cout << "[INFO] SERVING on " << DEFAULT_SOCKET_PATH << " (SIGTERM to stop)" << std::endl;
+            while (gStopRequested == 0)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            }
+            std::cout << "\n[INFO] Stopping modules..." << std::endl;
+            inventory_sync_server_stop();
+            if (!config.noVd)
+            {
+                vulnerabilityScanner.stop();
+            }
+            if (indexerJson != nullptr)
+            {
+                cJSON_Delete(indexerJson);
+            }
+            return 0;
         }
 
         // Collect the input files (a single file, or every *.json in a directory, sorted).
@@ -592,7 +655,10 @@ int main(int argc, char* argv[])
 
         std::cout << "\n[INFO] Stopping modules..." << std::endl;
         inventory_sync_server_stop();
-        vulnerabilityScanner.stop();
+        if (!config.noVd)
+        {
+            vulnerabilityScanner.stop();
+        }
         if (indexerJson != nullptr)
         {
             cJSON_Delete(indexerJson);
