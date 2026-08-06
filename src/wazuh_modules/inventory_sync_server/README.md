@@ -46,7 +46,9 @@ inventory_sync_server/
 │       ├── agentInFlightRegistry.hpp  #   per-agent cross-lane exclusion (pipeline <-> lane)
 │       └── serverScanCoordinator.hpp  #   what feed-update scans see of in-flight sessions
 ├── test/unit/                         # one GTest binary: inventory_sync_server_utest
-├── testtool/                          # inventory_sync_server_testtool (VD integration driver)
+├── testtool/                          # inventory_sync_server_testtool (VD integration driver
+│                                      #   + the QA suite's --serve/--no-vd server harness)
+├── qa/                                # integration QA: pytest over the real socket + OpenSearch
 └── tools/send_sync.py                 # stdlib-only UDS smoke sender
 ```
 
