@@ -25,9 +25,19 @@
  * type -- so the version check must run strictly before calling it for a given agent, or a
  * >= v5.0.0 agent's tasks would be permanently stranded.
  *
- * There is no retry: once a push fails, this cycle logs the failure and moves on. The task itself
- * is already `delivered` in tasks.db (a side effect of the read, not of a confirmed install) --
- * this is an accepted, logged trade-off of not touching the shared Task Manager wire contract.
+ * A push is retried up to LEGACY_TASK_MAX_PUSH_ATTEMPTS times within the same cycle for the
+ * wire-level failure classes a retry can plausibly fix (see legacy_task_push_result_t). Two
+ * classes are never retried: anything strictly local to the manager or the task payload itself
+ * (a malformed task, a missing local WPK file, an installer that already ran and reported
+ * failure) since repeating the identical push changes nothing; and losing the ack on the
+ * 'upgrade' step specifically, since we can't tell whether the agent already started running the
+ * installer before the ack was lost -- retrying there risks a double install, which is worse than
+ * losing the task.
+ *
+ * Separately, and still fundamentally unrecoverable regardless of retries: if the Task Manager's
+ * response to get_pending_tasks itself is lost after it has already marked the task delivered
+ * server-side, this poller has nothing left to retry with. Fixing that would require changing the
+ * shared Task Manager wire contract, which this design deliberately avoids touching.
  *
  * The synchronous per-step ack reuses remoted's own request/response machinery (req_create() /
  * the req_table hash / the per-node condition variable in request.c) directly, through the
@@ -76,9 +86,23 @@
  * agent metadata. */
 #define LEGACY_TASK_STARTUP_DELAY_SEC 65
 
+/* Fixed cap on push attempts per task, per poll cycle -- deliberately not configurable. A bounded
+ * retry here only smooths over a transient wire hiccup within the few seconds a push takes; if it
+ * hasn't recovered by the Nth attempt, retrying more won't help. Keep this a plain counted loop --
+ * never a wait-until-condition loop -- so it can never become unbounded. */
+#define LEGACY_TASK_MAX_PUSH_ATTEMPTS 3
+
+/* Distinguishes failures a retry can plausibly fix from ones it can't -- see each return site in
+ * legacy_task_deliver_remote_upgrade() for the specific reasoning behind its classification. */
+typedef enum {
+    LEGACY_TASK_PUSH_SUCCESS,
+    LEGACY_TASK_PUSH_RETRYABLE,
+    LEGACY_TASK_PUSH_PERMANENT
+} legacy_task_push_result_t;
+
 STATIC bool legacy_task_agent_is_pre_v5(const char *agent_id, char **out_version) __attribute__((nonnull(1)));
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
-STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj) __attribute__((nonnull));
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj) __attribute__((nonnull));
 STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data) __attribute__((nonnull(1, 2, 3)));
 STATIC void legacy_upgrade_poll_cycle(void);
@@ -291,20 +315,23 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
  * against one agent for one remote_upgrade task.
  *
  * Sequential, synchronous: each step must ack before the next is sent. Any step failing aborts
- * the whole push -- no retry, no partial cleanup beyond logging.
+ * the whole push, no partial cleanup beyond logging; the caller decides whether the failure
+ * classification returned warrants a retry.
  *
  * @param agent_id Target agent identifier.
  * @param payload_obj Parsed task payload: {"wpk_file":...,"wpk_sha1":...,"installer":...}.
- * @return true if all six steps succeeded and the reported sha1 matched.
+ * @return LEGACY_TASK_PUSH_SUCCESS if all six steps succeeded and the reported sha1 matched,
+ * otherwise LEGACY_TASK_PUSH_RETRYABLE or LEGACY_TASK_PUSH_PERMANENT depending on the failure.
  */
-STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj) {
+STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON *payload_obj) {
     cJSON *wpk_file_obj = cJSON_GetObjectItem(payload_obj, "wpk_file");
     cJSON *wpk_sha1_obj = cJSON_GetObjectItem(payload_obj, "wpk_sha1");
     cJSON *installer_obj = cJSON_GetObjectItem(payload_obj, "installer");
 
     if (!cJSON_IsString(wpk_file_obj) || !cJSON_IsString(wpk_sha1_obj) || !cJSON_IsString(installer_obj)) {
         merror("legacy_task_delivery: agent '%s': invalid or incomplete remote_upgrade payload, not delivered", agent_id);
-        return false;
+        // The payload is malformed; retrying won't change what's in it.
+        return LEGACY_TASK_PUSH_PERMANENT;
     }
 
     const char *wpk_file = wpk_file_obj->valuestring;
@@ -339,7 +366,8 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
     // Step 1: lock_restart (execd, plain-text protocol)
     if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL)) {
         merror("legacy_task_delivery: agent '%s': 'lock_restart' step failed, aborting push", agent_id);
-        return false;
+        // Nothing has been sent to the agent yet at this point; a clean retry is safe.
+        return LEGACY_TASK_PUSH_RETRYABLE;
     }
 
     // Step 2: open
@@ -350,7 +378,8 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
 
         if (!legacy_task_send_upgrade_step(agent_id, "open", params, NULL)) {
             merror("legacy_task_delivery: agent '%s': 'open' step failed, aborting push", agent_id);
-            return false;
+            // Same as lock_restart: no partial state on the agent side yet.
+            return LEGACY_TASK_PUSH_RETRYABLE;
         }
     }
 
@@ -362,7 +391,9 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
         if (!file) {
             merror("legacy_task_delivery: agent '%s': cannot open local WPK file '%s': %s",
                    agent_id, file_path, strerror(errno));
-            return false;
+            // A manager-local filesystem problem (missing/unreadable file on this host), not a
+            // wire issue -- retrying the network push again does nothing to fix it.
+            return LEGACY_TASK_PUSH_PERMANENT;
         }
 
         char chunk[LEGACY_TASK_WPK_CHUNK_SIZE];
@@ -373,9 +404,10 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
             char *base64 = encode_base64((int)bytes_read, chunk);
 
             if (!base64) {
+                // A local encoding failure (e.g. OOM), not a network condition a retry addresses.
                 merror("legacy_task_delivery: agent '%s': base64 encoding failed writing '%s'", agent_id, wpk_file);
-                write_ok = false;
-                break;
+                fclose(file);
+                return LEGACY_TASK_PUSH_PERMANENT;
             }
 
             cJSON *params = cJSON_CreateObject();
@@ -394,8 +426,11 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
         fclose(file);
 
         if (!write_ok) {
-            merror("legacy_task_delivery: agent '%s': 'write' step failed, aborting push (no retry)", agent_id);
-            return false;
+            merror("legacy_task_delivery: agent '%s': 'write' step failed, aborting push", agent_id);
+            // 'open' is always called in "wb" mode, which truncates/restarts the file fresh on
+            // the agent side, so a full retry from the top safely discards whatever partial
+            // bytes made it through before a disconnect.
+            return LEGACY_TASK_PUSH_RETRYABLE;
         }
     }
 
@@ -406,7 +441,8 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
 
         if (!legacy_task_send_upgrade_step(agent_id, "close", params, NULL)) {
             merror("legacy_task_delivery: agent '%s': 'close' step failed, aborting push", agent_id);
-            return false;
+            // Same reasoning as 'write': a fresh retry re-opens in "wb" mode and starts clean.
+            return LEGACY_TASK_PUSH_RETRYABLE;
         }
     }
 
@@ -421,14 +457,16 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
         if (!ok) {
             merror("legacy_task_delivery: agent '%s': 'sha1' step failed, aborting push", agent_id);
             os_free(reported_sha1);
-            return false;
+            // Transient wire issue; a fresh transfer attempt is a reasonable next step.
+            return LEGACY_TASK_PUSH_RETRYABLE;
         }
 
         if (!reported_sha1 || strcmp(reported_sha1, wpk_sha1) != 0) {
             merror("legacy_task_delivery: agent '%s': sha1 mismatch after transfer (expected '%s', got '%s'), aborting",
                    agent_id, wpk_sha1, reported_sha1 ? reported_sha1 : "(none)");
             os_free(reported_sha1);
-            return false;
+            // Most likely one-off corruption in transit; a fresh transfer is likely to match.
+            return LEGACY_TASK_PUSH_RETRYABLE;
         }
 
         os_free(reported_sha1);
@@ -446,21 +484,26 @@ STATIC bool legacy_task_deliver_remote_upgrade(const char *agent_id, const cJSON
         if (!ok) {
             merror("legacy_task_delivery: agent '%s': 'upgrade' step failed", agent_id);
             os_free(exit_status);
-            return false;
+            // Unlike the earlier steps' ack loss, we cannot tell whether the agent already
+            // started running the installer before this ack was lost. Blindly retrying risks
+            // triggering the installer a second time, which is worse than losing this one task.
+            return LEGACY_TASK_PUSH_PERMANENT;
         }
 
         if (!exit_status || strncmp("0", exit_status, 1) != 0) {
             merror("legacy_task_delivery: agent '%s': installer script failed (exit status: %s)",
                    agent_id, exit_status ? exit_status : "unknown");
             os_free(exit_status);
-            return false;
+            // The agent ran the installer and it affirmatively reported failure (bad package,
+            // wrong arch, disk full, etc.) -- retrying the identical WPK will fail the same way.
+            return LEGACY_TASK_PUSH_PERMANENT;
         }
 
         os_free(exit_status);
     }
 
     minfo("legacy_task_delivery: successfully delivered remote_upgrade task to agent '%s' (wpk: '%s')", agent_id, wpk_file);
-    return true;
+    return LEGACY_TASK_PUSH_SUCCESS;
 }
 
 /**
@@ -545,8 +588,18 @@ STATIC void legacy_upgrade_poll_cycle(void) {
                 continue;
             }
 
-            // No retry: a failed push logs the failure above and this loop simply moves on.
-            legacy_task_deliver_remote_upgrade(agent_id, payload_json);
+            legacy_task_push_result_t push_result = LEGACY_TASK_PUSH_RETRYABLE;
+            for (int attempt = 1;
+                 attempt <= LEGACY_TASK_MAX_PUSH_ATTEMPTS && push_result == LEGACY_TASK_PUSH_RETRYABLE;
+                 attempt++) {
+                push_result = legacy_task_deliver_remote_upgrade(agent_id, payload_json);
+            }
+
+            if (push_result == LEGACY_TASK_PUSH_RETRYABLE) {
+                merror("legacy_task_delivery: agent '%s': task '%s' did not succeed after %d attempt(s), giving up "
+                       "-- the Task Manager has already marked it delivered, so it will not be offered again",
+                       agent_id, task_id, LEGACY_TASK_MAX_PUSH_ATTEMPTS);
+            }
 
             cJSON_Delete(payload_json);
         }
