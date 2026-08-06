@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed Azure Storage integration bookmarks to be keyed per container instead of per storage account, preventing low-volume containers from being skipped when several containers share the same account. ([#37391](https://github.com/wazuh/wazuh/issues/37391))
+
 ## [v5.0.0]
 
 ### Manager
