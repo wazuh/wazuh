@@ -60,58 +60,53 @@ namespace
     }
 
     /**
-     * @brief Validate the reported body shape and reduce it to the sanitized `{"<module>": <config>}`
-     *        object the wazuh-agent-config template expects for `configuration.content`.
+     * @brief Validate the reported body and return the `{"<module>": <config>}` object the
+     *        wazuh-agent-config template expects for `configuration.content`.
      *
-     * The agent still reports an array of `{"module": <string>, "config": <object>}` pairs, but the
-     * template maps `content` as an object keyed by module name (never an array), with an explicit
-     * per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a module is unique per report,
-     * so keying by module name up front is what makes "does agent X have module Y" a single field
-     * lookup instead of a scan. If the agent ever sent two entries for the same module, the later
-     * one wins -- object semantics, not an error. The template is `dynamic: false`: a field this
-     * handler emits that isn't in that per-module sub-schema (a module the template doesn't know
-     * about yet, or a legacy/undeclared key within a known module) still gets written and stored in
-     * `_source`, it just isn't indexed for search -- so nothing here needs to validate individual
-     * `config` fields against that schema, only the outer `{module, config}` shape.
+     * The agent posts `{"modules": {"<module>": <config>, ...}}` -- the same envelope POST /stats
+     * uses -- keyed by module name, which is exactly the shape the template maps `content` as (never
+     * an array), with an explicit per-module sub-schema (`content.fim.syscheck.frequency`, etc.): a
+     * module is unique per report by construction (object keys cannot repeat), so keying by module
+     * name is what makes "does agent X have module Y" a single field lookup instead of a scan. The
+     * template is `dynamic: false`: a field this handler emits that isn't in that per-module
+     * sub-schema (a module the template doesn't know about yet, or a legacy/undeclared key within a
+     * known module) still gets written and stored in `_source`, it just isn't indexed for search --
+     * so nothing here validates individual `config` fields against that schema, only that every
+     * module's value is an object.
      *
-     * @return The sanitized `{module: config}` object on success; std::nullopt if any element fails
-     * validation, in which case @p reason is set to a caller-facing 400 message.
+     * An empty `modules` object is rejected: every push replaces the agent's document whole (its
+     * `_id` is the agent id), so indexing an empty report would erase the last good configuration.
+     * The agent's own collector skips a cycle rather than send an empty report, so receiving one is
+     * a protocol violation, not data to store -- the same rule POST /stats applies.
+     *
+     * @return The sanitized `{module: config}` object on success; std::nullopt on a shape violation,
+     * in which case @p reason is set to a caller-facing 400 message.
      */
     std::optional<nlohmann::json> sanitizeReportedModules(const nlohmann::json& document, const char*& reason)
     {
-        if (!document.is_array())
+        if (!document.is_object())
         {
-            reason = "Body must be a JSON array of {\"module\", \"config\"} entries";
+            reason = "Body must be a JSON object with a \"modules\" member";
             return std::nullopt;
         }
 
-        auto content = nlohmann::json::object();
-        for (const auto& element : document)
+        const auto modulesIt = document.find("modules");
+        if (modulesIt == document.end() || !modulesIt->is_object() || modulesIt->empty())
         {
-            if (!element.is_object())
-            {
-                reason = "Each entry must be a JSON object";
-                return std::nullopt;
-            }
-
-            const auto moduleIt = element.find("module");
-            if (moduleIt == element.end() || !moduleIt->is_string() || moduleIt->get<std::string>().empty())
-            {
-                reason = "Each entry must have a non-empty string \"module\"";
-                return std::nullopt;
-            }
-
-            const auto configIt = element.find("config");
-            if (configIt == element.end() || !configIt->is_object())
-            {
-                reason = "Each entry must have an object \"config\"";
-                return std::nullopt;
-            }
-
-            content[moduleIt->get<std::string>()] = *configIt;
+            reason = R"(Body must carry a non-empty "modules" object keyed by module name)";
+            return std::nullopt;
         }
 
-        return content;
+        for (const auto& entry : modulesIt->items())
+        {
+            if (!entry.value().is_object())
+            {
+                reason = "Each module's configuration must be a JSON object";
+                return std::nullopt;
+            }
+        }
+
+        return *modulesIt;
     }
 } // namespace
 
@@ -239,7 +234,7 @@ namespace invsync::endpoints::config
                 // string field holding invalid UTF-8, which nlohmann rejects at dump() time. Still the
                 // caller's fault.
                 LOGFN_DEBUG1(logFn(), "Could not build an agent config document: %s.", e.what());
-                responder->send(badRequest("Body must be a JSON array of {\"module\", \"config\"} entries"));
+                responder->send(badRequest("Report holds bytes that are not valid UTF-8"));
                 return;
             }
 
