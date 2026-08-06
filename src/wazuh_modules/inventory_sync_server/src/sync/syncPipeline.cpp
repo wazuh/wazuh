@@ -13,7 +13,10 @@
 
 #include "loggerHelper.h"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <functional>
 #include <stdexcept>
@@ -40,9 +43,11 @@ namespace invsync::sync
     SyncPipeline::SyncPipeline(SyncPipelineConfig config,
                                std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
                                std::string managerClusterName,
-                               std::shared_ptr<vd::AgentInFlightRegistry> registry)
+                               std::shared_ptr<vd::AgentInFlightRegistry> registry,
+                               std::shared_ptr<wazuh::metrics::IManager> metrics)
         : m_config {config}
-        , m_processor {std::move(managerClusterName)}
+        , m_metrics {metrics ? std::move(metrics) : std::make_shared<wazuh::metrics::Manager>()}
+        , m_processor {std::move(managerClusterName), m_metrics}
         , m_registry {std::move(registry)}
         , m_connectors {std::move(connectors)}
     {
@@ -51,10 +56,30 @@ namespace invsync::sync
             throw std::invalid_argument {"the sync pipeline needs at least one indexer connector"};
         }
 
+        m_requestCounters = invsync::metrics::RequestCounters::make(*m_metrics);
+        m_shedTotal = m_metrics->getOrCreateCounter(
+            invsync::metrics::PIPELINE_SHED_TOTAL, "Sessions refused because the pipeline queue was full", "count");
+        m_bulkFlushes = m_metrics->getOrCreateCounter(invsync::metrics::BULK_FLUSHES, "Group-commit flushes", "count");
+        m_bulkBytesTotal = m_metrics->getOrCreateCounter(
+            invsync::metrics::BULK_BYTES_TOTAL, "Payload bytes flushed by group commits", "bytes");
+        m_bulkSessionsTotal = m_metrics->getOrCreateCounter(
+            invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered by group-commit flushes", "count");
+        m_durationBulk = m_metrics->getOrCreateHistogram(
+            invsync::metrics::SESSION_DURATION_BULK, "Enqueue-to-response time of bulk sessions", "microseconds");
+        m_durationImmediate = m_metrics->getOrCreateHistogram(invsync::metrics::SESSION_DURATION_IMMEDIATE,
+                                                              "Enqueue-to-response time of immediate sessions",
+                                                              "microseconds");
+
         m_shards.reserve(m_connectors.size());
+        m_shardDepth.reserve(m_connectors.size());
+        m_shardBytes.reserve(m_connectors.size());
         for (std::size_t i = 0; i < m_connectors.size(); ++i)
         {
             m_shards.push_back(std::make_unique<Shard>());
+            m_shardDepth.push_back(m_metrics->getOrCreateGaugeInt(
+                invsync::metrics::shardName(i, "depth"), "Items queued on this shard", "items"));
+            m_shardBytes.push_back(m_metrics->getOrCreateGaugeInt(
+                invsync::metrics::shardName(i, "bytes"), "Payload bytes queued on this shard", "bytes"));
         }
 
         // Threads last, once every shard exists: a workerLoop indexes into m_shards/m_connectors
@@ -101,11 +126,12 @@ namespace invsync::sync
         if (m_config.maxQueueBytes != 0 && queued > m_config.maxQueueBytes)
         {
             m_queuedBytes.fetch_sub(bytes, std::memory_order_acq_rel);
-            // STATS-PLACEHOLDER: pipeline_shed_total (503 for a full pipeline queue)
+            m_shedTotal->add(); // the endpoint answers 503 for this refusal
             return false;
         }
 
-        auto& shard = *m_shards[std::hash<std::string> {}(item.session.agentId) % m_shards.size()];
+        const auto shardIndex = std::hash<std::string> {}(item.session.agentId) % m_shards.size();
+        auto& shard = *m_shards[shardIndex];
         {
             std::lock_guard<std::mutex> lock(shard.mutex);
             if (m_stopping.load(std::memory_order_acquire))
@@ -114,7 +140,8 @@ namespace invsync::sync
                 return false;
             }
             shard.queue.push_back(std::move(item));
-            // STATS-PLACEHOLDER: shard_depth{worker}, shard_bytes{worker}
+            m_shardDepth[shardIndex]->add(1);
+            m_shardBytes[shardIndex]->add(static_cast<int64_t>(bytes));
         }
         shard.cv.notify_one();
         return true;
@@ -163,6 +190,11 @@ namespace invsync::sync
             shard->queue.clear();
         }
         m_queuedBytes.store(0, std::memory_order_release);
+        for (std::size_t i = 0; i < m_shards.size(); ++i)
+        {
+            m_shardDepth[i]->set(0);
+            m_shardBytes[i]->set(0);
+        }
 
         if (abandoned > 0)
         {
@@ -176,7 +208,16 @@ namespace invsync::sync
     {
         if (item.responder)
         {
-            // STATS-PLACEHOLDER: requests_total{code}, session_duration{mode}
+            m_requestCounters.count(status);
+            if (item.kind == Item::Kind::Session && item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            {
+                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                                         std::chrono::steady_clock::now() - item.enqueuedAt)
+                                         .count();
+                const auto& histogram =
+                    (classify(item.session) == SessionKind::BulkData) ? m_durationBulk : m_durationImmediate;
+                histogram->observe(static_cast<uint64_t>(elapsed));
+            }
             item.responder->send(http::HttpResponse::json(status, body));
         }
         if (m_registry)
@@ -254,7 +295,9 @@ namespace invsync::sync
             // THIS thread and only returns cleanly when the indexer took them (REQ-SYNC-4 without
             // registerNotify -- there is no callback machinery left to go stale).
             connector.flush();
-            // STATS-PLACEHOLDER: bulk_flushes, bulk_bytes_per_flush (batchBytes), sessions_per_flush
+            m_bulkFlushes->add();
+            m_bulkBytesTotal->add(batchBytes);
+            m_bulkSessionsTotal->add(batch.size());
             for (auto& item : batch)
             {
                 respond(item, 200, R"({"status":"ok"})");
@@ -347,6 +390,8 @@ namespace invsync::sync
 
             const auto itemBytes = item.request ? item.request->body.size() : 0;
             m_queuedBytes.fetch_sub(itemBytes, std::memory_order_acq_rel);
+            m_shardDepth[index]->sub(1);
+            m_shardBytes[index]->sub(static_cast<int64_t>(itemBytes));
 
             if (m_stopping.load(std::memory_order_acquire))
             {

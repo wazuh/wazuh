@@ -281,6 +281,24 @@ The worker's heartbeat additionally polls the indexer connector and logs availab
 while its response is still deferred is detected and released immediately instead of waiting out
 the response timeout.
 
+### Statistics (`GET /metrics`)
+
+The module keeps lock-free runtime statistics (the shared `wazuh_metrics` library,
+`src/shared_modules/metrics/` — relaxed-atomic counters and gauges, log-linear histograms for
+percentiles) and dumps them on `GET /metrics` over the same local socket — see the
+[API Reference](api-reference.md#get-metrics). What is measured, by stage:
+
+| Stage | Metrics |
+|---|---|
+| Responses | `sync.requests.total.<code>` — one counter per contract status, counted exactly once at the send site (endpoint rejection, pipeline, or scan lane) |
+| Pipeline | `sync.pipeline.shed.total` (queue-full refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
+| Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total` |
+| Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
+| VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (queue+scan+index histogram), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
+
+Counters survive the module's internal restart retries on purpose (the registry is created once
+per process and never reset), so totals read across a retry are cumulative.
+
 ## Design decisions
 
 The decisions that shape the module, and what each one buys:
