@@ -827,20 +827,26 @@ namespace invsync::http
              * After dispatch() there is no read pending, so without this an EOF sits unseen and the
              * fd, the registry entry and the connection slot are held until the response timeout --
              * hundreds of seconds after the peer's own deadline expired. The protocol is one request
-             * per connection with no pipelining, so the socket becoming readable during a deferral
-             * means EOF or a peer violating the contract; either way the session is done.
+             * per connection with no pipelining, so any byte arriving during a deferral is a peer
+             * violating the contract, and EOF is the peer giving up; either way the session is done.
+             *
+             * A one-byte async_read_some, deliberately NOT async_wait(wait_read): asio may complete
+             * a readiness wait from the reactor's cached (speculative, edge-triggered) state left
+             * behind by the request's own reads -- readable-per-cache while a recv() would say
+             * EAGAIN -- which falsely condemned ~1% of group-committed responses whose request
+             * arrived in more than one segment. A real read only completes on actual data or EOF.
              */
             void watchPeerDuringDeferral()
             {
                 auto self = shared_from_this();
-                m_socket.async_wait(
-                    stream_protocol::socket::wait_read,
+                m_socket.async_read_some(
+                    asio::buffer(&m_peerProbe, 1),
                     asio::bind_executor(m_strand,
-                                        [self](const std::error_code& ec)
+                                        [self](const std::error_code& ec, std::size_t)
                                         {
-                                            if (ec || self->m_finished)
+                                            if (self->m_finished || ec == asio::error::operation_aborted)
                                             {
-                                                return; // closed/cancelled, or already answered
+                                                return; // already answered, or torn down
                                             }
                                             if (const auto decision = self->m_state->peerGoneThrottle.record())
                                             {
@@ -1035,6 +1041,7 @@ namespace invsync::http
             asio::steady_timer m_timer;
             RequestParser m_parser;
             std::vector<char> m_readBuffer;
+            char m_peerProbe {0}; ///< 1-byte sink for watchPeerDuringDeferral()'s EOF-detecting read.
 
             InFlightBudget::Reservation m_reservation;
             const Route* m_route {nullptr};

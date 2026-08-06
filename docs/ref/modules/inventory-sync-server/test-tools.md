@@ -1,8 +1,8 @@
 # Inventory Sync Server Test Tools
 
-Two tools live with the module's sources, one per layer: a raw HTTP sender for the transport and
-routes, and a full integration driver that exercises the pipeline together with the real
-vulnerability scanner.
+Three things live with the module's sources: a raw HTTP sender for the transport and routes, a
+full integration driver that exercises the pipeline together with the real vulnerability scanner
+(doubling as the QA suite's server harness), and the integration QA suite itself.
 
 ## `tools/send_sync.py` — UDS smoke sender
 
@@ -62,6 +62,8 @@ inventory_sync_server_testtool <input.json>|<directory>
                                [--wait <seconds>]       # settle time after the last session (default 3)
                                [--feed-timeout <secs>]  # how long to retry 503 feed-not-ready (default 300)
                                [--verbose]
+
+inventory_sync_server_testtool --serve [--no-vd] [--config <file>]   # QA harness mode
 ```
 
 Behavior worth knowing:
@@ -70,6 +72,10 @@ Behavior worth knowing:
   until `--feed-timeout` expires — so a test run can start before the feed finished seeding.
 - A directory input processes every `*.json` in it, sorted, as one session each.
 - The exit code is non-zero if any session did not answer `200`.
+- `--serve` boots the module pair and keeps the socket open until SIGTERM/SIGINT instead of
+  feeding inputs; `--no-vd` additionally skips the vulnerability scanner facade, which makes
+  VD-flagged sessions resolve as the legitimate-skip row (index + `200`) with no CVE feed
+  involved. This is how the integration QA gets a real server to talk to.
 
 ### Input format
 
@@ -109,6 +115,18 @@ The `--config` file is the same JSON the QA suite uses (`qa/test_data/config.jso
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
 answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
 scanner should reach.
+
+## The integration QA (`qa/`)
+
+`src/wazuh_modules/inventory_sync_server/qa/` is a pytest suite that drives the served module over
+its real socket: it regenerates the Python FlatBuffers bindings from the shared schema, builds
+`Message{FullSession}` buffers per scenario, POSTs them as remoted would, and asserts the FINAL
+STATE in a real OpenSearch (documents, `_id` shape, the `wazuh.*` overlay) rather than protocol
+acks. It covers the validation matrix and identity rejections, ingestion and per-document skips,
+cleans and the composed full resync, checksum verification (including `search_after` pagination),
+metadata/group reconciliation with the `global_version` guard, agent deletion, and the VD
+legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
+`5_testintegration_inventory-sync-server.yml` workflow.
 
 ## See Also
 
