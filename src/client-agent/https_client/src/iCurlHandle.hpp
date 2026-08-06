@@ -35,10 +35,18 @@ enum class CurlOption
     CaInfo,         ///< string CA file path
     SslCert,        ///< string client certificate path
     SslKey,         ///< string client key path
-    SslCiphers,     ///< string cipher list
+    SslVersion,     ///< long, the minimum TLS version to negotiate
+    SslCiphers,     ///< string TLS 1.3 ciphersuite list
     FollowLocation, ///< long, always 0 (H4: no redirects)
     NoSignal        ///< long, always 1 (H6)
 };
+
+/// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.
+///
+/// Numerically libcurl's CURL_SSLVERSION_TLSv1_3, repeated here so this header
+/// stays curl-agnostic like the ids above. curlHandle.cpp static_asserts the two
+/// against each other, so the literal cannot drift from what curl expects.
+inline constexpr long TLS_MIN_VERSION_1_3 {7};
 
 /**
  * @brief One HTTP transfer, at the option level.

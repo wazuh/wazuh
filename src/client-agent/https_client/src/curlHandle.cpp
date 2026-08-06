@@ -34,6 +34,9 @@ namespace
         std::call_once(initialized, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
     }
 
+    static_assert(TLS_MIN_VERSION_1_3 == CURL_SSLVERSION_TLSv1_3,
+                  "TLS_MIN_VERSION_1_3 must stay equal to libcurl's CURL_SSLVERSION_TLSv1_3");
+
     const std::map<CurlOption, CURLoption>& optionMap()
     {
         // Never destroyed, like the global curl init above: the shutdown drain reads
@@ -52,7 +55,11 @@ namespace
             {CurlOption::CaInfo, CURLOPT_CAINFO},
             {CurlOption::SslCert, CURLOPT_SSLCERT},
             {CurlOption::SslKey, CURLOPT_SSLKEY},
-            {CurlOption::SslCiphers, CURLOPT_SSL_CIPHER_LIST},
+            {CurlOption::SslVersion, CURLOPT_SSLVERSION},
+            // TLS13_CIPHERS, not SSL_CIPHER_LIST: the latter only governs TLS 1.2
+            // and below, which the minimum version below rules out entirely, so a
+            // list set through it could never constrain a session.
+            {CurlOption::SslCiphers, CURLOPT_TLS13_CIPHERS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL}
         };
