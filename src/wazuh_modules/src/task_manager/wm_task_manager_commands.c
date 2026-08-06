@@ -106,17 +106,23 @@ STATIC cJSON* wm_task_manager_send_message_to_wdb(const char *command, cJSON *pa
     const char *json_err;
     int result = 0;
     char *parameters_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
+    char *wdbquery = NULL;
     char wdboutput[WDBOUTPUT_SIZE] = "";
     char *payload = NULL;
     int socket = -1;
 
     parameters_in_str = cJSON_PrintUnformatted(parameters);
-    snprintf(wdbquery, sizeof(wdbquery), "task %s %s", command, parameters_in_str);
+
+    // Size the query buffer to fit the parameters instead of a fixed size,
+    // otherwise large payloads (e.g. Active Response) get silently truncated by snprintf.
+    size_t wdbquery_size = strlen("task ") + strlen(command) + strlen(" ") + strlen(parameters_in_str) + 1;
+    os_calloc(wdbquery_size, sizeof(char), wdbquery);
+    snprintf(wdbquery, wdbquery_size, "task %s %s", command, parameters_in_str);
     os_free(parameters_in_str);
 
     result = wdbc_query_ex(&socket, wdbquery, wdboutput, sizeof(wdboutput));
     wdbc_close(&socket);
+    os_free(wdbquery);
 
     if (result == OS_SUCCESS) {
         if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
