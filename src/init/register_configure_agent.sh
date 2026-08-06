@@ -77,7 +77,7 @@ add_adress_block() {
     {
         echo "    <server>"
         echo "      <address>${ADDRESSES[last_index]}</address>"
-        echo "      <port>1514</port>"
+        echo "      <port>1517</port>"
         echo "    </server>"
     } >> "${TMP_SERVER}"
 
