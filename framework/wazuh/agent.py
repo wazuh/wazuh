@@ -1296,31 +1296,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
     return result
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-async def get_agent_config(agent_list: list = None, module: str = None) -> WazuhResult:
-    """Read the agent's last reported configuration for a module.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agents ID's.
-    module : str
-        Selected agent's module.
-
-    Returns
-    -------
-    WazuhResult
-        Loaded configuration in JSON.
-    """
-    # We access unique agent_id from list, this may change if and when we decide a final way to handle get responses
-    # with failed ids and a list of agents
-    agent_id = agent_list[0]
-    my_agent = Agent(agent_id)
-    my_agent.load_info_from_db()
-
-    return WazuhResult({'data': await my_agent.get_config(module=module)})
-
-
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:

@@ -26,7 +26,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
-            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
+            get_agent_conf, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
@@ -1256,40 +1256,6 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             for i, error in enumerate(error_codes_in_failed_items):
                 errors_and_items[str(error)] = failed_items[i]
             assert expected_errors_and_items == errors_and_items
-
-
-@pytest.mark.parametrize('agent_list, module', [
-    (['001'], 'logcollector')
-])
-@patch('wazuh.core.agent.configuration.get_agent_active_configuration', new_callable=AsyncMock)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-async def test_agent_get_agent_config(socket_mock, send_mock, mock_get_agent_active_configuration, agent_list, module):
-    """Test `get_agent_config` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    module : str
-        Name of the module.
-    """
-    mock_get_agent_active_configuration.return_value = {"test": "conf"}
-
-    result = await get_agent_config(agent_list=agent_list, module=module)
-    assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.agent.Agent.get_config', new_callable=AsyncMock)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-async def test_agent_get_agent_config_exceptions(socket_mock, send_mock, mock_get_config):
-    """Test `get_agent_config` propagates the exceptions `Agent.get_config` raises."""
-    mock_get_config.side_effect = WazuhError(1703)
-
-    with pytest.raises(WazuhError, match=r'\b1703\b'):
-        await get_agent_config(agent_list=['001'])
 
 
 @pytest.mark.parametrize('filename, group_list', [
