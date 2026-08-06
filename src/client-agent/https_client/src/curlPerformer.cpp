@@ -204,6 +204,12 @@ void CurlPerformer::applyTls(ICurlHandle& handle) const
     handle.setOptionLong(CurlOption::VerifyPeer, verifyPeer ? 1L : 0L);
     handle.setOptionLong(CurlOption::VerifyHost, verifyHost ? 2L : 0L);
 
+    // The manager's HTTPS listener sets a TLS 1.3 floor of its own
+    // (SSL_CTX_set_min_proto_version in RestinioHttpServer), so match it instead
+    // of leaving libcurl's default, which still permits 1.0. Unconditional: this
+    // is the protocol's floor, not something <ssl> is allowed to lower.
+    handle.setOptionLong(CurlOption::SslVersion, TLS_MIN_VERSION_1_3);
+
     if (!m_config.caPath.empty())
     {
         handle.setOptionString(CurlOption::CaInfo, m_config.caPath);
