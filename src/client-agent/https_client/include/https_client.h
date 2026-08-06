@@ -246,6 +246,13 @@ typedef struct hc_callbacks_t
     /// agent's startup hash gate) can reconcile it even when nothing needs
     /// downloading. Empty when the manager reported none.
     void (*on_manager_config_hash)(const char* config_hash, void* user_data);
+    /// The agent's current group set as the manager reported it on the last
+    /// accepted Notify (comma-joined, manager's own order) -- fired only when it
+    /// differs from what was last reported (Startup included), so a consumer
+    /// doesn't republish identity data on every Notify for nothing. Empty is a
+    /// valid, meaningful value (no groups), not a placeholder for "default": do
+    /// not substitute a fallback here the way /download's group selector does.
+    void (*on_agent_groups)(const char* groups_csv, void* user_data);
     /// The HTTP outcome for a /stateful session. Unlike every other outcome in this
     /// header, `result` here is the RAW HTTP status code the manager answered with
     /// (200, 400, 403, 409, 413, 500, 503...), not an hc_result_t - the /stateful

@@ -46,20 +46,19 @@ namespace
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
 
-    /// The group selector /download's config resource_id expects. The manager's own
-    /// config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg resolution
-    /// (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
-    /// groups, comma-joined, in the exact order it reports them -- never just the
-    /// first. Preserving that same order (as reported here, not re-sorted) is what
-    /// reproduces the manager's own CSV byte-for-byte; the download endpoint natively
-    /// accepts this selector (downloadEndpoint.cpp's isValidGroupSelector).
-    std::string groupsCsv(const nlohmann::json& agent)
+    /// The agent's groups, comma-joined in the exact order the manager reports them
+    /// (never re-sorted -- see groupsCsv() below for why order matters) and, unlike
+    /// groupsCsv(), left EMPTY when the agent has none. Empty is meaningful to
+    /// downstream consumers (agcom.c: "Empty agent_groups is allowed - fallback to
+    /// merge.mg will be used"), so this must not carry /download's own "default"
+    /// substitution.
+    std::string rawGroupsCsv(const nlohmann::json& agent)
     {
         const auto groups = agent.find("groups");
 
-        if (groups == agent.end() || !groups->is_array() || groups->empty())
+        if (groups == agent.end() || !groups->is_array())
         {
-            return "default";
+            return {};
         }
 
         std::string csv;
@@ -79,6 +78,21 @@ namespace
             csv += value.get<std::string>();
         }
 
+        return csv;
+    }
+
+    /// The group selector /download's config resource_id expects. The manager's own
+    /// config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg resolution
+    /// (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
+    /// groups, comma-joined, in the exact order it reports them -- never just the
+    /// first. Preserving that same order (as reported here, not re-sorted) is what
+    /// reproduces the manager's own CSV byte-for-byte; the download endpoint natively
+    /// accepts this selector (downloadEndpoint.cpp's isValidGroupSelector). Unlike
+    /// rawGroupsCsv(), "no groups reported" falls back to "default" here: /download
+    /// needs some group to ask for, and every agent is implicitly in it.
+    std::string groupsCsv(const nlohmann::json& agent)
+    {
+        const std::string csv = rawGroupsCsv(agent);
         return csv.empty() ? "default" : csv;
     }
 
@@ -431,6 +445,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
         maybeDownloadConfig(managerHash, groupsCsv(*agent), waiter);
+        maybeReportAgentGroups(rawGroupsCsv(*agent));
     }
 }
 
@@ -460,6 +475,26 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     // hc_set_config_hash and the next mismatch re-downloads.
     m_configHash.set(managerHash);
     m_sink.onConfigDownloaded(managerHash, std::move(file));
+}
+
+/* agent.groups is otherwise a Startup-only fact on the C side (see
+ * https_client_bridge.c's bridge_apply_agent_groups(), called only from
+ * on_startup_result). A group-only change never re-triggers a Startup (settings_hash
+ * deliberately excludes groups; config_hash covers the group's actual config content,
+ * not the manager-side membership list itself), so without this the group set the
+ * agent reports downstream (agcom's gethandshake, /stats and /config tagging) would
+ * go stale forever after the first Startup. Fires only on an actual change so a
+ * consumer isn't asked to republish identity data on every Notify for nothing. */
+void ControlStream::maybeReportAgentGroups(const std::string& csv)
+{
+    if (m_groupsReported && csv == m_lastReportedGroupsCsv)
+    {
+        return;
+    }
+
+    m_lastReportedGroupsCsv = csv;
+    m_groupsReported = true;
+    m_sink.onAgentGroups(csv);
 }
 
 void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)

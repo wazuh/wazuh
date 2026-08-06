@@ -193,6 +193,19 @@ void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
     });
 }
 
+void CallbackDispatcher::onAgentGroups(const std::string& groupsCsv)
+{
+    if (m_callbacks.on_agent_groups == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, groupsCsv]
+    {
+        m_callbacks.on_agent_groups(groupsCsv.c_str(), m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result,
                                         const std::string& body)
 {
