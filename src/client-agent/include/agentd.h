@@ -26,7 +26,7 @@ int ClientConf(const char *cfgfile);
 bool w_agent_validate_ssl_ca(const agent *cfg);
 
 /* Parse read config into JSON format */
-cJSON *getClientConfig(void);
+cJSON *getAgentConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
