@@ -13,7 +13,10 @@
 
 #include "loggerHelper.h"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <algorithm>
+#include <chrono>
 #include <exception>
 #include <stdexcept>
 #include <utility>
@@ -50,12 +53,15 @@ namespace invsync::vd
                            std::shared_ptr<IVdScanner> scanner,
                            std::vector<std::shared_ptr<indexer::IIndexerConnectorSync>> connectors,
                            std::shared_ptr<AgentInFlightRegistry> registry,
-                           std::string managerClusterName)
+                           std::string managerClusterName,
+                           std::shared_ptr<wazuh::metrics::IManager> metrics)
         : m_config {config}
         , m_scanner {std::move(scanner)}
         , m_connectors {std::move(connectors)}
         , m_registry {std::move(registry)}
-        , m_processor {std::move(managerClusterName)}
+        // Null-object, same as the pipeline: instrumentation stays branch-free without a caller.
+        , m_metrics {metrics ? std::move(metrics) : std::make_shared<wazuh::metrics::Manager>()}
+        , m_processor {std::move(managerClusterName), m_metrics}
     {
         if (!m_scanner || m_connectors.empty() || !m_registry)
         {
@@ -65,6 +71,25 @@ namespace invsync::vd
         {
             m_config.queueSlots = 2 * m_connectors.size();
         }
+
+        m_requestCounters = invsync::metrics::RequestCounters::make(*m_metrics);
+        m_capacity503 = m_metrics->getOrCreateCounter(
+            invsync::metrics::VD_CAPACITY_503_TOTAL, "VD sessions refused because the scan queue was full", "count");
+        m_retryAfterTotal = m_metrics->getOrCreateCounter(
+            invsync::metrics::VD_RETRY_AFTER_TOTAL, "503 responses carrying a Retry-After header", "count");
+        m_scansOk =
+            m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_OK, "Vulnerability scans completed", "count");
+        m_scansFailed =
+            m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_FAILED, "Vulnerability scans failed", "count");
+        m_scansSkipped = m_metrics->getOrCreateCounter(
+            invsync::metrics::VD_SCANS_SKIPPED, "Vulnerability scans skipped legitimately", "count");
+        m_laneDepth =
+            m_metrics->getOrCreateGaugeInt(invsync::metrics::VD_LANE_DEPTH, "VD sessions queued in the lane", "items");
+        m_laneTime = m_metrics->getOrCreateHistogram(invsync::metrics::VD_LANE_TIME,
+                                                     "Enqueue-to-response time of VD sessions (queue+scan+index)",
+                                                     "microseconds");
+        m_scanDuration = m_metrics->getOrCreateHistogram(
+            invsync::metrics::VD_SCAN_DURATION, "Time inside the vulnerability scanner", "microseconds");
 
         // An agent released by the PIPELINE may be exactly what a parked lane item waits for.
         m_registry->addReleaseListener([this] { m_cv.notify_all(); });
@@ -101,7 +126,7 @@ namespace invsync::vd
             }
             if (m_queue.size() >= m_config.queueSlots)
             {
-                // STATS-PLACEHOLDER: vd_capacity_503
+                m_capacity503->add(); // the endpoint answers the 503 for this refusal
                 return Admission::Full;
             }
             if (isVDSync(item.session))
@@ -109,7 +134,7 @@ namespace invsync::vd
                 ++m_vdSyncPending;
             }
             m_queue.push_back(std::move(item));
-            // STATS-PLACEHOLDER: vd_lane_depth
+            m_laneDepth->add(1);
         }
         m_cv.notify_one();
         return Admission::Accepted;
@@ -152,6 +177,7 @@ namespace invsync::vd
             }
             m_queue.clear();
             m_vdSyncPending = 0;
+            m_laneDepth->set(0);
         }
         m_drainCv.notify_all();
 
@@ -200,7 +226,14 @@ namespace invsync::vd
     {
         if (item.responder)
         {
-            // STATS-PLACEHOLDER: requests_total{code}, vd_lane_time_total
+            m_requestCounters.count(status);
+            if (item.enqueuedAt != std::chrono::steady_clock::time_point {})
+            {
+                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                                         std::chrono::steady_clock::now() - item.enqueuedAt)
+                                         .count();
+                m_laneTime->observe(static_cast<uint64_t>(elapsed));
+            }
             item.responder->send(http::HttpResponse::json(status, body));
         }
     }
@@ -264,6 +297,7 @@ namespace invsync::vd
                     {
                         item = std::move(*it);
                         m_queue.erase(it);
+                        m_laneDepth->sub(1);
                         hasItem = true;
                         break;
                     }
@@ -322,41 +356,54 @@ namespace invsync::vd
                 response.headers.emplace_back("Retry-After", std::to_string(m_config.retryAfterSeconds));
                 if (item.responder)
                 {
+                    m_retryAfterTotal->add();
+                    m_requestCounters.count(503);
                     item.responder->send(std::move(response));
                     item.responder.reset(); // finish() must not answer twice
                 }
-                // STATS-PLACEHOLDER: retry_after_total
                 finish(0, "");
                 continue;
             }
 
             // THE gating of D22: scan first; only an OK (or a legitimate skip) may index.
             ScanVerdict verdict {};
+            const auto scanStart = std::chrono::steady_clock::now();
+            const auto observeScanDuration = [this, &scanStart]
+            {
+                const auto elapsed =
+                    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - scanStart)
+                        .count();
+                m_scanDuration->observe(static_cast<uint64_t>(elapsed));
+            };
             try
             {
-                // STATS-PLACEHOLDER: vd_scan_duration
                 verdict = m_scanner->scan(item.session);
+                observeScanDuration();
             }
             catch (const std::exception& e)
             {
+                observeScanDuration();
+                m_scansFailed->add();
                 LOGFN_WARN(logFn(),
                            "The vulnerability scan for agent %s failed: %s. Answering 500 with NOTHING indexed; the "
                            "agent will retry scan and ingest together.",
                            item.session.agentId.c_str(),
                            e.what());
-                // STATS-PLACEHOLDER: vd_scans_failed
                 finish(500, SCAN_FAILED_BODY);
                 continue;
             }
 
             if (verdict == ScanVerdict::Skipped)
             {
+                m_scansSkipped->add();
                 LOGFN_DEBUG1(logFn(),
                              "Vulnerability scan for agent %s skipped legitimately; indexing its inventory anyway.",
                              item.session.agentId.c_str());
-                // STATS-PLACEHOLDER: vd_scans_skipped
             }
-            // STATS-PLACEHOLDER: vd_scans_ok
+            else
+            {
+                m_scansOk->add();
+            }
 
             // Scan OK (or skip): NOW the inventory may be indexed. No group commit here -- one VD
             // session at a time per worker, staged and flushed within the request.

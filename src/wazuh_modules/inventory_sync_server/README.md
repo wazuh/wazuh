@@ -27,7 +27,7 @@ inventory_sync_server/
 │   ├── inventorySyncServer.cpp        # extern "C" entry points -> facade
 │   ├── inventorySyncServerFacade.hpp  # lifecycle: worker thread, startup gate, build/teardown order
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
-│   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck
+│   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck, metricNames (D18)
 │   ├── http_server/                   # HTTP/1.1-over-UDS transport (asio + llhttp, own interface)
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (DELETE /agents), stats, config
@@ -309,6 +309,7 @@ A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module'
 | `DELETE /agents`, `POST /agents/delete` | `deleteAgentEndpoint` | See above. |
 | `POST /stats`, `POST /config` | `statsEndpoint` / `configEndpoint` | Validate the agent's `modules`-keyed report, overlay the authoritative identity (agent id from the header, cluster identity, timestamp — never from the body) and index ONE document per agent (`wazuh-agent-stats` / `wazuh-agent-config`, agent id as document id, replace-on-push). Full contract in [the API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md). |
 | `GET /` | inline in the facade | Liveness probe, exempt from the byte budget so it answers under memory pressure. |
+| `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh_metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |
 
 Every route captures its dependencies weakly and answers `503` when they are gone — the
 shutdown-safety story in one line. The identity header is `x-wazuh-agent-id`
@@ -366,6 +367,26 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by
   `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`.
+
+## Statistics (D18)
+
+The facade owns one `wazuh::metrics::Manager` (`src/shared_modules/metrics/`, linked as the
+`wazuh_metrics` target) created ONCE and never reset in `stop()` — counters must survive the HTTP
+server's restart retries. Everything downstream resolves its instruments from it at construction
+(`common/metricNames.hpp` is the catalog): the pipeline (request counters by code, shed total,
+bulk-flush counters, per-shard depth/bytes gauges, session-duration histograms), the session
+processor (docs indexed/skipped, bytes ingested), the VD lane (lane depth/time, scan duration,
+scans ok/failed/skipped, capacity and Retry-After totals) and the sync endpoint (its inline
+rejections). Constructors take the manager as an optional trailing parameter; a null falls back
+to a private disconnected manager, so instrumentation stays branch-free and tests need no change.
+
+Three invariants worth keeping: every response is counted exactly ONCE, at the site that sends it
+(a refusal counted by `enqueue()`/`tryEnqueue()` is only the *cause* counter — `shed`/`capacity`
+— never the request counter, which the endpoint counts when it answers); shard/lane depths are
+GAUGES the workers update, never pull metrics (a pull would capture a `this` that dies in
+`stop()` while the manager persists — there is no `remove()`); and `Item::enqueuedAt` is stamped
+by the endpoint, so a default (epoch) timestamp means "no duration sample", which keeps
+hand-built test items out of the histograms.
 
 ## Operational notes
 

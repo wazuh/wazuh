@@ -24,9 +24,11 @@
 #include <utility>
 
 #include "common/clusterIdentity.hpp"
+#include "common/metricNames.hpp"
 #include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/deleteAgentEndpoint.hpp"
+#include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
 #include "http_server/IUdsHttpServer.hpp"
@@ -49,6 +51,9 @@
 #include "vd/serverScanCoordinator.hpp"
 #include "vd/vdScanLane.hpp"
 #include "vd/vdScannerFactory.hpp"
+
+#include <wazuh_metrics/manager.hpp>
+
 #include <functional>
 #include <json.hpp>
 
@@ -375,8 +380,7 @@ namespace invsync
                 invsync::http::Method::Get,
                 "/",
                 [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<invsync::http::IHttpResponder> responder) {
                     responder->send(
                         invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
@@ -404,16 +408,21 @@ namespace invsync
 
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
-            m_httpServer->addRoute(invsync::endpoints::sync::method(),
-                                   invsync::endpoints::sync::path(),
-                                   invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                                       m_syncPipeline,
-                                       m_indexerConnectorSync,
-                                       clusterIdentity,
-                                       m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
-                                                                                : DEFAULT_VD_RETRY_AFTER_SECS,
-                                       m_vdScanLane,
-                                       m_vdScanner}));
+            m_httpServer->addRoute(
+                invsync::endpoints::sync::method(),
+                invsync::endpoints::sync::path(),
+                invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                    m_syncPipeline,
+                    m_indexerConnectorSync,
+                    clusterIdentity,
+                    m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
+                                                             : DEFAULT_VD_RETRY_AFTER_SECS,
+                    m_vdScanLane,
+                    m_vdScanner,
+                    invsync::metrics::RequestCounters::make(*m_metricsManager),
+                    m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
+                                                         "503 responses carrying a Retry-After header",
+                                                         "count")}));
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
             // rather than sharing one handler because their real payloads will diverge.
@@ -439,12 +448,20 @@ namespace invsync
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps));
             }
 
+            // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
+            // most valuable exactly when the byte budget is under pressure.
+            m_httpServer->addRoute(invsync::endpoints::metrics::method(),
+                                   invsync::endpoints::metrics::path(),
+                                   invsync::endpoints::metrics::makeHandler(m_metricsManager),
+                                   /*countAgainstBudget=*/false);
+
             m_httpServer->start(config);
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, %s, %s, %s and DELETE %s; %zu sync "
-                       "worker(s)).",
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
+                       "%zu sync worker(s)).",
                        config.socketPath.c_str(),
+                       invsync::endpoints::metrics::path(),
                        invsync::endpoints::sync::path(),
                        invsync::endpoints::stats::path(),
                        invsync::endpoints::config::path(),
@@ -806,8 +823,7 @@ namespace invsync
                 !buildAndPublish(m_indexerSession,
                                  FailureStage::IndexerSession,
                                  generation,
-                                 [&]
-                                 {
+                                 [&] {
                                      return sessionFactory(
                                          rawIndexerConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
@@ -901,8 +917,11 @@ namespace invsync
                                                 *session,
                                                 LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
                             }
-                            return std::make_shared<invsync::sync::SyncPipeline>(
-                                pipelineConfig, std::move(connectors), pipelineClusterName, m_agentRegistry);
+                            return std::make_shared<invsync::sync::SyncPipeline>(pipelineConfig,
+                                                                                 std::move(connectors),
+                                                                                 pipelineClusterName,
+                                                                                 m_agentRegistry,
+                                                                                 m_metricsManager);
                         }))
                 {
                     return;
@@ -928,8 +947,12 @@ namespace invsync
                                                 *session,
                                                 LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
                             }
-                            return std::make_shared<invsync::vd::VdScanLane>(
-                                laneConfig, builtScanner, std::move(connectors), m_agentRegistry, pipelineClusterName);
+                            return std::make_shared<invsync::vd::VdScanLane>(laneConfig,
+                                                                             builtScanner,
+                                                                             std::move(connectors),
+                                                                             m_agentRegistry,
+                                                                             pipelineClusterName,
+                                                                             m_metricsManager);
                         }))
                 {
                     return;
@@ -1149,6 +1172,11 @@ namespace invsync
         /// shared_ptr because the /stats and /config handlers hold it WEAKLY (which needs a shared
         /// owner) -- the weak capture is what keeps stop()'s phase-2 reset destructive.
         std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
+        /// The D18 statistics registry. Created ONCE and NEVER reset in stop(): counters must
+        /// survive the HTTP server's restart retries (an operator reading /metrics after a retry
+        /// wants totals, not a fresh zeroed registry). Everything downstream (pipeline, lane,
+        /// endpoints) resolves its instruments from this one manager, so names dedupe naturally.
+        const std::shared_ptr<wazuh::metrics::IManager> m_metricsManager {std::make_shared<wazuh::metrics::Manager>()};
         /// The POST /stateful ingestion pipeline: workers sharded by agent id, one connector each
         /// (worker 0 reuses the slot above). Built after the connectors, torn down before them;
         /// the endpoint handler holds it weakly, like the connectors.
@@ -1166,7 +1194,9 @@ namespace invsync
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
+            {
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
 
         /*
          * The production connector factories are the only place that knows the seam it is handed wraps
@@ -1183,7 +1213,10 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[]()
+                                             {
+                                                 return invsync::vd::makeProductionVdScanner();
+                                             }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

@@ -12,10 +12,13 @@
 #ifndef _INVSYNC_SYNC_SESSION_PROCESSOR_HPP
 #define _INVSYNC_SYNC_SESSION_PROCESSOR_HPP
 
+#include "common/metricNames.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/fullSessionValidator.hpp"
 
+#include <memory>
 #include <string>
+#include <utility>
 
 namespace invsync::sync
 {
@@ -59,9 +62,20 @@ namespace invsync::sync
     class SessionProcessor final
     {
     public:
-        explicit SessionProcessor(std::string managerClusterName)
+        /// @param metrics OPTIONAL registry for the document counters (D18); null counts nothing.
+        explicit SessionProcessor(std::string managerClusterName,
+                                  const std::shared_ptr<wazuh::metrics::IManager>& metrics = nullptr)
             : m_managerClusterName {std::move(managerClusterName)}
         {
+            if (metrics)
+            {
+                m_docsIndexed =
+                    metrics->getOrCreateCounter(invsync::metrics::DOCS_INDEXED, "Documents staged/indexed", "count");
+                m_docsSkipped = metrics->getOrCreateCounter(
+                    invsync::metrics::DOCS_SKIPPED, "Documents skipped by per-document policy", "count");
+                m_bytesIngested = metrics->getOrCreateCounter(
+                    invsync::metrics::BYTES_INGESTED, "Serialized document bytes staged for indexing", "bytes");
+            }
         }
 
         /// @brief Stages a ModuleDelta x SyncData session into the connector's bulk buffer.
@@ -86,6 +100,10 @@ namespace invsync::sync
                                                indexer::IIndexerConnectorSync& connector) const;
 
         std::string m_managerClusterName;
+        // D18 counters, resolved once at construction (null when metrics are off, e.g. most tests).
+        std::shared_ptr<wazuh::metrics::ICounter> m_docsIndexed;
+        std::shared_ptr<wazuh::metrics::ICounter> m_docsSkipped;
+        std::shared_ptr<wazuh::metrics::ICounter> m_bytesIngested;
     };
 
 } // namespace invsync::sync
