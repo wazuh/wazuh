@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
       jobs: ${{ steps.vars.outputs.JOBS }}
@@ -62,7 +62,7 @@ jobs:
           echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     needs: prepare
     permissions:
       id-token: write
@@ -109,7 +109,7 @@ jobs:
           path: wazuh.tgz
 
   upload:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     needs: [prepare, build]
     permissions:
       id-token: write

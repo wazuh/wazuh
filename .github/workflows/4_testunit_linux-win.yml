@@ -20,7 +20,7 @@ jobs:
           fail-fast: false
           matrix:
               target: [agent, winagent, server]
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
