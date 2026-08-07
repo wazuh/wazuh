@@ -15,6 +15,13 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 EVP_PKEY* generate_key(int bits) {
     EVP_PKEY* key = EVP_PKEY_new();
     EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
@@ -53,6 +60,65 @@ error:
 }
 
 
+/* Room for the loopback entries plus a hostname and a CN, both bounded by their own limits. */
+#define CERT_SAN_MAX_LEN 512
+#define CERT_HOSTNAME_MAX_LEN 256
+
+/**
+ * @brief Whether a name is safe to place in a subjectAltName value.
+ *
+ * The extension is built as a comma-separated "TAG:value" string, so a name carrying a comma,
+ * a colon or whitespace would either be misparsed or smuggle in an extra SAN entry.
+ */
+STATIC bool valid_san_name(const char *name) {
+    if (name == NULL || *name == '\0') {
+        return false;
+    }
+
+    for (const char *c = name; *c; c++) {
+        if (*c == ',' || *c == ':' || isspace((unsigned char) *c)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Builds the subjectAltName value for the self-signed certificate.
+ *
+ * A certificate carrying only a subject CN cannot be verified by anything current: RFC 6125
+ * clients -- including reverse proxies and load balancers acting as TLS clients towards the
+ * manager -- match the expected name against the SAN and ignore the CN entirely, leaving the
+ * peer no option but to disable verification. This certificate is still only a starting point
+ * (a real deployment replaces it with one naming the address agents actually connect to), but
+ * it must at least be verifiable as the host that generated it.
+ *
+ * The CN is emitted as a DNS entry too: once a SAN is present the CN stops being consulted,
+ * so omitting it would break any peer that matches on it today.
+ *
+ * @param common_name CN taken from the subject, or NULL if the subject carries none.
+ * @param san Output buffer.
+ * @param san_len Size of the output buffer.
+ */
+STATIC void build_subject_alt_name(const char *common_name, char *san, size_t san_len) {
+    char hostname[CERT_HOSTNAME_MAX_LEN] = {0};
+
+    snprintf(san, san_len, "DNS:localhost,IP:127.0.0.1,IP:::1");
+
+    if (gethostname(hostname, sizeof(hostname) - 1) == 0 && valid_san_name(hostname) &&
+        strcmp(hostname, "localhost") != 0) {
+        const size_t used = strlen(san);
+        snprintf(san + used, san_len - used, ",DNS:%s", hostname);
+    }
+
+    if (valid_san_name(common_name) && strcmp(common_name, "localhost") != 0 &&
+        strcmp(common_name, hostname) != 0) {
+        const size_t used = strlen(san);
+        snprintf(san + used, san_len - used, ",DNS:%s", common_name);
+    }
+}
+
 /**
  * @brief Generates a self-signed X509 certificate.
  *
@@ -70,6 +136,8 @@ int generate_cert(unsigned long days,
     EVP_PKEY* key = generate_key(bits);
     ASN1_INTEGER* serial_number = ASN1_INTEGER_new();
     char **split_subj = NULL;
+    const char *common_name = NULL;
+    char subject_alt_name[CERT_SAN_MAX_LEN] = {0};
 
     if (key == NULL) {
         merror("Cannot generate key to sign the certificate.");
@@ -110,6 +178,10 @@ int generate_cert(unsigned long days,
 
         *delim = '\0';
 
+        if (strcasecmp(split_subj[i], "CN") == 0) {
+            common_name = delim + 1;
+        }
+
         X509_NAME_add_entry_by_txt(name, split_subj[i],  MBSTRING_ASC, (unsigned char*) delim + 1, -1, -1, 0);
     }
 
@@ -120,6 +192,11 @@ int generate_cert(unsigned long days,
     add_x509_ext(cert, &ctx, NID_subject_key_identifier, "hash");
     add_x509_ext(cert, &ctx, NID_authority_key_identifier, "keyid");
     add_x509_ext(cert, &ctx, NID_basic_constraints, "critical,CA:TRUE");
+
+    /* Without this the certificate names its host only in the CN, which no current TLS client
+     * looks at -- see build_subject_alt_name(). Added last so it can reuse the CN parsed above. */
+    build_subject_alt_name(common_name, subject_alt_name, sizeof(subject_alt_name));
+    add_x509_ext(cert, &ctx, NID_subject_alt_name, subject_alt_name);
 
     if(!X509_sign(cert, key, EVP_sha256())) {
         merror("Error signing certificate.");
