@@ -223,7 +223,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     """
     if password is None:
         raise WazuhError(4001)
-    if password:
+    if password is not None:
         if len(password) > 64 or len(password) < 12:
             raise WazuhError(5009)
         elif not _user_password.match(password):

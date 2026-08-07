@@ -85,6 +85,37 @@ def record_uploaded_key():
     return _record_uploaded_key
 
 
+def _record_uploaded_key(key):
+    """Append an uploaded key to the cleanup manifest, if one is configured.
+
+    pytest teardown only deletes the keys of its own run and only runs after 'yield', so a hard-cancelled
+    CI job (e.g. a new push cancelling the in-flight run) leaves the already-uploaded files as orphans.
+    Recording every key here, at upload time, lets a CI step with 'if: always()' delete them even when the
+    job is cancelled before teardown. The manifest path comes from AWS_IT_CLEANUP_MANIFEST; when it is not
+    set (e.g. local runs) this is a no-op and normal teardown still applies.
+    """
+    manifest = os.environ.get('AWS_IT_CLEANUP_MANIFEST')
+    if not manifest:
+        return
+    try:
+        with open(manifest, 'a') as handle:
+            handle.write(f"{key}\n")
+            handle.flush()
+    except OSError as exc:
+        logger.warning("Could not record uploaded key '%s' to manifest '%s': %s", key, manifest, exc)
+
+
+@pytest.fixture
+def record_uploaded_key():
+    """Expose _record_uploaded_key to test bodies that upload objects themselves.
+
+    manage_bucket_files records the keys it uploads, but a few tests upload directly in their body
+    (e.g. test_bucket_multiple_calls). Those must register their key too, otherwise a hard cancel
+    during the test would orphan the object - the exact case this cleanup targets.
+    """
+    return _record_uploaded_key
+
+
 def _safe_delete_key(key, bucket_name, s3_client):
     """Delete one key from the shared bucket; log failures; refuse to touch permanent seeds."""
     if key in _PERMANENT_SEED_KEYS or any(fid in key for fid in _PERMANENT_SEED_FLOW_LOG_IDS):
