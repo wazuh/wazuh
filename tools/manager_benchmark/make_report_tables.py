@@ -76,8 +76,11 @@ def table_throughput():
         if not j:
             continue
         th = j["throughput"]
-        fl = srv(lab, "sync.bulk.flushes")
-        by = srv(lab, "sync.bulk.bytes.total")
+        # Column names come from the monitor's wide CSV; the dotted metric names
+        # are the fallback scraper's long format. Try both so a report can be
+        # built from either producer.
+        fl = srv(lab, "bulk_flushes") or srv(lab, "sync.bulk.flushes")
+        by = srv(lab, "bulk_bytes_total") or srv(lab, "sync.bulk.bytes.total")
         rows += (f"| `{lab}` | {fnum(th['sessions_per_second'])} | {fnum(th['documents_per_second'], 0)} | "
                  f"{fnum(th['mib_per_second'], 2)} | {fnum(fl, 0)} | "
                  f"{'—' if by is None else f'{by/1048576:.1f} MiB'} |\n")
