@@ -372,7 +372,7 @@ WriteAgent()
     # verification_mode defaults to 'none'; set to 'full' or 'certificate' and
     # provide certificate_authorities to verify the manager's certificate.
     echo "    <ssl>" >> $NEWCONFIG
-    echo "      <certificate_authorities>PATH</certificate_authorities>" >> $NEWCONFIG
+    echo "      <!-- <certificate_authorities>etc/certs/root-ca.pem</certificate_authorities> -->" >> $NEWCONFIG
     echo "      <verification_mode>none</verification_mode>" >> $NEWCONFIG
     echo "    </ssl>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
