@@ -15,9 +15,6 @@
 #include "http_server/httpServerFactory.hpp"
 #include "proc.hpp"
 
-#include <openssl/evp.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "testTlsServer.hpp"
 
@@ -69,58 +66,6 @@ namespace
         return config;
     }
 
-    using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
-    using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
-
-    // Builds a minimal self-signed certificate with the given comma-separated
-    // subjectAltName value (e.g. "IP:203.0.113.5" or "IP:203.0.113.5,IP:2001:db8::1"), so
-    // certificateMatchesPeerIp() can be exercised with just an X509* and a string -- no
-    // live socket, TLS handshake, or on-disk fixture required.
-    X509Ptr makeSelfSignedCertificate(const char* subjectAltName)
-    {
-        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
-        if (!pkey)
-        {
-            throw std::runtime_error("Failed to generate test EC key pair");
-        }
-
-        X509Ptr certificate {X509_new(), &X509_free};
-        if (!certificate)
-        {
-            throw std::runtime_error("Failed to allocate test X509 certificate");
-        }
-
-        X509_set_version(certificate.get(), 2); // X509v3
-        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
-        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
-        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
-
-        X509_NAME* name = X509_get_subject_name(certificate.get());
-        X509_NAME_add_entry_by_txt(
-            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test"), -1, -1, 0);
-        X509_set_issuer_name(certificate.get(), name);
-
-        X509_set_pubkey(certificate.get(), pkey.get());
-
-        X509V3_CTX ctx;
-        X509V3_set_ctx_nodb(&ctx);
-        X509V3_set_ctx(&ctx, certificate.get(), certificate.get(), nullptr, nullptr, 0);
-
-        X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_alt_name, subjectAltName);
-        if (extension == nullptr)
-        {
-            throw std::runtime_error("Failed to build test subjectAltName extension");
-        }
-        X509_add_ext(certificate.get(), extension, -1);
-        X509_EXTENSION_free(extension);
-
-        if (X509_sign(certificate.get(), pkey.get(), EVP_sha256()) == 0)
-        {
-            throw std::runtime_error("Failed to sign test certificate");
-        }
-
-        return certificate;
-    }
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
     // build/runtime dependency) so start() can be exercised for real instead of only against the
     // missing/malformed-certificate failure paths above. HttpServerConfig takes paths (not PEM
@@ -292,19 +237,23 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(config.maxUrlSize, 2048U);
 }
 
-TEST(HttpServerConfigTest, VerificationModeFullFromStruct)
+// Only None and Certificate exist. An unrecognised value can therefore only reach us from a
+// config library built against a different revision of the C-ABI, and the one thing it must NOT
+// do is resolve to None: that would turn a stale build into a silent downgrade to no
+// client-certificate verification at all. Anything unrecognised keeps requiring a certificate.
+TEST(HttpServerConfigTest, UnknownVerificationModeFailsClosed)
 {
     auto raw = zeroedConfig();
-    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_FULL;
+    raw.verification_mode = 2;
 
-    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Full);
+    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Certificate);
 }
 
 TEST(HttpServerConfigTest, VerificationModeExplicitNoneStaysNone)
 {
     // An explicit <verification_mode>none</verification_mode> (REMOTED_MODULE_HTTPS_VERIFY_NONE,
-    // which is 0) must resolve to None via the same "configValue != UNSET" branch as
-    // Certificate/Full, not be misread as REMOTED_MODULE_HTTPS_VERIFY_UNSET (-1).
+    // which is 0) must resolve to None, not be misread as REMOTED_MODULE_HTTPS_VERIFY_UNSET (-1)
+    // -- both end up at None here, but only one of them is the operator's explicit choice.
     auto raw = zeroedConfig();
     raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_NONE;
 
@@ -449,69 +398,6 @@ TEST(HttpServerTest, StartWithMissingCertificateAndVerificationModeStillThrows)
 
     EXPECT_THROW(server->start(config), std::exception);
     EXPECT_NO_THROW(server->stop());
-}
-
-// ---------------------------------------------------------------------------
-// Certificate verification (ClientVerificationMode::Full peer-IP-vs-SAN check)
-// ---------------------------------------------------------------------------
-
-TEST(CertificateVerificationTest, MatchingIpv4AddressReturnsTrue)
-{
-    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
-
-    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
-}
-
-TEST(CertificateVerificationTest, NonMatchingIpv4AddressReturnsFalse)
-{
-    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
-
-    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.6"));
-}
-
-TEST(CertificateVerificationTest, MatchingIpv6AddressReturnsTrue)
-{
-    auto certificate = makeSelfSignedCertificate("IP:2001:db8::1");
-
-    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
-}
-
-TEST(CertificateVerificationTest, MultipleSanEntriesMatchesAnyOfThem)
-{
-    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5,IP:2001:db8::1");
-
-    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
-    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
-    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.9"));
-}
-
-TEST(CertificateVerificationTest, NoSanExtensionReturnsFalse)
-{
-    // No IP SAN present at all -- a certificate with only a CN and no subjectAltName.
-    EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
-    ASSERT_TRUE(pkey);
-
-    X509Ptr certificate {X509_new(), &X509_free};
-    ASSERT_TRUE(certificate);
-
-    X509_set_version(certificate.get(), 2);
-    ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
-    X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
-    X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
-
-    X509_NAME* name = X509_get_subject_name(certificate.get());
-    X509_NAME_add_entry_by_txt(
-        name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test-no-san"), -1, -1, 0);
-    X509_set_issuer_name(certificate.get(), name);
-    X509_set_pubkey(certificate.get(), pkey.get());
-    ASSERT_NE(X509_sign(certificate.get(), pkey.get(), EVP_sha256()), 0);
-
-    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
-}
-
-TEST(CertificateVerificationTest, NullCertificateReturnsFalse)
-{
-    EXPECT_FALSE(certificateMatchesPeerIp(nullptr, "203.0.113.5"));
 }
 
 // ---------------------------------------------------------------------------

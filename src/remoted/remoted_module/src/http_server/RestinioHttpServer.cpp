@@ -284,61 +284,6 @@ namespace
         }
     }
 
-    // Client-certificate verify callback for ClientVerificationMode::Full: on top of the
-    // standard chain-of-trust check (preverified), the peer's connection IP must also
-    // match an IP entry in the leaf certificate's subjectAltName.
-    bool verifyClientCertificateIp(bool preverified, asio::ssl::verify_context& verifyCtx)
-    {
-        if (!preverified)
-        {
-            return false;
-        }
-
-        X509_STORE_CTX* storeCtx = verifyCtx.native_handle();
-
-        // Only the leaf (peer) certificate carries the IP the client connected from;
-        // intermediate/CA certificates in the chain are only chain-validated.
-        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
-        {
-            return true;
-        }
-
-        auto* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx()));
-
-        if (ssl == nullptr)
-        {
-            return false;
-        }
-
-        const int fd = SSL_get_fd(ssl);
-        sockaddr_storage peerAddress {};
-        socklen_t peerAddressLen = sizeof(peerAddress);
-
-        if (fd < 0 || getpeername(fd, reinterpret_cast<sockaddr*>(&peerAddress), &peerAddressLen) != 0)
-        {
-            return false;
-        }
-
-        char peerIp[INET6_ADDRSTRLEN] {};
-
-        if (peerAddress.ss_family == AF_INET)
-        {
-            inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(&peerAddress)->sin_addr, peerIp, sizeof(peerIp));
-        }
-        else if (peerAddress.ss_family == AF_INET6)
-        {
-            inet_ntop(AF_INET6, &reinterpret_cast<sockaddr_in6*>(&peerAddress)->sin6_addr, peerIp, sizeof(peerIp));
-        }
-        else
-        {
-            return false;
-        }
-
-        X509* peerCertificate = X509_STORE_CTX_get_current_cert(storeCtx);
-
-        return remoted::http::certificateMatchesPeerIp(peerCertificate, peerIp);
-    }
-
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
     {
         checkTlsFileReadable(config.certificatePath, "certificate");
@@ -368,18 +313,13 @@ namespace
             throw std::runtime_error("The configured TLS private key does not match the certificate");
         }
 
-        // Client-certificate verification (mTLS). Both Certificate and Full modes
-        // require a CA to validate the presented client certificate against; Full
-        // additionally checks the peer IP against the certificate.
+        // Client-certificate verification (mTLS): the presented client certificate is
+        // validated against the configured CA. Note this authenticates whoever OPENS the
+        // connection -- which behind a terminating proxy is the proxy, not the agent.
         if (config.verificationMode != remoted::http::ClientVerificationMode::None)
         {
             context.load_verify_file(config.caPath);
             context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
-
-            if (config.verificationMode == remoted::http::ClientVerificationMode::Full)
-            {
-                context.set_verify_callback(&verifyClientCertificateIp);
-            }
         }
 
         return context;
@@ -709,11 +649,6 @@ namespace
 
 namespace remoted::http
 {
-    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
-    {
-        return certificate != nullptr && X509_check_ip_asc(certificate, peerIp.c_str(), 0) == 1;
-    }
-
     struct RestinioHttpServer::Impl
     {
         std::mutex m_mutex;

@@ -503,7 +503,7 @@ void test_wm_agent_upgrade_verification_mode_custom_canonical_5x_unconditional_r
     // all -- must be an unconditional reject (no crash probing a nonexistent member).
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
-    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_FULL);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
 
     // wm_agent_upgrade_validate_wpk_custom must NOT be reached.
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, NULL);
@@ -547,7 +547,7 @@ void test_wm_agent_upgrade_verification_mode_custom_noncanonical_now_gated(void 
     // unconditionally -- even for a name with no parseable version token at all.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
-    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_FULL);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
 
     // wm_agent_upgrade_validate_wpk_custom must NOT be reached.
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, NULL);

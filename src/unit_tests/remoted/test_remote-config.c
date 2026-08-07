@@ -639,13 +639,13 @@ static void test_w_remoted_parse_https_verification_mode_without_ca(void **state
     // (XML/env var/default) happens later in the C++ module, which the parser can't
     // see, so the parser must not fail this. See M7 in the review history.
     xml_node **nodes = create_node_array(1,
-        create_xml_node("verification_mode", "full")
+        create_xml_node("verification_mode", "certificate")
     );
 
     int result = w_remoted_parse_https(nodes, ts->logr);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
     assert_null(ts->logr->https.ca);
 
     free_node_array(nodes);
