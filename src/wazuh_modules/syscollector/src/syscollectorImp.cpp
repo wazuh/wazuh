@@ -763,6 +763,16 @@ void Syscollector::releaseResources()
     m_spNormalizer.reset();
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
+
+    if (m_spInfo)
+    {
+        // Release this thread's per-thread resources (Windows: the hotfixes() COM
+        // context) explicitly, on this thread, before m_spInfo is destroyed and before
+        // this thread exits -- see releaseThreadResources()'s implementation for why
+        // this can no longer be left to automatic thread_local teardown at thread exit.
+        m_spInfo->releaseThreadResources();
+    }
+
     m_spInfo.reset();
 }
 
