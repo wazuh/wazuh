@@ -40,7 +40,6 @@ class WazuhException(Exception):
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh to restore sockets'},
-        1015: 'Agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
@@ -85,7 +84,7 @@ class WazuhException(Exception):
         1116: {'message': "Requested component configuration does not exist",
                'remediation': f"Please, visit the official documentation (https://documentation.wazuh.com/"
                               f"{DOCU_VERSION}/user-manual/api/reference.html#operation/"
-                              f"api.controllers.agents_controller.get_agent_config) to check available component "
+                              f"api.controllers.cluster_controller.get_node_config) to check available component "
                               f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
@@ -200,10 +199,6 @@ class WazuhException(Exception):
         1734: {'message': 'Error removing agent from group',
                'remediation': f'Agent does not belong to specified group, to assign the agent to a group follow: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/agents/grouping-agents.html'
-               },
-        1735: {'message': 'Agent version is not compatible with this feature',
-               'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com'
-                              '/wazuh/wazuh/issues'
                },
         1737: {'message': f"Maximum number of groups per multigroup is {MAX_GROUPS_PER_MULTIGROUP}",
                'remediation': 'Please choose another group or remove an agent from the target group'
