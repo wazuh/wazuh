@@ -101,7 +101,11 @@ extern "C"
 
         /* ---- Transport: request limits (llhttp has none of its own) ---- */
         int max_body_size;         ///< Request body cap, bytes; over it -> 413.
-                                   ///< Range 0..536870912. <=0 -> 16 MiB.
+                                   ///< Range 0..536870912. <=0 -> NO own cap: a whole sync session
+                                   ///< is one request, so the effective session limit is the
+                                   ///< in-flight byte budget (max_inflight_bytes), and a request
+                                   ///< declaring more than that whole budget gets 413 at
+                                   ///< headers-complete (the agent must split the session).
         int max_url_size;          ///< Max request-target size, bytes; over it -> 414.
                                    ///< Range 0..65536. <=0 -> 2048.
         int max_header_name_size;  ///< Max header name size, bytes; over it -> 431.
@@ -163,6 +167,28 @@ extern "C"
                                       ///< every other module ('wazuh_modules.rlimit_nofile'), which
                                       ///< modulesd warns about if this exceeds it.
                                       ///< Range 0..65536. <=0 -> 1024.
+
+        /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
+        int sync_workers;           ///< Worker threads applying sessions to the indexer, sharded by
+                                    ///< agent id (FIFO per agent). Each worker owns one
+                                    ///< IndexerConnectorSync built on the shared session.
+                                    ///< Range 0..64. <=0 -> nproc/2, minimum 1.
+        long long sync_queue_bytes; ///< Early-rejection cap on payload bytes queued in the pipeline;
+                                    ///< over it -> 503. A refinement UNDER max_inflight_bytes (which
+                                    ///< already bounds the memory): this one sheds before the
+                                    ///< transport budget is exhausted so probes/other routes keep
+                                    ///< admitting. Range 1048576..1073741824. <=0 -> 64 MiB.
+        int vd_feed_retry_after_seconds; ///< Value of the `Retry-After` header attached to the 503
+                                         ///< returned for vulnerability-detection sessions while
+                                         ///< the CVE feed is still downloading.
+                                         ///< Range 10..1800. <=0 -> 60.
+        int vd_workers;                  ///< Workers of the vulnerability-detection scan lane
+                                         ///< (scan -> index -> respond, one connector each). The
+                                         ///< scanner serializes scans globally, so more than 1
+                                         ///< only helps once that changes. Range 0..16. <=0 -> 1.
+        int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
+                                         ///< "scan capacity exhausted". Range 0..256.
+                                         ///< <=0 -> 2x vd_workers.
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same

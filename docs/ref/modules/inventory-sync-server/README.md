@@ -1,42 +1,68 @@
 # Inventory Sync Server Module
 
-Manager-side ingress for agent inventory synchronization, exposed over an HTTP/1.1 Unix domain socket
-by `wazuh-manager-modulesd`.
-
-Transitional: it runs alongside [Inventory Sync](../inventory-sync/README.md), which still owns the
-router-based ingress and the state store. This module owns the socket that
-[Remoted](../remoted/README.md) forwards agent requests to.
+Manager-side synchronization service for agent state data, exposed over an HTTP/1.1 Unix domain
+socket (`queue/sockets/inventory-sync.sock`) by `wazuh-manager-modulesd`. A whole synchronization
+session travels as ONE FlatBuffers `Message{FullSession}` request through
+[Remoted](../remoted/README.md)'s authenticated `POST /stateful` route, and the HTTP response
+relayed back to the agent IS the session result — no acks, no retransmission, no session store.
 
 ## Key Features
 
-- HTTP/1.1 over a Unix domain socket, so no TCP port is exposed.
-- Non-blocking transport: each connection runs on its own strand, and a response may be produced long
-  after its handler returned.
-- Admission control before a body is read: a global in-flight byte budget and a connection cap, both
-  answering an explicit status rather than queueing silently.
-- Two-phase shutdown bounded to fit the daemon's shutdown budget.
-- Startup gate: the socket does not open until the indexer session and both connectors are constructed
-  successfully.
+- **One request = one session** (`FullSession`): delta data, cleans, integrity checksums, and
+  metadata/group reconciliation, all answered synchronously with the contract's status codes
+  (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch, `413` over budget,
+  `500` failed with nothing indexed, `503` + optional `Retry-After`).
+- **Per-agent ordering by construction**: sessions are applied by workers sharded on the agent id
+  (one indexer connector per worker, group-commit bulk flushes), so two requests of the same agent
+  can never be reordered.
+- **Synchronous vulnerability scanning**: sessions with option `VDFirst`/`VDSync` run through a
+  dedicated scan lane that executes the [Vulnerability Scanner](../vulnerability-scanner/README.md)
+  BEFORE indexing — a `200` guarantees the scan ran AND the inventory was flushed; a failed scan
+  answers `500` with nothing indexed; a still-downloading CVE feed answers `503 + Retry-After`
+  without processing.
+- **Agent deletion endpoint** (`DELETE /agents`, plus a `POST /agents/delete` alias for C callers):
+  UDS-local, called by `wazuh-manager-authd` when an agent is removed; the deletion defers to the
+  agent's worker shard, so it orders correctly against in-flight sessions of that same agent, and
+  the HTTP status makes a lost deletion visible instead of silent.
+- HTTP/1.1 over a Unix domain socket, so no TCP port is exposed; admission control before a body is
+  read (in-flight byte budget, connection cap); two-phase shutdown; the socket does not open until
+  the indexer session and connectors are constructed successfully.
 
 ## Components
 
-- [Architecture](architecture.md) - transport, startup gate and shutdown protocol
-- [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Architecture](architecture.md) - the request pipeline, the sync workers, the vulnerability
+  scan lane, agent deletion, transport, startup gate, shutdown, and the design decisions
 - [API Reference](api-reference.md) - the routes, their statuses and their bodies
+- [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Schemas](flatbuffers.md) - the FullSession FlatBuffers contract
+- [Test Tools](test-tools.md) - the UDS smoke sender and the integration test driver
+
+## Routes
+
+| Route | Caller | Purpose |
+| --- | --- | --- |
+| `POST /stateful` | Remoted (relaying agents) | Apply one whole synchronization session |
+| `DELETE /agents` / `POST /agents/delete` | authd | Delete every state document of an agent |
+| `POST /stats`, `POST /config` | Remoted (relaying agents) | Agent stats/config documents |
+| `GET /` | anyone local | Liveness probe |
 
 ## Overview
 
-1. An agent sends inventory data to `wazuh-manager-remoted` over HTTPS.
-2. Remoted authenticates it and forwards the payload to this module's Unix socket, adding the
-   authenticated agent id as a request header.
-3. This module validates the request, enriches the document with the agent id, this manager's cluster
-   identity and a server timestamp, and answers.
-4. An unhealthy indexer is reported as `503` so the agent retries rather than losing the data silently.
+1. An agent POSTs a whole session to `wazuh-manager-remoted` over authenticated HTTPS
+   (`POST /stateful`, AES-CMAC per agent).
+2. Remoted forwards the FlatBuffer verbatim to this module's Unix socket, adding the authenticated
+   agent id as the `X-Wazuh-Agent-Id` header.
+3. This module verifies the buffer, cross-checks the session's identity against that header (`403`
+   on mismatch) and against this manager's cluster name, and applies the session on the agent's
+   worker shard — through the vulnerability scan lane first when the session asks for it.
+4. The response travels back through Remoted to the agent as its own HTTP response: `200` means
+   applied AND flushed to the indexer (and scanned, for VD sessions); any other status tells the
+   agent exactly what to do next (retry, resync, or fix the request).
 
 ## Related Modules
 
-- [Inventory Sync](../inventory-sync/README.md) - the module this one will replace. Both run in the same
-  daemon during the migration and deliberately share nothing: different sockets, different store paths
-  and different log tags, so their output can be told apart.
-- [Remoted](../remoted/README.md) - the only production peer.
+- [Remoted](../remoted/README.md) - relays agent sessions to this module.
+- [Vulnerability Scanner](../vulnerability-scanner/README.md) - executed synchronously by the scan
+  lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
+- [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
 - [Indexer Connector](../indexer_connector/README.md) - the library used to reach the indexer.

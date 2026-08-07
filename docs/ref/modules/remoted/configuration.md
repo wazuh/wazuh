@@ -383,14 +383,6 @@ Allow remoted to start even if client.keys file is empty.
 - **Allowed values:** `yes`, `no`
 - **Note:** Useful for fresh installations; disable in production for security
 
-### remoted.router_forwarding_disabled
-
-Disable forwarding messages to the router component.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Set to `yes` to disable router integration (standalone manager mode)
-
 ### remoted.request_pool
 
 Size of the request pool for handling agent communications.
@@ -677,6 +669,19 @@ Seconds to wait for the downstream service's response after the write completes.
 - **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
   declare its own deadline instead of forcing this value up for every endpoint (which would delay
   detection of a genuinely hung downstream on the fast ones).
+
+#### remoted.downstream_stateful_response_timeout
+
+Seconds to wait for the inventory sync server's answer to a relayed `POST /stateful` request.
+
+- **Default value:** `20`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** Dedicated to the `/stateful` route: a synchronization session is validated, indexed and
+  flushed to the indexer WITHIN the request, so it cannot ride the global 5-second default. The
+  default keeps the total downstream budget (connect + write + response = 2+5+20 s) inside
+  `remoted.http_request_timeout`'s default (30 s); raising it past that requires raising the
+  request cap too, or the HTTP server cuts the request off first (remoted warns at startup when
+  the deadlines cannot be honored).
 
 #### remoted.downstream_io_threads
 

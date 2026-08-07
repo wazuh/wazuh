@@ -1,0 +1,9 @@
+{
+    "indexer": {
+        "hosts": [
+            "http://127.0.0.1:9200"
+        ]
+    },
+    "clusterName": "cluster01",
+    "clusterNodeName": "node01"
+}

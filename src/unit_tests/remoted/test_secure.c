@@ -36,7 +36,6 @@
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/shared/batch_queue_op_wrappers.h"
-#include "../wrappers/wazuh/shared_modules/router_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
@@ -52,14 +51,14 @@ extern remoted logr;
 extern wnotify_t* notify;
 extern char* str_family_address[FAMILY_ADDRESS_SIZE];
 extern OSHash* agent_data_hash;
-extern ROUTER_PROVIDER_HANDLE router_sync_handle;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
 /* Forward declarations */
 void * close_fp_main(void * args);
 void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
+// STATIC in secure.c, which expands to nothing under WAZUH_UNIT_TESTING.
+bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 
 /* Setup/teardown */
 
@@ -69,8 +68,6 @@ static int setup_config(void** state)
     keys.opened_fp_queue = queue;
     test_mode = 1;
 
-    // Initialize router_forwarding_disabled to 0 (enabled by default)
-    router_forwarding_disabled = 0;
 
     return 0;
 }
@@ -2232,7 +2229,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
 }
 
 /* legacy_task_process_upgrade_ack() (legacy_task_delivery.c) owns parsing the ack and replying
- * with clear_upgrade_result; router_message_forward() only needs to call it and then still let
+ * with clear_upgrade_result; discard_legacy_agent_message() only needs to call it and then still let
  * the message fall through to the normal event path. Mocked here so this file only asserts that
  * call happens (with the right agent id and the ack body, header stripped) -- not the reply's
  * wire mechanics, which belong to test_legacy_task_delivery.c. */
@@ -2244,7 +2241,7 @@ bool __wrap_legacy_task_process_upgrade_ack(const char *agent_id, const char *ac
 
 /* The agent's upgrade ack must now fall through to the normal event path (like any other
  * agent message) instead of being discarded. Covers all three known ack shapes -- the interception
- * in router_message_forward() is header-prefix-only, so all three must behave identically. */
+ * in discard_legacy_agent_message() is header-prefix-only, so all three must behave identically. */
 static int check_evt_item_matches_ack(const LargestIntegralType value,
                                       const LargestIntegralType check_value_data) {
     evt_item_t *e = (evt_item_t *)(uintptr_t)value;
@@ -2313,7 +2310,7 @@ static void run_upgrade_ack_forwarded_test(const char *ack_json) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Upgrade acknowledgment from agent '001' routed to the normal event path");
 
-    // router_message_forward() now returns false for this header -> falls through to the
+    // discard_legacy_agent_message() returns false for this header -> falls through to the
     // ordinary batch_queue_enqueue_ex path, with the exact raw message unmodified.
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
@@ -2359,9 +2356,9 @@ void test_HandleSecureMessage_upgrade_ack_failed_forwarded(void** state)
         "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
 }
 
-/* Companion test: router_message_forward() itself must return false for this header (callers key
- * behavior off the return value), not just "the message happens to end up enqueued". */
-void test_router_message_forward_upgrade_ack_returns_false(void** state)
+/* Companion test: discard_legacy_agent_message() itself must return false for this header (callers
+ * key behavior off the return value), not just "the message happens to end up enqueued". */
+void test_discard_legacy_agent_message_upgrade_ack_returns_false(void** state)
 {
     (void) state;
     char msg[] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":"
@@ -2376,10 +2373,10 @@ void test_router_message_forward_upgrade_ack_returns_false(void** state)
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Upgrade acknowledgment from agent '001' routed to the normal event path");
 
-    assert_false(router_message_forward(msg, strlen(msg), "001"));
+    assert_false(discard_legacy_agent_message(msg, "001"));
 }
 
-void test_HandleSecureMessage_router_forwarding_disabled(void** state)
+void test_HandleSecureMessage_event_enqueue_failed(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
@@ -2433,11 +2430,9 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    // Set router_forwarding_disabled to 1 to test disabled forwarding
-    router_forwarding_disabled = 1;
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
-    /* enqueue - since router forwarding is disabled, message goes to analysisd */
+    /* enqueue failure path: the event is disposed and the failure metric bumped */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
@@ -2447,9 +2442,6 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
-
-    // Reset router_forwarding_disabled after test
-    router_forwarding_disabled = 0;
 
     os_free(key->id);
     os_free(key->name);
@@ -2603,8 +2595,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    router_forwarding_disabled = 1;
-
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_sentinel, NULL);
@@ -2614,8 +2604,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
-
-    router_forwarding_disabled = 0;
 
     os_free(key->id);
     os_free(key->name);
@@ -2679,8 +2667,6 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    router_forwarding_disabled = 1;
-
     g_captured_evt_item = NULL;
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
@@ -2689,8 +2675,6 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
     expect_string(__wrap_rem_inc_recv_events, agent_id, "001");
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
-
-    router_forwarding_disabled = 0;
 
     /* The mocked queue did not actually take ownership; release the item. */
     if (g_captured_evt_item) {
@@ -2777,8 +2761,6 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     expect_string(__wrap__mdebug1, formatted_msg,
                   "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
-    router_forwarding_disabled = 1;
-
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_trimmed, NULL);
@@ -2789,8 +2771,6 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
-    router_forwarding_disabled = 0;
-
     os_free(key->id);
     os_free(key->name);
     os_free(key->ip);
@@ -2800,35 +2780,20 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     batch_queue_free(events_queue);
 }
 
-static const unsigned char g_expected_flatbuf_with_trailing_zeros[] = {
-    0xAB, 0xCD, 0x12, 0x34, 0x56, 0x78,
-    0x00, 0x00, 0x00
-};
-static const size_t g_expected_flatbuf_len =
-    sizeof(g_expected_flatbuf_with_trailing_zeros);
-
-static int check_flatbuf_unchanged(const LargestIntegralType value,
-                                   const LargestIntegralType check_value_data) {
-    (void)check_value_data;
-    const unsigned char *got = (const unsigned char *)(uintptr_t)value;
-    assert_memory_equal(got,
-                        g_expected_flatbuf_with_trailing_zeros,
-                        g_expected_flatbuf_len);
-    return 1;
-}
-
-void test_HandleSecureMessage_inventory_sync_preserves_trailing_null(void** state)
+// Since the legacy inventory_sync module retired, `s:`-headed stateful-sync messages are
+// DISCARDED (the only stateful ingress is the module's POST /stateful): they must reach neither
+// the router (gone from remoted) nor analysisd (binary payloads are not events).
+void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
 {
     const char prefix[] = "s:fim:";
     const size_t prefix_len = sizeof(prefix) - 1; /* exclude the C-string NUL */
+    const unsigned char legacy_flatbuf[] = {0xAB, 0xCD, 0x12, 0x34, 0x56, 0x78, 0x00, 0x00, 0x00};
 
     char buffer[OS_MAXSTR + 1];
     memset(buffer, 0xAA, sizeof(buffer));
     memcpy(buffer, prefix, prefix_len);
-    memcpy(buffer + prefix_len,
-           g_expected_flatbuf_with_trailing_zeros,
-           g_expected_flatbuf_len);
-    size_t total_len = prefix_len + g_expected_flatbuf_len;
+    memcpy(buffer + prefix_len, legacy_flatbuf, sizeof(legacy_flatbuf));
+    size_t total_len = prefix_len + sizeof(legacy_flatbuf);
 
     message_t message = {.buffer = buffer, .size = total_len, .sock = 1};
     struct sockaddr_in peer_info;
@@ -2874,23 +2839,14 @@ void test_HandleSecureMessage_inventory_sync_preserves_trailing_null(void** stat
 
     expect_function_call(__wrap_key_unlock);
 
-    ROUTER_PROVIDER_HANDLE saved_handle = router_sync_handle;
-    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0xDEADBEEF;
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "Discarding legacy stateful-sync message from agent '001' (since 5.x the manager only accepts "
+                  "whole sessions over POST /stateful)");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-
-    expect_check(__wrap_router_provider_send_sync, message,
-                 check_flatbuf_unchanged, NULL);
-    expect_value(__wrap_router_provider_send_sync, message_size,
-                 g_expected_flatbuf_len);
-    expect_string(__wrap_router_provider_send_sync, authenticated_agent_id, "001");
-    expect_any(__wrap_router_provider_send_sync, manager_cluster_name);
-    will_return(__wrap_router_provider_send_sync, 0);
-    expect_string(__wrap_rem_inc_recv_states, agent_id, "001");
+    // Discarded: no router call (remoted no longer links it), no analysisd enqueue.
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
-
-    router_sync_handle = saved_handle;
 
     os_free(key->id);
     os_free(key->name);
@@ -3245,7 +3201,7 @@ void test_remoted_module_https_config_defaults(void** state)
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
     // as the getDefine_Int_default() calls in remoted_module_https_config(): 13 http_*, then
-    // 3 memory-management, then 6 downstream_*, then 3 auth_*. Adding an option there without
+    // 3 memory-management, then 7 downstream_*, then 3 auth_*. Adding an option there without
     // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
@@ -3270,6 +3226,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
     will_return(__wrap_getDefine_Int_default, 0); // downstream_io_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 0); // downstream_post_process_threads (0 = auto)
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -3302,6 +3259,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
+    assert_int_equal(rm_config.downstream_stateful_response_timeout, 20);
     assert_int_equal(rm_config.downstream_io_threads, 0);
     assert_int_equal(rm_config.downstream_post_process_threads, 0);
     assert_int_equal(rm_config.downstream_max_response_body_size, 10485760);
@@ -3344,6 +3302,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 7);
     will_return(__wrap_getDefine_Int_default, 11);
     will_return(__wrap_getDefine_Int_default, 13);
+    will_return(__wrap_getDefine_Int_default, 45); // downstream_stateful_response_timeout
     will_return(__wrap_getDefine_Int_default, 6);
     will_return(__wrap_getDefine_Int_default, 9);
     will_return(__wrap_getDefine_Int_default, 20971520);
@@ -3376,6 +3335,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.downstream_connect_timeout, 7);
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
+    assert_int_equal(rm_config.downstream_stateful_response_timeout, 45);
     assert_int_equal(rm_config.downstream_io_threads, 6);
     assert_int_equal(rm_config.downstream_post_process_threads, 9);
     assert_int_equal(rm_config.downstream_max_response_body_size, 20971520);
@@ -3432,6 +3392,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -3486,6 +3447,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 20); // downstream_stateful_response_timeout
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 10485760);
@@ -3544,13 +3506,13 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_success_forwarded),
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded),
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_failed_forwarded),
-        cmocka_unit_test(test_router_message_forward_upgrade_ack_returns_false),
-        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
+        cmocka_unit_test(test_discard_legacy_agent_message_upgrade_ack_returns_false),
+        cmocka_unit_test(test_HandleSecureMessage_event_enqueue_failed),
         cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
         cmocka_unit_test(test_HandleSecureMessage_event_without_trailing_null),
         cmocka_unit_test(test_HandleSecureMessage_event_enqueue_success),
         cmocka_unit_test(test_HandleSecureMessage_event_with_trailing_null),
-        cmocka_unit_test(test_HandleSecureMessage_inventory_sync_preserves_trailing_null),
+        cmocka_unit_test(test_HandleSecureMessage_discard_legacy_stateful_sync),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),

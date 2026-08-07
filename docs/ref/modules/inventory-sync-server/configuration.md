@@ -239,15 +239,17 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
 
-Forwarded as `flush_interval_seconds`.
+**No effect.** The value is accepted for compatibility but the module overrides the connector's
+periodic flush to one hour regardless: the ingestion workers own every flush (a timer-driven flush
+that fails discards the buffer silently, which would let a worker answer `200` for lost data).
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
 ```
 
-- **Default value:** `20`
+- **Default value:** `20` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Forwarded as `flush_interval_seconds`.
+- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
 
@@ -385,8 +387,17 @@ latter -- but see the descriptor-limit note on that option.
 Enable `wazuh_modules.debug=1` and restart: the module logs every resolved tunable at startup. The values
 are also reported by `getconfig wmodules` on the modulesd socket.
 
+## Related options in other daemons
+
+The ingress side of the same pipeline is tuned in remoted: see
+[`remoted.downstream_stateful_response_timeout`](../remoted/configuration.md) (how long remoted
+waits for this module's answer to a relayed `/stateful` request — sessions are indexed and flushed
+within the request, so it is deliberately longer than remoted's global downstream default) and the
+`remoted.downstream_*` family it belongs to.
+
 ## See Also
 
 - [Architecture](architecture.md)
 - [API Reference](api-reference.md)
-- [Inventory Sync](../inventory-sync/configuration.md)
+- [Schemas](flatbuffers.md)
+- [Test Tools](test-tools.md)

@@ -27,6 +27,7 @@
 #include <llhttp.h>
 
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -93,6 +94,11 @@ namespace
         return head;
     }
 
+    // Cumulative cap on the response's header bytes (names + values). Same rationale as
+    // maxResponseBodySize, but headers are protocol plumbing rather than payload, so a fixed
+    // constant well above anything a Wazuh service legitimately sends beats another tunable.
+    constexpr std::size_t kMaxResponseHeaderBytes {16U * 1024U};
+
     // Shared, stateless response-parser settings (must outlive every parser -> static). Each parser
     // reaches its owning Session through llhttp_t::data.
     struct SessionParseState
@@ -100,7 +106,33 @@ namespace
         std::string* body {nullptr};
         bool* messageComplete {nullptr};
         std::size_t* maxBodySize {nullptr};
+
+        // Header capture. llhttp streams names/values in fragments (a header may be split across
+        // reads), so both halves accumulate here and the pair is committed on the value->field
+        // transition and at on_headers_complete.
+        std::vector<std::pair<std::string, std::string>>* headers {nullptr};
+        std::string headerName;
+        std::string headerValue;
+        bool headerValueSeen {false}; ///< The fragment stream is currently inside a value.
+        std::size_t headerBytes {0};  ///< Cumulative name+value bytes, checked against the cap.
     };
+
+    void commitHeader(SessionParseState& state)
+    {
+        if (state.headerValueSeen)
+        {
+            // Lower-cased like HttpRequest::headers, so consumers do one exact lookup instead of a
+            // case-insensitive scan (header names are case-insensitive per RFC 9110).
+            for (auto& c : state.headerName)
+            {
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            }
+            state.headers->emplace_back(std::move(state.headerName), std::move(state.headerValue));
+            state.headerName.clear();
+            state.headerValue.clear();
+            state.headerValueSeen = false;
+        }
+    }
 
     const llhttp_settings_t* responseSettings()
     {
@@ -108,6 +140,35 @@ namespace
         {
             llhttp_settings_t s;
             llhttp_settings_init(&s);
+            s.on_header_field = [](llhttp_t* parser, const char* at, std::size_t len) -> int
+            {
+                auto* state = static_cast<SessionParseState*>(parser->data);
+                commitHeader(*state); // a new field fragment after a value closes the previous pair
+                state->headerBytes += len;
+                if (state->headerBytes > kMaxResponseHeaderBytes)
+                {
+                    return HPE_USER;
+                }
+                state->headerName.append(at, len);
+                return 0;
+            };
+            s.on_header_value = [](llhttp_t* parser, const char* at, std::size_t len) -> int
+            {
+                auto* state = static_cast<SessionParseState*>(parser->data);
+                state->headerValueSeen = true;
+                state->headerBytes += len;
+                if (state->headerBytes > kMaxResponseHeaderBytes)
+                {
+                    return HPE_USER;
+                }
+                state->headerValue.append(at, len);
+                return 0;
+            };
+            s.on_headers_complete = [](llhttp_t* parser) -> int
+            {
+                commitHeader(*static_cast<SessionParseState*>(parser->data));
+                return 0;
+            };
             s.on_body = [](llhttp_t* parser, const char* at, std::size_t len) -> int
             {
                 auto* state = static_cast<SessionParseState*>(parser->data);
@@ -164,6 +225,7 @@ namespace remoted::downstream
                 m_parseState.body = &m_respBody;
                 m_parseState.messageComplete = &m_messageComplete;
                 m_parseState.maxBodySize = &m_maxResponseBodySize;
+                m_parseState.headers = &m_respHeaders;
                 llhttp_init(&m_parser, HTTP_RESPONSE, responseSettings());
                 m_parser.data = &m_parseState;
             }
@@ -331,6 +393,7 @@ namespace remoted::downstream
                 DownstreamResponse response;
                 response.status = static_cast<int>(m_parser.status_code);
                 response.body = std::move(m_respBody);
+                response.headers = std::move(m_respHeaders);
                 finish(DownstreamError::None, std::move(response));
             }
 
@@ -368,6 +431,7 @@ namespace remoted::downstream
             std::array<asio::const_buffer, 2> m_writeBuffers {};
             std::array<char, 8192> m_readBuffer {};
             std::string m_respBody;
+            std::vector<std::pair<std::string, std::string>> m_respHeaders;
             llhttp_t m_parser {};
             SessionParseState m_parseState {};
             bool m_messageComplete {false};

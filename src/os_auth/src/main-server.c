@@ -33,7 +33,7 @@
 #include "os_err.h"
 #include "generate_cert.h"
 #include <sys/epoll.h>
-#include "router.h"
+#include "http_op.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -645,8 +645,13 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
-    /* Initialize router module for inventory-sync communication */
-    router_initialize(taggedLogFunction, ARGV0);
+    /* Initialize libcurl once per process: the writer thread notifies agent deletions to the
+     * inventory sync server over its UDS HTTP endpoint (uhttp_*). Not fatal on failure -- authd's
+     * job is enrollment; a deletion that cannot be notified is logged by the writer and is safe to
+     * repeat by hand (the server's delete-by-query treats a missing index as success). */
+    if (uhttp_global_init() != 0) {
+        mwarn("Could not initialize the HTTP client; agent deletions will not reach the inventory sync server.");
+    }
 
     /* Start working threads */
 
@@ -1130,49 +1135,65 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
 }
 
 /**
- * @brief Send agent deletion message to inventory-sync via router
+ * @brief Ask the inventory sync server to delete an agent's state documents from the indexer.
+ *
+ * POST /agents/delete over the server's UDS socket (the POST alias of DELETE /agents: uhttp_*
+ * only speaks POST), the target agent in the X-Wazuh-Agent-Id header, empty body. Unlike the old
+ * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the delete-by-query
+ * was flushed to the indexer; anything else gets ONE retry after 2 s and then a warning with the
+ * code, so a lost deletion is at least visible (re-running it by hand is safe -- the server
+ * treats a missing index as success).
+ *
+ * Called only from the writer thread; the client handle is per-thread by uhttp's contract, and
+ * the lazy static is what keeps the connection alive (keepalive) across a batch of deletions.
  *
  * @param agent_id The ID of the agent to delete
  */
 static void send_agent_delete_to_inventory_sync(const char *agent_id) {
-    static ROUTER_PROVIDER_HANDLE router_inventory_handle = NULL;
+    static uhttp_client_t *client = NULL;
 
-    // Try to create router handle if not already created
-    if (!router_inventory_handle) {
-        router_inventory_handle = router_provider_create("inventory-states", false);
-        if (!router_inventory_handle) {
-            mdebug2("Router not available for inventory-states topic, skipping agent deletion notification");
+    if (!client) {
+        uhttp_options_t opts = {
+            .unix_socket_path = INV_SYNC_SOCK,
+            .url = "http://localhost/agents/delete",
+            .timeout_ms = 5000,
+            .connect_timeout_ms = 2000,
+            .keepalive = true
+        };
+        client = uhttp_client_new(&opts);
+        if (!client) {
+            mwarn("Could not create the HTTP client for agent deletions; the state documents of agent '%s' were not deleted from the indexer.", agent_id);
             return;
         }
     }
 
-    // Build JSON message: {"command": "delete_agent", "agent_id": "001"}
-    cJSON *json_msg = cJSON_CreateObject();
-    if (!json_msg) {
-        merror("Failed to create JSON message for agent deletion");
+    // The header changes per call; clear-then-add keeps the client reusable.
+    char header[64];
+    snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
+    uhttp_client_clear_headers(client);
+    if (uhttp_client_add_header(client, header) != 0) {
+        mwarn("Could not build the deletion request for agent '%s'.", agent_id);
         return;
     }
 
-    cJSON_AddStringToObject(json_msg, "command", "delete_agent");
-    cJSON_AddStringToObject(json_msg, "agent_id", agent_id);
+    // One retry after a short pause: enough to ride out a modulesd restart window without
+    // designing a persistent queue for a rare, hand-recoverable event (design doc 04 §2).
+    for (int attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) {
+            sleep(2);
+        }
 
-    char *json_str = cJSON_PrintUnformatted(json_msg);
-    cJSON_Delete(json_msg);
+        uhttp_result_t result = {0};
+        if (uhttp_post(client, NULL, 0, &result) == 0 && result.http_status == 200) {
+            minfo("Deleted the state documents of agent '%s' from the indexer.", agent_id);
+            return;
+        }
 
-    if (!json_str) {
-        merror("Failed to serialize JSON message for agent deletion");
-        return;
+        if (attempt > 0) {
+            mwarn("The inventory sync server did not accept the deletion of agent '%s' (HTTP status %ld); its state documents may remain in the indexer until the deletion is repeated.",
+                  agent_id, result.http_status);
+        }
     }
-
-    // Send message to router
-    int result = router_provider_send(router_inventory_handle, json_str, strlen(json_str) + 1);
-    if (result != 0) {
-        mdebug1("Failed to send agent deletion message for agent '%s' to inventory-sync", agent_id);
-    } else {
-        minfo("Sent agent deletion request for agent '%s' to inventory-sync", agent_id);
-    }
-
-    cJSON_free(json_str);
 }
 
 /* Thread for writing keystore onto disk */

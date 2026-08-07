@@ -36,9 +36,13 @@ namespace remoted::downstream
          * @brief Default UDS for modulesd's inventory sync server; /stats and /config target it.
          */
         std::string inventorySyncSocketPath {"queue/sockets/inventory-sync.sock"};
-        int connectTimeoutMs {2000};        ///< Connect timeout per request.
-        int writeTimeoutMs {5000};          ///< Write (request body send) timeout per request.
-        int responseTimeoutMs {5000};       ///< Response (post-send) timeout per request.
+        int connectTimeoutMs {2000};  ///< Connect timeout per request.
+        int writeTimeoutMs {5000};    ///< Write (request body send) timeout per request.
+        int responseTimeoutMs {5000}; ///< Response (post-send) timeout per request.
+        /// Response timeout for the /stateful route specifically (flows into its DownstreamTarget's
+        /// responseTimeoutMs override). Longer than responseTimeoutMs because a sync session is
+        /// indexed and flushed within the request (see remoted.downstream_stateful_response_timeout).
+        int statefulResponseTimeoutMs {20000};
         std::size_t ioThreads {1};          ///< Threads running the client's io_context.
         std::size_t postProcessThreads {4}; ///< Threads running the per-endpoint post-processors.
         /// Cap on a downstream response body. Strictly larger than the 10 MiB agent-request cap:

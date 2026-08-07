@@ -24,8 +24,11 @@
 #include <utility>
 
 #include "common/clusterIdentity.hpp"
+#include "common/metricNames.hpp"
 #include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
+#include "endpoints/deleteAgentEndpoint.hpp"
+#include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
 #include "http_server/IUdsHttpServer.hpp"
@@ -40,7 +43,17 @@
 #include "indexer/indexerSessionAdapter.hpp"
 #include "inventory_sync_server.h"
 #include "loggerHelper.h"
+#include "proc.hpp"
 #include "singleton.hpp"
+#include "sync/syncPipeline.hpp"
+#include "vd/IVdScanner.hpp"
+#include "vd/agentInFlightRegistry.hpp"
+#include "vd/serverScanCoordinator.hpp"
+#include "vd/vdScanLane.hpp"
+#include "vd/vdScannerFactory.hpp"
+
+#include <wazuh_metrics/manager.hpp>
+
 #include <functional>
 #include <json.hpp>
 
@@ -77,6 +90,19 @@ namespace invsync
 
     /// Heartbeat period for the worker loop; also the retry period for a failed server start.
     constexpr auto INVENTORY_SYNC_SERVER_HEARTBEAT_SECS {60};
+
+    /// Pipeline queue byte cap when 'inventory_sync_server_sync_queue_bytes' has no opinion.
+    constexpr std::size_t DEFAULT_SYNC_QUEUE_BYTES {64U * 1024U * 1024U};
+    /// Group-commit flush threshold fallback; mirrors the sync connector's own max_bulk_size default.
+    constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
+    /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
+    constexpr int DEFAULT_VD_RETRY_AFTER_SECS {60};
+    /// The demoted flush timer of the pipeline's connectors -- see the overlay in
+    /// tryStartHttpServer() for why this is a correctness requirement rather than tuning.
+    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {3600};
+    /// VD scan lane worker fallback: 1 until the scanner gains real scan parallelism (its global
+    /// mutex serializes scans anyway -- REQ-VDQ-7).
+    constexpr std::size_t DEFAULT_VD_WORKERS {1};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -200,12 +226,38 @@ namespace invsync
                     m_httpServer->stopAccepting();
                 }
 
-                // Phase 2: tear down the connectors and the session, in REVERSE construction order.
-                // All three unconditional: the gate can legitimately leave only some of them built,
-                // and each carries live background threads from construction, so gating one reset on
-                // another's pointer would leak those threads. The /stats and /config handlers hold
-                // the async connector WEAKLY (see their makeHandler()) precisely so these resets
-                // stay destructive and the teardown stays ordered here.
+                // Phase 2: tear down the pipeline, the connectors and the session, in REVERSE
+                // construction order. The pipeline goes FIRST -- its workers stage into the
+                // connectors, and stop() joins them (answering 503 to whatever was queued, WITHOUT
+                // waiting on indexer I/O), so by the time the connectors reset nothing touches
+                // them. All unconditional: the gate can legitimately leave only some of them
+                // built, and each carries live background threads from construction, so gating one
+                // reset on another's pointer would leak those threads. The endpoint handlers hold
+                // the pipeline and the connectors WEAKLY (see their makeHandler()) precisely so
+                // these resets stay destructive and the teardown stays ordered here.
+                if (m_scanCoordinator)
+                {
+                    // Out of the scanner's registry FIRST, so no feed-update call races the lane
+                    // teardown below (a call already in flight degrades on the weak lane pointer).
+                    vd_sync::ScanCoordinatorRegistry::instance().remove(m_scanCoordinator);
+                    m_scanCoordinator.reset();
+                }
+                if (m_vdScanLane)
+                {
+                    m_vdScanLane->stop();
+                }
+                m_vdScanLane.reset();
+                m_vdScanner.reset();
+                if (m_syncPipeline)
+                {
+                    m_syncPipeline->stop();
+                }
+                m_syncPipeline.reset();
+                // AFTER both lanes are joined and reset: their registry listeners capture `this`
+                // of the objects just destroyed, and the next start() must register fresh ones on
+                // a fresh registry -- reusing this one would accumulate dangling closures that the
+                // first release of the new cycle would invoke.
+                m_agentRegistry.reset();
                 m_indexerConnectorAsync.reset();
                 m_indexerConnectorSync.reset();
                 m_indexerSession.reset();
@@ -266,6 +318,9 @@ namespace invsync
             const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
         using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
             const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
+        /// Builds the scan lane's seam over the vulnerability scanner; tests substitute a fake so
+        /// the D22 gating can be pinned without a CVE feed.
+        using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>()>;
 
         /**
          * @brief TEST-ONLY. Override how the shared indexer session is constructed.
@@ -292,6 +347,13 @@ namespace invsync
         {
             std::lock_guard<std::mutex> lock(m_lifecycleMutex);
             m_indexerConnectorAsyncFactory = std::move(factory);
+        }
+
+        /// TEST-ONLY. Override the scan lane's scanner seam. See above.
+        void setVdScannerFactoryForTests(VdScannerFactory factory)
+        {
+            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+            m_vdScannerFactory = std::move(factory);
         }
 
         /// TEST-ONLY. Forces one retry attempt synchronously instead of waiting out the real 60 s
@@ -325,19 +387,12 @@ namespace invsync
                 },
                 /*countAgainstBudget=*/false);
 
-            m_httpServer->addRoute(invsync::endpoints::sync::method(),
-                                   invsync::endpoints::sync::path(),
-                                   invsync::endpoints::sync::makeHandler());
-
-            // Reached through remoted's authenticated /stats and /config routes. Registered separately
-            // rather than sharing one handler because their real payloads will diverge.
+            // The endpoint handlers take their dependencies WEAKLY (the shared_ptr members convert
+            // to the weak_ptr fields implicitly) -- see stop()'s phase 2 for why that matters. Safe
+            // to read the members here: buildAndPublish() publishes each slot as soon as it
+            // succeeds, and this runs afterwards, in the same attempt.
             //
-            // Both take the async indexer connector, which they hold WEAKLY (the shared_ptr converts
-            // to the weak_ptr parameter implicitly) -- see stop()'s phase 2 for why that matters. Safe
-            // to read the member here: buildAndPublish() publishes each slot as soon as it succeeds,
-            // and this runs afterwards, in the same attempt.
-            //
-            // Both also take this manager's cluster identity, built fresh (two cheap string copies)
+            // They also take this manager's cluster identity, built fresh (two cheap string copies)
             // rather than cached across retries -- m_config does not change within a start()/stop()
             // cycle, so there is nothing stale to worry about, and this keeps startHttpServer() the
             // only place that reads m_config for the routes it registers.
@@ -352,6 +407,26 @@ namespace invsync
                            "and <cluster><node_name> in the manager configuration.");
             }
 
+            // The ingestion route: everything past the strand-side validation runs on the
+            // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
+            m_httpServer->addRoute(
+                invsync::endpoints::sync::method(),
+                invsync::endpoints::sync::path(),
+                invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                    m_syncPipeline,
+                    m_indexerConnectorSync,
+                    clusterIdentity,
+                    m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
+                                                             : DEFAULT_VD_RETRY_AFTER_SECS,
+                    m_vdScanLane,
+                    m_vdScanner,
+                    invsync::metrics::RequestCounters::make(*m_metricsManager),
+                    m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
+                                                         "503 responses carrying a Retry-After header",
+                                                         "count")}));
+
+            // Reached through remoted's authenticated /stats and /config routes. Registered separately
+            // rather than sharing one handler because their real payloads will diverge.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
                                    invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity));
@@ -360,20 +435,39 @@ namespace invsync
                                    invsync::endpoints::config::path(),
                                    invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity));
 
+            // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
+            // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
+            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST.
+            {
+                const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
+                                                                                 m_indexerConnectorSync};
+                m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
+                                       invsync::endpoints::delete_agent::path(),
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
+                                       invsync::endpoints::delete_agent::altPath(),
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+            }
+
+            // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
+            // most valuable exactly when the byte budget is under pressure.
+            m_httpServer->addRoute(invsync::endpoints::metrics::method(),
+                                   invsync::endpoints::metrics::path(),
+                                   invsync::endpoints::metrics::makeHandler(m_metricsManager),
+                                   /*countAgainstBudget=*/false);
+
             m_httpServer->start(config);
 
             LOGFN_INFO(moduleLogFn(),
-                       "inventory sync server listening on '%s' (routes: GET /, %s, %s and %s).",
+                       "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
+                       "%zu sync worker(s)).",
                        config.socketPath.c_str(),
+                       invsync::endpoints::metrics::path(),
                        invsync::endpoints::sync::path(),
                        invsync::endpoints::stats::path(),
-                       invsync::endpoints::config::path());
-
-            // One line, at start, so "why is nothing reaching the indexer?" has an answer at the
-            // default log level. Remove together with the stub in syncEndpoint.cpp.
-            LOGFN_INFO(moduleLogFn(),
-                       "%s is a stub in this build: payloads are accepted (202) and discarded.",
-                       invsync::endpoints::sync::path());
+                       invsync::endpoints::config::path(),
+                       invsync::endpoints::delete_agent::path(),
+                       m_syncPipeline ? m_syncPipeline->workerCount() : 0);
         }
 
         /**
@@ -469,17 +563,32 @@ namespace invsync
                          hasKey ? "<set>" : "<unset>");
         }
 
-        /// Which part of tryStartHttpServer()'s work a failure belongs to. Four stages, not two,
-        /// because the ERROR must name WHICH object failed: each has its own, independently tunable
-        /// option family, and pointing an operator at the wrong one costs a debugging session.
+        /// Which part of tryStartHttpServer()'s work a failure belongs to, because the ERROR must
+        /// name WHICH object failed: each has its own, independently tunable option family, and
+        /// pointing an operator at the wrong one costs a debugging session.
         enum class FailureStage
         {
             Configuration,
             IndexerSession,
             SyncIndexerConnector,
             AsyncIndexerConnector,
+            SyncPipeline,
+            VdScanLane,
             HttpServer
         };
+
+        /// sync_workers <= 0 means "half the cores, at least one": ingestion shares the host with
+        /// every other manager daemon, so taking every core by default would be antisocial, while
+        /// one worker per two cores still scales the shard count with the machine.
+        static std::size_t resolveSyncWorkers(const inventory_sync_server_config_t& config)
+        {
+            if (config.sync_workers > 0)
+            {
+                return static_cast<std::size_t>(config.sync_workers);
+            }
+            const auto cores = static_cast<std::size_t>(cpp_get_nproc());
+            return cores / 2 > 0 ? cores / 2 : 1;
+        }
 
         /// Diagnostic text for a stage. `label` appears in EVERY escalation branch; `settingHint`
         /// only in the first-attempt ERROR. One switch so a new stage cannot be half-added.
@@ -501,6 +610,14 @@ namespace invsync
                     return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
                 case FailureStage::AsyncIndexerConnector:
                     return {"async indexer connector", "the 'inventory_sync_server_indexer_async_*' settings"};
+                case FailureStage::SyncPipeline:
+                    // The pipeline's extra worker connectors are built with the sync connector's
+                    // configuration, so that family is the actionable one alongside its own.
+                    return {"sync pipeline",
+                            "the 'inventory_sync_server_sync_*' and 'inventory_sync_server_indexer_sync_*' settings"};
+                case FailureStage::VdScanLane:
+                    return {"VD scan lane",
+                            "the 'inventory_sync_server_vd_*' and 'inventory_sync_server_indexer_sync_*' settings"};
                     // NOT a setting: the socket path is fixed (internal options cannot carry strings),
                     // so pointing an operator at one would send them looking for something that does
                     // not exist. Name what they can actually act on -- the directory.
@@ -586,10 +703,18 @@ namespace invsync
             IndexerSessionFactory sessionFactory;
             IndexerConnectorSyncFactory syncFactory;
             IndexerConnectorAsyncFactory asyncFactory;
+            invsync::sync::SyncPipelineConfig pipelineConfig;
+            std::size_t pipelineWorkers {1};
+            std::string pipelineClusterName;
+            invsync::vd::VdScanLaneConfig laneConfig;
+            std::size_t laneWorkers {DEFAULT_VD_WORKERS};
+            VdScannerFactory scannerFactory;
             std::uint64_t generation {0};
             bool needSession {false};
             bool needSync {false};
             bool needAsync {false};
+            bool needPipeline {false};
+            bool needLane {false};
 
             /*
              * ---- Phase A: snapshot under the lifecycle lock. No I/O, so stop() never waits. ----
@@ -617,17 +742,58 @@ namespace invsync
                 needSession = !m_indexerSession;
                 needSync = !m_indexerConnectorSync;
                 needAsync = !m_indexerConnectorAsync;
+                needPipeline = !m_syncPipeline;
+                needLane = !m_vdScanLane;
+
+                // The cross-lane exclusion both the pipeline and the scan lane share. One per
+                // start()/stop() cycle: stop() resets it after joining both lanes, because its
+                // listeners capture the lanes' `this`.
+                if (!m_agentRegistry)
+                {
+                    m_agentRegistry = std::make_shared<invsync::vd::AgentInFlightRegistry>();
+                }
+
+                laneWorkers =
+                    m_config.vd_workers > 0 ? static_cast<std::size_t>(m_config.vd_workers) : DEFAULT_VD_WORKERS;
+                laneConfig.workers = laneWorkers;
+                laneConfig.queueSlots =
+                    m_config.vd_scan_queue_slots > 0 ? static_cast<std::size_t>(m_config.vd_scan_queue_slots) : 0;
+                laneConfig.retryAfterSeconds = m_config.vd_feed_retry_after_seconds > 0
+                                                   ? m_config.vd_feed_retry_after_seconds
+                                                   : DEFAULT_VD_RETRY_AFTER_SECS;
+                scannerFactory = m_vdScannerFactory;
 
                 sessionFactory = m_indexerSessionFactory;
                 syncFactory = m_indexerConnectorSyncFactory;
                 asyncFactory = m_indexerConnectorAsyncFactory;
 
-                if (needSession || needSync || needAsync)
+                pipelineWorkers = resolveSyncWorkers(m_config);
+                pipelineConfig.maxQueueBytes = m_config.sync_queue_bytes > 0
+                                                   ? static_cast<std::size_t>(m_config.sync_queue_bytes)
+                                                   : DEFAULT_SYNC_QUEUE_BYTES;
+                pipelineConfig.bulkFlushBytes = m_config.indexer_sync_max_bulk_size > 0
+                                                    ? static_cast<std::size_t>(m_config.indexer_sync_max_bulk_size)
+                                                    : DEFAULT_BULK_FLUSH_BYTES;
+                pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
+
+                if (needSession || needSync || needAsync || needPipeline)
                 {
                     logIndexerSummary();
                     rawIndexerConfig = m_indexerConfig;
                     syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
                     asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+
+                    /*
+                     * The pipeline workers own EVERY flush (group commit: flush on queue-drain or
+                     * on the byte threshold), so the connector's own flush timer is demoted to a
+                     * last-resort safety net. That is a correctness requirement, not tuning: when
+                     * the TIMER's flush fails, the connector drops the staged buffer and swallows
+                     * the failure inside its background thread -- a worker that later flushed an
+                     * emptied buffer would answer 200 for data that was silently lost. The one-hour
+                     * interval keeps the timer from ever finding data in practice (a worker never
+                     * sleeps on a non-empty buffer) while still bounding a leak if one does.
+                     */
+                    syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
                 }
             }
             catch (const std::exception& e)
@@ -714,6 +880,100 @@ namespace invsync
                                  }))
             {
                 return;
+            }
+
+            if (needPipeline)
+            {
+                // Same counted-reference dance as the session: the pipeline reuses the published
+                // sync connector as its first worker's connector (it is otherwise idle -- its other
+                // job is the endpoint's admission isAvailable(), which is thread-safe), and builds
+                // one more per additional worker, all sharing the session.
+                std::shared_ptr<invsync::indexer::IIndexerConnectorSync> syncConnector;
+                {
+                    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+                    if (m_stopping || generation != m_startGeneration)
+                    {
+                        return;
+                    }
+                    syncConnector = m_indexerConnectorSync;
+                }
+
+                if (!syncConnector)
+                {
+                    return; // stop() raced us
+                }
+
+                if (!buildAndPublish(
+                        m_syncPipeline,
+                        FailureStage::SyncPipeline,
+                        generation,
+                        [&]
+                        {
+                            std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors;
+                            connectors.reserve(pipelineWorkers);
+                            connectors.push_back(syncConnector);
+                            for (std::size_t i = 1; i < pipelineWorkers; ++i)
+                            {
+                                connectors.emplace_back(
+                                    syncFactory(syncConnectorConfig,
+                                                *session,
+                                                LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
+                            }
+                            return std::make_shared<invsync::sync::SyncPipeline>(pipelineConfig,
+                                                                                 std::move(connectors),
+                                                                                 pipelineClusterName,
+                                                                                 m_agentRegistry,
+                                                                                 m_metricsManager);
+                        }))
+                {
+                    return;
+                }
+            }
+
+            if (needLane)
+            {
+                std::shared_ptr<invsync::vd::IVdScanner> builtScanner;
+                if (!buildAndPublish(
+                        m_vdScanLane,
+                        FailureStage::VdScanLane,
+                        generation,
+                        [&]
+                        {
+                            builtScanner = scannerFactory();
+                            std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors;
+                            connectors.reserve(laneWorkers);
+                            for (std::size_t i = 0; i < laneWorkers; ++i)
+                            {
+                                connectors.emplace_back(
+                                    syncFactory(syncConnectorConfig,
+                                                *session,
+                                                LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
+                            }
+                            return std::make_shared<invsync::vd::VdScanLane>(laneConfig,
+                                                                             builtScanner,
+                                                                             std::move(connectors),
+                                                                             m_agentRegistry,
+                                                                             pipelineClusterName,
+                                                                             m_metricsManager);
+                        }))
+                {
+                    return;
+                }
+
+                // Publish the scanner seam and register this server in the vulnerability scanner's
+                // neutral coordination registry (agents to skip, VDSync drains, fencing) -- under
+                // the lifecycle lock, like every other published slot.
+                std::lock_guard<std::mutex> registrationLock(m_lifecycleMutex);
+                if (!m_stopping && generation == m_startGeneration && m_vdScanLane)
+                {
+                    m_vdScanner = std::move(builtScanner);
+                    if (!m_scanCoordinator)
+                    {
+                        m_scanCoordinator =
+                            std::make_shared<invsync::vd::ServerScanCoordinator>(m_agentRegistry, m_vdScanLane);
+                        vd_sync::ScanCoordinatorRegistry::instance().add(m_scanCoordinator);
+                    }
+                }
             }
 
             // ---- Phase C: open the socket, back under the lifecycle lock. ----
@@ -908,10 +1168,31 @@ namespace invsync
         /// shared_ptr, not unique_ptr: an in-flight attempt takes a counted reference so stop()
         /// clearing this member cannot dangle a connector constructor still running on it.
         std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
-        std::unique_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
+        /// shared_ptr for the same reason as the async one below: the sync pipeline workers (F2) will
+        /// hold it weakly. The factory still returns unique_ptr; the assignment converts.
+        std::shared_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
         /// shared_ptr because the /stats and /config handlers hold it WEAKLY (which needs a shared
         /// owner) -- the weak capture is what keeps stop()'s phase-2 reset destructive.
         std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
+        /// The D18 statistics registry. Created ONCE and NEVER reset in stop(): counters must
+        /// survive the HTTP server's restart retries (an operator reading /metrics after a retry
+        /// wants totals, not a fresh zeroed registry). Everything downstream (pipeline, lane,
+        /// endpoints) resolves its instruments from this one manager, so names dedupe naturally.
+        const std::shared_ptr<wazuh::metrics::IManager> m_metricsManager {std::make_shared<wazuh::metrics::Manager>()};
+        /// The POST /stateful ingestion pipeline: workers sharded by agent id, one connector each
+        /// (worker 0 reuses the slot above). Built after the connectors, torn down before them;
+        /// the endpoint handler holds it weakly, like the connectors.
+        std::shared_ptr<invsync::sync::SyncPipeline> m_syncPipeline;
+        /// Cross-lane per-agent exclusion shared by the pipeline and the scan lane (D22). Reset in
+        /// stop() AFTER both lanes joined: the lanes' wake-up listeners capture their `this`, so a
+        /// registry surviving into the next cycle would hold dangling closures.
+        std::shared_ptr<invsync::vd::AgentInFlightRegistry> m_agentRegistry;
+        /// The scan lane's seam over the vulnerability scanner; the endpoint's feed gate reads it.
+        std::shared_ptr<invsync::vd::IVdScanner> m_vdScanner;
+        /// The D22 scan lane for VD sessions: scan -> (ok) -> index -> respond.
+        std::shared_ptr<invsync::vd::VdScanLane> m_vdScanLane;
+        /// This server's registration in the scanner's neutral coordination registry.
+        std::shared_ptr<invsync::vd::ServerScanCoordinator> m_scanCoordinator;
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
@@ -931,6 +1212,8 @@ namespace invsync
                 return std::make_unique<invsync::indexer::IndexerConnectorSyncAdapter>(
                     config, adapter.session(), std::move(logging));
             }};
+
+        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

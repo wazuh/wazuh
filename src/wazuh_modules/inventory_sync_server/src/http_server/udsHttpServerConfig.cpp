@@ -32,9 +32,11 @@ namespace
     constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
 
-    // Request body cap. Inventory payloads are batches, so this is generous; the in-flight byte
-    // budget, not this, is what bounds total memory.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {16U * 1024U * 1024U};
+    // Request body cap: NO OWN LIMIT by default. A whole sync session travels as one request, so
+    // an arbitrary per-request cap would be an arbitrary session-size cap; what bounds memory is
+    // the in-flight byte budget, which start() feeds to the parser so "declares more than the
+    // whole budget" is refused with 413 at headers-complete.
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE};
 
     // llhttp enforces none of these itself, so they are applied by hand in the parser.
     constexpr std::size_t DEFAULT_MAX_URL_SIZE {2048};

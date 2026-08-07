@@ -134,6 +134,10 @@ extern "C"
         int downstream_connect_timeout;              ///< Seconds to wait for the UDS connect to complete.
         int downstream_write_timeout;                ///< Seconds to wait for the request body write to complete.
         int downstream_response_timeout;             ///< Seconds to wait for the downstream response after the write.
+        int downstream_stateful_response_timeout;    ///< Seconds to wait for the /stateful downstream response. A
+                                                     ///< dedicated (longer) deadline: inventory sync sessions are
+                                                     ///< validated, indexed and flushed WITHIN the request, unlike
+                                                     ///< the enqueue-and-answer endpoints the global default serves.
         int downstream_io_threads;                   ///< Threads running the downstream client's io_context. <=0 ->
                                                      ///< cpp_get_nproc() (see shared_modules/utils/proc.hpp).
         int downstream_post_process_threads;         ///< Threads running the per-endpoint post-processors. <=0 ->

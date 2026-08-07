@@ -19,8 +19,14 @@
 #include "indexer/indexerConnectorSyncAdapter.hpp"
 #include "indexer/indexerSessionAdapter.hpp"
 #include "inventorySyncServerTestHooks.hpp"
+#include "vd/IVdScanner.hpp"
+#include "vd/vdScannerFactory.hpp"
+
+#include <json.hpp>
 
 #include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -49,8 +55,39 @@ namespace invsync::test
         /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
         /// without an unreachable host, since the fake never touches a network.
         std::atomic<bool> m_asyncAvailable {true};
+        /// Same flag for the sync fake, for the pipeline's own availability gate (F2).
+        std::atomic<bool> m_syncAvailable {true};
         /// Writes seen by the async fake: (id, index, data).
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
+        /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
+        /// the seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
+        /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by m_mutex.
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
+        std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
+        /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
+        nlohmann::json m_searchResponse = nlohmann::json::object();
+        /// When non-empty, executeSearchQuery() pops from here instead (front first) -- lets a test
+        /// drive the checksum pagination with a different page per call. Guarded by m_mutex.
+        std::deque<nlohmann::json> m_searchResponses;
+        /// Seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
+        /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables. Guarded by
+        /// m_mutex.
+        std::string m_syncThrowOn;
+        /// While true, the sync fake's flush() BLOCKS until openFlushGate(). Lets a test hold a
+        /// worker inside its batch flush deterministically (group-commit accumulation).
+        bool m_flushGateClosed {false};
+        std::condition_variable m_flushGateCv;
+        /// Times flush() was ENTERED (before the gate/injection). A test polls this to know a
+        /// worker is parked at the closed gate before queueing more work behind it.
+        std::atomic<int> m_flushEntered {0};
+        /// What the VD scanner fake reports from feedReady() (D17 gates).
+        std::atomic<bool> m_vdFeedReady {true};
+        /// When true, the scanner fake's scan() reports a legitimate skip instead of running.
+        std::atomic<bool> m_vdScanSkip {false};
+        /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
+        bool m_scanGateClosed {false};
+        std::condition_variable m_scanGateCv;
+        std::atomic<int> m_scanEntered {0}; ///< Times scan() was entered (before gate/injection).
 
         void recordDestruction(const char* what)
         {
@@ -74,6 +111,83 @@ namespace invsync::test
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_writes;
+        }
+
+        void recordSyncOp(std::string op, std::string id, std::string index, std::string data, std::string version)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_syncOps.emplace_back(std::move(op), std::move(id), std::move(index), std::move(data), std::move(version));
+        }
+
+        std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> syncOps()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_syncOps;
+        }
+
+        nlohmann::json searchResponse()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (!m_searchResponses.empty())
+            {
+                auto response = std::move(m_searchResponses.front());
+                m_searchResponses.pop_front();
+                return response;
+            }
+            return m_searchResponse;
+        }
+
+        void throwIfInjected(const char* op)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_syncThrowOn == op)
+            {
+                throw std::runtime_error {std::string {"injected failure in "} + op};
+            }
+        }
+
+        void closeFlushGate()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_flushGateClosed = true;
+        }
+
+        void openFlushGate()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_flushGateClosed = false;
+            }
+            m_flushGateCv.notify_all();
+        }
+
+        void waitAtFlushGate()
+        {
+            m_flushEntered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_flushGateCv.wait(lock, [this] { return !m_flushGateClosed; });
+        }
+
+        void closeScanGate()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_scanGateClosed = true;
+        }
+
+        void openScanGate()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_scanGateClosed = false;
+            }
+            m_scanGateCv.notify_all();
+        }
+
+        void waitAtScanGate()
+        {
+            m_scanEntered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_scanGateCv.wait(lock, [this] { return !m_scanGateClosed; });
         }
     };
 
@@ -104,18 +218,24 @@ namespace invsync::test
     /// Session fake: nothing to forward, its construction succeeding is the whole contract.
     using FakeIndexerSession = FakeIndexerObject<invsync::indexer::IIndexerSession>;
 
-    /// Connector fakes: always available, never throw to construct.
-    template<typename TInterface>
-    class FakeIndexerConnector final : public TInterface
+    /**
+     * @brief Sync connector fake: records every seam call into the shared event record.
+     *
+     * Its own class (not a shared template with the async fake) because past isAvailable() the two
+     * seams share no method. Operations never touch a network: writes append to
+     * ConnectorEvents::m_syncOps, flush() bumps a counter, and executeSearchQuery() returns the
+     * canned m_searchResponse -- which is how a test drives the checksum path deterministically.
+     */
+    class FakeIndexerConnectorSync final : public invsync::indexer::IIndexerConnectorSync
     {
     public:
-        FakeIndexerConnector(std::shared_ptr<ConnectorEvents> events, const char* name)
+        FakeIndexerConnectorSync(std::shared_ptr<ConnectorEvents> events, const char* name)
             : m_events {std::move(events)}
             , m_name {name}
         {
         }
 
-        ~FakeIndexerConnector() override
+        ~FakeIndexerConnectorSync() override
         {
             if (m_events)
             {
@@ -123,9 +243,85 @@ namespace invsync::test
             }
         }
 
+        /// Reads the shared flag so a test can make the pipeline's availability gate fire.
         bool isAvailable() const override
         {
-            return true;
+            return m_events == nullptr || m_events->m_syncAvailable.load();
+        }
+
+        void bulkIndex(std::string_view id, std::string_view index, std::string_view data) override
+        {
+            if (m_events)
+            {
+                m_events->throwIfInjected("bulkIndex");
+                m_events->recordSyncOp("bulkIndex", std::string {id}, std::string {index}, std::string {data}, {});
+            }
+        }
+
+        void
+        bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version) override
+        {
+            if (m_events)
+            {
+                m_events->throwIfInjected("bulkIndex");
+                m_events->recordSyncOp(
+                    "bulkIndex", std::string {id}, std::string {index}, std::string {data}, std::string {version});
+            }
+        }
+
+        void bulkDelete(std::string_view id, std::string_view index) override
+        {
+            if (m_events)
+            {
+                m_events->throwIfInjected("bulkDelete");
+                m_events->recordSyncOp("bulkDelete", std::string {id}, std::string {index}, {}, {});
+            }
+        }
+
+        void
+        deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) override
+        {
+            if (m_events)
+            {
+                m_events->throwIfInjected("deleteByQuery");
+                // agentId rides in the id column; clusterName in the data column.
+                m_events->recordSyncOp("deleteByQuery", agentId, index, clusterName, {});
+            }
+        }
+
+        void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery) override
+        {
+            if (m_events)
+            {
+                std::string joined;
+                for (const auto& index : indices)
+                {
+                    joined += joined.empty() ? index : ("," + index);
+                }
+                m_events->throwIfInjected("executeUpdateByQuery");
+                m_events->recordSyncOp("executeUpdateByQuery", {}, joined, updateQuery.dump(), {});
+            }
+        }
+
+        nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) override
+        {
+            if (!m_events)
+            {
+                return nlohmann::json::object();
+            }
+            m_events->throwIfInjected("executeSearchQuery");
+            m_events->recordSyncOp("executeSearchQuery", {}, index, searchQuery.dump(), {});
+            return m_events->searchResponse();
+        }
+
+        void flush() override
+        {
+            if (m_events)
+            {
+                m_events->waitAtFlushGate();
+                m_events->throwIfInjected("flush");
+                m_events->m_syncFlushes.fetch_add(1);
+            }
         }
 
     private:
@@ -133,15 +329,8 @@ namespace invsync::test
         const char* m_name;
     };
 
-    using FakeIndexerConnectorSync = FakeIndexerConnector<invsync::indexer::IIndexerConnectorSync>;
-
     /**
-     * @brief Async connector fake. Its own class rather than an alias of the template above.
-     *
-     * IIndexerConnectorAsync exposes the two fire-and-forget writes on top of isAvailable(), so the
-     * shared template is ABSTRACT for it. The writes cannot be pushed up into the template either:
-     * for the sync alias they would be overrides of virtuals that do not exist. Duplicating the
-     * destruction bookkeeping is the cheaper of the two costs.
+     * @brief Async connector fake.
      *
      * Writes are recorded so the facade tests can assert on them; the per-endpoint suites use their
      * own local fakes instead, which record per instance.
@@ -189,6 +378,46 @@ namespace invsync::test
         std::shared_ptr<ConnectorEvents> m_events;
         const char* m_name;
     };
+
+    /**
+     * @brief VD scanner fake for the scan lane: the D22 gating without a CVE feed.
+     *
+     * scan() records itself as a "scan" op on the SAME timeline as the connector ops, which is
+     * what lets a test assert the scan-BEFORE-index ordering with one vector. Failure is injected
+     * through m_syncThrowOn ("scan"); skips through m_vdScanSkip; the feed gate through
+     * m_vdFeedReady; and m_scanGate parks the lane worker mid-scan deterministically.
+     */
+    class FakeVdScanner final : public invsync::vd::IVdScanner
+    {
+    public:
+        explicit FakeVdScanner(std::shared_ptr<ConnectorEvents> events)
+            : m_events {std::move(events)}
+        {
+        }
+
+        bool feedReady() const override
+        {
+            return m_events->m_vdFeedReady.load();
+        }
+
+        invsync::vd::ScanVerdict scan(const invsync::sync::ValidatedSession& session) override
+        {
+            m_events->waitAtScanGate();
+            m_events->throwIfInjected("scan");
+            m_events->recordSyncOp("scan", session.agentId, {}, {}, {});
+            return m_events->m_vdScanSkip.load() ? invsync::vd::ScanVerdict::Skipped : invsync::vd::ScanVerdict::Ok;
+        }
+
+    private:
+        std::shared_ptr<ConnectorEvents> m_events;
+    };
+
+    /// Installs a FakeVdScanner (sharing @p events) as the module's scan lane seam.
+    inline void installFakeVdScanner(const std::shared_ptr<ConnectorEvents>& events)
+    {
+        invsync::test_hooks::setVdScannerFactoryForTests([events]() -> std::shared_ptr<invsync::vd::IVdScanner>
+                                                         { return std::make_shared<FakeVdScanner>(events); });
+    }
 
     /**
      * @brief Installs fakes for all three slots that succeed instantly, bypassing the real objects'
@@ -314,6 +543,7 @@ namespace invsync::test
                 return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
                     config, adapter.session(), std::move(logging));
             });
+        invsync::test_hooks::setVdScannerFactoryForTests([]() { return invsync::vd::makeProductionVdScanner(); });
     }
 
 } // namespace invsync::test

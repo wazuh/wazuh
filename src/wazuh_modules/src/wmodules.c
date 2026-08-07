@@ -136,13 +136,20 @@ int wm_config() {
         wm_add(module);
     }
 
-    // Inventory sync
-    if ((module = wm_inventory_sync_read()))
+    // Keystore server: hosts queue/sockets/keystore for the Python framework's credential
+    // manager. The socket used to live inside the legacy inventory_sync module (an accident of
+    // history) and moved here so that module could retire without taking the API's indexer
+    // access down with it.
+    if ((module = wm_keystore_server_read()))
         wm_add(module);
 
-    // Inventory sync server (transitional; will replace inventory_sync above).
-    // Registered AFTER it deliberately: wm_add() appends and main() starts the modules in list
-    // order, so the older module still claims its socket and its router subscription first.
+    // Inventory sync (legacy) -- retired: inventory_sync_server below replaced it and the
+    // FullSession schema is not additive, so the old module no longer compiles (it is also out
+    // of the build, see wazuh_modules/CMakeLists.txt).
+    // if ((module = wm_inventory_sync_read()))
+    //     wm_add(module);
+
+    // Inventory sync server: the POST /stateful ingestion pipeline plus DELETE /agents.
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
 
