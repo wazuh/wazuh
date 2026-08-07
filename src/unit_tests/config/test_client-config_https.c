@@ -32,9 +32,7 @@ static void expect_valid_ip(const char *ip) {
 /* Parses `xml_str` as the body of <client>...</client> into a fresh agent
  * struct via the real Read_Client. Caller must Free_Client + OS_ClearNode +
  * OS_ClearXML the outputs. */
-static int parse_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
-    memset(cfg, 0, sizeof(*cfg));
-
+static int parse_client_into(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
     if (OS_ReadXMLString(xml_str, xml) != 0) {
         return OS_INVALID;
     }
@@ -44,6 +42,32 @@ static int parse_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, age
     }
 
     return Read_Client(xml, *nodes, cfg, NULL);
+}
+
+static int parse_client(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    memset(cfg, 0, sizeof(*cfg));
+
+    return parse_client_into(xml_str, xml, nodes, cfg);
+}
+
+/* Parses `xml_str` as the body of <agent>...</agent>. Does not reset cfg, so it
+ * can run before or after parse_client() on the same struct. */
+static int parse_agent_into(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    if (OS_ReadXMLString(xml_str, xml) != 0) {
+        return OS_INVALID;
+    }
+
+    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL) {
+        return OS_INVALID;
+    }
+
+    return Read_Agent(xml, *nodes, cfg, NULL);
+}
+
+static int parse_agent(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    memset(cfg, 0, sizeof(*cfg));
+
+    return parse_agent_into(xml_str, xml, nodes, cfg);
 }
 
 static void cleanup(OS_XML *xml, xml_node **nodes, agent *cfg) {
@@ -176,11 +200,15 @@ static void test_server_tag_is_canonical_no_warning(void **state) {
     const char *xml_str = "<server><address>10.0.0.1</address><port>8443</port></server>";
 
     expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
+
     assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
-    assert_int_equal(cfg.server[0].port, 8443);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -195,12 +223,15 @@ static void test_manager_tag_is_deprecated_but_works(void **state) {
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__minfo, formatted_msg,
                   "The <manager> tag is deprecated, please use <server> instead.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
 
     assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.1");
-    assert_int_equal(cfg.server[0].port, 8443);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -218,6 +249,12 @@ static void test_second_server_block_prevails_with_warning(void **state) {
 
     expect_valid_ip("10.0.0.1");
     expect_valid_ip("10.0.0.2");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
     expect_string(__wrap__mwarn, formatted_msg,
                   "Only one <server> block is supported; the last one prevails.");
 
@@ -225,9 +262,202 @@ static void test_second_server_block_prevails_with_warning(void **state) {
 
     assert_int_equal(cfg.server_count, 1);
     assert_string_equal(cfg.server[0].rip, "10.0.0.2");
-    assert_int_equal(cfg.server[0].port, 8443);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
 
     cleanup(&xml, nodes, &cfg);
+}
+
+/* <agent><server>: the 5.x endpoint and its fallbacks (#38103) */
+
+static void test_agent_server_address_and_port_are_parsed(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<server><address>10.0.0.5</address><port>1600</port></server>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1600);
+    assert_int_equal(cfg.flags.agent_address, 1);
+    assert_int_equal(cfg.flags.agent_port, 1);
+
+    Reconcile_Agent_Server(&cfg);
+    assert_int_equal(cfg.server[0].port, 1600);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_server_port_defaults_to_1517(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<server><address>10.0.0.5</address></server>";
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.flags.agent_port, 0);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><server><port> is not configured. Using the default port 1517.");
+
+    Reconcile_Agent_Server(&cfg);
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_server_address_falls_back_to_client(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* What a 4.x agent upgraded over WPK looks like: only the legacy block. */
+    const char *xml_str = "<server><address>10.0.0.1</address></server>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.flags.agent_address, 0);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><server><address> is not configured. Using <client><server><address> '10.0.0.1'.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent><server><port> is not configured. Using the default port 1517.");
+
+    Reconcile_Agent_Server(&cfg);
+
+    assert_string_equal(cfg.server[0].rip, "10.0.0.1");
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_block_prevails_when_read_after_client(void **state) {
+    OS_XML client_xml = {0};
+    OS_XML agent_xml = {0};
+    xml_node **client_nodes;
+    xml_node **agent_nodes;
+    agent cfg;
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
+
+    assert_int_equal(parse_client("<server><address>10.0.0.1</address><port>1514</port></server>",
+                                  &client_xml, &client_nodes, &cfg), 0);
+
+    expect_valid_ip("10.0.0.5");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Both <agent><server> and <client><server> are configured; <agent> prevails.");
+
+    assert_int_equal(parse_agent_into("<server><address>10.0.0.5</address><port>1600</port></server>",
+                                      &agent_xml, &agent_nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1600);
+
+    OS_ClearNode(client_nodes);
+    OS_ClearXML(&client_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+static void test_agent_block_prevails_when_read_before_client(void **state) {
+    OS_XML client_xml = {0};
+    OS_XML agent_xml = {0};
+    xml_node **client_nodes;
+    xml_node **agent_nodes;
+    agent cfg;
+
+    expect_valid_ip("10.0.0.5");
+
+    assert_int_equal(parse_agent("<server><address>10.0.0.5</address><port>1600</port></server>",
+                                 &agent_xml, &agent_nodes, &cfg), 0);
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring the <client><server><port> option. The HTTPS port is taken from "
+                  "<agent><server><port>.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Ignoring <client><server><address>: <agent><server><address> is already set.");
+
+    assert_int_equal(parse_client_into("<server><address>10.0.0.1</address><port>1514</port></server>",
+                                       &client_xml, &client_nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.5");
+    assert_int_equal(cfg.server[0].port, 1600);
+
+    OS_ClearNode(client_nodes);
+    OS_ClearXML(&client_xml);
+    cleanup(&agent_xml, agent_nodes, &cfg);
+}
+
+/* What the 5.x templates ship (etc/ossec-agent.conf, src/win32/ossec.conf): the whole
+ * block renamed, so every <client> option is now read under <agent>. */
+static void test_fresh_install_template_shape(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><verification_mode>full</verification_mode></ssl>"
+        "<config-profile>debian, debian8</config-profile>"
+        "<notify_time>20</notify_time>"
+        "<auto_restart>yes</auto_restart>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.1");
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_int_equal(cfg.flags.agent_address, 1);
+    assert_int_equal(cfg.flags.agent_port, 1);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
+    assert_string_equal(cfg.profile, "debian, debian8");
+    assert_int_equal(cfg.notify_time, 20);
+    assert_int_equal(cfg.flags.auto_restart, 1);
+
+    /* Nothing to reconcile: both options came from <agent>, so no log is emitted. */
+    Reconcile_Agent_Server(&cfg);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_agent_invalid_tag_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<nonsense>1</nonsense>";
+
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_reconcile_without_any_address_fails(void **state) {
+    agent cfg;
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "No manager address configured: set <agent><server><address>.");
+
+    Reconcile_Agent_Server(&cfg);
 }
 
 /* <batch>: accepted, ignored here (owned by the events module, issue 06) */
@@ -516,6 +746,14 @@ int main(void) {
         cmocka_unit_test(test_server_tag_is_canonical_no_warning),
         cmocka_unit_test(test_manager_tag_is_deprecated_but_works),
         cmocka_unit_test(test_second_server_block_prevails_with_warning),
+        cmocka_unit_test(test_agent_server_address_and_port_are_parsed),
+        cmocka_unit_test(test_agent_server_port_defaults_to_1517),
+        cmocka_unit_test(test_agent_server_address_falls_back_to_client),
+        cmocka_unit_test(test_agent_block_prevails_when_read_after_client),
+        cmocka_unit_test(test_agent_block_prevails_when_read_before_client),
+        cmocka_unit_test(test_fresh_install_template_shape),
+        cmocka_unit_test(test_agent_invalid_tag_is_rejected),
+        cmocka_unit_test(test_reconcile_without_any_address_fails),
         cmocka_unit_test(test_batch_size_and_interval_are_parsed),
         cmocka_unit_test(test_batch_is_unset_when_absent),
         cmocka_unit_test(test_batch_size_without_a_suffix_is_bytes),

@@ -343,6 +343,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_REMOTE_PORT 1514 /* Default encrypted */
 #endif
 
+#ifndef DEFAULT_HTTPS_REMOTE_PORT
+#define DEFAULT_HTTPS_REMOTE_PORT 1517 /* Default agent HTTPS control port */
+#endif
+
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif

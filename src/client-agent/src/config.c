@@ -47,6 +47,8 @@ int ClientConf(const char *cfgfile)
     agt->execdq = 0;
     agt->profile = NULL;
     agt->flags.auto_restart = 1;
+    agt->flags.agent_address = 0;
+    agt->flags.agent_port = 0;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
     agt->main_ip_update_interval = 0;
