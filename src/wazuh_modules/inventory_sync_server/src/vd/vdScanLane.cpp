@@ -43,15 +43,6 @@ namespace
         return nlohmann::json {{"error", "version_mismatch"}, {"current_version", currentOffset}}.dump();
     }
 
-    bool isVDSync(const invsync::sync::ValidatedSession& session)
-    {
-        return session.option == invsync::schema::fb::Option_VDSync;
-    }
-
-    bool isVDFirst(const invsync::sync::ValidatedSession& session)
-    {
-        return session.option == invsync::schema::fb::Option_VDFirst;
-    }
 } // namespace
 
 namespace invsync::vd
@@ -141,10 +132,6 @@ namespace invsync::vd
                 m_capacity503->add(); // the endpoint answers the 503 for this refusal
                 return Admission::Full;
             }
-            if (isVDSync(item.session))
-            {
-                ++m_vdSyncPending;
-            }
             m_queue.push_back(std::move(item));
             m_laneDepth->add(1);
         }
@@ -188,10 +175,8 @@ namespace invsync::vd
                 ++abandoned;
             }
             m_queue.clear();
-            m_vdSyncPending = 0;
             m_laneDepth->set(0);
         }
-        m_drainCv.notify_all();
 
         if (abandoned > 0)
         {
@@ -201,37 +186,11 @@ namespace invsync::vd
         }
     }
 
-    bool VdScanLane::hasVDSyncInFlight() const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return m_vdSyncPending > 0;
-    }
-
-    std::vector<std::string> VdScanLane::agentsWithVDFirstInFlight() const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto agents = m_inFlightVDFirstAgents;
-        for (const auto& item : m_queue)
-        {
-            if (isVDFirst(item.session))
-            {
-                agents.push_back(item.session.agentId);
-            }
-        }
-        return agents;
-    }
-
     bool VdScanLane::hasAgentQueued(const std::string& agentId) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         return std::any_of(
             m_queue.begin(), m_queue.end(), [&agentId](const Item& item) { return item.session.agentId == agentId; });
-    }
-
-    bool VdScanLane::drainVDSync(std::chrono::seconds timeout)
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        return m_drainCv.wait_for(lock, timeout, [this] { return m_vdSyncPending == 0; });
     }
 
     void VdScanLane::respond(Item& item, int status, const std::string& body)
@@ -274,7 +233,6 @@ namespace invsync::vd
         {
             Item item;
             bool hasItem {false};
-            bool vdFirst {false};
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait(lock,
@@ -318,32 +276,12 @@ namespace invsync::vd
                 {
                     continue; // every queued agent is busy; wait for a release notification
                 }
-                vdFirst = isVDFirst(item.session);
-                if (vdFirst)
-                {
-                    m_inFlightVDFirstAgents.push_back(item.session.agentId);
-                }
             }
 
             const auto finish = [&](int status, const std::string& body)
             {
                 respond(item, status, body);
-                {
-                    std::lock_guard<std::mutex> lock(m_mutex);
-                    if (vdFirst)
-                    {
-                        m_inFlightVDFirstAgents.erase(std::remove(m_inFlightVDFirstAgents.begin(),
-                                                                  m_inFlightVDFirstAgents.end(),
-                                                                  item.session.agentId),
-                                                      m_inFlightVDFirstAgents.end());
-                    }
-                    if (isVDSync(item.session) && m_vdSyncPending > 0)
-                    {
-                        --m_vdSyncPending;
-                    }
-                }
                 m_registry->release(item.session.agentId, AgentInFlightRegistry::Lane::Scan);
-                m_drainCv.notify_all();
             };
 
             if (m_stopping.load(std::memory_order_acquire))

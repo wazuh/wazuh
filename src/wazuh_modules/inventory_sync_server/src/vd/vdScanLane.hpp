@@ -95,14 +95,10 @@ namespace invsync::vd
          */
         void stop();
 
-        /// Introspection for the coordinator (doc 06 §5).
-        bool hasVDSyncInFlight() const;
-        std::vector<std::string> agentsWithVDFirstInFlight() const;
         /// @brief Whether @p agentId has a session QUEUED in this lane (not yet acquired in the
-        /// registry, so the registry alone cannot see it).
+        /// registry, so the registry alone cannot see it). Introspection for the coordinator
+        /// (doc 06 §5).
         bool hasAgentQueued(const std::string& agentId) const;
-        /// @brief Wait until no VDSync session is queued or in flight. @return false on timeout.
-        bool drainVDSync(std::chrono::seconds timeout);
 
         std::size_t workerCount() const noexcept
         {
@@ -137,12 +133,9 @@ namespace invsync::vd
         std::shared_ptr<wazuh::metrics::IHistogram> m_laneTime;
         std::shared_ptr<wazuh::metrics::IHistogram> m_scanDuration;
 
-        mutable std::mutex m_mutex;        ///< Guards the queue and the in-flight bookkeeping.
-        std::condition_variable m_cv;      ///< Wakes workers on enqueue/release/stop.
-        std::condition_variable m_drainCv; ///< Wakes drainVDSync() waiters.
+        mutable std::mutex m_mutex;   ///< Guards the queue and the in-flight bookkeeping.
+        std::condition_variable m_cv; ///< Wakes workers on enqueue/release/stop.
         std::deque<Item> m_queue;
-        std::size_t m_vdSyncPending {0};                  ///< VDSync sessions queued or in flight.
-        std::vector<std::string> m_inFlightVDFirstAgents; ///< Agents with a VDFirst scan running.
         std::atomic<bool> m_stopping {false};
         std::mutex m_stopMutex;
         bool m_stopped {false};

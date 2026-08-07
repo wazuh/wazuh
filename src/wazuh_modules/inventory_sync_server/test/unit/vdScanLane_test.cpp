@@ -382,9 +382,6 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
         VdScanLane::Admission::Accepted,
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDSync, "2"), vdSync, "2")));
 
-    const auto agents = coordinator.agentsWithActiveVDFirstSessions();
-    EXPECT_EQ(1U, agents.count("001")) << "the feed update must know which agents a VDFirst already covers";
-
     EXPECT_TRUE(coordinator.hasActiveSessionForAgent("002", std::chrono::seconds {0}))
         << "a QUEUED session counts as active";
     EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
@@ -392,9 +389,6 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
     EXPECT_EQ(200, vdSync->get().status);
-
-    EXPECT_FALSE(coordinator.waitForVDSyncSessionsToDrain(std::chrono::seconds {1}))
-        << "nothing left to drain reports false (nothing was waited for)";
 
     EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";

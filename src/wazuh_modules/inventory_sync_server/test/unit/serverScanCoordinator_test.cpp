@@ -159,61 +159,7 @@ TEST(ServerScanCoordinatorTest, AQuietServerReportsNoSessionsAnywhere)
 {
     CoordinatorUnderTest fixture;
 
-    EXPECT_TRUE(fixture.coordinator->agentsWithActiveVDFirstSessions().empty());
-    EXPECT_FALSE(fixture.coordinator->waitForVDSyncSessionsToDrain(std::chrono::seconds {1}))
-        << "nothing to wait for reports false";
     EXPECT_FALSE(fixture.coordinator->hasActiveSessionForAgent("001", std::chrono::seconds {0}));
-}
-
-/// The feed-update fleet scan skips these agents: their own first scan is already coming.
-TEST(ServerScanCoordinatorTest, AgentsWithAVDFirstSessionInFlightAreReportedToTheScanner)
-{
-    CoordinatorUnderTest fixture;
-    fixture.events->closeScanGate();
-
-    auto responder = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdBody(invsync::test::fb::Option_VDFirst, "1", "doc-1"), responder, "1")));
-    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
-
-    const auto agents = fixture.coordinator->agentsWithActiveVDFirstSessions();
-    EXPECT_EQ(1U, agents.size());
-    EXPECT_EQ(1U, agents.count("001"));
-
-    fixture.events->openScanGate();
-    EXPECT_EQ(200, responder->get().status);
-}
-
-/**
- * The drain reports whether there WAS anything to wait for -- that is what the scanner logs -- and
- * it must actually wait for it, not just answer.
- */
-TEST(ServerScanCoordinatorTest, TheDrainWaitsForAnInFlightVDSyncSessionAndReportsItHadOne)
-{
-    CoordinatorUnderTest fixture;
-    fixture.events->closeScanGate();
-
-    auto responder = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdBody(invsync::test::fb::Option_VDSync, "1", "doc-1"), responder, "1")));
-    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
-
-    // Let the session finish while the drain is blocked on it, so the wait is satisfied rather
-    // than merely timing out.
-    std::thread opener {[&fixture]
-                        {
-                            std::this_thread::sleep_for(std::chrono::milliseconds {30});
-                            fixture.events->openScanGate();
-                        }};
-
-    EXPECT_TRUE(fixture.coordinator->waitForVDSyncSessionsToDrain(WAIT));
-    opener.join();
-
-    EXPECT_EQ(200, responder->get().status);
-    EXPECT_FALSE(fixture.coordinator->waitForVDSyncSessionsToDrain(std::chrono::seconds {1}))
-        << "drained: there is nothing left to have waited for";
 }
 
 /// Being APPLIED is visible in the registry, and the answer holds until the deadline.
@@ -318,8 +264,6 @@ TEST(ServerScanCoordinatorTest, ADestroyedLaneDegradesToTheRegistryAlone)
     lane->stop();
     lane.reset(); // the weak_ptr is now expired
 
-    EXPECT_TRUE(coordinator.agentsWithActiveVDFirstSessions().empty());
-    EXPECT_FALSE(coordinator.waitForVDSyncSessionsToDrain(std::chrono::seconds {1}));
     EXPECT_FALSE(coordinator.hasActiveSessionForAgent("001", std::chrono::seconds {0}));
 
     // The registry half still answers.
