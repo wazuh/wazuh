@@ -32,7 +32,7 @@ from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.agent_simulator import create_agents, connect
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator, DEFAULT_MERGED_MG
 from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.file import remove_file, truncate_file
 from wazuh_testing.utils.manage_agents import remove_agents
@@ -797,7 +797,8 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
 
 @pytest.fixture(autouse=True)
 def ensure_merged_mg() -> None:
-    """Write the default dummy merged.mg whose MD5 matches RemotedSimulator.DEFAULT_MERGED_SUM.
+    """Write the default dummy merged.mg matching a freshly-instantiated RemotedSimulator's
+    default config_hash (sha256 of DEFAULT_MERGED_MG).
 
     On Linux the file is created with group-writable permissions (0o660) and
     owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
@@ -805,7 +806,7 @@ def ensure_merged_mg() -> None:
     """
     os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
     with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
-        f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
+        f.write(DEFAULT_MERGED_MG)
     if sys.platform != platforms.WINDOWS:
         import grp
         os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
