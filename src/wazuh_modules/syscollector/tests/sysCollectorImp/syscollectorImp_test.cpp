@@ -630,9 +630,11 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
 // resources (on Windows: the hotfixes() COM context) on this thread, before m_spInfo is
 // destroyed -- instead of relying on automatic thread_local teardown at thread exit,
 // which used to fault with a null `this` inside sysinfo.dll every time the syscollector
-// worker thread exited. destroy() calls releaseResources() internally, so this exercises
-// the exact call path wm_sys_main() takes on Windows.
-TEST_F(SyscollectorImpTest, destroyReleasesSysInfoThreadResources)
+// worker thread exited. This mirrors the exact call path wm_sys_main() takes: start() and
+// releaseResources() run sequentially on the same worker thread, while quiesce() (the
+// stop signal) is issued from a different, control thread -- so releaseThreadResources()
+// must land on the thread that actually owns the per-thread resources, not the caller's.
+TEST_F(SyscollectorImpTest, releaseResourcesReleasesSysInfoThreadResourcesOnStartThread)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
@@ -660,11 +662,17 @@ TEST_F(SyscollectorImpTest, destroyReleasesSysInfoThreadResources)
                                           3600, false);
 
             Syscollector::instance().start();
+
+            // Same-thread sequencing as wm_sys_main(): releaseResources() runs on the
+            // worker thread right after start() returns, before the thread exits.
+            Syscollector::instance().releaseResources();
         }
     };
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
-    Syscollector::instance().destroy();
+
+    // Issued from the test/control thread, like wm_sys_stop() does in production.
+    Syscollector::instance().quiesce();
 
     if (t.joinable())
     {
