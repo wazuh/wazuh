@@ -110,11 +110,11 @@ static void test_ssl_ciphers_accepts_a_tls13_suite_list(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_string_equal(cfg.ssl.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
 
     cleanup(&xml, nodes, &cfg);
@@ -126,14 +126,14 @@ static void test_ssl_ciphers_rejects_a_tls12_cipher_string(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>HIGH:!aNULL</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.");
 
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -145,14 +145,14 @@ static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
 
     /* Every element is empty, so there is no suite at all. */
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>:::</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
 
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -166,14 +166,14 @@ static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: ':TLS_AES_128_GCM_SHA256' has an empty cipher suite name.");
 
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -184,14 +184,14 @@ static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256:' has an empty cipher suite name.");
 
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -202,7 +202,7 @@ static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
     agent cfg;
 
     const char *xml_str =
-        "<server><address>10.0.0.1</address></server>"
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
         "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
@@ -210,7 +210,7 @@ static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
                   "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384' "
                   "has an empty cipher suite name.");
 
-    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
