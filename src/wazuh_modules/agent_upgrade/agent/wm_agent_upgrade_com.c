@@ -157,6 +157,17 @@ STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
 STATIC int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
 
+#ifndef WIN32
+/**
+ * Create/truncate `filename` under `basedir` for writing without following a symlink
+ * placed at that path, using descriptor-relative operations (openat + O_NOFOLLOW).
+ * @param basedir jailed base directory (must already have passed _jailfile validation)
+ * @param filename bare file name, validated by _jailfile (no separators, no "..")
+ * @return an open FILE* in "wb" mode, or NULL (errno set) on failure
+ * */
+STATIC FILE * _jailfopen(const char * basedir, const char * filename);
+#endif
+
 size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
 
@@ -229,7 +240,13 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
-    if (file.fp = wfopen(final_path, mode_obj->valuestring), file.fp) {
+#ifndef WIN32
+    file.fp = _jailfopen(INCOMING_DIR, file_path_obj->valuestring);
+#else
+    file.fp = wfopen(final_path, mode_obj->valuestring);
+#endif
+
+    if (file.fp) {
         snprintf(file.path, sizeof(file.path), "%s", final_path);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
@@ -400,7 +417,16 @@ STATIC char * wm_agent_upgrade_com_clear_result() {
 
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
-    if (w_ref_parent_folder(filename)) {
+    // Reject empty names, "." and any path separator: a bare file name is all that's
+    // ever legitimate here, and rejecting separators also keeps _jailfopen()'s openat()
+    // calls confined to basedir (an absolute or separator-containing name passed to
+    // openat() would otherwise be resolved ignoring the directory descriptor).
+    if (!filename || !*filename || strcmp(filename, ".") == 0 || w_ref_parent_folder(filename)
+        || strchr(filename, '/')
+#ifdef WIN32
+        || strchr(filename, '\\')
+#endif
+    ) {
         return -1;
     }
 
@@ -410,6 +436,47 @@ STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
     return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif
 }
+
+#ifndef WIN32
+STATIC FILE * _jailfopen(const char * basedir, const char * filename) {
+    int dirfd = open(basedir, O_DIRECTORY | O_CLOEXEC);
+    if (dirfd < 0) {
+        return NULL;
+    }
+
+    int fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0640);
+    int openat_errno = errno;
+    close(dirfd);
+
+    if (fd < 0) {
+        errno = openat_errno;
+        return NULL;
+    }
+
+    struct stat statbuf;
+    if (fstat(fd, &statbuf) < 0) {
+        int fstat_errno = errno;
+        close(fd);
+        errno = fstat_errno;
+        return NULL;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        close(fd);
+        errno = ELOOP;
+        return NULL;
+    }
+
+    FILE * fp = fdopen(fd, "wb");
+    if (!fp) {
+        int fdopen_errno = errno;
+        close(fd);
+        errno = fdopen_errno;
+    }
+
+    return fp;
+}
+#endif
 
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     const char TEMPLATE[] = ".gz.XXXXXX";
