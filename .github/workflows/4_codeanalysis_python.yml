@@ -3,6 +3,7 @@ name: 4.X - Python static code analysis on PR
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/4_codeanalysis_python.yml"
       - "framework/**/*.py"
@@ -13,6 +14,7 @@ env:
 
 jobs:
   bandit-scan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout repo
