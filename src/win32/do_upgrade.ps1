@@ -275,6 +275,75 @@ if ($msi_new_version -ne $null) {
     }
 }
 
+# Read the first <tag> nested in <block> from the agent configuration
+function get_conf_value($block, $tag) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    if (-Not (Test-Path $conf_path)) {
+        return $null
+    }
+    # Strip CR and LF independently: the shipped template is LF-only, and .NET's `.`
+    # does not cross a newline, so a CRLF-only strip leaves the block unmatchable.
+    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
+    if (-Not $block_match.Success) {
+        return $null
+    }
+    $tag_match = [regex]::Match($block_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
+    if (-Not $tag_match.Success) {
+        return $null
+    }
+    return $tag_match.Groups[1].Value.Trim()
+}
+
+# Check that the manager accepts connections on the HTTPS control port
+function probe_manager($server, $port) {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $async = $client.BeginConnect($server, [int]$port, $null, $null)
+        if (-Not $async.AsyncWaitHandle.WaitOne(5000, $false)) {
+            return $false
+        }
+        $client.EndConnect($async)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
+# The 5x agent requires the manager address inside the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+$manager_address = get_conf_value "agent" "address"
+if ([string]::IsNullOrEmpty($manager_address)) {
+    $manager_address = get_conf_value "client" "address"
+}
+
+# The 5x agent requires the manager port inside the <agent> block, falling back to 1517 when upgrading from 4x versions.
+$manager_port = get_conf_value "agent" "port"
+if ([string]::IsNullOrEmpty($manager_port)) {
+    $manager_port = "1517"
+}
+
+if ([string]::IsNullOrEmpty($manager_address)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
+    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+write-output "$(Get-Date -format u) - Checking connectivity to $($manager_address):$($manager_port)." >> .\upgrade\upgrade.log
+
+if (-Not (probe_manager $manager_address $manager_port)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($manager_address):$($manager_port), interrupting upgrade." >> .\upgrade\upgrade.log
+    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+write-output "$(Get-Date -format u) - Manager reachable at $($manager_address):$($manager_port)." >> .\upgrade\upgrade.log
+
 # Ensure no other instance of msiexec is running by stopping them
 try {
     $proc = Get-Process -Name "msiexec" -ErrorAction Stop

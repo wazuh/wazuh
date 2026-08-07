@@ -1659,7 +1659,7 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 /* No internal-option gate: by the time AgentdStart() (and so this) runs,
  * client-agent/src/main.c has already refused to start the daemon at all
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
- * validated address; the port always has a default (DEFAULT_REMOTE_PORT)
+ * validated address; the port always has a default (DEFAULT_HTTPS_REMOTE_PORT)
  * when unspecified. HTTPS is the only transport on offer, so there is
  * nothing left to gate. */
 void w_https_client_start(void)

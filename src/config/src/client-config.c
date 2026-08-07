@@ -14,18 +14,34 @@
 #include "config.h"
 #include "sec.h"
 
-int Read_Client_Server(XML_NODE node, agent *logr);
+int Read_Client_Server(XML_NODE node, agent *logr, bool from_agent_block);
 int Read_Client_SSL(XML_NODE node, agent *logr);
 int Read_Client_Batch(XML_NODE node, agent *logr);
 int Read_Client_Report(XML_NODE node, agent_report *report);
 int Read_Client_Enrollment(XML_NODE node, agent *logr);
+static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool from_agent_block);
 
+/**
+ * @brief Read the agent block, whether it is spelled <agent> or the legacy <client>.
+ *
+ * <client> is renamed to <agent> in 5.x: <agent> is always preferred, but <client> is still
+ * accepted for backwards compatibility only during an upgrade from 4.x.
+ */
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+{
+    return read_client_block(xml, node, d1, false);
+}
+
+int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+{
+    return read_client_block(xml, node, d1, true);
+}
+
+static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool from_agent_block)
 {
     int i = 0;
     char f_ip[128] = {'\0'};
     char * rip = NULL;
-    int port = DEFAULT_HTTPS_CLIENT_PORT;
 
     /* XML definitions */
     const char *xml_client_manager = "manager";
@@ -87,17 +103,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
 
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <manager><port> instead.", xml_client_port);
-
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-
-            if (port = atoi(node[i]->content), port <= 0 || port > 65535) {
-                merror(PORT_ERROR, port);
-                return (OS_INVALID);
-            }
+            /* A legacy port only ever names the removed 1514 channel (#38103). */
+            minfo("Ignoring the <client><%s> option. The HTTPS port is taken from <agent><server><port>.",
+                  xml_client_port);
         }
         /* Get parameters for each configured manager/server block */
         else if (strcmp(node[i]->element, xml_client_server) == 0 ||
@@ -109,7 +117,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_INVELEM, node[i]->element);
                 return (OS_INVALID);
             }
-            if (Read_Client_Server(chld_node, logr) < 0) {
+            if (Read_Client_Server(chld_node, logr, from_agent_block) < 0) {
                 OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
@@ -231,11 +239,11 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         }
     }
 
-    // Assign global port to legacy configurations
+    // Assign the default port to legacy configurations
 
     for (i = 0; i < logr->server_count; ++i) {
         if (!logr->server[i].port) {
-            logr->server[i].port = port;
+            logr->server[i].port = DEFAULT_HTTPS_REMOTE_PORT;
         }
     }
     return (0);
@@ -263,7 +271,19 @@ int Read_Client_Shared(XML_NODE node, void *d1)
     return (0);
 }
 
-int Read_Client_Server(XML_NODE node, agent * logr)
+/**
+ * @brief Read a <server> block, either the new <agent><server> or the legacy <client><server>.
+ *
+ * Both names describe the same single manager endpoint (#38103): <agent> is the
+ * 5.x name and wins when both are present, and <client><server><port> is
+ * ignored because it can only carry the removed 1514 port.
+ *
+ * @param node Children of the <server> element.
+ * @param logr Agent configuration to fill.
+ * @param from_agent_block true when the block came from <agent>, false for <client>.
+ * @return 0 on success, OS_INVALID on error.
+ */
+int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
 {
     /* XML definitions */
     const char *xml_client_addr = "address";
@@ -278,7 +298,8 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     char * rip = NULL;
     /* Default values */
     uint32_t network_interface = 0;
-    int port = DEFAULT_HTTPS_CLIENT_PORT;
+    int port = DEFAULT_HTTPS_REMOTE_PORT;
+    bool port_set = false;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -304,6 +325,13 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_client_port) == 0) {
+            if (!from_agent_block) {
+                /* A legacy port only ever names the removed 1514 channel (#38103). */
+                minfo("Ignoring the <client><server><%s> option. The HTTPS port is taken from "
+                      "<agent><server><%s>.", xml_client_port, xml_client_port);
+                continue;
+            }
+
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
@@ -313,6 +341,8 @@ int Read_Client_Server(XML_NODE node, agent * logr)
                 merror(PORT_ERROR, port);
                 return (OS_INVALID);
             }
+
+            port_set = true;
         } else if (strcmp(node[j]->element, xml_interface) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -343,12 +373,24 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         return (OS_INVALID);
     }
 
+    /* <agent><server> is the 5.x name for the same endpoint, so it wins over the
+     * legacy <client><server> whichever order they appear in (#38103). */
+    if (!from_agent_block && logr->flags.agent_address) {
+        minfo("Ignoring <client><server><%s>: <agent><server><%s> is already set.",
+              xml_client_addr, xml_client_addr);
+        return (0);
+    }
+
     /* Single <server> block: the last one prevails (#37702 restriction 2) and
      * server rotation is removed (restriction 3), so replace any previous entry
      * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
     if (logr->server) {
         if (logr->server_count > 0) {
-            mwarn("Only one <server> block is supported; the last one prevails.");
+            if (from_agent_block && !logr->flags.agent_address) {
+                minfo("Both <agent><server> and <client><server> are configured; <agent> prevails.");
+            } else {
+                mwarn("Only one <server> block is supported; the last one prevails.");
+            }
         }
         for (int k = 0; logr->server[k].rip; k++) {
             os_free(logr->server[k].rip);
@@ -370,7 +412,37 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     logr->server[0].retry_interval = retry_interval;
     logr->server_count = 1;
 
+    if (from_agent_block) {
+        logr->flags.agent_address = 1;
+        logr->flags.agent_port = port_set ? 1 : 0;
+    }
+
     return (0);
+}
+
+void Reconcile_Agent_Server(agent * config)
+{
+    if (!config) {
+        return;
+    }
+
+    /* A WPK upgrade never rewrites ossec.conf, so a 4.x agent reaches 5.x with
+     * only the legacy <client><server> block (#38103). */
+    if (!config->flags.agent_address) {
+        if (config->server && config->server[0].rip) {
+            minfo("<agent><server><address> is not configured. Using <client><server><address> '%s'.",
+                  config->server[0].rip);
+        } else {
+            merror("No manager address configured: set <agent><server><address>.");
+            return;
+        }
+    }
+
+    if (!config->flags.agent_port) {
+        config->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
+        minfo("<agent><server><port> is not configured. Using the default port %d.",
+              DEFAULT_HTTPS_REMOTE_PORT);
+    }
 }
 
 int Read_Client_SSL(XML_NODE node, agent * logr)
