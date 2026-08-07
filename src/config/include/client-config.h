@@ -17,6 +17,8 @@
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
     unsigned int remote_conf:1;
+    unsigned int agent_address:1; ///< <agent><server><address> was present in the configuration.
+    unsigned int agent_port:1;    ///< <agent><server><port> was present in the configuration.
 } agent_flags_t;
 
 typedef struct agent_server {
@@ -101,6 +103,18 @@ typedef struct _anti_tampering {
 
 /* Frees the Client struct  */
 void Free_Client(agent * config);
+
+/**
+ * @brief Apply the <agent><server> fallbacks once the whole configuration is read.
+ *
+ * A 4.x agent upgraded over WPK keeps its old <client> block untouched, so the
+ * HTTPS endpoint has to be reconciled at read time: the address falls
+ * back to <client><server><address> and the port to DEFAULT_HTTPS_REMOTE_PORT.
+ * Logs what was inherited and what was defaulted.
+ *
+ * @param config Agent configuration already filled by ReadConfig().
+ */
+void Reconcile_Agent_Server(agent * config);
 
 /**
  * @brief Check if address has default values

@@ -47,6 +47,63 @@ else
     exit 1
 fi
 
+# Read the first <tag> nested in <block> from the agent configuration
+xml_value() {
+    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+        grep -o "<$2>[^<]*</$2>" | head -1 | sed -e "s|<$2>||" -e "s|</$2>||" -e 's|^ *||' -e 's| *$||'
+}
+
+# Check that the manager accepts connections on the HTTPS control port. There is
+# no `timeout` on macOS, so the connection attempt runs in the background and is
+# killed after PROBE_TIMEOUT seconds.
+probe_manager() {
+    PROBE_TIMEOUT=5
+    ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
+    PROBE_PID=$!
+    WAITED=0
+    while kill -0 ${PROBE_PID} 2>/dev/null && [ ${WAITED} -lt ${PROBE_TIMEOUT} ]; do
+        sleep 1
+        WAITED=$((WAITED + 1))
+    done
+    if kill -0 ${PROBE_PID} 2>/dev/null; then
+        kill -9 ${PROBE_PID} 2>/dev/null
+        wait ${PROBE_PID} 2>/dev/null
+        return 1
+    fi
+    wait ${PROBE_PID}
+    return $?
+}
+
+# The 5x agent requires the manager address inside the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+MANAGER_ADDRESS=$(xml_value agent address)
+if [ -z "${MANAGER_ADDRESS}" ]; then
+    MANAGER_ADDRESS=$(xml_value client address)
+fi
+
+# The 5x agent requires the manager port inside the <agent> block, falling back to 1517 when upgrading from 4x versions.
+MANAGER_PORT=$(xml_value agent port)
+if [ -z "${MANAGER_PORT}" ]; then
+    MANAGER_PORT=1517
+fi
+
+if [ -z "${MANAGER_ADDRESS}" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    exit 1
+fi
+
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${MANAGER_ADDRESS}:${MANAGER_PORT}." >> ./logs/upgrade.log
+
+if ! probe_manager "${MANAGER_ADDRESS}" "${MANAGER_PORT}"; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${MANAGER_ADDRESS}:${MANAGER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    exit 1
+fi
+
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${MANAGER_ADDRESS}:${MANAGER_PORT}." >> ./logs/upgrade.log
+
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
