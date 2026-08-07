@@ -792,8 +792,7 @@ void *bridge_upgrade_thread(void *arg)
 
     if (error_code == 0) {
         minfo("https_client: remote_upgrade task %s dispatched to the upgrade module (installer "
-              "running; the agent may restart shortly). No /control response is sent "
-              "(fire-and-forget, #37834).", ctx->task_id);
+              "running; the agent may restart shortly). No /control response is sent.", ctx->task_id);
         ok = true;
     } else {
         merror("https_client: remote_upgrade task %s: upgrade module rejected the command: %s",

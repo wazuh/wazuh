@@ -1844,7 +1844,7 @@ static void test_upgrade_thread_module_accepts_counts_dispatched(void **state)
     expect_string(__wrap__minfo, formatted_msg,
                   "https_client: remote_upgrade task t-up dispatched to the upgrade module "
                   "(installer running; the agent may restart shortly). No /control response is "
-                  "sent (fire-and-forget, #37834).");
+                  "sent.");
     expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
     expect_value(__wrap_w_agentd_state_update, data, NULL);
 
@@ -1887,7 +1887,7 @@ static void test_upgrade_thread_lock_restart_connect_failure_still_dispatches(vo
     expect_string(__wrap__minfo, formatted_msg,
                   "https_client: remote_upgrade task t-up dispatched to the upgrade module "
                   "(installer running; the agent may restart shortly). No /control response is "
-                  "sent (fire-and-forget, #37834).");
+                  "sent.");
     expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
     expect_value(__wrap_w_agentd_state_update, data, NULL);
 
@@ -1931,7 +1931,7 @@ static void test_upgrade_thread_lock_restart_send_failure_still_dispatches(void 
     expect_string(__wrap__minfo, formatted_msg,
                   "https_client: remote_upgrade task t-up dispatched to the upgrade module "
                   "(installer running; the agent may restart shortly). No /control response is "
-                  "sent (fire-and-forget, #37834).");
+                  "sent.");
     expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISPATCHED);
     expect_value(__wrap_w_agentd_state_update, data, NULL);
 

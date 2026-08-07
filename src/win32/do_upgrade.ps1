@@ -284,8 +284,7 @@ function get_conf_value($block, $sub, $tag) {
     if (-Not (Test-Path $conf_path)) {
         return $null
     }
-    # Strip CR and LF independently: the shipped template is LF-only, and .NET's `.`
-    # does not cross a newline, so a CRLF-only strip leaves the block unmatchable.
+    # Strip CR and LF separately: the shipped template is LF-only, and `.` never matches a newline.
     $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
     $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
     if (-Not $block_match.Success) {
@@ -302,21 +301,32 @@ function get_conf_value($block, $sub, $tag) {
     return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
 }
 
-# Check that the manager answers on the HTTPS control port. GET / is remoted's
-# unauthenticated health probe and returns 200 {"status":"ok","module":"remoted"}
+# Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
+# on a worker thread where a PowerShell scriptblock cannot run.
+if (-not ("WazuhProbeTrust" -as [type])) {
+    Add-Type @"
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public static class WazuhProbeTrust {
+    public static RemoteCertificateValidationCallback Always =
+        delegate (object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; };
+}
+"@
+}
+
+# Check the manager is up: GET / is remoted's health endpoint and answers 200.
+# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
 function probe_server($server, $port) {
     $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
-    $saved_protocol = [System.Net.ServicePointManager]::SecurityProtocol
     try {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
         $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
         return $false
     } finally {
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
-        [System.Net.ServicePointManager]::SecurityProtocol = $saved_protocol
     }
 }
 
