@@ -143,15 +143,72 @@ static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    /* Tokenizes to no suite at all, which would otherwise pass as vacuously
-     * valid and leave OpenSSL with an empty list. */
+    /* Every element is empty, so there is no suite at all. */
     const char *xml_str =
         "<server><address>10.0.0.1</address></server>"
         "<ssl><ciphers>:::</ciphers></ssl>";
 
     expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg,
-                  "Invalid 'ciphers' option: ':::' names no cipher suite.");
+                  "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* A separator run names a suite that is not there. strtok_r() collapses these,
+ * so each position -- leading, trailing and interior -- gets its own case. */
+
+static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: ':TLS_AES_128_GCM_SHA256' has an empty cipher suite name.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256:' has an empty cipher suite name.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384' "
+                  "has an empty cipher suite name.");
 
     assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
@@ -813,6 +870,9 @@ int main(void) {
         cmocka_unit_test(test_ssl_ciphers_accepts_a_tls13_suite_list),
         cmocka_unit_test(test_ssl_ciphers_rejects_a_tls12_cipher_string),
         cmocka_unit_test(test_ssl_ciphers_rejects_a_list_of_separators),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_leading_separator),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_trailing_separator),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_doubled_separator),
         cmocka_unit_test(test_server_address_and_explicit_port),
         cmocka_unit_test(test_manager_tag_is_rejected),
         cmocka_unit_test(test_second_server_block_prevails_with_warning),

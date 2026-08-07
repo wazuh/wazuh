@@ -453,10 +453,11 @@ static const char *VALID_TLS13_CIPHERSUITES[] = {
     NULL
 };
 
-static bool is_tls13_ciphersuite(const char *name)
+static bool is_tls13_ciphersuite(const char *name, size_t length)
 {
     for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
-        if (strcmp(name, VALID_TLS13_CIPHERSUITES[i]) == 0) {
+        if (strlen(VALID_TLS13_CIPHERSUITES[i]) == length &&
+            strncmp(name, VALID_TLS13_CIPHERSUITES[i], length) == 0) {
             return true;
         }
     }
@@ -477,36 +478,37 @@ static bool is_tls13_ciphersuite(const char *name)
  */
 static int w_client_validate_tls13_ciphers(const char *ciphers)
 {
-    char *copy = NULL;
-    char *saveptr = NULL;
-    int suites = 0;
+    const char *element = ciphers;
 
     if (!ciphers || !*ciphers) {
-        merror("Empty 'ciphers' option: expected TLS 1.3 cipher suite names.");
+        merror("Invalid 'ciphers' option: expected TLS 1.3 cipher suite names.");
         return OS_INVALID;
     }
 
-    os_strdup(ciphers, copy);
+    /* Walked by hand rather than with strtok_r, which collapses runs of
+     * separators: under it ':X', 'X::' and 'X::Y' all pass while naming a suite
+     * that is not there. Every element between two separators is checked,
+     * including an empty first or last one. */
+    for (;;) {
+        const char *separator = strchr(element, ':');
+        const size_t length = separator ? (size_t)(separator - element) : strlen(element);
 
-    for (char *name = strtok_r(copy, ":", &saveptr); name; name = strtok_r(NULL, ":", &saveptr)) {
-        if (!is_tls13_ciphersuite(name)) {
-            merror("Invalid TLS 1.3 cipher suite '%s' in the 'ciphers' option.", name);
-            os_free(copy);
+        if (length == 0) {
+            merror("Invalid 'ciphers' option: '%s' has an empty cipher suite name.", ciphers);
             return OS_INVALID;
         }
-        suites++;
+
+        if (!is_tls13_ciphersuite(element, length)) {
+            merror("Invalid TLS 1.3 cipher suite '%.*s' in the 'ciphers' option.", (int)length, element);
+            return OS_INVALID;
+        }
+
+        if (!separator) {
+            return 0;
+        }
+
+        element = separator + 1;
     }
-
-    os_free(copy);
-
-    /* A list of nothing but separators tokenizes to zero suites, which would
-     * otherwise pass as vacuously valid and leave OpenSSL with an empty list. */
-    if (suites == 0) {
-        merror("Invalid 'ciphers' option: '%s' names no cipher suite.", ciphers);
-        return OS_INVALID;
-    }
-
-    return 0;
 }
 
 int Read_Agent_SSL(XML_NODE node, agent * logr)
