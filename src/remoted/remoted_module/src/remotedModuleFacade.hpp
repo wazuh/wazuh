@@ -247,8 +247,8 @@ private:
         m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
             authConfig,
             m_keystore,
-            std::make_shared<const remoted::decoding::BodyDecoder>(
-                *m_httpServer, m_config.http_content_encoding_enabled));
+            std::make_shared<const remoted::decoding::BodyDecoder>(*m_httpServer,
+                                                                   m_config.http_content_encoding_enabled));
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
