@@ -17,8 +17,6 @@
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
     unsigned int remote_conf:1;
-    unsigned int agent_address:1; ///< <agent><server><address> was present in the configuration.
-    unsigned int agent_port:1;    ///< <agent><server><port> was present in the configuration.
 } agent_flags_t;
 
 typedef struct agent_server {
@@ -41,7 +39,7 @@ typedef enum agent_verify_mode_t {
     AGENT_VERIFY_NONE = 2  ///< No TLS verification (the agent's own configured default).
 } agent_verify_mode_t;
 
-/* Agent-side HTTPS transport TLS settings: the <client><ssl> block (FR10 / #37702 §10). */
+/* Agent-side HTTPS transport TLS settings: the <agent><ssl> block (FR10 / #37702 §10). */
 typedef struct agent_ssl {
     char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
     char * key;                     ///< <key>: optional client (mTLS) private key.
@@ -51,7 +49,7 @@ typedef struct agent_ssl {
 } agent_ssl;
 
 /**
- * @brief <client><batch>: the /stateless send-rate model (#37835).
+ * @brief <agent><batch>: the /stateless send-rate model (#37835).
  *
  * Replaces the leaky bucket's <client_buffer><events_per_second> pacing for
  * stateless traffic. Zero means "unset": the transport module applies its own
@@ -63,7 +61,7 @@ typedef struct agent_batch {
 } agent_batch;
 
 /**
- * @brief <client><stats_report> / <client><config_report>: the periodic push of
+ * @brief <agent><stats_report> / <agent><config_report>: the periodic push of
  *        a whole-agent snapshot to /stats and /config (#37843).
  *
  * The two are independent and both stay off until <enabled> says otherwise.
@@ -89,10 +87,10 @@ typedef struct _agent {
     char *profile;
     int package_uninstallation;
     agent_flags_t flags;
-    agent_ssl ssl;     ///< HTTPS transport TLS settings (<client><ssl>).
-    agent_batch batch; ///< /stateless batching limits (<client><batch>).
-    agent_report stats_report;  ///< Periodic /stats push (<client><stats_report>).
-    agent_report config_report; ///< Periodic /config push (<client><config_report>).
+    agent_ssl ssl;     ///< HTTPS transport TLS settings (<agent><ssl>).
+    agent_batch batch; ///< /stateless batching limits (<agent><batch>).
+    agent_report stats_report;  ///< Periodic /stats push (<agent><stats_report>).
+    agent_report config_report; ///< Periodic /config push (<agent><config_report>).
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 
@@ -101,20 +99,8 @@ typedef struct _anti_tampering {
     bool package_uninstallation;
 } anti_tampering;
 
-/* Frees the Client struct  */
-void Free_Client(agent * config);
-
-/**
- * @brief Apply the <agent><server> fallbacks once the whole configuration is read.
- *
- * A 4.x agent upgraded over WPK keeps its old <client> block untouched, so the
- * HTTPS endpoint has to be reconciled at read time: the address falls
- * back to <client><server><address> and the port to DEFAULT_HTTPS_REMOTE_PORT.
- * Logs what was inherited and what was defaulted.
- *
- * @param config Agent configuration already filled by ReadConfig().
- */
-void Reconcile_Agent_Server(agent * config);
+/* Frees the agent struct  */
+void Free_Agent(agent * config);
 
 /**
  * @brief Check if address has default values
@@ -124,7 +110,7 @@ void Reconcile_Agent_Server(agent * config);
 bool Validate_Address(agent_server *servers);
 
 /**
- * @brief Checks if at least one <manager> block is not a link-local ipv6 address or it has a network interface configured.
+ * @brief Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured.
  * @param servers Server(s) configuration block in agent ossec.conf
  * @return Returns true if successful and false if not success.
  */

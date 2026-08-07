@@ -49,9 +49,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
-int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
+int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
@@ -61,7 +60,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
  * @param node XML node to analyze
  * @param d1 Pub/Sub configuration structure
  */
-int Read_Client_Shared(XML_NODE node, void *d1);
+int Read_Agent_Shared(XML_NODE node, void *d1);
 
 /**
  * @brief Read the configuration for Google Cloud Pub/Sub
@@ -129,7 +128,7 @@ int Test_Rootcheck(const char * path);
 int Test_Localfile(const char * path);
 
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
-int Test_Client(const char * path);
+int Test_Agent(const char * path);
 
 /* Verifies that the configuration for ClientBuffer is correct. Return 0 on success or -1 on error.  */
 

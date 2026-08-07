@@ -17,7 +17,7 @@
  * see w_https_client_start()'s comment) and no alternative transport is
  * offered.
  *
- * The config surface (<server>/<ssl>, parsed by Read_Client/Read_Client_SSL
+ * The config surface (<server>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.

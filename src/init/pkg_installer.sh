@@ -53,10 +53,10 @@ xml_value() {
         grep -o "<$2>[^<]*</$2>" | head -1 | sed -e "s|<$2>||" -e "s|</$2>||" -e 's|^ *||' -e 's| *$||'
 }
 
-# Check that the manager accepts connections on the HTTPS control port. There is
+# Check that the server accepts connections on the HTTPS control port. There is
 # no `timeout` on macOS, so the connection attempt runs in the background and is
 # killed after PROBE_TIMEOUT seconds.
-probe_manager() {
+probe_server() {
     PROBE_TIMEOUT=5
     ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
     PROBE_PID=$!
@@ -74,35 +74,35 @@ probe_manager() {
     return $?
 }
 
-# The 5x agent requires the manager address inside the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-MANAGER_ADDRESS=$(xml_value agent address)
-if [ -z "${MANAGER_ADDRESS}" ]; then
-    MANAGER_ADDRESS=$(xml_value client address)
+# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+SERVER_ADDRESS=$(xml_value agent address)
+if [ -z "${SERVER_ADDRESS}" ]; then
+    SERVER_ADDRESS=$(xml_value client address)
 fi
 
-# The 5x agent requires the manager port inside the <agent> block, falling back to 1517 when upgrading from 4x versions.
-MANAGER_PORT=$(xml_value agent port)
-if [ -z "${MANAGER_PORT}" ]; then
-    MANAGER_PORT=1517
+# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
+SERVER_PORT=$(xml_value agent port)
+if [ -z "${SERVER_PORT}" ]; then
+    SERVER_PORT=1517
 fi
 
-if [ -z "${MANAGER_ADDRESS}" ]; then
+if [ -z "${SERVER_ADDRESS}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
     echo -ne "2" > ./var/upgrade/upgrade_result
     rm -f $LOCK
     exit 1
 fi
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${MANAGER_ADDRESS}:${MANAGER_PORT}." >> ./logs/upgrade.log
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 
-if ! probe_manager "${MANAGER_ADDRESS}" "${MANAGER_PORT}"; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${MANAGER_ADDRESS}:${MANAGER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
+if ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
     echo -ne "2" > ./var/upgrade/upgrade_result
     rm -f $LOCK
     exit 1
 fi
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${MANAGER_ADDRESS}:${MANAGER_PORT}." >> ./logs/upgrade.log
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
