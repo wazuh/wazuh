@@ -37,6 +37,9 @@ typedef struct os_info {
 } os_info;
 
 
+/// Value returned by OSX_ReleaseName() when the Darwin version is not mapped to a release name.
+#define OSX_UNKNOWN_RELEASE_NAME "Unknown"
+
 /**
  * @brief Get the macOS release name corresponding to a version number.
  *

@@ -61,8 +61,10 @@ def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABA
 
     lists = list()
     for path in get_filenames_paths(filename):
-        # Only files which exist and whose dirname is the one specified by the user (if any), will be added to response.
-        if not any([dirname is not None and path_dirname(path) != dirname, not isfile(path)]):
+        # Only files which exist, stay inside the lists directory and whose dirname is the one specified by the
+        # user (if any), will be added to response.
+        if not any([dirname is not None and path_dirname(path) != dirname, not isfile(path),
+                    commonpath([realpath(path), realpath(common.USER_LISTS_PATH)]) != realpath(common.USER_LISTS_PATH)]):
             lists.append({'items': [{'key': key, 'value': value} for key, value in get_list_from_file(path).items()],
                           'relative_dirname': path_dirname(to_relative_path(path)),
                           'filename': split(to_relative_path(path))[1]})
@@ -189,6 +191,9 @@ def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
     full_path = join(common.USER_LISTS_PATH, filename[0])
 
     try:
+        # Ensure the resolved path stays inside the lists directory.
+        if commonpath([realpath(full_path), realpath(common.USER_LISTS_PATH)]) != realpath(common.USER_LISTS_PATH):
+            raise WazuhError(1804, extra_message=f"{filename[0]} is outside the lists directory")
         delete_list(to_relative_path(full_path))
 
         result.affected_items.append(to_relative_path(full_path))

@@ -2,6 +2,7 @@ name: 4.X - Windows upgrade test
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - ".github/actions/upload_s3_artifact/**"
@@ -14,6 +15,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Install mingw
@@ -43,6 +45,7 @@ jobs:
           path: win-agent-base.zip
 
   check_upgrade_result:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     strategy:
           matrix:
               wazuh_version: [4.5.2-1]

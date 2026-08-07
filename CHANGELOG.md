@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Restricted the upgrade commands accepted from the agent message channel in Analysisd. ([#37745](https://github.com/wazuh/wazuh/pull/37745))
 - Added destination path validation when deleting rule and decoder files. ([#37838](https://github.com/wazuh/wazuh/pull/37838))
 - Added source path validation when retrieving CDB list files. ([#37901](https://github.com/wazuh/wazuh/pull/37901))
+- Added path validation when listing and deleting CDB list files. ([#38214](https://github.com/wazuh/wazuh/pull/38214))
 - Fixed the `aws-s3` wodle failing to parse configuration values that contain spaces, such as `discard_regex`, `discard_field`, `aws_profile`, `aws_account_alias`, `path` and `path_suffix`. ([#37929](https://github.com/wazuh/wazuh/pull/37929))
 - Fixed wazuh-db exiting the worker thread instead of closing the peer socket when an oversized message is received. ([#37850](https://github.com/wazuh/wazuh/pull/37850))
 - Improved SCA policy source validation to correctly enforce the `sca.remote_commands` restriction. ([#37953](https://github.com/wazuh/wazuh/pull/37953))
@@ -22,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - Fixed the API login attempt limit not being applied consistently under concurrent requests. ([#38135](https://github.com/wazuh/wazuh/pull/38135))
 - Fixed a heap buffer write in `wazuh-analysisd` when generating FIM alerts by resizing `full_log` before writing. ([#38145](https://github.com/wazuh/wazuh/pull/38145))
 - Fixed password validation not being enforced for empty passwords in the `update_user` API endpoint. ([#38180](https://github.com/wazuh/wazuh/pull/38180))
+- Fixed API tokens for `run_as` users not being invalidated on logout or role revocation. ([#38193](https://github.com/wazuh/wazuh/pull/38193))
+- Fixed a remote-command configuration validation bypass where upper- or mixed-case XML element names let command `localfile` and `wodle` blocks pass the `remote_commands` restriction. ([#38239](https://github.com/wazuh/wazuh/pull/38239))
 
 ### Agent
 

@@ -3,6 +3,7 @@ name: 4.X - Inventory Harvester - Integration tests
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
   # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
   # Path filtering
@@ -17,6 +18,7 @@ on:
 
 jobs:
   inventory-harvester-qa:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:

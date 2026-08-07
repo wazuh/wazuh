@@ -8,12 +8,14 @@ on:
         required: true
         default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - "src/**"
         - ".github/workflows/4_testunit_linux-win.yml"
 
 jobs:
   Unit-Tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     strategy:
           fail-fast: false
           matrix:
