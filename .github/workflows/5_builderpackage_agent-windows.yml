@@ -211,11 +211,14 @@ jobs:
           }
 
       - name: Set up Visual C++ Build Tools (cv2pdb PDB writer)
-        # cv2pdb needs the Microsoft PDB writer (mspdb*.dll) to convert the DWARF debug info into
-        # PDBs, and it must be the 32-bit one since the winagent build is i686. windows-2025 ships
-        # Visual Studio, so this should find mspdb and no-op; the install branch is kept as a
-        # fallback because the image's MSVC layout is not guaranteed. If the step log shows
-        # "Using PDB writer from:" rather than an install, it can be dropped in a follow-up.
+        # Required on every runner, not a workaround. cv2pdb needs the Microsoft PDB writer
+        # (mspdb*.dll) to convert the DWARF debug info into PDBs, and the 32-bit one since the
+        # winagent build is i686. MSVC does not put it on PATH by default, so the final
+        # Add-Content to GITHUB_PATH below is this step's actual purpose and runs unconditionally.
+        # Only the install branch is a fallback: on windows-2022 the lookup succeeds and logs
+        # "Using PDB writer from: ...\VC\Tools\MSVC\<ver>\bin\HostX86\x86". Do not delete this
+        # step on the grounds that the install no-ops -- removing it would leave cv2pdb without a
+        # PDB writer, which may degrade the debug symbols rather than fail loudly.
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
