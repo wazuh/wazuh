@@ -275,6 +275,90 @@ if ($msi_new_version -ne $null) {
     }
 }
 
+# Read <block><sub><tag> from the agent configuration, taking the last match.
+function get_conf_value($block, $sub, $tag) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    if (-Not (Test-Path $conf_path)) {
+        return $null
+    }
+    # Strip CR and LF separately: the shipped template is LF-only, and `.` never matches a newline.
+    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
+    if (-Not $block_match.Success) {
+        return $null
+    }
+    $sub_match = [regex]::Match($block_match.Groups[1].Value, "<$sub>(.*)</$sub>")
+    if (-Not $sub_match.Success) {
+        return $null
+    }
+    $tag_matches = [regex]::Matches($sub_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
+    if ($tag_matches.Count -eq 0) {
+        return $null
+    }
+    return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
+}
+
+# Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
+# on a worker thread where a PowerShell scriptblock cannot run.
+if (-not ("WazuhProbeTrust" -as [type])) {
+    Add-Type @"
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public static class WazuhProbeTrust {
+    public static RemoteCertificateValidationCallback Always =
+        delegate (object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; };
+}
+"@
+}
+
+# Check the manager is up: GET / is remoted's health endpoint and answers 200.
+# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
+function probe_server($server, $port) {
+    $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
+        $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
+        return ($response.StatusCode -eq 200)
+    } catch {
+        return $false
+    } finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
+    }
+}
+
+# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+$server_address = get_conf_value "agent" "server" "address"
+if ([string]::IsNullOrEmpty($server_address)) {
+    $server_address = get_conf_value "client" "server" "address"
+}
+
+# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
+$server_port = get_conf_value "agent" "server" "port"
+if ([string]::IsNullOrEmpty($server_port)) {
+    $server_port = "1517"
+}
+
+if ([string]::IsNullOrEmpty($server_address)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
+    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+
+if (-Not (probe_server $server_address $server_port)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
+    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+
 # Ensure no other instance of msiexec is running by stopping them
 try {
     $proc = Get-Process -Name "msiexec" -ErrorAction Stop

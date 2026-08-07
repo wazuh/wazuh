@@ -81,7 +81,13 @@ add_adress_block() {
         echo "    </server>"
     } >> "${TMP_SERVER}"
 
-    ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
+    # A 5.x package ships <agent>, but a package upgrade preserves the 4.x file, so
+    # WAZUH_MANAGER can land on a configuration that still spells the block <client>.
+    if grep -q "<agent>" "${CONF_FILE}"; then
+        ${sed} "/<agent>/r ${TMP_SERVER}" "${CONF_FILE}"
+    else
+        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
+    fi
 
     rm -f "${TMP_SERVER}"
 

@@ -84,6 +84,9 @@ public function config()
 
                 not_replaced = True
                 formatted_list = vbCrLf
+                ' <server> inside <agent> since 5.x: <agent> takes no other
+                ' element name, so writing back the legacy <manager> would make the
+                ' agent reject its own configuration.
                 for i=0 to UBound(ip_list)
                     If ip_list(i) <> "" Then
                         formatted_list = formatted_list & "    <server>" & vbCrLf
@@ -132,9 +135,9 @@ public function config()
             enrollment_list = "    <enrollment>" & vbCrLf
             enrollment_list = enrollment_list & "      <enabled>yes</enabled>" & vbCrLf
             enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
-            enrollment_list = enrollment_list & "  </client>" & vbCrLf
+            enrollment_list = enrollment_list & "  </agent>" & vbCrLf
 
-            strText = Replace(strText, "  </client>", enrollment_list)
+            strText = Replace(strText, "  </agent>", enrollment_list)
 
             If WAZUH_REGISTRATION_SERVER <> "" Then
                 strText = Replace(strText, "    </enrollment>", "      <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")

@@ -29,6 +29,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
     const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
+    const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
     const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslogging = "logging";                          /* Logging Config */
@@ -84,15 +85,31 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CREMOTE) && (Read_Remote(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Client_Shared(chld_node, d1) < 0){
+                    if (Read_Agent_Shared(chld_node, d1) < 0) {
                         goto fail;
                     }
                 }
                 else {
-                    if (Read_Client(xml, chld_node, d1, d2) < 0){
+                    if (Read_Agent(xml, chld_node, d1, d2) < 0) {
+                        goto fail;
+                    }
+                }
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+            /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
+             * ossec.conf, so the block is still accepted, but only <server><address>
+             * is read from it - as the fallback for <agent><server><address>. */
+            if (modules & CCLIENT) {
+                if (modules & CAGENT_CONFIG) {
+                    if (Read_Agent_Shared(chld_node, d1) < 0){
+                        goto fail;
+                    }
+                }
+                else {
+                    if (Read_Legacy_Client_Address(xml, chld_node, d1, d2) < 0){
                         goto fail;
                     }
                 }

@@ -17,7 +17,7 @@
  * see w_https_client_start()'s comment) and no alternative transport is
  * offered.
  *
- * The config surface (<server>/<ssl>, parsed by Read_Client/Read_Client_SSL
+ * The config surface (<server>/<ssl>, parsed by Read_Agent/Read_Agent_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
@@ -792,8 +792,7 @@ void *bridge_upgrade_thread(void *arg)
 
     if (error_code == 0) {
         minfo("https_client: remote_upgrade task %s dispatched to the upgrade module (installer "
-              "running; the agent may restart shortly). No /control response is sent "
-              "(fire-and-forget, #37834).", ctx->task_id);
+              "running; the agent may restart shortly). No /control response is sent.", ctx->task_id);
         ok = true;
     } else {
         merror("https_client: remote_upgrade task %s: upgrade module rejected the command: %s",
@@ -1659,7 +1658,7 @@ static bool bridge_submit_sync_session(const char *session_id, const uint8_t *bu
 /* No internal-option gate: by the time AgentdStart() (and so this) runs,
  * client-agent/src/main.c has already refused to start the daemon at all
  * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
- * validated address; the port always has a default (DEFAULT_REMOTE_PORT)
+ * validated address; the port always has a default (DEFAULT_HTTPS_REMOTE_PORT)
  * when unspecified. HTTPS is the only transport on offer, so there is
  * nothing left to gate. */
 void w_https_client_start(void)

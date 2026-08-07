@@ -47,6 +47,75 @@ else
     exit 1
 fi
 
+# Read <block><sub><tag> from the agent configuration, taking the last match.
+xml_value() {
+    tr -d '\n\r' < ./etc/ossec.conf 2>/dev/null | grep -o "<$1>.*</$1>" | \
+        grep -o "<$2>.*</$2>" | grep -o "<$3>[^<]*</$3>" | tail -1 | \
+        sed -e "s|<$3>||" -e "s|</$3>||" -e 's|^ *||' -e 's| *$||'
+}
+
+# Check that the manager answers on the HTTPS control port. GET / is remoted's
+# unauthenticated health probe and returns 200 {"status":"ok","module":"remoted"}
+probe_server() {
+    PROBE_TIMEOUT=5
+
+    if command -v curl > /dev/null 2>&1; then
+        curl -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${1}:${2}/"
+        return $?
+    fi
+
+    if command -v wget > /dev/null 2>&1; then
+        wget -q --no-check-certificate --timeout=${PROBE_TIMEOUT} --tries=1 -O /dev/null "https://${1}:${2}/"
+        return $?
+    fi
+
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Neither curl nor wget found, falling back to a TCP connectivity check." >> ./logs/upgrade.log
+    ( exec 3<>"/dev/tcp/${1}/${2}" ) > /dev/null 2>&1 &
+    PROBE_PID=$!
+    WAITED=0
+    while kill -0 ${PROBE_PID} 2>/dev/null && [ ${WAITED} -lt ${PROBE_TIMEOUT} ]; do
+        sleep 1
+        WAITED=$((WAITED + 1))
+    done
+    if kill -0 ${PROBE_PID} 2>/dev/null; then
+        kill -9 ${PROBE_PID} 2>/dev/null
+        wait ${PROBE_PID} 2>/dev/null
+        return 1
+    fi
+    wait ${PROBE_PID}
+    return $?
+}
+
+# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+SERVER_ADDRESS=$(xml_value agent server address)
+if [ -z "${SERVER_ADDRESS}" ]; then
+    SERVER_ADDRESS=$(xml_value client server address)
+fi
+
+# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
+SERVER_PORT=$(xml_value agent server port)
+if [ -z "${SERVER_PORT}" ]; then
+    SERVER_PORT=1517
+fi
+
+if [ -z "${SERVER_ADDRESS}" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    exit 1
+fi
+
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+
+if ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    exit 1
+fi
+
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
