@@ -39,13 +39,29 @@ runs:
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           echo "Installing CMocka by sources with 'winagent' required flags"
-          curl -L --retry 3 --retry-delay 2 -o /tmp/stable-1.1.tar.gz https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz
-          # Verify if the download was successful
-          if [ $? -ne 0 ]; then
+
+          CMOCKA_TARBALL="/tmp/stable-1.1.tar.gz"
+          CMOCKA_URL="https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz"
+          CMOCKA_MIRROR_URL="https://gitlab.com/cmocka/cmocka/-/archive/cmocka-1.1.8/cmocka-cmocka-1.1.8.tar.gz"
+
+          if ! curl -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_URL" \
+             || ! gzip -t "$CMOCKA_TARBALL" 2>/dev/null; then
+            echo "Primary CMocka download failed or returned an invalid archive. Falling back to the GitLab mirror (verified same content, cmocka 1.1.8)..."
+            if ! curl -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_MIRROR_URL"; then
               echo "Error during download. Exiting..."
               exit 1
+            fi
           fi
-          tar -zxf /tmp/stable-1.1.tar.gz -C /tmp/
+
+          tar -zxf "$CMOCKA_TARBALL" -C /tmp/
+          # The GitLab mirror's archive extracts to a differently-named top-level
+          # directory than the origin's; normalize it so the rest of this script
+          # doesn't care which source was actually used.
+          tar_list="$(tar -tzf "$CMOCKA_TARBALL")"
+          extracted_dir="$(echo "$tar_list" | head -1 | cut -d/ -f1)"
+          if [ "$extracted_dir" != "stable-1.1" ]; then
+            mv "/tmp/$extracted_dir" /tmp/stable-1.1
+          fi
           sed -i "s|ON|OFF|g" /tmp/stable-1.1/DefineOptions.cmake
           mkdir /tmp/stable-1.1/build
           cd /tmp/stable-1.1/build
