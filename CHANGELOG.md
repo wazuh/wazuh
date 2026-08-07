@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a heap buffer write in `wazuh-analysisd` when generating FIM alerts by resizing `full_log` before writing. ([#38145](https://github.com/wazuh/wazuh/pull/38145))
 - Fixed password validation not being enforced for empty passwords in the `update_user` API endpoint. ([#38180](https://github.com/wazuh/wazuh/pull/38180))
 - Fixed API tokens for `run_as` users not being invalidated on logout or role revocation. ([#38193](https://github.com/wazuh/wazuh/pull/38193))
+- Fixed a remote-command configuration validation bypass where upper- or mixed-case XML element names let command `localfile` and `wodle` blocks pass the `remote_commands` restriction. ([#38239](https://github.com/wazuh/wazuh/pull/38239))
 
 ### Agent
 
