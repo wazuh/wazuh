@@ -14,42 +14,31 @@
 #include "config.h"
 #include "sec.h"
 
-int Read_Client_Server(XML_NODE node, agent *logr, bool from_agent_block);
-int Read_Client_SSL(XML_NODE node, agent *logr);
-int Read_Client_Batch(XML_NODE node, agent *logr);
-int Read_Client_Report(XML_NODE node, agent_report *report);
-int Read_Client_Enrollment(XML_NODE node, agent *logr);
-static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool from_agent_block);
+int Read_Agent_Server(XML_NODE node, agent *logr);
+int Read_Agent_SSL(XML_NODE node, agent *logr);
+int Read_Agent_Batch(XML_NODE node, agent *logr);
+int Read_Agent_Report(XML_NODE node, agent_report *report);
+int Read_Agent_Enrollment(XML_NODE node, agent *logr);
 
 /**
- * @brief Read the agent block, whether it is spelled <agent> or the legacy <client>.
+ * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client> (#38103).
  *
- * <client> is renamed to <agent> in 5.x: <agent> is always preferred, but <client> is still
- * accepted for backwards compatibility only during an upgrade from 4.x.
+ * The legacy name is not a second spelling of this block: an upgrade never rewrites
+ * ossec.conf, so a file left by 4.x is read for one value only, by
+ * Read_Legacy_Client_Address().
  */
-int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
-{
-    return read_client_block(xml, node, d1, false);
-}
-
 int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
-{
-    return read_client_block(xml, node, d1, true);
-}
-
-static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool from_agent_block)
 {
     int i = 0;
     char f_ip[128] = {'\0'};
     char * rip = NULL;
 
     /* XML definitions */
-    const char *xml_client_manager = "manager";
-    const char *xml_client_server = "server";
-    const char *xml_client_ssl = "ssl";
-    const char *xml_client_batch = "batch";
-    const char *xml_client_stats_report = "stats_report";
-    const char *xml_client_config_report = "config_report";
+    const char *xml_agent_server = "server";
+    const char *xml_agent_ssl = "ssl";
+    const char *xml_agent_batch = "batch";
+    const char *xml_agent_stats_report = "stats_report";
+    const char *xml_agent_config_report = "config_report";
     const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
@@ -58,12 +47,11 @@ static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool fr
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
     const char *xml_crypto_method = "crypto_method";
-    const char *xml_client_enrollment = "enrollment";
+    const char *xml_agent_enrollment = "enrollment";
 
     /* Old XML definitions */
-    const char *xml_client_ip = "server-ip";
-    const char *xml_client_hostname = "server-hostname";
-    const char *xml_client_port = "port";
+    const char *xml_agent_ip = "server-ip";
+    const char *xml_agent_hostname = "server-hostname";
     const char *xml_protocol = "protocol";
 
     agent * logr = (agent *)d1;
@@ -83,8 +71,8 @@ static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool fr
             mwarn("The <%s> tag has no functionality, so it will have no effect.", xml_local_ip);
         }
         /* Get manager IP */
-        else if (strcmp(node[i]->element, xml_client_ip) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_client_ip);
+        else if (strcmp(node[i]->element, xml_agent_ip) == 0) {
+            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_ip);
 
             if (OS_IsValidIP(node[i]->content, NULL) != 1) {
                 merror(INVALID_IP, node[i]->content);
@@ -92,8 +80,8 @@ static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool fr
             }
 
             rip = node[i]->content;
-        } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <manager><address> instead.", xml_client_hostname);
+        } else if (strcmp(node[i]->element, xml_agent_hostname) == 0) {
+            mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_agent_hostname);
             if (strchr(node[i]->content, '/') ==  NULL) {
                 snprintf(f_ip, 127, "%s/", node[i]->content);
                 rip = f_ip;
@@ -102,66 +90,58 @@ static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool fr
                 return (OS_INVALID);
             }
 
-        } else if (strcmp(node[i]->element, xml_client_port) == 0) {
-            /* A legacy port only ever names the removed 1514 channel (#38103). */
-            minfo("Ignoring the <client><%s> option. The HTTPS port is taken from <agent><server><port>.",
-                  xml_client_port);
         }
-        /* Get parameters for each configured manager/server block */
-        else if (strcmp(node[i]->element, xml_client_server) == 0 ||
-                 strcmp(node[i]->element, xml_client_manager) == 0) {
-            if (strcmp(node[i]->element, xml_client_manager) == 0) {
-                minfo("The <%s> tag is deprecated, please use <server> instead.", xml_client_manager);
-            }
+        /* Get parameters for the configured server block */
+        else if (strcmp(node[i]->element, xml_agent_server) == 0) {
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
                 return (OS_INVALID);
             }
-            if (Read_Client_Server(chld_node, logr, from_agent_block) < 0) {
+            if (Read_Agent_Server(chld_node, logr) < 0) {
                 OS_ClearNode(chld_node);
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
-        } else if (strcmp(node[i]->element, xml_client_ssl) == 0) {
+        } else if (strcmp(node[i]->element, xml_agent_ssl) == 0) {
             /* HTTPS transport TLS settings (sibling of <server>, #37702 §10). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Client_SSL(chld_node, logr) < 0) {
+                if (Read_Agent_SSL(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
             }
-        } else if (strcmp(node[i]->element, xml_client_batch) == 0) {
+        } else if (strcmp(node[i]->element, xml_agent_batch) == 0) {
             /* <batch><size>/<interval>: the /stateless send-rate model that
              * replaces the leaky bucket's pacing (#37835). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Client_Batch(chld_node, logr) < 0) {
+                if (Read_Agent_Batch(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
             }
-        } else if (strcmp(node[i]->element, xml_client_stats_report) == 0) {
+        } else if (strcmp(node[i]->element, xml_agent_stats_report) == 0) {
             /* <stats_report>/<config_report>: the two independent periodic
              * pushes to /stats and /config (#37843). Both off by default. */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Client_Report(chld_node, &logr->stats_report) < 0) {
+                if (Read_Agent_Report(chld_node, &logr->stats_report) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
             }
-        } else if (strcmp(node[i]->element, xml_client_config_report) == 0) {
+        } else if (strcmp(node[i]->element, xml_agent_config_report) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Client_Report(chld_node, &logr->config_report) < 0) {
+                if (Read_Agent_Report(chld_node, &logr->config_report) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
                 OS_ClearNode(chld_node);
             }
-        } else if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
+        } else if (strcmp(node[i]->element, xml_agent_enrollment) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Client_Enrollment(chld_node, logr) < 0) {
+                if (Read_Agent_Enrollment(chld_node, logr) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
@@ -249,7 +229,65 @@ static int read_client_block(const OS_XML *xml, XML_NODE node, void *d1, bool fr
     return (0);
 }
 
-int Read_Client_Shared(XML_NODE node, void *d1)
+/**
+ * @brief Read the one value still wanted from a 4.x <client> block: <server><address>.
+ *
+ * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
+ * only has <client> (#38103). The address is taken when <agent> did not already provide
+ * one - so <agent> wins whichever block comes first - and everything else under <client>
+ * is ignored rather than rejected, since the block is 4.x's and its options are not.
+ */
+int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+{
+    const char *xml_agent_server = "server";
+    const char *xml_agent_addr = "address";
+
+    agent * logr = (agent *)d1;
+
+    if (logr->server) {
+        return (0);
+    }
+
+    for (int i = 0; node[i]; i++) {
+        XML_NODE chld_node = NULL;
+
+        if (!node[i]->element || strcmp(node[i]->element, xml_agent_server) != 0) {
+            continue;
+        }
+
+        if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+            continue;
+        }
+
+        for (int j = 0; chld_node[j]; j++) {
+            if (!chld_node[j]->element || !chld_node[j]->content ||
+                strcmp(chld_node[j]->element, xml_agent_addr) != 0) {
+                continue;
+            }
+
+            os_calloc(2, sizeof(agent_server), logr->server);
+            os_strdup(chld_node[j]->content, logr->server[0].rip);
+            if (strchr(logr->server[0].rip, ':') != NULL) {
+                os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
+                OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
+            }
+            logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
+            logr->server_count = 1;
+
+            minfo("<agent><server><address> is not configured. Using <client><server><address> '%s' "
+                  "with the default port %d.", logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT);
+
+            OS_ClearNode(chld_node);
+            return (0);
+        }
+
+        OS_ClearNode(chld_node);
+    }
+
+    return (0);
+}
+
+int Read_Agent_Shared(XML_NODE node, void *d1)
 {
     int i = 0;
 
@@ -272,22 +310,17 @@ int Read_Client_Shared(XML_NODE node, void *d1)
 }
 
 /**
- * @brief Read a <server> block, either the new <agent><server> or the legacy <client><server>.
- *
- * Both names describe the same single manager endpoint (#38103): <agent> is the
- * 5.x name and wins when both are present, and <client><server><port> is
- * ignored because it can only carry the removed 1514 port.
+ * @brief Read the <agent><server> block: the single manager endpoint.
  *
  * @param node Children of the <server> element.
  * @param logr Agent configuration to fill.
- * @param from_agent_block true when the block came from <agent>, false for <client>.
  * @return 0 on success, OS_INVALID on error.
  */
-int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
+int Read_Agent_Server(XML_NODE node, agent * logr)
 {
     /* XML definitions */
-    const char *xml_client_addr = "address";
-    const char *xml_client_port = "port";
+    const char *xml_agent_addr = "address";
+    const char *xml_agent_port = "port";
     const char *xml_interface = "interface_index";
     const char *xml_protocol = "protocol";
     const char *xml_max_retries = "max_retries";
@@ -314,7 +347,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
             return (OS_INVALID);
         }
         /* Get server address (IP or hostname) */
-        else if (strcmp(node[j]->element, xml_client_addr) == 0) {
+        else if (strcmp(node[j]->element, xml_agent_addr) == 0) {
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
                 rip = node[j]->content;
             } else if (strchr(node[j]->content, '/') ==  NULL) {
@@ -324,14 +357,7 @@ int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[j]->element, xml_client_port) == 0) {
-            if (!from_agent_block) {
-                /* A legacy port only ever names the removed 1514 channel (#38103). */
-                minfo("Ignoring the <client><server><%s> option. The HTTPS port is taken from "
-                      "<agent><server><%s>.", xml_client_port, xml_client_port);
-                continue;
-            }
-
+        } else if (strcmp(node[j]->element, xml_agent_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
@@ -373,24 +399,12 @@ int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
         return (OS_INVALID);
     }
 
-    /* <agent><server> is the 5.x name for the same endpoint, so it wins over the
-     * legacy <client><server> whichever order they appear in (#38103). */
-    if (!from_agent_block && logr->flags.agent_address) {
-        minfo("Ignoring <client><server><%s>: <agent><server><%s> is already set.",
-              xml_client_addr, xml_client_addr);
-        return (0);
-    }
-
     /* Single <server> block: the last one prevails (#37702 restriction 2) and
      * server rotation is removed (restriction 3), so replace any previous entry
      * instead of appending. The array keeps a NULL-rip sentinel at index 1. */
     if (logr->server) {
         if (logr->server_count > 0) {
-            if (from_agent_block && !logr->flags.agent_address) {
-                minfo("Both <agent><server> and <client><server> are configured; <agent> prevails.");
-            } else {
-                mwarn("Only one <server> block is supported; the last one prevails.");
-            }
+            mwarn("Only one <server> block is supported; the last one prevails.");
         }
         for (int k = 0; logr->server[k].rip; k++) {
             os_free(logr->server[k].rip);
@@ -412,42 +426,17 @@ int Read_Client_Server(XML_NODE node, agent * logr, bool from_agent_block)
     logr->server[0].retry_interval = retry_interval;
     logr->server_count = 1;
 
-    if (from_agent_block) {
-        logr->flags.agent_address = 1;
-        logr->flags.agent_port = port_set ? 1 : 0;
+    if (!port_set) {
+        minfo("<agent><server><port> is not configured. Using the default port %d.",
+              DEFAULT_HTTPS_REMOTE_PORT);
     }
 
     return (0);
 }
 
-void Reconcile_Agent_Server(agent * config)
+int Read_Agent_SSL(XML_NODE node, agent * logr)
 {
-    if (!config) {
-        return;
-    }
-
-    /* A WPK upgrade never rewrites ossec.conf, so a 4.x agent reaches 5.x with
-     * only the legacy <client><server> block (#38103). */
-    if (!config->flags.agent_address) {
-        if (config->server && config->server[0].rip) {
-            minfo("<agent><server><address> is not configured. Using <client><server><address> '%s'.",
-                  config->server[0].rip);
-        } else {
-            merror("No manager address configured: set <agent><server><address>.");
-            return;
-        }
-    }
-
-    if (!config->flags.agent_port) {
-        config->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
-        minfo("<agent><server><port> is not configured. Using the default port %d.",
-              DEFAULT_HTTPS_REMOTE_PORT);
-    }
-}
-
-int Read_Client_SSL(XML_NODE node, agent * logr)
-{
-    /* XML definitions — the <client><ssl> transport block (#37702 §10). */
+    /* XML definitions — the <agent><ssl> transport block (#37702 §10). */
     const char *xml_certificate = "certificate";
     const char *xml_key = "key";
     const char *xml_certificate_authorities = "certificate_authorities";
@@ -493,7 +482,7 @@ int Read_Client_SSL(XML_NODE node, agent * logr)
     return (0);
 }
 
-int Read_Client_Report(XML_NODE node, agent_report * report)
+int Read_Agent_Report(XML_NODE node, agent_report * report)
 {
     /* XML definitions - shared by <stats_report> and <config_report> (#37843);
      * <interval> takes the usual suffixes: <interval>1h</interval>. */
@@ -538,9 +527,9 @@ int Read_Client_Report(XML_NODE node, agent_report * report)
     return (0);
 }
 
-int Read_Client_Batch(XML_NODE node, agent * logr)
+int Read_Agent_Batch(XML_NODE node, agent * logr)
 {
-    /* XML definitions - the <client><batch> block (#37835). Both accept the
+    /* XML definitions - the <agent><batch> block (#37835). Both accept the
      * usual suffixes: <size>1MB</size>, <interval>10s</interval>. */
     const char *xml_size = "size";
     const char *xml_interval = "interval";
@@ -583,7 +572,7 @@ int Read_Client_Batch(XML_NODE node, agent * logr)
     return (0);
 }
 
-int Read_Client_Enrollment(XML_NODE node, agent * logr){
+int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     /* XML definitions */
     const char *xml_enabled = "enabled";
     const char *xml_manager_addr = "manager_address";
@@ -778,16 +767,16 @@ int Read_AntiTampering(XML_NODE node, void *d1) {
     return 0;
 }
 
-int Test_Client(const char * path){
+int Test_Agent(const char * path){
     int fail = 0;
-    agent test_client = { .server = NULL };
+    agent test_agent = { .server = NULL };
 
-    if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
+    if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_agent, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Client", path);
 		fail = 1;
 	}
 
-    Free_Client(&test_client);
+    Free_Agent(&test_agent);
 
     if (fail) {
         return -1;
@@ -796,7 +785,7 @@ int Test_Client(const char * path){
     }
 }
 
-void Free_Client(agent * config){
+void Free_Agent(agent * config){
     if (config) {
         int i;
 

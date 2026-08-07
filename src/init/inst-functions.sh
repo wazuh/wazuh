@@ -359,7 +359,8 @@ WriteAgent()
     echo "" >> $NEWCONFIG
 
     echo "<ossec_config>" >> $NEWCONFIG
-    echo "  <client>" >> $NEWCONFIG
+    # <client> is renamed to <agent> in 5.x: same options, new block name.
+    echo "  <agent>" >> $NEWCONFIG
     echo "    <server>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
       echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
@@ -390,7 +391,7 @@ WriteAgent()
     fi
     echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
-    echo "  </client>" >> $NEWCONFIG
+    echo "  </agent>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Rootcheck

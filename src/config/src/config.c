@@ -86,11 +86,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
-            /* <agent> is <client> renamed (#38103): same reader, same remote
-             * agent.conf restrictions. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Client_Shared(chld_node, d1) < 0) {
+                    if (Read_Agent_Shared(chld_node, d1) < 0) {
                         goto fail;
                     }
                 }
@@ -101,14 +99,17 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 }
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+            /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
+             * ossec.conf, so the block is still accepted, but only <server><address>
+             * is read from it - as the fallback for <agent><server><address>. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Client_Shared(chld_node, d1) < 0){
+                    if (Read_Agent_Shared(chld_node, d1) < 0){
                         goto fail;
                     }
                 }
                 else {
-                    if (Read_Client(xml, chld_node, d1, d2) < 0){
+                    if (Read_Legacy_Client_Address(xml, chld_node, d1, d2) < 0){
                         goto fail;
                     }
                 }
