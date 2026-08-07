@@ -214,12 +214,9 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    /* A verifying <ssl><verification_mode> without a readable CA can never connect (the
-     * https_client module fails closed on this, per its own validation) -- caught here, before
-     * any module thread is created, instead of failing much later inside w_https_client_start(). */
-    if (agt->ssl.verification_mode != AGENT_VERIFY_NONE &&
-        (!agt->ssl.certificate_authorities || !w_is_file(agt->ssl.certificate_authorities))) {
-        merror(AG_INV_SSL_CA, agt->ssl.certificate_authorities ? agt->ssl.certificate_authorities : "");
+    /* Checked here, before any module thread is created, instead of failing much later
+     * inside w_https_client_start(). */
+    if (!w_agent_validate_ssl_ca(agt)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
