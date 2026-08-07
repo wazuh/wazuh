@@ -17,9 +17,9 @@ manager as a whole (authd enrollment, remoted, the engine ingress), not one modu
 
 ## Running a benchmark
 
-`run_benchmark.sh` is the entry point: it starts the `GET /metrics` scraper (and, when available, a
-process-resource monitor), runs the sender against a scenario in either transport mode, and collates
-everything into one `summary.json`.
+`run_benchmark.sh` is the entry point: it starts the monitor (process samples plus each daemon's own
+statistics), runs the sender against a scenario in either transport mode, then collates everything
+into one `summary.json` and plots it.
 
 ```bash
 # uds mode — straight to the module socket (the ingestion pipeline alone)
@@ -50,9 +50,20 @@ and invalidates the run rather than being counted as load. Give big fleets a gen
 
 Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency
 percentiles), `sender_summary.json` (metadata, totals, and the same counters broken down `by_fleet`
-and `by_lane`), `server_metrics.csv` (the `GET /metrics` scrape, long format), `scenario.json` (the
-exact scenario, copied for reproducibility) and `summary.json` (all of the above collated). The
-formats are pinned by [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
+and `by_lane`), `scenario.json` (the exact scenario, copied for reproducibility), `summary.json` (all
+of the above collated) and `monitor/` — the process samples plus each daemon's own statistics,
+including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row per scrape) and
+`charts/`. The sender's formats are pinned by
+[`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
+
+**One poller, one source of truth.** The monitor samples the manager's processes *and* polls each
+daemon's statistics, so it also owns the inventory-sync scrape. `scrape_metrics.sh` stays as a
+standalone tool and is only started automatically when the monitor cannot run (it needs `psutil`),
+so a missing Python package costs the process samples but never the server's own numbers.
+
+The server's counters are **cumulative for the module's lifetime**, not per run — `summary.json`
+carries a `server_metrics.delta` (last minus first scrape) which is what belongs to a given run.
+Percentiles are excluded from that delta on purpose: subtracting two p99 snapshots is meaningless.
 
 ### The sender on its own
 
@@ -99,9 +110,9 @@ enrollment until this is undone.
 
 | Script | What it does |
 |---|---|
-| `run_benchmark.sh` | Orchestrates one run end to end (scraper + monitor + sender + summary + charts) |
+| `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
 | `prepare_manager.sh` | Opens password-free enrollment for agent mode (idempotent) |
-| `scrape_metrics.sh` | Polls `GET /metrics` over the module socket into `server_metrics.csv` |
+| `scrape_metrics.sh` | Standalone `GET /metrics` poller (long format). Only used as a fallback when the monitor cannot run |
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
 | `result_summary.py` | Collates a run's artifacts into `summary.json` (descriptive only, no pass/fail) |
