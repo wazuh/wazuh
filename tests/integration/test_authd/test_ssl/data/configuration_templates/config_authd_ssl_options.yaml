@@ -31,5 +31,3 @@
         value: '/var/wazuh-manager/etc/sslmanager.cert'
     - ssl_manager_key:
         value: '/var/wazuh-manager/etc/sslmanager.key'
-    - ssl_auto_negotiate:
-        value: SSL_AUTO_NEGOTIATE

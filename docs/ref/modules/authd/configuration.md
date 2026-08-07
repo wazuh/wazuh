@@ -97,10 +97,10 @@ Accept enrollment requests over the network (port 1515). Disable to restrict enr
 
 ### ciphers
 
-OpenSSL cipher string applied to the TLS session.
+Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS session (applied via OpenSSL's `SSL_CTX_set_ciphersuites`). `wazuh-authd` requires TLS 1.3 as the minimum protocol version, so this option only accepts TLS 1.3 cipher suite names — legacy OpenSSL cipher-list strings (e.g. `HIGH:!ADH:...`) used before TLS 1.3 enforcement are no longer valid and are rejected at startup with a clear error.
 
-- **Default value:** `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`
-- **Allowed values:** Any valid OpenSSL cipher string
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** Colon-separated combination of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`
 
 ### ssl_agent_ca
 
@@ -129,13 +129,6 @@ Path to the private key corresponding to `ssl_manager_cert`.
 
 - **Default value:** `etc/sslmanager.key` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
-
-### ssl_auto_negotiate
-
-Allow the TLS handshake to automatically select the highest available protocol version.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
 
 ### force
 
@@ -251,8 +244,7 @@ Mutual TLS with client certificate verification:
   <ssl_verify_host>yes</ssl_verify_host>
   <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
-  <ssl_auto_negotiate>yes</ssl_auto_negotiate>
-  <ciphers>HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4</ciphers>
+  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>
     <key_mismatch>yes</key_mismatch>

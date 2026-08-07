@@ -676,7 +676,6 @@ stages:
                 force: !anything
                 port: !anyint
                 purge: !anystr
-                ssl_auto_negotiate: !anystr
                 ssl_manager_cert: !anystr
                 ssl_manager_key: !anystr
                 use_password: !anystr

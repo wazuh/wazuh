@@ -79,22 +79,22 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphers] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfPL] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
+    print_out("    -u <user>   User to run as. Default: %s.", USER);
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Force shared-password enrollment on (already enabled by default); password read from %s or generated.", AUTHD_PASS);
-    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
-    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -166,7 +166,9 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
+    uid_t uid;
     gid_t gid;
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
 
     pthread_t thread_local_server = 0;
@@ -194,7 +196,6 @@ int main(int argc, char **argv)
     {
         int c;
         int use_pass = 0;
-        int auto_method = 0;
         int validate_host = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PaL:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -223,6 +224,13 @@ int main(int argc, char **argv)
                 case 'd':
                     debug_level = 1;
                     nowDebug();
+                    break;
+
+                case 'u':
+                    if (!optarg) {
+                        merror_exit("-u needs an argument");
+                    }
+                    user = optarg;
                     break;
 
                 case 'g':
@@ -266,8 +274,8 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     else {
-                        if (w_str_is_number(optarg)) {
-                            merror_exit("-%c needs a valid list of SSL ciphers", c);
+                        if (w_authd_validate_ciphers(optarg) == OS_INVALID) {
+                            merror_exit("-%c needs a valid list of TLS 1.3 cipher suites", c);
                         }
                         ciphers = optarg;
                     }
@@ -296,10 +304,6 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
-                    break;
-
-                case 'a':
-                    auto_method = 1;
                     break;
 
                 case 'C':
@@ -432,10 +436,6 @@ int main(int argc, char **argv)
             config.flags.use_password = 1;
         }
 
-        if (auto_method) {
-            config.flags.auto_negotiate = 1;
-        }
-
         if (validate_host) {
             config.flags.verify_host = 1;
         }
@@ -495,9 +495,10 @@ int main(int argc, char **argv)
     }
 
     /* Check if the user/group given are valid */
+    uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -508,6 +509,10 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -568,8 +573,8 @@ int main(int argc, char **argv)
         }
 
         /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
-            merror("SSL error. Exiting.");
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
+            merror("SSL context setup failed. Exiting.");
             exit(1);
         }
 

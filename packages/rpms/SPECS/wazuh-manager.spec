@@ -343,8 +343,6 @@ fi
 # Generation auto-signed certificate if not exists
 if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/etc/sslmanager.cert" ]; then
   %{_localstatedir}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
-  chmod 640 %{_localstatedir}/etc/sslmanager.key
-  chmod 640 %{_localstatedir}/etc/sslmanager.cert
 fi
 
 # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
@@ -352,10 +350,13 @@ if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedi
   %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
 fi
 
-# Unlike sslmanager.cert/key (owned by authd, which never drops privileges), remoted drops
-# to wazuh-manager before its HTTPS module loads these files. Re-applied unconditionally
+# Both sslmanager.cert/key and https-manager.cert/key must be owned by wazuh-manager:
+# both authd and remoted now drop privileges to that user before loading these files,
+# so root-owned files would make either daemon fail to start. Re-applied unconditionally
 # (not just on fresh generation) so upgrades from packages that shipped these root-owned
 # also get corrected.
+chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
+chmod 640 %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
 chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
 chmod 640 %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
 
@@ -550,8 +551,8 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
-%attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
-%attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.cert
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.key
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.cert
 %attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.key
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys

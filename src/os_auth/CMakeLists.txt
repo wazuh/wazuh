@@ -41,12 +41,15 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(WAZUH_RUNTIME_GROUP "wazuh")
+set(WAZUH_RUNTIME_USER "wazuh")
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   set(WAZUH_RUNTIME_GROUP "wazuh-manager")
+  set(WAZUH_RUNTIME_USER "wazuh-manager")
 endif()
 
 add_definitions(-DARGV0="wazuh-manager-authd")
 add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
+add_definitions(-DUSER="${WAZUH_RUNTIME_USER}")
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})

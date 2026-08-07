@@ -72,12 +72,11 @@ DisableAuthd()
     echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
     echo "    <use_password>no</use_password>" >> $NEWCONFIG
-    echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
+    echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
     echo "    <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
     echo "    <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
-    echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
@@ -176,9 +175,18 @@ GenerateAuthCert()
                     fi
                     echo "Generating self-signed certificate for ${AUTHD_BIN}..."
                     ${INSTALLDIR}/bin/${AUTHD_BIN} -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
-                    chmod 640 ${INSTALLDIR}/etc/sslmanager.key
-                    chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
             fi
+        fi
+
+        # Owned by ${WAZUH_USER}: authd now drops privileges to that user before reading
+        # these files, so a root-owned cert/key would make it fail to start. Re-applied
+        # unconditionally (not just on fresh generation) so upgrades from installs that
+        # left these root-owned also get corrected.
+        if [ -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/sslmanager.key
+            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/sslmanager.cert
+            chmod 640 ${INSTALLDIR}/etc/sslmanager.key
+            chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
         fi
     fi
 }
@@ -205,10 +213,10 @@ GenerateHttpsManagerCert()
             fi
         fi
 
-        # Unlike sslmanager.cert/key (owned by authd, which never drops privileges), remoted
-        # drops to ${WAZUH_USER} before its HTTPS module loads these files. Re-applied
-        # unconditionally (not just on fresh generation) so upgrades from installs that
-        # left these root-owned also get corrected.
+        # Owned by ${WAZUH_USER}: remoted drops to that user before its HTTPS module loads
+        # these files (same reasoning as GenerateAuthCert() above for sslmanager.cert/key).
+        # Re-applied unconditionally (not just on fresh generation) so upgrades from installs
+        # that left these root-owned also get corrected.
         if [ -f "${INSTALLDIR}/etc/https-manager.key" ] && [ -f "${INSTALLDIR}/etc/https-manager.cert" ]; then
             chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.key
             chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.cert

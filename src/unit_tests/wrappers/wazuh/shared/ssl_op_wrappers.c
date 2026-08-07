@@ -15,13 +15,12 @@
 #include <cmocka.h>
 
 SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key,
-                            const char *ca_cert, int auto_method) {
+                            const char *ca_cert) {
     check_expected(is_server);
     check_expected(os_dir);
     check_expected(ciphers);
     check_expected(cert);
     check_expected(key);
     check_expected(ca_cert);
-    check_expected(auto_method);
     return mock_ptr_type(SSL_CTX *);
 }
