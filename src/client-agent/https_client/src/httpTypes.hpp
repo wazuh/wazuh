@@ -50,6 +50,44 @@ enum class OutcomeClass
     Interrupted      ///< Aborted by shutdown: never a silent success.
 };
 
+/// Name of an OutcomeClass, for logs: the class is the reason a request
+/// failed, and an ordinal does not carry it to the reader.
+inline const char* outcomeName(OutcomeClass outcome)
+{
+    switch (outcome)
+    {
+        case OutcomeClass::Ok:
+            return "Ok";
+
+        case OutcomeClass::Unreachable:
+            return "Unreachable";
+
+        case OutcomeClass::ServerError:
+            return "ServerError";
+
+        case OutcomeClass::BackPressure:
+            return "BackPressure";
+
+        case OutcomeClass::AuthFail:
+            return "AuthFail";
+
+        case OutcomeClass::Permanent:
+            return "Permanent";
+
+        case OutcomeClass::PayloadTooLarge:
+            return "PayloadTooLarge";
+
+        case OutcomeClass::VersionRejected:
+            return "VersionRejected";
+
+        case OutcomeClass::Interrupted:
+            return "Interrupted";
+
+        default:
+            return "Unknown";
+    }
+}
+
 /// Maps an OutcomeClass onto the hc_result_t that crosses the C ABI.
 inline int toHcResult(OutcomeClass outcome)
 {
