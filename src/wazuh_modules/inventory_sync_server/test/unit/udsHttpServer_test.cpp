@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -412,6 +413,7 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
     config.drainTimeoutSec = 5;
 
     std::mutex parkedMutex;
+    std::condition_variable parkedCv;
     std::vector<std::shared_ptr<IHttpResponder>> parked;
     std::atomic<int> dispatched {0};
 
@@ -423,8 +425,9 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
                          {
                              std::lock_guard<std::mutex> lock {parkedMutex};
                              parked.push_back(std::move(responder));
+                             dispatched.fetch_add(1);
                          }
-                         dispatched.fetch_add(1);
+                         parkedCv.notify_one();
                      });
     server->start(config);
 
@@ -440,11 +443,12 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
             { return sendRaw(path, peerRequest("POST", "/inventory/sync", "payload"), std::chrono::seconds {60}); }));
     }
 
-    // Wait for all of them to be sitting in the parked list at the same time.
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
-    while (dispatched.load() < CONCURRENCY && std::chrono::steady_clock::now() < deadline)
+    // Wait for all of them to be sitting in the parked list at the same time. The 120s cap is a
+    // deadlock guard only; the condition variable resolves the wait as soon as the last request
+    // lands, so this no longer races against CPU availability under ASan/CI load.
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(lock, std::chrono::seconds {120}, [&] { return dispatched.load() >= CONCURRENCY; });
     }
     ASSERT_EQ(CONCURRENCY, dispatched.load()) << "all requests must be in flight simultaneously";
 
