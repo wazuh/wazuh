@@ -71,7 +71,7 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
     if (result.outcome != OutcomeClass::Ok)
     {
         LOGFN_WARN(m_logFn, "WPK download for '%s' failed (%s); aborting the upgrade "
-                   "(no /control response is sent; fire-and-forget, #37834).",
+                   "(no /control response is sent; fire-and-forget).",
                    wpkFile.c_str(), outcomeName(result.outcome));
         return nullptr;
     }
