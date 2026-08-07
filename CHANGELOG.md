@@ -104,6 +104,7 @@ All notable changes to this project will be documented in this file.
 - Excluded `/bin` and `/sbin` from FIM monitored directories on usrmerge distributions. ([#35988](https://github.com/wazuh/wazuh/issues/35988))
 - Expanded Windows environment variables in SCA rule inputs. ([#36002](https://github.com/wazuh/wazuh/issues/36002))
 - Made `sync_end_delay` interruptible to remove stale `modulesd.pid` after agent stop. ([#36061](https://github.com/wazuh/wazuh/issues/36061))
+- Fixed the Windows agent reporting `SERVICE_STOPPED` before closing its `queue\` databases, which left the directory behind after an uninstall without purge. ([#38212](https://github.com/wazuh/wazuh/issues/38212))
 - Honored the shutdown signal in `agent-upgrade` `StartMQ` to avoid timeout warning on agent stop. ([#36092](https://github.com/wazuh/wazuh/issues/36092))
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))

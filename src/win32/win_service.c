@@ -35,6 +35,10 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 void wm_kill_children();
 extern void stop_wmodules();
 
+/* Exit code the stop handler leaves the process with: 1 when it was entered from
+ * merror_exit() through WinSetError(), 0 on a regular service stop. */
+static int g_stop_exit_code = 0;
+
 /* Start OSSEC-HIDS service */
 int os_start_service()
 {
@@ -292,6 +296,12 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 stop_wmodules();
                 is_fim_shutdown = true;
                 fim_db_teardown();
+
+                /* Exit here, still in STOP_PENDING, instead of returning into main()'s exit():
+                 * the atexit handlers and static destructors that close the queue\ databases
+                 * must finish before the SCM is told we stopped, or the MSI deletes the
+                 * installation while they are still open (issue #38212). */
+                exit(g_stop_exit_code);
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
@@ -304,6 +314,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 /* Set the error code in the service */
 void WinSetError()
 {
+    g_stop_exit_code = 1;
     OssecServiceCtrlHandler(SERVICE_CONTROL_STOP);
 }
 
