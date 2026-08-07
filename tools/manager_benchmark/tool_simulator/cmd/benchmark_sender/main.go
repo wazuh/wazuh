@@ -39,9 +39,13 @@ func run() int {
 		feedTimeout  = flag.Duration("feed-timeout", 300*time.Second, "budget for feed-not-ready (503+Retry-After) retries")
 		drainTimeout = flag.Duration("drain-timeout", 60*time.Second, "bounded shutdown window")
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
-		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
-		seed         = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
-		validate     = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
+			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
+		cluster     = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
+		clusterNode = flag.String("cluster-node", "", "cluster node name (overrides the scenario)")
+		noReuse     = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
+		seed        = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
+		validate    = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
 	)
 	flag.Parse()
 
@@ -73,7 +77,7 @@ func run() int {
 	rn := runner.New(runner.Config{
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
-		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout,
+		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster, ClusterNode: *clusterNode,
 		Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion,
 	})
 
@@ -112,7 +116,7 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int) {
 		fmt.Printf("stateless: sent=%d 202=%d 400=%d 413=%d 503=%d events=%d\n",
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)
 	}
-	if c.NotifyOK+c.NotifyErr > 0 {
+	if c.StartupOK+c.StartupErr+c.NotifyOK+c.NotifyErr+c.ShutdownOK+c.ShutdownErr > 0 {
 		fmt.Printf("control: startup=%d/%d notify=%d/%d shutdown=%d/%d\n",
 			c.StartupOK, c.StartupOK+c.StartupErr, c.NotifyOK, c.NotifyOK+c.NotifyErr, c.ShutdownOK, c.ShutdownOK+c.ShutdownErr)
 	}

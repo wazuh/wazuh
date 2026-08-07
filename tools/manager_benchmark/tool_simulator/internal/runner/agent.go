@@ -25,7 +25,7 @@ type agent struct {
 // loop and every lane in parallel, until ctx is done (drain).
 func (a *agent) run(ctx context.Context) {
 	if a.r.mode == "agent" && a.r.controlEnabled() {
-		res, err := control.Startup(a.client, a.startupVersion(), now())
+		res, err := a.startupWhenAuthenticated(ctx)
 		a.r.reg.RecordControl(a.fleet.Name, "startup", err == nil, us(res.Latency))
 		if err != nil {
 			a.r.fatalf("agent %s startup: %v", a.id, err)
@@ -33,24 +33,58 @@ func (a *agent) run(ctx context.Context) {
 		}
 	}
 
-	var wg sync.WaitGroup
+	// The keepalive loop is periodic with no end of its own, so it is tied to a
+	// context cancelled once this agent's lanes finish. Without that, a one-pass
+	// run (repeat_until 0) would never return and the run's duration -- which the
+	// throughput figures divide by -- would only reflect an external timeout.
+	keepaliveCtx, stopKeepalive := context.WithCancel(ctx)
+	defer stopKeepalive()
+
+	var keepalive sync.WaitGroup
 	if a.r.mode == "agent" && a.r.controlEnabled() {
-		wg.Add(1)
-		go func() { defer wg.Done(); a.keepaliveLoop(ctx) }()
+		keepalive.Add(1)
+		go func() { defer keepalive.Done(); a.keepaliveLoop(keepaliveCtx) }()
 	}
+
+	var lanes sync.WaitGroup
 	for _, laneName := range a.fleet.Lanes {
 		steps := a.r.scn.Lanes[laneName]
-		wg.Add(1)
+		lanes.Add(1)
 		go func(lane string, steps []scenario.Step) {
-			defer wg.Done()
+			defer lanes.Done()
 			a.laneLoop(ctx, lane, steps)
 		}(laneName, steps)
 	}
-	wg.Wait()
+	lanes.Wait()
+
+	stopKeepalive()
+	keepalive.Wait()
 
 	if a.r.mode == "agent" && a.r.controlEnabled() {
 		res, err := control.Shutdown(a.client, now())
 		a.r.reg.RecordControl(a.fleet.Name, "shutdown", err == nil, us(res.Latency))
+	}
+}
+
+// startupWhenAuthenticated sends startup, retrying while remoted answers 401.
+//
+// A freshly enrolled agent is unknown to remoted until it reloads client.keys, and
+// that reload does NOT happen on a predictable schedule -- gaps far longer than
+// `remoted.keyupdate_interval` are normal, and they grow with fleet size. A fixed
+// sleep is therefore the wrong tool: this waits for the manager to actually accept
+// the signature, bounded by the same budget, so a run either starts authenticated
+// or fails saying so.
+func (a *agent) startupWhenAuthenticated(ctx context.Context) (control.Result, error) {
+	deadline := time.Now().Add(a.r.readinessBudget())
+	const probeDelay = 2 * time.Second
+	for {
+		res, err := control.Startup(a.client, a.startupVersion(), now())
+		if err == nil || res.Status != 401 || time.Now().After(deadline) {
+			return res, err
+		}
+		if err := sleepCtx(ctx, probeDelay); err != nil {
+			return res, err
+		}
 	}
 }
 

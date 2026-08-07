@@ -61,8 +61,8 @@ func (a *agent) startFor(lane string, step scenario.Step) fbbuild.Start {
 		OSVersion:     firstNonEmpty(a.fleet.Start.OSVersion, "22.04"),
 		Groups:        []string{"default"},
 		GlobalVersion: step.GlobalVer,
-		ClusterName:   scn.Defaults.ClusterName,
-		ClusterNode:   firstNonEmpty(scn.Defaults.ClusterNode, "node01"),
+		ClusterName:   a.r.clusterName(),
+		ClusterNode:   a.r.clusterNode(),
 	}
 	return s
 }

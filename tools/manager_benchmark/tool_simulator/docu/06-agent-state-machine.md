@@ -6,6 +6,19 @@ An agent goes through enrollment and startup once, then runs its lanes and its k
 concurrently until drain. In `uds` mode enrollment, startup, keepalives and shutdown are all
 skipped — there is no remoted in the path, and the agent id is assigned by the scenario.
 
+Two timing rules the transitions depend on, both learned against a real manager:
+
+- **After enrolling, the fleet waits before signing anything.** remoted reloads `client.keys` on a
+  timer (`remoted.keyupdate_interval`, 10 s by default), so an agent that signs a request the instant
+  it enrolls is answered `401 Invalid client authentication` — its key is simply not in the
+  transport's keystore yet. `--enroll-settle` (12 s by default) covers that window once for the whole
+  fleet. The run clock restarts after it: enrollment and settling are setup, not load, and counting
+  them would deflate every throughput figure.
+- **The keepalive loop ends when the lanes do.** It is periodic and has no end of its own, so it is
+  bound to a context cancelled once that agent's lanes finish. Otherwise a one-pass run
+  (`repeat_until: 0`) would never return on its own and its measured duration would only reflect
+  whatever external timeout killed it.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Created

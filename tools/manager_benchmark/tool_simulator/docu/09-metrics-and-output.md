@@ -17,7 +17,7 @@ Header, in this exact order:
 
 ```text
 timestamp,elapsed_s,mode,agents_active,
-sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other,
+sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other,
 stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent,
 retries_feed,transport_errors,
 bytes_sent,documents_sent,
@@ -34,6 +34,9 @@ session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_laten
 - `sessions_noop` is a subset of `sessions_ok` (`{"status":"ok","noop":true}`).
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
+- `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
+  not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
+  run** — a run full of unauthenticated requests must never read as a result.
 - `transport_errors` counts responses that never arrived (connection closed, read timeout), never
   folded into an HTTP bucket.
 - The latency columns are percentiles **over the whole run so far**, so a row is self-contained.
@@ -61,7 +64,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   },
   "totals": {
     "sessions": { "sent": 240000, "ok": 239880, "noop": 120, "s400": 0, "s403": 0, "s409": 0,
-                  "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 0, "other": 0,
+                  "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 0, "other": 0,
                   "abandoned_on_drain": 0 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
                    "events_sent": 1500000 },

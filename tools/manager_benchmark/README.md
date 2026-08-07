@@ -13,7 +13,7 @@ manager as a whole (authd enrollment, remoted, the engine ingress), not one modu
 | `tool_simulator/docu/` — design documentation of the sender | **written** (subplan F9c-1) |
 | `tool_simulator/` — the Go sender | **built** (subplan F9c-2) |
 | `scenarios/` + orchestration scripts | **built** (subplan F9c-3) |
-| `LOAD_REPORT.md` — the baseline report | pending (subplan F9c-4) |
+| `LOAD_REPORT.md` — the baseline report | **produced** (subplan F9c-4); generated per environment, not committed |
 
 ## Running a benchmark
 
@@ -23,12 +23,30 @@ everything into one `summary.json`.
 
 ```bash
 # uds mode — straight to the module socket (the ingestion pipeline alone)
-./run_benchmark.sh --scenario scenarios/mixed_fleet_windows_linux_uds.json --mode uds
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds
 
 # agent mode — enroll against authd, then HTTPS to remoted (the whole relay)
 sudo ./prepare_manager.sh                                    # one-time: open, password-free enrollment
-./run_benchmark.sh --scenario scenarios/mixed_fleet_windows_linux.json --mode agent
+./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
 ```
+
+**The cluster name is read from the manager's own config.** The server answers `403` to any session
+whose `cluster_name` is not its own, and the scenarios only ship a placeholder, so getting this wrong
+means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
+`run_benchmark.sh` reads `<cluster><name>` (and `<node_name>`) from
+`/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
+used. `--cluster` / `--cluster-node` override it.
+
+A **remote** `--manager` is deliberately never auto-detected: the local config would then describe a
+different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass
+`--cluster` explicitly; the effective value is recorded in each run's `params.json`.
+
+Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts,
+retrying within `--enroll-settle`. That is not a formality: remoted only knows a freshly enrolled agent
+after it reloads `client.keys`, and that took **~100 s** on the reference manager — nothing like the
+10 s `remoted.keyupdate_interval` implies. Until then every request is `401`, which has its own counter
+and invalidates the run rather than being counted as load. Give big fleets a generous budget
+(`--enroll-settle 240s`).
 
 Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency
 percentiles), `sender_summary.json` (metadata, totals, and the same counters broken down `by_fleet`
@@ -87,6 +105,31 @@ enrollment until this is undone.
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Wazuh API (never a real one) |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer` (e.g. an indexer-down scenario) |
 | `result_summary.py` | Collates a run's artifacts into `summary.json` (descriptive only, no pass/fail) |
+| `run_matrix.sh` | Runs the whole matrix the load report is built from |
+| `make_report_tables.py` | Turns the resulting `results_*/` into the report's tables |
+
+## Regenerating the load report
+
+`LOAD_REPORT.md` is **not committed**: its numbers belong to the machine that produced them, so a
+report from someone else's laptop would be misleading as a reference. The matrix that produces it is
+committed instead, so any environment can regenerate the whole thing:
+
+```bash
+sudo ./prepare_manager.sh              # open, password-free enrollment (agent mode)
+./run_matrix.sh                        # 12 runs -> results_<label>/
+./make_report_tables.py > tables.md    # environment + status + latency + throughput tables
+```
+
+Nothing else is required against a local manager: the cluster name comes from its config. For a
+remote one, add `--cluster <its cluster name>`.
+
+`run_matrix.sh` pins the seed (4242) and the labels, so two environments produce comparable runs.
+Optionally describe the host in `bench_env.txt` (one `key: value` per line — `cpu`, `cores`,
+`mem_total`, `kernel`, `indexer`, `git_head`) and `make_report_tables.py` puts it in the environment
+table; anything missing is skipped rather than guessed.
+
+A run that exits non-zero is **not** a slow manager — it means the measurement itself is invalid (an
+unauthenticated fleet, a transport error). Fix it before quoting numbers.
 
 ## What it will measure
 

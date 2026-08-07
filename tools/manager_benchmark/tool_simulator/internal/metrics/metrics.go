@@ -11,8 +11,8 @@ import "sync/atomic"
 // Counters holds every count column of bench.csv, in field order matching the
 // documented header. All updated with atomics.
 type Counters struct {
-	SessionsSent, SessionsOK, SessionsNoop                        uint64
-	S409, S400, S403, S413, S500, S503, S503RetryAfter, SessOther uint64
+	SessionsSent, SessionsOK, SessionsNoop                              uint64
+	S409, S400, S401, S403, S413, S500, S503, S503RetryAfter, SessOther uint64
 
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
@@ -96,6 +96,10 @@ func (r *Registry) RecordSession(fleet, lane string, status int, noop bool, retr
 		}
 	case 400:
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.S400 }, 1)
+	case 401:
+		// Its own bucket, never folded into "other": an unauthenticated request
+		// measured nothing, and a run full of them must not read as mere noise.
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.S401 }, 1)
 	case 403:
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.S403 }, 1)
 	case 409:

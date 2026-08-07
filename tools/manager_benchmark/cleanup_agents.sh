@@ -63,6 +63,8 @@ echo "$RESULT" | "$PYTHON" -c '
 import sys, json
 data = json.load(sys.stdin)
 d = data.get("data", {})
-print(f"Deleted: {d.get(\"total_affected_items\", 0)}, Failed: {d.get(\"total_failed_items\", 0)}")
+deleted = d.get("total_affected_items", 0)
+failed = d.get("total_failed_items", 0)
+print("Deleted: {}, Failed: {}".format(deleted, failed))
 '
 echo "Done."

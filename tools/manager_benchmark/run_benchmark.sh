@@ -13,8 +13,12 @@ set -euo pipefail
 #   agent mode: enroll against authd, then HTTPS to remoted (the whole relay)
 #
 # Usage:
-#   ./run_benchmark.sh --scenario scenarios/mixed_fleet_windows_linux_uds.json --mode uds
-#   ./run_benchmark.sh --scenario scenarios/mixed_fleet_windows_linux.json --mode agent
+#   ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds
+#   ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
+#
+# The cluster the sessions declare is read from the manager's config (the server
+# answers 403 to a foreign cluster); --cluster overrides it, and a remote --manager
+# must pass it explicitly.
 #
 # Agent mode needs the manager configured for open enrollment first:
 #   sudo ./prepare_manager.sh
@@ -33,6 +37,10 @@ MANAGER="127.0.0.1"
 PORT=1517
 REG_PORT=1515
 SEED=""
+CLUSTER=""
+CLUSTER_NODE=""
+MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
+ENROLL_SETTLE=""
 DO_METRICS=true
 DO_MONITOR=true
 DO_CHARTS=true
@@ -49,6 +57,17 @@ fi
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
 
+# Read <cluster><name> / <node_name> out of the manager's config. Scoped to the
+# <cluster> block so a <name> elsewhere in the file cannot be picked up by mistake.
+# Prints nothing when the file is missing or unreadable, which the caller treats as
+# "not detected" rather than as an error.
+cluster_field_from_conf() {  # <tag>
+    local tag="$1"
+    [[ -r "$MANAGER_CONF" ]] || return 0
+    sed -n '/<cluster>/,/<\/cluster>/p' "$MANAGER_CONF" 2>/dev/null \
+        | sed -n "s:.*<${tag}>\(.*\)</${tag}>.*:\1:p" | head -1
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --scenario)     SCENARIO="$2"; shift 2 ;;
@@ -59,6 +78,10 @@ while [[ $# -gt 0 ]]; do
         -p|--port)      PORT="$2"; shift 2 ;;
         --reg-port)     REG_PORT="$2"; shift 2 ;;
         --seed)         SEED="$2"; shift 2 ;;
+        --cluster)      CLUSTER="$2"; shift 2 ;;
+        --cluster-node) CLUSTER_NODE="$2"; shift 2 ;;
+        --conf)         MANAGER_CONF="$2"; shift 2 ;;
+        --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
         --no-metrics)   DO_METRICS=false; shift ;;
         --no-monitor)   DO_MONITOR=false; shift ;;
@@ -84,6 +107,34 @@ fi
 
 SC_NAME=$("$PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("name",""))' "$SCENARIO")
 [[ -z "$LABEL" ]] && LABEL="${SC_NAME:-$(date +%Y%m%d_%H%M%S)}_${EFFECTIVE_MODE}"
+
+# Resolve the cluster the sessions will declare. The server answers 403 to a foreign
+# cluster, and the value belongs to the manager under test, so read it from that
+# manager's own config rather than making every caller repeat it. An explicit
+# --cluster always wins; a REMOTE manager is never auto-detected, because the local
+# config file then describes a different manager and would be silently wrong.
+IS_LOCAL_MANAGER=false
+[[ "$MANAGER" == "127.0.0.1" || "$MANAGER" == "localhost" || "$MANAGER" == "::1" ]] && IS_LOCAL_MANAGER=true
+
+if [[ -z "$CLUSTER" ]] && $IS_LOCAL_MANAGER; then
+    CLUSTER="$(cluster_field_from_conf name)"
+    [[ -n "$CLUSTER" ]] && echo "Cluster name not given; using '$CLUSTER' from $MANAGER_CONF"
+fi
+if [[ -z "$CLUSTER_NODE" ]] && $IS_LOCAL_MANAGER; then
+    CLUSTER_NODE="$(cluster_field_from_conf node_name)"
+fi
+
+if [[ -z "$CLUSTER" ]]; then
+    echo "Error: could not determine the cluster name." >&2
+    if $IS_LOCAL_MANAGER; then
+        echo "  $MANAGER_CONF is missing or unreadable (try sudo, or pass --conf/--cluster)." >&2
+    else
+        echo "  --manager is remote ($MANAGER), so the local config is not consulted." >&2
+        echo "  Pass --cluster with the REMOTE manager's <cluster><name>." >&2
+    fi
+    echo "  Without it every session is answered 403 and the run measures nothing." >&2
+    exit 1
+fi
 
 # Build the sender if the binary is missing or stale.
 if [[ ! -x "$GO_BIN" || -n "$(find "$TS_DIR" -name '*.go' -newer "$GO_BIN" -print -quit 2>/dev/null)" ]]; then
@@ -120,6 +171,9 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "manager": "$MANAGER",
     "port": $PORT,
     "socket": "$SOCKET",
+    "cluster": "$CLUSTER",
+    "cluster_node": "$CLUSTER_NODE",
+    "seed": "$SEED",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 PARAMS
@@ -178,6 +232,9 @@ GO_ARGS=(
     --summary-json "$SENDER_JSON"
 )
 [[ -n "$SEED" ]] && GO_ARGS+=( --seed "$SEED" )
+[[ -n "$CLUSTER" ]] && GO_ARGS+=( --cluster "$CLUSTER" )
+[[ -n "$CLUSTER_NODE" ]] && GO_ARGS+=( --cluster-node "$CLUSTER_NODE" )
+[[ -n "$ENROLL_SETTLE" ]] && GO_ARGS+=( --enroll-settle "$ENROLL_SETTLE" )
 SENDER_RC=0
 "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?
 
