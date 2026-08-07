@@ -11,7 +11,7 @@ import (
 // csvHeader is the exact bench.csv header (docu/09). A column not here does not
 // exist; adding one means editing this line and the row builder together.
 const csvHeader = "timestamp,elapsed_s,mode,agents_active," +
-	"sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other," +
+	"sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other," +
 	"stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent," +
 	"retries_feed,transport_errors," +
 	"bytes_sent,documents_sent," +

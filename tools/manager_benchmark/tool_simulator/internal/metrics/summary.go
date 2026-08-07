@@ -54,7 +54,7 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 	return map[string]any{
 		"sessions": map[string]any{
 			"sent": c.SessionsSent, "ok": c.SessionsOK, "noop": c.SessionsNoop,
-			"s400": c.S400, "s403": c.S403, "s409": c.S409, "s413": c.S413,
+			"s400": c.S400, "s401": c.S401, "s403": c.S403, "s409": c.S409, "s413": c.S413,
 			"s500": c.S500, "s503": c.S503, "s503_retry_after": c.S503RetryAfter,
 			"other": c.SessOther, "abandoned_on_drain": c.AbandonedOnDrain,
 			"retries_feed": c.RetriesFeed, "transport_errors": c.TransportErrors,

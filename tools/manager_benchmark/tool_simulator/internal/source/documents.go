@@ -38,11 +38,16 @@ func Documents(seed uint64, key string, spec DocSpec) []GeneratedDoc {
 		id := fmt.Sprintf("%s-%d", key, i)
 		checksum := sha1Hex(fmt.Sprintf("%d:%s", seed, id))
 
+		// Every field here MUST exist in the target index's mapping: the real
+		// state indices are `dynamic: strict`, so an invented field (a "pad" of
+		// our own, say) makes the indexer reject the whole bulk with 400 and the
+		// session answer 500. The size filler therefore rides in `description`,
+		// a real keyword field, instead of a synthetic one.
 		doc := map[string]any{
 			"package": map[string]any{
-				"name":    fmt.Sprintf("pkg-%s-%d", key, i),
-				"version": fmt.Sprintf("%d.%d.%d", seed%10, i%100, i%7),
-				"pad":     padTo(spec.SizeBytes),
+				"name":        fmt.Sprintf("pkg-%s-%d", key, i),
+				"version":     fmt.Sprintf("%d.%d.%d", seed%10, i%100, i%7),
+				"description": padTo(spec.SizeBytes),
 			},
 		}
 		if spec.WithChecksum {

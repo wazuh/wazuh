@@ -35,6 +35,13 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 			a.r.reg.RecordTransportError(a.fleet.Name, lane)
 			return
 		}
+		if resp.Status == 401 {
+			// Not data: the fleet's keys are not in remoted's keystore yet (it reloads
+			// client.keys on its own cadence). Counting these as ordinary failures
+			// would let a whole run of unauthenticated requests read as a result.
+			a.r.fatalf("agent %s session answered 401 (remoted has not loaded this fleet's keys): %s",
+				a.id, truncate(resp.Body))
+		}
 		noop := isNoop(resp.Body)
 		hasRetry := resp.RetryAfter != ""
 		a.r.reg.RecordSession(a.fleet.Name, lane, resp.Status, noop, hasRetry, us(resp.Latency), uint64(len(body)), uint64(docs))

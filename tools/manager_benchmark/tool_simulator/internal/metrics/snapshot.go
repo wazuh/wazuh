@@ -13,7 +13,7 @@ func snapshotBucket(b *bucket) CountersSnapshot {
 	src := &b.c
 	out := Counters{
 		SessionsSent: load(&src.SessionsSent), SessionsOK: load(&src.SessionsOK), SessionsNoop: load(&src.SessionsNoop),
-		S409: load(&src.S409), S400: load(&src.S400), S403: load(&src.S403), S413: load(&src.S413),
+		S409: load(&src.S409), S400: load(&src.S400), S401: load(&src.S401), S403: load(&src.S403), S413: load(&src.S413),
 		S500: load(&src.S500), S503: load(&src.S503), S503RetryAfter: load(&src.S503RetryAfter), SessOther: load(&src.SessOther),
 		StatelessSent: load(&src.StatelessSent), St202: load(&src.St202), StBad400: load(&src.StBad400),
 		StBad413: load(&src.StBad413), St503: load(&src.St503), StOther: load(&src.StOther), EventsSent: load(&src.EventsSent),
