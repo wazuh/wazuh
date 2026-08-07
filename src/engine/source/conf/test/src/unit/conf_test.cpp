@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <conf/conf.hpp>
+#include <conf/keys.hpp>
 
 #include "mockFileLoader.hpp"
 #include "utils.hpp"
@@ -170,7 +171,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.STRING", "test"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello"}}, false), // Single value on list
-        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, false), // Single numeric string value on list
+        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, false),   // Single numeric string value on list
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello, world"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "true"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "false"}}, false),
@@ -445,5 +446,30 @@ TEST(ConfGet, badKey)
     conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
 
     EXPECT_THROW(conf.get<int>("/TEST"), std::runtime_error);
+}
+
+/************************************************************************
+ *                       Privilege drop key
+ ************************************************************************/
+TEST(ConfDropPrivileges, DefaultsToTrue)
+{
+    logging::testInit();
+    unsetenv("WAZUH_ENGINE_DROP_PRIVILEGES");
+
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    EXPECT_TRUE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
+}
+
+TEST(ConfDropPrivileges, EnvOverride)
+{
+    logging::testInit();
+    setEnv("WAZUH_ENGINE_DROP_PRIVILEGES", "false");
+
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    EXPECT_FALSE(conf.get<bool>(conf::key::DROP_PRIVILEGES));
+
+    unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
 } // namespace

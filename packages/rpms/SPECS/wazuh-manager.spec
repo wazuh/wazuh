@@ -485,6 +485,18 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   rm -rf "${UPGRADE_PRESERVE_DIR}"
 fi
 
+# The engine (wazuh-manager-analysisd) now drops privileges to wazuh-manager:
+# runtime data created by root in previous versions must be reassigned. This
+# must run after the upgrade-preserve restore above, which keeps the old
+# ownership (cp -a), and before the service restart below.
+chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/ruleset > /dev/null 2>&1 || true
+chown -R wazuh-manager:wazuh-manager %{_localstatedir}/data/kvdb-ioc > /dev/null 2>&1 || true
+for year_dir in %{_localstatedir}/logs/[0-9][0-9][0-9][0-9]; do
+  if [ -d "$year_dir" ]; then
+    chown -R wazuh-manager:wazuh-manager "$year_dir" > /dev/null 2>&1 || true
+  fi
+done
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -633,7 +645,7 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/kvdb-ioc
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/data/mmdb
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/data/ruleset
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/ruleset
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo
