@@ -21,7 +21,6 @@
 #include <memory>
 #include <string>
 #include <thread>
-#include <unordered_set>
 #include <utility>
 
 namespace invsync::vd
@@ -51,34 +50,6 @@ namespace invsync::vd
             , m_lane {std::move(lane)}
             , m_pauseQuiesceTimeout {pauseQuiesceTimeout}
         {
-        }
-
-        std::unordered_set<std::string> agentsWithActiveVDFirstSessions() const override
-        {
-            std::unordered_set<std::string> agents;
-            if (const auto lane = m_lane.lock())
-            {
-                for (auto& agent : lane->agentsWithVDFirstInFlight())
-                {
-                    agents.insert(std::move(agent));
-                }
-            }
-            return agents;
-        }
-
-        bool waitForVDSyncSessionsToDrain(std::chrono::seconds timeout) override
-        {
-            const auto lane = m_lane.lock();
-            if (!lane)
-            {
-                return false;
-            }
-            const bool hadAny = lane->hasVDSyncInFlight();
-            if (hadAny)
-            {
-                lane->drainVDSync(timeout);
-            }
-            return hadAny;
         }
 
         bool hasActiveSessionForAgent(const std::string& agentId, std::chrono::seconds timeout) override
