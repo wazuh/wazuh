@@ -626,6 +626,52 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     }
 }
 
+// releaseResources() must explicitly release the ISysInfo implementation's per-thread
+// resources (on Windows: the hotfixes() COM context) on this thread, before m_spInfo is
+// destroyed -- instead of relying on automatic thread_local teardown at thread exit,
+// which used to fault with a null `this` inside sysinfo.dll every time the syscollector
+// worker thread exited. destroy() calls releaseResources() internally, so this exercises
+// the exact call path wm_sys_main() takes on Windows.
+TEST_F(SyscollectorImpTest, destroyReleasesSysInfoThreadResources)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, users()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, false);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
 TEST_F(SyscollectorImpTest, noHardware)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
