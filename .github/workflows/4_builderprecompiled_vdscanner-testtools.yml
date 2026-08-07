@@ -44,7 +44,7 @@ jobs:
     name: VD Scanner Tools Delivery
 
     # Runs only if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
 

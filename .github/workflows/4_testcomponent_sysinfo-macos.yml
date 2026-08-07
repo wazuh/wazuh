@@ -3,6 +3,7 @@ name: 4.X - Syscollector test on macOS
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/4_testcomponent_sysinfo-macos.yml"
       - "src/data_provider/**"
@@ -12,6 +13,7 @@ on:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: macos-14
     steps:
       - name: Checkout Repo
