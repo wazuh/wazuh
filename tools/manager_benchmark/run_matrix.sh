@@ -30,6 +30,8 @@ SEED=4242
 # that exhausts it fails loudly instead of measuring 401s.
 ENROLL_SETTLE=240s
 ONLY=""
+# Charts are produced by default: a run that is not plotted rarely gets looked at.
+CHARTS=true
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
@@ -41,6 +43,7 @@ while [[ $# -gt 0 ]]; do
         --seed)           SEED="$2"; shift 2 ;;
         --enroll-settle)  ENROLL_SETTLE="$2"; shift 2 ;;
         --only)           ONLY="$2"; shift 2 ;;   # run a single label
+        --no-charts)      CHARTS=false; shift ;;
         -h|--help)        usage ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
@@ -79,17 +82,18 @@ for entry in "${MATRIX[@]}"; do
     [[ -n "$CLUSTER_NODE" ]] && cluster_args+=(--cluster-node "$CLUSTER_NODE")
 
     extra=()
+    $CHARTS || extra+=(--no-charts)
     if [[ "$mode" == "agent" ]]; then
         # Names are reused across runs, so clear the previous fleet first; this only
         # ever deletes bench-* agents.
         ./cleanup_agents.sh >/dev/null 2>&1 || true
-        extra=(--enroll-settle "$ENROLL_SETTLE")
+        extra+=(--enroll-settle "$ENROLL_SETTLE")
     fi
 
     echo "=== $label ($mode) — $(date -u +%H:%M:%S)"
     ./run_benchmark.sh --scenario "$scenario" --mode "$mode" --socket "$SOCKET" \
         --label "$label" --seed "$SEED" \
-        "${cluster_args[@]}" "${extra[@]}" --no-charts >"/tmp/${label}.run.log" 2>&1
+        "${cluster_args[@]}" "${extra[@]}" >"/tmp/${label}.run.log" 2>&1
     rc=$?
     grep -E 'sessions:|stateless:|control:|latency ms|^run:' "/tmp/${label}.run.log" | sed 's/^/    /'
     if [[ $rc -ne 0 ]]; then

@@ -108,7 +108,14 @@ def aggregate_monitor(rows: list[dict[str, str]]) -> dict[str, Any]:
 
 
 def aggregate_server_metrics(rows: list[dict[str, str]]) -> dict[str, Any]:
-    """server_metrics.csv is long-format (timestamp,elapsed_s,metric,value).
+    """Aggregate the server's own statistics, in either shape they arrive in.
+
+    Two producers exist and both are supported, because which one ran depends on
+    whether the monitor's dependencies were available:
+      - the monitor's `stats-api-inventory-sync.csv`: WIDE, one row per scrape,
+        one column per metric (this is what a normal run produces);
+      - `scrape_metrics.sh`'s `server_metrics.csv`: LONG, one row per metric per
+        scrape (`timestamp,elapsed_s,metric,value`), used as a fallback.
 
     The server's counters are CUMULATIVE since the module started, not per run, so
     the absolute values include every earlier run against the same manager. `delta`
@@ -117,21 +124,44 @@ def aggregate_server_metrics(rows: list[dict[str, str]]) -> dict[str, Any]:
     last observation is the meaningful one."""
     if not rows:
         return {}
+
     first: dict[str, float] = {}
     latest: dict[str, float] = {}
     peak: dict[str, float] = {}
-    for r in rows:
-        m = r.get("metric")
-        if not m:
-            continue
-        v = to_float(r.get("value"))
-        first.setdefault(m, v)
-        latest[m] = v
-        peak[m] = max(peak.get(m, v), v)
+
+    is_long_format = "metric" in rows[0] and "value" in rows[0]
+
+    def observe(name: str, value: float) -> None:
+        first.setdefault(name, value)
+        latest[name] = value
+        peak[name] = max(peak.get(name, value), value)
+
+    if is_long_format:
+        for r in rows:
+            m = r.get("metric")
+            if not m:
+                continue
+            observe(m, to_float(r.get("value")))
+    else:
+        skip = {"timestamp", "elapsed_s", "query_ok", "query_error", "raw_response_json"}
+        for r in rows:
+            # A failed scrape leaves the metric columns empty; counting it as 0
+            # would fake a counter reset and produce a negative delta.
+            if r.get("query_ok") not in (None, "", "1"):
+                continue
+            for name, raw in r.items():
+                if name in skip or raw in (None, ""):
+                    continue
+                observe(name, to_float(raw))
     # A delta is only meaningful for a monotonic counter. Histogram summary fields
     # (percentiles, min, max) are point-in-time distributions: subtracting two of
     # them yields nonsense (a negative "p99 delta"), so they keep only `final`.
-    distribution = (".p50", ".p90", ".p99", ".min", ".max")
+    # Both separators, because the two producers name these differently: the long
+    # format keeps the metric's dotted name (`vd.lane.time.p99`) while the wide
+    # CSV uses column-safe underscores (`vd_lane_time_p99`). Missing one of them
+    # silently reintroduces the nonsense it is here to prevent -- a "delta p99".
+    distribution = (".p50", ".p90", ".p99", ".min", ".max",
+                    "_p50", "_p90", "_p99", "_min", "_max")
     delta = {m: round(latest[m] - first.get(m, 0.0), 3)
              for m in latest if not m.endswith(distribution)}
     return {"delta": delta, "final": latest, "peak": peak}

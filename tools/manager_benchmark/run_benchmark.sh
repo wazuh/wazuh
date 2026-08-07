@@ -184,29 +184,34 @@ if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (skipped — API not reachable)"
 fi
 
-# 1. Start the GET /metrics scraper if the socket is present locally. In agent
-#    mode the socket is still local in the devcontainer, so scrape it too.
-SCRAPER_PID=""
-if $DO_METRICS && [[ -S "$SOCKET" ]]; then
-    echo "Scraping GET /metrics ($SOCKET) every ${METRICS_INTERVAL}s..."
-    PYTHON="$PYTHON" "$SCRIPT_DIR/scrape_metrics.sh" \
-        --socket "$SOCKET" --out "$SERVER_METRICS_CSV" --interval "$METRICS_INTERVAL" &
-    SCRAPER_PID=$!
-elif $DO_METRICS; then
-    echo "Note: metrics socket $SOCKET not present; skipping /metrics scrape."
-fi
-
-# 2. Optional process-resource monitor (engine devcontainer tool + psutil).
+# 1. Process + API monitor. It samples the manager's processes AND polls each
+#    daemon's statistics, inventory_sync_server's GET /metrics included, so it is
+#    the single poller for a normal run.
 MONITOR_PID=""
+MONITOR_RUNNING=false
 if $DO_MONITOR && [[ -f "$MONITOR_PY" ]] && "$PYTHON" -c 'import psutil' 2>/dev/null; then
     mkdir -p "$MONITOR_DIR"
-    echo "Starting process monitor..."
+    echo "Starting process + API monitor..."
     "$PYTHON" "$MONITOR_PY" --output-dir "$MONITOR_DIR" -s 1.0 \
         --pidfile "$MONITOR_DIR/monitor.pid" --timeout 30 &
     MONITOR_PID=$!
+    MONITOR_RUNNING=true
     sleep 2
 elif $DO_MONITOR; then
-    echo "Note: process monitor unavailable (monitor.py or psutil missing); skipping."
+    echo "Note: process monitor unavailable (monitor.py or psutil missing)."
+fi
+
+# 2. Fallback scraper. Only when the monitor is NOT running: it needs psutil,
+#    and losing the server's own numbers because a Python package is missing
+#    would be a worse trade than polling the socket from a shell loop.
+SCRAPER_PID=""
+if $DO_METRICS && ! $MONITOR_RUNNING && [[ -S "$SOCKET" ]]; then
+    echo "Monitor unavailable; falling back to scrape_metrics.sh for GET /metrics..."
+    PYTHON="$PYTHON" "$SCRIPT_DIR/scrape_metrics.sh" \
+        --socket "$SOCKET" --out "$SERVER_METRICS_CSV" --interval "$METRICS_INTERVAL" &
+    SCRAPER_PID=$!
+elif $DO_METRICS && ! $MONITOR_RUNNING; then
+    echo "Note: metrics socket $SOCKET not present; no server metrics for this run."
 fi
 
 stop_helper() {  # pid
@@ -247,7 +252,14 @@ echo ""
 echo "Generating summary.json..."
 SUMMARY_ARGS=( --bench "$BENCH_CSV" --out "$SUMMARY_JSON" )
 [[ -f "$SENDER_JSON" ]]         && SUMMARY_ARGS+=( --sender-json "$SENDER_JSON" )
-[[ -f "$SERVER_METRICS_CSV" ]]  && SUMMARY_ARGS+=( --server-metrics "$SERVER_METRICS_CSV" )
+# The monitor's wide CSV is preferred; the fallback scraper's long-format file is
+# used only when the monitor could not run. result_summary.py detects which is which.
+MONITOR_INVSYNC_CSV="$MONITOR_DIR/stats-api-inventory-sync.csv"
+if [[ -f "$MONITOR_INVSYNC_CSV" ]]; then
+    SUMMARY_ARGS+=( --server-metrics "$MONITOR_INVSYNC_CSV" )
+elif [[ -f "$SERVER_METRICS_CSV" ]]; then
+    SUMMARY_ARGS+=( --server-metrics "$SERVER_METRICS_CSV" )
+fi
 [[ -f "$MONITOR_DIR/wazuh-manager-modulesd.csv" ]] && SUMMARY_ARGS+=( --monitor "$MONITOR_DIR/wazuh-manager-modulesd.csv" )
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_ARGS+=( --params "$RESULTS_DIR/params.json" )
 "$PYTHON" "$SCRIPT_DIR/result_summary.py" "${SUMMARY_ARGS[@]}" || echo "  (summary generation had a warning)"
