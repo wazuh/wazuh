@@ -20,11 +20,13 @@
 #include "controlStateMachine.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "rescanRequester.hpp"
 #include "retrySender.hpp"
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 #include "taskBatch.hpp"
 #include "taskIdStore.hpp"
+#include "vdOffsetStore.hpp"
 #include "wpkFetcher.hpp"
 
 #include <functional>
@@ -48,7 +50,7 @@ class ControlStream final
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
                       ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore,
-                      std::function<std::string()> collectHost = {});
+                      IVdOffsetStore& vdOffsetStore, std::function<std::string()> collectHost = {});
 
         /// Safety net for any destruction path that doesn't go through HttpsClientFacade::
         /// stop() first (e.g. a test constructing a bare ControlStream): joins m_upgradeThread
@@ -114,6 +116,7 @@ class ControlStream final
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
+        void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
         void updateLocalIp(const HttpResponse& response);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
@@ -129,6 +132,8 @@ class ControlStream final
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
         ITaskIdStore& m_taskStore;
+        IVdOffsetStore& m_vdOffsetStore;
+        RescanRequester m_rescanRequester;
         /// Pull-source for the Notify host block, fed from the agent's
         /// metadata_provider. Empty/unset -> no host block (metadata not ready).
         std::function<std::string()> m_collectHost;

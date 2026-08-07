@@ -78,6 +78,11 @@ agent_info_set_query_handshake_function_func agent_info_set_query_handshake_func
 agent_info_task_registry_init_func agent_info_task_registry_init_ptr = NULL;
 agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr = NULL;
 
+// Durable VD feed offset / pending-rescan function pointers (see agent_info.h).
+agent_info_vd_offset_observe_func agent_info_vd_offset_observe_ptr = NULL;
+agent_info_vd_offset_clear_pending_func agent_info_vd_offset_clear_pending_ptr = NULL;
+agent_info_vd_offset_get_state_func agent_info_vd_offset_get_state_ptr = NULL;
+
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
 
@@ -585,9 +590,15 @@ static void wm_agent_info_query_error(char** output, int error_code, const char*
 // wm_module_query(), which strips "agent-info " and calls this with `args`
 // holding exactly the remaining JSON); on Windows, task_registry_client.c
 // calls wm_module_query_json_ex("agent-info", ..., ...) directly in-process,
-// which reaches this the same way. Currently supports one command:
+// which reaches this the same way. Supports:
 // {"command":"task_check_and_record","task_id":"..."} ->
-// {"error":0,"data":{"new":true|false}}.
+//   {"error":0,"data":{"new":true|false}}.
+// {"command":"vd_offset_observe","offset":N} ->
+//   {"error":0,"data":{"changed":bool,"pending":bool,"pending_offset":N}}.
+// {"command":"vd_offset_clear_pending","offset":N} ->
+//   {"error":0,"data":{"cleared":true|false}}.
+// {"command":"vd_offset_get_state"} ->
+//   {"error":0,"data":{"has_offset":bool,"offset":N,"pending":bool,"pending_offset":N}}.
 size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char** output)
 {
     cJSON* request = args ? cJSON_Parse(args) : NULL;
@@ -639,6 +650,122 @@ size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char*
         cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
         cJSON* response_data = cJSON_CreateObject();
         cJSON_AddBoolToObject(response_data, "new", result == 1);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_observe") == 0)
+    {
+        cJSON* offset_item = cJSON_GetObjectItem(request, "offset");
+
+        if (!offset_item || !cJSON_IsNumber(offset_item))
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_vd_offset_observe_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        uint64_t offset = (uint64_t)offset_item->valuedouble;
+        int out_changed = 0;
+        int out_pending = 0;
+        uint64_t out_pending_offset = 0;
+        int result = agent_info_vd_offset_observe_ptr(offset, &out_changed, &out_pending, &out_pending_offset);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "changed", out_changed != 0);
+        cJSON_AddBoolToObject(response_data, "pending", out_pending != 0);
+        cJSON_AddNumberToObject(response_data, "pending_offset", (double)out_pending_offset);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_clear_pending") == 0)
+    {
+        cJSON* offset_item = cJSON_GetObjectItem(request, "offset");
+
+        if (!offset_item || !cJSON_IsNumber(offset_item))
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_vd_offset_clear_pending_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        uint64_t offset = (uint64_t)offset_item->valuedouble;
+        int result = agent_info_vd_offset_clear_pending_ptr(offset);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "cleared", result == 1);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_get_state") == 0)
+    {
+        cJSON_Delete(request);
+
+        if (!agent_info_vd_offset_get_state_ptr)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        int out_has_offset = 0;
+        uint64_t out_offset = 0;
+        int out_pending = 0;
+        uint64_t out_pending_offset = 0;
+        int result = agent_info_vd_offset_get_state_ptr(&out_has_offset, &out_offset, &out_pending, &out_pending_offset);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "has_offset", out_has_offset != 0);
+        cJSON_AddNumberToObject(response_data, "offset", (double)out_offset);
+        cJSON_AddBoolToObject(response_data, "pending", out_pending != 0);
+        cJSON_AddNumberToObject(response_data, "pending_offset", (double)out_pending_offset);
         cJSON_AddItemToObject(response, "data", response_data);
         *output = cJSON_PrintUnformatted(response);
         cJSON_Delete(response);
@@ -765,6 +892,12 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_task_registry_init_ptr = so_get_function_sym(agent_info_module, "agent_info_task_registry_init");
         agent_info_task_check_and_record_ptr =
             so_get_function_sym(agent_info_module, "agent_info_task_check_and_record");
+
+        // Durable VD feed offset / pending-rescan function pointers
+        agent_info_vd_offset_observe_ptr = so_get_function_sym(agent_info_module, "agent_info_vd_offset_observe");
+        agent_info_vd_offset_clear_pending_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_vd_offset_clear_pending");
+        agent_info_vd_offset_get_state_ptr = so_get_function_sym(agent_info_module, "agent_info_vd_offset_get_state");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");

@@ -196,6 +196,33 @@ typedef struct hc_config_t
 ///         non-dispatchable -- fail closed).
 typedef int (*hc_check_and_record_task_fn)(const char* task_id, void* user_data);
 
+/// Observe a VD feed offset reported by the manager (a /control Notify's
+/// vd_feed_offset field), persisting it in agent-info's durable `vd_feed_state`
+/// table and deciding -- via agent-info's own VDFirst-completion check --
+/// whether a /scan/vd request is actually needed. Monotonic: an offset not
+/// newer than the stored one is a no-op that still reports the current
+/// pending state, which is what lets a restart resume an outstanding request
+/// for free (no separate recovery call needed).
+/// Called on the CONTROL thread, synchronously, once per accepted Notify that
+/// carries the field. Must be fast and bounded (a local IPC round-trip with
+/// its own timeout).
+/// @param offset The offset value received from the manager.
+/// @param out_changed Set to 1 if the offset advanced, 0 otherwise.
+/// @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise.
+/// @param out_pending_offset Set to the offset a pending request refers to
+///        (valid only when *out_pending is 1).
+typedef void (*hc_vd_offset_observe_fn)(uint64_t offset, int* out_changed, int* out_pending,
+                                        uint64_t* out_pending_offset, void* user_data);
+
+/// Clear the pending VD re-scan flag, but only if it is still pending for
+/// exactly this offset (a stale confirmation is a no-op). Call only after a
+/// /scan/vd request for `offset` returns 200 OK -- never on a 409 or
+/// transport failure, so the request stays durable across a restart until it
+/// actually succeeds.
+/// @return 1 if the pending flag was cleared, 0 otherwise (stale / nothing
+///         pending / registry unreachable).
+typedef int (*hc_vd_offset_clear_pending_fn)(uint64_t offset, void* user_data);
+
 typedef struct hc_callbacks_t
 {
     full_log_fnc_t log;
@@ -212,6 +239,13 @@ typedef struct hc_callbacks_t
     /// makes every task look non-dispatchable (fail closed), same as an
     /// error return.
     hc_check_and_record_task_fn check_and_record_task;
+    /// See hc_vd_offset_observe_fn / hc_vd_offset_clear_pending_fn. Optional: a
+    /// null observe callback makes every Notify's vd_feed_offset a no-op
+    /// (VdOffsetStoreAdapter reports no change, nothing pending), so this
+    /// feature degrades to "never re-scans on offset change" rather than
+    /// failing, on a build/config where agent-info's VD support isn't wired up.
+    hc_vd_offset_observe_fn vd_offset_observe;
+    hc_vd_offset_clear_pending_fn vd_offset_clear_pending;
     /// A remote_upgrade task's WPK was downloaded via /download and its
     /// wpk_sha1 verified: wpk_path is ready to hand to the upgrade
     /// module together with installer. Fires from the dispatcher thread,

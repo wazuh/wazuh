@@ -182,6 +182,59 @@ EXPORTED void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_s
 EXPORTED int agent_info_task_check_and_record(const char* task_id);
 
 /**
+ * @brief Observe a VD feed offset reported by the manager (e.g. via a /control notify
+ * response). Monotonic: a value not newer than the currently stored offset is a no-op.
+ * When the offset advances it is persisted immediately; a re-scan is marked pending only
+ * if syscollector's VDFirst has already completed -- otherwise VDFirst's own full scan
+ * will cover the new offset via Start.feed_offset, so no /scan/vd request is needed yet
+ * (see AgentInfoImpl::observeVdFeedOffset).
+ *
+ * @param offset The offset value received from the manager.
+ * @param out_changed Set to 1 if the offset advanced, 0 otherwise. May be NULL.
+ * @param out_pending Set to 1 if a /scan/vd request is now outstanding, 0 otherwise. May be NULL.
+ * @param out_pending_offset Set to the offset a pending request refers to (valid only when
+ *        *out_pending is 1). May be NULL.
+ * @return 0 on success, -1 on error (agent_info.db not yet available, or a NULL required
+ *         output isn't the issue -- out_* pointers are all optional).
+ */
+EXPORTED int agent_info_vd_offset_observe(uint64_t offset,
+                                          int* out_changed,
+                                          int* out_pending,
+                                          uint64_t* out_pending_offset);
+
+/**
+ * @brief Clear the pending VD re-scan flag, but only if it is still pending for exactly this
+ * offset (a stale confirmation -- nothing pending, or a newer offset has since superseded
+ * this one -- is a no-op). Call this only after a /scan/vd request for `offset` returns
+ * 200 OK; never on a 409 or transport failure, so the request stays durable across a
+ * restart until it actually succeeds.
+ *
+ * @param offset The offset the /scan/vd request succeeded for.
+ * @return 1 if the pending flag was cleared, 0 if it was not (stale / nothing pending),
+ *         -1 on error (agent_info.db not yet available).
+ */
+EXPORTED int agent_info_vd_offset_clear_pending(uint64_t offset);
+
+/**
+ * @brief Current durable VD feed state, so agentd can resume any outstanding pending
+ * re-scan request after its own restart without waiting for the next detected offset
+ * change.
+ *
+ * @param out_has_offset Set to 1 if an offset has ever been observed, 0 otherwise. May be NULL.
+ * @param out_offset Set to the last observed offset (valid only when *out_has_offset is 1).
+ *        May be NULL.
+ * @param out_pending Set to 1 if a /scan/vd request is currently outstanding, 0 otherwise.
+ *        May be NULL.
+ * @param out_pending_offset Set to the offset a pending request refers to (valid only when
+ *        *out_pending is 1). May be NULL.
+ * @return 0 on success, -1 on error (agent_info.db not yet available).
+ */
+EXPORTED int agent_info_vd_offset_get_state(int* out_has_offset,
+                                            uint64_t* out_offset,
+                                            int* out_pending,
+                                            uint64_t* out_pending_offset);
+
+/**
  * @brief Ensure agent_info.db (and thus the `tasks` table) is constructed, without running
  * the metadata sync loop that agent_info_start() would otherwise block on.
  *
@@ -216,5 +269,14 @@ typedef void (*agent_info_clear_agent_groups_func)(void);
 typedef void (*agent_info_set_query_handshake_function_func)(query_handshake_callback_t callback);
 typedef void (*agent_info_task_registry_init_func)(uint32_t max_entries, uint32_t ttl_seconds);
 typedef int (*agent_info_task_check_and_record_func)(const char* task_id);
+typedef int (*agent_info_vd_offset_observe_func)(uint64_t offset,
+                                                 int* out_changed,
+                                                 int* out_pending,
+                                                 uint64_t* out_pending_offset);
+typedef int (*agent_info_vd_offset_clear_pending_func)(uint64_t offset);
+typedef int (*agent_info_vd_offset_get_state_func)(int* out_has_offset,
+                                                   uint64_t* out_offset,
+                                                   int* out_pending,
+                                                   uint64_t* out_pending_offset);
 
 #endif //_AGENT_INFO_H

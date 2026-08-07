@@ -467,6 +467,99 @@ int agent_info_task_check_and_record(const char* task_id)
     return g_agent_info_impl->checkAndRecordTask(task_id) ? 1 : 0;
 }
 
+int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pending, uint64_t* out_pending_offset)
+{
+    if (!g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_WARNING,
+                           "vd_offset_observe called before agent_info's database is available",
+                           "agent-info");
+        }
+
+        return -1;
+    }
+
+    const AgentInfoImpl::VdOffsetObserveResult result = g_agent_info_impl->observeVdFeedOffset(offset);
+
+    if (out_changed)
+    {
+        *out_changed = result.changed ? 1 : 0;
+    }
+
+    if (out_pending)
+    {
+        *out_pending = result.pending ? 1 : 0;
+    }
+
+    if (out_pending_offset)
+    {
+        *out_pending_offset = result.pendingOffset;
+    }
+
+    return 0;
+}
+
+int agent_info_vd_offset_clear_pending(uint64_t offset)
+{
+    if (!g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_WARNING,
+                           "vd_offset_clear_pending called before agent_info's database is available",
+                           "agent-info");
+        }
+
+        return -1;
+    }
+
+    return g_agent_info_impl->clearVdRescanPending(offset) ? 1 : 0;
+}
+
+int agent_info_vd_offset_get_state(int* out_has_offset,
+                                   uint64_t* out_offset,
+                                   int* out_pending,
+                                   uint64_t* out_pending_offset)
+{
+    if (!g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_WARNING,
+                           "vd_offset_get_state called before agent_info's database is available",
+                           "agent-info");
+        }
+
+        return -1;
+    }
+
+    const AgentInfoImpl::VdFeedState state = g_agent_info_impl->getVdFeedState();
+
+    if (out_has_offset)
+    {
+        *out_has_offset = state.hasOffset ? 1 : 0;
+    }
+
+    if (out_offset)
+    {
+        *out_offset = state.offset;
+    }
+
+    if (out_pending)
+    {
+        *out_pending = state.pending ? 1 : 0;
+    }
+
+    if (out_pending_offset)
+    {
+        *out_pending_offset = state.pendingOffset;
+    }
+
+    return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

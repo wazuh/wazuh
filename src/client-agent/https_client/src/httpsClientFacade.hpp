@@ -33,6 +33,7 @@
 #include "syncIntake.hpp"
 #include "sysSeams.hpp"
 #include "taskIdStoreAdapter.hpp"
+#include "vdOffsetStoreAdapter.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -96,6 +97,7 @@ class HttpsClientFacade final
         ConfigHashState m_configHash;
         ClusterIdentity m_cluster;
         TaskIdStoreAdapter m_taskStore;
+        VdOffsetStoreAdapter m_vdOffsetStore;
         // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.
