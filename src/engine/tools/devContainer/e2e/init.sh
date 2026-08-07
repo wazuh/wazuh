@@ -71,6 +71,43 @@ INDEXER_PACKAGE_FILE="wazuh-indexer_5.0.0-latest_amd64.deb"
 DASHBOARD_PACKAGE_KEY="wazuh_dashboard_amd64_deb"
 DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest_amd64.deb"
 
+WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
+
+
+# ==============================================================================
+#                      Manager listener bind addresses
+# ==============================================================================
+# The manager ships remoted bound to loopback on purpose -- see
+# docs/ref/modules/remoted/configuration.md (legacy.local_ip, https.bind_addr):
+# an operator who wants remote agents is expected to open it after install.
+# Containerised agents reach the devContainer host over the docker bridge, so
+# loopback-only listeners refuse them with "Transport endpoint is not connected".
+function open_manager_listeners() {
+    local conf="${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf"
+
+    echo "==> Opening manager listeners for containerised agents..."
+
+    if [ ! -f "$conf" ]; then
+        echo "==> Manager not installed at ${WAZUH_MANAGER_HOME}, skipping."
+        echo "    Re-run this script after installing it, or set WAZUH_MANAGER_HOME."
+        return 0
+    fi
+
+    # Scoped to <remote>: <cluster> carries its own <bind_addr>127.0.0.1</bind_addr>
+    # that must stay loopback for a single-node dev environment.
+    sed -i "/<remote>/,/<\/remote>/ {
+        s|<local_ip>127\.0\.0\.1</local_ip>|<local_ip>0.0.0.0</local_ip>|
+        s|<bind_addr>127\.0\.0\.1</bind_addr>|<bind_addr>0.0.0.0</bind_addr>|
+    }" "$conf"
+
+    # Editors and package upgrades reset the group; remoted runs as wazuh-manager
+    # and reports a permission failure as "Error reading XML file (line 0)".
+    chown root:wazuh-manager "$conf"
+    chmod 660 "$conf"
+
+    grep -nE "<local_ip>|<bind_addr>" "$conf" | sed 's/^/    /'
+    echo "==> Restart the manager to apply: ${WAZUH_MANAGER_HOME}/bin/wazuh-manager-control restart"
+}
 
 # ==============================================================================
 #                          Certificates
@@ -537,6 +574,9 @@ fi
 
 # Init certs
 upsert_certs
+
+# Let containerised agents reach remoted
+open_manager_listeners
 
 echo ""
 echo "==========================================================="
