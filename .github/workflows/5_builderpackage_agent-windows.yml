@@ -138,7 +138,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-windows-i686
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 30
     name: Generate MSI package
     outputs:
@@ -327,7 +327,7 @@ jobs:
       id-token: write
       contents: read
     needs: package-windows-i686
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 30
     name: Test MSI package
 
