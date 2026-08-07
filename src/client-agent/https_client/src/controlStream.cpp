@@ -242,8 +242,8 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (outcome %d).",
-                   static_cast<int>(result.outcome));
+        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s).",
+                   outcomeName(result.outcome));
     }
     else
     {
@@ -604,15 +604,15 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
 
     if (++m_undeliverableStreak < CONTROL_UNDELIVERABLE_THRESHOLD)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u).",
-                     static_cast<int>(outcome), m_undeliverableStreak,
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u).",
+                     outcomeName(outcome), m_undeliverableStreak,
                      CONTROL_UNDELIVERABLE_THRESHOLD);
         return;
     }
 
     m_producersPaused = true;
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u); pausing event production.",
-                 static_cast<int>(outcome), m_undeliverableStreak,
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production.",
+                 outcomeName(outcome), m_undeliverableStreak,
                  CONTROL_UNDELIVERABLE_THRESHOLD);
     m_sink.onProducerPause(true);
 }
