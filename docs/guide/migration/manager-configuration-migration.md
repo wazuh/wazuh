@@ -180,7 +180,10 @@ rejected and the manager will not start; there is no automatic migration.
 
 ### `<auth>` section
 
-The section is preserved. Update the certificate paths to reflect the new installation directory.
+The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
+
+- `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-authd` does not start.
+- `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an invalid element (`ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.`) and also blocks `wazuh-authd` from starting.
 
 **4.x:**
 ```xml
@@ -188,6 +191,8 @@ The section is preserved. Update the certificate paths to reflect the new instal
   ...
   <ssl_manager_cert>/var/ossec/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/ossec/etc/sslmanager.key</ssl_manager_key>
+  <ssl_auto_negotiate>no</ssl_auto_negotiate>
+  <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
   ...
 </auth>
 ```
@@ -198,6 +203,7 @@ The section is preserved. Update the certificate paths to reflect the new instal
   ...
   <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
+  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
 ```
