@@ -28,6 +28,8 @@ enum class SyncResult
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
     ///< budget (HTTP 413); the session must be split and resent smaller.
+    NO_VD_OFFSET_ERROR,  ///< VD (VDFirst/VDSync) sync attempted before any feed offset has
+    ///< been received from the manager yet.
 };
 
 struct SyncModuleResult

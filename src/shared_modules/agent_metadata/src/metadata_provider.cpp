@@ -120,6 +120,8 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_node, metadata->cluster_node, sizeof(m_shm->base_metadata.cluster_node) - 1);
                 m_shm->base_metadata.cluster_node[sizeof(m_shm->base_metadata.cluster_node) - 1] = '\0';
 
+                m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
+
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
 
@@ -192,6 +194,8 @@ namespace
 
                 std::strncpy(out_metadata->cluster_node, m_shm->base_metadata.cluster_node, sizeof(out_metadata->cluster_node) - 1);
                 out_metadata->cluster_node[sizeof(out_metadata->cluster_node) - 1] = '\0';
+
+                out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
 
                 // Copy groups
                 if (m_shm->groups_count > 0)

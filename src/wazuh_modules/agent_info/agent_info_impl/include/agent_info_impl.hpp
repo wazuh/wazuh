@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -43,6 +44,26 @@ class AgentInfoImpl
             std::string response;      ///< Raw response string
             int errorCode;             ///< Parsed error code (0 if success)
             bool isModuleUnavailable;  ///< True if error indicates module is unavailable (50-53)
+        };
+
+        /// @brief Durable VD feed offset + pending-rescan state, backed by the `vd_feed_state`
+        /// table in agent_info.db. `hasOffset` distinguishes "never observed" from "observed 0"
+        /// (a manager legitimately reporting offset 0 -- e.g. VD not enabled -- must not be
+        /// treated as unset).
+        struct VdFeedState
+        {
+            bool hasOffset{false};
+            uint64_t offset{0};
+            bool pending{false};
+            uint64_t pendingOffset{0};
+        };
+
+        /// @brief Result of observeVdFeedOffset().
+        struct VdOffsetObserveResult
+        {
+            bool changed{false};       ///< True if offset advanced (was newer than the stored value)
+            bool pending{false};       ///< True if a /scan/vd request is now outstanding for pendingOffset
+            uint64_t pendingOffset{0}; ///< Valid when pending is true
         };
 
         /// @brief Constructor
@@ -142,6 +163,30 @@ class AgentInfoImpl
             m_taskRegistryTtlSeconds = ttlSeconds;
             m_taskRegistryMaxEntries = maxEntries == 0 ? 1 : maxEntries;
         }
+
+        /// @brief Observe a VD feed offset reported by the manager (via /control notify).
+        /// Monotonic: a value not newer than the currently stored offset is a no-op. When the
+        /// offset advances, it is persisted immediately; a re-scan is marked pending only if
+        /// syscollector's VDFirst has already completed (queried live via
+        /// get_vd_first_sync_completed) -- otherwise VDFirst's own full scan will cover the new
+        /// offset (see Start.feed_offset), so no /scan/vd request is needed.
+        /// @param offset The offset value received from the manager.
+        /// @return changed=true if the offset advanced; pending/pendingOffset reflect the
+        ///         resulting state regardless of whether this call itself changed anything.
+        VdOffsetObserveResult observeVdFeedOffset(uint64_t offset);
+
+        /// @brief Clear the pending re-scan flag, but only if it is still pending for exactly
+        /// this offset. A stale confirmation (nothing pending, or a newer offset has since
+        /// superseded this one) is a no-op -- the pending flag must only ever be cleared by a
+        /// matching /scan/vd 200 OK, never by a 409 or transport failure.
+        /// @param offset The offset the caller's /scan/vd request succeeded for.
+        /// @return true if the pending flag was actually cleared.
+        bool clearVdRescanPending(uint64_t offset);
+
+        /// @brief Current durable VD feed state. Used both to answer an IPC recovery query
+        /// (agentd resuming a pending re-scan after its own restart) and internally by
+        /// populateAgentMetadata() to feed Start.feed_offset.
+        VdFeedState getVdFeedState();
 
     private:
         /// @brief Determine if a stateless event should be generated based on changed fields
@@ -274,6 +319,22 @@ class AgentInfoImpl
         ///         (already synced, or sync disabled — the module reports completed — or the module
         ///         did not answer at all), so coordination is never wedged on a module that will not sync.
         bool isModuleFirstSyncCompleted(const std::string& moduleName);
+
+        /// @brief Query syscollector for whether its VD (Vulnerability Detection) VDFirst
+        /// synchronization has completed. Mirrors isModuleFirstSyncCompleted's fail-open
+        /// contract: an unreachable/unparseable response is treated as "done" so a syscollector
+        /// hiccup cannot permanently wedge re-scan requests.
+        /// @return false only when syscollector explicitly reports VDFirst not yet completed.
+        bool isVDFirstSyncDone();
+
+        /// @brief Read the single-row `vd_feed_state` table. Caller must hold m_dbSyncMutex and
+        /// have already verified m_dBSync is non-null. Returns a default-constructed (all-unset)
+        /// state if the row does not exist yet (fresh database).
+        VdFeedState readVdFeedStateLocked() const;
+
+        /// @brief Upsert the single-row `vd_feed_state` table. Caller must hold m_dbSyncMutex and
+        /// have already verified m_dBSync is non-null.
+        void writeVdFeedStateLocked(const VdFeedState& state);
 
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.

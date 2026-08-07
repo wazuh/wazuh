@@ -156,6 +156,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
                              ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
                              ConfigHashState& configHash, ClusterIdentity& cluster,
                              AuthGate& authGate, ITaskIdStore& taskStore,
+                             IVdOffsetStore& vdOffsetStore,
                              std::function<std::string()> collectHost)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
@@ -168,6 +169,8 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_cluster(cluster)
     , m_authGate(authGate)
     , m_taskStore(taskStore)
+    , m_vdOffsetStore(vdOffsetStore)
+    , m_rescanRequester(config, performer, signer, clock, random, authGate, vdOffsetStore)
     , m_collectHost(std::move(collectHost))
 {
 }
@@ -457,6 +460,32 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         m_sink.onManagerConfigHash(managerHash);
         maybeDownloadConfig(managerHash, groupsCsv(*agent), waiter);
         maybeReportAgentGroups(rawGroupsCsv(*agent));
+    }
+
+    // Top-level (not nested under "agent"): the manager's current VD feed
+    // offset, when VD is enabled on the node that answered. Absent is left
+    // alone -- unlike config_hash/settings_hash, a missing field must NOT be
+    // treated as an observed 0; that would look like a confirmed "no offset"
+    // to agent-info instead of "the manager didn't report one this time".
+    const auto vdFeedOffset = parsed.find("vd_feed_offset");
+
+    if (vdFeedOffset != parsed.end() && vdFeedOffset->is_number_unsigned())
+    {
+        maybeRequestVdRescan(vdFeedOffset->get<uint64_t>(), waiter);
+    }
+}
+
+void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
+{
+    // observe() is called every Notify that carries the field, not only when
+    // it looks new: its no-op path still reports the current pending state,
+    // which is what lets a restart resume an outstanding request without any
+    // separate recovery call (A10).
+    const VdOffsetObservation observation = m_vdOffsetStore.observe(offset);
+
+    if (observation.pending)
+    {
+        m_rescanRequester.requestRescan(observation.pendingOffset, waiter);
     }
 }
 

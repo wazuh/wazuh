@@ -38,6 +38,7 @@ typedef struct
     char cluster_node[256];       ///< Cluster node from manager (received during handshake)
     char** groups;                ///< Array of group names (NULL-terminated strings)
     size_t groups_count;          ///< Number of groups in the array
+    uint64_t vd_feed_offset;      ///< Last observed VD feed offset (0 = not yet received from the manager)
 } agent_metadata_t;
 
 /**

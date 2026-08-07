@@ -52,6 +52,11 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
+        case SyncResult::NO_VD_OFFSET_ERROR:
+            failureReason = "No VD feed offset available yet. Waiting for the server to report one "
+                             "via /control. Cannot proceed with VD synchronization.";
+            break;
+
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
 
         default:
@@ -603,6 +608,25 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
             return 0;
         }
 
+        // VD (VDFirst/VDSync) syncs additionally require a feed offset already received
+        // from the manager (via /control notify) -- vd_feed_offset is 0 both when it was
+        // never set and when metadata_provider_get() legitimately returns no metadata at
+        // all, so this can only mean "not yet observed" here (mirrors the groups gate
+        // above; abort and retry next interval rather than syncing with no offset context).
+        if (isUncappedSyncOption(option) && metadata.vd_feed_offset == 0)
+        {
+            m_logger(LOG_DEBUG, "No VD feed offset available yet. Waiting for the server to report "
+                     "one via /control. Cannot proceed with VD synchronization.");
+            m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
+
+            if (has_metadata)
+            {
+                metadata_provider_free_metadata(&metadata);
+            }
+
+            return 0;
+        }
+
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
 
         // Create flatbuffer strings from metadata
@@ -655,6 +679,15 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         if (globalVersion.has_value())
         {
             startBuilder.add_global_version(globalVersion.value());
+        }
+
+        // feed_offset is only meaningful for VD syncs; the gate above already guarantees
+        // it is non-zero whenever this is reached for a VD option. Gating on `option`
+        // rather than "field non-zero" matters because 0 is the flatbuffers scalar
+        // default -- indistinguishable from absent to a consumer that doesn't check it.
+        if (isUncappedSyncOption(option))
+        {
+            startBuilder.add_feed_offset(metadata.vd_feed_offset);
         }
 
         auto startOffset = startBuilder.Finish();
