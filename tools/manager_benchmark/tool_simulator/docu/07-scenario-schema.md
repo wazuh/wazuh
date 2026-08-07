@@ -129,6 +129,17 @@ engine lane at 250 EPS alongside inventory lanes at 75, for instance. Both are r
 - `documents.size_bytes` is the approximate serialized size of one document; the generator pads a
   realistic shape rather than one giant string, because document count and document size stress
   different parts of the pipeline (per-document overlay vs bulk bytes).
+- **Generated documents MUST satisfy the target index's mapping.** The real state indices are
+  `dynamic: strict`, so a field that is not in the mapping makes the indexer reject the whole bulk
+  with `400` and the session answer `500` — the load never reaches the pipeline being measured. The
+  generator therefore uses only mapped fields and rides the size filler in `package.description`
+  rather than a synthetic `pad`. Its shape is packages-flavoured, so a generated-document step
+  belongs on `wazuh-states-inventory-packages`; for FIM/SCA/VD load use the `dump` replay of real
+  captured payloads, which is mapping-valid by construction.
+- **The cluster name is environment config, not scenario content.** The server answers `403` to a
+  session whose `cluster_name` is not its own, so the value in the file is only a default:
+  `--cluster` / `--cluster-node` override it per run, which is what makes one scenario library usable
+  against any manager.
 - Document generation is deterministic from a seed recorded in the run metadata: two runs of one
   scenario send byte-identical payloads, or the comparison is not one.
 - **There is no pass/fail gate.** A scenario declares *what to send*, not *what counts as success*:

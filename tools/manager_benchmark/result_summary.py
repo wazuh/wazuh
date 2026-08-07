@@ -108,11 +108,16 @@ def aggregate_monitor(rows: list[dict[str, str]]) -> dict[str, Any]:
 
 
 def aggregate_server_metrics(rows: list[dict[str, str]]) -> dict[str, Any]:
-    """server_metrics.csv is long-format (timestamp,elapsed_s,metric,value). Keep,
-    per metric, the final scraped value and the peak — enough to correlate the
-    server's own counters/histograms with the sender's view without the raw series."""
+    """server_metrics.csv is long-format (timestamp,elapsed_s,metric,value).
+
+    The server's counters are CUMULATIVE since the module started, not per run, so
+    the absolute values include every earlier run against the same manager. `delta`
+    (last minus first scrape of this run) is therefore what attributes work to THIS
+    run; `final` and `peak` are kept for gauges and histogram summaries, where the
+    last observation is the meaningful one."""
     if not rows:
         return {}
+    first: dict[str, float] = {}
     latest: dict[str, float] = {}
     peak: dict[str, float] = {}
     for r in rows:
@@ -120,9 +125,16 @@ def aggregate_server_metrics(rows: list[dict[str, str]]) -> dict[str, Any]:
         if not m:
             continue
         v = to_float(r.get("value"))
+        first.setdefault(m, v)
         latest[m] = v
         peak[m] = max(peak.get(m, v), v)
-    return {"final": latest, "peak": peak}
+    # A delta is only meaningful for a monotonic counter. Histogram summary fields
+    # (percentiles, min, max) are point-in-time distributions: subtracting two of
+    # them yields nonsense (a negative "p99 delta"), so they keep only `final`.
+    distribution = (".p50", ".p90", ".p99", ".min", ".max")
+    delta = {m: round(latest[m] - first.get(m, 0.0), 3)
+             for m in latest if not m.endswith(distribution)}
+    return {"delta": delta, "final": latest, "peak": peak}
 
 
 # ---------------------------------------------------------------------------

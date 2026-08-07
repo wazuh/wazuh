@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/metrics"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/pacing"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
@@ -32,6 +33,9 @@ type Config struct {
 	FeedTimeout  time.Duration
 	DrainTimeout time.Duration
 	Timeout      time.Duration
+	EnrollSettle time.Duration
+	Cluster      string // overrides the scenario's cluster name (environment config)
+	ClusterNode  string
 	Reuse        bool
 	Seed         uint64
 	SenderVer    string
@@ -109,6 +113,23 @@ func (r *Runner) Run(ctx context.Context) int {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "setup: %v\n", err)
 		return 2
+	}
+
+	// A freshly enrolled fleet is unknown to remoted until it reloads client.keys,
+	// and that reload happens on remoted's own schedule -- gaps of well over a
+	// minute are normal, far longer than `remoted.keyupdate_interval` suggests. So
+	// rather than sleep a guessed interval, wait until the manager actually accepts
+	// a signature, then start measuring. This runs whether or not the scenario
+	// enables control traffic: without it, a control-less scenario would spend the
+	// whole run answering 401 and measure nothing.
+	if r.mode == "agent" && len(agents) > 0 {
+		if err := r.waitUntilAuthenticated(ctx, agents[0]); err != nil {
+			fmt.Fprintf(os.Stderr, "setup: %v\n", err)
+			return 2
+		}
+		// The clock restarts here: enrollment and waiting for the keystore are
+		// setup, not load, and counting them would deflate every throughput figure.
+		r.start = time.Now()
 	}
 
 	// Overall deadline: repeat_until, else one pass. Drain is layered on top.
@@ -210,6 +231,16 @@ func (r *Runner) drainTimeout() time.Duration {
 
 func (r *Runner) controlEnabled() bool { return r.scn.Defaults.Control.Enabled }
 
+// readinessBudget is how long an agent keeps retrying a 401'd startup while it
+// waits for remoted to load its key. It reuses the enroll-settle budget, with a
+// floor so the wait is useful even when the settle is switched off.
+func (r *Runner) readinessBudget() time.Duration {
+	if r.cfg.EnrollSettle > 30*time.Second {
+		return r.cfg.EnrollSettle
+	}
+	return 30 * time.Second
+}
+
 // fatalf records the first run-invalidating error and cancels the run.
 func (r *Runner) fatalf(format string, args ...any) {
 	r.failOnce.Do(func() {
@@ -295,11 +326,15 @@ func (r *Runner) Meta() metrics.Meta {
 	}
 }
 
+// clusterName is the cluster the sessions declare. The server rejects a session
+// whose cluster is not its own (403), and that value belongs to the environment
+// under test rather than to the scenario, so a CLI override wins over the file.
 func (r *Runner) clusterName() string {
-	// The cluster name lives in the fleets' start blocks only indirectly; the
-	// sender takes it from the scenario's session cluster field via defaults.
-	// It is recorded for reproducibility, not used for control flow.
-	return clusterNameFromScenario(r.scn)
+	return firstNonEmpty(r.cfg.Cluster, clusterNameFromScenario(r.scn))
+}
+
+func (r *Runner) clusterNode() string {
+	return firstNonEmpty(r.cfg.ClusterNode, r.scn.Defaults.ClusterNode, "node01")
 }
 
 // controlEnabled/startup version helpers used by the agent.
@@ -313,5 +348,38 @@ func (a *agent) startupVersion() string {
 func (r *Runner) fatalIf(err error, format string, args ...any) {
 	if err != nil {
 		r.fatalf(format+": "+err.Error(), args...)
+	}
+}
+
+// waitUntilAuthenticated blocks until remoted accepts a signed request from the
+// given agent, or the readiness budget runs out.
+//
+// The probe is a `POST /control` startup, which is exactly what a real agent sends
+// first after enrolling, so it exercises the same signature path the run depends on
+// and leaves the fleet in the state the manager expects. It is one request per run,
+// sent before the measurement clock starts.
+func (r *Runner) waitUntilAuthenticated(ctx context.Context, probe *agent) error {
+	deadline := time.Now().Add(r.readinessBudget())
+	const probeDelay = 2 * time.Second
+	attempts := 0
+	for {
+		attempts++
+		res, err := control.Startup(probe.client, probe.startupVersion(), now())
+		if err == nil {
+			if attempts > 1 {
+				fmt.Printf("remoted accepted the fleet's keys after %d probe(s)\n", attempts)
+			}
+			return nil
+		}
+		if res.Status != 401 {
+			return fmt.Errorf("readiness probe (agent %s) answered %d: %v", probe.id, res.Status, err)
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("remoted still answers 401 for agent %s after %s: it has not reloaded "+
+				"client.keys for this fleet (raise --enroll-settle)", probe.id, r.readinessBudget())
+		}
+		if err := sleepCtx(ctx, probeDelay); err != nil {
+			return err
+		}
 	}
 }
