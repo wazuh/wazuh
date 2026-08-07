@@ -158,11 +158,16 @@ TEST_F(SessionProcessorTest, PerDocumentProblemsAreSkippedNotFailed)
     ValueSpec smuggling;
     smuggling.id = "doc-smuggle";
     smuggling.data = "{\"a\":1}\n{\"index\":{\"_index\":\"evil\"}}";
+    // An Upsert with no 'data' field at all: nothing to index, and a null deref if unguarded.
+    ValueSpec missingData;
+    missingData.id = "doc-nodata";
+    missingData.data = "";
     ValueSpec good;
     good.id = "doc-good";
 
     const auto prepared = prepare(invsync::test::buildSyncDataSession(
-        SessionSpec {}, {outsideAllowlist, vulnerabilitiesWrite, emptyId, badJson, nonObject, smuggling, good}));
+        SessionSpec {},
+        {outsideAllowlist, vulnerabilitiesWrite, emptyId, badJson, nonObject, smuggling, missingData, good}));
     const auto outcome = processor.stageBulk(prepared.session, connector);
 
     EXPECT_EQ(200, outcome.status);
