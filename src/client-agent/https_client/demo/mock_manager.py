@@ -134,9 +134,10 @@ class Handler(BaseHTTPRequestHandler):
     def _log_tls_once(self):
         """Print what the handshake actually negotiated, once per connection.
 
-        This is the observable half of <ssl><ciphers> and <ssl><certificate>/<key>:
-        the agent's config is only proven to have a runtime effect if the manager
-        can see the suite it picked and the client cert it presented (#38163).
+        This is the observable half of <ssl><certificate>/<key>: the agent's config
+        is only proven to have a runtime effect if the manager can see the client
+        cert it presented. The negotiated suite is logged alongside it so the TLS
+        version in use is visible, not because this demo restricts it (#38163).
         """
         if getattr(self, "_tls_logged", False):
             return
@@ -396,31 +397,33 @@ def main():
     parser.add_argument("--cert", required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
-    # The two below exist for the connection/config validation (#38163): the agent's
-    # <ssl><certificate>/<key> and <ssl><ciphers> can only be shown to have a runtime
-    # effect against a manager that actually demands a client cert / restricts the suites.
+    # Exists for the connection/config validation (#38163): the agent's
+    # <ssl><certificate>/<key> can only be shown to have a runtime effect against a
+    # manager that actually demands a client certificate.
     parser.add_argument("--client-ca",
                         help="Require a client certificate and verify it against this CA "
                              "(mutual TLS). Without it, client certs are not requested.")
-    parser.add_argument("--ciphers",
-                        help="Restrict the suites this manager offers, e.g. "
-                             "'ECDHE-RSA-AES256-GCM-SHA384'. A client whose <ciphers> "
-                             "does not intersect this list fails the handshake.")
     args = parser.parse_args()
 
     Handler.key_hex = args.key_hex
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(args.cert, args.key)
 
+    # Same floor remoted enforces (SSL_CTX_set_min_proto_version in
+    # RestinioHttpServer), so the demo negotiates what a real manager would.
+    #
+    # There is deliberately no --ciphers here. Restricting the suites would mean
+    # SSL_CTX_set_ciphersuites(), which Python's ssl module does not expose:
+    # set_ciphers() governs TLS 1.2 and below only and rejects 1.3 suite names
+    # outright. The one way to make a restriction observable was to cap the
+    # server at TLS 1.2, which an agent that requires 1.3 can no longer reach --
+    # the handshake would fail before any suite was chosen. <ssl><ciphers> is
+    # therefore validated against a real manager, not here.
+    context.minimum_version = ssl.TLSVersion.TLSv1_3
+
     if args.client_ca:
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_verify_locations(args.client_ca)
-
-    if args.ciphers:
-        # TLS 1.3 suites are negotiated separately and set_ciphers() does not
-        # constrain them, so pin to 1.2 to make the restriction observable.
-        context.maximum_version = ssl.TLSVersion.TLSv1_2
-        context.set_ciphers(args.ciphers)
 
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.requires_client_cert = bool(args.client_ca)
@@ -428,7 +431,7 @@ def main():
     log(f"HTTPS manager on https://127.0.0.1:{args.port} "
         f"(agent key {args.key_hex[:8]}..)")
     log(f"     mutual TLS: {'required, CA ' + args.client_ca if args.client_ca else 'not requested'}")
-    log(f"     ciphers:    {args.ciphers if args.ciphers else 'default (unrestricted)'}")
+    log(f"     min TLS:    1.3")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
