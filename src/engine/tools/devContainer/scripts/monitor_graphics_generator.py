@@ -18,8 +18,10 @@ Usage:
         -o ./comparison_charts
 
 Expected files in each results directory:
-    bench.csv     ->  timestamp, elapsed_s, messages_sent, sessions_started,
-                      sessions_completed, sessions_failed, messages_dropped
+    bench.csv     ->  the sender's per-second CUMULATIVE counters
+                      (sessions_sent, sessions_ok, sessions_503, documents_sent,
+                      session_latency_ms_p50/p99, ...) - see
+                      tools/manager_benchmark/tool_simulator/docu/09-metrics-and-output.md
     monitor.csv   ->  timestamp, elapsed_s, cpu_pct, rss_mb, vms_mb,
                       fds, threads, read_bytes, write_bytes
 """
@@ -340,12 +342,27 @@ MONITOR_METRICS = [
     ("write_bytes", "Cumulative Bytes Written",  "Bytes"),
 ]
 
+# The sender's bench.csv (docu/09-metrics-and-output.md). Every count column is
+# CUMULATIVE, so these plot as rising curves and a run's total is the LAST value,
+# never the sum of the column.
 BENCH_METRICS = [
-    ("messages_sent",       "Messages Sent / s",       "Count"),
-    ("sessions_started",    "Sessions Started / s",     "Count"),
-    ("sessions_completed",  "Sessions Completed / s",   "Count"),
-    ("sessions_failed",     "Sessions Failed / s",      "Count"),
-    ("messages_dropped",    "Messages Dropped / s",     "Count"),
+    ("agents_active",         "Agents Active",                    "Agents"),
+    ("sessions_sent",         "Sessions Sent (cumulative)",       "Count"),
+    ("sessions_ok",           "Sessions 200 (cumulative)",        "Count"),
+    ("sessions_503",          "Sessions 503 (cumulative)",        "Count"),
+    ("sessions_500",          "Sessions 500 (cumulative)",        "Count"),
+    ("sessions_400",          "Sessions 400 (cumulative)",        "Count"),
+    ("sessions_403",          "Sessions 403 (cumulative)",        "Count"),
+    ("sessions_401",          "Sessions 401 (cumulative)",        "Count"),
+    ("documents_sent",        "Documents Sent (cumulative)",      "Count"),
+    ("bytes_sent",            "Bytes Sent (cumulative)",          "Bytes"),
+    ("transport_errors",      "Transport Errors (cumulative)",    "Count"),
+    ("retries_feed",          "Feed Retries (cumulative)",        "Count"),
+    ("stateless_sent",        "Engine Batches Sent (cumulative)", "Count"),
+    ("events_sent",           "Engine Events Sent (cumulative)",  "Count"),
+    ("control_notify_ok",     "Control Notify OK (cumulative)",   "Count"),
+    ("session_latency_ms_p50", "Session Latency p50",             "ms"),
+    ("session_latency_ms_p99", "Session Latency p99",             "ms"),
 ]
 
 # inventory_sync_server. Counters are cumulative for the module's lifetime, so
@@ -678,6 +695,8 @@ def generate_charts(
     # -- Bench time-series ---------------------------------------------------
     if benches:
         for col, title_suffix, ylabel in BENCH_METRICS:
+            if not any(col in df.columns for df in benches.values()):
+                continue
             out = os.path.join(out_dir, f"bench_{col}.{fmt}")
             plot_timeseries(
                 benches, col,
@@ -685,16 +704,17 @@ def generate_charts(
                 ylabel, out,
             )
 
-        # Sent vs completed per run — stacked subplots, smoothed sessions/s
-        plot_stacked_timeseries(
-            benches,
-            "messages_sent", "sessions_completed",
-            "Messages sent / s", "Sessions completed / s",
-            "Messages / s", "Sessions / s",
-            "Messages Sent vs Sessions Completed",
-            os.path.join(out_dir, f"bench_sent_vs_completed.{fmt}"),
-            smooth_b_window=5,
-        )
+        # Sent vs accepted per run. Both cumulative, so the gap between the two
+        # curves is what did not get a 200.
+        if any("sessions_sent" in df.columns for df in benches.values()):
+            plot_stacked_timeseries(
+                benches,
+                "sessions_sent", "sessions_ok",
+                "Sessions sent (cumulative)", "Sessions answered 200 (cumulative)",
+                "Count", "Count",
+                "Sessions Sent vs Answered 200",
+                os.path.join(out_dir, f"bench_sent_vs_ok.{fmt}"),
+            )
 
     # -- Remoted API time-series --------------------------------------------
     if remoted_dfs:
@@ -883,38 +903,44 @@ def generate_charts(
         labels = list(benches.keys())
         colors = [run_color(i) for i in range(len(labels))]
 
-        # Total sessions completed
-        total_completed = [
-            int(df["sessions_completed"].sum()) for df in benches.values()
-        ]
-        plot_bar(labels, total_completed, colors,
-                 "Total Sessions Completed", "Sessions",
-                 os.path.join(out_dir, f"summary_sessions_completed.{fmt}"))
+        # bench.csv counters are CUMULATIVE, so a run's total is the last row --
+        # summing the column would add every intermediate reading and inflate the
+        # number by roughly the row count.
+        def bench_total(df: pd.DataFrame, col: str) -> int:
+            if col not in df.columns:
+                return 0
+            series = pd.to_numeric(df[col], errors="coerce").dropna()
+            return int(series.iloc[-1]) if len(series) else 0
 
-        # Total messages sent
-        total_sent = [int(df["messages_sent"].sum()) for df in benches.values()]
-        plot_bar(labels, total_sent, colors,
-                 "Total Messages Sent", "Messages",
-                 os.path.join(out_dir, f"summary_messages_sent.{fmt}"))
-
-        # Total dropped
-        total_dropped = [
-            int(df["messages_dropped"].sum()) for df in benches.values()
-        ]
-        if any(d > 0 for d in total_dropped):
-            plot_bar(labels, total_dropped, colors,
-                     "Total Messages Dropped", "Messages",
-                     os.path.join(out_dir, f"summary_messages_dropped.{fmt}"))
+        for col, title, ylabel, only_if_nonzero in (
+            ("sessions_sent",    "Total Sessions Sent",        "Sessions", False),
+            ("sessions_ok",      "Total Sessions Answered 200", "Sessions", False),
+            ("documents_sent",   "Total Documents Sent",       "Documents", False),
+            ("sessions_503",     "Total Sessions Shed (503)",  "Sessions", True),
+            ("sessions_500",     "Total Sessions Failed (500)", "Sessions", True),
+            ("transport_errors", "Total Transport Errors",     "Errors", True),
+            ("events_sent",      "Total Engine Events Sent",   "Events", True),
+        ):
+            totals = [bench_total(df, col) for df in benches.values()]
+            if only_if_nonzero and not any(t > 0 for t in totals):
+                continue
+            if not any(t > 0 for t in totals):
+                continue
+            plot_bar(labels, totals, colors, title, ylabel,
+                     os.path.join(out_dir, f"summary_{col}.{fmt}"))
 
     # -- Combined overlay: RSS + sessions on dual y-axis ---------------------
-    if monitors and benches:
-        for label in monitors:
-            if label in benches:
+    # Keyed off modulesd_dfs, not monitors: in the per-process layout `monitors`
+    # is keyed "<label>/<process>" while `benches` is keyed "<label>", so pairing
+    # them by label never matched and this chart silently never appeared.
+    if modulesd_dfs and benches:
+        for label in modulesd_dfs:
+            if label in benches and "sessions_ok" in benches[label].columns:
                 out = os.path.join(
                     out_dir,
                     f"combined_rss_sessions_{label.replace(' ', '_')}.{fmt}",
                 )
-                _plot_combined(monitors[label], benches[label], label, out)
+                _plot_combined(modulesd_dfs[label], benches[label], label, out)
 
     # -- Combined overlay: RSS + inventory_sync_server queue depth -----------
     # Overlays the module's own queue gauges with modulesd RSS to show
@@ -1228,21 +1254,25 @@ def _plot_combined(
     pad = max((rss_max - rss_min) * 0.1, 0.5)
     ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
 
-    # Panel 2 — Sessions completed per second, with 5s rolling mean overlay.
-    raw  = bench_df["sessions_completed"]
+    # Panel 2 — Sessions per second. bench.csv counts are cumulative, so the rate
+    # is their first difference; plotting the counter itself here would just draw
+    # a rising line and say nothing about throughput over time.
+    cumulative = pd.to_numeric(bench_df["sessions_ok"], errors="coerce")
+    raw = cumulative.diff().fillna(cumulative.iloc[0] if len(cumulative) else 0)
+    raw = raw.clip(lower=0)  # a counter never decreases; guard against a reset
     smooth_window = 5
     avg  = _rolling(raw, smooth_window)
 
     ax2.plot(bench_df["elapsed_s"], raw,
              color=COLORS[2], linewidth=0.8, alpha=0.30,
-             label="Sessions completed / s (raw)")
+             label="Sessions 200 / s (raw)")
     ax2.plot(bench_df["elapsed_s"], avg,
              color=COLORS[2], linewidth=1.8, alpha=1.0,
-             label=f"Sessions completed / s (rolling avg, w={smooth_window})")
+             label=f"Sessions 200 / s (rolling avg, w={smooth_window})")
     ax2.fill_between(bench_df["elapsed_s"], avg,
                      alpha=0.15, color=COLORS[2])
     ax2.set_xlabel("Elapsed time (s)")
-    ax2.set_ylabel("Sessions completed / s")
+    ax2.set_ylabel("Sessions 200 / s")
     ax2.legend(loc="upper right", fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))

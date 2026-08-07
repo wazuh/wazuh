@@ -268,8 +268,15 @@ fi
 if $DO_CHARTS && [[ -f "$GRAPHICS_PY" && -d "$MONITOR_DIR" ]]; then
     echo ""
     echo "Generating charts..."
-    "$PYTHON" "$GRAPHICS_PY" -r "$RESULTS_DIR::$LABEL" -o "$RESULTS_DIR/charts" --format png \
-        || echo "  (chart generation skipped — matplotlib needed)"
+    # Do not blame matplotlib for every failure: a missing dependency and a real
+    # error in the generator look nothing alike, and conflating them sent a
+    # KeyError traceback out under the message "matplotlib needed".
+    if ! "$PYTHON" -c 'import matplotlib, pandas' 2>/dev/null; then
+        echo "  (charts skipped — matplotlib/pandas not installed)"
+    elif ! "$PYTHON" "$GRAPHICS_PY" -r "$RESULTS_DIR::$LABEL" -o "$RESULTS_DIR/charts" --format png; then
+        echo "  WARNING: chart generation failed (see the traceback above)." >&2
+        echo "  The run's data is intact in $RESULTS_DIR; only the charts are missing." >&2
+    fi
 fi
 
 # 7. Optional post-run cleanup.
