@@ -150,6 +150,23 @@ TEST(SyncEndpointTest, AMissingAgentIdHeaderIs400)
     EXPECT_EQ(400, responder->captured->status);
 }
 
+/**
+ * The transport hands the handler whatever it parsed, and a null request means it parsed nothing.
+ * The handler must answer rather than dereference it: this is the one input it cannot inspect at
+ * all, so it is also the one where a missing guard is a crash instead of a wrong status.
+ */
+TEST(SyncEndpointTest, ANullRequestIs400)
+{
+    HandlerUnderTest fixture;
+    auto responder = std::make_shared<CapturingResponder>();
+
+    fixture.handler(nullptr, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(400, responder->captured->status);
+    EXPECT_NE(std::string::npos, responder->captured->body.find("Empty request"));
+}
+
 TEST(SyncEndpointTest, AnEmptyBodyIs400)
 {
     HandlerUnderTest fixture;
@@ -271,6 +288,88 @@ TEST(SyncEndpointTest, AVDSessionAgainstAFullLaneGets503ScanCapacity)
     fixture.events->openScanGate();
     EXPECT_EQ(200, first->await().status);
     EXPECT_EQ(200, queued->await().status);
+}
+
+/**
+ * Every dependency is held WEAKLY so the facade's stop() is genuinely destructive. Losing the
+ * scanner or the lane means the module is going down, and the session must be shed with a 503 --
+ * never processed against half-torn-down state, and never crashed on a null lock().
+ */
+TEST(SyncEndpointTest, AVDSessionAfterTheLaneAndScannerAreGoneIs503)
+{
+    HandlerUnderTest fixture;
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDSync;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    // The lane owns a strong reference to the scanner, so both have to go for the weak_ptrs to
+    // expire -- which is exactly the order stop() tears them down in.
+    fixture.lane->stop();
+    fixture.lane.reset();
+    fixture.scanner.reset();
+
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(body), responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(503, responder->captured->status);
+    EXPECT_TRUE(fixture.events->syncOps().empty());
+}
+
+/// A lane that is still alive but already stopping refuses admission; the handler owns that answer.
+TEST(SyncEndpointTest, AVDSessionAgainstAStoppingLaneIs503)
+{
+    HandlerUnderTest fixture;
+    fixture.lane->stop();
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    auto responder = std::make_shared<CapturingResponder>();
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}})), responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(503, responder->captured->status);
+    EXPECT_EQ(1, responder->sendCount) << "a refused admission is answered exactly once, by the handler";
+}
+
+/**
+ * The admission connector gone is stop() clearing it, which is a DIFFERENT condition from an
+ * indexer outage even though both answer 503: this one is terminal, so nothing is queued behind it.
+ */
+TEST(SyncEndpointTest, ASessionAfterTheAdmissionConnectorIsGoneIs503)
+{
+    // A handler of its own: HandlerUnderTest's pipeline keeps a strong reference to the connector,
+    // so the weak_ptr can only expire if this test owns the only other one.
+    auto events = std::make_shared<ConnectorEvents>();
+    auto registry = std::make_shared<invsync::vd::AgentInFlightRegistry>();
+    auto scanner =
+        std::static_pointer_cast<invsync::vd::IVdScanner>(std::make_shared<invsync::test::FakeVdScanner>(events));
+    auto pipeline = std::make_shared<invsync::sync::SyncPipeline>(
+        invsync::sync::SyncPipelineConfig {},
+        std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+            std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
+        CLUSTER,
+        registry);
+    auto lane = std::make_shared<invsync::vd::VdScanLane>(
+        invsync::vd::VdScanLaneConfig {},
+        scanner,
+        std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+            std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
+        registry,
+        CLUSTER);
+
+    std::shared_ptr<invsync::indexer::IIndexerConnectorSync> admission {
+        std::make_shared<FakeIndexerConnectorSync>(events, "admission")};
+    auto handler = invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+        pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, "test-node", false}, 60, lane, scanner});
+    admission.reset(); // stop() clearing the connector
+
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(makeRequest(validDelta()), responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(503, responder->captured->status);
+    EXPECT_TRUE(events->syncOps().empty()) << "a terminal 503 queues nothing";
 }
 
 TEST(SyncEndpointTest, AnUnavailableIndexerShedsAtAdmission)

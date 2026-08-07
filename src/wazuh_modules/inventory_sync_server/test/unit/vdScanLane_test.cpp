@@ -402,6 +402,57 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
     EXPECT_TRUE(fixture.registry->isFree("001"));
 }
 
+/**
+ * The scan succeeded, the INDEXING did not. That is not a scan failure and must not be reported as
+ * one: the outcome depends on whether the connector still considers itself usable, because the two
+ * answers mean different things to the agent. A reachable indexer failing one bulk is OUR problem
+ * (500); an unreachable one is a transient outage the agent should back off from (503).
+ *
+ * Either way the lane must flush whatever it had staged before answering -- the re-POST re-stages
+ * the whole session, so leftover partial staging would be indexed twice.
+ */
+TEST(VdScanLaneTest, IndexingFailingAfterAGoodScanAnswers500WhileTheIndexerLooksHealthy)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "bulkIndex";
+    }
+    fixture.events->m_syncAvailable.store(true);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(500, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("Internal error"));
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_FALSE(ops.empty());
+    EXPECT_EQ("scan", std::get<0>(ops[0])) << "the scan ran and passed; only the indexing broke";
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "partial staging is drained before answering";
+
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }))
+        << "a failed session must still release the agent, or it is fenced forever";
+}
+
+TEST(VdScanLaneTest, IndexingFailingWithAnUnavailableIndexerAnswers503)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "bulkIndex";
+    }
+    fixture.events->m_syncAvailable.store(false);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
+}
+
 TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
 {
     LaneUnderTest fixture;
