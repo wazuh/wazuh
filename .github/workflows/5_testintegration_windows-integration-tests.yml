@@ -191,6 +191,57 @@ jobs:
             exit $pytestExitCode
           }
       # ================= RESULTS =================
+      - name: Dump wazuh-agent logs on failure
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Write-Host "=== Service status ==="
+          try {
+            Get-Service -Name wazuhsvc -ErrorAction Stop | Format-List *
+          } catch {
+            Write-Host "Could not query the wazuhsvc service: $_"
+          }
+
+          Write-Host "=== ossec-agent install directory ==="
+          try {
+            Get-ChildItem -Path "C:\Program Files (x86)\ossec-agent" -Recurse -ErrorAction Stop |
+              Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize
+          } catch {
+            Write-Host "Could not list the install directory: $_"
+          }
+
+          Write-Host "=== ossec.log ==="
+          try {
+            $logPath = "C:\Program Files (x86)\ossec-agent\ossec.log"
+            if (Test-Path -LiteralPath $logPath) {
+              Get-Content -Path $logPath -Tail 200 -ErrorAction Stop
+            } else {
+              Write-Host "ossec.log does not exist at $logPath"
+            }
+          } catch {
+            Write-Host "Could not read ossec.log: $_"
+          }
+
+          Write-Host "=== Application event log entries for wazuh-agent.exe ==="
+          try {
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error' } -ErrorAction Stop |
+              Where-Object { $_.Message -match 'wazuh-agent' } |
+              Select-Object -First 20 |
+              Format-List TimeCreated, Message
+          } catch {
+            Write-Host "No Application Error events found or query failed: $_"
+          }
+
+          Write-Host "=== System event log entries for the wazuhsvc service ==="
+          try {
+            Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager' } -ErrorAction Stop |
+              Where-Object { $_.Message -match 'wazuh' } |
+              Select-Object -First 20 |
+              Format-List TimeCreated, Id, Message
+          } catch {
+            Write-Host "No Service Control Manager events found or query failed: $_"
+          }
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: ./.github/actions/upload_s3_artifact
