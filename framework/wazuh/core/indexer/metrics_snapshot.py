@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from jsonschema import ValidationError, validate
 
 from wazuh.core import common
-from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb_http import get_wdb_http_client
@@ -336,12 +335,19 @@ class MetricsSnapshotTasks:
 
         register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
 
+        # Agent ids are conventionally zero-padded to 3 digits everywhere else in the
+        # framework (see wazuh.core.agent). The /agents/all HTTP endpoint returns a raw
+        # int64, so pad it here to keep this index's `wazuh.agent.id` correlatable with
+        # every other Wazuh index (alerts, vulnerabilities, agent API).
+        raw_id = doc.get("id")
+        agent_id = str(raw_id).zfill(3) if raw_id is not None else None
+
         return MetricsSnapshotTasks._drop_none(
             {
                 "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
                 "wazuh": {
                     "agent": {
-                        "id": doc.get("id"),
+                        "id": agent_id,
                         "name": doc.get("name"),
                         "version": doc.get("version"),
                         "groups": doc.get("group", []),

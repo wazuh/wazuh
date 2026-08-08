@@ -99,7 +99,7 @@ namespace remoted::common
             try
             {
                 const auto json = nlohmann::json::parse(res->body);
-                const uint64_t offset = json.value("offset", 0);
+                const uint64_t offset = json.value<uint64_t>("offset", 0);
                 return {true, offset};
             }
             catch (const std::exception& e)
