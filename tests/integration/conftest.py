@@ -865,7 +865,10 @@ def authd_simulator() -> AuthdSimulator:
         AuthdSimulator: An instance of the AuthdSimulator.
 
     """
-    authd = AuthdSimulator()
+    # Same reasoning as the autostart_simulators fixture above: the default secret
+    # ('SuperSecretKey') is not valid hex, so the HTTPS client's AES-CMAC validation
+    # rejects a key enrolled through it.
+    authd = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
     authd.start()
 
     yield authd
@@ -942,7 +945,13 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     create_remoted = "remoted_simulator" not in request.fixturenames
 
     if services.get_service() is not WAZUH_MANAGER:
-        authd = AuthdSimulator() if create_authd else None
+        # AuthdSimulator's default secret ('SuperSecretKey') is not valid hex, so a fresh
+        # agent that auto-enrolls against it (empty client.keys, autoenrollment enabled)
+        # receives a key the HTTPS client's AES-CMAC validation rejects (32/48/64 hex chars
+        # expected; bridge_build_config(), https_client_bridge.c) -- the https_client then
+        # refuses to start, and the startup gate never releases. Pass a valid 32-hex-char
+        # (AES-128) secret instead so this default auto-enrollment path actually works.
+        authd = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6') if create_authd else None
         remoted = RemotedSimulator() if create_remoted else None
 
         authd.start() if create_authd else None
