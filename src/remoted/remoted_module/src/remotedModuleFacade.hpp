@@ -450,6 +450,9 @@ private:
         // thread and the wdb/task client workers) before startHttpServer() threw further down.
         // Reset it here so those threads join before the next retry constructs a fresh one.
         m_controlHandler.reset();
+        // Same lifecycle concern as m_controlHandler above: ScanVdHandlerImpl's ctor spins up
+        // its own worker thread pool, which must be joined before the next retry replaces it.
+        m_scanVdHandler.reset();
         if (m_downstreamClient)
         {
             m_downstreamClient->stop();
