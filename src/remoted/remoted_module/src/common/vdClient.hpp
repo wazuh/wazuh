@@ -28,11 +28,13 @@ namespace remoted::common
     {
     public:
         /**
-         * @param socketUri VD module UDS endpoint, as an httplib URI (e.g.
-         * "unix://queue/sockets/modulesd"). Defaults to the real modulesd socket; overridable so
+         * @param socketPath VD module UDS endpoint, as a raw filesystem path (e.g.
+         * "/queue/sockets/modulesd") -- NOT a "unix://" URI; httplib::Client's single-string
+         * constructor only parses http(s) URLs, so the path is passed as-is together with
+         * set_address_family(AF_UNIX). Defaults to the real modulesd socket; overridable so
          * tests can point this at a fake server instead.
          */
-        explicit VdClient(std::string socketUri = "unix://queue/sockets/modulesd");
+        explicit VdClient(std::string socketPath = "/queue/sockets/modulesd");
         ~VdClient() = default;
 
         /**
@@ -56,7 +58,7 @@ namespace remoted::common
 
         QueryResult queryVdModule() const;
 
-        std::string m_socketUri;
+        std::string m_socketPath;
         mutable std::mutex m_mutex;
         uint64_t m_cachedOffset;
         bool m_hasValue;
