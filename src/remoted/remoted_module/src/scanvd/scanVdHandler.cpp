@@ -75,10 +75,10 @@ namespace remoted::scanvd
     public:
         Impl(std::shared_ptr<remoted::common::VdClient> vdClient,
              ScanVdMetrics& metrics,
-             std::string vdModulesdSocketUri)
+             std::string vdModulesdSocketPath)
             : m_vdClient(std::move(vdClient))
             , m_metrics(metrics)
-            , m_vdModulesdSocketUri(std::move(vdModulesdSocketUri))
+            , m_vdModulesdSocketPath(std::move(vdModulesdSocketPath))
             , m_stopping(false)
         {
             startWorkerThread();
@@ -424,7 +424,11 @@ namespace remoted::scanvd
         {
             try
             {
-                httplib::Client client(m_vdModulesdSocketUri);
+                // See vdClient.cpp: httplib::Client's single-string constructor only parses
+                // "http(s)://host[:port]" URLs, so a raw socket path needs set_address_family
+                // (AF_UNIX) to actually be treated as a Unix domain socket.
+                httplib::Client client(m_vdModulesdSocketPath);
+                client.set_address_family(AF_UNIX);
                 client.set_read_timeout(VD_SCAN_READ_TIMEOUT_SECONDS, 0);
                 client.set_write_timeout(VD_SCAN_WRITE_TIMEOUT_SECONDS, 0);
 
@@ -478,7 +482,7 @@ namespace remoted::scanvd
 
         std::shared_ptr<remoted::common::VdClient> m_vdClient;
         ScanVdMetrics& m_metrics;
-        std::string m_vdModulesdSocketUri;
+        std::string m_vdModulesdSocketPath;
         std::atomic<bool> m_stopping;
         std::vector<std::thread> m_workerThreads;
         std::mutex m_queueMutex;
@@ -489,8 +493,8 @@ namespace remoted::scanvd
 
     ScanVdHandlerImpl::ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                                          ScanVdMetrics& metrics,
-                                         std::string vdModulesdSocketUri)
-        : m_impl(std::make_unique<Impl>(std::move(vdClient), metrics, std::move(vdModulesdSocketUri)))
+                                         std::string vdModulesdSocketPath)
+        : m_impl(std::make_unique<Impl>(std::move(vdClient), metrics, std::move(vdModulesdSocketPath)))
     {
     }
 

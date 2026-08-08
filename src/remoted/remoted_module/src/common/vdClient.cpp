@@ -29,8 +29,8 @@ namespace remoted::common
         constexpr uint64_t DEFAULT_CACHE_TTL_SECONDS = 30;
     } // namespace
 
-    VdClient::VdClient(std::string socketUri)
-        : m_socketUri(std::move(socketUri))
+    VdClient::VdClient(std::string socketPath)
+        : m_socketPath(std::move(socketPath))
         , m_cachedOffset(0)
         , m_hasValue(false)
         , m_cacheTime(std::chrono::steady_clock::time_point::min())
@@ -79,7 +79,13 @@ namespace remoted::common
     {
         try
         {
-            httplib::Client client(m_socketUri);
+            // httplib::Client's single-string constructor only parses "http(s)://host[:port]"
+            // URLs -- a raw filesystem path (with embedded '/') does not match its scheme/host
+            // regex and silently falls back to treating the whole string as a DNS hostname.
+            // set_address_family(AF_UNIX) is what actually tells httplib to treat the path as a
+            // Unix domain socket.
+            httplib::Client client(m_socketPath);
+            client.set_address_family(AF_UNIX);
             client.set_read_timeout(1, 0);
             client.set_write_timeout(1, 0);
 
