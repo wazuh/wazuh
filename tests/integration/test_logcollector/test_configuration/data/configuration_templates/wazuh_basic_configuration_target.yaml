@@ -13,3 +13,16 @@
             value: 'LOG_FORMAT'
         - target:
             value: 'TARGET'
+
+    - section: client
+      elements:
+        - manager:
+            elements:
+              - address:
+                  value: '127.0.0.1'
+              - port:
+                  value: '1514'
+        - ssl:
+            elements:
+              - verification_mode:
+                  value: 'none'

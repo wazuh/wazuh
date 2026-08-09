@@ -35,6 +35,25 @@ def build_tc_config(tc_conf_list):
             }
             sections.append(section)
 
+        # These tests never set up their own AuthdSimulator/RemotedSimulator, so they rely on
+        # the autouse fixture's defaults (tests/integration/conftest.py); its RemotedSimulator
+        # presents a self-signed certificate, and the default TLS verification_mode (full)
+        # rejects it without a CA -- disable it, same as test_agentd's wazuh_conf.yaml does.
+        # set_section_wazuh_conf() (qa-integration-framework) clears the whole <client> section
+        # before rewriting it, so the <server> address/port from the factory ossec.conf would be
+        # wiped out too unless re-declared here -- without it the agent hard-exits at startup
+        # (agt->server is NULL, client-agent/src/main.c).
+        sections.append({
+            "section": "client",
+            "elements": [
+                {"manager": {"elements": [
+                    {"address": {"value": "127.0.0.1"}},
+                    {"port": {"value": "1514"}}
+                ]}},
+                {"ssl": {"elements": [{"verification_mode": {"value": "none"}}]}}
+            ]
+        })
+
         config_list.append({"sections": sections})
 
     return config_list

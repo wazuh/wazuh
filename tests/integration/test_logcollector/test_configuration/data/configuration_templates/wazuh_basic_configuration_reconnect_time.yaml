@@ -7,3 +7,16 @@
             value: 'LOG_FORMAT'
         - reconnect_time:
             value: 'RECONNECT_TIME'
+
+    - section: client
+      elements:
+        - manager:
+            elements:
+              - address:
+                  value: '127.0.0.1'
+              - port:
+                  value: '1514'
+        - ssl:
+            elements:
+              - verification_mode:
+                  value: 'none'
