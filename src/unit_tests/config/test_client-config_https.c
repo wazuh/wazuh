@@ -678,6 +678,27 @@ static void test_batch_zero_size_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+static void test_batch_size_beyond_the_cap_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Above a gigabyte the value stops being useful and starts being dangerous:
+     * a 32-bit agent's size_t wraps past 4 GiB, and 4 GiB exactly wraps to zero,
+     * which every reader downstream takes as "unset". */
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<batch><size>2GB</size></batch>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'size': 2GB.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_batch_interval_beyond_a_day_is_rejected(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -815,6 +836,45 @@ static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void **
     write_conf("<ossec_config><agent>"
                "<server><address>10.0.0.1</address></server>"
                "</agent></ossec_config>");
+
+    w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
+
+    assert_int_equal(batch.size, 777);
+    assert_int_equal(batch.interval, 42);
+
+    remove(BATCH_TEST_CONF);
+}
+
+static void test_read_agent_batch_applies_the_local_file_with_no_shared_one(void **state) {
+    agent_batch batch = {0};
+
+    /* Most agents have never been pushed an agent.conf. The reader must treat that
+     * as "nothing centralized to add", not as a failed read that discards the local
+     * block along with it. */
+    write_conf("<ossec_config><agent>"
+               "<batch><size>3MB</size></batch>"
+               "</agent></ossec_config>");
+
+    w_read_agent_batch(BATCH_TEST_CONF, "/tmp/test_client-config_https_no_shared.conf", &batch);
+
+    assert_int_equal(batch.size, 3 * 1024 * 1024);
+
+    remove(BATCH_TEST_CONF);
+}
+
+static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(void **state) {
+    agent_batch batch = { .size = 777, .interval = 42 };
+
+    /* Read_Agent_Batch assigns each limit as it walks it, so by the time the bad
+     * element is reached the size is already in the struct. Nothing may reach the
+     * caller: a configuration the agent refuses must not be half-applied in the
+     * daemons that only borrow it. */
+    write_conf("<ossec_config><agent>"
+               "<batch><size>3MB</size><nonsense>1</nonsense></batch>"
+               "</agent></ossec_config>");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'nonsense'.");
 
     w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
 
@@ -1029,6 +1089,8 @@ int main(void) {
         cmocka_unit_test(test_agent_invalid_tag_is_rejected),
         cmocka_unit_test(test_read_agent_batch_takes_the_limits_from_the_file),
         cmocka_unit_test(test_read_agent_batch_leaves_the_caller_defaults_when_absent),
+        cmocka_unit_test(test_read_agent_batch_applies_the_local_file_with_no_shared_one),
+        cmocka_unit_test(test_read_agent_batch_applies_nothing_when_the_block_is_rejected),
         cmocka_unit_test(test_read_agent_batch_survives_a_missing_file),
         cmocka_unit_test(test_shared_batch_is_parsed),
         cmocka_unit_test(test_shared_batch_is_validated_like_a_local_one),
@@ -1037,6 +1099,7 @@ int main(void) {
         cmocka_unit_test(test_batch_is_unset_when_absent),
         cmocka_unit_test(test_batch_size_without_a_suffix_is_bytes),
         cmocka_unit_test(test_batch_zero_size_is_rejected),
+        cmocka_unit_test(test_batch_size_beyond_the_cap_is_rejected),
         cmocka_unit_test(test_batch_interval_beyond_a_day_is_rejected),
         cmocka_unit_test(test_batch_invalid_tag_is_rejected),
         cmocka_unit_test(test_reports_are_off_when_absent),
