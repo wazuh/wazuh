@@ -33,7 +33,7 @@ func main() {
 		// Session-level timing knobs (start_ack_timeout, end_ack_timeout,
 		// end_ack_processing_timeout, post_data_delay) are scenario-only.
 		// Set them per-step or via `defaults:` in the scenario JSON.
-		keepaliveInterval = flag.Duration("keepalive-interval", 20*time.Second, "How often each agent emits a control-message keepalive (`#!-<JSON>`). Matches the real agent's NOTIFY_TIME default. Pass 0s to disable keepalives entirely (the initial startup + final shutdown frames are still sent).")
+		keepaliveInterval = flag.Duration("keepalive-interval", 10*time.Second, "How often each agent emits a control-message keepalive (`#!-<JSON>`). Matches the real agent's NOTIFY_TIME default. Pass 0s to disable keepalives entirely (the initial startup + final shutdown frames are still sent).")
 		debug             = flag.Bool("debug", false, "Debug logging")
 		reportEngine      = flag.Bool("report-engine", true, "Emit engine_* columns in bench.csv")
 	)

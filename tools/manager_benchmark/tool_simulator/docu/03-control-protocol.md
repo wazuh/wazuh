@@ -120,8 +120,8 @@ above). All four are sender bugs and **MUST** fail the run.
 
 | Knob | Value | Where |
 |---|---|---|
-| Real agent keepalive interval | **20 s** by default | `NOTIFY_TIME` in `src/shared/include/defs.h`, overridable with `<client><notify_time>` |
-| Sender default | **20 s**, `--keepalive-interval` | Matches the agent so a fleet of N produces the real N/20 requests per second |
+| Real agent keepalive interval | **10 s** by default | `NOTIFY_TIME` in `src/shared/include/defs.h`, overridable with `<agent><notify_time>` |
+| Sender default | **10 s**, `--keepalive-interval` | Matches the agent so a fleet of N produces the real N/10 requests per second |
 | Manager write throttle | **60 s** | `kKeepaliveThrottleSec`: how often a `notify` actually writes to wazuh-db |
 | Manager groups refresh | **60 s** | `kGroupsRefreshIntervalSec` |
 
