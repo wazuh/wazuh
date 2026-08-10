@@ -4,6 +4,7 @@
 
 import ipaddress
 import json
+import logging
 import re
 import threading
 from base64 import b64encode
@@ -47,6 +48,8 @@ detect_wrong_lines = re.compile(r"(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)")
 detect_valid_lines = re.compile(
     r"^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)", re.MULTILINE
 )
+
+logger = logging.getLogger('wazuh')
 
 mutex = threading.Lock()
 lock_file = None
@@ -167,9 +170,17 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         for item in query_results["items"]:
             if "version" in item:
-                item["version"] = str(
-                    WazuhVersion(item["version"], treat_as_empty=[None, "N/A"])
-                )
+                try:
+                    item["version"] = str(
+                        WazuhVersion(item["version"], treat_as_empty=[None, "N/A"])
+                    )
+                except ValueError:
+                    # An agent can end up with an unparseable version stored in wdb (e.g. remoted
+                    # persists it verbatim when rejecting a malformed startup version). Don't let
+                    # that one row break listing every other agent.
+                    logger.warning("Agent '%s' has an unparseable version '%s', showing it as 'N/A'",
+                                    item.get("id"), item["version"])
+                    item["version"] = "N/A"
 
     def _filter_date(self, date_filter: dict, filter_db_name: str):
         """Add date filter to the Wazuh query."""
