@@ -88,7 +88,7 @@ namespace invsync::vd
         /**
          * @brief Stop: answer 503 to everything queued and join the workers.
          *
-         * A scan ALREADY RUNNING cannot be aborted -- VD's runScan has no cancellation point -- so
+         * A scan ALREADY RUNNING cannot be aborted; it is the caller's responsibility so
          * stop() waits for it (same exposure the legacy module had on its completion thread; the
          * risk window is one scan). Everything not yet dispatched answers 503 immediately.
          * Idempotent.
