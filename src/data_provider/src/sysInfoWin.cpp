@@ -1000,14 +1000,24 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
 namespace
 {
-    /// @brief RAII per-thread COM initializer for the syscollector hotfixes collector.
+    /// @brief Per-thread COM initializer for the syscollector hotfixes collector.
     ///
     /// getHotfixes() runs on syscollector's single long-lived scan thread, so COM is
     /// initialized once per thread (issue #37655) instead of on every scan cycle: a
     /// per-cycle CoInitializeEx/CoUninitialize churns the COM/RPC infrastructure (notably
-    /// the Windows Update Agent) and leaks ~1 anonymous Event handle per cycle. The
-    /// destructor runs when the thread exits (thread_local storage), balancing the
-    /// CoInitializeEx we own.
+    /// the Windows Update Agent) and leaks ~1 anonymous Event handle per cycle.
+    ///
+    /// This is deliberately *not* an RAII guard: release() must be called explicitly, on
+    /// this thread, before the thread exits -- see SysInfo::releaseThreadResources().
+    /// sysinfo.dll is loaded via LoadLibrary rather than linked statically
+    /// (src/shared/src/sym_load.c), and thread_local destructors are not reliably
+    /// invoked with a valid `this` by the OS/MinGW-emutls at thread exit for a
+    /// dynamically-loaded module. Calling CoUninitialize() from ~ThreadComContext() used
+    /// to fault with a null `this` inside ntdll's own thread-exit teardown, taking the
+    /// whole process down on shutdown once nothing raced past that fault anymore. There
+    /// is deliberately no user-declared destructor here, so this type stays trivially
+    /// destructible: if release() is ever skipped on some exit path, the worst case is a
+    /// leaked COM reference for that thread's remaining lifetime, not a crash.
     class ThreadComContext final
     {
         public:
@@ -1025,7 +1035,7 @@ namespace
 
                     if (SUCCEEDED(hres))
                     {
-                        // We added the reference, so we must balance it on thread exit.
+                        // We added the reference, so we must balance it in release().
                         m_usable = true;
                         m_ownsInit = true;
                     }
@@ -1043,19 +1053,38 @@ namespace
                 return m_usable;
             }
 
-            ~ThreadComContext()
+            /// @brief Balances the CoInitializeEx we own, if any. Must be called
+            /// explicitly on this same thread before the thread exits. Safe to call
+            /// more than once, and safe to skip.
+            void release()
             {
                 if (m_ownsInit)
                 {
                     CoUninitialize();
+                    m_ownsInit = false;
                 }
+
+                m_usable = false;
             }
 
         private:
             bool m_usable {false};
             bool m_ownsInit {false};
     };
+
+    // One instance per thread; in practice there is exactly one (syscollector's own
+    // long-lived Windows scan thread). Deliberately not `static` inside getHotfixes()
+    // any more so releaseThreadResources() can reach the same instance explicitly.
+    thread_local ThreadComContext g_hotfixComContext; // NOLINT(cert-err58-cpp)
 } // namespace
+
+void SysInfo::releaseThreadResources()
+{
+    // Explicit, same-thread replacement for ~ThreadComContext() -- call this from the
+    // syscollector worker thread before it exits, never rely on automatic thread_local
+    // teardown for this object. See the ThreadComContext comment above.
+    g_hotfixComContext.release();
+}
 
 nlohmann::json SysInfo::getHotfixes() const
 {
@@ -1063,13 +1092,8 @@ nlohmann::json SysInfo::getHotfixes() const
     std::ostringstream oss;
     ComHelper comHelper;
 
-    // Initialize COM once per thread instead of per scan cycle (issue #37655). The RAII
-    // guard initializes COM once, retries on transient failure, tolerates COM already
-    // being initialized in another apartment, and balances CoUninitialize when the
-    // collection thread exits.
-    static thread_local ThreadComContext comContext;
-
-    if (comContext.ensureInitialized())
+    // Initialize COM once per thread instead of per scan cycle (issue #37655).
+    if (g_hotfixComContext.ensureInitialized())
     {
         try
         {

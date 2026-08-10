@@ -35,6 +35,12 @@ class ISysInfo
         virtual void packages(std::function<void(nlohmann::json&)>) = 0;
         virtual void processes(std::function<void(nlohmann::json&)>) = 0;
 
+        // Releases any per-thread resources allocated on the calling thread, on the
+        // calling thread, before that thread exits. Must be called explicitly instead of
+        // relying on automatic (e.g. thread_local) teardown, which is not guaranteed to
+        // run correctly for a module loaded dynamically at runtime. Windows-only in
+        // practice (releases hotfixes()' per-thread COM context); a no-op elsewhere.
+        virtual void releaseThreadResources() = 0;
 };
 
 #endif //_SYS_INFO_INTERFACE

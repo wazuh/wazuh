@@ -251,6 +251,11 @@ int fim_manipulated_audit_rules() {
 void clean_rules(void) {
     OSListNode *node;
 
+    /* Also reached before audit_init() built the list, e.g. when Auditd is not running. */
+    if (whodata_directories == NULL) {
+        return;
+    }
+
     w_mutex_lock(&rules_mutex);
 
     atomic_int_set(&audit_thread_active, 0);

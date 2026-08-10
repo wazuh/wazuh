@@ -69,6 +69,10 @@ class SecurityConfigurationAssessment
         /// @brief Releases owned resources after the sync worker thread has exited.
         /// Must be called only after all threads that may use those resources
         /// (in particular the sync worker thread) have been joined.
+        /// @note Every member that holds a copy of m_dBSync must be reset here (currently
+        /// m_syncManager). Missing one keeps the DBSync refcount above zero, so the SQLite
+        /// connection to sca.db is neither committed nor closed and the database stays locked
+        /// for the next process.
         void releaseResources();
 
         /// @copydoc IModule::Name
@@ -268,6 +272,8 @@ class SecurityConfigurationAssessment
         std::shared_ptr<IDBSync> m_dBSync;
 
         /// @brief SCA sync manager (document limits)
+        /// @note Co-owns m_dBSync (it is constructed with a copy of it), so it must be reset in
+        /// releaseResources() for the sca.db connection to actually be closed.
         std::shared_ptr<SCASyncManager> m_syncManager;
 
         /// @brief Function for pushing stateless event messages
