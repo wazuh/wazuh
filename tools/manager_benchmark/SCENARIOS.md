@@ -63,6 +63,25 @@ deliberately does not. Two footnotes from running these against a real manager:
 - The shed-measuring scenarios (`contract_ramp_503`, `contract_vd_saturation`, plus `session_storm`
   and `mega_burst`) set `retry: {"enabled": false}`: the agent-like default retry would convert the
   `503`s they exist to count into eventual `200`s.
+- `contract_ramp_503` was recalibrated against a live 32-core manager (2026-08-10): its original
+  fixed-count design (`repeat_count`, no duration) finished before any backlog could build and
+  produced **zero** `503`s on fast hardware. Two findings from that calibration, verified with a
+  mid-run `GET /metrics` probe of `sync.pipeline.shed.total`:
+  - **Duration alone does not fix it.** Switching to a fixed-duration unpaced flood (like
+    `session_storm`) at the original 80 agents / moderate document size still produced zero
+    shedding at both 20s and 60s — with only 80 agents blocking one request each, the pipeline's
+    admission queue never accumulates enough concurrent bytes regardless of how long the flood runs.
+  - **`session_storm`'s own description is imprecise.** Its massive shedding was confirmed (via the
+    same probe) to come from the indexer-availability path (`!indexer->isAvailable()`), not the
+    pipeline byte-queue gate its description names — and that path is noisy: identical 500-agent /
+    60s runs of a scaled-up `contract_ramp_503` variant produced anywhere from 0% to 82% shed
+    across repeats, with 1000 agents additionally triggering `transport_errors` (uds accept-path
+    saturation) that invalidate the run. Not calibratable to a reliable threshold this way.
+  - The fix that reproduced cleanly (5/5 runs, 79-90% shed) keeps the **original 80 agents**, sizes
+    each session enough (`150 docs × 16 KiB ≈ 2.4 MiB`) that even 80 concurrent in-flight sessions
+    approach the pipeline's 64 MiB admission cap directly, and runs for a fixed 60s so a faster
+    manager simply admits more sessions before any one drains — both self-scaling with hardware,
+    unlike the retired fixed-count design.
 
 | Scenario | Aimed at | `expected` |
 |---|---|---|
@@ -70,7 +89,7 @@ deliberately does not. Two footnotes from running these against a real manager:
 | `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies | all 12 answered `400` |
 | `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
 | `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-sends the same buffer bounded by `--feed-timeout` | all 8 logical sessions end `200`, no budget exhausted (holds cold or warm) |
-| `contract_ramp_503` | The in-flight byte budget (`503` + shed): a big unpaced fleet, retry off. `503`s here are expected backpressure, not a failure | none (load dependent) |
+| `contract_ramp_503` | The pipeline's own admission queue (`sync_queue_bytes`, 64 MiB default) — an 80-agent unpaced fleet of large (~2.4 MiB) sessions for a fixed 60s, retry off. `503`s here are expected backpressure, not a failure | `sessions.s503 >= 1`, no transport errors |
 | `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit | none (load dependent) |
 
 ## Real captured payloads
