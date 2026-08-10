@@ -317,8 +317,7 @@ namespace invsync::vd
 
             // Offset gate: reject a VDFirst/VDSync session built against a feed offset this node
             // doesn't currently have, mirroring /scan/vd's version check on the REST on-demand
-            // path (VD_RESCAN_SOLUTION.md, "Enhanced Flatbuffer Start Structure"). Non-VD sessions
-            // don't carry a meaningful feed_offset, so this only applies to VD ones.
+            // path. Non-VD sessions don't carry a meaningful feed_offset.
             if (item.session.isVD)
             {
                 const auto currentOffset = m_scanner->currentFeedOffset();

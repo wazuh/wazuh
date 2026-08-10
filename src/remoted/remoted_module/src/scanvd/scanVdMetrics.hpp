@@ -17,9 +17,6 @@
 
 namespace remoted::scanvd
 {
-    /// Mirrors remoted::control::ControlMetrics's shape: plain atomic counters, incremented
-    /// inline at each outcome (VD_RESCAN_SOLUTION.md Phase 4: "re-scan request rate per node",
-    /// "version mismatch frequency", "retry rates and patterns").
     struct ScanVdMetrics
     {
         std::atomic<uint64_t> requestsTotal {0};

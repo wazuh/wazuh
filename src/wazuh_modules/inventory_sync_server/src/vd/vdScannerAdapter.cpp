@@ -32,8 +32,7 @@ namespace invsync::vd
      * updates no longer trigger an automatic rescan of every agent; agents detect the offset
      * change themselves and request a targeted rescan via /scan/vd. So every VDFirst/VDSync
      * session runs its own scan unconditionally; occasional overlap with an agent-requested
-     * on-demand scan is a rare, accepted duplicate (see VD_RESCAN_SOLUTION.md's "Duplicate Scan
-     * Handling" section), not a correctness issue.
+     * on-demand scan is a rare, accepted duplicate, not a correctness issue.
      */
     class VdScannerAdapter final : public IVdScanner
     {

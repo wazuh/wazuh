@@ -21,6 +21,7 @@
 #include "stringHelper.h"
 
 #include <gtest/gtest.h>
+#include <json.hpp>
 
 #include <atomic>
 #include <cstdio>
@@ -235,6 +236,66 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetr
     ASSERT_TRUE(response.hasHeader("Retry-After")) << response.raw;
     EXPECT_EQ("77", response.header("Retry-After")) << "the configured value must reach the wire";
     EXPECT_TRUE(m_events->syncOps().empty());
+}
+
+/**
+ * The offset gate over the REAL wire (design doc's /scan/vd version check, mirrored here for
+ * VDFirst/VDSync sessions -- see vdScanLane.cpp's comment right above the check). This is what
+ * vdScanLane_test.cpp already covers by calling VdScanLane::tryEnqueue() directly in C++; this
+ * pair instead sends a real flatbuffer-encoded session over the real UDS socket through the real
+ * facade/routing/decode stack, so a wire-format or routing regression would show up here even if
+ * the direct-call unit tests still passed.
+ */
+TEST_F(StatefulEndpointE2ETest, AVDSessionWithMatchingFeedOffsetIsScannedAndAnswers200OverRealHttp)
+{
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+
+    invsync::test::installFakeVdScanner(m_events);
+    m_events->m_vdCurrentOffset.store(500);
+
+    const auto path = uniqueSocketPath("vdoffsetmatch");
+    const auto config = makeConfig(path);
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    spec.feedOffset = 500;
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
+
+    EXPECT_EQ(200, response.status) << response.body;
+    const auto ops = m_events->syncOps();
+    ASSERT_EQ(2U, ops.size()) << "a matching offset must let the session reach the scanner and the indexer";
+    EXPECT_EQ("scan", std::get<0>(ops[0]));
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
+}
+
+TEST_F(StatefulEndpointE2ETest, AVDSessionWithMismatchedFeedOffsetIsRejectedWith409OverRealHttp)
+{
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+
+    invsync::test::installFakeVdScanner(m_events);
+    m_events->m_vdCurrentOffset.store(500);
+
+    const auto path = uniqueSocketPath("vdoffsetmismatch");
+    const auto config = makeConfig(path);
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    SessionSpec spec;
+    spec.option = invsync::test::fb::Option_VDFirst;
+    spec.feedOffset = 100; // stale relative to m_vdCurrentOffset=500
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
+
+    EXPECT_EQ(409, response.status) << response.body;
+    const auto json = nlohmann::json::parse(response.body);
+    EXPECT_EQ("version_mismatch", json.at("error").get<std::string>());
+    EXPECT_EQ(500u, json.at("current_version").get<uint64_t>());
+    EXPECT_TRUE(m_events->syncOps().empty()) << "a stale-offset VD session must never reach the scanner or the indexer";
 }
 
 TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
