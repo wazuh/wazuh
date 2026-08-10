@@ -47,8 +47,8 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
             "hosts": ["https://localhost:9200"],
             "ssl": {
                 "certificate_authorities": [{"ca": ["etc/certs/root-ca.pem"]}],
-                "certificate": ["etc/certs/manager.pem"],
-                "key": ["etc/certs/manager-key.pem"],
+                "certificate": ["etc/certs/indexer-connector.pem"],
+                "key": ["etc/certs/indexer-connector-key.pem"],
             },
         }
     }
@@ -83,8 +83,8 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
 
     # Verify SSL context was created with resolved paths
     create_ssl_context.assert_called_once_with(
-        "/var/wazuh-manager/etc/certs/manager.pem",
-        "/var/wazuh-manager/etc/certs/manager-key.pem",
+        "/var/wazuh-manager/etc/certs/indexer-connector.pem",
+        "/var/wazuh-manager/etc/certs/indexer-connector-key.pem",
         "/var/wazuh-manager/etc/certs/root-ca.pem",
     )
 

@@ -8,6 +8,6 @@
     <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
     <!-- <ssl_agent_ca></ssl_agent_ca> -->
     <ssl_verify_host>no</ssl_verify_host>
-    <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>
-    <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>
+    <ssl_manager_cert>etc/certs/authd.pem</ssl_manager_cert>
+    <ssl_manager_key>etc/certs/authd-key.pem</ssl_manager_key>
   </auth>

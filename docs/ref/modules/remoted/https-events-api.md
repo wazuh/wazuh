@@ -30,9 +30,9 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
 - **TLS file paths (evaluated after `remoted` enters its chroot):**
-  `etc/https-manager.cert`, `etc/https-manager.key`, and `etc/https-manager-ca.pem` — i.e. host paths
-  `/var/wazuh-manager/etc/https-manager.cert`, `/var/wazuh-manager/etc/https-manager.key`, and
-  `/var/wazuh-manager/etc/https-manager-ca.pem`. These paths are opened by the module itself,
+  `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem`, and `etc/certs/root-ca.pem` — i.e. host paths
+  `/var/wazuh-manager/etc/certs/remoted.pem`, `/var/wazuh-manager/etc/certs/remoted-key.pem`, and
+  `/var/wazuh-manager/etc/certs/root-ca.pem`. These paths are opened by the module itself,
   **after** `remoted` has already dropped root privileges (`Privsep_SetUser()`), so the private
   key (and the CA bundle, when `verification_mode` requires one) must be readable by the
   `wazuh-manager` user `remoted` runs as. Packaging generates and owns the auto-signed pair as
@@ -71,17 +71,17 @@ with no extra configuration). A few things to know before choosing one:
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
-`authd` uses for `sslmanager.cert`/`sslmanager.key` — now shared code, invoked through remoted's
+`authd` uses for `authd.pem`/`authd-key.pem` — now shared code, invoked through remoted's
 own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read it once
 `remoted` drops privileges:
 
 ```bash
 wazuh-manager-remoted -C 365 -B 2048 \
-  -K /var/wazuh-manager/etc/https-manager.key \
-  -X /var/wazuh-manager/etc/https-manager.cert \
+  -K /var/wazuh-manager/etc/certs/remoted-key.pem \
+  -X /var/wazuh-manager/etc/certs/remoted.pem \
   -S "/C=US/ST=California/CN=Wazuh/"
-chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
-chmod 640 /var/wazuh-manager/etc/https-manager.key /var/wazuh-manager/etc/https-manager.cert
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs/remoted-key.pem /var/wazuh-manager/etc/certs/remoted.pem
+chmod 640 /var/wazuh-manager/etc/certs/remoted-key.pem /var/wazuh-manager/etc/certs/remoted.pem
 ```
 
 Generation is skipped if a certificate/key pair already exists at those paths, so an
@@ -299,9 +299,9 @@ above).
 | Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
 | Port | `port` | `1517` |
 | Transport max body size | `max_body_size` | `20 MiB` |
-| TLS certificate chain | `certificate` | `etc/https-manager.cert` |
-| TLS private key | `key` | `etc/https-manager.key` |
-| Client CA bundle | `ca` | `etc/https-manager-ca.pem` |
+| TLS certificate chain | `certificate` | `etc/certs/remoted.pem` |
+| TLS private key | `key` | `etc/certs/remoted-key.pem` |
+| Client CA bundle | `ca` | `etc/certs/root-ca.pem` |
 | Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
 | TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
 

@@ -344,29 +344,45 @@ if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-manager
 fi
 
+# Unified certificate directory: root-owned and sticky. The server daemons self-generate
+# their certificates here and read them after dropping privileges to wazuh-manager; the
+# sticky bit keeps them from replacing the root-owned indexer trust material in the dir.
+mkdir -p %{_localstatedir}/etc/certs
+
 # Generation auto-signed certificate if not exists
-if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/etc/sslmanager.cert" ]; then
-  %{_localstatedir}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
+if [ ! -f "%{_localstatedir}/etc/certs/authd-key.pem" ] && [ ! -f "%{_localstatedir}/etc/certs/authd.pem" ]; then
+  %{_localstatedir}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/certs/authd-key.pem -X %{_localstatedir}/etc/certs/authd.pem 2>/dev/null
 fi
 
 # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
 # exists. Skipped when the admin supplied their own certificate/key paths through the
 # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables.
 if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-  if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedir}/etc/https-manager.cert" ]; then
-    %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
+  if [ ! -f "%{_localstatedir}/etc/certs/remoted-key.pem" ] && [ ! -f "%{_localstatedir}/etc/certs/remoted.pem" ]; then
+    %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/certs/remoted-key.pem -X %{_localstatedir}/etc/certs/remoted.pem 2>/dev/null
   fi
 fi
 
-# Both sslmanager.cert/key and https-manager.cert/key must be owned by wazuh-manager:
-# both authd and remoted now drop privileges to that user before loading these files,
-# so root-owned files would make either daemon fail to start. Re-applied unconditionally
-# (not just on fresh generation) so upgrades from packages that shipped these root-owned
-# also get corrected.
-chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
-chmod 640 %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.cert > /dev/null 2>&1 || true
-chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
-chmod 640 %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.cert > /dev/null 2>&1 || true
+# The server certificates each daemon self-generates are owned by wazuh-manager (the daemon
+# must write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
+for CERT_FILE in authd.pem authd-key.pem remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
+    chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+    chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+  fi
+done
+
+# The indexer trust material is provisioned externally and only read by the manager, so it is
+# owned root and group wazuh-manager (read-only for the service).
+for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
+  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
+    chown root:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+    chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+  fi
+done
+
+chown root:wazuh-manager %{_localstatedir}/etc/certs > /dev/null 2>&1 || true
+chmod 1770 %{_localstatedir}/etc/certs > /dev/null 2>&1 || true
 
 rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 
@@ -438,20 +454,20 @@ if [ $1 = 0 ];then
     find %{_localstatedir}/etc/ -type f ! -name "*shared*" ! -name "*rpmsave" -exec mv {} {}.save \;
   fi
 
-  # Backup registration service certificates (sslmanager.cert,sslmanager.key)
-  if [ -f %{_localstatedir}/etc/sslmanager.cert ]; then
-      mv %{_localstatedir}/etc/sslmanager.cert %{_localstatedir}/etc/sslmanager.cert.save
+  # Backup registration service certificates (authd.pem, authd-key.pem)
+  if [ -f %{_localstatedir}/etc/certs/authd.pem ]; then
+      mv %{_localstatedir}/etc/certs/authd.pem %{_localstatedir}/etc/certs/authd.pem.save
   fi
-  if [ -f %{_localstatedir}/etc/sslmanager.key ]; then
-      mv %{_localstatedir}/etc/sslmanager.key %{_localstatedir}/etc/sslmanager.key.save
+  if [ -f %{_localstatedir}/etc/certs/authd-key.pem ]; then
+      mv %{_localstatedir}/etc/certs/authd-key.pem %{_localstatedir}/etc/certs/authd-key.pem.save
   fi
 
-  # Backup HTTPS agent server certificates (https-manager.cert,https-manager.key)
-  if [ -f %{_localstatedir}/etc/https-manager.cert ]; then
-      mv %{_localstatedir}/etc/https-manager.cert %{_localstatedir}/etc/https-manager.cert.save
+  # Backup HTTPS agent server certificates (remoted.pem, remoted-key.pem)
+  if [ -f %{_localstatedir}/etc/certs/remoted.pem ]; then
+      mv %{_localstatedir}/etc/certs/remoted.pem %{_localstatedir}/etc/certs/remoted.pem.save
   fi
-  if [ -f %{_localstatedir}/etc/https-manager.key ]; then
-      mv %{_localstatedir}/etc/https-manager.key %{_localstatedir}/etc/https-manager.key.save
+  if [ -f %{_localstatedir}/etc/certs/remoted-key.pem ]; then
+      mv %{_localstatedir}/etc/certs/remoted-key.pem %{_localstatedir}/etc/certs/remoted-key.pem.save
   fi
 
   # Remove lingering folders and files
@@ -548,7 +564,6 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration
 %attr(660, root, wazuh-manager) %config(noreplace) %{_localstatedir}/api/configuration/api.yaml
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration/security
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/api/configuration/ssl
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/api/scripts
 %attr(640, root, wazuh-manager) %{_localstatedir}/api/scripts/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup
@@ -572,10 +587,11 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.cert
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.cert
-%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.key
+%dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/authd.pem
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/authd-key.pem
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted.pem
+%attr(640, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/etc/certs/remoted-key.pem
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
