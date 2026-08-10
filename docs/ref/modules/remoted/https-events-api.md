@@ -239,6 +239,13 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   answer is bounded by `remoted.downstream_stateful_response_timeout`
   (see [configuration](configuration.md)). Bodies may be zstd-compressed
   (`Content-Encoding: zstd`); remoted decompresses before relaying.
+- **`POST /scan/vd`** — authenticated on-demand Vulnerability Detection re-scan request, sent by an
+  agent once it notices (via `notify`'s `vd_feed_offset`) that this node's feed has moved past what
+  it last synced against. Returns **`200 OK`** (queued) when the request's `feed_offset` matches
+  this node's current offset, **`409 Conflict`** (carrying the real offset to retry with) on a
+  mismatch, **`400`** on malformed requests, **`401`** on auth failures, or **`503`** when the
+  manager-side scan tracking table is full. See
+  [Scan endpoint](#scan-endpoint-post-scanvd) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -476,6 +483,17 @@ The agent compares the received hashes against its local copies: if `settings_ha
 sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
 `/download`.
 
+The response also carries `vd_feed_offset`: this node's current Vulnerability Detection feed
+offset, always present (0 if the feed has never completed an update, or if the VD module is
+temporarily unreachable — see [Scan endpoint](#scan-endpoint-post-scanvd) below). The agent
+persists the highest offset it has seen; when a fresh notify reports a strictly higher offset than
+its stored value, that's this node's signal that the feed changed since the agent last synced, and
+the agent requests its own re-scan via `POST /scan/vd`. This offset comparison — not a manager-
+initiated push — is what replaced the old node-affinity full-rescan (every node querying global.db
+for "its" agents over a persistent TCP/UDP connection and rescanning all of them on every feed
+update), which had no equivalent once agent-manager connections became stateless HTTPS. See
+[Scan endpoint](#scan-endpoint-post-scanvd) for the full mechanism.
+
 **Request:**
 ```json
 {
@@ -504,7 +522,8 @@ sends a new `startup` request; if `config_hash` differs, it downloads the new `m
     "groups": ["web-servers"],
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
-  "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"
+  "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+  "vd_feed_offset": 12345678
 }
 ```
 
@@ -516,6 +535,7 @@ sends a new `startup` request; if `config_hash` differs, it downloads the new `m
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+  "vd_feed_offset": 12345678,
   "tasks": [
     {
       "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f",
@@ -565,6 +585,13 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
+- **vulnerability_scanner module** (`queue/sockets/modulesd`, `GET /vulnerability-detector/offset`):
+  queried by `VdClient` (`remoted_module/src/common/vdClient.hpp`) to populate `vd_feed_offset`.
+  Cached with a short TTL and a single-flight refresh (only one caller ever performs the actual UDS
+  round trip; every concurrent caller gets the last-known-good value instead of blocking) so a slow
+  or unreachable VD module can never serialize this hot path down to one request at a time. Falls
+  back to the last known offset (or 0) if the module is unreachable — see
+  [Scan endpoint](#scan-endpoint-post-scanvd) below, which shares this same client.
 
 A thread-safe **agent registry** (8-shard hash table) caches agent metadata (groups, last activity
 timestamp, last keepalive update timestamp) to minimize wazuh-db round-trips during the hot path
@@ -590,6 +617,97 @@ Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the sa
 from repeated errors; see
 [Diagnosing rejections and capacity problems](#diagnosing-rejections-and-capacity-problems).
 
+## Scan endpoint (`POST /scan/vd`)
+
+`/scan/vd` is the on-demand re-scan request an agent sends once it notices (via `vd_feed_offset` in
+a `/control` notify response, see above) that this node's Vulnerability Detection feed has moved
+past the offset the agent last synced against. It replaces the pre-HTTPS mechanism, where each
+manager node held a persistent TCP/UDP connection to a fixed set of agents and, on every feed
+update, queried global.db for "its" agents and rescanned all of them — a mechanism that assumed a
+stable agent-to-node mapping. Stateless HTTPS load-balances every request independently, so no node
+can know in advance which agents are "its own"; instead, the agent is the one source of truth for
+"do I need a re-scan," and it asks whichever node the load balancer routes it to.
+
+### Request
+
+```json
+{
+  "type": "feed_update",
+  "feed_offset": 12345678
+}
+```
+
+`type` is currently always `"feed_update"` — reserved for other trigger reasons the design
+anticipates but does not yet implement (e.g. a manually requested scan). `feed_offset` is the
+offset the agent is asking to be scanned against — normally the value it most recently received
+from `/control`.
+
+### Responses
+
+**Accepted (`200 OK`):**
+```json
+{}
+```
+
+The request is queued (see [Manager-side queue](#manager-side-queue) below) and the agent should
+consider the offset it sent as handled — it clears any persisted retry state for that offset.
+
+**Version mismatch (`409 Conflict`):**
+```json
+{
+  "error": "version_mismatch",
+  "current_version": 12345680
+}
+```
+
+Returned when `feed_offset` does not equal this node's current offset — either because the agent's
+value is stale (a different, newer node already advanced it) or, more rarely, ahead of this node's
+own feed (this node hasn't finished applying an update the agent already saw elsewhere). Either way,
+the agent updates its stored offset from `current_version` only if it is strictly greater than what
+the agent already has (offsets only ever move forward) and retries. It never overwrites a newer
+local value with an older `current_version`.
+
+### Error handling
+
+| Condition | HTTP | `error` message |
+|---|---|---|
+| Body empty or exceeds 4 KiB | `400` | `invalid_body` |
+| Malformed JSON body | `400` | `invalid_json` |
+| Invalid agent ID format | `400` | `invalid_agent_id` |
+| Missing or non-string `type` | `400` | `missing_type` |
+| `type` other than `"feed_update"` | `400` | `invalid_type` |
+| Missing or non-unsigned `feed_offset` | `400` | `missing_feed_offset` |
+| `feed_offset` != current offset | `409` | `version_mismatch` (carries `current_version`) |
+| Scan tracking table at capacity | `503` | `scan_queue_full` |
+
+Auth failures (`401`) reuse the same responses as `/stateless`. This endpoint's body cap (4 KiB) is
+far tighter than `/control`'s (64 KiB) since a scan request only ever carries `type` and
+`feed_offset`.
+
+### Manager-side queue
+
+Accepting a request does not scan synchronously — `scanVdHandler.cpp` maintains a per-agent state
+table and a small pool of worker threads (sized to the host's available CPUs) that:
+
+1. Re-validate the offset immediately before dispatching the scan to the `vulnerability_scanner`
+   module (`POST /vulnerability-detector/scan` over the same UDS socket `VdClient` uses). The feed
+   may have moved on again while the request was queued; a stale task is discarded, not run — the
+   agent will notice the newer offset on its next `/control` notify and re-request.
+2. Retry a *retryable* failure (e.g. the scanner briefly unready) with exponential backoff (1s, 2s,
+   4s), up to 3 attempts, then give up and let the agent's next notify cycle re-trigger it.
+3. Collapse duplicate requests for the same agent into one another: a fresh request for an
+   already-tracked agent just updates the tracked offset (retrying immediately if the agent was
+   mid-backoff) rather than queuing a second entry.
+
+Duplicate scans across different nodes (the agent asks node A, doesn't get a timely reply, and asks
+node B too) are accepted as a rare, low-impact trade-off rather than solved with cross-node
+coordination.
+
+Disconnected agents (never reachable, so they can never notice `vd_feed_offset` or call this
+endpoint themselves) are not covered by `/scan/vd` at all — they're swept separately, once per feed
+update, by the cluster's master node only (`VulnerabilityScannerFacade::rescanDisconnectedAgents()`
+in the `vulnerability_scanner` module).
+
 ## Testing
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
@@ -608,6 +726,22 @@ python3 send_stateless.py --agent-id 1001 --tamper
 # which is accepted, since that cap does not apply to decompressed bodies) and the unsupported gzip
 python3 send_stateless.py --all
 # options: --url (default https://127.0.0.1:1517), --body, --client-keys
+```
+
+`src/remoted/remoted_module/tools/send_scan_vd.py` does the same for `POST /scan/vd`, and can
+discover the manager's current offset for you instead of guessing it:
+
+```bash
+# looks up the current vd_feed_offset via /control, then sends a matching request -> 200
+python3 send_scan_vd.py --auto-offset
+
+# a deliberately wrong offset -> 409, prints the manager's real current_version to retry with
+python3 send_scan_vd.py --feed-offset 1
+
+# run every success/failure scenario (missing/invalid type, missing/negative feed_offset,
+# oversized body, auth failures, ...), including the matching- and mismatched-offset cases
+python3 send_scan_vd.py --all
+# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
 ## References
