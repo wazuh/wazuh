@@ -466,6 +466,9 @@ WriteAgent()
 RemoteVarError()
 {
     echo "ERROR: Invalid value '$2' for installation variable $1: $3" >&2
+    # $NEWCONFIG is always a scratch file (./wazuh.conf.temp for the generator,
+    # ./etc/wazuh.mc for install.sh), consumed only after a complete write.
+    rm -f "$NEWCONFIG"
     exit 1
 }
 
@@ -548,11 +551,12 @@ CheckRemoteTime()
     TIME_NUM=${2%%[!0-9]*}
     TIME_UNIT=${2#"$TIME_NUM"}
     if [ -z "$TIME_NUM" ] || [ "$TIME_NUM" -eq 0 ]; then
-        RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d)"
+        RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)"
     fi
+    # Units as accepted by w_parse_time(): lowercase only, weeks included.
     case "$TIME_UNIT" in
-        ''|[sSmMhHdD]) ;;
-        *) RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d)";;
+        ''|[smhdw]) ;;
+        *) RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)";;
     esac
 }
 
@@ -572,9 +576,16 @@ CheckRemoteSize()
 
 ##########
 # ValidateRemoteVars()
+# Idempotent: install.sh validates up front, before any side effect, while the
+# package flows reach it through WriteRemote().
 ##########
 ValidateRemoteVars()
 {
+    if [ "X${REMOTE_VARS_VALIDATED}" = "Xyes" ]; then
+        return 0
+    fi
+    REMOTE_VARS_VALIDATED="yes"
+
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
                            WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"

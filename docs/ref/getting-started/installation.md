@@ -39,7 +39,9 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 ```
 
 > [!NOTE]
-> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. The variables only apply when the configuration file is generated (fresh installations); upgrades preserve the existing configuration. Invalid values abort the configuration generation with an error.
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with an error, before any configuration is written.
+>
+> The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
 | Variable | Configuration option | Default |
 |----------|----------------------|---------|
@@ -64,6 +66,9 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 Options marked "not set" are only written to the configuration file when their variable is provided; the value in parentheses is the built-in default applied by `wazuh-manager-remoted`. See the [remoted configuration reference](../modules/remoted/configuration.md) for the meaning and accepted values of each option.
 
 `WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. When they are, the installer does not generate the default self-signed certificate: the referenced files are managed by the administrator. `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+
+> [!IMPORTANT]
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. When the file is not there, the HTTPS server fails to start and takes the legacy agent listener down with it: the service reports `active` while nothing is listening. The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them and does not adjust their ownership.
 
 ### Configuration
 

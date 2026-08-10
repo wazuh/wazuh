@@ -1134,6 +1134,12 @@ main()
     setInstallDir
     setEnv
 
+    # Before askForDelete, which stops Wazuh and may remove the existing installation:
+    # an invalid WAZUH_REMOTE_* value must abort while the system is still untouched.
+    if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ]; then
+        ValidateRemoteVars
+    fi
+
     # Optionally remove existing directory.
     askForDelete
 

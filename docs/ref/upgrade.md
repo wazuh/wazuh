@@ -81,6 +81,8 @@ File contents, permissions, and ownership are preserved for the paths listed abo
 
 **Seeing new defaults.** Because `etc/` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
+The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
+
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
 
 | Stack | Preserve directory |
