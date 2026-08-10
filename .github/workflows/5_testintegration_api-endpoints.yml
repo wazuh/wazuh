@@ -259,3 +259,12 @@ jobs:
         run: |
           cd api/test/integration
           pytest --nobuild -vvv --reruns 3 --reruns-delay 5 ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
+
+      - name: Upload manager/cluster/agent logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-logs-${{ matrix.test_file }}
+          path: api/test/integration/_test_results/logs/
+          if-no-files-found: ignore
+          retention-days: 7
