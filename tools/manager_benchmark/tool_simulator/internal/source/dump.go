@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
 // DumpItem is one recorded document from a captured session: a real payload
@@ -45,10 +48,18 @@ type dumpFile struct {
 }
 
 // LoadDump reads a captured-session dump and returns its metadata and items.
+// A `.zst` path is decompressed transparently: the full-fidelity first-connect
+// corpus (27k+ Windows registry documents, ~27 MB of JSON) lives in the repo
+// zstd-compressed, and everything downstream of this function never knows.
 func LoadDump(path string) (*DumpSession, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
+	}
+	if strings.HasSuffix(path, ".zst") {
+		if raw, err = wire.Decompress(raw); err != nil {
+			return nil, fmt.Errorf("dump %s: %w", path, err)
+		}
 	}
 	var df dumpFile
 	if err := json.Unmarshal(raw, &df); err != nil {

@@ -44,6 +44,9 @@ session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_laten
   run** — a run full of unauthenticated requests must never read as a result.
 - `transport_errors` counts responses that never arrived (connection closed, read timeout), never
   folded into an HTTP bucket.
+- `bytes_sent` counts the WIRE bytes: with `compression: "zstd"` it is the compressed size (what
+  the manager actually received), not the FlatBuffer's. `meta.compression` records the mode, so a
+  with/without pair is comparable at a glance.
 - The latency columns are percentiles **over the whole run so far**, so a row is self-contained.
 
 This top-level CSV is the aggregate. The per-lane and per-fleet breakdowns below are where a mixed

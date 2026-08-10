@@ -95,7 +95,12 @@ anything; the whole library is kept green that way.
 
 Most scenarios generate documents deterministically from a seed, but the `real_*` ones replay **real
 captured payloads** from [`sample_payloads/dumps/`](sample_payloads/dumps/) so the wire bytes match
-production shapes — see the real-payloads section of `SCENARIOS.md`.
+production shapes — see the real-payloads section of `SCENARIOS.md`. The `real_first_connect*` pair
+replays a Windows and a Linux agent's first connection at FULL fidelity (the Windows FIM registry
+corpus is 27,726 documents in one ~26 MB session), which in agent mode requires the sender's
+**zstd request compression** — the agent-mode default, like a real 5.x agent (`defaults.compression`
+in the scenario or `--compression zstd|none` per run; remoted decompresses, the UDS socket takes
+only plain bodies, so uds runs are always plain).
 
 ## Manager preparation (agent mode)
 

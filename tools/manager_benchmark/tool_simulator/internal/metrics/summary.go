@@ -23,6 +23,7 @@ type Meta struct {
 	KeepaliveInterval string  `json:"keepalive_interval"`
 	ControlEnabled    bool    `json:"control_enabled"`
 	ConnectionReuse   bool    `json:"connection_reuse"`
+	Compression       string  `json:"compression"`
 	DocumentSeed      uint64  `json:"document_seed"`
 	StartTime         string  `json:"start_time"`
 	EndTime           string  `json:"end_time"`

@@ -15,6 +15,7 @@ import json, glob, os, sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 ORDER = ["syscollector_uds", "syscollector_agent", "fim_uds", "fim_agent", "vd_uds",
+         "first_connect_uds", "first_connect_agent",
          "burst_uds", "burst_agent", "ramp_503", "session_storm", "control_storm", "contract_400", "contract_413"]
 
 

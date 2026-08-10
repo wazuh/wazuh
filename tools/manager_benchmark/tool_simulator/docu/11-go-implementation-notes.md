@@ -13,6 +13,7 @@ two tools read alike where they do the same thing.
 | AES-CMAC | stdlib `crypto/aes` + a CMAC implementation | Go's stdlib has no CMAC; a small vetted implementation (or ~40 lines following RFC 4493) is preferable to a heavy dependency. **MUST** be unit-tested against a known vector and against the reference in `remoted_module/tools/send_stateless.py` |
 | FlatBuffers | `github.com/google/flatbuffers/go` + `flatc --go` at build time | Bindings generated, never committed (see [05](05-flatbuffers-messages.md)) |
 | Pacing | `golang.org/x/time/rate` | Leaky bucket, same as the retired sender |
+| `github.com/klauspost/compress/zstd` | `Content-Encoding: zstd` request bodies (remoted's contract) and the `.json.zst` dump corpus | Pure Go: the no-cgo rule below rules out binding the repo's vendored C zstd |
 | Goroutine groups | `golang.org/x/sync/errgroup` | Fleet supervision with first-error propagation |
 | JSON | stdlib `encoding/json` | Control bodies are tiny; the session bodies are FlatBuffers |
 

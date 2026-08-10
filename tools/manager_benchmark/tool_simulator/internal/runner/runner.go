@@ -36,9 +36,14 @@ type Config struct {
 	EnrollSettle time.Duration
 	Cluster      string // overrides the scenario's cluster name (environment config)
 	ClusterNode  string
-	Reuse        bool
-	Seed         uint64
-	SenderVer    string
+	// Compression overrides the scenario's defaults.compression: "zstd" forces
+	// it on, "none" forces it off, "" keeps the scenario's value. A CLI knob
+	// (like Cluster) because it belongs to the pair under test, and it is what
+	// makes the with/without-compression A/B one scenario instead of two.
+	Compression string
+	Reuse       bool
+	Seed        uint64
+	SenderVer   string
 }
 
 // Runner holds run-wide state.
@@ -336,7 +341,7 @@ func (r *Runner) Meta() metrics.Meta {
 		Manager: r.cfg.Manager, Port: r.cfg.Port, RegPort: r.cfg.RegPort, Target: target,
 		ClusterName: r.clusterName(), AgentsRequested: requested, AgentsEnrolled: r.enrolled, AgentsFailed: r.failed,
 		ConcurrentAgents: r.scn.Pacing.ConcurrentAgents, RPSTarget: r.scn.Pacing.RequestsPerSecond,
-		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse,
+		KeepaliveInterval: ki.String(), ControlEnabled: r.controlEnabled(), ConnectionReuse: r.cfg.Reuse, Compression: r.compression(),
 		DocumentSeed: r.seed, StartTime: r.start.UTC().Format(time.RFC3339), EndTime: end.UTC().Format(time.RFC3339),
 		DurationSec: end.Sub(r.start).Seconds(), SenderVersion: r.cfg.SenderVer, GoVersion: runtime.Version(),
 	}
@@ -351,6 +356,21 @@ func (r *Runner) clusterName() string {
 
 func (r *Runner) clusterNode() string {
 	return firstNonEmpty(r.cfg.ClusterNode, r.scn.Defaults.ClusterNode, "node01")
+}
+
+// compression resolves the effective session-body encoding: the CLI override
+// wins ("none" is the explicit off), else the scenario's defaults resolved for
+// this transport (absent = zstd in agent mode, plain in uds -- what a real
+// agent does on each).
+func (r *Runner) compression() string {
+	switch r.cfg.Compression {
+	case "none":
+		return ""
+	case "":
+		return r.scn.Defaults.CompressionFor(r.mode)
+	default:
+		return r.cfg.Compression
+	}
 }
 
 // controlEnabled/startup version helpers used by the agent.

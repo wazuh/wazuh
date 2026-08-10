@@ -75,13 +75,19 @@ func NewUDSClient(agentID, socketPath string, timeout time.Duration) *Client {
 // Do sends one request and returns its Response. setAgentIDHeader controls
 // whether X-Wazuh-Agent-Id is set: the caller sets it for uds /stateful and
 // /agents routes, and never for agent-mode routes (remoted sets it there).
-func (c *Client) Do(method, target string, body []byte, contentType string, now int64, setAgentIDHeader bool) (Response, error) {
+// contentEncoding, when non-empty, is sent as Content-Encoding: the caller
+// already compressed body, so the AES-CMAC below covers the COMPRESSED bytes
+// -- exactly remoted's contract (the signature is over the wire bytes).
+func (c *Client) Do(method, target string, body []byte, contentType, contentEncoding string, now int64, setAgentIDHeader bool) (Response, error) {
 	req, err := http.NewRequest(method, c.baseURL+target, bytes.NewReader(body))
 	if err != nil {
 		return Response{}, err
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	if contentEncoding != "" {
+		req.Header.Set("Content-Encoding", contentEncoding)
 	}
 
 	if c.agentMode {

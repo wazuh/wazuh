@@ -54,6 +54,31 @@ type Defaults struct {
 	Documents   *DocSpec `json:"documents"`
 	Control     Control  `json:"control"`
 	Retry       Retry    `json:"retry"`
+	// Compression encodes every /stateful session body. "" (absent) is the
+	// DEFAULT: zstd whenever the transport supports it -- that is what a real
+	// 5.x agent does -- and plain in uds mode, whose ingress has no decoder.
+	// "none" opts out explicitly; "zstd" forces it and therefore requires
+	// agent mode. remoted decompresses before relaying, and the CMAC signs the
+	// compressed bytes (they ARE the wire bytes), matching its contract. `raw`
+	// steps are never compressed: their bodies must reach the server
+	// byte-exact. CompressionFor resolves the effective value.
+	Compression string `json:"compression"`
+}
+
+// CompressionFor resolves the effective session-body encoding for a transport
+// mode: the default follows what a real agent would do on that transport.
+func (d Defaults) CompressionFor(mode string) string {
+	switch d.Compression {
+	case "none":
+		return ""
+	case "":
+		if mode == "agent" {
+			return "zstd"
+		}
+		return ""
+	default:
+		return d.Compression
+	}
 }
 
 // Retry governs re-sending a /stateful session the server answered 503 WITHOUT

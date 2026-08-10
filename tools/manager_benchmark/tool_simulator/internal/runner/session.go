@@ -11,6 +11,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/fbbuild"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/source"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
 const octetStream = "application/octet-stream"
@@ -37,6 +38,19 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 	}
 	_ = docBytes
 
+	// Compress ONCE, outside the retry loop: retries re-send the same wire
+	// bytes. `raw` steps are exempt -- their deliberately invalid bodies must
+	// reach the server byte-exact, or the 400-contract scenarios would be
+	// measuring the decoder instead. The CMAC in client.Do signs the body as
+	// passed, i.e. the compressed bytes, which is remoted's contract; and
+	// RecordSession below sees len(body) post-compression, so bytes_sent stays
+	// what actually crossed the wire.
+	encoding := ""
+	if a.r.compression() == "zstd" && step.Kind != "raw" {
+		body = wire.Compress(body)
+		encoding = "zstd"
+	}
+
 	retry := a.r.scn.Defaults.Retry
 	feedDeadline := time.Now().Add(a.r.feedTimeout)
 	attempts := 0
@@ -47,7 +61,7 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 		attempts++
 
 		a.r.requestStarted()
-		resp, err := a.client.Do("POST", "/stateful", body, octetStream, now(), a.r.mode == "uds")
+		resp, err := a.client.Do("POST", "/stateful", body, octetStream, encoding, now(), a.r.mode == "uds")
 		a.r.requestFinished()
 		if err != nil {
 			a.r.reg.RecordTransportError(a.fleet.Name, lane)
@@ -264,7 +278,7 @@ func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) 
 		}
 		body := engine.Batch(a.id, "1", step.Location, chunk)
 		a.r.requestStarted()
-		resp, err := a.client.Do("POST", "/stateless", body, "", now(), false)
+		resp, err := a.client.Do("POST", "/stateless", body, "", "", now(), false)
 		a.r.requestFinished()
 		if err != nil {
 			a.r.reg.RecordTransportError(a.fleet.Name, lane)
@@ -283,7 +297,7 @@ func (a *agent) runDelete(ctx context.Context, lane string) {
 	}
 	a.r.requestStarted()
 	defer a.r.requestFinished()
-	resp, err := a.client.Do("DELETE", "/agents", nil, "", now(), true)
+	resp, err := a.client.Do("DELETE", "/agents", nil, "", "", now(), true)
 	if err != nil {
 		a.r.reg.RecordTransportError(a.fleet.Name, lane)
 		return

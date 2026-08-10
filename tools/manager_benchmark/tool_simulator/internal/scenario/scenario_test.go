@@ -105,3 +105,51 @@ func sprintf(format string, args ...any) string {
 	}
 	return out
 }
+
+func TestLoaderConstrainsCompression(t *testing.T) {
+	// Unknown value refused by name.
+	if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+		`, "defaults": {"compression": "gzip"}`)); err == nil || !strings.Contains(err.Error(), "gzip") {
+		t.Fatalf("an unknown compression must be refused by name, got %v", err)
+	}
+	// EXPLICIT zstd in uds mode refused: the UDS ingress has no decoder.
+	if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+		`, "defaults": {"compression": "zstd"}`)); err == nil || !strings.Contains(err.Error(), "agent mode") {
+		t.Fatalf("explicit zstd over uds must be refused, got %v", err)
+	}
+	// "none" loads anywhere; an ABSENT value loads anywhere too (it resolves
+	// per transport instead of erroring).
+	if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+		`, "defaults": {"compression": "none"}`)); err != nil {
+		t.Fatalf(`"none" must load in uds mode: %v`, err)
+	}
+	scn, err := loadFromLiteral(t, `{
+	  "name": "t", "mode": "agent",
+	  "defaults": {"compression": "zstd"},
+	  "lanes": {"main": [{"kind": "delta"}]},
+	  "fleets": [{"name": "f", "agents": 1, "lanes": ["main"]}]
+	}`)
+	if err != nil || scn.Defaults.Compression != "zstd" {
+		t.Fatalf("zstd in agent mode must load: %v, %+v", err, scn)
+	}
+}
+
+// The DEFAULT is what a real agent does on each transport: zstd over remoted,
+// plain over the local socket. "none" opts out; an explicit "zstd" sticks.
+func TestCompressionForResolvesTheDefaultPerTransport(t *testing.T) {
+	var d Defaults
+	if got := d.CompressionFor("agent"); got != "zstd" {
+		t.Fatalf("absent must default to zstd in agent mode, got %q", got)
+	}
+	if got := d.CompressionFor("uds"); got != "" {
+		t.Fatalf("absent must stay plain in uds mode, got %q", got)
+	}
+	d.Compression = "none"
+	if got := d.CompressionFor("agent"); got != "" {
+		t.Fatalf(`"none" must win over the agent-mode default, got %q`, got)
+	}
+	d.Compression = "zstd"
+	if got := d.CompressionFor("agent"); got != "zstd" {
+		t.Fatalf("explicit zstd must stick, got %q", got)
+	}
+}

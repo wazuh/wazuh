@@ -83,6 +83,17 @@ func (s *Scenario) validate() error {
 	if s.Defaults.Retry.Interval.D() < 0 {
 		return fmt.Errorf("retry.interval must not be negative")
 	}
+	switch s.Defaults.Compression {
+	case "", "none", "zstd":
+	default:
+		return fmt.Errorf("compression must be \"zstd\", \"none\" or absent, got %q", s.Defaults.Compression)
+	}
+	// Absent degrades to plain in uds mode on its own (CompressionFor); only an
+	// EXPLICIT zstd is a contradiction worth refusing.
+	if s.Defaults.Compression == "zstd" && s.Mode != "agent" {
+		return fmt.Errorf("compression: \"zstd\" needs agent mode: remoted decompresses zstd bodies, " +
+			"but the inventory sync server's UDS ingress has no decoder")
+	}
 
 	for _, fleet := range s.Fleets {
 		if fleet.Agents <= 0 {
