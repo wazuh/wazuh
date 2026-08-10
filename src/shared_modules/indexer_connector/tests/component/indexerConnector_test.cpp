@@ -292,6 +292,9 @@ TEST_F(IndexerConnectorTest, SyncDeleteByQueryAndFlush)
 
     const auto body = nlohmann::json::parse(receivedBody);
     ASSERT_EQ(body["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"], nlohmann::json::array({agentId}));
+    // Without this, OpenSearch's default ("abort") lets a single version conflict stop the run and
+    // still answer 200, leaving the rest of the agent's documents behind.
+    EXPECT_EQ("proceed", body["conflicts"]);
 }
 
 /// With a cluster name, the delete query filters by agent.id and cluster.name.

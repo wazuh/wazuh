@@ -36,8 +36,9 @@ namespace invsync::indexer
      * the shared staging buffers WITHOUT locking (the class's contract is caller-locks, which the
      * legacy module honored by staging under a held scopeLock), while the connector's internal
      * flush-timer thread takes the same mutex and READS those buffers on every tick. One worker per
-     * connector serializes the callers, but not the timer -- this lock is what does. `flush()` and
-     * the query methods lock internally and are forwarded bare.
+     * connector serializes the callers, but not the timer -- this lock is what does. `flush()`, the
+     * query methods and `refresh()` are forwarded bare: they issue their own HTTP request and touch
+     * no staging buffer, so the timer has nothing of theirs to race with.
      *
      * `m_inner` is held by value in the member-init-list, so a constructor failure (`hosts` not
      * matching the session's, an unreasonable `max_retry_delay_seconds`) throws out of THIS
@@ -93,6 +94,11 @@ namespace invsync::indexer
         nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) override
         {
             return m_inner.executeSearchQuery(index, searchQuery);
+        }
+
+        void refresh(std::string_view indexPattern) override
+        {
+            m_inner.refresh(indexPattern);
         }
 
         void flush() override

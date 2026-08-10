@@ -37,7 +37,7 @@ flowchart TB
     REME -.->|the agent's own HTTP response| CLI
     PIPE -->|bulk / deleteByQuery / updateByQuery / search| IDX[(wazuh-indexer)]
     LANE -->|"inventory bulk (only if the scan succeeded)"| IDX
-    DELR -->|"deleteByQuery wazuh-states-*"| IDX
+    DELR -->|"refresh + deleteByQuery\nwazuh-states-*, wazuh-agent-config, wazuh-agent-stats"| IDX
     ORCH -->|its own connector| IDX
 ```
 
@@ -189,8 +189,12 @@ production adapter is confined to a single translation unit (`src/vd/vdScannerAd
 ## Agent deletion
 
 `DELETE /agents` (and its `POST /agents/delete` alias, for C callers whose HTTP helper only
-speaks POST) deletes every state document of one agent: one `deleteByQuery` over
-`wazuh-states-*`, scoped to this cluster, followed by a flush. The production caller is
+speaks POST) deletes every document of one agent across the whole deletion scope —
+`wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` — scoped to this cluster: an
+`_refresh` of each, then a `deleteByQuery` on each, then one flush. The two `wazuh-agent-*`
+indices are named explicitly because they sit outside the state family; the refresh comes first
+because a delete-by-query is a search, and the documents the agent's last session wrote inside
+the index refresh interval would otherwise be invisible to it. The production caller is
 `wazuh-manager-authd`, right after it removes the agent from `client.keys` and Wazuh DB.
 
 The deletion is not executed inline: it is enqueued on the TARGET agent's pipeline shard as a

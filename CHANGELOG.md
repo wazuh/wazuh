@@ -65,6 +65,7 @@
 | [#35043](https://github.com/wazuh/wazuh/issues/35043) | Fixed token validation race condition after revoke. |
 | [#35638](https://github.com/wazuh/wazuh/issues/35638) | Handled the stop signal during vulnerability feed download. |
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
+| [#38263](https://github.com/wazuh/wazuh/issues/38263) | Fixed agent deletion leaving documents in the indexer: `DELETE /agents` now also wipes `wazuh-agent-config` and `wazuh-agent-stats`, and refreshes each index before its delete-by-query so documents written by the agent's last session are not missed. A delete-by-query no longer aborts on the first version conflict, and shard-level failures inside a `200` response are reported instead of being reported as success. `wazuh-manager-authd` retries a failed deletion with backoff, tolerates a slow indexer, and logs an `ERROR` naming the agent when it gives up, instead of failing silently. Added `inventory_sync_server/tools/send_delete_agent.py` to drive the deletion by hand, and realigned `remoted_module/tools/send_agent_json.py` with `POST /config`, which validates and indexes its report instead of echoing it back. |
 
 ### Agent
 

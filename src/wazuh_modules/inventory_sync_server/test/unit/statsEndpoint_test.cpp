@@ -191,10 +191,11 @@ TEST(StatsEndpointTest, AgentIdHeaderNameIsLowerCase)
     EXPECT_STREQ("x-wazuh-agent-id", invsync::endpoints::stats::agentIdHeader());
 }
 
-/// The index name is a contract with whoever reads it, from another codebase entirely.
+/// The index name is a contract with whoever reads it, from another codebase entirely -- and with
+/// DELETE /agents, which wipes this index by that same name.
 TEST(StatsEndpointTest, IndexNameIsStable)
 {
-    EXPECT_STREQ("wazuh-agent-stats", invsync::endpoints::stats::indexName());
+    EXPECT_EQ("wazuh-agent-stats", invsync::endpoints::stats::indexName());
 }
 
 /**

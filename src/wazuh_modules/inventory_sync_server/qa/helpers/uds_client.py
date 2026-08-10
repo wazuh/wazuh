@@ -5,6 +5,7 @@ delimited, one request per connection (Connection: close). Standard library only
 """
 
 import http.client
+import json
 import socket
 
 
@@ -86,6 +87,16 @@ class ServerClient:
     def post_stateful(self, session_bytes, agent_id, timeout=None):
         """One whole synchronization session; the response IS the result."""
         return self._request("POST", "/stateful", body=session_bytes, agent_id=agent_id, timeout=timeout)
+
+    def post_config(self, report, agent_id):
+        """An agent's reported configuration -> one wazuh-agent-config document."""
+        return self._request("POST", "/config", body=json.dumps(report).encode(),
+                             agent_id=agent_id, content_type="application/json")
+
+    def post_stats(self, report, agent_id):
+        """An agent's reported statistics -> one wazuh-agent-stats document."""
+        return self._request("POST", "/stats", body=json.dumps(report).encode(),
+                             agent_id=agent_id, content_type="application/json")
 
     def delete_agent(self, agent_id):
         return self._request("DELETE", "/agents", agent_id=agent_id)

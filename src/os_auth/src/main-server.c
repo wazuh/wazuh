@@ -1134,15 +1134,30 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
+/* Deletion request budget. The per-request timeout is generous ON PURPOSE: a deletion refreshes
+ * and then delete-by-queries the agent's whole scope, so on a loaded indexer it legitimately takes
+ * seconds, and the old 5 s ceiling turned "slow" into "lost". It does not become a 3 x 30 s stall
+ * when the indexer is simply DOWN: the server's admission gate answers 503 immediately, and a
+ * modulesd that is not listening fails at connect_timeout_ms. The long wait only happens while the
+ * server is actually working the deletion -- which is exactly when waiting is the right answer. */
+#define INV_SYNC_DELETE_TIMEOUT_MS      30000
+#define INV_SYNC_DELETE_CONNECT_TIMEOUT_MS 2000
+#define INV_SYNC_DELETE_ATTEMPTS        3
+
 /**
- * @brief Ask the inventory sync server to delete an agent's state documents from the indexer.
+ * @brief Ask the inventory sync server to delete an agent's documents from the indexer.
  *
  * POST /agents/delete over the server's UDS socket (the POST alias of DELETE /agents: uhttp_*
  * only speaks POST), the target agent in the X-Wazuh-Agent-Id header, empty body. Unlike the old
- * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the delete-by-query
- * was flushed to the indexer; anything else gets ONE retry after 2 s and then a warning with the
- * code, so a lost deletion is at least visible (re-running it by hand is safe -- the server
- * treats a missing index as success).
+ * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
+ * flushed to the indexer.
+ *
+ * Failure is never silent. Every attempt that does not end in 200 is logged, and giving up is an
+ * ERROR naming the agent, because at that point documents of a deleted agent are left in the
+ * indexer with nothing to ever overwrite them -- the operator has to repeat the deletion, which is
+ * safe (the server treats a missing index as success). The transport result and the HTTP status
+ * are reported separately: a curl-level failure carries no status, and printing "status 0" for it
+ * is what made a modulesd that was not listening look like a server that refused.
  *
  * Called only from the writer thread; the client handle is per-thread by uhttp's contract, and
  * the lazy static is what keeps the connection alive (keepalive) across a batch of deletions.
@@ -1156,13 +1171,13 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         uhttp_options_t opts = {
             .unix_socket_path = INV_SYNC_SOCK,
             .url = "http://localhost/agents/delete",
-            .timeout_ms = 5000,
-            .connect_timeout_ms = 2000,
+            .timeout_ms = INV_SYNC_DELETE_TIMEOUT_MS,
+            .connect_timeout_ms = INV_SYNC_DELETE_CONNECT_TIMEOUT_MS,
             .keepalive = true
         };
         client = uhttp_client_new(&opts);
         if (!client) {
-            mwarn("Could not create the HTTP client for agent deletions; the state documents of agent '%s' were not deleted from the indexer.", agent_id);
+            merror("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
             return;
         }
     }
@@ -1172,26 +1187,53 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
     snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
     uhttp_client_clear_headers(client);
     if (uhttp_client_add_header(client, header) != 0) {
-        mwarn("Could not build the deletion request for agent '%s'.", agent_id);
+        merror("Could not build the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
         return;
     }
 
-    // One retry after a short pause: enough to ride out a modulesd restart window without
-    // designing a persistent queue for a rare, hand-recoverable event (design doc 04 §2).
-    for (int attempt = 0; attempt < 2; attempt++) {
-        if (attempt > 0) {
-            sleep(2);
+    // Retries with a widening pause (0 s, 1 s, 3 s). A 503 is the server telling us to come back:
+    // it answers that while no indexer host is healthy, and an overloaded indexer flaps in and out
+    // of healthy in bursts of a few seconds. A single fixed 2 s retry could land both attempts
+    // inside the same burst; spreading them over ~4 s rides one out without designing a persistent
+    // queue for a rare, hand-recoverable event (design doc 04 §2).
+    static const unsigned int backoff_seconds[INV_SYNC_DELETE_ATTEMPTS] = {0, 1, 3};
+
+    for (int attempt = 0; attempt < INV_SYNC_DELETE_ATTEMPTS; attempt++) {
+        if (backoff_seconds[attempt] > 0) {
+            sleep(backoff_seconds[attempt]);
         }
 
         uhttp_result_t result = {0};
-        if (uhttp_post(client, NULL, 0, &result) == 0 && result.http_status == 200) {
-            minfo("Deleted the state documents of agent '%s' from the indexer.", agent_id);
+        const int posted = uhttp_post(client, NULL, 0, &result);
+
+        if (posted == 0 && result.http_status == 200) {
+            minfo("Deleted the documents of agent '%s' from the indexer.", agent_id);
             return;
         }
 
-        if (attempt > 0) {
-            mwarn("The inventory sync server did not accept the deletion of agent '%s' (HTTP status %ld); its state documents may remain in the indexer until the deletion is repeated.",
-                  agent_id, result.http_status);
+        const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
+
+        if (posted != 0 || result.http_status == 0) {
+            // No HTTP status at all: the request never completed (modulesd down, socket gone, or
+            // the transfer timed out against a server still working on it).
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
+
+            if (last_attempt) {
+                merror("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
+                       "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
+                       agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
+            }
+            continue;
+        }
+
+        mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
+                attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
+
+        if (last_attempt) {
+            merror("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) (HTTP status %ld). "
+                   "Its documents remain in the indexer; repeat the deletion once the indexer is healthy.",
+                   agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
         }
     }
 }

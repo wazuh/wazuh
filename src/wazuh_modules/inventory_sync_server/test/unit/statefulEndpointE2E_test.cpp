@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <string>
 #include <unistd.h>
+#include <vector>
 
 /*
  * The minimal end-to-end QA of POST /stateful over the module's OWN socket (design doc 12, F2
@@ -312,12 +313,25 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
     EXPECT_EQ(200, invsync::test::sendRaw(m_path, aliasHead).status);
 
-    const auto ops = m_events->syncOps();
-    ASSERT_EQ(2U, ops.size());
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
-    EXPECT_EQ("009", std::get<1>(ops[0])) << "padded like every document _id";
-    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0])) << "the whole state family, one pattern query";
-    EXPECT_EQ("010", std::get<1>(ops[1]));
+    // Each deletion refreshes its scope and then deletes across it: wazuh-states-* plus the two
+    // wazuh-agent-* indices, which live outside the state family and used to outlive the agent.
+    std::vector<std::string> deletedIndices;
+    std::vector<std::string> deletedAgents;
+    for (const auto& op : m_events->syncOps())
+    {
+        if (std::get<0>(op) == "deleteByQuery")
+        {
+            deletedIndices.push_back(std::get<2>(op));
+            deletedAgents.push_back(std::get<1>(op));
+        }
+    }
+
+    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
+    std::vector<std::string> expectedIndices {scope};
+    expectedIndices.insert(expectedIndices.end(), scope.begin(), scope.end());
+    EXPECT_EQ(expectedIndices, deletedIndices);
+    // Padded like every document _id: the first deletion is agent 9, the second agent 10.
+    EXPECT_EQ(std::vector<std::string>({"009", "009", "009", "010", "010", "010"}), deletedAgents);
     EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each 200 means its delete was flushed";
 
     const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"

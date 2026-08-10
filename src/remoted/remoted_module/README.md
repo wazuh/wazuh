@@ -36,6 +36,8 @@ remoted_module/
 └── tools/
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
     ├── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
+    │                               #   (the deletion has no remoted route: see
+    │                               #    inventory_sync_server/tools/send_delete_agent.py)
     ├── send_control.py             # CLI to sign + POST /control (startup/notify/shutdown scenarios)
     └── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
 ```
@@ -1132,15 +1134,16 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
 Same signing, for `POST /stats` and `POST /config`. This one is the end-to-end check of the *whole*
 forwarding path.
 
-**It verifies the body, not just the status code**, and the two endpoints prove themselves
-differently. `/config` is still a dummy that echoes the document back, so a successful run prints it
-with `wazuh.agent.id` and `@timestamp` added — which only happens if the UDS hop and the
-`X-Wazuh-Agent-Id` header propagation both worked, and a `200` missing either stamp is a FAIL.
-`/stats` indexes instead, so its `200` carries the protocol's empty acknowledgment and a body with
-anything in it is a FAIL. That is all the tool can assert for `/stats`: the document is not echoed, so
-confirming it landed means reading it yourself with `GET wazuh-agent-stats/_doc/<agent_id>` on the
-indexer — which is also the only way to see a write the indexer rejected, since the write is
-fire-and-forget and the agent gets its `200` either way.
+**It verifies the body, not just the status code.** Both endpoints now behave the same way: they
+validate the agent's `modules`-keyed report, index one document per agent (`wazuh-agent-stats` /
+`wazuh-agent-config`) and answer the protocol's empty acknowledgment — so a `200` carrying anything
+but `{}` is a FAIL. Neither echoes the enriched document any more.
+
+That is all the tool can assert. Confirming the document actually landed means reading it yourself
+with `GET wazuh-agent-stats/_doc/<agent_id>` or `GET wazuh-agent-config/_doc/<agent_id>` on the
+indexer — which is also the only way to see a write the indexer rejected, since both writes are
+fire-and-forget and the agent gets its `200` either way. The write is asynchronous, so the document
+appears shortly *after* the `200`, not with it.
 
 Requires `wazuh-manager-modulesd` running with the `inventory_sync_server` module; without it every
 forwarded request answers `503` and the tool says so explicitly (distinct from remoted itself being
@@ -1148,10 +1151,10 @@ unreachable, which it also reports separately).
 
 ```bash
 python3 tools/send_agent_json.py                          # one signed /stats -> 200 + {}
-python3 tools/send_agent_json.py --endpoint config        # same, against /config -> enriched echo
-python3 tools/send_agent_json.py --body '{"cpu":42}'      # /stats also needs a `modules` object
+python3 tools/send_agent_json.py --endpoint config        # same, against /config -> 200 + {}
+python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # modified body -> 401 (InvalidMac)
-python3 tools/send_agent_json.py --all                    # 14 scenarios x BOTH endpoints
+python3 tools/send_agent_json.py --all                    # 16 scenarios x BOTH endpoints
 # options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}
 ```
 

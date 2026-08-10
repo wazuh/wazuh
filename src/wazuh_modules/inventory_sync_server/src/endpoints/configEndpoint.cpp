@@ -13,20 +13,23 @@
 
 #include "common/logThrottle.hpp"
 #include "loggerHelper.h"
+#include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
 
 #include <exception>
 #include <json.hpp>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
 {
     constexpr auto CONFIG_ENDPOINT_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:endpoints"};
 
-    // This literal has to stay in sync with the wazuh-agent-config template's index_patterns.
-    constexpr auto AGENT_CONFIG_INDEX_NAME {"wazuh-agent-config"};
+    // Has to stay in sync with the wazuh-agent-config template's index_patterns. Taken from the
+    // deletion scope rather than re-spelled here, so DELETE /agents can never miss this index.
+    constexpr std::string_view AGENT_CONFIG_INDEX_NAME {invsync::sync::AGENT_CONFIG_INDEX};
 
     // WCS (Wazuh Common Schema) field naming convention, per docs/ref/glossary.md. Local to this
     // module: there is no shared cross-module constant for it (vulnerability_scanner defines its
