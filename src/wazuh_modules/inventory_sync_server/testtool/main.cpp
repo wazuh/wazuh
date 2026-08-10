@@ -548,7 +548,7 @@ int main(int argc, char* argv[])
         if (!config.noVd)
         {
             std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
-            vulnerabilityScanner.start(logSink, moduleConfig, false, true, true);
+            vulnerabilityScanner.start(logSink, moduleConfig, true, true);
         }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only
