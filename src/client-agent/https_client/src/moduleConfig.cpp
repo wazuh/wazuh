@@ -70,7 +70,7 @@ bool ModuleConfig::validate(const IFsProbe& fsProbe, const LogFn& logFn) const
 {
     if (serverHost.empty() || agentId.empty())
     {
-        LOGFN_ERROR(logFn, "https_client config rejected: server_host and agent_id are mandatory.");
+        LOGFN_ERROR(logFn, "Config rejected: server_host and agent_id are mandatory.");
         return false;
     }
 
@@ -81,7 +81,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
 {
     if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE)
     {
-        LOGFN_ERROR(logFn, "https_client config rejected: unknown verify_mode %d.", verifyMode);
+        LOGFN_ERROR(logFn, "Config rejected: unknown verify_mode %d.", verifyMode);
         return false;
     }
 
@@ -89,7 +89,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
     {
         // The agent's own configured default (client-config.h's agent_verify_mode_t),
         // not an operator opt-out to flag -- informational, not a WARNING.
-        LOGFN_INFO(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
+        LOGFN_INFO(logFn, "TLS verification is DISABLED (verify_mode=none).");
         return true;
     }
 
@@ -118,13 +118,13 @@ bool ModuleConfig::validateClientCert(const IFsProbe& fsProbe, const LogFn& logF
 
     if (clientCert.empty() || clientKey.empty())
     {
-        LOGFN_ERROR(logFn, "https_client config rejected: client certificate and key must be set together.");
+        LOGFN_ERROR(logFn, "Config rejected: client certificate and key must be set together.");
         return false;
     }
 
     if (!fsProbe.isReadableFile(clientCert) || !fsProbe.isReadableFile(clientKey))
     {
-        LOGFN_ERROR(logFn, "https_client config rejected: client certificate or key is not readable.");
+        LOGFN_ERROR(logFn, "Config rejected: client certificate or key is not readable.");
         return false;
     }
 
