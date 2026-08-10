@@ -671,6 +671,95 @@ int Read_Agent_Batch(XML_NODE node, agent * logr)
     return (0);
 }
 
+/**
+ * @brief Read <batch> out of one <agent> block, ignoring every other option.
+ */
+static void read_batch_of_agent_block(const OS_XML *xml, xml_node *agent_node, agent *out)
+{
+    XML_NODE options = OS_GetElementsbyNode(xml, agent_node);
+
+    for (int i = 0; options && options[i]; i++) {
+        XML_NODE limits = NULL;
+
+        if (!options[i]->element || strcmp(options[i]->element, "batch") != 0) {
+            continue;
+        }
+
+        if ((limits = OS_GetElementsbyNode(xml, options[i]))) {
+            Read_Agent_Batch(limits, out);
+            OS_ClearNode(limits);
+        }
+    }
+
+    OS_ClearNode(options);
+}
+
+/**
+ * @brief Walk one configuration root looking for <agent> blocks.
+ */
+static void read_batch_of_root(const OS_XML *xml, xml_node *root_node, agent *out)
+{
+    XML_NODE blocks = OS_GetElementsbyNode(xml, root_node);
+
+    for (int i = 0; blocks && blocks[i]; i++) {
+        if (blocks[i]->element && strcmp(blocks[i]->element, "agent") == 0) {
+            read_batch_of_agent_block(xml, blocks[i], out);
+        }
+    }
+
+    OS_ClearNode(blocks);
+}
+
+/**
+ * @brief Read <agent><batch> straight out of a local configuration file.
+ */
+static void read_local_agent_batch(const char *cfgfile, agent *out)
+{
+    OS_XML xml;
+    XML_NODE root = NULL;
+
+    if (OS_ReadXML(cfgfile, &xml) < 0) {
+        return; /* Unreadable or absent: the caller's values stand. */
+    }
+
+    root = OS_GetElementsbyNode(&xml, NULL);
+
+    for (int i = 0; root && root[i]; i++) {
+        read_batch_of_root(&xml, root[i], out);
+    }
+
+    OS_ClearNode(root);
+    OS_ClearXML(&xml);
+}
+
+void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch)
+{
+    agent parsed = { .server = NULL };
+
+    if (!batch) {
+        return;
+    }
+
+    if (cfgfile) {
+        read_local_agent_batch(cfgfile, &parsed);
+    }
+
+    /* The centralized file goes through ReadConfig so it gets the same
+     * agent_config name/os/profile filtering every other module gets; the local
+     * one cannot, because Read_Agent expects structures agentd sets up first. */
+    if (sharedcfg) {
+        ReadConfig(CCLIENT | CAGENT_CONFIG, sharedcfg, &parsed, NULL);
+    }
+
+    if (parsed.batch.size > 0) {
+        batch->size = parsed.batch.size;
+    }
+
+    if (parsed.batch.interval > 0) {
+        batch->interval = parsed.batch.interval;
+    }
+}
+
 int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     /* XML definitions */
     const char *xml_enabled = "enabled";

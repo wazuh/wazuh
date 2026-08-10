@@ -13,6 +13,9 @@
  */
 #include "rootcheck.h"
 #include "agent_sync_protocol_c_interface.h"
+#ifdef CLIENT
+#include "client-config.h"
+#endif
 #include "db.h"
 #include "shared.h"
 #include "syscheck.h"
@@ -281,6 +284,20 @@ int main(int argc, char **argv)
     if (File_DateofChange(cfg) < 0) {
         merror_exit(NO_CONFIG, cfg);
     }
+
+#ifdef CLIENT
+    /* The sync protocol bounds one session by <agent><batch><size>, the same limit
+     * that bounds a /stateless request. The block belongs to the agent rather than
+     * to this daemon, and the protocol reads no configuration of its own, so it is
+     * read here and handed down before fim_initialize() builds the instance. */
+    agent_batch batch = { .size = 0, .interval = 0 };
+    w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
+    asp_set_session_max_bytes((uint64_t)batch.size);
+
+    if (batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
+    }
+#endif
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
