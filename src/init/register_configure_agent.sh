@@ -250,7 +250,14 @@ add_auto_enrollment () {
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
 
-    ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
+    # Anchored on the block that opens the agent configuration rather than on any
+    # option inside it: the shipped file only carries what an install has to fill
+    # in, so no individual option is guaranteed to be there to anchor on.
+    if grep -q "<agent>" "${CONF_FILE}"; then
+        ${sed} "/<agent>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
+    else
+        ${sed} "/<client>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
+    fi
 
     rm -f "${TMP_ENROLLMENT}"
 

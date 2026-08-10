@@ -383,7 +383,6 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </agent>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
