@@ -13,6 +13,7 @@
 #include "common/vdClient.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
+#include "proc.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -36,15 +37,31 @@ namespace remoted::scanvd
             return instance;
         }
 
-        constexpr size_t MAX_TRACKED_AGENTS = 10000;
         constexpr auto QUEUE_PROCESS_INTERVAL_MS = 100;
         constexpr uint8_t MAX_RETRIES = 3;
 
         // A single worker would let one agent's worst-case wait (VD_SCAN_READ_TIMEOUT_SECONDS,
         // up to 150s -- see below) head-of-line-block every other queued agent on this node. A
-        // small pool bounds that blast radius without the complexity of a fully dynamic sizing
-        // scheme; feed-update rescans are not latency-critical enough to need more.
-        constexpr size_t SCAN_WORKER_POOL_SIZE = 4;
+        // pool bounds that blast radius as 1/N of total capacity, without the complexity of a
+        // fully dynamic sizing scheme. This is a client-side occupancy concern (how many of
+        // *this* pool's workers can be stuck waiting on one slow HTTP response at once) --
+        // unrelated to how many scans VD can actually execute in parallel, which is exactly one
+        // regardless of N: ScanOrchestrator::runScanAfterFeedUpdate() takes an exclusive lock for
+        // the whole scan, shared with every other scan trigger in that process. So sizing this
+        // above 1 helps *this* side (fewer of our own workers wedged on one slow agent at a time)
+        // even though it can't make VD process our requests any faster; if this exceeds VD's own
+        // admission pool (scanThreadPoolSize() in vulnerabilityScanner.cpp), excess requests
+        // simply queue on VD's side instead of something rejecting them outright.
+        //
+        // Tracks cpp_get_nproc() -- like resolveThreadCount() in this module's own
+        // httpServerConfig.cpp/downstreamConfig.cpp -- rather than a fixed constant, mainly for
+        // consistency with that convention and so a much larger box gets more blast-radius
+        // headroom; it doesn't need to match VD's pool size exactly (see above for why).
+        size_t scanWorkerPoolSize()
+        {
+            static const size_t value = cpp_get_nproc();
+            return value;
+        }
 
         // VD's POST /vulnerability-detector/scan handler runs synchronously and can legitimately
         // block for up to 120s (ScanAgentList::scanAgent's hasActiveSessionForAgent wait: 60s *
@@ -75,10 +92,12 @@ namespace remoted::scanvd
     public:
         Impl(std::shared_ptr<remoted::common::VdClient> vdClient,
              ScanVdMetrics& metrics,
-             std::string vdModulesdSocketPath)
+             std::string vdModulesdSocketPath,
+             size_t maxTrackedAgents)
             : m_vdClient(std::move(vdClient))
             , m_metrics(metrics)
             , m_vdModulesdSocketPath(std::move(vdModulesdSocketPath))
+            , m_maxTrackedAgents(maxTrackedAgents)
             , m_stopping(false)
         {
             startWorkerThread();
@@ -155,7 +174,7 @@ namespace remoted::scanvd
                                  agentId,
                                  requestedOffset);
                 }
-                else if (m_agentStates.size() >= MAX_TRACKED_AGENTS)
+                else if (m_agentStates.size() >= m_maxTrackedAgents)
                 {
                     rejectedFull = true;
                 }
@@ -173,7 +192,7 @@ namespace remoted::scanvd
             {
                 LOGFN_WARN(logFn(),
                            "Scan tracking table full (%zu agents), rejecting scan request for agent %u",
-                           MAX_TRACKED_AGENTS,
+                           m_maxTrackedAgents,
                            agentId);
                 incQueueFull(m_metrics);
                 remoted::endpoints::scanvd::ScanVdResponse response;
@@ -200,8 +219,9 @@ namespace remoted::scanvd
     private:
         void startWorkerThread()
         {
-            m_workerThreads.reserve(SCAN_WORKER_POOL_SIZE);
-            for (size_t i = 0; i < SCAN_WORKER_POOL_SIZE; ++i)
+            const auto poolSize = scanWorkerPoolSize();
+            m_workerThreads.reserve(poolSize);
+            for (size_t i = 0; i < poolSize; ++i)
             {
                 m_workerThreads.emplace_back([this]() { workerLoop(); });
             }
@@ -483,6 +503,7 @@ namespace remoted::scanvd
         std::shared_ptr<remoted::common::VdClient> m_vdClient;
         ScanVdMetrics& m_metrics;
         std::string m_vdModulesdSocketPath;
+        size_t m_maxTrackedAgents;
         std::atomic<bool> m_stopping;
         std::vector<std::thread> m_workerThreads;
         std::mutex m_queueMutex;
@@ -493,8 +514,10 @@ namespace remoted::scanvd
 
     ScanVdHandlerImpl::ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                                          ScanVdMetrics& metrics,
-                                         std::string vdModulesdSocketPath)
-        : m_impl(std::make_unique<Impl>(std::move(vdClient), metrics, std::move(vdModulesdSocketPath)))
+                                         std::string vdModulesdSocketPath,
+                                         size_t maxTrackedAgents)
+        : m_impl(
+              std::make_unique<Impl>(std::move(vdClient), metrics, std::move(vdModulesdSocketPath), maxTrackedAgents))
     {
     }
 

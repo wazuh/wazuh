@@ -43,7 +43,20 @@ namespace httpsrv
         bool bindAndListen();
 
     public:
-        explicit Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLogging = true);
+        /**
+         * @param id Identifier used in logs and the worker thread name.
+         * @param payloadMaxBytes Maximum accepted request body size, in bytes (0 = unlimited).
+         * @param enableDetailedLogging If true, logs full request/response bodies at debug level.
+         * @param threadPoolSize Number of worker threads handling accepted connections. 0 (the
+         * default) keeps cpp-httplib's own default (CPPHTTPLIB_THREAD_POOL_COUNT, machine-wide).
+         * Pass an explicit value to give this server instance its own pool, independent of other
+         * httpsrv::Server instances in the same process -- e.g. so a slow endpoint on one socket
+         * can't starve worker threads that a different, latency-sensitive socket relies on.
+         */
+        explicit Server(const std::string& id,
+                        size_t payloadMaxBytes = 0,
+                        bool enableDetailedLogging = true,
+                        size_t threadPoolSize = 0);
 
         ~Server() override
         {

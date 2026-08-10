@@ -396,7 +396,10 @@ private:
                                              "/control",
                                              remoted::endpoints::control::makeHandler(*m_controlHandler));
 
-        // /scan/vd: agent-initiated VD scans. Uses the same vdClient as /control for offset queries.
+        // /scan/vd: agent-initiated VD scans. Uses the same vdClient as /control for offset
+        // queries (queue/sockets/modulesd), but triggers the scan itself over VD's separate,
+        // dedicated scan socket (queue/sockets/modulesd-vdscan -- see ScanVdHandlerImpl's default
+        // argument) so a burst of long-running scans can never starve /offset queries.
         m_scanVdHandler = std::make_unique<remoted::scanvd::ScanVdHandlerImpl>(vdClient, m_scanVdMetrics);
 
         m_authGateway->addAuthenticatedRoute(*m_httpServer,
