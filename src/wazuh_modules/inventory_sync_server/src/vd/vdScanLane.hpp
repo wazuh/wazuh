@@ -125,9 +125,6 @@ namespace invsync::vd
         std::shared_ptr<wazuh::metrics::ICounter> m_scansOk;
         std::shared_ptr<wazuh::metrics::ICounter> m_scansFailed;
         std::shared_ptr<wazuh::metrics::ICounter> m_scansSkipped;
-        /// Distinct from the generic c409 in m_requestCounters, which also counts unrelated
-        /// checksum-mismatch 409s from the session processor -- this isolates VD's own version
-        /// mismatch frequency (VD_RESCAN_SOLUTION.md Phase 4: "Version mismatch frequency").
         std::shared_ptr<wazuh::metrics::ICounter> m_offsetMismatchTotal;
         std::shared_ptr<wazuh::metrics::IGaugeInt> m_laneDepth;
         std::shared_ptr<wazuh::metrics::IHistogram> m_laneTime;
