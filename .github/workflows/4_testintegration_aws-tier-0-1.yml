@@ -12,12 +12,14 @@ on:
         required: true
         default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/4_testintegration_aws-tier-0-1.yml"
       - "wodles/aws/**"
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     permissions:
       id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
       contents: read

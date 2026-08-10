@@ -3,6 +3,7 @@ name: 4.X - Inventory Harvester - Unit tests
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
   # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
   # Path filtering
@@ -17,6 +18,7 @@ permissions:
 
 jobs:
   inventory-harvester-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Cancel previous runs
@@ -59,6 +61,7 @@ jobs:
           id: inventory_harvester
 
   inventory-harvester-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     strategy:
       matrix:
         os: [ ubuntu-24.04, ubuntu-22.04 ]

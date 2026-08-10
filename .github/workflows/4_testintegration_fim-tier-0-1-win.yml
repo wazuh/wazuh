@@ -8,6 +8,7 @@ on:
         required: true
         default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - ".github/workflows/4_testintegration_fim-tier-0-1-win.yml"
         - "src/config/syscheck-config.c"
@@ -24,7 +25,8 @@ permissions:
 jobs:
   # Build the winagent on linux.
   build:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       # Install wingw required to build the winagent.
@@ -56,11 +58,12 @@ jobs:
           path: src/winagent
   # Execute the tests on windows.
   run-test:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     needs: build
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: windows-2025
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -69,8 +72,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Set up WiX Toolset (MSI build)
-        uses: ./.github/actions/setup_wix
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: ./.github/actions/download_s3_artifact
