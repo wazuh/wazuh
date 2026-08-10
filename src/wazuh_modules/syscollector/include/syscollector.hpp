@@ -14,6 +14,7 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <shared_mutex>
 #include <memory>
 #include <optional>
 #include <atomic>
@@ -470,6 +471,17 @@ class EXPORTED Syscollector final
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
+
+        /// @brief Serializes releaseResources() against the entry points that other threads
+        /// keep driving while the module tears down: wcom's dispatcher is detached and never
+        /// joined, and agent-info's coordination polls call query() in-process from its own
+        /// module thread (e.g. the get_first_sync_completed guard, which reaches
+        /// getMetadataValue() and dereferences m_spDBSync). Those entry points take it shared
+        /// around each access; initSyncProtocol() publishes the protocols under the exclusive
+        /// lock and releaseResources() resets the members under it. The scan and sync workers
+        /// do not take it: they are joined before releaseResources() runs. Mirrors
+        /// SecurityConfigurationAssessment::m_resourcesMutex, added for the same defect.
+        mutable std::shared_mutex                                                m_resourcesMutex;
 };
 
 
