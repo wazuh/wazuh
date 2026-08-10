@@ -12,6 +12,7 @@ INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
+TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
@@ -53,6 +54,63 @@ delete_blank_lines() {
 
 }
 
+# Insert a file's contents inside the agent configuration block, once.
+#
+# The opening tag has to be alone on its own line AND outside any comment to be
+# matched, so a block someone commented out cannot take the insertion -- which is not
+# hypothetical: commenting out the whole <agent> block is how you disable it, and the
+# commented copy comes first in the file. A package upgrade keeps the 4.x file, where
+# the block is still spelled <client>, hence both names.
+#
+# Written back through the existing file rather than moved over it, so the
+# permissions and ownership ossec.conf was installed with survive.
+insert_into_agent_block() {
+
+    awk -v payload_file="$1" '
+        BEGIN {
+            while ((getline line < payload_file) > 0) {
+                payload = payload line "\n"
+            }
+            close(payload_file)
+        }
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            print
+            next
+        }
+        !inserted && /^[[:space:]]*<(agent|client)>[[:space:]]*$/ {
+            print
+            printf "%s", payload
+            inserted = 1
+            next
+        }
+        {
+            if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 }
+            print
+        }
+    ' "${CONF_FILE}" > "${TMP_INSERT}" && cat "${TMP_INSERT}" > "${CONF_FILE}"
+
+    rm -f "${TMP_INSERT}"
+
+}
+
+# True when the option is really set, as opposed to appearing inside a comment.
+# Commented-out options are exactly how the shipped files used to show an example,
+# and editing one leaves the setting the caller asked for unwritten.
+agent_option_is_set() {
+
+    awk -v tag="$1" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            next
+        }
+        $0 ~ "^[[:space:]]*<" tag ">" { found = 1; exit }
+        { if ($0 ~ /<!--/ && $0 !~ /-->/) { in_comment = 1 } }
+        END { exit found ? 0 : 1 }
+    ' "${CONF_FILE}"
+
+}
+
 # Set an option of the agent block, adding it when the shipped configuration does
 # not carry it. Options left at their default are no longer written to ossec.conf,
 # so edit_value_tag alone would find nothing to substitute and quietly do nothing.
@@ -62,20 +120,13 @@ set_agent_option() {
         return
     fi
 
-    if grep -q "<$1>" "${CONF_FILE}"; then
+    if agent_option_is_set "$1"; then
         edit_value_tag "$1" "$2"
         return
     fi
 
     echo "    <$1>$2</$1>" > "${TMP_SERVER}"
-
-    # A package upgrade keeps the 4.x file, where the block is still <client>.
-    if grep -q "<agent>" "${CONF_FILE}"; then
-        ${sed} "/<agent>/r ${TMP_SERVER}" "${CONF_FILE}"
-    else
-        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    fi
-
+    insert_into_agent_block "${TMP_SERVER}"
     rm -f "${TMP_SERVER}"
 
 }
@@ -108,13 +159,7 @@ add_adress_block() {
         echo "    </server>"
     } >> "${TMP_SERVER}"
 
-    # A 5.x package ships <agent>, but a package upgrade preserves the 4.x file, so
-    # WAZUH_MANAGER can land on a configuration that still spells the block <client>.
-    if grep -q "<agent>" "${CONF_FILE}"; then
-        ${sed} "/<agent>/r ${TMP_SERVER}" "${CONF_FILE}"
-    else
-        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    fi
+    insert_into_agent_block "${TMP_SERVER}"
 
     rm -f "${TMP_SERVER}"
 
@@ -221,16 +266,21 @@ tolower () {
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
 
+    # Only the children are collected here; concat_conf writes the block around them.
     start_config="$(grep -n "<enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
     end_config="$(grep -n "</enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         start_config=$(( start_config + 1 ))
         end_config=$(( end_config - 1 ))
-        sed -n "${start_config},${end_config}p" "${INSTALLDIR}/etc/ossec.conf" >> "${TMP_ENROLLMENT}"
+        sed -n "${start_config},${end_config}p" "${CONF_FILE}" >> "${TMP_ENROLLMENT}"
+
+        # Take the block out while it is being rewritten. Without this the original
+        # stays put and concat_conf adds a second one, so running the configuration
+        # twice leaves two enrollment blocks in the file.
+        ${sed} "/<enrollment>/,/<\/enrollment>/d" "${CONF_FILE}"
     else
         # Write the client configuration block
         {
-            echo "    <enrollment>"
             echo "      <enabled>yes</enabled>"
             echo "      <manager_address>MANAGER_IP</manager_address>"
             echo "      <port>1515</port>"
@@ -241,7 +291,6 @@ add_auto_enrollment () {
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
             echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
-            echo "    </enrollment>"
         } >> "${TMP_ENROLLMENT}"
     fi
 
@@ -253,11 +302,17 @@ concat_conf() {
     # Anchored on the block that opens the agent configuration rather than on any
     # option inside it: the shipped file only carries what an install has to fill
     # in, so no individual option is guaranteed to be there to anchor on.
-    if grep -q "<agent>" "${CONF_FILE}"; then
-        ${sed} "/<agent>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
-    else
-        ${sed} "/<client>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
-    fi
+    #
+    # The wrapper goes on here, not when the children are collected, so an option
+    # edit_value_tag had to append lands inside the block rather than after it.
+    {
+        echo "    <enrollment>"
+        cat "${TMP_ENROLLMENT}"
+        echo "    </enrollment>"
+    } > "${TMP_ENROLLMENT}.block"
+    mv "${TMP_ENROLLMENT}.block" "${TMP_ENROLLMENT}"
+
+    insert_into_agent_block "${TMP_ENROLLMENT}"
 
     rm -f "${TMP_ENROLLMENT}"
 
