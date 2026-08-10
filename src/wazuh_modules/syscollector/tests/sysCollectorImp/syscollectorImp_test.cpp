@@ -416,6 +416,7 @@ static const auto expectedPersistBrowserExtension
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -544,6 +545,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     GTEST_SKIP() << "Skipping intervalSeconds test on Windows due to sync protocol issues in Wine environment";
 #endif
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -590,6 +592,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 TEST_F(SyscollectorImpTest, noScanOnStart)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
@@ -683,6 +686,7 @@ TEST_F(SyscollectorImpTest, releaseResourcesReleasesSysInfoThreadResourcesOnStar
 TEST_F(SyscollectorImpTest, noHardware)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -805,6 +809,7 @@ TEST_F(SyscollectorImpTest, noHardware)
 TEST_F(SyscollectorImpTest, noOs)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
@@ -926,6 +931,7 @@ TEST_F(SyscollectorImpTest, noOs)
 TEST_F(SyscollectorImpTest, noNetwork)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
@@ -1039,6 +1045,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
 TEST_F(SyscollectorImpTest, noPackages)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1155,6 +1162,7 @@ TEST_F(SyscollectorImpTest, noPackages)
 TEST_F(SyscollectorImpTest, noPorts)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1276,6 +1284,7 @@ TEST_F(SyscollectorImpTest, noPorts)
 TEST_F(SyscollectorImpTest, noPortsAll)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1402,6 +1411,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
 TEST_F(SyscollectorImpTest, noProcesses)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1518,6 +1528,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
 TEST_F(SyscollectorImpTest, noHotfixes)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1639,6 +1650,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
 TEST_F(SyscollectorImpTest, noUsers)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1760,6 +1772,7 @@ TEST_F(SyscollectorImpTest, noUsers)
 TEST_F(SyscollectorImpTest, noGroups)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1881,6 +1894,7 @@ TEST_F(SyscollectorImpTest, noGroups)
 TEST_F(SyscollectorImpTest, noServices)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -2002,6 +2016,7 @@ TEST_F(SyscollectorImpTest, noServices)
 TEST_F(SyscollectorImpTest, noBrowserExtensions)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -2123,6 +2138,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
 TEST_F(SyscollectorImpTest, portAllEnable)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2311,6 +2327,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 TEST_F(SyscollectorImpTest, portAllDisable)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2487,6 +2504,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 TEST_F(SyscollectorImpTest, PackagesDuplicated)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
@@ -2569,6 +2587,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -2703,6 +2722,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 TEST_F(SyscollectorImpTest, queryCommandPause)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2755,6 +2775,7 @@ TEST_F(SyscollectorImpTest, queryCommandPause)
 TEST_F(SyscollectorImpTest, queryCommandResume)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2811,6 +2832,7 @@ TEST_F(SyscollectorImpTest, queryCommandResume)
 TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2851,6 +2873,7 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
     s_startEntered = false;
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2923,6 +2946,7 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
 TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2977,6 +3001,7 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
 TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3036,6 +3061,7 @@ TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSuc
 TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3136,6 +3162,7 @@ TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_Flus
 TEST_F(SyscollectorImpTest, executeFlushSync_VDSyncDisabled_FlushSucceeds)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3186,6 +3213,7 @@ TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueFails_VDSucceeds_FlushF
     s_startCallCount = 0;
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3239,6 +3267,7 @@ TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_F
     s_startCallCount = 0;
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3289,6 +3318,7 @@ TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_F
 TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3359,6 +3389,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedDefaultsToFalse)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3383,6 +3414,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedDefaultsToFalse)
 TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMetadataExists)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3440,6 +3472,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedDefaultsToFalse)
 {
     // No scan has run and no marker is present: expect first_scan_completed == 0.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3465,6 +3498,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedReturnsTrueWhenMeta
 {
     // Seed the marker directly into the DB, then verify the query reports it.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3521,6 +3555,7 @@ TEST_F(SyscollectorImpTest, scanSetsFirstScanCompletedMarkerAfterFullScan)
     // After a complete scan() the first_scan_completed marker must be written
     // with a positive Unix timestamp.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3586,6 +3621,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
 {
     // If the marker is already set, a subsequent scan must NOT overwrite the timestamp.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3679,6 +3715,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
 TEST_F(SyscollectorImpTest, queryCommandSetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3756,6 +3793,7 @@ TEST_F(SyscollectorImpTest, queryCommandSetVersion)
 TEST_F(SyscollectorImpTest, queryCommandUnknown)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3793,6 +3831,7 @@ TEST_F(SyscollectorImpTest, queryInvalidJson)
     GTEST_SKIP() << "Skipping queryInvalidJson test on Windows due to exception handling issues in Wine environment";
 #endif
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3825,6 +3864,7 @@ TEST_F(SyscollectorImpTest, queryInvalidJson)
 TEST_F(SyscollectorImpTest, queryMissingCommand)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3857,6 +3897,7 @@ TEST_F(SyscollectorImpTest, queryMissingCommand)
 TEST_F(SyscollectorImpTest, querySetVersionMissingParameter)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3889,6 +3930,7 @@ TEST_F(SyscollectorImpTest, querySetVersionMissingParameter)
 TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3930,6 +3972,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3993,6 +4036,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4052,6 +4096,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4111,6 +4156,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4166,6 +4212,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanNoDisabledCollectors
 {
     // Test case: All collectors enabled, no data to clean
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4214,6 +4261,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
 {
     // Test case: Some collectors disabled but no data in database
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4262,6 +4310,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
 {
     // Test case: Disabled collectors with data in database
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4317,6 +4366,7 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataNoDisabledCollectors)
 {
     // Test case: No disabled collectors, nothing to delete
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4361,6 +4411,7 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataWithDisabledCollectorsAnd
 {
     // Test case: Delete data for disabled collectors
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4414,6 +4465,7 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
 {
     // Test case: All collectors disabled - should detect it during initialization
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4475,6 +4527,7 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
 {
     // Test case: Network collector disabled - should detect 3 indices (interfaces, protocols, networks)
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4542,6 +4595,7 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
     {
         std::make_shared<MockSysInfo>()
     };
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackDataDelta
@@ -4621,6 +4675,7 @@ TEST_F(SyscollectorImpTest, stoppingDuringScanSkipsRemainingTasks)
     {
         std::make_shared<MockSysInfo>()
     };
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackDataDelta
@@ -4705,6 +4760,7 @@ TEST_F(SyscollectorImpTest, stoppingDuringScanSkipsRemainingTasks)
 TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4746,6 +4802,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 TEST_F(SyscollectorImpTest, runRecoveryProcessWithoutSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4765,6 +4822,7 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithoutSyncProtocol)
 TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4808,6 +4866,7 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
 TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Return valid hardware data (cpu_speed as integer, which our correction handles)
     const std::string validHardwareJson =
@@ -4895,6 +4954,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
 TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Data that our corrections should handle:
     // - file_inode as number (will be converted to string)
@@ -5002,6 +5062,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
 TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // cpu_speed as 0.0 represents an unavailable value (e.g. macOS ARM) and must be
     // reported as null instead of a misleading 0.
@@ -5101,6 +5162,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     int hwCallCount{0};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(testing::Invoke(
@@ -5209,6 +5271,7 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
     // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
@@ -5307,6 +5370,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
     // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
@@ -5404,6 +5468,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
 TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Return any hardware data (content doesn't matter, mock will force failure)
     const std::string hardwareJson =
@@ -5552,6 +5617,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     const std::string hardwareJson =
         R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
@@ -5702,6 +5768,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidInput_NotAnObject)
 
     // Set up minimal mock sysinfo (no scan data needed for this test)
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5788,6 +5855,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5876,6 +5944,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidLimitValue_NotANumber)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5965,6 +6034,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_UnknownIndexName)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6055,6 +6125,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6147,6 +6218,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6222,6 +6294,7 @@ TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
     s_startEntered = false;
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -6302,6 +6375,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
 {
     // No VD sync has run and no marker is present: expect vd_first_sync_completed == 0.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -6327,6 +6401,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedReturnsTrueWhenMe
 {
     // Seed the marker directly into the DB, then verify the query reports it.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -6378,6 +6453,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
 {
     // A row with last_sync_time=0 must NOT be reported as completed (boolean is "> 0").
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
