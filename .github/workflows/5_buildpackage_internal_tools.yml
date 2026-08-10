@@ -36,11 +36,11 @@ jobs:
   build:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build ${{ matrix.system }} / ${{ matrix.arch }}
-    runs-on: ${{ (matrix.arch == 'arm64' || matrix.arch == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    runs-on: ${{ (matrix.arch == 'arm64' || matrix.arch == 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     permissions:
       id-token: write
       contents: read
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -53,26 +53,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || '' }}
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
-        run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
-          git config core.repositoryformatversion 0
+      - name: Fix git repository format for builder images
+        # actions/checkout on newer git writes repositoryformatversion=1, which the
+        # older git inside the builder Docker images cannot read.
+        run: git config core.repositoryformatversion 0
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }} 
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
           password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Resolve extension
