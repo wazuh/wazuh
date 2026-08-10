@@ -16,9 +16,9 @@
           -  log_format:
               value: 'LOG_FORMAT2'
 
-    - section: client
+    - section: agent
       elements:
-        - manager:
+        - server:
             elements:
               - address:
                   value: '127.0.0.1'

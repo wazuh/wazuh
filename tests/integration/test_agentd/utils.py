@@ -47,6 +47,15 @@ def wait_state_update():
     assert (wazuh_log_monitor.callback_result != None), f'State file update not found'
 
 
+def wait_enrollment():
+    """
+        Watch ossec.log until "Valid key received" message is found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY), timeout = 150)
+    assert (wazuh_log_monitor.callback_result != None), 'Agent never enrolled'
+
+
 def wait_enrollment_try():
     """
         Watch ossec.log until "Requesting a key" message is found
@@ -72,6 +81,15 @@ def wait_server_rollback():
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT_TO_ANY), timeout = 120)
     assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
+
+
+def check_module_stop():
+    """
+        Watch ossec.log until "Unable to access queue" message is not found
+    """
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_MODULE_STOPPED))
+    assert (wazuh_log_monitor.callback_result == None), f'Unable to access queue message found'
 
 
 def check_connection_try():

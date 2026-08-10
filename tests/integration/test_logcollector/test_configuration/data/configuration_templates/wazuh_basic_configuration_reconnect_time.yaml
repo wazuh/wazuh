@@ -8,9 +8,9 @@
         - reconnect_time:
             value: 'RECONNECT_TIME'
 
-    - section: client
+    - section: agent
       elements:
-        - manager:
+        - server:
             elements:
               - address:
                   value: '127.0.0.1'
