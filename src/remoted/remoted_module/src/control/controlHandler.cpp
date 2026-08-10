@@ -30,6 +30,13 @@ namespace remoted::control
     {
         constexpr auto CONTROL_HANDLER_LOGTAG {"wazuh-manager-remoted:control-handler"};
 
+        // Placeholder written to wdb's agent.version column instead of a rejected startup version:
+        // the framework's WazuhVersion parser requires a strict MAJOR.MINOR.PATCH shape (or this
+        // exact sentinel) and raises on anything else, which used to take down every agent-listing
+        // API call the moment one agent ever sent a malformed version. The rejection itself (and
+        // the raw string the agent sent) is still visible in the throttled warning log below.
+        constexpr auto UNKNOWN_VERSION_PLACEHOLDER {"N/A"};
+
         // One shared LogFn instance to avoid heap allocations per log call.
         // Kept in .cpp to avoid pulling loggerHelper.h into header.
         const LogFn& logFn()
@@ -195,7 +202,7 @@ namespace remoted::control
 
                 const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, data.version, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, UNKNOWN_VERSION_PLACEHOLDER, syncStatus, [](SocketError) {});
 
                 HttpResponse response;
                 response.status = 400;
