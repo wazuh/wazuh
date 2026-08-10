@@ -84,7 +84,7 @@ static void test_ssl_full_verification_mode(void **state) {
         "<key>/etc/wazuh/agent.key</key>"
         "<certificate_authorities>/etc/wazuh/ca.pem</certificate_authorities>"
         "<verification_mode>full</verification_mode>"
-        "<ciphers>HIGH:!aNULL</ciphers>"
+        "<ciphers>TLS_AES_256_GCM_SHA384</ciphers>"
         "</ssl>";
 
     expect_valid_ip("10.0.0.1");
@@ -94,7 +94,123 @@ static void test_ssl_full_verification_mode(void **state) {
     assert_string_equal(cfg.ssl.certificate, "/etc/wazuh/agent.pem");
     assert_string_equal(cfg.ssl.key, "/etc/wazuh/agent.key");
     assert_string_equal(cfg.ssl.certificate_authorities, "/etc/wazuh/ca.pem");
-    assert_string_equal(cfg.ssl.ciphers, "HIGH:!aNULL");
+    assert_string_equal(cfg.ssl.ciphers, "TLS_AES_256_GCM_SHA384");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* The agent never negotiates below TLS 1.3, so <ciphers> only accepts TLS 1.3
+ * suite names. A TLS 1.2 cipher string parses fine as XML but could never
+ * constrain a session, which is the whole reason it is rejected here rather
+ * than being handed to OpenSSL to ignore. */
+
+static void test_ssl_ciphers_accepts_a_tls13_suite_list(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_string_equal(cfg.ssl.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256");
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_tls12_cipher_string(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>HIGH:!aNULL</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_list_of_separators(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Every element is empty, so there is no suite at all. */
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>:::</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: ':::' has an empty cipher suite name.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* A separator run names a suite that is not there. strtok_r() collapses these,
+ * so each position -- leading, trailing and interior -- gets its own case. */
+
+static void test_ssl_ciphers_rejects_a_leading_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>:TLS_AES_128_GCM_SHA256</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: ':TLS_AES_128_GCM_SHA256' has an empty cipher suite name.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_trailing_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>TLS_AES_128_GCM_SHA256:</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256:' has an empty cipher suite name.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_ciphers_rejects_a_doubled_separator(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><ciphers>TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384</ciphers></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid 'ciphers' option: 'TLS_AES_128_GCM_SHA256::TLS_AES_256_GCM_SHA384' "
+                  "has an empty cipher suite name.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -751,6 +867,12 @@ int main(void) {
         cmocka_unit_test(test_ssl_default_is_full),
         cmocka_unit_test(test_ssl_invalid_verification_mode_is_rejected),
         cmocka_unit_test(test_ssl_invalid_tag_is_rejected),
+        cmocka_unit_test(test_ssl_ciphers_accepts_a_tls13_suite_list),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_tls12_cipher_string),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_list_of_separators),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_leading_separator),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_trailing_separator),
+        cmocka_unit_test(test_ssl_ciphers_rejects_a_doubled_separator),
         cmocka_unit_test(test_server_address_and_explicit_port),
         cmocka_unit_test(test_manager_tag_is_rejected),
         cmocka_unit_test(test_second_server_block_prevails_with_warning),

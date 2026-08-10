@@ -21,6 +21,10 @@
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
+/* Check <ssl><certificate_authorities> against the configured verification mode.
+ * Returns false when the agent must not start. */
+bool w_agent_validate_ssl_ca(const agent *cfg);
+
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
 cJSON *getAgentInternalOptions(void);

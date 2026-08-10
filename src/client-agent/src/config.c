@@ -84,6 +84,34 @@ int ClientConf(const char *cfgfile)
     return (1);
 }
 
+/* Both agentd and the Windows agent gate startup on this, at the point where each can
+ * still fail cleanly: before daemonizing on POSIX, before the first module thread on
+ * Windows. Shared so the two can never drift apart on what counts as a usable CA. */
+bool w_agent_validate_ssl_ca(const agent *cfg)
+{
+    const char *ca = cfg->ssl.certificate_authorities;
+    const bool readable = ca && w_is_file(ca);
+
+    /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
+     * enables verification -- and then the agent refuses to start. Warn while it is
+     * still harmless rather than accepting it in silence. */
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        if (ca && !readable) {
+            mwarn(AG_UNUSED_SSL_CA, ca);
+        }
+
+        return true;
+    }
+
+    /* A verifying mode without a readable CA can never connect: the https_client module
+     * fails closed on this, per its own validation. */
+    if (!readable) {
+        merror(AG_INV_SSL_CA, ca ? ca : "");
+        return false;
+    }
+
+    return true;
+}
 
 cJSON *getClientConfig(void) {
 

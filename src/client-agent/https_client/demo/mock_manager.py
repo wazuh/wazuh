@@ -131,6 +131,28 @@ class Handler(BaseHTTPRequestHandler):
     def _config_blob(cls):
         return cls.CONFIG_V2 if cls.notify_count >= cls.CONFIG_FLIP_AT else cls.CONFIG_V1
 
+    def _log_tls_once(self):
+        """Print what the handshake actually negotiated, once per connection.
+
+        This is the observable half of <ssl><certificate>/<key>: the agent's config
+        is only proven to have a runtime effect if the manager can see the client
+        cert it presented. The negotiated suite is logged alongside it so the TLS
+        version in use is visible, not because this demo restricts it (#38163).
+        """
+        if getattr(self, "_tls_logged", False):
+            return
+        self._tls_logged = True
+        conn = self.connection
+        cipher = conn.cipher() if hasattr(conn, "cipher") else None
+        peer = conn.getpeercert() if hasattr(conn, "getpeercert") else None
+        if cipher:
+            log(f"TLS  cipher={cipher[0]} proto={cipher[1]}")
+        if peer:
+            subject = dict(x[0] for x in peer.get("subject", ()))
+            log(f"TLS  client cert presented: subject={subject}")
+        elif getattr(self.server, "requires_client_cert", False):
+            log("TLS  client cert REQUIRED but none presented")
+
     def log_message(self, *_):  # silence the default noisy logging
         pass
 
@@ -181,6 +203,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"0\r\n\r\n")
 
     def do_POST(self):
+        self._log_tls_once()
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
         target = self.path
@@ -308,6 +331,10 @@ class Handler(BaseHTTPRequestHandler):
         cluster = doc.get("cluster", {})
         log(f"     {target:<11} -> 200  stored: agent_id={doc.get('agent_id')} "
             f"cluster={cluster.get('name')}/{cluster.get('node')} keys={sorted(doc.keys())}")
+        # The whole document, for the field-contract comparison against the
+        # manager side (#38136). The preview in do_POST() truncates at 70 bytes,
+        # which is not enough to see the per-module bodies.
+        log(f"     {target} FULL BODY: {json.dumps(doc, sort_keys=True)}")
 
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")
@@ -370,16 +397,41 @@ def main():
     parser.add_argument("--cert", required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
+    # Exists for the connection/config validation (#38163): the agent's
+    # <ssl><certificate>/<key> can only be shown to have a runtime effect against a
+    # manager that actually demands a client certificate.
+    parser.add_argument("--client-ca",
+                        help="Require a client certificate and verify it against this CA "
+                             "(mutual TLS). Without it, client certs are not requested.")
     args = parser.parse_args()
 
     Handler.key_hex = args.key_hex
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(args.cert, args.key)
 
+    # Same floor remoted enforces (SSL_CTX_set_min_proto_version in
+    # RestinioHttpServer), so the demo negotiates what a real manager would.
+    #
+    # There is deliberately no --ciphers here. Restricting the suites would mean
+    # SSL_CTX_set_ciphersuites(), which Python's ssl module does not expose:
+    # set_ciphers() governs TLS 1.2 and below only and rejects 1.3 suite names
+    # outright. The one way to make a restriction observable was to cap the
+    # server at TLS 1.2, which an agent that requires 1.3 can no longer reach --
+    # the handshake would fail before any suite was chosen. <ssl><ciphers> is
+    # therefore validated against a real manager, not here.
+    context.minimum_version = ssl.TLSVersion.TLSv1_3
+
+    if args.client_ca:
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(args.client_ca)
+
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server.requires_client_cert = bool(args.client_ca)
     server.socket = context.wrap_socket(server.socket, server_side=True)
     log(f"HTTPS manager on https://127.0.0.1:{args.port} "
         f"(agent key {args.key_hex[:8]}..)")
+    log(f"     mutual TLS: {'required, CA ' + args.client_ca if args.client_ca else 'not requested'}")
+    log(f"     min TLS:    1.3")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

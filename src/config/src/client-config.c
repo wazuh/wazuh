@@ -441,6 +441,76 @@ int Read_Agent_Server(XML_NODE node, agent * logr)
     return (0);
 }
 
+/* TLS 1.3 ciphersuite names, RFC 8446 section B.4. These are what OpenSSL's
+ * SSL_CTX_set_ciphersuites() takes, which is what the agent's <ciphers> ends up
+ * feeding through libcurl's CURLOPT_TLS13_CIPHERS. */
+static const char *VALID_TLS13_CIPHERSUITES[] = {
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_AES_128_CCM_SHA256",
+    "TLS_AES_128_CCM_8_SHA256",
+    NULL
+};
+
+static bool is_tls13_ciphersuite(const char *name, size_t length)
+{
+    for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
+        if (strlen(VALID_TLS13_CIPHERSUITES[i]) == length &&
+            strncmp(name, VALID_TLS13_CIPHERSUITES[i], length) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @brief Validate a colon-separated TLS 1.3 ciphersuite list.
+ *
+ * The agent negotiates nothing below TLS 1.3, so a TLS 1.2 name here would parse
+ * and then never constrain a session — silently, since OpenSSL is never told
+ * about it. Rejecting at parse time is the difference between a startup error
+ * and a security option that quietly does nothing.
+ *
+ * @param ciphers Raw <ciphers> content.
+ * @return 0 when every element is a known suite, OS_INVALID otherwise.
+ */
+static int w_client_validate_tls13_ciphers(const char *ciphers)
+{
+    const char *element = ciphers;
+
+    if (!ciphers || !*ciphers) {
+        merror("Invalid 'ciphers' option: expected TLS 1.3 cipher suite names.");
+        return OS_INVALID;
+    }
+
+    /* Walked by hand rather than with strtok_r, which collapses runs of
+     * separators: under it ':X', 'X::' and 'X::Y' all pass while naming a suite
+     * that is not there. Every element between two separators is checked,
+     * including an empty first or last one. */
+    for (;;) {
+        const char *separator = strchr(element, ':');
+        const size_t length = separator ? (size_t)(separator - element) : strlen(element);
+
+        if (length == 0) {
+            merror("Invalid 'ciphers' option: '%s' has an empty cipher suite name.", ciphers);
+            return OS_INVALID;
+        }
+
+        if (!is_tls13_ciphersuite(element, length)) {
+            merror("Invalid TLS 1.3 cipher suite '%.*s' in the 'ciphers' option.", (int)length, element);
+            return OS_INVALID;
+        }
+
+        if (!separator) {
+            return 0;
+        }
+
+        element = separator + 1;
+    }
+}
+
 int Read_Agent_SSL(XML_NODE node, agent * logr)
 {
     /* XML definitions — the <agent><ssl> transport block (#37702 §10). */
@@ -478,6 +548,9 @@ int Read_Agent_SSL(XML_NODE node, agent * logr)
                 return (OS_INVALID);
             }
         } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
+            if (w_client_validate_tls13_ciphers(node[j]->content) == OS_INVALID) {
+                return (OS_INVALID);
+            }
             os_free(logr->ssl.ciphers);
             os_strdup(node[j]->content, logr->ssl.ciphers);
         } else {

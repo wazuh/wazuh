@@ -71,6 +71,19 @@ namespace
                     return -1;
                 }
 
+#ifndef _WIN32
+
+                // The constructor falls back to opening the segment O_RDONLY when the process
+                // cannot open it O_RDWR, and then maps it PROT_READ. Writing through that
+                // mapping is a segmentation fault, not a failed write, so a reader has to be
+                // turned away here rather than at the first store below.
+                if (m_read_only)
+                {
+                    return -1;
+                }
+
+#endif
+
                 m_shm->updating.store(true, std::memory_order_release);
 
                 // Copy scalar fields
@@ -204,6 +217,16 @@ namespace
 
             void reset()
             {
+#ifndef _WIN32
+
+                // Same read-only mapping hazard as update().
+                if (m_read_only)
+                {
+                    return;
+                }
+
+#endif
+
                 if (m_shm)
                 {
                     m_shm->updating.store(true, std::memory_order_release);
