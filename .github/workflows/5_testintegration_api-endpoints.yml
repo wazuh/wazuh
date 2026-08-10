@@ -155,7 +155,7 @@ jobs:
       - name: Calculate checksum for environment files
         id: calculate_checksum
         run: |
-          checksum=$(find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+          checksum=$( { find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum; echo "${{ github.sha }}"; } | sha256sum | awk '{print $1}')
           echo "Checksum: $checksum"
           echo "checksum=$checksum" >> $GITHUB_OUTPUT
 
