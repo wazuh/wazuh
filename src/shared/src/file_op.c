@@ -1160,12 +1160,12 @@ int mkstemp_ex(char *tmp_path)
 const char *getuname()
 {
     struct utsname uts_buf;
-    static char muname[512] = "";
+    static char muname[2048] = "";
     os_info *read_version;
 
     if (!muname[0]){
         if (read_version = get_unix_version(), read_version){
-            snprintf(muname, 512, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
+            snprintf(muname, 2048, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
                     read_version->sysname,
                     read_version->nodename,
                     read_version->release,
@@ -1179,7 +1179,7 @@ const char *getuname()
             free_osinfo(read_version);
         }
         else if (uname(&uts_buf) >= 0) {
-            snprintf(muname, 512, "%s %s %s %s %s - %s %s",
+            snprintf(muname, 2048, "%s %s %s %s %s - %s %s",
                      uts_buf.sysname,
                      uts_buf.nodename,
                      uts_buf.release,
@@ -1187,7 +1187,7 @@ const char *getuname()
                      uts_buf.machine,
                      __wazuh_name, __wazuh_version);
         } else {
-            snprintf(muname, 512, "No system info available - %s %s",
+            snprintf(muname, 2048, "No system info available - %s %s",
                      __wazuh_name, __wazuh_version);
         }
     }

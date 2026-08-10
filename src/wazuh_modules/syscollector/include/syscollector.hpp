@@ -88,6 +88,15 @@ class EXPORTED Syscollector final
         void start();
         void quiesce();
         void releaseResources();
+
+        /**
+         * @brief Signal stop, then release resources synchronously if the scan isn't busy.
+         *
+         * Must be called from the same thread that called start(), since releaseResources()
+         * releases per-thread resources (e.g. the Windows hotfixes() COM context) on the
+         * calling thread. Calling this from a different thread releases the wrong thread's
+         * resources and leaves start()'s thread never explicitly released.
+         */
         void destroy();
 
         // Sync protocol methods

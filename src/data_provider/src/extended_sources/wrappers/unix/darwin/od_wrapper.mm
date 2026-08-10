@@ -71,9 +71,6 @@ namespace od
 
     void genAccountPolicyData(const std::string& uid, nlohmann::json& policyData)
     {
-        ODSession* s = [ODSession defaultSession];
-        NSError* err = nullptr;
-
         policyData =
         {
             {"creation_time", 0.0},
@@ -82,127 +79,139 @@ namespace od
             {"password_last_set_time", 0.0}
         };
 
-        ODNode* root = [ODNode nodeWithSession:s name:@"/Local/Default" error:&err];
-
-        if (err != nullptr)
+        // Every autoreleased OpenDirectory/Foundation object created below (ODNode, ODQuery,
+        // NSArray results, the plist NSDictionary tree, etc.) must be drained by an explicit
+        // pool: this runs on the syscollector scan thread, which has no Cocoa run loop to do
+        // it implicitly. Without this, called once per local user on every inventory cycle,
+        // these objects accumulate for the life of the process (see genEntries() above, which
+        // already does this correctly).
+        @autoreleasepool
         {
-            return;
-        }
+            ODSession* s = [ODSession defaultSession];
+            NSError* err = nullptr;
 
-        ODQuery* q =
-            [ODQuery queryWithNode:root
-                     forRecordTypes:kODRecordTypeUsers
-                     attribute:kODAttributeTypeUniqueID
-                     matchType:kODMatchEqualTo
-                     queryValues:[NSString stringWithFormat:@"%s", uid.c_str()]
-                     returnAttributes:@"dsAttrTypeNative:accountPolicyData"
-                     maximumResults:0
-                     error:&err];
+            ODNode* root = [ODNode nodeWithSession:s name:@"/Local/Default" error:&err];
 
-        if (err != nullptr)
-        {
-            return;
-        }
-
-        NSArray* od_results = [q resultsAllowingPartial:NO error:&err];
-
-        if (err != nullptr)
-        {
-            // std::cout << "Error with OpenDirectory results: "
-            //  << std::string([[err localizedDescription] UTF8String])
-            //  << std::endl;
-            return;
-        }
-
-        for (ODRecord * re in od_results)
-        {
-
-            NSError* attrErr = nullptr;
-            NSArray* userPolicyDataValues =
-                [re valuesForAttribute:@"dsAttrTypeNative:accountPolicyData"
-                    error:&attrErr];
-
-            if (attrErr != nullptr || ![userPolicyDataValues count])
-            {
-                // std::cout << "No accountPolicyData found for UID: "
-                // << uid.c_str() << std::endl;
-                return;
-            }
-
-            NSData* plistData = userPolicyDataValues[0];
-            NSPropertyListFormat format;
-            NSError* plistError = nil;
-
-            id plistDict = [NSPropertyListSerialization propertyListWithData:plistData
-                                                        options:NSPropertyListMutableContainersAndLeaves
-                                                        format:&format
-                                                        error:&plistError];
-
-            if (plistError != nil || ![plistDict isKindOfClass:[NSDictionary class]])
+            if (err != nullptr)
             {
                 return;
             }
 
-            NSDictionary* dict = (NSDictionary*)plistDict;
-            nlohmann::json tree;
+            ODQuery* q =
+                [ODQuery queryWithNode:root
+                         forRecordTypes:kODRecordTypeUsers
+                         attribute:kODAttributeTypeUniqueID
+                         matchType:kODMatchEqualTo
+                         queryValues:[NSString stringWithFormat:@"%s", uid.c_str()]
+                         returnAttributes:@"dsAttrTypeNative:accountPolicyData"
+                         maximumResults:0
+                         error:&err];
 
-            for (NSString * key in dict)
+            if (err != nullptr)
             {
-                id value = [dict objectForKey:key];
-                std::string k = [key UTF8String];
-
-                if ([value isKindOfClass:[NSNumber class]])
-                {
-                    tree[k] = [value doubleValue];
-                }
-                else if ([value isKindOfClass:[NSString class]])
-                {
-                    tree[k] = std::string([value UTF8String]);
-                }
+                return;
             }
 
-            auto assign_safe = [&](const char* plistKey, const char* jsonKey, bool isInteger)
+            NSArray* od_results = [q resultsAllowingPartial:NO error:&err];
+
+            if (err != nullptr)
             {
-                if (!tree.contains(plistKey)) return;
+                // std::cout << "Error with OpenDirectory results: "
+                //  << std::string([[err localizedDescription] UTF8String])
+                //  << std::endl;
+                return;
+            }
 
-                const auto& val = tree[plistKey];
+            for (ODRecord * re in od_results)
+            {
 
-                try
+                NSError* attrErr = nullptr;
+                NSArray* userPolicyDataValues =
+                    [re valuesForAttribute:@"dsAttrTypeNative:accountPolicyData"
+                        error:&attrErr];
+
+                if (attrErr != nullptr || ![userPolicyDataValues count])
                 {
-                    if (val.is_number())
+                    // std::cout << "No accountPolicyData found for UID: "
+                    // << uid.c_str() << std::endl;
+                    return;
+                }
+
+                NSData* plistData = userPolicyDataValues[0];
+                NSPropertyListFormat format;
+                NSError* plistError = nil;
+
+                id plistDict = [NSPropertyListSerialization propertyListWithData:plistData
+                                                            options:NSPropertyListMutableContainersAndLeaves
+                                                            format:&format
+                                                            error:&plistError];
+
+                if (plistError != nil || ![plistDict isKindOfClass:[NSDictionary class]])
+                {
+                    return;
+                }
+
+                NSDictionary* dict = (NSDictionary*)plistDict;
+                nlohmann::json tree;
+
+                for (NSString * key in dict)
+                {
+                    id value = [dict objectForKey:key];
+                    std::string k = [key UTF8String];
+
+                    if ([value isKindOfClass:[NSNumber class]])
                     {
-                        if (isInteger)
-                        {
-                            policyData[jsonKey] = static_cast<int64_t>(val.get<double>());
-                        }
-                        else
-                        {
-                            policyData[jsonKey] = val.get<double>();
-                        }
+                        tree[k] = [value doubleValue];
                     }
-                    else if (val.is_string())
+                    else if ([value isKindOfClass:[NSString class]])
                     {
-                        if (isInteger)
-                        {
-                            policyData[jsonKey] = std::stoll(val.get<std::string>());
-                        }
-                        else
-                        {
-                            policyData[jsonKey] = std::stod(val.get<std::string>());
-                        }
+                        tree[k] = std::string([value UTF8String]);
                     }
                 }
-                catch (...)
-                {
-                    // Keep value in null if it fails
-                }
-            };
 
-            // Assign values if present and valid
-            assign_safe("creationTime", "creation_time", false);
-            assign_safe("failedLoginCount", "failed_login_count", true);
-            assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
-            assign_safe("passwordLastSetTime", "password_last_set_time", false);
+                auto assign_safe = [&](const char* plistKey, const char* jsonKey, bool isInteger)
+                {
+                    if (!tree.contains(plistKey)) return;
+
+                    const auto& val = tree[plistKey];
+
+                    try
+                    {
+                        if (val.is_number())
+                        {
+                            if (isInteger)
+                            {
+                                policyData[jsonKey] = static_cast<int64_t>(val.get<double>());
+                            }
+                            else
+                            {
+                                policyData[jsonKey] = val.get<double>();
+                            }
+                        }
+                        else if (val.is_string())
+                        {
+                            if (isInteger)
+                            {
+                                policyData[jsonKey] = std::stoll(val.get<std::string>());
+                            }
+                            else
+                            {
+                                policyData[jsonKey] = std::stod(val.get<std::string>());
+                            }
+                        }
+                    }
+                    catch (...)
+                    {
+                        // Keep value in null if it fails
+                    }
+                };
+
+                // Assign values if present and valid
+                assign_safe("creationTime", "creation_time", false);
+                assign_safe("failedLoginCount", "failed_login_count", true);
+                assign_safe("failedLoginTimestamp", "failed_login_timestamp", false);
+                assign_safe("passwordLastSetTime", "password_last_set_time", false);
+            }
         }
     }
 

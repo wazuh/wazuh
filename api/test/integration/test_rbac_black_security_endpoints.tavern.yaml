@@ -387,7 +387,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: stringA1!
+        password: stringA1!extra
     response:
       status_code: 200
       json:
@@ -409,7 +409,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: stringA1!
+        password: stringA1!extra
     response:
       status_code: 200
       json:
@@ -723,7 +723,7 @@ stages:
       method: POST
       json:
         username: newUser
-        password: stringA1!
+        password: stringA1!extra
     response:
       status_code: 200
       json:

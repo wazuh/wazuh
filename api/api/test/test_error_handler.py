@@ -5,14 +5,13 @@
 import json
 from datetime import datetime
 from unittest.mock import patch, MagicMock
-from copy import copy
 import pytest
 
 from freezegun import freeze_time
 
 from connexion.exceptions import HTTPException, ProblemException, Unauthorized
 from connexion.lifecycle import ConnexionRequest
-from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, \
+from api.error_handler import _cleanup_detail_field, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
@@ -20,20 +19,11 @@ from api.api_exception import ExpectFailedException
 
 
 @pytest.fixture
-def request_info(request):
-    """Return the dictionary of the parametrize"""
-    return request.param if 'prevent_bruteforce_attack' in request.node.name else None
-
-
-@pytest.fixture
-def mock_request(request, request_info):
+def mock_request():
     """fixture to wrap functions with request"""
     req = MagicMock()
     req.client.host = 'ip'
-    mock_request.query_param = {}
-    if 'prevent_bruteforce_attack' in request.node.name:
-        for clave, valor in request_info.items():
-            setattr(req, clave, valor)
+    req.query_param = {}
 
     return req
 
@@ -46,38 +36,6 @@ def test_cleanup_detail_field():
     """
 
     assert _cleanup_detail_field(detail) == "Testing. Details field."
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('stats', [
-    {},
-    {'ip': {'attempts': 4}},
-])
-@pytest.mark.parametrize('request_info', [
-    {'path': LOGIN_ENDPOINT, 'method': 'GET', 'pretty': 'true'},
-    {'path': LOGIN_ENDPOINT, 'method': 'POST', 'pretty': 'false'},
-    {'path': RUN_AS_LOGIN_ENDPOINT, 'method': 'POST'},
-], indirect=True)
-async def test_middlewares_prevent_bruteforce_attack(stats, request_info, mock_request):
-    """Test `prevent_bruteforce_attack` blocks IPs when reaching max number of attempts."""
-    mock_request.configure_mock(scope={'path': request_info['path']})
-    mock_request.method = request_info['method']
-    mock_request.query_param['pretty'] = request_info.get('pretty', 'false')
-
-    with patch("api.error_handler.ip_stats", new=copy(stats)) as ip_stats, \
-         patch("api.error_handler.ip_block", new=set()) as ip_block:
-        previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
-
-        await prevent_bruteforce_attack(mock_request, attempts=5)
-
-        if stats:
-            # There were previous attempts. This one reached the limit
-            assert ip_stats['ip']['attempts'] == previous_attempts + 1
-            assert 'ip' in ip_block
-        else:
-            # There were not previous attempts
-            assert ip_stats['ip']['attempts'] == 1
-            assert 'ip' not in ip_block
 
 
 @pytest.mark.asyncio
@@ -107,13 +65,7 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
             problem['detail'] = detail
             mock_request.context = {}
 
-    with patch('api.error_handler.prevent_bruteforce_attack') as mock_pbfa, \
-        patch('api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}):
-        response = await unauthorized_error_handler(mock_request, exc)
-        if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
-            and method in {'GET', 'POST'}:
-            mock_pbfa.assert_called_once_with(request=mock_request, attempts=1000)
-        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+    response = await unauthorized_error_handler(mock_request, exc)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code

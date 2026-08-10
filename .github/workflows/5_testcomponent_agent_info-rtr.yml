@@ -29,7 +29,7 @@ jobs:
       matrix:
         module: [wazuh_modules/agent_info]
         target: [agent, winagent]
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - name: Checkout Repo

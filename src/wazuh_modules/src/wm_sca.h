@@ -59,6 +59,6 @@ extern const wm_context WM_SCA_CONTEXT;
  *        does not depend on, or report on, filesystem state that is
  *        irrelevant to it.
  */
-int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module, int skip_ruleset_load);
+int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module, int agent_cfg);
 
 #endif // WM_SCA_H

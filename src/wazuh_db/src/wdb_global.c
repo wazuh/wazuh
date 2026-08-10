@@ -197,9 +197,16 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, version, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
+    if (version && version[0]) {
+        if (sqlite3_bind_text(stmt, index++, version, -1, NULL) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+    } else {
+        if (sqlite3_bind_null(stmt, index++) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_null(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
     }
     if (sqlite3_bind_text(stmt, index++, merged_sum, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
