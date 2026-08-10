@@ -591,6 +591,16 @@ ValidateRemoteVars()
         *) RemoteVarError "WAZUH_REMOTE_HTTPS_VERIFICATION_MODE" "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" "expected 'none', 'certificate' or 'full'";;
     esac
 
+    # Either path alone disables the self-signed generation while the other keeps its
+    # default location, which nothing creates.
+    if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
+        RemoteVarError "WAZUH_REMOTE_HTTPS_CERTIFICATE" "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" "WAZUH_REMOTE_HTTPS_KEY is required when a custom certificate is provided"
+    fi
+
+    if [ -n "${WAZUH_REMOTE_HTTPS_KEY}" ] && [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ]; then
+        RemoteVarError "WAZUH_REMOTE_HTTPS_KEY" "${WAZUH_REMOTE_HTTPS_KEY}" "WAZUH_REMOTE_HTTPS_CERTIFICATE is required when a custom private key is provided"
+    fi
+
     case "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" in
         certificate|full)
             if [ -z "${WAZUH_REMOTE_HTTPS_CA}" ]; then
