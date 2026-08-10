@@ -5,6 +5,13 @@ import time
 import requests
 
 STATES_PATTERN = "wazuh-states-*"
+AGENT_CONFIG_INDEX = "wazuh-agent-config"
+AGENT_STATS_INDEX = "wazuh-agent-stats"
+
+# Everything a whole-agent deletion has to reach -- mirrors AGENT_DELETION_SCOPE in
+# src/sync/stateIndexAllowlist.hpp. The two wazuh-agent-* indices sit outside the
+# states family, which is exactly why they used to survive the agent.
+DELETION_SCOPE = (STATES_PATTERN, AGENT_CONFIG_INDEX, AGENT_STATS_INDEX)
 
 
 class Indexer:
@@ -17,14 +24,15 @@ class Indexer:
         except requests.RequestException:
             return False
 
-    def refresh(self):
+    def refresh(self, pattern=STATES_PATTERN):
         # Make everything the server flushed searchable NOW (the bulk API's own
         # refresh cycle is 1 s and the suite should not sleep for it).
-        requests.post(f"{self.base_url}/{STATES_PATTERN}/_refresh", timeout=10)
+        requests.post(f"{self.base_url}/{pattern}/_refresh", timeout=10)
 
     def delete_states(self):
-        """Wipe every state index between tests (missing indices are fine)."""
-        requests.delete(f"{self.base_url}/{STATES_PATTERN}", timeout=10)
+        """Wipe every index a test may have written, between tests (missing ones are fine)."""
+        for pattern in DELETION_SCOPE:
+            requests.delete(f"{self.base_url}/{pattern}", timeout=10)
 
     def search(self, index=STATES_PATTERN, query=None, size=100):
         body = {"size": size, "query": query or {"match_all": {}}}
@@ -39,8 +47,12 @@ class Indexer:
 
     def agent_docs(self, agent_id, index=STATES_PATTERN, size=2000):
         """Every state document of one agent: [{_id, _index, _source}, ...]."""
-        self.refresh()
+        self.refresh(index)
         return self.search(index=index, query={"term": {"wazuh.agent.id": agent_id}}, size=size)
+
+    def agent_docs_in_scope(self, agent_id):
+        """Every document of one agent across the whole deletion scope, index by index."""
+        return {pattern: self.agent_docs(agent_id, index=pattern) for pattern in DELETION_SCOPE}
 
     def get(self, index, doc_id):
         response = requests.get(f"{self.base_url}/{index}/_doc/{doc_id}", timeout=10)

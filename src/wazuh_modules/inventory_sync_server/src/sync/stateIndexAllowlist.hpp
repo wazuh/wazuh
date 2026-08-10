@@ -12,6 +12,7 @@
 #ifndef _INVSYNC_SYNC_STATE_INDEX_ALLOWLIST_HPP
 #define _INVSYNC_SYNC_STATE_INDEX_ALLOWLIST_HPP
 
+#include <array>
 #include <string_view>
 
 namespace invsync::sync
@@ -25,6 +26,26 @@ namespace invsync::sync
     /// pattern the legacy module used. A pattern, not the allowlist above: deletion is
     /// manager-initiated (authd), not an agent session.
     constexpr std::string_view WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
+
+    /// The index `POST /config` writes: one document per agent, agent id as `_id`.
+    constexpr std::string_view AGENT_CONFIG_INDEX {"wazuh-agent-config"};
+
+    /// The index `POST /stats` writes, same one-document-per-agent shape.
+    constexpr std::string_view AGENT_STATS_INDEX {"wazuh-agent-stats"};
+
+    /**
+     * @brief Everything a whole-agent deletion has to reach, in one place.
+     *
+     * The two `wazuh-agent-*` indices live OUTSIDE the `wazuh-states-*` family, so the states
+     * pattern alone left an agent's configuration and statistics documents behind forever -- once
+     * the agent is gone from client.keys nothing ever overwrites them. They are named exactly (not a
+     * `wazuh-agent-*` wildcard) so a future index sharing that prefix is not wiped by accident.
+     *
+     * The endpoints that WRITE these two indices take their names from here, so the deletion scope
+     * cannot drift away from what is actually being written.
+     */
+    constexpr std::array<std::string_view, 3> AGENT_DELETION_SCOPE {
+        WAZUH_STATES_INDEX_PATTERN, AGENT_CONFIG_INDEX, AGENT_STATS_INDEX};
 
     /**
      * @brief Allowlist of state indices an agent session may target (its own scope).

@@ -400,7 +400,7 @@ namespace
     }
 } // namespace
 
-TEST(SyncPipelineTest, ADeleteAgentItemDeletesTheStatePatternAndFlushes)
+TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
 {
     PipelineUnderTest fixture;
     auto responder = std::make_shared<FutureResponder>();
@@ -411,13 +411,29 @@ TEST(SyncPipelineTest, ADeleteAgentItemDeletesTheStatePatternAndFlushes)
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
+    // Every refresh first, then every delete: the delete-by-query is a SEARCH, so a document the
+    // agent's last session wrote inside the index refresh interval is invisible to it -- and with
+    // the agent gone from client.keys, nothing would ever overwrite what the delete missed.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(1U, ops.size());
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
-    EXPECT_EQ("005", std::get<1>(ops[0]));
-    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0])) << "one pattern query, not the per-index Cleans loop";
-    EXPECT_EQ(CLUSTER, std::get<3>(ops[0])) << "scoped to this cluster";
-    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means the delete was FLUSHED";
+    ASSERT_EQ(6U, ops.size());
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        EXPECT_EQ("refresh", std::get<0>(ops[i])) << "refresh #" << i << " must precede every deletion";
+    }
+
+    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
+    for (std::size_t i = 0; i < scope.size(); ++i)
+    {
+        EXPECT_EQ(scope[i], std::get<2>(ops[i])) << "refreshed scope";
+
+        const auto& deletion = ops[i + scope.size()];
+        EXPECT_EQ("deleteByQuery", std::get<0>(deletion));
+        EXPECT_EQ("005", std::get<1>(deletion));
+        EXPECT_EQ(scope[i], std::get<2>(deletion)) << "the config and stats indices live outside wazuh-states-*";
+        EXPECT_EQ(CLUSTER, std::get<3>(deletion)) << "scoped to this cluster";
+    }
+
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means every delete was FLUSHED, in one go";
 }
 
 TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
@@ -435,9 +451,10 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
     EXPECT_EQ(200, deletion->get().status);
 
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(2U, ops.size());
+    ASSERT_FALSE(ops.empty());
     EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[1]));
+    EXPECT_EQ("refresh", std::get<0>(ops[1])) << "the deletion refreshes what the delta just wrote";
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops.back()));
 }
 
 TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
@@ -456,4 +473,20 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     auto second = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
+}
+
+TEST(SyncPipelineTest, ARefreshFailureFailsTheDeletionInsteadOfDeletingBlind)
+{
+    // The refresh is not best-effort: deleting on a stale search view is exactly the silent
+    // data-remnant this ordering exists to prevent, so a refresh that fails must fail the deletion
+    // and let authd retry -- not fall through to a delete-by-query that sees nothing.
+    PipelineUnderTest fixture;
+    fixture.events->m_syncThrowOn = "refresh";
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("005", responder)));
+    EXPECT_EQ(500, responder->get().status);
+
+    const auto ops = fixture.events->syncOps();
+    EXPECT_TRUE(ops.empty()) << "nothing was deleted on a stale view";
 }

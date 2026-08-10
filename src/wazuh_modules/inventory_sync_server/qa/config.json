@@ -2,7 +2,8 @@
     "indexer": {
         "hosts": [
             "http://127.0.0.1:9200"
-        ]
+        ],
+        "flush_interval_seconds": 1
     },
     "clusterName": "cluster01",
     "clusterNodeName": "node01"

@@ -15,8 +15,10 @@
 #include "common/clusterIdentity.hpp"
 #include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
+#include "sync/stateIndexAllowlist.hpp" // AGENT_STATS_INDEX -- shared with the deletion scope
 
 #include <memory>
+#include <string_view>
 
 namespace invsync::endpoints::stats
 {
@@ -99,9 +101,11 @@ namespace invsync::endpoints::stats
 
     /// @brief The index holding one live statistics document per agent. A regular index, not a data
     /// stream, because a data stream forbids the stable document id the replacement relies on.
-    constexpr const char* indexName()
+    /// Taken from the deletion scope rather than re-spelled here, so DELETE /agents can never miss
+    /// this index.
+    constexpr std::string_view indexName()
     {
-        return "wazuh-agent-stats";
+        return invsync::sync::AGENT_STATS_INDEX;
     }
 
     /**

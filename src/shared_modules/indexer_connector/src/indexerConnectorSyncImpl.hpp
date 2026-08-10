@@ -346,9 +346,26 @@ class IndexerConnectorSyncImpl final
         }
 
         auto serverUrl = m_selector->getNext();
+
+        // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
+        // errors come back in a `failures` array inside the body. Reporting that run as success is
+        // how documents survive a deletion that everyone upstream believes worked, so the failures
+        // are raised like a transport error and the caller decides whether to retry.
         const auto onSuccessDeleteByQuery = [this](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
+
+            const auto parsed = nlohmann::json::parse(response, nullptr, false);
+            if (parsed.is_discarded() || !parsed.contains("failures") || parsed.at("failures").empty())
+            {
+                return;
+            }
+
+            LOGFN_WARN(m_logFn,
+                       "deleteByQuery reported %zu shard failure(s); some documents were not deleted: %s",
+                       parsed.at("failures").size(),
+                       parsed.at("failures").dump().c_str());
+            throw IndexerConnectorException("deleteByQuery reported shard failures");
         };
 
         const auto onErrorDeleteByQuery =
@@ -392,11 +409,24 @@ class IndexerConnectorSyncImpl final
             url += index;
             url += "/_delete_by_query";
             LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
-            m_httpRequest->post(
-                RequestParameters {
-                    .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
-                PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                {});
+            try
+            {
+                m_httpRequest->post(
+                    RequestParameters {
+                        .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
+                    {});
+            }
+            catch (...)
+            {
+                // Drop the staged queries on the way out. The caller is being told this flush
+                // failed, and it retries by re-staging its own queries; queries kept here would
+                // instead be re-fired by whatever flushes next -- after the retry already
+                // succeeded -- deleting documents written in between.
+                m_deleteByQuery.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw;
+            }
         }
 
         const auto onSuccess = [this, &needToRetry](const std::string& response)
@@ -789,6 +819,15 @@ public:
         }
 
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
+        if (success)
+        {
+            // OpenSearch defaults `conflicts` to "abort": ONE document whose version moved between
+            // the query's search phase and its delete phase stops the whole run, and the request
+            // still answers 200 with the rest of the agent's documents left behind. "proceed" makes
+            // it skip that document and carry on -- a conflicting document is one that was just
+            // rewritten, and for a whole-agent deletion re-running the delete is the recovery.
+            it->second["conflicts"] = "proceed";
+        }
         auto& boolQuery = it->second["query"]["bool"];
 
         if (clusterName.empty())
@@ -1531,6 +1570,15 @@ public:
         };
         const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
         {
+            if (statusCode == HTTP_NOT_FOUND)
+            {
+                // A concrete index that does not exist yet. Refreshing it is meaningless, not
+                // broken: callers refresh a fixed scope (e.g. the whole-agent deletion's
+                // wazuh-agent-config / wazuh-agent-stats) whose indices are only created on the
+                // first document written to them. A WARN here would fire on every such call.
+                LOGFN_DEBUG2(m_logFn, "Index not found (404) for refresh - nothing to refresh, continuing.");
+                return;
+            }
             LOGFN_WARN(m_logFn, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
         };
 

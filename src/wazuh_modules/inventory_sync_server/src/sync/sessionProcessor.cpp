@@ -344,15 +344,45 @@ namespace invsync::sync
     ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
                                                         indexer::IIndexerConnectorSync& connector) const
     {
-        // One pattern query instead of the Cleans-style per-index loop: this is a whole-agent
-        // deletion (the agent is GONE from client.keys), so it must also reach indices no current
-        // session writes to. deleteByQuery stages; the flush is the durability of the 200, exactly
-        // like executeCleans() -- a 404 for a not-yet-created index counts as success inside the
-        // connector, so re-running a delete is harmless (that is authd's retry contract).
-        connector.deleteByQuery(std::string {WAZUH_STATES_INDEX_PATTERN}, agentId, m_managerClusterName);
+        // Refresh BEFORE deleting, and that ordering is the whole correctness of this function.
+        // _delete_by_query runs a SEARCH, so it only ever sees refreshed segments; the state indices
+        // refresh every 2 s and this deletion arrives immediately behind the agent's last session
+        // (authd removes the key, then calls us). Without the refresh, everything written inside
+        // that window is invisible to the query, the deletion answers 200 having deleted nothing,
+        // and -- the agent being gone from client.keys -- nothing ever overwrites those documents
+        // again. A refresh of an index that does not exist is a no-op in the connector, so this
+        // stays silent on a manager whose agents never reported config or statistics.
+        //
+        // Read the flush() at the bottom of this function carefully before touching this order: it
+        // does NOT flush the agent's writes (the worker already cut the batch for us -- this is an
+        // immediate-style step), it is what SENDS the deletions. The refresh is the odd one out on
+        // this seam: it is immediate I/O, while deleteByQuery only stages. That asymmetry is what
+        // puts the _refresh on the wire ahead of every _delete_by_query, and it is the reason these
+        // two loops are not one. Make refresh staged, or fold the loops, and the refresh stops
+        // preceding the search it exists to feed -- silently, because the deletion still answers
+        // 200.
+        for (const auto& index : AGENT_DELETION_SCOPE)
+        {
+            connector.refresh(index);
+        }
+
+        // The whole scope, not just the states pattern: `wazuh-agent-config` and `wazuh-agent-stats`
+        // sit outside the wazuh-states-* family and used to survive the agent. This is a whole-agent
+        // deletion (the agent is GONE from client.keys), so it must reach every index holding its
+        // documents, including ones no current session writes to. deleteByQuery stages; the flush is
+        // the durability of the 200, exactly like executeCleans() -- a 404 for a not-yet-created
+        // index counts as success inside the connector, so re-running a delete is harmless (that is
+        // authd's retry contract).
+        std::string scope;
+        for (const auto& index : AGENT_DELETION_SCOPE)
+        {
+            connector.deleteByQuery(std::string {index}, agentId, m_managerClusterName);
+            scope += scope.empty() ? "" : ", ";
+            scope += index;
+        }
         connector.flush();
 
-        LOGFN_INFO(logFn(), "Deleted every state document of agent %s (%s).", agentId.c_str(), "wazuh-states-*");
+        LOGFN_INFO(logFn(), "Deleted every document of agent %s (%s).", agentId.c_str(), scope.c_str());
         return ok();
     }
 
