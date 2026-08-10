@@ -6,6 +6,12 @@
 
         <!-- Never restart the machine nor prompt for a restart during install, upgrade or uninstall. -->
         <Property Id="REBOOT" Value="ReallySuppress" />
+
+        <!-- Do not run while a system restart is pending: abort before making any change so the
+             install is never left half-committed and later broken by the pending restart. Uninstall
+             and repair of an already-installed product are still allowed. -->
+        <Condition Message="A system restart is pending on this computer. Please reboot and run the Wazuh agent installer again."><![CDATA[Installed OR NOT MsiSystemRebootPending]]></Condition>
+
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
         <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
