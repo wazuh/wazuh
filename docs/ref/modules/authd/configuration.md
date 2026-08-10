@@ -120,14 +120,14 @@ Verify that the CN of the agent certificate matches the agent's IP address. Requ
 
 Path to the manager's TLS certificate presented to agents during enrollment.
 
-- **Default value:** `etc/sslmanager.cert` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/sslmanager.cert`)
+- **Default value:** `etc/certs/authd.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/authd.pem`)
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory)
 
 ### ssl_manager_key
 
 Path to the private key corresponding to `ssl_manager_cert`.
 
-- **Default value:** `etc/sslmanager.key` (resolved relative to the Wazuh install directory)
+- **Default value:** `etc/certs/authd-key.pem` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
 
 ### force
@@ -242,8 +242,8 @@ Mutual TLS with client certificate verification:
   <use_password>yes</use_password>
   <ssl_agent_ca>/var/wazuh-manager/etc/rootCA.pem</ssl_agent_ca>
   <ssl_verify_host>yes</ssl_verify_host>
-  <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>

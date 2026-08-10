@@ -208,9 +208,22 @@ jobs:
             -out "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout "$INSTALLATION_DIR/etc/certs/manager-key.pem" \
-            -out "$INSTALLATION_DIR/etc/certs/manager.pem" \
+            -keyout "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem" \
+            -out "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
+          # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
+          # (issue #38276): the indexer material is root:wazuh-manager 0640 and only group-readable,
+          # so a regression that leaves it root:root would make the dropped service fail to start.
+          sudo chown root:wazuh-manager \
+            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo chmod 640 \
+            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
+          sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
 
       - name: Start wazuh-manager and verify
         run: |

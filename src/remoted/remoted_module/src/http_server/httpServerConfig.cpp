@@ -53,9 +53,9 @@ namespace
     // opened (Privsep_Chroot() chdir()s there before the HTTPS module starts), so these resolve
     // identically to an equivalent leading-"/" path -- written without one here to avoid reading
     // as a real host-absolute path.
-    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/https-manager.cert"};
-    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/https-manager.key"};
-    constexpr auto DEFAULT_CA_PATH {"etc/https-manager-ca.pem"};
+    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/certs/remoted.pem"};
+    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/certs/remoted-key.pem"};
+    constexpr auto DEFAULT_CA_PATH {"etc/certs/root-ca.pem"};
     constexpr auto DEFAULT_CIPHERS {"TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to

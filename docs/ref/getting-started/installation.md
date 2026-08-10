@@ -47,8 +47,8 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 |----------|----------------------|---------|
 | `WAZUH_REMOTE_HTTPS_PORT` | `remote.https.port` | `1517` |
 | `WAZUH_REMOTE_HTTPS_BIND_ADDR` | `remote.https.bind_addr` | `127.0.0.1` |
-| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/https-manager.cert` |
-| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/https-manager.key` |
+| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/certs/remoted.pem` |
+| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/certs/remoted-key.pem` |
 | `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
 | `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`none`) |
 | `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
@@ -84,13 +84,23 @@ sudo mkdir -p /var/wazuh-manager/etc/certs
 
 # Extract and deploy certificates
 sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 
-# Set proper permissions
-sudo chmod 500 /var/wazuh-manager/etc/certs
-sudo chmod 400 /var/wazuh-manager/etc/certs/*
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+# Set ownership and permissions on the indexer certificates.
+# The installer creates etc/certs as root:wazuh-manager with the sticky bit (1770)
+# and the daemons self-generate their own certificates (authd, remoted, apid) there
+# as wazuh-manager:wazuh-manager. Only the externally provisioned indexer material is
+# owned by root:wazuh-manager 0640, so the manager can read it after dropping
+# privileges but cannot replace its own trust anchor.
+sudo chown root:wazuh-manager \
+    /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo chmod 640 \
+    /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.
@@ -116,8 +126,8 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```

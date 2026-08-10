@@ -130,29 +130,45 @@ case "$1" in
     # Remove Vuln-detector database
     rm -f ${DIR}/queue/vulnerabilities/cve.db || true
 
+    # Unified certificate directory: root-owned and sticky. The server daemons self-generate
+    # their certificates here and read them after dropping privileges to ${USER}; the sticky
+    # bit keeps them from replacing the root-owned indexer trust material that shares the dir.
+    mkdir -p ${DIR}/etc/certs
+
     # Generation auto-signed certificate if not exists
-    if [ ! -f "${DIR}/etc/sslmanager.key" ] && [ ! -f "${DIR}/etc/sslmanager.cert" ]; then
-        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
+    if [ ! -f "${DIR}/etc/certs/authd-key.pem" ] && [ ! -f "${DIR}/etc/certs/authd.pem" ]; then
+        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/certs/authd-key.pem -X ${DIR}/etc/certs/authd.pem 2>/dev/null
     fi
 
     # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
     # exists. Skipped when the admin supplied their own certificate/key paths through the
     # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables.
     if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
-        if [ ! -f "${DIR}/etc/https-manager.key" ] && [ ! -f "${DIR}/etc/https-manager.cert" ]; then
-            ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
+        if [ ! -f "${DIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${DIR}/etc/certs/remoted.pem" ]; then
+            ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/certs/remoted-key.pem -X ${DIR}/etc/certs/remoted.pem 2>/dev/null
         fi
     fi
 
-    # Both sslmanager.cert/key and https-manager.cert/key must be owned by ${USER}: both
-    # authd and remoted now drop privileges to that user before loading these files, so
-    # root-owned files would make either daemon fail to start. Re-applied unconditionally
-    # (not just on fresh generation) so upgrades from packages that shipped these root-owned
-    # also get corrected.
-    chown ${USER}:${GROUP} ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
-    chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
-    chown ${USER}:${GROUP} ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
-    chmod 640 ${DIR}/etc/https-manager.cert ${DIR}/etc/https-manager.key > /dev/null 2>&1 || true
+    # The server certificates each daemon self-generates are owned by ${USER} (the daemon must
+    # write them). Re-applied unconditionally so upgrades that left them root-owned get corrected.
+    for CERT_FILE in authd.pem authd-key.pem remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown ${USER}:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+            chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        fi
+    done
+
+    # The indexer trust material is provisioned externally and only read by the manager, so it
+    # is owned root and group ${GROUP} (read-only for the service).
+    for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown root:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+            chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        fi
+    done
+
+    chown root:${GROUP} ${DIR}/etc/certs > /dev/null 2>&1 || true
+    chmod 1770 ${DIR}/etc/certs > /dev/null 2>&1 || true
 
     if [ -z "$2" ]; then
         # For the etc dir
