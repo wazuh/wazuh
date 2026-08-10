@@ -140,6 +140,7 @@ TEST_F(SyscollectorVDTest, PersistDifference_VDTableRoutesToVDProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -230,6 +231,7 @@ TEST_F(SyscollectorVDTest, PersistDifference_NonVDTableRoutesToRegularProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -320,6 +322,7 @@ TEST_F(SyscollectorVDTest, PersistDifference_WithoutSyncProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -377,6 +380,7 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_RoutesToRegularProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -448,6 +452,7 @@ TEST_F(SyscollectorVDTest, ParseResponseBuffer_WithoutSyncProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -499,6 +504,7 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_RoutesToVDProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -570,6 +576,7 @@ TEST_F(SyscollectorVDTest, ParseResponseBufferVD_WithoutSyncProtocol)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
