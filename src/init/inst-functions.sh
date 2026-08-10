@@ -383,7 +383,6 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </agent>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG

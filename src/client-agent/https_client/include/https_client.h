@@ -138,7 +138,7 @@ typedef struct hc_config_t
     uint32_t buffer_flood_tolerance_s; ///< agent.tolerance: seconds FULL must
     ///< hold before FLOOD; 0 -> 15.
 
-    uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
+    uint32_t notify_interval_s;         ///< notify_time; 0 -> 10.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
     /// Safety bound for a remote_upgrade WPK download; 0 -> 200 MiB.

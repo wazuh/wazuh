@@ -53,6 +53,33 @@ delete_blank_lines() {
 
 }
 
+# Set an option of the agent block, adding it when the shipped configuration does
+# not carry it. Options left at their default are no longer written to ossec.conf,
+# so edit_value_tag alone would find nothing to substitute and quietly do nothing.
+set_agent_option() {
+
+    if [ -z "$2" ]; then
+        return
+    fi
+
+    if grep -q "<$1>" "${CONF_FILE}"; then
+        edit_value_tag "$1" "$2"
+        return
+    fi
+
+    echo "    <$1>$2</$1>" > "${TMP_SERVER}"
+
+    # A package upgrade keeps the 4.x file, where the block is still <client>.
+    if grep -q "<agent>" "${CONF_FILE}"; then
+        ${sed} "/<agent>/r ${TMP_SERVER}" "${CONF_FILE}"
+    else
+        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
+    fi
+
+    rm -f "${TMP_SERVER}"
+
+}
+
 delete_auto_enrollment_tag() {
 
     # Delete the configuration tag if its value is empty
@@ -294,7 +321,7 @@ main () {
     fi
 
     # Options to be modified in wazuh configuration file
-    edit_value_tag "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
+    set_agent_option "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 
     unset_vars
