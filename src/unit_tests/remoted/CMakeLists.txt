@@ -120,7 +120,6 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,close -Wl,--wrap,getp
                            -Wl,--wrap,wfopen -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP \
                            -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,agent_meta_snapshot_str \
                            -Wl,--wrap,req_send_and_wait -Wl,--wrap,key_lock_read -Wl,--wrap,key_unlock \
-                           -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(LENGTH remoted_names count)

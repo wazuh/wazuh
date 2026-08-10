@@ -46,8 +46,8 @@ if(${TARGET} STREQUAL "manager")
     "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command \
                             -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,sleep -Wl,--wrap,CreateThread \
-                            -Wl,--wrap,pthread_exit -Wl,--wrap,getpid -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym -Wl,--wrap,router_subscriber_create -Wl,--wrap,router_subscriber_subscribe \
-                            -Wl,--wrap,router_subscriber_unsubscribe -Wl,--wrap,router_subscriber_destroy -Wl,--wrap,FOREVER -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}"
+                            -Wl,--wrap,pthread_exit -Wl,--wrap,getpid -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym \
+                            -Wl,--wrap,FOREVER -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}"
   )
 
   list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
