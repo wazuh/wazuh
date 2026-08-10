@@ -779,6 +779,60 @@ static void test_shared_config_still_refuses_local_only_options(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+/* w_read_agent_batch: the limits as the sync-protocol daemons read them */
+
+#define BATCH_TEST_CONF "/tmp/test_client-config_https_batch.conf"
+
+static void write_conf(const char *body) {
+    FILE *fp = fopen(BATCH_TEST_CONF, "w");
+
+    assert_non_null(fp);
+    fputs(body, fp);
+    fclose(fp);
+}
+
+static void test_read_agent_batch_takes_the_limits_from_the_file(void **state) {
+    agent_batch batch = {0};
+
+    write_conf("<ossec_config><agent>"
+               "<server><address>10.0.0.1</address></server>"
+               "<batch><size>3MB</size><interval>45s</interval></batch>"
+               "</agent></ossec_config>");
+
+    /* No <server> parsing, so no OS_IsValidIP expectation: the walk only opens
+     * <batch>, which is what keeps this off Read_Agent and its allocations. */
+    w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
+
+    assert_int_equal(batch.size, 3 * 1024 * 1024);
+    assert_int_equal(batch.interval, 45);
+
+    remove(BATCH_TEST_CONF);
+}
+
+static void test_read_agent_batch_leaves_the_caller_defaults_when_absent(void **state) {
+    agent_batch batch = { .size = 777, .interval = 42 };
+
+    write_conf("<ossec_config><agent>"
+               "<server><address>10.0.0.1</address></server>"
+               "</agent></ossec_config>");
+
+    w_read_agent_batch(BATCH_TEST_CONF, NULL, &batch);
+
+    assert_int_equal(batch.size, 777);
+    assert_int_equal(batch.interval, 42);
+
+    remove(BATCH_TEST_CONF);
+}
+
+static void test_read_agent_batch_survives_a_missing_file(void **state) {
+    agent_batch batch = { .size = 777, .interval = 42 };
+
+    w_read_agent_batch("/tmp/test_client-config_https_no_such.conf", NULL, &batch);
+
+    assert_int_equal(batch.size, 777);
+    assert_int_equal(batch.interval, 42);
+}
+
 /* Deprecated legacy-TCP options: accepted, ignored, warned (#37702 restriction 4) */
 
 static void test_time_reconnect_is_deprecated(void **state) {
@@ -973,6 +1027,9 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
         cmocka_unit_test(test_fresh_install_template_shape),
         cmocka_unit_test(test_agent_invalid_tag_is_rejected),
+        cmocka_unit_test(test_read_agent_batch_takes_the_limits_from_the_file),
+        cmocka_unit_test(test_read_agent_batch_leaves_the_caller_defaults_when_absent),
+        cmocka_unit_test(test_read_agent_batch_survives_a_missing_file),
         cmocka_unit_test(test_shared_batch_is_parsed),
         cmocka_unit_test(test_shared_batch_is_validated_like_a_local_one),
         cmocka_unit_test(test_shared_config_still_refuses_local_only_options),

@@ -11,6 +11,11 @@
 // LCOV_EXCL_START
 extern "C" {
 
+    void asp_set_session_max_bytes(uint64_t max_session_bytes)
+    {
+        AgentSyncProtocol::setSessionMaxBytes(static_cast<size_t>(max_session_bytes));
+    }
+
     AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, asp_logger_t logger)
     {
         try
