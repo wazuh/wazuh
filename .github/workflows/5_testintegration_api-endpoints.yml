@@ -222,6 +222,16 @@ jobs:
           cd api/test/integration
           pytest --nobuild -vvv _test_smoke.tavern.yaml
 
+      - name: Upload manager/cluster/agent logs on failure
+        if: failure()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: integration-logs-smoke-test-${{ github.run_id }}-${{ github.run_attempt }}
+          path: api/test/integration/_test_results/logs/
+
   api_endpoints_integration_tests_execution:
     needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
