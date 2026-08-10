@@ -247,19 +247,39 @@ static void test_ssl_none_verification_mode(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
-static void test_ssl_default_is_full(void **state) {
+static void test_ssl_zero_initialized_reads_as_full(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
 
-    /* No <ssl> block at all: zero-initialized struct must read as FULL
-     * (AGENT_VERIFY_FULL == 0), so an agent that forgets TLS config still
+    /* No <ssl> block at all: a zero-initialized struct reads as FULL
+     * (AGENT_VERIFY_FULL == 0), so a caller that never sets a default still
      * fails closed rather than silently disabling verification. */
     const char *xml_str = "<server><address>10.0.0.1</address><port>1517</port></server>";
 
     expect_valid_ip("10.0.0.1");
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
     assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_FULL);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_ssl_absent_keeps_the_default_the_caller_set(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* The parser never invents a verification mode, which is what lets ClientConf
+     * own the agent's own default of NONE: with no <ssl> block the value the
+     * caller came in with is still there afterwards. */
+    const char *xml_str = "<server><address>10.0.0.1</address><port>1517</port></server>";
+
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.ssl.verification_mode = AGENT_VERIFY_NONE;
+
+    expect_valid_ip("10.0.0.1");
+    assert_int_equal(parse_agent_into(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_NONE);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -864,7 +884,8 @@ int main(void) {
         cmocka_unit_test(test_ssl_full_verification_mode),
         cmocka_unit_test(test_ssl_certificate_verification_mode),
         cmocka_unit_test(test_ssl_none_verification_mode),
-        cmocka_unit_test(test_ssl_default_is_full),
+        cmocka_unit_test(test_ssl_zero_initialized_reads_as_full),
+        cmocka_unit_test(test_ssl_absent_keeps_the_default_the_caller_set),
         cmocka_unit_test(test_ssl_invalid_verification_mode_is_rejected),
         cmocka_unit_test(test_ssl_invalid_tag_is_rejected),
         cmocka_unit_test(test_ssl_ciphers_accepts_a_tls13_suite_list),
