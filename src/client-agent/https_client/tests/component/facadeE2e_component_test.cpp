@@ -395,6 +395,38 @@ TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)
     EXPECT_NE(std::string::npos, received.find("size-wakeup-first"));
 }
 
+TEST_F(FacadeE2eTest, IntervalFlushesABatchThatNeverReachesTheSize)
+{
+    // The companion to SizeThresholdFlushesBeforeTheBatchInterval: the same OR,
+    // seen from the other side. One short event against a 1 MiB limit can only
+    // leave when the interval closes the window.
+    const uint16_t port = TLS_PORT + 10;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.batch_size_bytes = 1024 * 1024; // Far above anything this test sends.
+    config.batch_interval_ms = 300;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    const HandleGuard guard {handle};
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    const std::string event = "1:/loc:interval-only-flush";
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
+                                event.size()));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    EXPECT_TRUE(waitForBody(peek, "/peek/stateless", "interval-only-flush", 4000));
+}
+
 TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
 {
     // The full chain: a producer streams a multi-MB session over the local
