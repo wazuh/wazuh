@@ -408,6 +408,19 @@ int w_ref_parent_folder(const char * path);
 
 
 /**
+ * @brief Check that a name is a bare file name, safe to join to a base directory.
+ *
+ * Rejects the empty string, "." and "..", any name referring to a parent folder, and any name
+ * containing a path separator, so that joining it to a base directory cannot escape that directory
+ * and so that it can be used as-is in a directory-relative open.
+ *
+ * @param filename Name to be checked.
+ * @return 1 if the name is a bare file name, 0 otherwise.
+ */
+int w_is_bare_filename(const char * filename);
+
+
+/**
  * @brief Read directory and return an array of contained files and folders, sorted alphabetically.
  *
  * @param name Path of the directory.
@@ -488,6 +501,28 @@ int w_stat(const char * pathname,
  * @return File pointer.
  */
 FILE * wfopen(const char * pathname, const char * mode);
+
+
+/**
+ * @brief Create or truncate a file inside a base directory for writing, without following symlinks.
+ *
+ * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
+ * friends): a symlink, FIFO, device or directory found at the target path is rejected instead of
+ * being opened through. @p filename must be a bare file name; it is rejected if it is empty, "."
+ * or "..", if it refers to a parent folder, or if it contains a path separator, so the resulting
+ * open cannot escape @p basedir.
+ *
+ * On Linux/macOS the file is opened relative to a descriptor of @p basedir with O_NOFOLLOW, and the
+ * descriptor is confirmed to be a regular file before being wrapped in a stream. On Windows the
+ * file is opened without reparse-point processing and truncated only after the handle has been
+ * confirmed to be a regular file, so the target of a symlink or junction is never modified.
+ *
+ * @param basedir Base directory holding the file. Not created by this function.
+ * @param filename Bare file name inside @p basedir.
+ * @param mode Open mode, either "w" or "wb".
+ * @return File pointer on success, NULL on error (sets errno).
+ */
+FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
 
 
 /**

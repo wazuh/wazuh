@@ -2290,6 +2290,28 @@ int w_ref_parent_folder(const char * path) {
 }
 
 
+int w_is_bare_filename(const char * filename) {
+
+    // "." is not caught by w_ref_parent_folder(), which only rejects references to a parent folder.
+    if (!filename || !*filename || strcmp(filename, ".") == 0) {
+        return 0;
+    }
+
+    if (strchr(filename, '/')) {
+        return 0;
+    }
+
+#ifdef WIN32
+    // Windows accepts both separators, so a name holding either one is not a bare file name.
+    if (strchr(filename, '\\')) {
+        return 0;
+    }
+#endif
+
+    return w_ref_parent_folder(filename) ? 0 : 1;
+}
+
+
 cJSON* getunameJSON()
 {
     os_info *read_info;
@@ -2539,6 +2561,127 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #else
     return fopen(pathname, mode);
+#endif
+}
+
+
+FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    char final_path[PATH_MAX + 1];
+    BY_HANDLE_FILE_INFORMATION file_info;
+    HANDLE hFile;
+    int flags = strchr(mode, 'b') ? 0 : _O_TEXT;
+    int fd;
+    FILE * fp;
+
+    if (snprintf(final_path, sizeof(final_path), "%s\\%s", basedir, filename) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+    // OPEN_ALWAYS rather than CREATE_ALWAYS: the file must not be truncated before the handle has been
+    // confirmed to be a regular file. FILE_FLAG_OPEN_REPARSE_POINT makes the handle refer to a symlink
+    // or junction itself instead of to its target, so the target is never opened nor modified.
+    hFile = wCreateFile(final_path, GENERIC_WRITE, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = GetLastError();
+        return NULL;
+    }
+
+    if (!GetFileInformationByHandle(hFile, &file_info)) {
+        errno = GetLastError();
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        CloseHandle(hFile);
+        errno = ELOOP;
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        CloseHandle(hFile);
+        errno = EISDIR;
+        return NULL;
+    }
+
+    // The file pointer sits at the beginning of the file, so this truncates it.
+    if (!SetEndOfFile(hFile)) {
+        errno = GetLastError();
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        errno = GetLastError();
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        errno = GetLastError();
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    return fp;
+#else
+    struct stat statbuf;
+    FILE * fp;
+    int dirfd;
+    int fd;
+    int saved_errno;
+    int flags;
+
+    if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+        return NULL;
+    }
+
+    // O_NOFOLLOW makes the open fail with ELOOP if the target is a symlink, and O_NONBLOCK keeps it
+    // from blocking on a FIFO waiting for a reader. Both are needed before O_TRUNC takes effect.
+    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
+    saved_errno = errno;
+    close(dirfd);
+
+    if (fd < 0) {
+        errno = saved_errno;
+        return NULL;
+    }
+
+    // Rules out anything O_NOFOLLOW does not, such as a block or character device.
+    if (fstat(fd, &statbuf) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        close(fd);
+        errno = EINVAL;
+        return NULL;
+    }
+
+    // O_NONBLOCK has no effect on a regular file, but the stream is expected to behave like fopen's.
+    if (flags = fcntl(fd, F_GETFL), flags != -1) {
+        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    }
+
+    if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
 #endif
 }
 

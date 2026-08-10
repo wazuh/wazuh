@@ -122,6 +122,32 @@ void test_jailfile_valid_path(void **state) {
 #endif
 }
 
+void test_jailfile_empty_name(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "");
+    assert_int_equal(ret, -1);
+}
+
+void test_jailfile_current_folder(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, ".");
+    assert_int_equal(ret, -1);
+}
+
+void test_jailfile_path_separator(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "subfolder/test_filename");
+    assert_int_equal(ret, -1);
+
+#ifdef TEST_WINAGENT
+    ret = _jailfile(finalpath, TMP_DIR, "subfolder\\test_filename");
+    assert_int_equal(ret, -1);
+#endif
+}
+
 void test_unsign_invalid_source_incomming(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
@@ -549,9 +575,7 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 0);
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", NULL);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg,   "(1103): Could not open file 'test_file' due to [(2)-(No such file or directory)].");
@@ -571,9 +595,7 @@ void test_wm_agent_upgrade_com_open_success(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 4);
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", (FILE *)4);
 
     char *response = wm_agent_upgrade_com_open(command);
     cJSON *response_object = cJSON_Parse(response);
@@ -1857,6 +1879,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_jailfile_invalid_path, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_jailfile_valid_path, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test(test_jailfile_empty_name),
+        cmocka_unit_test(test_jailfile_current_folder),
+        cmocka_unit_test(test_jailfile_path_separator),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_incomming, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_temp, setup_jailfile, teardown_jailfile),
         #ifdef TEST_WINAGENT
