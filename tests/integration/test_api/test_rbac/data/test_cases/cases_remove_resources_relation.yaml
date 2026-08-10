@@ -5,7 +5,7 @@
     resources:
       user_ids:
         - username: test_user
-          password: Password1!
+          password: Password123!
       role_ids:
         - name: test_role
     resources_ids:

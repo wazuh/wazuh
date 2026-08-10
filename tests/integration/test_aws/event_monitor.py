@@ -36,6 +36,12 @@ def make_aws_callback(pattern, prefix=''):
     return lambda line: regex.match(line)
 
 
+# CLI arguments whose value the module wraps in double quotes via wm_aws_add_quoted_arg()
+# (src/wazuh_modules/src/wm_aws.c) so the value survives the word-splitting wm_exec() performs.
+_QUOTED_ARGS = frozenset({'--aws_profile', '--aws_account_alias', '--trail_prefix',
+                          '--trail_suffix', '--discard-field', '--discard-regex'})
+
+
 def callback_detect_aws_module_called(parameters):
     """Detect if aws module was called with correct parameters.
 
@@ -45,7 +51,22 @@ def callback_detect_aws_module_called(parameters):
     Returns:
         Callable: Callback to match the line.
     """
-    pattern = fr'{AWS_MODULE_STARTED_PARAMETRIZED}{" ".join(parameters)}\n*'
+    # Normalise the EXPECTED side so the value of every _QUOTED_ARGS argument carries exactly one pair
+    # of double quotes (test cases are inconsistent: some already include the quotes, others don't).
+    # The logged line is NOT altered, so the assertion still requires the module to actually quote
+    # those values - a quoting regression (dropping wm_aws_add_quoted_arg) makes this fail instead of
+    # silently passing. re.escape keeps the match literal, since some values (e.g. discard_regex) are
+    # themselves regexes and must not be interpreted as such.
+    expected = []
+    quote_next = False
+    for token in parameters:
+        if quote_next:
+            token = '"{}"'.format(token.strip('"'))
+            quote_next = False
+        else:
+            quote_next = token in _QUOTED_ARGS
+        expected.append(token)
+    pattern = fr'{AWS_MODULE_STARTED_PARAMETRIZED}{re.escape(" ".join(expected))}\n*'
     regex = re.compile(pattern)
     return lambda line: regex.match(line)
 

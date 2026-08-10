@@ -106,6 +106,11 @@ static bool startup_gate_query_status(bool *ready, char *reason, size_t reason_s
 }
 #endif
 
+// Defined in wazuh_modules/src/wmodules.c. Declared here directly (instead of
+// pulling in wmodules.h) to avoid a layering dependency from shared/ onto
+// wazuh_modules/ - the type must match the original declaration exactly.
+extern volatile sig_atomic_t wm_shutdown_requested;
+
 void startup_gate_wait_for_ready(const char *module_name) {
 #if defined(CLIENT)
     bool waiting_logged = false;
@@ -118,6 +123,11 @@ void startup_gate_wait_for_ready(const char *module_name) {
         bool got_status = false;
         bool should_log = false;
         char reason[OS_SIZE_128] = {0};
+
+        if (wm_shutdown_requested) {
+            mdebug1("Startup hash gate: shutdown requested, releasing '%s' without waiting for handshake.", name);
+            return;
+        }
 
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
         if (got_status && ready) {

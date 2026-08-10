@@ -51,6 +51,7 @@ class EXPORTED SysInfo: public ISysInfo
         nlohmann::json users();
         nlohmann::json services();
         nlohmann::json browserExtensions();
+        void releaseThreadResources();
     private:
         virtual nlohmann::json getHardware() const;
         virtual nlohmann::json getPackages() const;

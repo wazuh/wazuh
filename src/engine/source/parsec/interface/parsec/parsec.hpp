@@ -34,8 +34,8 @@ public:
     using nestedTracesT = std::optional<std::vector<Trace>>;
 
 private:
-    bool m_success;
-    size_t m_index;
+    bool m_success {false};
+    size_t m_index {0};
     messageT m_message;
     nestedTracesT m_innerTraces;
 

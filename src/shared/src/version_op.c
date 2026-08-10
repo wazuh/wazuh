@@ -398,6 +398,8 @@ const char *OSX_ReleaseName(int version) {
     /* 22 */ "Ventura",
     /* 23 */ "Sonoma",
     /* 24 */ "Sequoia",
+    /* 25 */ "Tahoe",
+    /* 26 */ "Golden Gate",
     };
 
     version -= 10;
@@ -405,7 +407,7 @@ const char *OSX_ReleaseName(int version) {
     if (version >= 0 && (unsigned)version < sizeof(R_NAMES) / sizeof(char *)) {
         return R_NAMES[version];
     } else {
-        return "Unknown";
+        return OSX_UNKNOWN_RELEASE_NAME;
     }
 }
 
@@ -793,7 +795,13 @@ os_info *get_unix_version()
                             char *kern = NULL;
                             os_malloc(match_size + 1, kern);
                             snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                            w_strdup(OSX_ReleaseName(atoi(kern)), info->os_codename);
+                            const char *release_name = OSX_ReleaseName(atoi(kern));
+                            /* Leave the codename unset for Darwin versions that are not in the release
+                             * name table yet, so the reported version stays clean instead of showing
+                             * "<version> (Unknown)" on every macOS release newer than the table. */
+                            if (strcmp(release_name, OSX_UNKNOWN_RELEASE_NAME) != 0) {
+                                w_strdup(release_name, info->os_codename);
+                            }
                             free(kern);
                         }
                         pclose(cmd_output_ver);

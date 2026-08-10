@@ -90,7 +90,7 @@ get_users:
 create_user:
   - params:
       username: new_user
-      password: wazuh1A!
+      password: wazuh1A!extra
     result:
       affected_items:
         - id: 106
@@ -100,7 +100,7 @@ create_user:
       failed_items: {}
   - params:
       username: ossec
-      password: wazuh1A!
+      password: wazuh1A!extra
     result:
       affected_items: []
       failed_items:
@@ -116,7 +116,7 @@ create_user:
           - new_user1
   - params:
       username: new_user2
-      password: WazuhWazuh1
+      password: WazuhWazuh123
     result:
       affected_items: []
       failed_items:
@@ -126,7 +126,7 @@ update_user:
   - params:
       user_id:
         - 102
-      password: wazuh2A!
+      password: wazuh2A!extra
     result:
       affected_items:
         - id: 102
@@ -139,7 +139,7 @@ update_user:
   - params:
       user_id:
         - 106
-      password: wazuh3A!
+      password: wazuh3A!extra
     result:
       affected_items: []
       failed_items:
@@ -164,6 +164,25 @@ update_user:
       failed_items:
         "5011":
           - 1
+  - params:
+      user_id:
+        - 1
+      password: ""
+      current_user: normal
+    result:
+      affected_items: []
+      failed_items:
+        "5009":
+          - 1
+  - params:
+      user_id:
+        - 102
+      password: ""
+    result:
+      affected_items: []
+      failed_items:
+        "5009":
+          - 102
 remove_users:
   - params:
       user_ids:

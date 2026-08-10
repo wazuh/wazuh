@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
       jobs: ${{ steps.vars.outputs.JOBS }}
@@ -51,11 +51,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
-
-      - name: Ensure jq (CodeBuild)
-        # TODO(codebuild-temp): Remove once the CodeBuild server image ships jq.
-        # GitHub-hosted ubuntu-24.04 bundled jq; the variables step below parses VERSION.json with it.
-        run: command -v jq >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y jq; }
 
       - name: Set up project and build variables
         id: vars
@@ -81,7 +76,7 @@ jobs:
           echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     needs: prepare
     permissions:
       id-token: write
@@ -95,19 +90,6 @@ jobs:
 
       - name: Download dependencies
         run: make -C src deps TARGET=${{ github.event.inputs.target }} -j${{ needs.prepare.outputs.jobs }}
-
-      - name: Start Docker daemon (CodeBuild)
-        # TODO(codebuild-temp): Remove once CodeBuild exposes a running Docker daemon.
-        # The Coverity build runs inside the coverity-scan container (docker run); CodeBuild has
-        # no systemd so dockerd never starts on its own. VFS avoids overlay-on-overlay in-container.
-        run: |
-          if ! docker info >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -145,7 +127,7 @@ jobs:
           path: wazuh.tgz
 
   upload:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     needs: [prepare, build]
     steps:
       - name: Checkout code
