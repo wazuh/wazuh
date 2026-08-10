@@ -28,6 +28,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   api_endpoints_integration_tests_setup:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -262,9 +266,10 @@ jobs:
 
       - name: Upload manager/cluster/agent logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
-          name: integration-logs-${{ matrix.test_file }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: integration-logs-${{ matrix.test_file }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: api/test/integration/_test_results/logs/
-          if-no-files-found: ignore
-          retention-days: 7
