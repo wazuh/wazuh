@@ -65,6 +65,38 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+      # Wait for analysisd to finish loading the ruleset and open the logtest
+      # socket before running tests against it. wazuh-control/systemctl only
+      # confirm the daemons were launched, not that they finished initializing,
+      # so without this wait the first few wazuh-logtest calls can race the
+      # daemon startup and fail with a connection error instead of a real result.
+      - name: Wait for Wazuh manager to be ready
+        run: |
+          sudo python3 - <<'EOF'
+          import socket
+          import sys
+          import time
+
+          SOCKET_PATH = "/var/ossec/queue/sockets/logtest"
+          TIMEOUT_SECONDS = 90
+          POLL_INTERVAL_SECONDS = 2
+
+          deadline = time.time() + TIMEOUT_SECONDS
+          while True:
+              try:
+                  s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                  s.connect(SOCKET_PATH)
+                  s.close()
+                  print("Wazuh manager logtest socket is ready.")
+                  sys.exit(0)
+              except OSError as e:
+                  if time.time() >= deadline:
+                      print(f"::error::Timed out after {TIMEOUT_SECONDS}s waiting for "
+                            f"the logtest socket ({SOCKET_PATH}) to become available: {e}",
+                            file=sys.stderr)
+                      sys.exit(1)
+                  time.sleep(POLL_INTERVAL_SECONDS)
+          EOF
       # Run ruleset integration tests.
       - name: Run ruleset integration tests
         run: |
