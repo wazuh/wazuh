@@ -352,7 +352,8 @@ flowchart LR
     S[strand: validated VD session] -->|feed downloading| RA[503 + Retry-After]
     S -->|queue full| C503[503 scan capacity exhausted]
     S --> L[[bounded queue\nvd_workers, own connectors]]
-    L --> W[worker: acquire agent → re-check feed →\nscan → stage inventory + flush → 200]
+    L --> W[worker: acquire agent → re-check feed →\ncheck feed_offset → scan → stage inventory + flush → 200]
+    W -->|feed_offset mismatch| C409[409 version_mismatch\n+ current_version]
     W -->|scan throws| E500[500 — nothing indexed]
     P[SyncPipeline] <-.->|AgentInFlightRegistry| L
 ```
@@ -361,15 +362,20 @@ The lane worker's dispatch order is the D-contract in code: acquire the agent in
 (non-reentrant — a second session of the same agent waits), re-check connector availability,
 re-check `feedReady()` (the admission check may be stale for a queued item — answering
 `503 + Retry-After` here keeps the invariant that a not-ready feed never processes anything),
-run the scan inside a try/catch (a throw answers `500` with ZERO indexing), then stage the
-inventory bulk and `flush()` — one session per flush, no group commit in this lane — and answer
-`200`.
+check `Start.feed_offset` against `IVdScanner::currentFeedOffset()` for VD-flagged sessions
+(answering `409 {"error":"version_mismatch","current_version":N}` — the same body shape as
+remoted's `/scan/vd` REST endpoint, so an agent handles either 409 the same way — if the session
+was built against a feed offset this node doesn't currently have; a non-VD session has no
+meaningful `feed_offset` and skips this check entirely), run the scan inside a try/catch (a throw
+answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
+flush, no group commit in this lane — and answer `200`.
 
-**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()` and
+**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `currentFeedOffset()`
+(this node's current VD feed offset, backing the `feed_offset` check above), and
 `scan() -> Ok | Skipped`. `feedReady()` is `!isInitialized() || isFeedReady()` — a DISABLED
 scanner passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
-(and a feed-update fleet scan that already covers the agent is the other legitimate skip; both
-still index and answer `200`). The production adapter lives in exactly one translation unit,
+(the only legitimate skip; it still indexes and answers `200`). The production adapter lives in
+exactly one translation unit,
 `vdScannerAdapter.cpp`, because the scanner's headers pull include-dir baggage the rest of this
 module must not inherit; the boundary itself is the scanner's neutral view interface
 (`vulnerabilityScannerSync.hpp` — flat `string_view`/span structs, no FlatBuffers types in either
@@ -383,10 +389,15 @@ lane holds — per-agent FIFO without head-of-line blocking the shard's other ag
 registry's release listeners wake the parked shards. `couldAcquire()` is the const mirror the
 worker's cv predicate uses; `pause/resume` + `waitUntilIdle` serve the coordinator below.
 
-**`ServerScanCoordinator`** registers with the scanner's coordination registry so feed-update
-fleet scans and session scans never race: it exposes which agents have sessions in flight, can
-pause an agent (with a bounded quiesce wait, configurable for tests) and drain what is running.
-On `stop()` it unregisters FIRST, before the lane dies under the scanner's feet.
+**`ServerScanCoordinator`** registers with the scanner's coordination registry so a
+feed-update-triggered scan (per-agent, on-demand via `/scan/vd`, or the master-only sweep over
+disconnected agents — see [vulnerability-scanner's
+architecture.md](../../../docs/ref/modules/vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)
+for both paths) and a session scan for the SAME agent never race: it exposes which agents have
+sessions in flight, can pause an agent (with a bounded quiesce wait, configurable for tests) and
+drain what is running. There is no fleet-wide coordination here — each feed-update rescan fences
+only the one agent it is about to scan, the same way a lane session does. On `stop()` it
+unregisters FIRST, before the lane dies under the scanner's feet.
 
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
@@ -568,8 +579,8 @@ server's restart retries. Everything downstream resolves its instruments from it
 (`common/metricNames.hpp` is the catalog): the pipeline (request counters by code, shed total,
 bulk-flush counters, per-shard depth/bytes gauges, session-duration histograms), the session
 processor (docs indexed/skipped, bytes ingested), the VD lane (lane depth/time, scan duration,
-scans ok/failed/skipped, capacity and Retry-After totals) and the sync endpoint (its inline
-rejections). Constructors take the manager as an optional trailing parameter; a null falls back
+scans ok/failed/skipped, capacity and Retry-After totals, `vd.offset_mismatch.total` for the
+`feed_offset` gate above) and the sync endpoint (its inline rejections). Constructors take the manager as an optional trailing parameter; a null falls back
 to a private disconnected manager, so instrumentation stays branch-free and tests need no change.
 
 Three invariants worth keeping: every response is counted exactly ONCE, at the site that sends it
