@@ -48,7 +48,7 @@ struct ModuleConfig
         uint32_t bufferNormalLevel {70};
         uint32_t bufferFloodToleranceS {15};
 
-        uint32_t notifyIntervalS {20};
+        uint32_t notifyIntervalS {10};
         uint32_t rejectedRetryIntervalS {60};
 
         /// Safety bound for a remote_upgrade WPK download: stops a

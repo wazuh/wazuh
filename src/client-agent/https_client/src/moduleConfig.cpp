@@ -47,7 +47,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.bufferWarnLevel = orDefault<uint32_t>(config.buffer_warn_level, 90);
     typed.bufferNormalLevel = orDefault<uint32_t>(config.buffer_normal_level, 70);
     typed.bufferFloodToleranceS = orDefault<uint32_t>(config.buffer_flood_tolerance_s, 15);
-    typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
+    typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 10);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
     typed.wpkMaxDownloadBytes = orDefault<uint64_t>(config.wpk_max_download_bytes, 200ULL * 1024 * 1024);
     typed.statsEnabled = config.stats_enabled;
