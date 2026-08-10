@@ -28,12 +28,12 @@ on:
         description: 'Run Infer/RacerD static race detection (~20 min extra)'
         required: false
         type: boolean
-        default: false
+        default: true
       run_tsan:
         description: 'Run ThreadSanitizer via unit tests + wazuh-db system test (requires kernel tuning)'
         required: false
         type: boolean
-        default: false
+        default: true
       run_flawfinder:
         description: 'Run Flawfinder security scan (CWE-362 TOCTOU, CWE-119 — lightweight, ~2 min)'
         required: false

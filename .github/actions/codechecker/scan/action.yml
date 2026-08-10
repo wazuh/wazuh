@@ -27,11 +27,11 @@ inputs:
   run_infer:
     description: Run Infer/RacerD static race scan
     required: false
-    default: 'false'
+    default: 'true'
   run_tsan:
     description: Run ThreadSanitizer unit tests + system test
     required: false
-    default: 'false'
+    default: 'true'
   run_flawfinder:
     description: Run Flawfinder CWE-362/CWE-119 security scan
     required: false

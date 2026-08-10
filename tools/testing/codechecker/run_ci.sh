@@ -17,8 +17,8 @@
 #   SCAN_NAME    dashboard name for base run
 #   TARGET_NAME  dashboard name for target run
 #   ENABLE_CTU       cross-translation-unit analysis (default: 1)
-#   RUN_INFER        run Infer/RacerD (default: 0; adds ~20 min)
-#   RUN_TSAN         run ThreadSanitizer (default: 0; needs kernel tuning)
+#   RUN_INFER        run Infer/RacerD (default: 1; adds ~20 min)
+#   RUN_TSAN         run ThreadSanitizer (default: 1; needs kernel tuning)
 #   RUN_FLAWFINDER   run Flawfinder CWE-362/CWE-119 scan (default: 1)
 #   JOBS             parallelism (default: nproc)
 ###############################################################################
@@ -35,8 +35,8 @@ SCAN_TARGET="${SCAN_TARGET:-manager}"
 SCAN_NAME="${SCAN_NAME:-}"
 TARGET_NAME="${TARGET_NAME:-}"
 ENABLE_CTU="${ENABLE_CTU:-1}"
-RUN_INFER="${RUN_INFER:-0}"
-RUN_TSAN="${RUN_TSAN:-0}"
+RUN_INFER="${RUN_INFER:-1}"
+RUN_TSAN="${RUN_TSAN:-1}"
 RUN_FLAWFINDER="${RUN_FLAWFINDER:-1}"
 JOBS="${JOBS:-$(nproc)}"
 SELFTEST="${SELFTEST:-0}"

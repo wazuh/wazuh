@@ -39,6 +39,7 @@ Related issue: [#36748](https://github.com/wazuh/wazuh/issues/36748) · CodeChec
 - Docker Engine ≥ 24
 - `gh` CLI authenticated to `wazuh/wazuh` (required for GitHub Actions and issue posting)
 - ~60–90 min and ~20 GB disk for a full `manager` scan of two refs
+- Passwordless or interactive `sudo` access to `sysctl` — `RUN_TSAN=1` is the default, and `codechecker.sh` automatically lowers `vm.mmap_rnd_bits` to 28 before the scan and restores it afterward (see [ThreadSanitizer](#threadsanitizer-dynamic-race-detection) below)
 
 ---
 
@@ -62,10 +63,8 @@ After building the image, run a fast end-to-end check against the `defect_sample
 No `SCAN_REF` or `TARGET_REF` required; completes in **< 5 min**.
 
 ```bash
+# All analyzers run by default — CTU, Infer, TSan, and Flawfinder all default to enabled:
 ./tools/testing/codechecker/codechecker.sh --selftest
-# All analyzers enabled:
-ENABLE_CTU=1 RUN_INFER=1 RUN_TSAN=1 RUN_FLAWFINDER=1 \
-    ./tools/testing/codechecker/codechecker.sh --selftest
 ```
 
 The selftest goes through the **exact same pipeline** as a production scan
@@ -151,8 +150,8 @@ Removes `workspace/`, `results/`, and `cc-db/`.
 | `SCAN_NAME` | `wazuh-$SCAN_REF` | no | Dashboard run label for the base run. |
 | `TARGET_NAME` | `wazuh-$TARGET_REF` | no | Dashboard run label for the target run. |
 | `ENABLE_CTU` | `1` | no | Cross-translation-unit analysis. Finds interprocedural bugs. Adds ~2–3× scan time. Set `0` to disable. |
-| `RUN_INFER` | `0` | no | Run Meta Infer / RacerD after main scan. Detects resource leaks and lock imbalances. Adds ~20 min. |
-| `RUN_TSAN` | `0` | no | Run ThreadSanitizer via unit tests. Runtime data-race detection. Requires kernel tuning (see below). |
+| `RUN_INFER` | `1` | no | Run Meta Infer / RacerD after main scan. Detects resource leaks and lock imbalances. Adds ~20 min. Set `0` to disable. |
+| `RUN_TSAN` | `1` | no | Run ThreadSanitizer via unit tests. Runtime data-race detection. Requires kernel tuning (see below). Set `0` to disable. |
 | `RUN_FLAWFINDER` | `1` | no | Run Flawfinder CWE-362/CWE-119 supplementary security scan. Enabled by default. Set `0` to skip. |
 | `JOBS` | `nproc` | no | Parallel analysis jobs. |
 | `IMAGE` | `ghcr.io/wazuh/codechecker:latest` | no | Docker image to pull/use. |
@@ -201,21 +200,26 @@ Results appear as a separate run `wazuh-<TARGET_REF>-infer` on the dashboard.
 
 ### ThreadSanitizer (dynamic race detection)
 
-> **Warning:** TSan requires `vm.mmap_rnd_bits ≤ 28` on kernel 6.x. Lower it on the host before running.
+> **Note:** TSan requires `vm.mmap_rnd_bits ≤ 28` on kernel 6.x. `RUN_TSAN=1` is the default, and
+> `codechecker.sh` handles this automatically for `--scan`/`--selftest`: it checks the current value,
+> runs `sudo sysctl -w vm.mmap_rnd_bits=28` only if needed (printing what it's doing first), and
+> restores the original value afterward — even if the scan fails. `sudo` access is required for this.
 
 ```bash
-sudo sysctl -w vm.mmap_rnd_bits=28
-
-RUN_TSAN=1 \
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
 SCAN_TARGET=manager \
 ./tools/testing/codechecker/codechecker.sh --scan
-
-sudo sysctl -w vm.mmap_rnd_bits=32   # restore after scan
 ```
 
+To disable TSan for a run: add `RUN_TSAN=0` — `codechecker.sh` then skips the sysctl adjustment entirely.
+
 TSan runs in two phases: unit test suite compiled with `-fsanitize=thread`, and `wazuh-db` exercised via concurrent socket queries.
+
+> **If invoking the Docker container directly** (bypassing `codechecker.sh` — e.g. a custom CI step),
+> you must lower and restore `vm.mmap_rnd_bits` yourself; the automation lives in `codechecker.sh`,
+> not in the image or `run_ci.sh`. The `5_codeanalysis_codechecker.yml` workflow already does this
+> with its own "Lower/Restore vm.mmap_rnd_bits" steps.
 
 ### Flawfinder (CWE-362 / CWE-119 security scan, enabled by default)
 
@@ -245,20 +249,16 @@ TARGET_REF=main \
 
 ### Combining all optional analyses
 
-```bash
-sudo sysctl -w vm.mmap_rnd_bits=28
+CTU, Infer, TSan, and Flawfinder all default to enabled — a plain `--scan` already runs the full checker set, and `codechecker.sh` handles the `vm.mmap_rnd_bits` adjustment for TSan automatically:
 
+```bash
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
 SCAN_TARGET=manager \
-ENABLE_CTU=1 \
-RUN_INFER=1 \
-RUN_TSAN=1 \
-RUN_FLAWFINDER=1 \
 ./tools/testing/codechecker/codechecker.sh --scan
-
-sudo sysctl -w vm.mmap_rnd_bits=32
 ```
+
+To run a lighter subset instead, disable what you don't need, e.g. `RUN_INFER=0 RUN_TSAN=0`.
 
 ---
 
@@ -425,7 +425,7 @@ gh run watch <run-id> --repo wazuh/wazuh
 
 ### Step 2 — Trigger a differential scan
 
-**Minimal (server target, CTU + Flawfinder on by default):**
+**Minimal (server target, all analyzers on by default — CTU, Infer, TSan, Flawfinder):**
 
 ```bash
 gh workflow run \
@@ -435,22 +435,6 @@ gh workflow run \
   -f scan_ref=4.14.7 \
   -f target_ref=main \
   -f scan_target=server
-```
-
-**With all optional analyses enabled:**
-
-```bash
-gh workflow run \
-  5_codeanalysis_codechecker.yml \
-  --repo wazuh/wazuh \
-  --ref main \
-  -f scan_ref=4.14.7 \
-  -f target_ref=main \
-  -f scan_target=manager \
-  -f enable_ctu=true \
-  -f run_infer=true \
-  -f run_tsan=true \
-  -f run_flawfinder=true
 ```
 
 **PR-level spot check (branch vs tag, CTU off for speed):**

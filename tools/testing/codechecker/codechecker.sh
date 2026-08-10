@@ -24,14 +24,39 @@ SCAN_TARGET="${SCAN_TARGET:-manager}"
 SCAN_NAME="${SCAN_NAME:-}"
 TARGET_NAME="${TARGET_NAME:-}"
 ENABLE_CTU="${ENABLE_CTU:-1}"
-RUN_INFER="${RUN_INFER:-0}"
-RUN_TSAN="${RUN_TSAN:-0}"
+RUN_INFER="${RUN_INFER:-1}"
+RUN_TSAN="${RUN_TSAN:-1}"
 RUN_FLAWFINDER="${RUN_FLAWFINDER:-1}"
 JOBS="${JOBS:-$(nproc)}"
 
 WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR/workspace}"
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 CC_DB_DIR="${CC_DB_DIR:-$SCRIPT_DIR/cc-db}"
+
+# Tracks the host's original vm.mmap_rnd_bits so it can be restored after a
+# TSan run lowers it. Empty means "nothing to restore".
+ORIGINAL_MMAP_RND_BITS=""
+
+restore_mmap_rnd_bits() {
+    [ -n "$ORIGINAL_MMAP_RND_BITS" ] || return 0
+    echo "[*] Restoring vm.mmap_rnd_bits to $ORIGINAL_MMAP_RND_BITS"
+    sudo sysctl -w vm.mmap_rnd_bits="$ORIGINAL_MMAP_RND_BITS" || true
+    ORIGINAL_MMAP_RND_BITS=""
+}
+
+lower_mmap_rnd_bits() {
+    [ "$RUN_TSAN" = "1" ] || return 0
+    local current
+    current="$(sudo sysctl -n vm.mmap_rnd_bits)"
+    if [ "$current" -le 28 ]; then
+        return 0
+    fi
+    echo "[*] RUN_TSAN=1 — ThreadSanitizer requires vm.mmap_rnd_bits <= 28 on kernel 6.x"
+    echo "[*] Running: sudo sysctl -w vm.mmap_rnd_bits=28 (current: $current)"
+    sudo sysctl -w vm.mmap_rnd_bits=28
+    ORIGINAL_MMAP_RND_BITS="$current"
+    trap restore_mmap_rnd_bits EXIT
+}
 
 usage() {
     cat <<EOF
@@ -55,8 +80,8 @@ Scan environment variables (required for --scan):
   SCAN_NAME       Dashboard run name for base  (default: wazuh-\$SCAN_REF)
   TARGET_NAME     Dashboard run name for target (default: wazuh-\$TARGET_REF)
   ENABLE_CTU      Cross-TU analysis (default: 1; set 0 to disable)
-  RUN_INFER       Infer/RacerD static race scan (default: 0; adds ~20 min)
-  RUN_TSAN        ThreadSanitizer (default: 0; requires vm.mmap_rnd_bits<=28)
+  RUN_INFER       Infer/RacerD static race scan (default: 1; adds ~20 min)
+  RUN_TSAN        ThreadSanitizer (default: 1; requires vm.mmap_rnd_bits<=28)
   RUN_FLAWFINDER  Flawfinder CWE-362/CWE-119 security scan (default: 1)
   IMAGE           Docker image to use (default: ghcr.io/wazuh/codechecker:latest)
 
@@ -87,6 +112,8 @@ do_scan() {
     echo "    build:   $SCAN_TARGET  jobs=$JOBS"
     echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER"
 
+    lower_mmap_rnd_bits
+
     docker run --rm \
         -v "$WORKSPACE_DIR:/workspace" \
         -v "$RESULTS_DIR:/results" \
@@ -104,6 +131,8 @@ do_scan() {
         "$IMAGE" \
         bash /cc/run_ci.sh
 
+    restore_mmap_rnd_bits
+
     echo "[*] Scan complete."
     echo "    HTML diff:    $RESULTS_DIR/diff_new_html/index.html"
     echo "    Full report:  $RESULTS_DIR/full_report_html/index.html"
@@ -114,6 +143,9 @@ do_selftest() {
     echo "[*] Running analyzer self-test against defect_samples/ (< 5 min)"
     echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER"
     mkdir -p "$RESULTS_DIR" "$CC_DB_DIR"
+
+    lower_mmap_rnd_bits
+
     docker run --rm \
         -v "$RESULTS_DIR:/results" \
         -v "$CC_DB_DIR:/tmp/cc-db" \
@@ -126,6 +158,9 @@ do_selftest() {
         -e JOBS="$JOBS" \
         "$IMAGE" \
         bash /cc/run_ci.sh
+
+    restore_mmap_rnd_bits
+
     echo "[*] Self-test complete."
     echo "    Report:    $RESULTS_DIR/report.md"
     echo "    New diffs: $RESULTS_DIR/diff_new.txt"
