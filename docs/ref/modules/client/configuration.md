@@ -18,9 +18,11 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-### server
+### manager
 
-Manager server configuration block. Multiple `<server>` blocks can be defined for failover.
+Manager connection block. Multiple `<manager>` blocks can be defined for failover.
+
+The tag was named `<server>` in earlier versions. `<server>` is still parsed, but the agent logs `The <server> tag is deprecated, please use <manager> instead.` See [Deprecated Options](#deprecated-options).
 
 **Sub-options:**
 
@@ -139,7 +141,7 @@ Enable automatic agent enrollment.
 
 Manager address for enrollment (can differ from data connection).
 
-- **Default value:** Value from `<server><address>`
+- **Default value:** Value from `<manager><address>`
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 
 #### port
@@ -391,11 +393,11 @@ Single manager, standard settings:
 
 ```xml
 <client>
-  <server>
+  <manager>
     <address>10.0.0.10</address>
     <port>1514</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
   <time-reconnect>60</time-reconnect>
@@ -410,24 +412,24 @@ Multiple managers for high availability:
 
 ```xml
 <client>
-  <server>
+  <manager>
     <address>manager1.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </server>
-  <server>
+  </manager>
+  <manager>
     <address>manager2.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </server>
-  <server>
+  </manager>
+  <manager>
     <address>manager3.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </server>
+  </manager>
   <notify_time>30</notify_time>
   <time-reconnect>30</time-reconnect>
 </client>
@@ -447,11 +449,11 @@ Automatic agent registration:
     <groups>webservers,production</groups>
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
-  <server>
+  <manager>
     <address>manager.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
-  </server>
+  </manager>
 </client>
 ```
 
@@ -484,18 +486,18 @@ Full example with all sections:
 ```xml
 <ossec_config>
   <client>
-    <server>
+    <manager>
       <address>manager1.example.com</address>
       <port>1514</port>
       <protocol>tcp</protocol>
       <max_retries>5</max_retries>
-    </server>
-    <server>
+    </manager>
+    <manager>
       <address>manager2.example.com</address>
       <port>1514</port>
       <protocol>tcp</protocol>
       <max_retries>5</max_retries>
-    </server>
+    </manager>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
     <time-reconnect>60</time-reconnect>
@@ -528,6 +530,22 @@ Full example with all sections:
 ---
 
 ## Deprecated Options
+
+### server
+
+**DEPRECATED:** The `<server>` block within `<client>` was renamed to `<manager>`.
+
+- **Status:** Deprecated, still parsed and honored
+- **Behavior:** Parsed exactly like `<manager>`, but the agent logs `The <server> tag is deprecated, please use <manager> instead.`
+- **Recommendation:** Rename the block to `<manager>`
+
+### server-ip, server-hostname, port
+
+**DEPRECATED:** Flat connection tags placed directly inside `<client>`, superseded by the `<manager>` block.
+
+- **Status:** Deprecated, still parsed and honored
+- **Behavior:** Each one logs a warning pointing at its replacement: `<server-ip>` and `<server-hostname>` map to `<manager><address>`, and a bare `<port>` maps to `<manager><port>`
+- **Recommendation:** Move the values into a `<manager>` block
 
 ### disable-active-response
 
