@@ -56,17 +56,21 @@ bucket rather than folding it into the session `200`s.
 ## As a lane
 
 An engine stream is a lane kind (see [07](07-scenario-schema.md)): the lane names a sample log file,
-a `location`, its own event rate, and whether it loops. Because event lanes and session lanes run on
+a `location`, its own event rate and its batch size. Because event lanes and session lanes run on
 independent goroutines within one agent (see [08](08-concurrency-and-pacing.md)), a mixed scenario
 produces the real thing — one agent simultaneously syncing FIM/SCA/syscollector inventory and
 streaming syslog — and the artifacts count the two independently (`stateless_*` columns in
 [09](09-metrics-and-output.md)).
 
-Two rules keep an event lane honest:
+Three rules keep an event lane honest:
 
-- Its rate is governed by the lane's own `max_eps`, separate from the session rate limiter: log
+- Its rate is the lane's own `events_per_second`, separate from the session rate limiter: log
   volume and inventory volume stress different paths (the engine vs the sync pipeline) and must be
-  dialed independently.
-- `loop: true` replays the sample file to sustain pressure; a lane that runs `while_siblings_active`
-  stops when the agent's inventory lanes are done, so the event stream does not outlive the run it
-  was decorating. Both are lane options, not global ones.
+  dialed independently. The unit is real events — the limiter charges each batch its size — and the
+  rate is the lane's aggregate across every agent running it.
+- `events_per_batch` sets how many events ride one `/stateless` request (0 = the whole sample file
+  as a single batch). One pass always ships the entire file, split into as many requests as the
+  batch size implies, so `stateless_sent` counts requests and `events_sent` counts events.
+- Sustained pressure comes from the run's own repetition (`repeat_count` on the step or the run's
+  `repeat_until`), the same mechanism every other lane uses; the stream stops at drain with
+  everything else.

@@ -24,7 +24,7 @@ flowchart TD
 
     L1 -->|session bucket| RL[(shared EPS limiter)]
     L2 -->|session bucket| RL
-    L3 -->|lane max_eps| LE[(per-lane limiter)]
+    L3 -->|lane events_per_second| LE[(per-lane limiter)]
 ```
 
 Per run: one `runner`, one `metrics writer`, one `signal watcher`, and per active agent one
@@ -44,10 +44,15 @@ Load shape comes from independent knobs, and confusing them is the classic bench
 
 - **`concurrent_agents`** bounds how many agents are Active at once — the *concurrency*.
 - **`requests_per_second`** bounds the aggregate **session** rate through one shared leaky bucket
-  (`golang.org/x/time/rate`) — the *throughput target*.
-- **A lane's `max_eps`** bounds *that lane's* rate independently, so a syslog engine lane at 250 EPS
-  can run beside inventory lanes at 75 without either starving the other. This is what makes the
-  mixed-fleet scenario a faithful load rather than a single-rate approximation.
+  (`golang.org/x/time/rate`) — the *throughput target*. One session = one token no matter how many
+  documents it carries (a 500-document VD full sync is still one request); 503-retry attempts take
+  a token each, so retries are paced traffic, never a bypass of the target.
+- **An engine lane's `events_per_second`** bounds *that lane's* EVENT rate independently, so a
+  syslog engine lane at 250 events/s can run beside paced inventory lanes without either starving
+  the other. The unit is real events: the limiter charges each `/stateless` batch its size in
+  events (`events_per_batch` groups them), so the cap holds however events are grouped into
+  requests. The rate is the lane's AGGREGATE across every agent of every fleet running it — the
+  knob shapes what the manager receives in total, not what one agent produces.
 
 A run **MUST** report the target and the *achieved* rate: below target, the manager is the limit and
 the number is a result; at target, the sender was the limit and the run measured its own ceiling.

@@ -16,6 +16,7 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/metrics"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/runner"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/verdict"
 )
 
 // senderVersion is stamped into the artifacts; overridden at build time with
@@ -60,12 +61,20 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
 	}
+	// The expected block is validated with the same strictness as the rest of
+	// the file: a typo'd counter name must not silently weaken the verdict.
+	if err := verdict.Validate(scn.Expected); err != nil {
+		fmt.Fprintf(os.Stderr, "error: scenario %s: %v\n", *scenarioPath, err)
+		return 2
+	}
 
 	// --validate loads and strictly checks the scenario (unknown fields, unknown
-	// step kinds, mode/kind constraints) and exits without sending anything.
-	// This is what the orchestration and CI use to gate the scenario library.
+	// step kinds, mode/kind constraints, expected block) and exits without
+	// sending anything. This is what the orchestration and CI use to gate the
+	// scenario library.
 	if *validate {
-		fmt.Printf("ok: %s (mode=%s, fleets=%d, lanes=%d)\n", scn.Name, scn.Mode, len(scn.Fleets), len(scn.Lanes))
+		fmt.Printf("ok: %s (mode=%s, fleets=%d, lanes=%d, expected_checks=%d)\n",
+			scn.Name, scn.Mode, len(scn.Fleets), len(scn.Lanes), verdict.Count(scn.Expected))
 		return 0
 	}
 
@@ -96,15 +105,29 @@ func run() int {
 	code := rn.Run(ctx)
 	writer.Stop()
 
+	// The verdict runs only over a VALID measurement: judging counters produced
+	// by an unauthenticated fleet or a broken transport would be judging noise.
+	var verdictRes *verdict.Result
+	if code == 0 {
+		verdictRes = verdict.Evaluate(scn.Expected, rn.Registry().GlobalSnapshot().C)
+	}
+
 	meta := rn.Meta()
-	if err := rn.Registry().WriteSummary(*summaryJSON, meta); err != nil {
+	var extra map[string]any
+	if verdictRes != nil {
+		extra = map[string]any{"expected": verdictRes}
+	}
+	if err := rn.Registry().WriteSummary(*summaryJSON, meta, extra); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not write summary: %v\n", err)
 	}
-	printFinal(rn, meta, code)
+	if verdictRes != nil && !verdictRes.Passed {
+		code = 3
+	}
+	printFinal(rn, meta, code, verdictRes)
 	return code
 }
 
-func printFinal(rn *runner.Runner, meta metrics.Meta, code int) {
+func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verdict.Result) {
 	s := rn.Registry().GlobalSnapshot()
 	c := s.C
 	fmt.Printf("\n--- run summary ---\n")
@@ -120,11 +143,30 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int) {
 		fmt.Printf("control: startup=%d/%d notify=%d/%d shutdown=%d/%d\n",
 			c.StartupOK, c.StartupOK+c.StartupErr, c.NotifyOK, c.NotifyOK+c.NotifyErr, c.ShutdownOK, c.ShutdownOK+c.ShutdownErr)
 	}
+	if c.RetriesFeed+c.Retries503+c.RetriesExhausted > 0 {
+		fmt.Printf("retries: feed=%d 503=%d exhausted=%d\n", c.RetriesFeed, c.Retries503, c.RetriesExhausted)
+	}
 	sess := s.Hists["session"]
 	fmt.Printf("session latency ms: p50=%.1f p99=%.1f  transport_errors=%d abandoned=%d\n",
 		float64(sess.P50)/1000, float64(sess.P99)/1000, c.TransportErrors, c.AbandonedOnDrain)
+	if verdictRes != nil {
+		if verdictRes.Passed {
+			fmt.Printf("expected: PASS (%d check(s))\n", verdictRes.Checked)
+		} else {
+			fmt.Printf("expected: FAIL (%d of %d check(s))\n", len(verdictRes.Failures), verdictRes.Checked)
+			for _, f := range verdictRes.Failures {
+				fmt.Printf("  - %s\n", f)
+			}
+		}
+	}
+	// Exit-code contract: 0 ok, 1 measurement invalid, 2 setup, 3 expected failed.
+	// A 3 is still a VALID measurement -- the numbers are trustworthy; they just
+	// broke the scenario's contract.
 	valid := "VALID"
-	if code != 0 {
+	switch {
+	case code == 3:
+		valid = "VALID, but the scenario's expected block failed"
+	case code != 0:
 		valid = "INVALID (measurement not trustworthy)"
 	}
 	fmt.Printf("run: %s (exit %d)\n", valid, code)

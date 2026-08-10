@@ -21,5 +21,6 @@
     { "name": "mix", "agents": 8, "first_id": 5000, "lanes": ["syscollector", "fim"],
       "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631" } }
   ],
-  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "15s" }
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "15s" },
+  "expected": { "sessions": { "ok": { "eq": 640 }, "s5xx": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
 }

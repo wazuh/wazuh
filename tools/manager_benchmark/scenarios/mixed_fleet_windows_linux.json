@@ -5,7 +5,6 @@
   "defaults": {
     "module": "syscollector",
     "option": "Sync",
-    "max_eps": 75,
     "cluster_name": "cluster01",
     "cluster_node": "node01",
     "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true, "startup_version": "5.0.0" }
@@ -36,7 +35,7 @@
     ],
     "engine": [
       { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
-        "max_eps": 250, "loop": true, "run_while_siblings_active": true }
+        "events_per_second": 250, "events_per_batch": 100 }
     ]
   },
   "fleets": [

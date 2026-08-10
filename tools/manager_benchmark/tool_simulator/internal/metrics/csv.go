@@ -13,7 +13,7 @@ import (
 const csvHeader = "timestamp,elapsed_s,mode,agents_active," +
 	"sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other," +
 	"stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent," +
-	"retries_feed,transport_errors," +
+	"retries_feed,retries_503,retries_exhausted,transport_errors," +
 	"bytes_sent,documents_sent," +
 	"control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err," +
 	"deletes_ok,deletes_err," +
@@ -87,9 +87,9 @@ func (w *CSVWriter) writeRow() {
 		fmt.Sprintf("%.0f", now.Sub(w.start).Seconds()),
 		w.mode,
 		fmt.Sprintf("%d", w.agentsFunc()),
-		u(c.SessionsSent), u(c.SessionsOK), u(c.SessionsNoop), u(c.S409), u(c.S400), u(c.S403), u(c.S413), u(c.S500), u(c.S503), u(c.S503RetryAfter), u(c.SessOther),
+		u(c.SessionsSent), u(c.SessionsOK), u(c.SessionsNoop), u(c.S409), u(c.S400), u(c.S401), u(c.S403), u(c.S413), u(c.S500), u(c.S503), u(c.S503RetryAfter), u(c.SessOther),
 		u(c.StatelessSent), u(c.St202), u(c.StBad400), u(c.StBad413), u(c.St503), u(c.StOther), u(c.EventsSent),
-		u(c.RetriesFeed), u(c.TransportErrors),
+		u(c.RetriesFeed), u(c.Retries503), u(c.RetriesExhausted), u(c.TransportErrors),
 		u(c.BytesSent), u(c.DocumentsSent),
 		u(c.StartupOK), u(c.StartupErr), u(c.NotifyOK), u(c.NotifyErr), u(c.ShutdownOK), u(c.ShutdownErr),
 		u(c.DeletesOK), u(c.DeletesErr),

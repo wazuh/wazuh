@@ -52,19 +52,26 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 
 ## Contract under pressure
 
-These aim at a specific response contract. There is no pass/fail gate — a scenario declares *what to
-send*; whether the target status actually appears depends on the server's configured limits and the
-live load, and that is the measurement F9c-4 reports. The exact trigger points (max body size,
-in-flight byte budget, scan-lane capacity) are server config, noted in each file's description.
+These aim at a specific response contract. Where the outcome is deterministic on ANY manager, the
+scenario carries an `expected` block (counter assertions; a failure exits `3` — see
+`tool_simulator/docu/07-scenario-schema.md`); where it depends on server config or live load, it
+deliberately does not. Two footnotes from running these against a real manager:
 
-| Scenario | Aimed at |
-|---|---|
-| `contract_oversized_413` | The body-size limit (`413`): an intentionally huge single session |
-| `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies |
-| `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load |
-| `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-sends the same buffer bounded by `--feed-timeout` |
-| `contract_ramp_503` | The in-flight byte budget (`503` + shed): a big unpaced fleet. `503`s here are expected backpressure, not a failure |
-| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back. The lane is single-worker until F9d, so this measures that limit |
+- `contract_oversized_413` has **no** `expected`: the default `max_body_size` is unlimited, so on a
+  default manager the sessions are simply accepted — the `413` only appears when the server is
+  configured with a cap (F9c-4 measured exactly that).
+- The shed-measuring scenarios (`contract_ramp_503`, `contract_vd_saturation`, plus `session_storm`
+  and `mega_burst`) set `retry: {"enabled": false}`: the agent-like default retry would convert the
+  `503`s they exist to count into eventual `200`s.
+
+| Scenario | Aimed at | `expected` |
+|---|---|---|
+| `contract_oversized_413` | The body-size limit (`413`): an intentionally huge single session | none (server-config dependent) |
+| `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies | all 12 answered `400` |
+| `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
+| `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-sends the same buffer bounded by `--feed-timeout` | all 8 logical sessions end `200`, no budget exhausted (holds cold or warm) |
+| `contract_ramp_503` | The in-flight byte budget (`503` + shed): a big unpaced fleet, retry off. `503`s here are expected backpressure, not a failure | none (load dependent) |
+| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit | none (load dependent) |
 
 ## Real captured payloads
 

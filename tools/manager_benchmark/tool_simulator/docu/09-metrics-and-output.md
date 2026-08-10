@@ -19,7 +19,7 @@ Header, in this exact order:
 timestamp,elapsed_s,mode,agents_active,
 sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other,
 stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent,
-retries_feed,transport_errors,
+retries_feed,retries_503,retries_exhausted,transport_errors,
 bytes_sent,documents_sent,
 control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err,
 deletes_ok,deletes_err,
@@ -31,6 +31,11 @@ session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_laten
   consumer's job — that keeps rows independent of sampling jitter).
 - `sessions_503_retry_after` is a **subset** of `sessions_503` (the feed-not-ready case, separated
   because it is manager bring-up, not backpressure); `retries_feed` counts the re-sends it caused.
+- `retries_503` counts the re-sends of BARE 503s (backpressure), governed by the scenario's
+  `defaults.retry` block ([07](07-scenario-schema.md)); `retries_exhausted` counts sessions
+  abandoned with their retry budget spent while the server still answered 503. Because every
+  attempt is real traffic the server answered, **`sessions_sent` counts attempts**, not logical
+  sessions — the logical view is `sessions_sent - retries_feed - retries_503`.
 - `sessions_noop` is a subset of `sessions_ok` (`{"status":"ok","noop":true}`).
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
@@ -105,7 +110,11 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   1000-document session and an engine batch belong to different distributions.
 - `throughput.achieved_vs_target` is `null` when `requests_per_second: 0` (unlimited), since there
   is no target to divide by.
-- There is **no verdict, no pass/fail, no expected-ratio field.** `meta.agents_failed` and the
+- There is **no verdict, no pass/fail, no expected-ratio field by default.** The one opt-in
+  exception: a scenario carrying an `expected` block ([07](07-scenario-schema.md)) gets an
+  `expected` section in `sender_summary.json` (`passed`, `checked`, `failures[]`) and exit code
+  `3` when it fails — over final counters only, never latency or throughput, so the same scenario
+  judges the same way on any hardware. Otherwise: `meta.agents_failed` and the
   `transport_errors` total are facts, not judgments; the exit code is set from run-invalidating
   conditions only ([10](10-error-handling-and-shutdown.md)), not from these numbers.
 - `meta` **MUST** record everything needed to reproduce the run: the document seed, the effective

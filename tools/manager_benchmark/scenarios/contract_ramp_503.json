@@ -1,8 +1,9 @@
 {
   "name": "contract_ramp_503",
-  "description": "Contract test for backpressure shedding: a big 80-agent fleet, fully unpaced (concurrent_agents 0, requests_per_second 0), all sending a moderately large syscollector delta repeatedly with no delay between repeats. Meant to exceed the server's in-flight byte budget and exercise 503 shedding. 503 responses here are expected backpressure behavior, not a failure.",
+  "description": "Contract test for backpressure shedding: a big 80-agent fleet, fully unpaced (concurrent_agents 0, requests_per_second 0), all sending a moderately large syscollector delta repeatedly with no delay between repeats. Meant to exceed the server's in-flight byte budget and exercise 503 shedding. 503 responses here are expected backpressure behavior, not a failure. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
   "mode": "uds",
   "defaults": {
+    "retry": { "enabled": false },
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",

@@ -16,8 +16,11 @@ type Counters struct {
 
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
-	RetriesFeed, TransportErrors uint64
-	BytesSent, DocumentsSent     uint64
+	// RetriesFeed counts feed-not-ready (503+Retry-After) re-sends; Retries503
+	// counts bare-503 (backpressure) re-sends; RetriesExhausted counts sessions
+	// whose retry budget ran out while the server was still answering 503.
+	RetriesFeed, Retries503, RetriesExhausted, TransportErrors uint64
+	BytesSent, DocumentsSent                                   uint64
 
 	StartupOK, StartupErr, NotifyOK, NotifyErr, ShutdownOK, ShutdownErr uint64
 	DeletesOK, DeletesErr                                               uint64
@@ -123,6 +126,17 @@ func (r *Registry) RecordFeedRetry(fleet, lane string) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.RetriesFeed }, 1)
 }
 
+// RecordRetry503 counts one bare-503 (backpressure) re-send.
+func (r *Registry) RecordRetry503(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Retries503 }, 1)
+}
+
+// RecordRetryExhausted counts a session abandoned with its retry budget spent
+// (max_attempts reached, or the feed budget expired) while still answering 503.
+func (r *Registry) RecordRetryExhausted(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.RetriesExhausted }, 1)
+}
+
 // RecordStateless classifies a /stateless outcome and records its latency.
 func (r *Registry) RecordStateless(fleet, lane string, status int, events uint64, latencyUS uint64) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessSent }, 1)
@@ -179,6 +193,15 @@ func (r *Registry) RecordTransportError(fleet, lane string) {
 // RecordAbandoned counts a session still in flight at drain timeout.
 func (r *Registry) RecordAbandoned(fleet, lane string) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.AbandonedOnDrain }, 1)
+}
+
+// RecordAbandonedN counts n requests still in flight when the drain window
+// closed. Attribution is global-only: at that point the runner only knows how
+// many are left, not whose they were.
+func (r *Registry) RecordAbandonedN(n uint64) {
+	if n > 0 {
+		r.add("", "", func(c *Counters) *uint64 { return &c.AbandonedOnDrain }, n)
+	}
 }
 
 func (r *Registry) observe(fleet, lane, kind string, us uint64) {

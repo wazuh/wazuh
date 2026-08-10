@@ -5,7 +5,6 @@
   "defaults": {
     "module": "syscollector",
     "option": "Sync",
-    "max_eps": 75,
     "cluster_name": "cluster01",
     "cluster_node": "node01",
     "control": { "enabled": false }
