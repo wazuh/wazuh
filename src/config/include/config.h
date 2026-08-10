@@ -56,11 +56,12 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
 /**
- * @brief Read the configuration for client section with centralized configuration
+ * @brief Read the <agent> block as it arrives through the centralized configuration
+ * @param xml XML object
  * @param node XML node to analyze
- * @param d1 Pub/Sub configuration structure
+ * @param d1 Agent configuration structure
  */
-int Read_Agent_Shared(XML_NODE node, void *d1);
+int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1);
 
 /**
  * @brief Read the configuration for Google Cloud Pub/Sub

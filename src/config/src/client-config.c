@@ -294,17 +294,36 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     return (0);
 }
 
-int Read_Agent_Shared(XML_NODE node, void *d1)
+int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 {
+    /* XML definitions - what a manager may set through the centralized
+     * configuration. Everything else in <agent> stays local to the endpoint. */
+    const char *xml_agent_batch = "batch";
+
+    agent * logr = (agent *)d1;
     int i = 0;
 
     for (i = 0; node[i]; i++) {
+        XML_NODE chld_node = NULL;
+
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_agent_batch) == 0) {
+            /* How much traffic an agent is allowed to push at the manager is a
+             * fleet-wide call, not a per-endpoint one, so <batch> is pushed the
+             * same way the module configurations already are (#38163). */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Agent_Batch(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+
+                OS_ClearNode(chld_node);
+            }
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else {
