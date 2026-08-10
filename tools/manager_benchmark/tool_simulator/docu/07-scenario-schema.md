@@ -60,6 +60,12 @@ production-shaped pressure.
 | `pacing` | Run-level load shape: concurrency, request rate, how long to run, drain window |
 | `expected` | **Optional** contract assertions on the run's final counters (below). Absent = the run is never judged |
 
+`defaults` also carries `compression` for the `/stateful` session bodies (see
+[04](04-wire-protocol.md)): `""`/absent = **the per-transport default — zstd in agent mode** (what
+a real 5.x agent does), plain in uds mode (its ingress has no decoder); `"none"` = explicitly off;
+`"zstd"` = forced (agent mode only). The `--compression zstd|none` CLI flag overrides it per run,
+which makes the with/without A/B one scenario instead of two.
+
 Anything a fleet or a step does not set is taken from `defaults`; anything `defaults` does not set
 has a built-in default. This three-level inheritance (built-in → `defaults` → fleet/step) is what
 lets one file carry a Windows fleet and a Linux fleet with different metadata but shared lane logic.
@@ -103,6 +109,12 @@ are, so a fleet replaying one dump does not have every agent overwrite the same 
 with a `dump` cleans the dump's own indices before replaying it. Paths are resolved relative to the
 scenario file's own directory, so from `scenarios/` a payload is `../sample_payloads/...`; a typo is a
 load-time error (`--validate` stats every referenced file).
+
+A dump path ending in `.zst` is decompressed transparently at load. The `dumps/first_connect/`
+corpus is stored that way: the FULL-fidelity first-connection captures (the Windows FIM first sync
+alone is 27,726 items / ~27 MB of JSON — 21,091 registry-values + 6,625 registry-keys + 10 files)
+would otherwise put ~30 MB of JSON in the repo; compressed they are ~2.6 MB. The plain `dumps/*.json`
+files keep the representative truncated slices the per-module `real_*` scenarios use.
 
 ## Per-step timing
 

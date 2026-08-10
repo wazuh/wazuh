@@ -78,6 +78,33 @@ a manager.
   **MUST** record whether it was used: it changes the connection-establishment cost materially and
   therefore the comparability of two runs.
 
+### Content-Encoding: zstd (`agent` mode only)
+
+remoted accepts zstd-compressed request bodies on every authenticated route
+(`remoted.http_content_encoding_enabled`, on by default). The sender compresses `/stateful`
+sessions **by default in agent mode** — it is what a real 5.x agent does — resolved per transport
+from the scenario's `defaults.compression` (`""`/absent = the per-transport default, `"none"` =
+off, `"zstd"` = forced) or the `--compression zstd|none` CLI override. The contract has three
+load-bearing points:
+
+- **The CMAC signs the COMPRESSED bytes** — they are the wire bytes. The sender therefore
+  compresses *before* signing; a signature over the plaintext would be a `401`.
+- remoted answers `415` to any other encoding value (or when the feature is disabled), `400` to a
+  body that is not a valid zstd frame, and `413` when the decompressed payload does not fit its
+  in-flight memory budget. It **decompresses before relaying**: the inventory sync server receives
+  plaintext with no `Content-Encoding` header.
+- The UDS ingress has **no decoder**, so in `uds` mode the default resolves to plain bodies; only
+  an EXPLICIT `"zstd"` in a uds scenario (a contradiction) is refused at load, rather than letting
+  the server answer `400` to FlatBuffers verification of compressed bytes.
+
+This is not an optimization detail: the full-fidelity Windows FIM first sync (~26 MB in one
+session) exceeds remoted's 10 MiB `auth_max_body_size` uncompressed — that session only exists on
+the wire *because* of zstd (~3 MB compressed), which is the payload class remoted's support was
+built for. Uncompressed, the cap rejects it mid-upload: the client may see the `413` or, when the
+server closes before the 26 MB finish writing, a connection reset recorded in `transport_errors` —
+both are the same contract. `bytes_sent` counts the wire (compressed) bytes; `meta.compression` records the mode.
+`raw` steps are never compressed: their deliberately invalid bodies must arrive byte-exact.
+
 ## HTTP over the Unix socket (`uds` mode)
 
 The module's socket is `queue/sockets/inventory-sync.sock`, relative to the manager's home. The

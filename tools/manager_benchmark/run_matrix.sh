@@ -59,6 +59,13 @@ MATRIX=(
     "fim_agent           agent  scenarios/real_fim_first_sync_ubuntu.json"
     # Vulnerability-detection scan lane (single worker by default)
     "vd_uds              uds    scenarios/real_vd_debian.json"
+    # First connection at full fidelity (Windows: the 27,726-item registry
+    # corpus in ONE ~26 MB session). The agent twin rides the agent-mode zstd
+    # default: uncompressed it cannot pass remoted's 10 MiB body cap, so the
+    # pair also isolates the relay + decompression cost of the heaviest
+    # realistic session.
+    "first_connect_uds   uds    scenarios/real_first_connect_uds.json"
+    "first_connect_agent agent  scenarios/real_first_connect.json"
     # Capacity: unpaced. The real_* scenarios above are paced, so their
     # throughput is the scenario's, not the manager's.
     "burst_uds           uds    scenarios/mega_burst.json"

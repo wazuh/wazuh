@@ -25,7 +25,7 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `syscollector_init_debian` / `syscollector_init_windows` | A syscollector first scan followed by a `ModuleCheck` checksum reconcile |
 | `checksum_reconcile` | The checksum path both ways: a `"correct"` checksum (matches what the agent sent) and a `"mismatch"` (forces a resync) |
 | `vd_first_then_sync_debian` / `vd_first_then_sync_windows` | The VD lane: a `VDFirst` first scan then a `VDSync` delta stream (the feed gate → scan lane path) |
-| `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta replay (bulk bytes, group commit) |
+| `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta (bulk bytes, group commit). Despite the name it GENERATES 2000 synthetic documents — for real captured payloads see the `real_*` scenarios |
 | `mega_burst` | A big single fleet, unpaced, one delta lane — maximum session rate |
 
 ## Mixed fleet (the flagship pair)
@@ -89,6 +89,8 @@ matter, and volume is reached with `repeat_count` and fleet size). A step names 
 | `real_vd_debian` (uds) | Real VDFirst + VDSync sessions on the VD lane |
 | `real_sca_full` (uds) | Real SCA full syncs for Ubuntu, CentOS and Windows at once (large check documents → bulk-bytes path) |
 | `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
+| `real_first_connect_uds` (uds) | **A freshly connected Windows agent + Linux agent at FULL fidelity**: FIM first sync (Windows: the whole 27,726-item registry corpus — 21,091 registry-values + 6,625 registry-keys — in ONE ~26 MB session), syscollector, SCA full and VDFirst, each as its first-connection shape. `expected` pins all 14 sessions OK and the exact 31,950 documents |
+| `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**: uncompressed, the Windows FIM session exceeds remoted's 10 MiB body cap — this payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
 
 ## First-id ranges
 

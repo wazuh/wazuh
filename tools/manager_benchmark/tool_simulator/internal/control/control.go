@@ -70,7 +70,7 @@ func Shutdown(c *wire.Client, now int64) (Result, error) {
 }
 
 func send(c *wire.Client, body []byte, now int64) (Result, error) {
-	resp, err := c.Do("POST", path, body, "application/json", now, false)
+	resp, err := c.Do("POST", path, body, "application/json", "", now, false)
 	if err != nil {
 		return Result{}, err
 	}
