@@ -85,13 +85,15 @@ case "$1" in
             fi
         fi
     else
+        # A reference file for the administrator, not the active configuration: a rejected
+        # variable must not abort the upgrade.
         if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new; then
             rm -f ${DIR}/etc/wazuh-manager.conf.new
-            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf.new." >&2
-            exit 1
+            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.conf.new. The current configuration is unchanged." >&2
+        else
+            chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
+            chmod 660 ${DIR}/etc/wazuh-manager.conf.new
         fi
-        chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
-        chmod 660 ${DIR}/etc/wazuh-manager.conf.new
     fi
 
     # Remove/relocate existing SQLite databases
