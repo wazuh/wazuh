@@ -64,7 +64,13 @@ case "$1" in
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
+        # The redirection truncates the target before the generator runs: a rejected
+        # variable would otherwise leave an empty file that a retry treats as pre-existing.
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf; then
+            rm -f ${DIR}/etc/wazuh-manager.conf
+            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
+            exit 1
+        fi
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -79,7 +85,11 @@ case "$1" in
             fi
         fi
     else
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new; then
+            rm -f ${DIR}/etc/wazuh-manager.conf.new
+            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf.new." >&2
+            exit 1
+        fi
         chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
         chmod 660 ${DIR}/etc/wazuh-manager.conf.new
     fi
