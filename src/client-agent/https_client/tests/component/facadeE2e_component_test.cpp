@@ -427,6 +427,48 @@ TEST_F(FacadeE2eTest, IntervalFlushesABatchThatNeverReachesTheSize)
     EXPECT_TRUE(waitForBody(peek, "/peek/stateless", "interval-only-flush", 4000));
 }
 
+TEST_F(FacadeE2eTest, ControlKeepsItsNotifyCadenceWhileEventsAreStillBatching)
+{
+    // /control is not part of the batch. The batch window here outlasts the test,
+    // so the submitted event has to still be sitting in the accumulator when the
+    // notifies land -- which is what makes this an observation and not a guess: if
+    // the two planes shared a timer, either the notifies would stall behind the
+    // batch or the event would ride out with one of them.
+    const uint16_t port = TLS_PORT + 11;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.notify_interval_s = 1;
+    config.batch_size_bytes = 1024 * 1024; // No size flush.
+    config.batch_interval_ms = 60000;      // No interval flush while this test runs.
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    const HandleGuard guard {handle};
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    const std::string event = "1:/loc:held-in-the-batch";
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
+                                event.size()));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const int notifiesBefore = peekCount(peek, "/peek/notifies");
+
+    // Three notify_time periods' worth of notifies, none of them waiting on the batch.
+    EXPECT_TRUE(waitForCount(peek, "/peek/notifies", notifiesBefore + 3, 8000));
+
+    const auto stateless = peek.Get("/peek/stateless");
+    ASSERT_TRUE(static_cast<bool>(stateless));
+    EXPECT_EQ(std::string::npos, stateless->body.find("held-in-the-batch"));
+}
+
 TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
 {
     // The full chain: a producer streams a multi-MB session over the local
