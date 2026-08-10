@@ -203,14 +203,15 @@ function install {
 
         write-output "$(Get-Date -format u) - Installing MSI to: $installDir (msiexec.exe $($msiArgs -join ' '))" >> .\upgrade\upgrade.log
 
-        Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow
+        $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+        write-output "$(Get-Date -format u) - msiexec finished with exit code: $($process.ExitCode)." >> .\upgrade\upgrade.log
+
+        return $process.ExitCode
 
     } catch {
         write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        return $false
+        return -1
     }
-
-    return $true
 }
 
 # Check that the Wazuh installation runs on the expected path
@@ -242,7 +243,7 @@ if ($msi_new_version -ne $null) {
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 
 # Install with explicit INSTALLDIR
-install -installDir $wazuhDir
+$msi_exit_code = install -installDir $wazuhDir
 check-installation
 
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
@@ -266,15 +267,20 @@ while($status -ne "connected"  -And $counter -gt 0) {
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-if ($status -ne "connected") {
-    write-output "$(Get-Date -format u) - Upgrade failed." >> .\upgrade\upgrade.log
+# Verify the committed on-disk state before reporting success, instead of trusting
+# the staged files alone. The upgrade is successful only if msiexec committed cleanly
+# (exit code 0; a reboot-required result is a failure because a restart is never
+# allowed), the version written to disk matches the MSI, and the agent reconnects.
+$new_version = get-version
+$version_ok = ($msi_new_version -eq $null) -or ("v$new_version" -eq $msi_new_version)
+
+if ($msi_exit_code -ne 0 -Or (-Not $version_ok) -Or ($status -ne "connected")) {
+    write-output "$(Get-Date -format u) - Upgrade failed (msiexec exit code: $($msi_exit_code), on-disk version: $($new_version), status: $($status))." >> .\upgrade\upgrade.log
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
 }
 else {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
-    $new_version = get-version
-    write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade finished successfully. New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
 remove_upgrade_files
