@@ -118,6 +118,11 @@ public function config()
                     re.Pattern = "<notify_time>.*</notify_time>"
                     re.Global = True
                     strText = re.Replace(strText, "<notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>")
+                Else
+                    ' The shipped configuration no longer carries the options it left at
+                    ' their default, so there is nothing to replace on a fresh install.
+                    ' Add the tag instead of dropping the property the user asked for.
+                    strText = Replace(strText, "  </agent>", "    <notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>" & vbCrLf & "  </agent>")
                 End If
             End If
 
