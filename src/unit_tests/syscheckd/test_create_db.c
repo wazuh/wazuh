@@ -31,6 +31,9 @@
 #include "../wrappers/wazuh/syscheckd/registry.h"
 #include "../wrappers/wazuh/os_crypto/md5_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#ifdef TEST_WINAGENT
+#include "../wrappers/windows/fileapi_wrappers.h"
+#endif
 
 #include "syscheck.h"
 #include "../../config/syscheck-config.h"
@@ -3106,10 +3109,20 @@ static void test_fim_directory(void **state) {
 
     strcpy(fim_data->entry->d_name, "test");
 
+#ifdef TEST_WINAGENT
+    expect_string(wrap_FindFirstFile, lpFileName, L"test\\*");
+    will_return(wrap_FindFirstFile, "test");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+#else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_closedir, 0);
+#endif
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test/test'");
@@ -3129,10 +3142,20 @@ static void test_fim_directory_ignore(void **state) {
 
     strcpy(fim_data->entry->d_name, ".");
 
+#ifdef TEST_WINAGENT
+    expect_string(wrap_FindFirstFile, lpFileName, L".\\*");
+    will_return(wrap_FindFirstFile, ".");
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+#else
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_closedir, 0);
+#endif
 
     ret = fim_directory(".", &evt_data, NULL, NULL, NULL);
 
@@ -3152,7 +3175,13 @@ static void test_fim_directory_nodir(void **state) {
 static void test_fim_directory_opendir_error(void **state) {
     int ret;
 
+#ifdef TEST_WINAGENT
+    expect_string(wrap_FindFirstFile, lpFileName, L"test\\*");
+    will_return(wrap_FindFirstFile, NULL);
+    will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+#else
     will_return(__wrap_opendir, 0);
+#endif
 
     expect_string(__wrap__mwarn, formatted_msg, "(6922): Cannot open 'test': Permission denied");
 
