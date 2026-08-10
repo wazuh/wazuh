@@ -21,16 +21,12 @@
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 #include "../../wrappers/wazuh/shared/sym_load_wrappers.h"
-#include "../../wrappers/wazuh/shared_modules/router_wrappers.h"
 
 #include "wmodules.h"
 #include "wm_agent_upgrade_manager.h"
 #include "shared.h"
 
 void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
-void* wm_agent_upgrade_router_subscriber_thread(void);
-void wm_agent_upgrade_router_callback(const char* message);
-bool initialize_router_functions(void);
 
 // Setup / teardown
 
