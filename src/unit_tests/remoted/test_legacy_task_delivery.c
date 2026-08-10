@@ -999,6 +999,35 @@ void test_process_upgrade_ack_unexpected_command_ignored(void **state) {
     legacy_task_drain_clear_upgrade_replies();
 }
 
+void test_process_upgrade_ack_missing_parameters_ignored(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "legacy_task_delivery: agent '005' sent an upgrade acknowledgment with a missing or "
+        "invalid 'parameters', ignoring");
+
+    bool result = legacy_task_process_upgrade_ack("005", "{\"command\":\"upgrade_update_status\"}");
+
+    assert_false(result);
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
+void test_process_upgrade_ack_non_object_parameters_ignored(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "legacy_task_delivery: agent '005' sent an upgrade acknowledgment with a missing or "
+        "invalid 'parameters', ignoring");
+
+    bool result = legacy_task_process_upgrade_ack("005",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":\"not an object\"}");
+
+    assert_false(result);
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
 void test_process_upgrade_ack_missing_error_field_ignored(void **state) {
     (void) state;
 
@@ -1133,6 +1162,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_failure_still_replies_clear_upgrade_result, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_malformed_json_ignored, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_unexpected_command_ignored, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_missing_parameters_ignored, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_non_object_parameters_ignored, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_missing_error_field_ignored, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_reply_failure_still_returns_true, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_burst_of_agents_does_not_block, test_setup, test_teardown),
