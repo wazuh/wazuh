@@ -6,7 +6,7 @@
     resources:
       user_ids:
         - username: test_user
-          password: Password1!
+          password: Password123!
       role_ids:
         - name: test_role
       policy_ids:
@@ -45,7 +45,7 @@
     resources:
       user_ids:
         - username: test_user
-          password: Password1!
+          password: Password123!
       role_ids:
         - name: test_role
       policy_ids:
@@ -86,7 +86,7 @@
     resources:
       user_ids:
         - username: test_user
-          password: Password1!
+          password: Password123!
       role_ids:
         - name: test_role
       policy_ids:
@@ -125,7 +125,7 @@
     resources:
       user_ids:
         - username: test_user
-          password: Password1!
+          password: Password123!
       role_ids:
         - name: test_role
       policy_ids:
