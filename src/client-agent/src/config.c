@@ -113,7 +113,7 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     return true;
 }
 
-cJSON *getClientConfig(void) {
+cJSON *getAgentConfig(void) {
 
     if (!agt) {
         return NULL;
@@ -121,14 +121,14 @@ cJSON *getClientConfig(void) {
 
     unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *client = cJSON_CreateObject();
+    cJSON *agent_config = cJSON_CreateObject();
 
-    if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
-    cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
-    cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
-    if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
-    if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
+    if (agt->profile) cJSON_AddStringToObject(agent_config,"config-profile",agt->profile);
+    cJSON_AddNumberToObject(agent_config,"notify_time",agt->notify_time);
+    cJSON_AddNumberToObject(agent_config,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(agent_config,"ip_update_interval",agt->main_ip_update_interval);
+    if (agt->flags.auto_restart) cJSON_AddStringToObject(agent_config,"auto_restart","yes"); else cJSON_AddStringToObject(agent_config,"auto_restart","no");
+    if (agt->flags.remote_conf) cJSON_AddStringToObject(agent_config,"remote_conf","yes"); else cJSON_AddStringToObject(agent_config,"remote_conf","no");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
@@ -144,7 +144,7 @@ cJSON *getClientConfig(void) {
 
             cJSON_AddItemToArray(servers,server);
         }
-        cJSON_AddItemToObject(client,"manager",servers);
+        cJSON_AddItemToObject(agent_config,"manager",servers);
     }
 
     if (agt->enrollment_cfg) {
@@ -176,21 +176,21 @@ cJSON *getClientConfig(void) {
         if(agt->enrollment_cfg->cert_cfg->authpass)
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
 
-        cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
+        cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
     }
     /* The two periodic report pushes (#37843). Reported so the /config document
      * says whether the agent is reporting, and on what cadence. */
     cJSON *stats_report = cJSON_CreateObject();
     cJSON_AddStringToObject(stats_report, "enabled", agt->stats_report.enabled ? "yes" : "no");
     cJSON_AddNumberToObject(stats_report, "interval", agt->stats_report.interval);
-    cJSON_AddItemToObject(client, "stats_report", stats_report);
+    cJSON_AddItemToObject(agent_config, "stats_report", stats_report);
 
     cJSON *config_report = cJSON_CreateObject();
     cJSON_AddStringToObject(config_report, "enabled", agt->config_report.enabled ? "yes" : "no");
     cJSON_AddNumberToObject(config_report, "interval", agt->config_report.interval);
-    cJSON_AddItemToObject(client, "config_report", config_report);
+    cJSON_AddItemToObject(agent_config, "config_report", config_report);
 
-    cJSON_AddItemToObject(root,"client",client);
+    cJSON_AddItemToObject(root, "agent", agent_config);
 
     return root;
 }

@@ -355,7 +355,7 @@ void test_syscom_dispatch_getallconfig(void **state)
 
     /* Every getter empty still has to be a report, not a rejection: the caller
      * tells "this daemon reported nothing" from "this daemon is unreachable". */
-    assert_string_equal(output, "ok []");
+    assert_string_equal(output, "ok {}");
     assert_int_equal(ret, strlen(output));
 }
 

@@ -26,7 +26,7 @@ int ClientConf(const char *cfgfile);
 bool w_agent_validate_ssl_ca(const agent *cfg);
 
 /* Parse read config into JSON format */
-cJSON *getClientConfig(void);
+cJSON *getAgentConfig(void);
 cJSON *getAgentInternalOptions(void);
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
@@ -134,6 +134,13 @@ size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 size_t agcom_getallconfig(char ** output);
 size_t agcom_getallstats(char ** output);
+
+/**
+ * @brief Answer "getstate" with the agent state wrapped in the socket envelope.
+ * @param output Pointer to store the allocated response string.
+ * @return Length of the response string.
+ */
+size_t agcom_getstate(char ** output);
 
 /**
  * @brief Collect every module's configuration into one /config document.

@@ -22,6 +22,9 @@
 
 #ifdef WIN32
 #define localtime_r(x, y) localtime_s(y, x)
+/* No portable gmtime_r on the mingw C runtime; same shim the other C callers
+ * use (see syscheckd/src/file/events.c). */
+#define gmtime_r(x, y) (gmtime_s(y, x) == 0 ? (y) : NULL)
 #endif
 
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
@@ -243,61 +246,67 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
     return;
 }
 
-char * w_agentd_state_get() {
+/* Each task counter is reported as {"total": n}: ".total" is the wcs marker for
+ * a counter that is monotonic over the process's uptime. */
+static void w_agentd_state_add_counter(cJSON * parent, const char * name, unsigned int value) {
+    cJSON * counter = cJSON_CreateObject();
 
-    const char * status = NULL;
-    char last_keepalive[W_AGENTD_STATE_TIME_LENGHT] = {0};
-    char last_ack[W_AGENTD_STATE_TIME_LENGHT] = {0};
-    unsigned int count;
-    unsigned int sent;
-    unsigned int dispatched;
-    unsigned int duplicate;
-    unsigned int failed;
+    if (!counter) {
+        return;
+    }
 
+    cJSON_AddNumberToObject(counter, W_AGENTD_FIELD_TOTAL, value);
+    cJSON_AddItemToObject(parent, name, counter);
+}
+
+cJSON * w_agentd_state_get(void) {
+
+    char last_keepalive[W_AGENTD_STATE_TIME_ISO8601_LENGHT] = {0};
     struct tm tm = {.tm_sec = 0};
-    char * retval = NULL;
-    cJSON * json_retval = cJSON_CreateObject();
-    cJSON * data = cJSON_CreateObject();
 
-    /* Get status info */
+    cJSON * body = cJSON_CreateObject();
+    cJSON * messages = cJSON_CreateObject();
+    cJSON * tasks = cJSON_CreateObject();
+
+    if (!body || !messages || !tasks) {
+        cJSON_Delete(body);
+        cJSON_Delete(messages);
+        cJSON_Delete(tasks);
+        return NULL;
+    }
+
     w_mutex_lock(&state_mutex);
-    status = get_str_status(agent_state.status);
+    const char * status = get_str_status(agent_state.status);
 
+    /* gmtime_r, not localtime_r: only the agent knows its own offset, so a naive
+     * local time cannot be resolved to an instant downstream. */
     if (agent_state.last_keepalive) {
-        localtime_r(&agent_state.last_keepalive, &tm);
-        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
+        gmtime_r(&agent_state.last_keepalive, &tm);
+        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT_ISO8601, &tm);
     }
 
-    if (agent_state.last_ack) {
-        localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
-    }
-
-    count = agent_state.msg_count;
-    sent = agent_state.msg_sent;
-    dispatched = agent_state.task_dispatched;
-    duplicate = agent_state.task_discarded_duplicate;
-    failed = agent_state.task_failed;
+    const unsigned int count = agent_state.msg_count;
+    const unsigned int dispatched = agent_state.task_dispatched;
+    const unsigned int duplicate = agent_state.task_discarded_duplicate;
+    const unsigned int failed = agent_state.task_failed;
     w_mutex_unlock(&state_mutex);
 
-    /* json response */
-    cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
-    cJSON_AddItemToObject(json_retval, W_AGENTD_JSON_DATA, data);
+    cJSON_AddStringToObject(body, W_AGENTD_FIELD_STATUS, status);
 
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_STATUS, status);
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_KEEP_ALIVE, last_keepalive);
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_LAST_ACK, last_ack);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_COUNT, count);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
-    /* No agentd-side buffer: the accumulator exposes a ladder, not a count. */
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_BUFF, 0);
-    cJSON_AddBoolToObject(data, W_AGENTD_FIELD_EN_BUFF, false);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_DISPATCHED, dispatched);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_DUPLICATE, duplicate);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_TASK_FAILED, failed);
+    /* Omitted rather than sent empty: the field is mapped `date`, and an empty
+     * string is not a parsable one, so the indexer would reject the whole
+     * document -- silently, since the push is fire-and-forget. */
+    if (last_keepalive[0] != '\0') {
+        cJSON_AddStringToObject(body, W_AGENTD_FIELD_KEEP_ALIVE, last_keepalive);
+    }
 
-    retval = cJSON_PrintUnformatted(json_retval);
-    cJSON_Delete(json_retval);
+    cJSON_AddNumberToObject(messages, W_AGENTD_FIELD_MESSAGES_COUNT, count);
+    cJSON_AddItemToObject(body, W_AGENTD_FIELD_MESSAGES, messages);
 
-    return retval;
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_DISPATCHED, dispatched);
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_DUPLICATE, duplicate);
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_FAILED, failed);
+    cJSON_AddItemToObject(body, W_AGENTD_FIELD_TASKS, tasks);
+
+    return body;
 }

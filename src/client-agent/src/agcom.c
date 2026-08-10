@@ -44,8 +44,7 @@ size_t agcom_dispatch(char * command, char ** output){
         return agcom_getallstats(output);
 
     } else if (strcmp(rcv_comm, "getstate") == 0) {
-        *output = w_agentd_state_get();
-        return strlen(*output);
+        return agcom_getstate(output);
     } else if (strcmp(rcv_comm, "gethandshake") == 0) {
         return agcom_gethandshake(output);
     } else if (strcmp(rcv_comm, "getstartupgate") == 0) {
@@ -82,8 +81,11 @@ size_t agcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "client") == 0){
-        if (cfg = getClientConfig(), cfg) {
+    /* "client" is the 4.x name of this section and stays accepted so the Server
+     * API's existing /config/agent/client path keeps working; the document it
+     * returns is keyed "agent" either way. */
+    if (strcmp(section, "agent") == 0 || strcmp(section, "client") == 0){
+        if (cfg = getAgentConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
@@ -128,28 +130,56 @@ error:
 
 size_t agcom_getallconfig(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
+    cJSON *report = cJSON_CreateObject();
     cJSON *body = cJSON_CreateObject();
 
-    module_report_merge(body, getClientConfig());
+    module_report_merge(body, getAgentConfig());
     module_report_merge(body, getAgentInternalOptions());
 #ifndef WIN32
     module_report_merge(body, getAntiTamperingConfig());
 #endif
 
-    module_report_add_config(report, AGCOM_MODULE_NAME, body);
+    module_report_add(report, AGCOM_MODULE_NAME, body);
     return module_report_reply(report, output);
+}
+
+/* "getstate" is a socket call, and the {"error","data"} envelope is its framing:
+ * the body itself carries no error channel. Added here rather than inside
+ * w_agentd_state_get() so the /stats push, where the response status is the
+ * error channel, can send the body bare. */
+size_t agcom_getstate(char ** output) {
+
+    cJSON *envelope = cJSON_CreateObject();
+    cJSON *body = w_agentd_state_get();
+    char *json_str = NULL;
+
+    if (!envelope || !body) {
+        cJSON_Delete(envelope);
+        cJSON_Delete(body);
+        os_strdup("err Could not build the agent state", *output);
+        return strlen(*output);
+    }
+
+    cJSON_AddNumberToObject(envelope, W_AGENTD_JSON_ERROR, 0);
+    cJSON_AddItemToObject(envelope, W_AGENTD_JSON_DATA, body);
+
+    json_str = cJSON_PrintUnformatted(envelope);
+    cJSON_Delete(envelope);
+
+    if (!json_str) {
+        os_strdup("err Could not serialize the agent state", *output);
+        return strlen(*output);
+    }
+
+    *output = json_str;
+    return strlen(*output);
 }
 
 size_t agcom_getallstats(char ** output) {
 
-    cJSON *report = cJSON_CreateArray();
-    char *state = w_agentd_state_get();
+    cJSON *report = cJSON_CreateObject();
 
-    /* w_agentd_state_get() hands back a serialized document; parse it so the
-     * report carries the object rather than a string holding JSON. */
-    module_report_add_stats(report, AGCOM_MODULE_NAME, state ? cJSON_Parse(state) : NULL);
-    os_free(state);
+    module_report_add(report, AGCOM_MODULE_NAME, w_agentd_state_get());
     return module_report_reply(report, output);
 }
 

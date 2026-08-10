@@ -66,7 +66,7 @@ static cJSON* entry_named(cJSON* report, const char* name)
     cJSON* entry = NULL;
 
     cJSON_ArrayForEach(entry, report) {
-        if (strcmp(cJSON_GetObjectItem(entry, "module")->valuestring, name) == 0) {
+        if (entry->string && strcmp(entry->string, name) == 0) {
             return entry;
         }
     }
@@ -95,11 +95,11 @@ static void test_getallconfig_gives_each_wodle_its_own_entry(void** state)
 
     /* One daemon, but the modules it hosts stay individually addressable
      * instead of being buried in a single "wmodules" blob. */
-    assert_int_equal(cJSON_GetArraySize(report), 2);
+    assert_int_equal(cJSON_GetArraySize(report), 2); /* object members */
     assert_non_null(entry_named(report, "syscollector"));
     assert_non_null(entry_named(report, "sca"));
     assert_string_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(entry_named(report, "sca"), "config"),
+        cJSON_GetObjectItem(entry_named(report, "sca"),
                             "disabled")->valuestring,
         "no");
 
@@ -123,7 +123,7 @@ static void test_getallconfig_reports_internal_options_separately(void** state)
     cJSON* report = cJSON_Parse(output + 3);
 
     /* Internal options belong to modulesd itself, not to any one wodle. */
-    assert_int_equal(cJSON_GetArraySize(report), 2);
+    assert_int_equal(cJSON_GetArraySize(report), 2); /* object members */
     assert_non_null(entry_named(report, "wmodules"));
 
     cJSON_Delete(report);
@@ -140,7 +140,7 @@ static void test_getallconfig_answers_even_with_no_wodles_loaded(void** state)
      * answer, so the caller can tell it apart from an unreachable socket. */
     size_t len = wmcom_dispatch(command, strlen(command), &output);
 
-    assert_string_equal(output, "ok []");
+    assert_string_equal(output, "ok {}");
     assert_int_equal((int)len, (int)strlen(output));
 
     free(output);
