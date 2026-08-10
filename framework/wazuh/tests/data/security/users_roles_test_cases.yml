@@ -164,6 +164,25 @@ update_user:
       failed_items:
         "5011":
           - 1
+  - params:
+      user_id:
+        - 1
+      password: ""
+      current_user: normal
+    result:
+      affected_items: []
+      failed_items:
+        "5009":
+          - 1
+  - params:
+      user_id:
+        - 102
+      password: ""
+    result:
+      affected_items: []
+      failed_items:
+        "5009":
+          - 102
 remove_users:
   - params:
       user_ids:
