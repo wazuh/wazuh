@@ -1,13 +1,49 @@
-# [v5.0.1]
+## [v5.0.1]
 
-## Added
+### Manager
 
-## Changed
+#### Added
 
-## Removed
+| Issue | Comment |
+|-------|---------|
 
-## Fixed
+#### Changed
+
+| Issue | Comment |
+|-------|---------|
+
+#### Removed
+
+| Issue | Comment |
+|-------|---------|
+
+#### Fixed
+
+| Issue | Comment |
+|-------|---------|
+
+### Agent
+
+#### Added
+
+| Issue | Comment |
+|-------|---------|
+
+#### Changed
+
+| Issue | Comment |
+|-------|---------|
+
+#### Removed
+
+| Issue | Comment |
+|-------|---------|
+
+#### Fixed
+
+| Issue | Comment |
+|-------|---------|
 
 ## Prior versions
 
-- [v5.0.0](https://github.com/wazuh/wazuh/blob/5.0.0/CHANGELOG.md)
+- [v5.0.0](https://github.com/wazuh/wazuh/blob/v5.0.0/CHANGELOG.md)
