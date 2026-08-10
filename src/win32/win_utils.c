@@ -199,6 +199,18 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
+    /* Same session ceiling modulesd applies on the other platforms, taken straight from
+     * the configuration this process already read (local and centralized merged) rather
+     * than re-reading the files. It has to be set here, while the configuration is being
+     * finalized and before any thread exists: syscheck is started below and builds its
+     * protocol instance on that thread, and an instance copies the limit once, when it
+     * is constructed. Setting it any later is a race the module usually wins. */
+    asp_set_session_max_bytes((uint64_t)agt->batch.size);
+
+    if (agt->batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
+    }
+
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
@@ -302,16 +314,6 @@ int local_start()
     /* Read wodle configuration */
     if (wm_config() < 0) {
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
-    }
-
-    /* Same session ceiling modulesd applies on the other platforms. Taken straight
-     * from the agent configuration this process already read, local and centralized
-     * merged, rather than re-reading the files. Must precede the module threads:
-     * each protocol instance copies the limit when it is built. */
-    asp_set_session_max_bytes((uint64_t)agt->batch.size);
-
-    if (agt->batch.size > 0) {
-        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
     /* Start modules */
