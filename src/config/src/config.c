@@ -88,7 +88,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(chld_node, d1) < 0) {
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0) {
                         goto fail;
                     }
                 }
@@ -104,7 +104,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
              * is read from it - as the fallback for <agent><server><address>. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(chld_node, d1) < 0){
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0){
                         goto fail;
                     }
                 }
