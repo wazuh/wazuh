@@ -14,6 +14,14 @@ set -uo pipefail
 #
 # The cluster name is read from the local manager's config (the server answers 403
 # to a foreign cluster). Pass --cluster only for a remote manager or to override it.
+#
+# --keep-agents: skip the pre-run cleanup of bench-* agents before each agent-mode
+# entry, so every agent-mode run's agents AND indexed documents survive the whole
+# matrix -- e.g. to inspect the real_* scenarios' data in the indexer's dashboard
+# afterward. The matrix's own scenarios use non-overlapping first_id ranges, so one
+# full pass (or a --only subset) does not collide with itself; re-running the WHOLE
+# matrix a second time without cleaning up first will. Clean up when done with
+# ./cleanup_agents.sh.
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,6 +40,7 @@ ENROLL_SETTLE=240s
 ONLY=""
 # Charts are produced by default: a run that is not plotted rarely gets looked at.
 CHARTS=true
+KEEP_AGENTS=false
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
@@ -44,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --enroll-settle)  ENROLL_SETTLE="$2"; shift 2 ;;
         --only)           ONLY="$2"; shift 2 ;;   # run a single label
         --no-charts)      CHARTS=false; shift ;;
+        --keep-agents)    KEEP_AGENTS=true; shift ;;
         -h|--help)        usage ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
@@ -91,9 +101,13 @@ for entry in "${MATRIX[@]}"; do
     extra=()
     $CHARTS || extra+=(--no-charts)
     if [[ "$mode" == "agent" ]]; then
-        # Names are reused across runs, so clear the previous fleet first; this only
-        # ever deletes bench-* agents.
-        ./cleanup_agents.sh >/dev/null 2>&1 || true
+        if $KEEP_AGENTS; then
+            extra+=(--keep-agents)
+        else
+            # Names are reused across runs, so clear the previous fleet first; this only
+            # ever deletes bench-* agents.
+            ./cleanup_agents.sh >/dev/null 2>&1 || true
+        fi
         extra+=(--enroll-settle "$ENROLL_SETTLE")
     fi
 
@@ -108,6 +122,13 @@ for entry in "${MATRIX[@]}"; do
         failed=$((failed + 1))
     fi
 done
+
+if $KEEP_AGENTS; then
+    echo ""
+    echo "--keep-agents: every agent-mode run's bench-* agents (and their indexed" \
+         "documents) were left in place for inspection. Delete them with" \
+         "./cleanup_agents.sh when done."
+fi
 
 echo ""
 echo "======================================================="

@@ -111,6 +111,27 @@ writes a one-time `.bak`. The compiled default is already `use_password=0`, but 
 the shared password **on by default in the installer**, so a fresh install rejects unauthenticated
 enrollment until this is undone.
 
+## Inspecting a run's indexed data (agent mode)
+
+By default an agent-mode run's `bench-*` agents are **not** deleted afterward — but the *next*
+agent-mode run (or the next `run_matrix.sh` entry) deletes them first, to avoid an enrollment name
+clash, and deleting an agent purges its documents from the indexer too. So a single run's data
+already survives; a second run wipes it. To inspect the real dumps' data in the indexer's dashboard
+across several runs, pass `--keep-agents` to `run_benchmark.sh` or `run_matrix.sh`:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_first_connect.json --mode agent --keep-agents
+# ... inspect wazuh-states-* in the indexer's dashboard, filtering by the bench-* agent(s) ...
+./cleanup_agents.sh   # delete the bench-* agents (and their indexed documents) when done
+```
+
+`--keep-agents` is mutually exclusive with `--cleanup-after`. In `run_matrix.sh` it applies to every
+agent-mode entry in the matrix; since the matrix's own scenarios use non-overlapping `first_id`
+ranges, one full pass (or a `--only` subset) does not collide with itself — re-running the whole
+matrix a *second* time without cleaning up first will (enrollment fails with "Duplicate agent
+name"). Not needed in `uds` mode: those runs never enroll a real agent, so nothing ever deletes
+their indexed documents.
+
 ## Helper scripts
 
 | Script | What it does |
