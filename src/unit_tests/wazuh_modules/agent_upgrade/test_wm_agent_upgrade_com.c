@@ -589,6 +589,31 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     os_free(response);
 }
 
+void test_wm_agent_upgrade_com_open_symlink_rejected(void **state) {
+    cJSON * command = *state;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", NULL);
+
+    // The dedicated message, not the strerror-based one: on Windows strerror(ELOOP) has no text.
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg,
+                  "(8142): At open: Refused to open 'test_file': the path is a symbolic link.");
+
+    errno = ELOOP;
+
+    char *response = wm_agent_upgrade_com_open(command);
+    cJSON *response_object = cJSON_Parse(response);
+    assert_int_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR])->valueint, 6);
+    // The ack carries the fixed reason too, not strerror(ELOOP).
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring,
+                        "File Open Error: the path is a symbolic link");
+    cJSON_Delete(response_object);
+    os_free(response);
+}
+
 void test_wm_agent_upgrade_com_open_success(void **state) {
     cJSON * command = *state;
 
@@ -1904,6 +1929,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_unsopported_mode, setup_open1, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_file_name, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_open, setup_open2, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_symlink_rejected, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_success, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_file_closed, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_invalid_file_name, setup_write, teardown_commands),

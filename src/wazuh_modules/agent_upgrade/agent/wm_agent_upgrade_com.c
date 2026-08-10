@@ -236,10 +236,24 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
         snprintf(file.path, sizeof(file.path), "%s", final_path);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, FOPEN_ERROR, file_path_obj->valuestring, errno, strerror(errno));
+        // Saved before logging: mterror() writes to the log file, which is free to clobber errno.
+        const int open_errno = errno;
+        // ELOOP is what w_fopen_nofollow() reports for a symlink: from O_NOFOLLOW on POSIX, and set
+        // explicitly on Windows when the handle turns out to be a reparse point. It gets its own message
+        // and its own reason text because both otherwise lean on strerror(), which says nothing useful
+        // here — mingw has no text for ELOOP and prints "Unknown error", hiding the one case worth
+        // alerting on. The error code stays ERROR_FILE_OPEN, so the response protocol is unchanged.
+        const char *reason = (open_errno == ELOOP) ? "the path is a symbolic link" : strerror(open_errno);
+
+        if (open_errno == ELOOP) {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SYMLINK_REJECTED, "open", file_path_obj->valuestring);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, FOPEN_ERROR, file_path_obj->valuestring, open_errno, strerror(open_errno));
+        }
+
         char *output;
         os_malloc(OS_MAXSTR + 1, output);
-        snprintf(output, OS_MAXSTR + 1, error_messages[ERROR_FILE_OPEN], strerror(errno));
+        snprintf(output, OS_MAXSTR + 1, error_messages[ERROR_FILE_OPEN], reason);
         char *response = wm_agent_upgrade_command_ack(ERROR_FILE_OPEN, output);
         os_free(output);
         return response;

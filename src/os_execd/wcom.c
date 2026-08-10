@@ -162,7 +162,13 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
     // Not wfopen(): a symlink left at final_target would be followed, truncating its target.
     if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget) {
         gzclose(fsource);
-        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        // Same reasoning as in the upgrade module: strerror() has no useful text for ELOOP on Windows,
+        // so the one failure worth alerting on gets its own message.
+        if (errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link", final_target);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        }
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
