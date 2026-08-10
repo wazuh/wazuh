@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 
 #include "digest.hpp"
+#include "loggerHelper.h"
 #include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -471,8 +472,8 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
         return; // Nothing reported, or already in sync.
     }
 
-    LOGFN_INFO(m_logFn, "Manager config hash %s differs from the local one; downloading "
-               "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
+    LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one; downloading "
+                 "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
     auto file = m_fetcher.fetch(managerHash, group, waiter);
 
     if (!file)
