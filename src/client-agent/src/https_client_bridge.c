@@ -378,10 +378,10 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
 
         if (previous_limits.limits_received && module_limits_changed(&previous_limits, &agent_module_limits)) {
             if (agt->flags.auto_restart) {
-                minfo("https_client: reloading due to module limits changes.");
+                minfo("Agent is reloading due to module limits changes.");
                 reloadAgent();
             } else {
-                mdebug1("https_client: module limits have been updated.");
+                mdebug1("Module limits have been updated.");
             }
         }
     } else {
@@ -975,7 +975,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * manager's hash, forcing an endless re-download/reload loop (observed
      * as a real, Windows-only regression during real-package validation). */
     if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
-        merror("https_client: could not copy the downloaded configuration into '%s'; "
+        merror("Could not copy the downloaded configuration into '%s'; "
                "keeping the previously applied one.", SHAREDCFG_FILE);
         if (handle) {
             /* What's actually on disk is still the old config, not config_hash:
@@ -991,7 +991,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     os_strdup(SHAREDCFG_FILENAME, *ignore_list);
 
     if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
-        merror("https_client: failed to unmerge the downloaded configuration "
+        merror("Failed to unmerge the downloaded configuration "
                "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
         /* Manager-visible report, now over /stateless. */
         char unmerge_fail_msg[OS_MAXSTR];
@@ -1005,7 +1005,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     }
 
     if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
-        mwarn("https_client: could not clean up the shared configuration directory.");
+        mwarn("Could not clean up the shared configuration directory.");
     }
     free_strarray(ignore_list);
 
@@ -1019,11 +1019,11 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         /* Invalid remote configuration: verifyRemoteConf() already reported it
          * to the manager (AG_IN_RCON). Do not reload or release the gate with
          * a configuration known to be broken. */
-        merror("https_client: downloaded configuration failed validation; not reloading.");
+        merror("Downloaded configuration failed validation; not reloading.");
         return;
     }
 
-    mdebug1("https_client: applying configuration downloaded over HTTPS (hash=%s).",
+    mdebug1("Applying configuration downloaded over HTTPS (hash=%s).",
             config_hash ? config_hash : "?");
 
     /* A blocked gate means modules are still waiting in
@@ -1041,18 +1041,18 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     const bool gate_was_blocked = !startup_gate_is_ready();
 
     if (!agt->flags.auto_restart && !gate_was_blocked) {
-        mdebug1("https_client: shared agent configuration has been updated.");
+        mdebug1("Shared agent configuration has been updated.");
         return;
     }
 
     if (!agt->flags.auto_restart) {
-        mdebug1("https_client: reloading to apply startup hash validated configuration.");
+        mdebug1("Agent is reloading to apply startup hash validated configuration.");
     } else {
-        minfo("https_client: reloading due to shared configuration changes.");
+        minfo("Agent is reloading due to shared configuration changes.");
     }
 
     if (!reloadAgent()) {
-        mdebug1("https_client: could not dispatch the reload chain; releasing "
+        mdebug1("Could not dispatch the reload chain; releasing "
                 "the startup gate directly instead (no restart will arrive to do it).");
         startup_gate_release_from_https_apply();
     }
