@@ -115,6 +115,20 @@ bool Validate_Address(agent_server *servers);
  */
 bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
 
+/**
+ * @brief Read the <agent><batch> limits, for daemons that do not own the block.
+ *
+ * agentd reads the whole <agent> block; the daemons hosting the sync protocol need
+ * the same limits without it, since Read_Agent fills structures agentd allocates
+ * beforehand. The local file is read first and the centralized one second, so the
+ * manager's value wins - the order ClientConf applies them in.
+ *
+ * @param cfgfile Local configuration file, or NULL to skip it.
+ * @param sharedcfg Centralized configuration file, or NULL to skip it.
+ * @param batch Limits to fill; each value is left alone when unconfigured.
+ */
+void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
+
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10
 

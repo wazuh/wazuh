@@ -20,6 +20,7 @@
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
@@ -328,6 +329,16 @@ int local_start()
     /* Read wodle configuration */
     if (wm_config() < 0) {
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    /* Same session ceiling modulesd applies on the other platforms. Taken straight
+     * from the agent configuration this process already read, local and centralized
+     * merged, rather than re-reading the files. Must precede the module threads:
+     * each protocol instance copies the limit when it is built. */
+    asp_set_session_max_bytes((uint64_t)agt->batch.size);
+
+    if (agt->batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
     /* Start modules */

@@ -17,6 +17,10 @@
 #include "wmodules.h"
 #include <sys/types.h>
 #include "startup_gate_op.h"
+#ifdef CLIENT
+#include "agent_sync_protocol_c_interface.h"
+#include "client-config.h"
+#endif
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -181,6 +185,21 @@ void wm_setup()
     if (wm_config() < 0) {
         exit(EXIT_FAILURE);
     }
+
+#ifdef CLIENT
+    // The sync protocol bounds one session by <agent><batch><size>, the same limit
+    // that bounds a /stateless request. The block belongs to the agent rather than
+    // to any module here, and the modules that build the protocol instances can
+    // read no configuration at all, so it is read once and handed down before
+    // wm_check() starts any of them.
+    agent_batch batch = { .size = 0, .interval = 0 };
+    w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
+    asp_set_session_max_bytes((uint64_t)batch.size);
+
+    if (batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
+    }
+#endif
 
     // Go daemon
 
