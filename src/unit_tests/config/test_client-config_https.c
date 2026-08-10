@@ -561,9 +561,9 @@ static void test_legacy_client_is_ignored_once_agent_set_the_address(void **stat
     cleanup(&agent_xml, agent_nodes, &cfg);
 }
 
-/* What the 5.x templates ship (etc/ossec-agent.conf, src/win32/ossec.conf): the whole
- * block renamed, so every 4.x <client> option is now read under <agent>. */
-static void test_fresh_install_template_shape(void **state) {
+/* The 4.x <client> options are still read, just no longer written: the block was
+ * renamed to <agent>, and an upgraded file carries whatever it was left with. */
+static void test_agent_block_reads_the_legacy_client_options(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
@@ -586,6 +586,34 @@ static void test_fresh_install_template_shape(void **state) {
     assert_string_equal(cfg.profile, "debian, debian8");
     assert_int_equal(cfg.notify_time, 20);
     assert_int_equal(cfg.flags.auto_restart, 1);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* What the templates actually ship now (etc/ossec-agent.conf, src/win32/ossec.conf,
+ * and inst-functions.sh's WriteAgent): an address, a port, and nothing that only
+ * restates a default. Everything left out has to come back as "unset" here, because
+ * that is what makes ClientConf's defaults the ones an agent ends up running on. */
+static void test_fresh_install_template_shape(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<config-profile>debian, debian8</config-profile>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_int_equal(cfg.server_count, 1);
+    assert_string_equal(cfg.server[0].rip, "10.0.0.1");
+    assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
+    assert_string_equal(cfg.profile, "debian, debian8");
+    assert_int_equal(cfg.notify_time, 0);        /* ClientConf turns 0 into NOTIFY_TIME. */
+    assert_int_equal(cfg.batch.size, 0);         /* Module default (1 MiB / 5 MiB). */
+    assert_int_equal(cfg.batch.interval, 0);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -1085,6 +1113,7 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_without_an_address_sets_no_server),
         cmocka_unit_test(test_agent_block_replaces_a_legacy_address),
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
+        cmocka_unit_test(test_agent_block_reads_the_legacy_client_options),
         cmocka_unit_test(test_fresh_install_template_shape),
         cmocka_unit_test(test_agent_invalid_tag_is_rejected),
         cmocka_unit_test(test_read_agent_batch_takes_the_limits_from_the_file),
