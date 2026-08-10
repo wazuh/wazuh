@@ -713,6 +713,72 @@ static void test_batch_invalid_tag_is_rejected(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+/* <batch> through the centralized configuration (etc/shared/agent.conf) */
+
+/* Parses `xml_str` as the body of an <agent> block pushed by the manager, via the
+ * real Read_Agent_Shared. Same cleanup as parse_agent(). */
+static int parse_agent_shared(const char *xml_str, OS_XML *xml, xml_node ***nodes, agent *cfg) {
+    memset(cfg, 0, sizeof(*cfg));
+
+    if (OS_ReadXMLString(xml_str, xml) != 0) {
+        return OS_INVALID;
+    }
+
+    if (*nodes = OS_GetElementsbyNode(xml, NULL), *nodes == NULL) {
+        return OS_INVALID;
+    }
+
+    return Read_Agent_Shared(xml, *nodes, cfg);
+}
+
+static void test_shared_batch_is_parsed(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str = "<batch><size>2MB</size><interval>30s</interval></batch>";
+
+    assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.batch.size, 2 * 1024 * 1024);
+    assert_int_equal(cfg.batch.interval, 30);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_shared_batch_is_validated_like_a_local_one(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Pushed centrally or written locally, the same value is the same mistake:
+     * the manager does not get a laxer parser. */
+    const char *xml_str = "<batch><size>0</size></batch>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'size': 0.");
+
+    assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_shared_config_still_refuses_local_only_options(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* <batch> is opened up, not the whole block: the manager has no business
+     * setting how often this endpoint checks in. */
+    const char *xml_str = "<notify_time>5</notify_time>";
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'notify_time'.");
+
+    assert_int_equal(parse_agent_shared(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 /* Deprecated legacy-TCP options: accepted, ignored, warned (#37702 restriction 4) */
 
 static void test_time_reconnect_is_deprecated(void **state) {
@@ -907,6 +973,9 @@ int main(void) {
         cmocka_unit_test(test_legacy_client_is_ignored_once_agent_set_the_address),
         cmocka_unit_test(test_fresh_install_template_shape),
         cmocka_unit_test(test_agent_invalid_tag_is_rejected),
+        cmocka_unit_test(test_shared_batch_is_parsed),
+        cmocka_unit_test(test_shared_batch_is_validated_like_a_local_one),
+        cmocka_unit_test(test_shared_config_still_refuses_local_only_options),
         cmocka_unit_test(test_batch_size_and_interval_are_parsed),
         cmocka_unit_test(test_batch_is_unset_when_absent),
         cmocka_unit_test(test_batch_size_without_a_suffix_is_bytes),
