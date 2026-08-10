@@ -2,6 +2,7 @@ name: 4.X - Scan Build
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - ".github/workflows/4_codeanalysis_scanbuild.yml"
@@ -12,7 +13,8 @@ permissions:
 
 jobs:
   scan-build-linux:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +53,8 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -88,6 +91,7 @@ jobs:
         run: exit 1
 
   scan-build-macos-agent:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3

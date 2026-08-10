@@ -422,3 +422,38 @@ def test_delete_list_file_ko():
     with patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH):
         result = delete_list_file(['test_file'])
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1906
+
+
+@patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH)
+def test_get_lists_outside_lists_path():
+    """Check that a file resolving outside the lists directory is not read nor returned."""
+    outside_file = os.path.join(DATA_PATH, os.pardir, 'outside_list')
+    try:
+        with open(outside_file, 'w') as f:
+            f.write('key:value\n')
+        with patch('wazuh.cdb_list.get_filenames_paths', return_value=[outside_file]):
+            with patch('wazuh.cdb_list.get_list_from_file') as mock_get_list_from_file:
+                result = get_lists(filename=['outside_list'])
+                assert isinstance(result, AffectedItemsWazuhResult)
+                assert result.total_affected_items == 0
+                assert result.affected_items == []
+                mock_get_list_from_file.assert_not_called()
+    finally:
+        try:
+            os.remove(outside_file)
+        except Exception:
+            pass
+
+
+@pytest.mark.parametrize("filename", [
+    '../../../../../../etc/passwd',
+    os.path.join(DATA_PATH, os.pardir, 'rbac.db'),
+])
+@patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH)
+@patch('wazuh.cdb_list.delete_list')
+def test_delete_list_file_path_traversal(mock_delete_list, filename):
+    """Check that a filename resolving outside the lists directory is rejected and not deleted."""
+    result = delete_list_file([filename])
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1804
+    mock_delete_list.assert_not_called()

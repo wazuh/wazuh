@@ -3,6 +3,7 @@ name: 4.X - Syscollector test on Windows
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/4_testcomponent_sysinfo-windows.yml"
       - "src/data_provider/**"
@@ -16,6 +17,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v3
@@ -84,6 +86,7 @@ jobs:
           name: syscollector
           path: src/wazuh_modules/syscollector/build/bin
   run-on-windows:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     needs: build
     runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:

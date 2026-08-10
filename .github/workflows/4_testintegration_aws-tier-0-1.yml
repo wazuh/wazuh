@@ -12,12 +12,14 @@ on:
         required: true
         default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/4_testintegration_aws-tier-0-1.yml"
       - "wodles/aws/**"
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     permissions:
       id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
       contents: read
@@ -27,6 +29,9 @@ jobs:
       QA_IT_FW_BRANCH: ${{ github.base_ref || inputs.base_qa_it_fw_branch }}
       AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
       AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
+      # Manifest of every S3 key the tests upload, so the always() cleanup step can delete them
+      # even if the job is cancelled before pytest teardown runs.
+      AWS_IT_CLEANUP_MANIFEST: ${{ github.workspace }}/aws_it_uploaded_keys.txt
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
@@ -164,7 +169,7 @@ jobs:
         if: steps.filter.outputs.parser == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
 
       - name: Run every test due to base WazuhIntegration class change or manual dispatch
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
@@ -172,71 +177,71 @@ jobs:
           cd tests/integration
           # Inspector is excluded here and run in its own step ('Run Inspector tests') that
           # re-assumes the chained role right before, so its 1h-capped session stays fresh.
-          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k "not inspector" test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k "not inspector" test_aws/
 
       - name: Run Custom Buckets tests
         if: steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/
 
       - name: Run Config tests
         if: steps.filter.outputs.config == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/
 
       - name: Run GuardDuty tests
         if: steps.filter.outputs.guardduty == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/
 
       - name: Run CloudTrail tests
         if: steps.filter.outputs.cloudtrail == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/
 
       - name: Run Load Balancers tests
         if: steps.filter.outputs.loadbalancers == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/
 
       - name: Run Server Access tests
         if: steps.filter.outputs.serveraccess == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/
 
       - name: Run Umbrella tests
         if: steps.filter.outputs.umbrella == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/
 
       - name: Run VPC Flow tests
         if: steps.filter.outputs.vpcflow == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
 
       - name: Run WAF tests
         if: steps.filter.outputs.waf == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/
 
       - name: Run CloudWatch tests
         if: steps.filter.outputs.cloudwatch == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
 
       - name: Run Inspector tests
         # !cancelled() overrides the implicit success() so this step still runs when an
@@ -275,10 +280,36 @@ jobs:
           sudo aws configure set region us-east-2 --profile inspector_tests
 
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
 
       - name: Run Custom Bucket tests
         if: steps.filter.outputs.custom_bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" AWS_IT_CLEANUP_MANIFEST="${AWS_IT_CLEANUP_MANIFEST}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py
+
+      - name: Clean up uploaded S3 test artifacts
+        # always() so this runs even when the job is CANCELLED - the dominant source of orphan
+        # objects, since pytest teardown does not run on a hard cancel. The manifest lists every key
+        # the tests uploaded (recorded at upload time); we delete each one, skipping permanent seeds.
+        if: always()
+        run: |
+          MANIFEST="${AWS_IT_CLEANUP_MANIFEST}"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "No cleanup manifest found; nothing to delete."
+            exit 0
+          fi
+          # Permanent DevOps seeds that must never be deleted (belt-and-suspenders; the manifest never
+          # records them, but guard here in case a future test key ever matches one).
+          SEED_CLOUDTRAIL="AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json"
+          SEED_ELB="AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/819751203818_elasticloadbalancing_us-east-1_net.qatests_20221120T0000Z_1412953514070675864_29.145.39.119.log"
+          sudo sort -u "$MANIFEST" | while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            if [ "$key" = "$SEED_CLOUDTRAIL" ] || [ "$key" = "$SEED_ELB" ]; then
+              echo "Skipping permanent seed: $key"
+              continue
+            fi
+            echo "Deleting s3://${AWS_BUCKET_NAME}/${key}"
+            sudo aws s3 rm "s3://${AWS_BUCKET_NAME}/${key}" --profile default || true
+          done
+          sudo rm -f "$MANIFEST" || true
