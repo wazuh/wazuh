@@ -1,8 +1,9 @@
 {
   "name": "mega_burst",
-  "description": "One large Linux fleet (60 agents) all firing a syscollector delta stream unpaced (concurrent_agents 0, repeat_delay 0s), a maximum-unpaced-burst stress test of the sync ingress.",
+  "description": "One large Linux fleet (60 agents) all firing a syscollector delta stream unpaced (concurrent_agents 0, repeat_delay 0s), a maximum-unpaced-burst stress test of the sync ingress. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
   "mode": "uds",
   "defaults": {
+    "retry": { "enabled": false },
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",

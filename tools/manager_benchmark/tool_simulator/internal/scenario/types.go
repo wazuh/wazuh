@@ -42,17 +42,61 @@ type Scenario struct {
 	Lanes       map[string][]Step `json:"lanes"`
 	Fleets      []Fleet           `json:"fleets"`
 	Pacing      Pacing            `json:"pacing"`
+	Expected    *Expected         `json:"expected"`
 }
 
 // Defaults are inherited by every fleet and step unless overridden.
 type Defaults struct {
 	Module      string   `json:"module"`
 	Option      string   `json:"option"`
-	MaxEPS      float64  `json:"max_eps"`
 	ClusterName string   `json:"cluster_name"`
 	ClusterNode string   `json:"cluster_node"`
 	Documents   *DocSpec `json:"documents"`
 	Control     Control  `json:"control"`
+	Retry       Retry    `json:"retry"`
+}
+
+// Retry governs re-sending a /stateful session the server answered 503 WITHOUT
+// a Retry-After header (backpressure: pipeline full, scan lane full, indexer
+// unhealthy). Retrying is what a real agent does, so it defaults to ON; the
+// scenarios whose purpose is to COUNT sheds disable it explicitly. The
+// 503+Retry-After path (feed still downloading) keeps its own rules: the header
+// dictates the delay and --feed-timeout bounds the budget.
+//
+// Pointer fields distinguish "absent" (take the default) from an explicit
+// false/0 in the file.
+type Retry struct {
+	Enabled     *bool    `json:"enabled"`      // default true
+	Interval    Duration `json:"interval"`     // delay between attempts; default 500ms
+	MaxAttempts *int     `json:"max_attempts"` // total send attempts; default 10, 0 = unbounded
+}
+
+// RetryEnabled reports whether bare-503 sessions are re-sent (default true).
+func (r Retry) RetryEnabled() bool {
+	if r.Enabled == nil {
+		return true
+	}
+	return *r.Enabled
+}
+
+// RetryInterval is the delay between bare-503 attempts (default 500ms).
+func (r Retry) RetryInterval() time.Duration {
+	if r.Interval.D() <= 0 {
+		return 500 * time.Millisecond
+	}
+	return r.Interval.D()
+}
+
+// RetryMaxAttempts is the total number of send attempts for one session
+// (default 10). Zero means unbounded: only the drain/context stops the loop.
+func (r Retry) RetryMaxAttempts() int {
+	if r.MaxAttempts == nil {
+		return 10
+	}
+	if *r.MaxAttempts < 0 {
+		return 0
+	}
+	return *r.MaxAttempts
 }
 
 // DocSpecDefault returns the default document spec (may be nil).
@@ -102,11 +146,16 @@ type Step struct {
 	InitialDelay Duration `json:"initial_delay"`
 
 	// Engine-stream fields (kind "engine").
-	Engine                 string  `json:"engine"`   // path to a sample log file
-	Location               string  `json:"location"` // source path stamped on events
-	MaxEPS                 float64 `json:"max_eps"`
-	Loop                   bool    `json:"loop"`
-	RunWhileSiblingsActive bool    `json:"run_while_siblings_active"`
+	Engine   string `json:"engine"`   // path to a sample log file
+	Location string `json:"location"` // source path stamped on events
+	// EventsPerSecond caps the lane's REAL event rate, aggregated across every
+	// agent running the lane (0 = unlimited). The limiter charges one token per
+	// event, so the cap does not depend on how events are grouped into requests.
+	EventsPerSecond float64 `json:"events_per_second"`
+	// EventsPerBatch is how many events ride one /stateless request. 0 sends
+	// the whole sample file as a single batch. One runStep pass always ships the
+	// entire file, split into ceil(lines/batch) requests.
+	EventsPerBatch int `json:"events_per_batch"`
 }
 
 // DocSpec controls document (or context) generation for a step.
@@ -122,4 +171,28 @@ type Pacing struct {
 	RequestsPerSecond float64  `json:"requests_per_second"`
 	RepeatUntil       Duration `json:"repeat_until"`
 	DrainTimeout      Duration `json:"drain_timeout"`
+}
+
+// Assertion is one expectation on a final counter: operator -> value, with
+// operators "eq", "gte" and "lte". More than one operator forms a conjunction
+// (e.g. {"gte": 1, "lte": 5}).
+type Assertion map[string]uint64
+
+// Expected is the scenario's optional contract verdict (docu/09): assertions on
+// the run's FINAL total counters, evaluated after the run. Only counters --
+// statuses and counts are properties of the protocol contract and hold on any
+// hardware, unlike latency or throughput, which belong to the machine. A
+// scenario without this block keeps the tool's default stance: record
+// everything, judge nothing.
+//
+// Group keys are the counter names of the summary's `totals` section (plus the
+// derived "s5xx" = s500 + s503 under sessions); internal/verdict owns the name
+// tables and validates them at load time.
+type Expected struct {
+	Sessions         map[string]Assertion `json:"sessions"`
+	Stateless        map[string]Assertion `json:"stateless"`
+	Control          map[string]Assertion `json:"control"`
+	Deletes          map[string]Assertion `json:"deletes"`
+	TransportErrors  Assertion            `json:"transport_errors"`
+	RetriesExhausted Assertion            `json:"retries_exhausted"`
 }

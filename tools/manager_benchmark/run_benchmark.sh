@@ -292,6 +292,13 @@ echo "  Done — artifacts in $RESULTS_DIR/"
 echo "    bench.csv, sender_summary.json, summary.json"
 [[ -f "$SERVER_METRICS_CSV" ]] && echo "    server_metrics.csv"
 [[ -d "$MONITOR_DIR" ]] && echo "    monitor/"
-echo "  Sender exit code: $SENDER_RC ($([[ $SENDER_RC -eq 0 ]] && echo VALID || echo INVALID))"
+# Sender exit contract: 0 ok, 1 measurement invalid, 2 setup failure,
+# 3 measurement VALID but the scenario's expected block failed.
+case "$SENDER_RC" in
+    0) VERDICT="VALID" ;;
+    3) VERDICT="VALID, expected block FAILED (see sender_summary.json)" ;;
+    *) VERDICT="INVALID" ;;
+esac
+echo "  Sender exit code: $SENDER_RC ($VERDICT)"
 echo "======================================================="
 exit "$SENDER_RC"

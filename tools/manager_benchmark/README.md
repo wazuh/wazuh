@@ -139,8 +139,11 @@ Optionally describe the host in `bench_env.txt` (one `key: value` per line — `
 `mem_total`, `kernel`, `indexer`, `git_head`) and `make_report_tables.py` puts it in the environment
 table; anything missing is skipped rather than guessed.
 
-A run that exits non-zero is **not** a slow manager — it means the measurement itself is invalid (an
-unauthenticated fleet, a transport error). Fix it before quoting numbers.
+A run that exits `1` or `2` is **not** a slow manager — it means the measurement itself is invalid
+(an unauthenticated fleet, a transport error, a setup failure). Fix it before quoting numbers. Exit
+`3` is different: the measurement is valid, but the scenario's optional `expected` block (counter
+assertions — see `tool_simulator/docu/07-scenario-schema.md`) failed; `sender_summary.json` names
+each failed assertion with its actual value.
 
 ## What it will measure
 
@@ -154,7 +157,8 @@ The same scenarios over two transports, so the difference isolates the relay:
   the `POST /stateful` sessions.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
-`sender_summary.json` (metadata, totals, per-kind histograms — no verdict) and a scrape of the
+`sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the
+scenario opts into one) and a scrape of the
 server's own `GET /metrics`, so client-observed behavior can be correlated with shard depths, bulk
 flushes and scan-lane timings.
 

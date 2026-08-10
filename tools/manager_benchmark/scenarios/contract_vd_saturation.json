@@ -1,8 +1,9 @@
 {
   "name": "contract_vd_saturation",
-  "description": "Saturates the vulnerability-detection scan lane (D22). A large fleet fires VDFirst first-scans back to back, so the scan lane's per-capacity 503 shedding and time-in-lane become visible in by_lane. The scan lane is single-worker until F9d, so this is the scenario that measures that ceiling.",
+  "description": "Saturates the vulnerability-detection scan lane (D22). A large fleet fires VDFirst first-scans back to back, so the scan lane's per-capacity 503 shedding and time-in-lane become visible in by_lane. The scan lane is single-worker until F9d, so this is the scenario that measures that ceiling. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
   "mode": "uds",
   "defaults": {
+    "retry": { "enabled": false },
     "module": "syscollector",
     "option": "VDFirst",
     "cluster_name": "cluster01",

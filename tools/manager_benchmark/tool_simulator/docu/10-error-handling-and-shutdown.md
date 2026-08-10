@@ -26,8 +26,8 @@ checksum is a *result to record*, not a failure — so the sender separates two 
 | `409` checksum mismatch | Result | Count; no implicit resync | No |
 | `413` from a normal step | Result (budget contract) | Count; never split or retry | No |
 | `500` | Server failure | Count and report prominently; no retry | No — recorded, not judged |
-| `503` **with** `Retry-After` | Manager bring-up (feed) | Honor the header, re-send the same buffer, bounded by `--feed-timeout`; count as `retries_feed` | **Yes**, only if the timeout expires |
-| `503` **without** `Retry-After` | Backpressure — a valid result | Count; no retry | No |
+| `503` **with** `Retry-After` | Manager bring-up (feed) | Honor the header, re-send the same buffer, bounded by `--feed-timeout`; count each re-send as `retries_feed`, a spent budget as `retries_exhausted` | No — the exhaustion is a counter (assertable via `expected`), not an abort |
+| `503` **without** `Retry-After` | Backpressure | Count; re-send the same buffer per the scenario's `retry` block (default on, 500ms, 10 attempts — what a real agent does), counting `retries_503` and, on a spent budget, `retries_exhausted`. Shed-counting scenarios disable it | No |
 | `202` / `400` / `413` / `503` from `/stateless` | Result | Count in the `stateless_*` buckets; `400` on a normal engine step is a sender bug and aborts | `400` normal → yes; else no |
 | Connection closed with no response | Transport error | Count in `transport_errors`, never as an HTTP bucket; keep the connection's context in the log | **Yes** past the threshold (default 0 in `uds` mode; configurable) |
 | Read/write timeout | Transport error | Same; the per-request timeout **MUST** exceed the server's response timeout so a slow answer is not misread as a hang | As above |
@@ -35,9 +35,14 @@ checksum is a *result to record*, not a failure — so the sender separates two 
 | Indexer down mid-run | Result | Manifests as `503`s; count and report | No |
 
 The exit code is `0` when the run completed and nothing invalidated it — **regardless of how many
-`503`s or `409`s were recorded**. It is non-zero only for the "Yes" rows above. This is the whole
-difference from a conformance checker: the sender guarantees the *numbers are real*, not that they
-are *good*.
+`503`s or `409`s were recorded**. It is `1`/`2` only for the "Yes" rows above, and `3` when the
+measurement is valid but the scenario's opt-in `expected` block failed ([07](07-scenario-schema.md)).
+This is the whole difference from a conformance checker: the sender guarantees the *numbers are
+real*, not that they are *good* — unless the scenario explicitly says what "good" means.
+
+Every retry attempt (either 503 flavor) takes a `requests_per_second` token before sending: a retry
+is traffic the server must answer, so it is paced like any other request, and `sessions_sent`
+counts attempts.
 
 Any abort **MUST** still write the artifacts collected so far and print the summary: a failed run's
 data is usually the most interesting.

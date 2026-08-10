@@ -18,8 +18,8 @@ production-shaped pressure.
   "defaults": {
     "module": "syscollector",
     "option": "Sync",
-    "max_eps": 75,
-    "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true, "startup_version": "5.0.0" }
+    "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true, "startup_version": "5.0.0" },
+    "retry": { "enabled": true, "interval": "500ms", "max_attempts": 10 }
   },
   "lanes": {
     "fim_windows": [
@@ -36,7 +36,7 @@ production-shaped pressure.
     ],
     "engine": [
       { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
-        "max_eps": 250, "loop": true, "run_while_siblings_active": true }
+        "events_per_second": 250, "events_per_batch": 100 }
     ]
   },
   "fleets": [
@@ -54,10 +54,11 @@ production-shaped pressure.
 | Block | Meaning |
 |---|---|
 | `mode` | `uds` or `agent`. **MAY** be omitted and supplied per run by the orchestration, which is how the relay overhead is measured. `engine` lanes are `agent`-mode only (see [13](13-engine-event-streams.md)) |
-| `defaults` | Inherited by every lane step and every fleet unless overridden. Includes the default `control` block |
+| `defaults` | Inherited by every lane step and every fleet unless overridden. Includes the default `control` block and the `retry` policy (below) |
 | `lanes` | A named map of **lane definitions**. A lane is an ordered list of steps one agent walks (see below). Lanes are the reusable unit — many fleets reference the same lane |
 | `fleets` | One or more fleets. Each names its agent count, id range, the lanes its agents run in parallel, and a `start` block of per-fleet metadata (OS, arch) stamped onto that fleet's sessions |
 | `pacing` | Run-level load shape: concurrency, request rate, how long to run, drain window |
+| `expected` | **Optional** contract assertions on the run's final counters (below). Absent = the run is never judged |
 
 Anything a fleet or a step does not set is taken from `defaults`; anything `defaults` does not set
 has a built-in default. This three-level inheritance (built-in → `defaults` → fleet/step) is what
@@ -86,7 +87,10 @@ independent.
 | `delete_agent` | `DELETE /agents` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
-| `parallel` | A group of steps sent concurrently by the SAME agent | Breaks per-agent-per-lane sequencing on purpose; the FIFO-ordering scenario |
+
+Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
+at once runs two lanes (the FIFO-ordering scenario). An earlier `parallel` kind was accepted
+without an implementation and silently degraded to a `delta`; it is refused now.
 
 ## Replaying real payloads
 
@@ -121,8 +125,52 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
 | `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
 
-Per-lane `max_eps` bounds that lane's own rate independently of the global session bucket — an
-engine lane at 250 EPS alongside inventory lanes at 75, for instance. Both are recorded.
+**What `requests_per_second` counts**: `/stateful` sessions and `DELETE /agents` requests, one token
+each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
+FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
+and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees
+a session. Engine lanes have their own knob in real event units (`events_per_second`, [13](13-engine-event-streams.md)),
+aggregated across every agent running the lane. Both targets are recorded with the artifacts.
+
+## Retry (defaults.retry)
+
+| Field | Meaning |
+|---|---|
+| `enabled` | Re-send a `/stateful` session answered a bare `503` (backpressure shed). Default `true` — it is what a real agent does. Scenarios whose object is to COUNT sheds set it to `false` |
+| `interval` | Delay between attempts (default `"500ms"`) |
+| `max_attempts` | Total send attempts per session (default `10`; `0` = unbounded, cut only by drain) |
+
+The `503` **with** `Retry-After` (the CVE feed still downloading) keeps its own contract: the header
+dictates the delay and `--feed-timeout` bounds the budget, regardless of this block. `/stateless`
+event batches are never retried — an agent's events are lost the same way. Every attempt consumes a
+`requests_per_second` token and is recorded (`sessions_sent` counts attempts; `retries_feed` /
+`retries_503` tell the re-sends apart, and `retries_exhausted` counts sessions abandoned with the
+budget spent).
+
+## Expected (optional verdict)
+
+```json
+"expected": {
+  "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
+  "stateless": { "s202": { "gte": 1 } },
+  "control":   { "startup_err": { "eq": 0 } },
+  "deletes":   { "err": { "eq": 0 } },
+  "transport_errors": { "eq": 0 },
+  "retries_exhausted": { "eq": 0 }
+}
+```
+
+Assertions run against the run's **final total counters** (the summary's `totals` section, same
+names; `s5xx` is the derived `s500 + s503`). Operators are `eq`, `gte` and `lte`; several on one
+counter form a conjunction. **Counters only, by design**: statuses and counts are properties of the
+protocol contract and hold on any hardware, while latency and throughput belong to the machine that
+produced them — a committed threshold from one laptop would fail on the next. Counts that depend on
+load shedding are asserted with `gte`/`lte` or left out.
+
+A failed expectation exits `3` and writes the verdict into `sender_summary.json` (`expected.passed`,
+`expected.failures[]`); the measurement itself is still VALID. The block is strict-checked at load
+time (unknown counter or operator = refused), and evaluation is skipped entirely when the run is
+already invalid — judging counters produced by an unauthenticated fleet would be judging noise.
 
 ## Conventions
 
@@ -142,12 +190,12 @@ engine lane at 250 EPS alongside inventory lanes at 75, for instance. Both are r
   against any manager.
 - Document generation is deterministic from a seed recorded in the run metadata: two runs of one
   scenario send byte-identical payloads, or the comparison is not one.
-- **There is no pass/fail gate.** A scenario declares *what to send*, not *what counts as success*:
+- **There is no pass/fail gate unless the scenario opts in.** A scenario declares *what to send*;
   the sender records every outcome (every status code, every latency, per lane and per fleet) and
-  reports it, and it is the operator — or F9c-4's report — who judges. This keeps a run from being
-  silently "green" while hiding a shift in the status distribution, and it means a saturation run
-  that is *supposed* to produce `503`s is not mislabeled a failure. What the sender still fails on
-  is a broken run (a `401`, a `400 invalid_json` to `/control`, transport errors past the
-  threshold), because those mean the measurement itself is invalid — see [10](10-error-handling-and-shutdown.md).
+  reports it. A saturation run that is *supposed* to produce `503`s is not mislabeled a failure.
+  The one opt-in exception is the `expected` block above — counter-only contract assertions, exit
+  `3` on failure. What the sender always fails on is a broken run (a `401`, a `400 invalid_json` to
+  `/control`, transport errors past the threshold), because those mean the measurement itself is
+  invalid — see [10](10-error-handling-and-shutdown.md).
 - The scenario file used **MUST** be copied into the run's artifacts verbatim (F9c-3), together with
   the effective CLI parameters.

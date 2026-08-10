@@ -53,6 +53,7 @@ type Runner struct {
 	seed           uint64
 
 	agentsActive int64
+	inFlight     int64 // requests currently awaiting a response (drain accounting)
 
 	engineMu    sync.Mutex
 	engineFiles map[string][]string            // cached sample log lines by path
@@ -168,6 +169,11 @@ func (r *Runner) Run(ctx context.Context) int {
 		select {
 		case <-done:
 		case <-time.After(r.drainTimeout()):
+			// The drain window closed with requests still awaiting a response:
+			// report them (AC-J) instead of letting the run read as complete.
+			if left := atomic.LoadInt64(&r.inFlight); left > 0 {
+				r.reg.RecordAbandonedN(uint64(left))
+			}
 		}
 	}
 
@@ -251,18 +257,28 @@ func (r *Runner) fatalf(format string, args ...any) {
 	})
 }
 
-// engineLimiter returns (and caches) a per-lane engine limiter.
-func (r *Runner) engineLimiter(lane string, eps float64) *pacing.Limiter {
+// engineLimiter returns (and caches) a per-lane event limiter. The rate is in
+// EVENTS per second and is the lane's AGGREGATE across every agent of every
+// fleet running it -- the knob shapes what the manager receives in total, not
+// what one agent produces. The burst is raised to the largest batch seen so a
+// whole batch can be charged atomically (WaitN).
+func (r *Runner) engineLimiter(lane string, eps float64, batch int) *pacing.Limiter {
 	key := fmt.Sprintf("%s|%.3f", lane, eps)
 	r.engineMu.Lock()
-	defer r.engineMu.Unlock()
-	if l, ok := r.engineLim[key]; ok {
-		return l
+	l, ok := r.engineLim[key]
+	if !ok {
+		l = pacing.New(eps)
+		r.engineLim[key] = l
 	}
-	l := pacing.New(eps)
-	r.engineLim[key] = l
+	r.engineMu.Unlock()
+	l.EnsureBurst(batch)
 	return l
 }
+
+// requestStarted/requestFinished bracket every outbound request so the drain
+// path knows how many were still awaiting a response when its window closed.
+func (r *Runner) requestStarted()  { atomic.AddInt64(&r.inFlight, 1) }
+func (r *Runner) requestFinished() { atomic.AddInt64(&r.inFlight, -1) }
 
 // engineLines loads and caches a sample log file's lines, relative to the
 // scenario file's directory.

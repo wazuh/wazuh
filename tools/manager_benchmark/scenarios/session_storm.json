@@ -1,8 +1,9 @@
 {
   "name": "session_storm",
-  "description": "Sustained unpaced session storm: 50 agents replay a minimal syscollector delta as fast as the manager answers, for 60 s. This is the load that actually reaches the in-flight byte budget and makes the server shed with 503, which the shorter one-pass bursts never do.",
+  "description": "Sustained unpaced session storm: 50 agents replay a minimal syscollector delta as fast as the manager answers, for 60 s. This is the load that actually reaches the in-flight byte budget and makes the server shed with 503, which the shorter one-pass bursts never do. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
   "mode": "uds",
   "defaults": {
+    "retry": { "enabled": false },
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",
