@@ -566,11 +566,15 @@ void test_wm_agent_upgrade_parse_upgrade_command_success(void **state)
     char *ver = "v4.0.0";
     char *package_type = "rpm";
 
+    /* Each key is added twice: cJSON keeps duplicates, so the parser must end up with the last one */
     cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "wpk_repo", "duplicate");
     cJSON_AddStringToObject(params, "wpk_repo", repo);
+    cJSON_AddStringToObject(params, "version", "duplicate");
     cJSON_AddStringToObject(params, "version", ver);
     cJSON_AddTrueToObject(params, "use_http");
     cJSON_AddTrueToObject(params, "force_upgrade");
+    cJSON_AddStringToObject(params, "package_type", "deb");
     cJSON_AddStringToObject(params, "package_type", package_type);
 
     wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
@@ -790,8 +794,11 @@ void test_wm_agent_upgrade_parse_upgrade_custom_command_success(void **state)
     char *file = "wazuh.wpk";
     char *exe = "install.sh";
 
+    /* Each key is added twice: cJSON keeps duplicates, so the parser must end up with the last one */
     cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "file_path", "duplicate");
     cJSON_AddStringToObject(params, "file_path", file);
+    cJSON_AddStringToObject(params, "installer", "duplicate");
     cJSON_AddStringToObject(params, "installer", exe);
 
     wm_upgrade_custom_task* upgrade_custom_task = wm_agent_upgrade_parse_upgrade_custom_command(params, &error);
@@ -905,9 +912,12 @@ void test_wm_agent_upgrade_parse_upgrade_agent_status_success(void **state)
     char *data = "Success";
     char *status = "Done";
 
+    /* Each key is added twice: cJSON keeps duplicates, so the parser must end up with the last one */
     cJSON *params = cJSON_CreateObject();
     cJSON_AddNumberToObject(params, "error", error_code);
+    cJSON_AddStringToObject(params, "message", "duplicate");
     cJSON_AddStringToObject(params, "message", data);
+    cJSON_AddStringToObject(params, "status", "duplicate");
     cJSON_AddStringToObject(params, "status", status);
 
     wm_upgrade_agent_status_task* agent_status_task = wm_agent_upgrade_parse_upgrade_agent_status(params, &error);

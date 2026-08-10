@@ -484,6 +484,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         unsigned int msg_count;
         unsigned int msg_time;
 
+        if (buffer_size < MSG_OVERHEAD) {
+            mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
+            return KS_CORRUPT;
+        }
+
         /* Close string */
         cleartext[buffer_size] = '\0';
 

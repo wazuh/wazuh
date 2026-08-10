@@ -1025,7 +1025,7 @@ stages:
       method: POST
       json:
         username: newUser
-        password: stringA1!
+        password: stringA1!extra
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1085,7 +1085,7 @@ stages:
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
       method: PUT
       json:
-        password: stringB1!
+        password: stringB1!extra
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

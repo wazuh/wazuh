@@ -743,7 +743,7 @@ def xml_to_dict(root, section_path: list):
 
         if len(element):
             for child in element:
-                result[child.tag] = element_to_dict(child)
+                result[child.tag.lower()] = element_to_dict(child)
         else:
             result = {
                 'attrib': element.attrib,
