@@ -18,8 +18,7 @@
  * This is the ONLY header shared between remoted's C code and the C++ module.
  * It exposes a POD configuration struct plus start/stop entry points, so the
  * C daemon can launch and configure the C++ worker without ever seeing any C++
- * type. remoted links the module directly (see src/remoted/CMakeLists.txt),
- * mirroring how it already consumes librouter.so.
+ * type. remoted links the module directly (see src/remoted/CMakeLists.txt).
  */
 
 // Define EXPORTED for any platform
