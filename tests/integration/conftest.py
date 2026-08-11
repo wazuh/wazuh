@@ -797,7 +797,10 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
 
 @pytest.fixture(autouse=True)
 def ensure_merged_mg() -> None:
-    """Write the default dummy merged.mg whose MD5 matches RemotedSimulator.DEFAULT_MERGED_SUM.
+    """Write the default dummy merged.mg whose SHA-256 matches a freshly-constructed
+    RemotedSimulator's default config_hash, so the HTTPS startup gate
+    (startup_gate_check_manager_config_hash()) can release immediately on the first
+    /control notify instead of waiting for a /download round trip.
 
     On Linux the file is created with group-writable permissions (0o660) and
     owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
