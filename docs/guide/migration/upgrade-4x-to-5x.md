@@ -72,6 +72,7 @@ The following changes were identified during agent startup validation after upgr
 | `<wodle name="cis-cat">...</wodle>` | Removed in 5.0 | `INFO: The 'cis-cat' module is deprecated. Use the SCA module instead.` | Migrate to SCA, then remove the `cis-cat` wodle block. See [Migrating from CIS-CAT and OpenSCAP to SCA](ciscat-openscap-to-sca.md). |
 | `<wodle name="osquery">...</wodle>` | Removed in 5.0 | `INFO: The 'osquery' module is deprecated. Use the Syscollector module instead.` | Migrate to IT Hygiene, then remove the `osquery` wodle block. See [Migrating from OSquery to IT Hygiene](osquery-to-it-hygiene.md). |
 | `<sca><skip_nfs>...</skip_nfs></sca>` | Deprecated/Unavailable | `INFO: Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.` | Remove `<skip_nfs>` from `sca`. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
+| `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Invalid | `ERROR: (1230): Invalid element in the configuration: 'auto_method'.` | Remove `<auto_method>` from `<enrollment>`. The option was removed entirely; see [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-authd) below. |
 
 ### Additional observed parser side-effects
 
@@ -207,6 +208,50 @@ The abort happens before the package manager runs, so the agent stays on 4.14.X,
 
 The target address and port come from the same place the agent reads them: `<agent><server>` first, then `<client><server><address>`, with `1517` as the port default.
 
+## TLS 1.3 enrollment enforcement (`wazuh-authd`)
+
+Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
+
+### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
+
+`wazuh-authd` validates `<ciphers>` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
+
+```console
+ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in 'ciphers' option
+```
+
+If an invalid value somehow reaches the TLS setup step, the manager fails the same way at startup instead:
+
+```console
+ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
+ERROR: SSL context setup failed. Exiting.
+```
+
+Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
+
+`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an invalid element and blocks the manager from starting:
+
+```console
+ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.
+```
+
+Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.
+
+### Agent: `<enrollment><ssl_cipher>` must also use a TLS 1.3 ciphersuite list
+
+The agent's `ssl_cipher` option has the same new format requirement, but no config-time validation: a legacy value is accepted at startup and only fails when the agent actually tries to enroll:
+
+```console
+ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
+ERROR: Could not set up SSL connection! Check certification configuration.
+```
+
+Update `ssl_cipher` to a colon-separated TLS 1.3 ciphersuite list (same values as the manager's `<ciphers>`) before or during the upgrade, or remove it to use the default. `<enrollment><auto_method>` was removed outright (see the configuration table above) — it has no TLS 1.3 equivalent to negotiate down to.
+
+### Agents not yet upgraded past 4.14.x
+
+An agent still running a pre-5.0 build predates this enforcement and applies `ssl_cipher`/`auto_method` through OpenSSL's legacy `SSL_CTX_set_cipher_list()` API, which only affects TLS 1.2-and-below negotiation. Once the manager forces TLS 1.3, that legacy cipher list has no effect on the ciphersuite actually negotiated — OpenSSL falls back to its own TLS 1.3 defaults regardless of the configured value. This follows from documented OpenSSL behavior rather than something exercised against this codebase (the pre-5.0 agent code implementing this path is not part of this repository), so treat `ssl_cipher`/`auto_method` as inert, not broken, on agents older than this change: they do not need to be removed for enrollment to keep working, but they also no longer do anything. Upgrading the agent to a 5.0-compatible build brings it under the stricter validation described above.
+
 ## Validation checklist
 
 Migration is complete when all conditions below are met:
@@ -216,3 +261,4 @@ Migration is complete when all conditions below are met:
 - The connection block is `<agent>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
+- No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-authd` or agent logs, and enrollment against the 5.0 manager succeeds.

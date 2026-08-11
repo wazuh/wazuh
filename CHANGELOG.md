@@ -38,6 +38,7 @@
 | [#36805](https://github.com/wazuh/wazuh/issues/36805) | Randomized the cluster key generated during manager installation instead of using a hardcoded default. |
 | [#36311](https://github.com/wazuh/wazuh/issues/36311) | Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. |
 | [#36705](https://github.com/wazuh/wazuh/issues/36705) | Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. |
+| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
 
@@ -96,6 +97,7 @@
 |-------|---------|
 | [#30435](https://github.com/wazuh/wazuh/issues/30435) | Removed deprecated agent binaries and legacy modules as part of the Wazuh 5.0 agent cleanup. |
 | [#31582](https://github.com/wazuh/wazuh/issues/31582) | Removed NSIS-based Windows agent installer; Windows agent now ships exclusively as an MSI package. |
+| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Removed the `<enrollment><auto_method>` option; enrollment now always requires TLS 1.3, so there is nothing left for it to negotiate down to. The `ssl_cipher` option now expects a TLS 1.3 ciphersuite list instead of an OpenSSL cipher-list string. |
 
 #### Fixed
 
