@@ -261,23 +261,37 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
     // The designated ThreadSanitizer workload: a fresh handle each cycle (the
     // client is single-shot) with concurrent submits from another thread,
     // exercising the full create/start/stop/destroy race surface.
-    for (int cycle = 0; cycle < 20; cycle++)
+    //
+    constexpr int CYCLES = 20;
+    constexpr int MAX_SUBMITS = 500;
+    constexpr int SUBMITS_BEFORE_STOP = 50;
+
+    for (int cycle = 0; cycle < CYCLES; cycle++)
     {
         hc_handle* handle = hc_create(&m_config, &m_callbacks);
         ASSERT_NE(nullptr, handle);
         ASSERT_TRUE(hc_start(handle));
         std::atomic<bool> submitting {true};
+        std::atomic<int> submitted {0};
         std::thread producer(
             [&]
         {
             const uint8_t frame[] = "1:/var/log/syslog:churn";
 
-            while (submitting.load())
+            for (int n = 0; n < MAX_SUBMITS && submitting.load(); n++)
             {
                 hc_submit_event(handle, frame, sizeof(frame) - 1);
+                submitted.fetch_add(1, std::memory_order_relaxed);
             }
         });
-        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+
+        // Stop only once submits are demonstrably in flight, so the race the
+        // test exists for still happens without depending on the wall clock.
+        while (submitted.load(std::memory_order_relaxed) < SUBMITS_BEFORE_STOP)
+        {
+            std::this_thread::yield();
+        }
+
         hc_stop(handle);
         submitting = false;
         producer.join();
