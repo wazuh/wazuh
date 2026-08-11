@@ -507,15 +507,16 @@ FILE * wfopen(const char * pathname, const char * mode);
  * @brief Create or truncate a file inside a base directory for writing, without following symlinks.
  *
  * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
- * friends): a symlink, FIFO, device or directory found at the target path is rejected instead of
- * being opened through. @p filename must be a bare file name; it is rejected if it is empty, "."
- * or "..", if it refers to a parent folder, or if it contains a path separator, so the resulting
- * open cannot escape @p basedir.
+ * friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
+ * instead of being written through. @p filename must be a bare file name; it is rejected if it is
+ * empty, "." or "..", if it refers to a parent folder, or if it contains a path separator, so the
+ * resulting open cannot escape @p basedir.
  *
- * On Linux/macOS the file is opened relative to a descriptor of @p basedir with O_NOFOLLOW, and the
- * descriptor is confirmed to be a regular file before being wrapped in a stream. On Windows the
- * file is opened without reparse-point processing and truncated only after the handle has been
- * confirmed to be a regular file, so the target of a symlink or junction is never modified.
+ * On both platforms the file is opened without truncating, the descriptor is vetted, and only then is
+ * the file truncated: truncating at open time would destroy the target of a hard link before anything
+ * about it could be checked. On Linux/macOS the open is relative to a descriptor of @p basedir and
+ * uses O_NOFOLLOW; on Windows it skips reparse-point processing. In both cases the descriptor must
+ * turn out to be a regular file with a link count of exactly 1.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.

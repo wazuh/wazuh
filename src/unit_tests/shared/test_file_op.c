@@ -1870,6 +1870,23 @@ void test_w_fopen_nofollow_symlink_rejected(void **state) {
     assert_int_equal(nofollow_size("victim"), 14);
 }
 
+void test_w_fopen_nofollow_hard_link_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "wb"));
+    assert_int_equal(errno, EMLINK);
+    // A hard link is a regular file, so nothing but the link count rules it out — and the open must not
+    // have truncated it on the way to finding that out.
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
 void test_w_fopen_nofollow_dangling_symlink_rejected(void **state) {
     char link[PATH_MAX + 1];
     char created[PATH_MAX + 1];
@@ -2014,6 +2031,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_regular_file, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_truncates_existing_file, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_fifo_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_directory_rejected, setup_nofollow, teardown_nofollow),

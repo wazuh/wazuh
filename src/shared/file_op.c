@@ -2613,6 +2613,15 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
         return NULL;
     }
 
+    // An NTFS hard link carries neither of the attributes above, and unlike a symlink it needs no
+    // privilege to create (mklink /H), so it is the easier of the two to plant. The link count is the
+    // only thing that distinguishes it.
+    if (file_info.nNumberOfLinks != 1) {
+        CloseHandle(hFile);
+        errno = EMLINK;
+        return NULL;
+    }
+
     // The file pointer sits at the beginning of the file, so this truncates it.
     if (!SetEndOfFile(hFile)) {
         errno = GetLastError();
@@ -2645,9 +2654,13 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
         return NULL;
     }
 
-    // O_NOFOLLOW makes the open fail with ELOOP if the target is a symlink, and O_NONBLOCK keeps it
-    // from blocking on a FIFO waiting for a reader. Both are needed before O_TRUNC takes effect.
-    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
+    // O_NOFOLLOW makes the open fail with ELOOP if the target is a symlink, and O_NONBLOCK keeps it from
+    // blocking on a FIFO waiting for a reader. Deliberately NOT O_TRUNC: truncating at open time would
+    // destroy the target before anything about it can be checked, which is precisely how a hard link
+    // slips through — it is a regular file, so no file type test can tell it apart. The file is
+    // truncated below instead, once the descriptor has been vetted, mirroring what the Windows branch
+    // does with OPEN_ALWAYS plus SetEndOfFile().
+    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
     saved_errno = errno;
     close(dirfd);
 
@@ -2667,6 +2680,21 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
     if (!S_ISREG(statbuf.st_mode)) {
         close(fd);
         errno = EINVAL;
+        return NULL;
+    }
+
+    // A hard link is a regular file by every other measure; the link count is what gives it away.
+    if (statbuf.st_nlink != 1) {
+        close(fd);
+        errno = EMLINK;
+        return NULL;
+    }
+
+    // Safe now: the descriptor is known to point at a lone regular file.
+    if (ftruncate(fd, 0) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
         return NULL;
     }
 
