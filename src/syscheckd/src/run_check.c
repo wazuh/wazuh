@@ -1049,6 +1049,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization requested by agent-info aborted: FIM is stopping.");
+            } else if (sync_result.awaiting_prerequisite) {
+                // Not a real failure either: the manager hasn't synchronized this agent's groups
+                // yet, most commonly right after enrollment/restart. Expected to clear on its own.
+                minfo("FIM synchronization requested by agent-info deferred: %s",
+                      sync_result.failure_reason);
             } else if (sync_result.manager_not_ready
                        && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
                 // The manager is not ready for this agent yet, mostly right after a restart, and the
@@ -1104,6 +1109,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Not a real failure: the sync was aborted because FIM is stopping.
                 // Report it as an expected event, not a WARNING.
                 minfo("FIM synchronization aborted: FIM is stopping.");
+            } else if (sync_result.awaiting_prerequisite) {
+                // Not a real failure either: the manager hasn't synchronized this agent's groups
+                // yet, most commonly right after enrollment/restart. Expected to clear on its own.
+                minfo("FIM synchronization deferred: %s", sync_result.failure_reason);
             } else if (sync_result.manager_not_ready
                        && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
                 // The manager is not ready for this agent yet, mostly right after a restart, and the

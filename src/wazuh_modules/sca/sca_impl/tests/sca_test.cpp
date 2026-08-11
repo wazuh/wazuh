@@ -717,6 +717,33 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
                     " times in a row: Failed to communicate with the manager."));
 }
 
+// When the manager hasn't synchronized this agent's groups yet (most commonly right after
+// enrollment/restart), the periodic sync is reported at INFO as deferred, never as a WARNING --
+// regardless of how many cycles it takes to clear (no escalation, same treatment as `stopped`).
+TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult
+    {
+        false,
+        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
+        false, false, 0u, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
 // the ERROR it used to be.
 TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
@@ -755,6 +782,29 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA flush failed " + std::to_string(streak) +
                     " times in a row: Failed to communicate with the manager."));
+}
+
+// A flush that hits the same "no groups yet" condition is deferred at INFO too, not ERROR.
+TEST_F(ScaTest, ExecuteFlushSync_AwaitingPrerequisiteLogsDeferredNotError)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult
+    {
+        false,
+        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
+        false, false, 0u, true}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA flush deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA flush failed")));
 }
 
 // A flush failure that is not a manager-not-ready condition keeps the original ERROR.

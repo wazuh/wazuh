@@ -286,6 +286,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// established session).
             bool lastSyncManagerNotReady = false;
 
+            /// @brief True when the sync was aborted because a prerequisite the manager has to
+            /// supply first (assigned groups, or a VD feed offset) has not arrived yet. See
+            /// @ref SyncModuleResult::awaitingPrerequisite.
+            bool lastSyncAwaitingPrerequisite = false;
+
             /// @brief Numeric session ID of the current in-flight session.
             ///
             /// Set by runSession() before the first send attempt and cleared on reset().
@@ -314,6 +319,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 phase = SyncPhase::Idle;
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
+                lastSyncAwaitingPrerequisite = false;
                 currentSession = 0;
             }
         };

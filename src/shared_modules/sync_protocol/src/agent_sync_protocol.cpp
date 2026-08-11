@@ -54,7 +54,7 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
 
         case SyncResult::NO_VD_OFFSET_ERROR:
             failureReason = "No VD feed offset available yet. Waiting for the server to report one "
-                             "via /control. Cannot proceed with VD synchronization.";
+                            "via /control. Cannot proceed with VD synchronization.";
             break;
 
         // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
@@ -319,9 +319,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     const std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
     const bool stopped = shouldStop();
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -469,9 +470,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
     const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
+    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
-    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures};
+    return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
@@ -599,6 +601,7 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         {
             m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
             m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
+            m_syncState.lastSyncAwaitingPrerequisite = true;
 
             if (has_metadata)
             {
@@ -618,6 +621,7 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
             m_logger(LOG_DEBUG, "No VD feed offset available yet. Waiting for the server to report "
                      "one via /control. Cannot proceed with VD synchronization.");
             m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
+            m_syncState.lastSyncAwaitingPrerequisite = true;
 
             if (has_metadata)
             {
