@@ -208,5 +208,7 @@ documented for a synthetic client until now).
 ## Related
 
 - System under test: [`docs/ref/modules/inventory-sync-server/`](../../docs/ref/modules/inventory-sync-server/README.md)
+- The module's developer map (requirements, design decisions D1–D22, developer FAQ):
+  [`inventory_sync_server/README.md`](../../src/wazuh_modules/inventory_sync_server/README.md)
 - Correctness (not performance): the integration QA in [`inventory_sync_server/qa/`](../../src/wazuh_modules/inventory_sync_server/qa/README.md)
 - Runtime statistics the monitor scrapes: `GET /metrics`, documented in the API reference

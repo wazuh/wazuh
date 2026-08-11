@@ -11,7 +11,7 @@ For configuration options see [Indexer Configuration](configuration.md).
 The Indexer Connector is not a standalone daemon. It is linked into the processes that need to write to or query the Indexer:
 
 - **Vulnerability Scanner** — indexes CVE detections into `wazuh-states-vulnerabilities`
-- **Inventory Sync** — indexes agent state into `wazuh-states-inventory-*` and `wazuh-states-fim-*`
+- **Inventory Sync Server** — indexes agent state into `wazuh-states-inventory-*` and `wazuh-states-fim-*`
 - **Engine** — indexes SCA results and other engine-generated events
 
 The library provides two classes depending on the use case:
@@ -31,8 +31,8 @@ The library provides two classes depending on the use case:
 
 ### Sync flush behavior
 
-- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_indexer_bulk_size_bytes` for Inventory Sync).
-- Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner, `wazuh_modules.inventory_sync_indexer_flush_interval` for Inventory Sync).
+- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size` for Inventory Sync Server).
+- Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner; the Inventory Sync Server deliberately overrides its periodic flush — its ingestion workers own every flush, see its [configuration reference](../inventory-sync-server/configuration.md)).
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
 - Version conflicts at the document level are handled per-document.
 
@@ -73,22 +73,22 @@ Example with the defaults (base = 1s, max = 15s):
 | Index | Written by |
 |-------|------------|
 | `wazuh-states-vulnerabilities` | Vulnerability Scanner |
-| `wazuh-states-inventory-system` | Inventory Sync |
-| `wazuh-states-inventory-hardware` | Inventory Sync |
-| `wazuh-states-inventory-packages` | Inventory Sync |
-| `wazuh-states-inventory-hotfixes` | Inventory Sync (Windows) |
-| `wazuh-states-inventory-processes` | Inventory Sync |
-| `wazuh-states-inventory-ports` | Inventory Sync |
-| `wazuh-states-inventory-interfaces` | Inventory Sync |
-| `wazuh-states-inventory-protocols` | Inventory Sync |
-| `wazuh-states-inventory-networks` | Inventory Sync |
-| `wazuh-states-inventory-users` | Inventory Sync |
-| `wazuh-states-inventory-groups` | Inventory Sync |
-| `wazuh-states-inventory-services` | Inventory Sync |
-| `wazuh-states-inventory-browser-extensions` | Inventory Sync |
-| `wazuh-states-fim-files` | Inventory Sync (FIM) |
-| `wazuh-states-fim-registry-keys` | Inventory Sync (FIM, Windows) |
-| `wazuh-states-fim-registry-values` | Inventory Sync (FIM, Windows) |
+| `wazuh-states-inventory-system` | Inventory Sync Server |
+| `wazuh-states-inventory-hardware` | Inventory Sync Server |
+| `wazuh-states-inventory-packages` | Inventory Sync Server |
+| `wazuh-states-inventory-hotfixes` | Inventory Sync Server (Windows) |
+| `wazuh-states-inventory-processes` | Inventory Sync Server |
+| `wazuh-states-inventory-ports` | Inventory Sync Server |
+| `wazuh-states-inventory-interfaces` | Inventory Sync Server |
+| `wazuh-states-inventory-protocols` | Inventory Sync Server |
+| `wazuh-states-inventory-networks` | Inventory Sync Server |
+| `wazuh-states-inventory-users` | Inventory Sync Server |
+| `wazuh-states-inventory-groups` | Inventory Sync Server |
+| `wazuh-states-inventory-services` | Inventory Sync Server |
+| `wazuh-states-inventory-browser-extensions` | Inventory Sync Server |
+| `wazuh-states-fim-files` | Inventory Sync Server (FIM) |
+| `wazuh-states-fim-registry-keys` | Inventory Sync Server (FIM, Windows) |
+| `wazuh-states-fim-registry-values` | Inventory Sync Server (FIM, Windows) |
 | `wazuh-states-sca` | Engine (SCA) |
 | `wazuh-threatintel-*` | Read-only (Content Manager) |
 

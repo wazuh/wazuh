@@ -40,8 +40,9 @@ An option present in `wazuh-manager-internal-options.conf` but out of its allowe
 non-numeric -- prevents `wazuh-manager-modulesd` from starting, and is reported by
 `wazuh-manager-modulesd -t`. Values are parsed as decimal; a leading zero does not mean octal.
 
-Use `wazuh-manager-internal-options.conf` rather than modifying the default `internal_options.conf` to
-preserve settings across upgrades.
+The shipped `wazuh-manager-internal-options.conf` template lists every option below commented out
+with its compiled default and range; uncomment an entry only to override it. The file is never
+overwritten during upgrades.
 
 ### Transport
 
@@ -86,12 +87,16 @@ wazuh_modules.inventory_sync_server_buffer_size=8192
 Request body cap in bytes; over it the request is answered `413`.
 
 ```ini
-wazuh_modules.inventory_sync_server_max_body_size=16777216
+wazuh_modules.inventory_sync_server_max_body_size=0
 ```
 
-- **Default value:** `16777216` (16 MiB)
+- **Default value:** `0` (no cap of its own)
 - **Allowed values:** 0 to 536870912
-- **Note:** Request body cap in bytes; over it the request is answered `413`. Remoted caps its own inbound side lower, so an oversized batch normally never reaches this socket.
+- **Note:** With no explicit cap the effective limit is still finite: a request must fit the in-flight
+  byte budget, so the derived cap is `max_inflight_bytes` minus the per-request overhead
+  (≈268 MB with the default 256 MiB budget), and a body over it is answered `413`. Set a value only to
+  cap bodies BELOW what the budget already allows. Remoted caps its own inbound side, so an oversized
+  session normally never reaches this socket.
 
 ### wazuh_modules.inventory_sync_server_max_url_size
 
@@ -212,6 +217,81 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 - **Default value:** `268435456` (256 MiB)
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything.
+
+---
+
+### Sync pipeline and VD lane
+
+These tune the `POST /stateful` ingestion path behind the transport: the sharded ingestion workers,
+the pipeline's own admission queue, and the vulnerability-detection scan lane.
+
+### wazuh_modules.inventory_sync_server_sync_workers
+
+Sharded ingestion workers applying accepted sessions.
+
+```ini
+wazuh_modules.inventory_sync_server_sync_workers=0
+```
+
+- **Default value:** `0` (half the host's cores, minimum 1)
+- **Allowed values:** 0 to 64
+- **Note:** Sessions land on `hash(agentId) % workers`, so one agent's sessions are always applied in
+  order by the same worker. More workers spread distinct agents, not one agent's backlog.
+
+### wazuh_modules.inventory_sync_server_sync_queue_bytes
+
+Admission cap, in bytes, for sessions accepted by the transport but not yet applied by a worker.
+
+```ini
+wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
+```
+
+- **Default value:** `67108864` (64 MiB)
+- **Allowed values:** 1048576 to 1073741824
+- **Note:** A single GLOBAL byte counter across all shards, checked at enqueue: a session that would
+  push the total over the cap is shed with a bare `503` (expected backpressure — the agent retries).
+  This is a second, smaller gate behind `max_inflight_bytes`: the transport budget bounds bytes being
+  READ, this bounds bytes WAITING for a worker.
+
+### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
+
+`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready.
+
+```ini
+wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=60
+```
+
+- **Default value:** `60`
+- **Allowed values:** 10 to 1800
+- **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
+  The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint.
+
+### wazuh_modules.inventory_sync_server_vd_workers
+
+Workers on the vulnerability-detection scan lane.
+
+```ini
+wazuh_modules.inventory_sync_server_vd_workers=0
+```
+
+- **Default value:** `0` (resolves to 1)
+- **Allowed values:** 0 to 16
+- **Note:** The scanner serializes scans internally today, so values above 1 only help once the
+  scanner gains real scan parallelism.
+
+### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
+
+Sessions allowed to wait for a VD worker.
+
+```ini
+wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
+```
+
+- **Default value:** `0` (twice `vd_workers`)
+- **Allowed values:** 0 to 256
+- **Note:** A VD session arriving with the queue full is answered `503` ("scan capacity exhausted") —
+  scans run synchronously inside the request, so queueing more than the lane can drain only trades a
+  fast `503` for a slow timeout.
 
 ---
 
@@ -378,9 +458,17 @@ and that the indexer is running. This is expected while the indexer starts up af
 
 ### Requests are answered 503 under load
 
-Either the in-flight byte budget or the connection cap is exhausted. Both are logged, throttled, with
-the current counts. Raise `max_inflight_bytes` for the former and `max_parallel_connections` for the
-latter -- but see the descriptor-limit note on that option.
+Four gates shed with a `503`, in the order a request meets them:
+
+1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections.
+2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
+3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
+   worker exceed the global byte cap; visible as `sync.pipeline.shed.total` in `GET /metrics`.
+4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full.
+
+All four are logged, throttled, with the current counts. Raise the matching option — but see the
+descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_workers` over
+`sync_queue_bytes` when the queue sheds while CPUs sit idle: the queue is a buffer, not throughput.
 
 ### Confirming what the module is running with
 

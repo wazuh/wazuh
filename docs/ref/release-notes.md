@@ -11,7 +11,7 @@
 - Vulnerability Detection now uses the Wazuh Indexer as the authoritative CVE data source, fed by the CTI service, with CVSS v4.0 support. ([#34919](https://github.com/wazuh/wazuh/issues/34919)) ([#35623](https://github.com/wazuh/wazuh/issues/35623))
 - Revamped Role-Based Access Control (RBAC) management, including an upgrade mechanism for existing RBAC configurations. ([#27706](https://github.com/wazuh/wazuh/issues/27706))
 - Engine metrics collection, normalization, and indexing pipeline for internal observability. ([#35470](https://github.com/wazuh/wazuh/issues/35470))
-- Configurable queue watermarks across manager components (Inventory Sync, `indexer-connector`, Engine, Vulnerability Detector, and `remoted`), with graceful overflow handling and saturation warnings, bounding memory use and reducing OOM risk under load. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
+- Configurable queue watermarks across manager components (Inventory Sync Server, `indexer-connector`, Engine, Vulnerability Detector, and `remoted`), with graceful overflow handling and saturation warnings, bounding memory use and reducing OOM risk under load. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 
 ## Breaking changes
 
