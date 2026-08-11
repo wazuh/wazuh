@@ -936,9 +936,13 @@ static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_r
      * queue/sockets/.agent_info to get past. Both routes end in ReadConfig answering
      * OS_INVALID, which is all this function reacts to.
      *
-     * The warning is the only message the run produces. config.c is linked from the
-     * agent build, so its XML_ERROR for a centralized read is compiled out under
-     * CLIENT -- that silence is the reason the warning exists. */
+     * TWO messages come out here, not one. config.c silences its XML_ERROR for a
+     * centralized read only under CLIENT (config.c's '#ifndef CLIENT'), and this binary
+     * is built for the manager target, so that merror does fire -- expected below with
+     * expect_any because its text is the XML parser's, not this function's contract.
+     * On a real agent build only the warning below is produced, which is why that
+     * warning exists at all. */
+    expect_any(__wrap__merror, formatted_msg);
     write_conf("<ossec_config><agent>"
                "<batch><size>3MB</size><interval>45s</interval></batch>"
                "</agent></ossec_config>");
