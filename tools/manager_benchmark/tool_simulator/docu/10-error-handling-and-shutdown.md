@@ -23,10 +23,11 @@ checksum is a *result to record*, not a failure — so the sender separates two 
 | `400` from `/control` (any subtype) | Sender bug | Abort naming the subtype (`invalid_json`, `invalid_version`, `invalid_host_info`, …) | **Yes**, immediately |
 | `400`/`403` from `/stateful` on a normal step | Sender bug | Abort: a correct sender never produces these on a `delta`/`cleans`/`checksum` step | **Yes** |
 | `400`/`403`/`413` from a `raw` or deliberately-oversized step | Expected result of that step | Count in its bucket; continue | No |
-| `409` checksum mismatch | Result | Count; no implicit resync | No |
+| `409` checksum mismatch (`ModuleCheck`) | Result | Count; no implicit resync | No |
+| `409` version_mismatch (VDFirst/VDSync, stale `feed_offset`) | Result | Count; no implicit re-request. A normal VD scenario run with a correct `-vd-feed-offset`/learned offset never produces this — only `contract_vd_version_mismatch` deliberately does | No |
 | `413` from a normal step | Result (budget contract) | Count; never split or retry | No |
 | `500` | Server failure | Count and report prominently; no retry | No — recorded, not judged |
-| `503` **with** `Retry-After` | Manager bring-up (feed) | Honor the header, re-send the same buffer, bounded by `--feed-timeout`; count each re-send as `retries_feed`, a spent budget as `retries_exhausted` | No — the exhaustion is a counter (assertable via `expected`), not an abort |
+| `503` **with** `Retry-After` | Manager bring-up (feed) | Honor the header, then re-send, bounded by `--feed-timeout`; count each re-send as `retries_feed`, a spent budget as `retries_exhausted`. For a VDFirst/VDSync step this is a re-ENCODE, not a byte-identical resend: `Start.feed_offset` is refreshed from the current value first, so a feed that finishes loading mid-wait doesn't turn into a version_mismatch `409` on the attempt that would otherwise have landed `200` | No — the exhaustion is a counter (assertable via `expected`), not an abort |
 | `503` **without** `Retry-After` | Backpressure | Count; re-send the same buffer per the scenario's `retry` block (default on, 500ms, 10 attempts — what a real agent does), counting `retries_503` and, on a spent budget, `retries_exhausted`. Shed-counting scenarios disable it | No |
 | `202` / `400` / `413` / `503` from `/stateless` | Result | Count in the `stateless_*` buckets; `400` on a normal engine step is a sender bug and aborts | `400` normal → yes; else no |
 | Connection closed with no response | Transport error | Count in `transport_errors`, never as an HTTP bucket; keep the connection's context in the log | **Yes** past the threshold (default 0 in `uds` mode; configurable) |

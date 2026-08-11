@@ -156,13 +156,20 @@ type StartMeta struct {
 
 // Step is one action a lane walks. Its kind selects which fields matter.
 type Step struct {
-	Kind         string   `json:"kind"`
-	Module       string   `json:"module"`
-	Option       string   `json:"option"`
-	Indices      []string `json:"indices"`
-	Documents    *DocSpec `json:"documents"`
-	Contexts     *DocSpec `json:"contexts"`
-	GlobalVer    uint64   `json:"global_version"`
+	Kind      string   `json:"kind"`
+	Module    string   `json:"module"`
+	Option    string   `json:"option"`
+	Indices   []string `json:"indices"`
+	Documents *DocSpec `json:"documents"`
+	Contexts  *DocSpec `json:"contexts"`
+	GlobalVer uint64   `json:"global_version"`
+	// FeedOffset overrides Start.feed_offset for a VDFirst/VDSync step. Nil
+	// (the default) defers to -vd-feed-offset, or the value the agent's
+	// keepalive loop learned from /control's vd_feed_offset (agent mode only
+	// -- see docu/03-control-protocol.md); a pointer distinguishes "not set"
+	// from "deliberately set to 0" (e.g. a version_mismatch contract test
+	// against a manager whose real offset has already moved past zero).
+	FeedOffset   *uint64  `json:"feed_offset,omitempty"`
 	Checksum     string   `json:"checksum"` // "correct" | "mismatch" | literal
 	Raw          string   `json:"raw"`      // for kind "raw": not_full_session|garbage|empty|oversized
 	Dump         string   `json:"dump"`     // path to a captured-session dump to replay (kind delta/full_resync)

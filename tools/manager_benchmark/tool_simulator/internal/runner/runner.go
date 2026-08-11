@@ -44,6 +44,12 @@ type Config struct {
 	Reuse       bool
 	Seed        uint64
 	SenderVer   string
+	// VDFeedOffset overrides Start.feed_offset for every VDFirst/VDSync step
+	// that doesn't set its own (environment config, like Cluster). 0 means "no
+	// override" -- defer to the step, then to what agent mode's keepalive loop
+	// learned from /control (uds mode has no such signal, so 0 there means
+	// every VD session declares offset 0, matching a target that has none).
+	VDFeedOffset uint64
 }
 
 // Runner holds run-wide state.
@@ -356,6 +362,12 @@ func (r *Runner) clusterName() string {
 
 func (r *Runner) clusterNode() string {
 	return firstNonEmpty(r.cfg.ClusterNode, r.scn.Defaults.ClusterNode, "node01")
+}
+
+// vdFeedOffsetOverride is the CLI-level VD feed offset, or 0 for "no override"
+// (defer to the step, then to the agent's learned value -- see agent.feedOffsetFor).
+func (r *Runner) vdFeedOffsetOverride() uint64 {
+	return r.cfg.VDFeedOffset
 }
 
 // compression resolves the effective session-body encoding: the CLI override

@@ -91,7 +91,8 @@ Behavior worth knowing:
     "hostname": "test-host",
     "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04",
     "groups": ["default"],
-    "indices": ["wazuh-states-inventory-packages"]   // optional; inferred from the data if omitted
+    "indices": ["wazuh-states-inventory-packages"],  // optional; inferred from the data if omitted
+    "feed_offset": 12345                             // optional; VDFirst/VDSync only, see below
   },
   "data_values": [
     {
@@ -110,6 +111,14 @@ Behavior worth knowing:
 Index inference when `index` is omitted: a payload with `package.hotfix` maps to
 `wazuh-states-inventory-hotfixes`, any other `package` to `wazuh-states-inventory-packages`, and a
 `host` to `wazuh-states-inventory-system`.
+
+`Start.feed_offset` matters only for `VDFirst`/`VDSync` sessions: the server rejects one whose
+offset doesn't match this node's current VD feed offset with `409 version_mismatch` (see
+[api-reference.md](api-reference.md)). When the input JSON omits it, the driver stamps the
+scanner's ACTUAL current offset instead of leaving it at 0 — queried fresh immediately before
+building each session, including on every retry of the `503`-feed-not-ready loop below, so a
+session built while the feed was still downloading never goes stale by the time it is resent.
+Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server

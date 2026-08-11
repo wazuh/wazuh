@@ -42,8 +42,18 @@ Fields that are metadata stamped onto documents (`agentname`, `agentversion`, `a
 `hostname`, `osname`, `osplatform`, `ostype`, `osversion`, `groups`) **SHOULD** be filled with
 plausible per-agent values: they inflate the session and are overlaid onto every document, so
 omitting them makes payload sizes unrealistic. `global_version` **MUST** be set for the
-metadata/group modes (it is the stale-writer guard). `feed_offset` **MAY** be set; the sender does
-not interpret it.
+metadata/group modes (it is the stale-writer guard).
+
+`feed_offset` matters only when `option` is `VDFirst`/`VDSync`: the server rejects a mismatch
+against its own current VD feed offset with `409 {"error":"version_mismatch","current_version":N}`
+before the session ever reaches the scanner (see
+[inventory_sync_server's flatbuffers.md](../../../../docs/ref/modules/inventory-sync-server/flatbuffers.md)).
+The sender resolves it per VD step: the step's own `feed_offset` (scenario JSON) wins, then
+`-vd-feed-offset` (CLI), then whatever `agent` mode's keepalive loop has learned from `/control`'s
+`vd_feed_offset` (see [03-control-protocol.md](03-control-protocol.md)) -- which stays 0 forever in
+`uds` mode, since there is no `/control` there to learn it from. A `uds`-mode VD scenario run
+against a target whose feed has moved past offset 0 therefore needs `-vd-feed-offset` passed
+explicitly, or every VD session gets the version_mismatch 409 instead of a real scan.
 
 ## Payload by mode
 

@@ -45,10 +45,11 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 // the module/option/cluster from the step and defaults.
 func (a *agent) startFor(lane string, step scenario.Step) fbbuild.Start {
 	scn := a.r.scn
+	option := optionEnum(scn.LaneOption(step))
 	s := fbbuild.Start{
 		Module:        scn.LaneModule(step),
 		Mode:          fbbuild.ModeModuleDelta,
-		Option:        optionEnum(scn.LaneOption(step)),
+		Option:        option,
 		Indices:       indicesFor(scn, step),
 		AgentID:       a.id,
 		AgentName:     a.name,
@@ -63,6 +64,11 @@ func (a *agent) startFor(lane string, step scenario.Step) fbbuild.Start {
 		GlobalVersion: step.GlobalVer,
 		ClusterName:   a.r.clusterName(),
 		ClusterNode:   a.r.clusterNode(),
+	}
+	// feed_offset only means anything to a VD-flagged session -- see
+	// agent.feedOffsetFor for the resolution order.
+	if option == fbbuild.OptionVDFirst || option == fbbuild.OptionVDSync {
+		s.FeedOffset = a.feedOffsetFor(step)
 	}
 	return s
 }

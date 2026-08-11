@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
@@ -19,6 +20,12 @@ type agent struct {
 	name    string
 	client  *wire.Client
 	seqBase uint64 // namespaces this agent's generated document ids
+
+	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
+	// only; stays 0 in uds mode, which has no /control to learn it from).
+	// Written by keepaliveLoop, read by the lane goroutines building
+	// VDFirst/VDSync sessions -- atomic because those run concurrently.
+	vdFeedOffset atomic.Uint64
 }
 
 // run drives the agent through its Active phase: startup, then the keepalive
@@ -93,6 +100,14 @@ func (a *agent) keepaliveLoop(ctx context.Context) {
 	if interval <= 0 {
 		interval = 10 * time.Second
 	}
+	// Fire once immediately: a real agent's first notify lands well before the
+	// steady-state interval elapses, and this is a VD lane's only chance to
+	// learn a real vd_feed_offset before its first (often initial_delay: 0)
+	// VDFirst step runs -- ticker.C otherwise wouldn't fire until `interval`
+	// in, leaving every early VD session at the zero value.
+	if ctx.Err() == nil {
+		a.notify()
+	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -100,20 +115,46 @@ func (a *agent) keepaliveLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			var host *control.HostInfo
-			if a.r.scn.Defaults.Control.SendHostInfo {
-				host = a.hostInfo()
-			}
-			res, err := control.Notify(a.client, a.startupVersion(), host, now())
-			// A 401/400 is run-invalidating; anything else (including a slow
-			// answer) is a recorded result, and the loop continues.
-			if perr, ok := err.(*control.ErrProtocol); ok {
-				a.r.fatalf("agent %s notify: %v", a.id, perr)
+			if !a.notify() {
 				return
 			}
-			a.r.reg.RecordControl(a.fleet.Name, "notify", err == nil, us(res.Latency))
 		}
 	}
+}
+
+// notify sends one keepalive and records it. Returns false on a
+// run-invalidating protocol error (the caller stops the loop).
+func (a *agent) notify() bool {
+	var host *control.HostInfo
+	if a.r.scn.Defaults.Control.SendHostInfo {
+		host = a.hostInfo()
+	}
+	res, err := control.Notify(a.client, a.startupVersion(), host, now())
+	// A 401/400 is run-invalidating; anything else (including a slow
+	// answer) is a recorded result, and the loop continues.
+	if perr, ok := err.(*control.ErrProtocol); ok {
+		a.r.fatalf("agent %s notify: %v", a.id, perr)
+		return false
+	}
+	if err == nil {
+		a.vdFeedOffset.Store(res.VDFeedOffset)
+	}
+	a.r.reg.RecordControl(a.fleet.Name, "notify", err == nil, us(res.Latency))
+	return true
+}
+
+// feedOffsetFor resolves Start.feed_offset for a VDFirst/VDSync step: the
+// step's own override wins, then the CLI's -vd-feed-offset, then whatever
+// this agent's keepalive loop has learned so far (0 before the first notify,
+// or always, in uds mode -- see the Config.VDFeedOffset doc).
+func (a *agent) feedOffsetFor(step scenario.Step) uint64 {
+	if step.FeedOffset != nil {
+		return *step.FeedOffset
+	}
+	if v := a.r.vdFeedOffsetOverride(); v != 0 {
+		return v
+	}
+	return a.vdFeedOffset.Load()
 }
 
 // laneLoop walks a lane's steps, honoring repeat/initial delays, until ctx is

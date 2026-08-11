@@ -1,6 +1,6 @@
 {
   "name": "vd_first_then_sync_debian",
-  "description": "Linux (Debian) fleet running the vulnerability-detection first-scan (VDFirst) followed by a steady VDSync delta stream, the standard VD scan-then-track pattern.",
+  "description": "Linux (Debian) fleet running the vulnerability-detection first-scan (VDFirst) followed by a steady VDSync delta stream, the standard VD scan-then-track pattern. uds mode has no /control to learn the manager's current VD feed offset from, so sessions declare feed_offset=0 unless -vd-feed-offset is passed: against a target with a nonzero offset, they get a fast 409 version_mismatch instead of a real scan, which is not what this pattern is meant to measure.",
   "mode": "uds",
   "defaults": {
     "module": "syscollector",
