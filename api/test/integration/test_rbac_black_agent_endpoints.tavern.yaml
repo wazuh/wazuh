@@ -163,10 +163,10 @@ test_name: GET /agents/{agent_id}/daemons/stats
 
 stages:
 
-  - name: Get daemons stats from agent 001 (Allowed)
+  - name: Get daemons stats from agent 005 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -179,7 +179,7 @@ stages:
             - timestamp: !anystr
               name: wazuh-manager-remoted
               agents:
-                - id: 1
+                - id: 5
                   uptime: !anystr
                   metrics: !anything
           failed_items:

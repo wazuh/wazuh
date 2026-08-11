@@ -85,19 +85,19 @@ def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents
                                   mock_send_wdb, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected.
 
-    Both agents 001 ('Wazuh v4.2.0') and 004 (no known version) are below v5.0.0 in the
-    test fixture -- getstats has no legacy relay for them, so both must now land in failed_items
-    with the new 1762 instead of silently succeeding as before this change.
+    Agent 001 ('Wazuh v4.2.0') is below v5.0.0 in the test fixture, so it has a legacy relay in
+    remoted and must be queried normally. Agent 004 (no known version) can't be confirmed as
+    legacy, so it must land in failed_items with 1762 instead.
     """
     agents_list = ['001', '004', '999']
-    expected_errors_and_items = {'1701': {'999'}, '1762': {'001', '004'}}
+    expected_errors_and_items = {'1701': {'999'}, '1762': {'004'}}
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
-    # No eligible (>= v5.0.0) agents in this batch: get_daemons_stats_socket must not be called
-    # at all, for any daemon.
-    mock_get_daemons_stats_socket.assert_not_called()
-    assert result.affected_items == []
-    assert result.total_affected_items == 0
+    # Only the legacy agent (001) reaches the socket call, for every requested daemon.
+    calls = [call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list=[1]) for daemon in expected_daemons_list]
+    mock_get_daemons_stats_socket.assert_has_calls(calls, any_order=True)
+    assert result.affected_items == [{'name': daemon, 'agents': [{'id': 1}]} for daemon in expected_daemons_list]
+    assert result.total_affected_items == len(expected_daemons_list)
 
     # Check failed items
     error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
@@ -118,9 +118,9 @@ def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents
 def test_get_daemons_stats_agents_mixed_versions(mock_wazuh_db_query_cls, mock_get_agents_info,
                                                   mock_get_daemons_stats_socket, daemons_list, expected_daemons_list):
     """Bidirectional coverage in one response: a named-agent getstats call with both a
-    legacy (< v5.0.0) and an eligible (>= v5.0.0) agent in the same batch must reject the former
-    (1762, failed_items) and serve the latter unaffected (affected_items), side by side -- not
-    just as two separate single-agent tests (the shape most likely to reveal a swapped condition).
+    legacy (< v5.0.0) and a migrated (>= v5.0.0) agent in the same batch must serve the former
+    (affected_items) and reject the latter (1762, failed_items), side by side -- not just as two
+    separate single-agent tests (the shape most likely to reveal a swapped condition).
     """
     mock_db_query = MagicMock()
     mock_db_query.run.return_value = {
@@ -131,18 +131,18 @@ def test_get_daemons_stats_agents_mixed_versions(mock_wazuh_db_query_cls, mock_g
     agents_list = ['001', '010', '999']
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
-    # Only the eligible agent (010) reaches the socket call.
+    # Only the legacy agent (001) reaches the socket call.
     actual_calls = mock_get_daemons_stats_socket.call_args_list
     assert len(actual_calls) == 1
-    assert set(actual_calls[0][1]['agents_list']) == {10}
+    assert set(actual_calls[0][1]['agents_list']) == {1}
 
-    assert result.affected_items == [{'name': 'wazuh-manager-remoted', 'agents': [{'id': 10}]}]
+    assert result.affected_items == [{'name': 'wazuh-manager-remoted', 'agents': [{'id': 1}]}]
     assert result.total_affected_items == 1
 
     error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
     failed_items = list(result.failed_items.values())
     errors_and_items = {str(error): failed_items[i] for i, error in enumerate(error_codes_in_failed_items)}
-    assert errors_and_items == {'1701': {'999'}, '1762': {'001'}}
+    assert errors_and_items == {'1701': {'999'}, '1762': {'010'}}
 
 
 def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
