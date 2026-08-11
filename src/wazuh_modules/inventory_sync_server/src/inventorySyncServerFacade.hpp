@@ -107,10 +107,10 @@ namespace invsync
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
      *
-     * Declared now, with hyphens, because getting it wrong is destructive rather than merely
-     * broken: inventory_sync does a recursive remove of `queue/inventory_sync` at startup, and
-     * `queue/inventory_sync_server` would be matched by an `inventory_sync*` glob. The hyphenated
-     * form is unambiguously outside it.
+     * Hyphenated on purpose: the retired legacy module recursively removed `queue/inventory_sync`
+     * at startup, and an underscored `queue/inventory_sync_server` would have matched an
+     * `inventory_sync*` glob. The hyphenated form stays so upgraded installs never collide with
+     * that leftover directory.
      */
     [[maybe_unused]] constexpr auto INVENTORY_SYNC_SERVER_STORE_PATH {"queue/inventory-sync-server"};
 
@@ -121,11 +121,8 @@ namespace invsync
      * (atomic flag + condition_variable + join), plus the HTTP-over-UDS transport behind our own
      * IUdsHttpServer interface.
      *
-     * Deliberately does NOT touch the router. inventory_sync subscribes to the `inventory-states`
-     * topic, and the router's remote-subscriber map is keyed by TOPIC rather than by subscriber id
-     * -- so a second subscriber to that topic in this same process throws "Subscriber already
-     * exist". Since inventory_sync is registered first, the throw would land here, be swallowed by
-     * the extern "C" boundary, and leave this module silently dead. Ingress is UDS only.
+     * Deliberately does NOT touch the router: ingress is UDS only (remoted relays the
+     * authenticated POST /stateful route to this module's socket).
      */
     class InventorySyncServerFacade final : public Singleton<InventorySyncServerFacade>
     {

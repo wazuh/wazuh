@@ -34,11 +34,9 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
           ${SRC_FOLDER}/external/nlohmann # json.hpp
-          # ONLY for src/vd/vdScannerAdapter.cpp: the scanner facade's header transitively pulls
-          # the legacy module's Context, the legacy generated schema, and headers spelled relative
-          # to the source root ("external/nlohmann/json.hpp"). Contained to that one TU (see
-          # vd/vdScannerFactory.hpp); goes away when the legacy module retires.
-          ${SRC_FOLDER}/wazuh_modules/inventory_sync/src
+          # ONLY for src/vd/vdScannerAdapter.cpp: the scanner facade's header pulls headers
+          # spelled relative to the source root ("external/nlohmann/json.hpp"). Contained to
+          # that one TU (see vd/vdScannerFactory.hpp).
           ${SRC_FOLDER})
 
 # ext_asio: header-only standalone Asio (INTERFACE target). ext_llhttp: static HTTP parser.

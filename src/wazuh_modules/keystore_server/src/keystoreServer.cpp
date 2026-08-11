@@ -44,7 +44,7 @@ namespace
 
     /**
      * The request handler, MOVED VERBATIM from the legacy inventory_sync facade
-     * (inventorySyncFacade.hpp:505-582). The pipe protocol -- `GET|cf|key`, `PUT|cf|key|value`,
+     * (now deleted). The pipe protocol -- `GET|cf|key`, `PUT|cf|key|value`,
      * `DELETE|cf|key` (a DELETE is a PUT of empty) answered with
      * `{"status","operation","columnFamily","key"[,"value"]}` -- is a live contract with the
      * Python framework's KeystoreClient (framework/wazuh/core/indexer/credential_manager.py), so
@@ -180,7 +180,7 @@ extern "C"
         }
 
         // The SocketServer's destructor stops its epoll loop and closes the socket -- the same
-        // one-line teardown the legacy facade used (inventorySyncFacade.hpp:2039).
+        // one-line teardown the legacy facade used.
         gServer.reset();
         LOGFN_INFO(logFn(), "keystore server stopped.");
     }

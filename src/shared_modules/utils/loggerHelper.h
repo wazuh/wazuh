@@ -47,7 +47,7 @@ constexpr auto MAXLEN {65536};
 #define LOGFN_ERROR(fn, fmt, ...)  do { if (Log::isErrorEnabled())  { (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
 // CRITICAL is unfiltered by design (no isCriticalEnabled() gate): the shared C/C++ logging
 // bridge every module wires in as its log callback (mtLoggingFunctionsWrapper,
-// shared/src/debug_op.c -- used by https_client, remoted_module, inventory_sync,
+// shared/src/debug_op.c -- used by https_client, remoted_module, inventory_sync_server,
 // vulnerability_scanner and content_manager alike) logs then exit(1)s on this level, the exact
 // same log-then-exit(1) sequence as _merror_exit()/_mlerror_exit() (shared/src/debug_op.c), for
 // a config that can never work as given (mirrors client-agent/src/main.c's own hard exit on a

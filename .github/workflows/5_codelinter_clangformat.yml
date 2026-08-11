@@ -10,7 +10,6 @@ on:
       - src/shared_modules/indexer_connector/**
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
-      - src/wazuh_modules/inventory_sync/**
       - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/vulnerability_scanner/**
       - .github/workflows/5_codelinter_clangformat.yml
@@ -75,17 +74,6 @@ jobs:
           path: src/shared_modules/content_manager
           id: content_manager
 
-      # Inventory Sync
-      - name: Inventory sync - Coding style
-        id: inventory_sync_style
-        continue-on-error: true
-        uses: ./.github/actions/clang_format
-        with:
-          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
-          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          path: src/wazuh_modules/inventory_sync
-          id: inventory_sync
-
       # Inventory Sync Server
       - name: Inventory sync server - Coding style
         id: inventory_sync_server_style
@@ -134,10 +122,6 @@ jobs:
 
           if [ "${{ steps.content_manager_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ContentManager"
-          fi
-
-          if [ "${{ steps.inventory_sync_style.outcome }}" != "success" ]; then
-            FAILED_STEPS="$FAILED_STEPS InventorySync"
           fi
 
           if [ "${{ steps.inventory_sync_server_style.outcome }}" != "success" ]; then
