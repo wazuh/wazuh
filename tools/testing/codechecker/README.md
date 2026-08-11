@@ -47,7 +47,8 @@ Related issue: [#36748](https://github.com/wazuh/wazuh/issues/36748) · CodeChec
 
 ### 1 — Build the Docker image
 
-Run once before the first scan; repeat after any change to `Dockerfile` or scan scripts.
+Run once before the first scan; repeat only after a change to `Dockerfile` itself or a pinned
+tool version (clang/CodeChecker/Infer versions, new apt/pip packages).
 
 ```bash
 # From the repo root
@@ -56,6 +57,14 @@ Run once before the first scan; repeat after any change to `Dockerfile` or scan 
 
 > The image bundles clang-20, clang-tidy-20, cppcheck, CodeChecker 6.27.3, Meta Infer 1.2.0,
 > ThreadSanitizer runtime, and Flawfinder.
+
+> **Script changes don't need a rebuild.** `--scan`/`--selftest` bind-mount this
+> `tools/testing/codechecker/` directory over `/cc` in the container (read-only), so edits to
+> `run_ci.sh`, `run_comparison.sh`, `flawfinder_to_plist.py`, `generate_report.sh`, etc. take
+> effect on the very next run. The `Dockerfile`'s own `COPY . /cc/` still bakes a self-contained
+> copy in as a fallback for anyone running the image directly without a mount, but both
+> `codechecker.sh` and the GitHub Actions composite action (`.github/actions/codechecker/scan`)
+> always mount the live scripts, so the baked-in copy is only a fallback, never the active path.
 
 ### 2 — Verify the pipeline with the built-in self-test (optional)
 
@@ -153,6 +162,7 @@ Removes `workspace/`, `results/`, and `cc-db/`.
 | `RUN_INFER` | `1` | no | Run Meta Infer / RacerD after main scan. Detects resource leaks and lock imbalances. Adds ~20 min. Set `0` to disable. |
 | `RUN_TSAN` | `1` | no | Run ThreadSanitizer via unit tests. Runtime data-race detection. Requires kernel tuning (see below). Set `0` to disable. |
 | `RUN_FLAWFINDER` | `1` | no | Run Flawfinder CWE-362/CWE-119 supplementary security scan. Enabled by default. Set `0` to skip. |
+| `FLAWFINDER_STABLE_HASH` | `1` | no | Hash Flawfinder findings by the flagged line's own source text instead of its line number, so an unrelated edit elsewhere in the file doesn't relabel every finding below it as new+resolved. Set `0` to fall back to the old line-number-based hash. |
 | `JOBS` | `nproc` | no | Parallel analysis jobs. |
 | `IMAGE` | `ghcr.io/wazuh/codechecker:latest` | no | Docker image to pull/use. |
 
@@ -246,6 +256,15 @@ TARGET_REF=main \
 > `<run-name>-flawfinder`.  `run_diff` then compares the two flawfinder report directories and
 > merges the differential findings into the same `diff_new.json` / `diff_resolved.json` files
 > as the clangsa/cppcheck results, so Flawfinder findings appear in `generate_report.sh` output.
+
+> **Noise note (`FLAWFINDER_STABLE_HASH`):** by default, each finding's bug hash is derived from
+> the flagged line's own trimmed source text (plus file path, column, and checker name) rather
+> than its line number. Without this, an unrelated one-line edit anywhere earlier in a file shifts
+> every Flawfinder finding below it to a new line number, and CodeChecker's diff engine reports
+> each of them as a "new" finding replacing a "resolved" one — even though nothing about the
+> flagged code actually changed. On a real base/target comparison this can account for the
+> overwhelming majority of the reported new+resolved counts. Set `FLAWFINDER_STABLE_HASH=0` to
+> revert to the old line-number-based hash (e.g. to compare behavior or for debugging).
 
 ### Combining all optional analyses
 

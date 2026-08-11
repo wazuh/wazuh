@@ -27,6 +27,7 @@ ENABLE_CTU="${ENABLE_CTU:-1}"
 RUN_INFER="${RUN_INFER:-1}"
 RUN_TSAN="${RUN_TSAN:-1}"
 RUN_FLAWFINDER="${RUN_FLAWFINDER:-1}"
+FLAWFINDER_STABLE_HASH="${FLAWFINDER_STABLE_HASH:-1}"
 JOBS="${JOBS:-$(nproc)}"
 
 WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR/workspace}"
@@ -64,6 +65,9 @@ Usage: $0 [--build-image] [--scan] [--selftest] [--serve] [--clean] [--jobs N] [
 
 Options:
   --build-image   Build the CodeChecker Docker image
+                  (only needed after a change to Dockerfile or pinned tool
+                  versions — --scan/--selftest bind-mount this directory over
+                  /cc, so script-only edits take effect without rebuilding)
   --scan          Run a paired differential scan inside the Docker container
   --selftest      Run a fast end-to-end pipeline check using defect_samples/
                   (no SCAN_REF/TARGET_REF required; completes in < 5 min)
@@ -83,6 +87,8 @@ Scan environment variables (required for --scan):
   RUN_INFER       Infer/RacerD static race scan (default: 1; adds ~20 min)
   RUN_TSAN        ThreadSanitizer (default: 1; requires vm.mmap_rnd_bits<=28)
   RUN_FLAWFINDER  Flawfinder CWE-362/CWE-119 security scan (default: 1)
+  FLAWFINDER_STABLE_HASH  Hash Flawfinder findings by line content, not line number,
+                          so unrelated edits don't relabel findings as new+resolved (default: 1)
   IMAGE           Docker image to use (default: ghcr.io/wazuh/codechecker:latest)
 
 Example:
@@ -110,11 +116,12 @@ do_scan() {
     echo "    base:    ${SCAN_NAME:-wazuh-$SCAN_REF} ($SCAN_REF)"
     echo "    target:  ${TARGET_NAME:-wazuh-$TARGET_REF} ($TARGET_REF)"
     echo "    build:   $SCAN_TARGET  jobs=$JOBS"
-    echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER"
+    echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER  FLAWFINDER_STABLE_HASH=$FLAWFINDER_STABLE_HASH"
 
     lower_mmap_rnd_bits
 
     docker run --rm \
+        -v "$SCRIPT_DIR:/cc:ro" \
         -v "$WORKSPACE_DIR:/workspace" \
         -v "$RESULTS_DIR:/results" \
         -v "$CC_DB_DIR:/tmp/cc-db" \
@@ -127,6 +134,7 @@ do_scan() {
         -e RUN_INFER="$RUN_INFER" \
         -e RUN_TSAN="$RUN_TSAN" \
         -e RUN_FLAWFINDER="$RUN_FLAWFINDER" \
+        -e FLAWFINDER_STABLE_HASH="$FLAWFINDER_STABLE_HASH" \
         -e JOBS="$JOBS" \
         "$IMAGE" \
         bash /cc/run_ci.sh
@@ -141,12 +149,13 @@ do_scan() {
 
 do_selftest() {
     echo "[*] Running analyzer self-test against defect_samples/ (< 5 min)"
-    echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER"
+    echo "    CTU=$ENABLE_CTU  INFER=$RUN_INFER  TSAN=$RUN_TSAN  FLAWFINDER=$RUN_FLAWFINDER  FLAWFINDER_STABLE_HASH=$FLAWFINDER_STABLE_HASH"
     mkdir -p "$RESULTS_DIR" "$CC_DB_DIR"
 
     lower_mmap_rnd_bits
 
     docker run --rm \
+        -v "$SCRIPT_DIR:/cc:ro" \
         -v "$RESULTS_DIR:/results" \
         -v "$CC_DB_DIR:/tmp/cc-db" \
         -e SELFTEST=1 \
@@ -155,6 +164,7 @@ do_selftest() {
         -e RUN_INFER="$RUN_INFER" \
         -e RUN_TSAN="$RUN_TSAN" \
         -e RUN_FLAWFINDER="$RUN_FLAWFINDER" \
+        -e FLAWFINDER_STABLE_HASH="$FLAWFINDER_STABLE_HASH" \
         -e JOBS="$JOBS" \
         "$IMAGE" \
         bash /cc/run_ci.sh

@@ -20,6 +20,14 @@ import sys
 
 SEV_MAP = {"5": "error", "4": "error", "3": "warning", "2": "warning", "1": "note"}
 
+# When enabled (default), the bug hash is derived from the flagged line's own
+# source text instead of its line number, so an unrelated edit elsewhere in the
+# file — which shifts every subsequent line number — doesn't relabel every
+# pre-existing finding below it as a "new" finding replacing a "resolved" one.
+# Column is kept in the hash to still tell apart multiple findings on one line.
+# Set FLAWFINDER_STABLE_HASH=0 to fall back to the old line-number-based hash.
+STABLE_HASH = os.environ.get("FLAWFINDER_STABLE_HASH", "1") != "0"
+
 
 def convert(csv_path: str, out_dir: str) -> int:
     os.makedirs(out_dir, exist_ok=True)
@@ -52,6 +60,14 @@ def convert(csv_path: str, out_dir: str) -> int:
 
     total = 0
     for fp, rows in by_file.items():
+        src_lines = None
+        if STABLE_HASH:
+            try:
+                with open(fp, "r", errors="replace") as f:
+                    src_lines = f.readlines()
+            except OSError:
+                src_lines = []
+
         diagnostics = []
         for row in rows:
             try:
@@ -64,9 +80,11 @@ def convert(csv_path: str, out_dir: str) -> int:
             warn = row[wni].strip()
             level = row[lvi].strip()
             desc = f"({cat}) {name}: {warn}"
-            h = hashlib.md5(
-                f"{fp}:{ln}:{col}:{name}".encode()
-            ).hexdigest()
+            if STABLE_HASH and src_lines is not None and 0 < ln <= len(src_lines):
+                line_content = src_lines[ln - 1].strip()
+                h = hashlib.md5(f"{fp}:{col}:{name}:{line_content}".encode()).hexdigest()
+            else:
+                h = hashlib.md5(f"{fp}:{ln}:{col}:{name}".encode()).hexdigest()
             loc = {"file": 0, "line": ln, "col": col}
             diagnostics.append({
                 "check_name": f"flawfinder.{cat}.{name}",

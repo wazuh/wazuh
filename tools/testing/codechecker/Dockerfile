@@ -5,10 +5,16 @@
 #   - CodeChecker CLI + web server          (pip install codechecker)
 #   - Meta Infer / RacerD                   (static race detection)
 #   - ThreadSanitizer runtime               (dynamic race detection)
-#   - All scan scripts at /cc/
+#   - All scan scripts at /cc/ (baked in as a self-contained fallback —
+#     both codechecker.sh and the GitHub Actions composite action bind-mount
+#     the checked-out tools/testing/codechecker/ over /cc at runtime, so
+#     script-only changes take effect without rebuilding this image. A
+#     rebuild is only required when THIS Dockerfile or its pinned versions
+#     change.)
 #
 # CI usage (GitHub Actions):
-#   docker run --rm -v /results:/results -e SCAN_REF=... -e TARGET_REF=... \
+#   docker run --rm -v /path/to/tools/testing/codechecker:/cc:ro \
+#     -v /results:/results -e SCAN_REF=... -e TARGET_REF=... \
 #     ghcr.io/wazuh/codechecker:latest bash /cc/run_ci.sh
 #
 # Local dev (docker compose, separate server + analyzer):

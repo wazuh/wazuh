@@ -20,6 +20,9 @@
 #   RUN_INFER        run Infer/RacerD (default: 1; adds ~20 min)
 #   RUN_TSAN         run ThreadSanitizer (default: 1; needs kernel tuning)
 #   RUN_FLAWFINDER   run Flawfinder CWE-362/CWE-119 scan (default: 1)
+#   FLAWFINDER_STABLE_HASH   hash Flawfinder findings by source-line content instead of
+#                            line number, so unrelated edits elsewhere in a file don't
+#                            relabel every finding below them as new+resolved (default: 1)
 #   JOBS             parallelism (default: nproc)
 ###############################################################################
 set -euo pipefail
@@ -38,6 +41,7 @@ ENABLE_CTU="${ENABLE_CTU:-1}"
 RUN_INFER="${RUN_INFER:-1}"
 RUN_TSAN="${RUN_TSAN:-1}"
 RUN_FLAWFINDER="${RUN_FLAWFINDER:-1}"
+FLAWFINDER_STABLE_HASH="${FLAWFINDER_STABLE_HASH:-1}"
 JOBS="${JOBS:-$(nproc)}"
 SELFTEST="${SELFTEST:-0}"
 
@@ -137,6 +141,7 @@ TARGET_NAME="${TARGET_NAME:-wazuh-$TARGET_REF}" \
 SERVER_URL="$SERVER_URL" \
 ENABLE_CTU="$ENABLE_CTU" \
 RUN_FLAWFINDER="$RUN_FLAWFINDER" \
+FLAWFINDER_STABLE_HASH="$FLAWFINDER_STABLE_HASH" \
 JOBS="$JOBS" \
 WAZUH_DIR="$WAZUH_DIR_OVERRIDE" \
     bash "$SCRIPTS_DIR/run_comparison.sh" \

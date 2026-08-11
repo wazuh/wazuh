@@ -70,6 +70,7 @@ runs:
         JOBS: ${{ inputs.jobs }}
       run: |
         docker run --rm \
+          -v "${{ github.workspace }}/tools/testing/codechecker:/cc:ro" \
           -v "${{ inputs.results_dir }}:/results" \
           -e SCAN_REF \
           -e TARGET_REF \
