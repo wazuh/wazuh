@@ -2565,6 +2565,43 @@ FILE * wfopen(const char * pathname, const char * mode) {
 }
 
 
+#ifdef WIN32
+/**
+ * Translate a Win32 error into an errno value. Assigning GetLastError() straight into errno, as the
+ * older helpers in this file do, is wrong twice over: the numbering spaces are unrelated, so strerror()
+ * prints something misleading, and a raw Win32 code can collide with an errno that callers test for --
+ * ERROR_INVALID_TARGET_HANDLE is 114, which is mingw's ELOOP, the very value w_fopen_nofollow() uses to
+ * report a rejected symlink.
+ */
+static int w_win32_to_errno(DWORD error) {
+    switch (error) {
+    case ERROR_FILE_NOT_FOUND:
+    case ERROR_PATH_NOT_FOUND:
+    case ERROR_INVALID_DRIVE:
+        return ENOENT;
+    case ERROR_ACCESS_DENIED:
+    case ERROR_NETWORK_ACCESS_DENIED:
+        return EACCES;
+    case ERROR_SHARING_VIOLATION:
+    case ERROR_LOCK_VIOLATION:
+        return EBUSY;
+    case ERROR_FILE_EXISTS:
+    case ERROR_ALREADY_EXISTS:
+        return EEXIST;
+    case ERROR_DISK_FULL:
+        return ENOSPC;
+    case ERROR_INVALID_NAME:
+    case ERROR_BAD_PATHNAME:
+        return EINVAL;
+    case ERROR_TOO_MANY_OPEN_FILES:
+        return EMFILE;
+    default:
+        return EIO;
+    }
+}
+#endif
+
+
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
     if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
         errno = EINVAL;
@@ -2591,12 +2628,12 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
                         NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE) {
-        errno = GetLastError();
+        errno = w_win32_to_errno(GetLastError());
         return NULL;
     }
 
     if (!GetFileInformationByHandle(hFile, &file_info)) {
-        errno = GetLastError();
+        errno = w_win32_to_errno(GetLastError());
         CloseHandle(hFile);
         return NULL;
     }
@@ -2624,20 +2661,24 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // The file pointer sits at the beginning of the file, so this truncates it.
     if (!SetEndOfFile(hFile)) {
-        errno = GetLastError();
+        errno = w_win32_to_errno(GetLastError());
         CloseHandle(hFile);
         return NULL;
     }
 
+    // _open_osfhandle() and _fdopen() are CRT calls: they set errno and leave the Win32 last error
+    // alone, so errno is left exactly as they reported it.
     if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
-        errno = GetLastError();
         CloseHandle(hFile);
         return NULL;
     }
 
+    // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
+    // CloseHandle() would release the handle while leaving the descriptor allocated forever.
     if (fp = _fdopen(fd, mode), fp == NULL) {
-        errno = GetLastError();
-        CloseHandle(hFile);
+        const int fdopen_errno = errno;
+        _close(fd);
+        errno = fdopen_errno;
         return NULL;
     }
 
