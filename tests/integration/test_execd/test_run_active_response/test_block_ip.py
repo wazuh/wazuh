@@ -64,7 +64,6 @@ pytestmark = [
     pytest.mark.linux,
     pytest.mark.win32,
     pytest.mark.tier(level=1),
-    pytest.mark.skipif(sys.platform == WINDOWS, reason='Temporarily disabled on Windows')
 ]
 
 # Cases metadata and its ids.

@@ -15,8 +15,12 @@
   description: Checks the block-ip command does not succeed because the input is invalid.
   configuration_parameters:
   metadata:
+    # Missing the "wazuh" key entirely is now rejected agent-side, before execd ever sees
+    # it (bridge_dispatch_active_response(), https_client_bridge.c) -- unlike the sibling
+    # "no active_response" case below (a "wazuh" key present but empty), which still reaches
+    # execd's own ExecdRun() validation and its "Invalid AR command" wording.
     input: '#!-execd {"event":{"original":"Test event","kind":"event"},"source":{"ip":"3.3.3.3"},"user":{"name":"Test."}}'
-    expected_error: .*Invalid AR command
+    expected_error: .*active_response task.*has a malformed payload
 
 - name: Command execution fail - invalid format no active_response
   description: Checks the block-ip command does not succeed because the 'active_response' is not sent.
