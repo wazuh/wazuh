@@ -19,6 +19,19 @@
 class MockCurlHandle : public ICurlHandle
 {
     public:
+        MockCurlHandle()
+        {
+            // A real handle accepts these; without a default the mock answers
+            // false and CurlPerformer would abort every request as a rejected
+            // TLS option. Tests that want a rejection say so explicitly.
+            ON_CALL(*this, setOptionLong(::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(true));
+            ON_CALL(*this, setOptionString(::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(true));
+            ON_CALL(*this, setOptionPtr(::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(true));
+        }
+
         MOCK_METHOD(bool, setOptionLong, (CurlOption option, long value), (override));
         MOCK_METHOD(bool, setOptionString, (CurlOption option, const std::string& value), (override));
         MOCK_METHOD(bool, setOptionPtr, (CurlOption option, const void* value), (override));
