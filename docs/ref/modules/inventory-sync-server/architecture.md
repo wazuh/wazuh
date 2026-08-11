@@ -71,7 +71,7 @@ sequenceDiagram
         S-->>R: 503 scan capacity exhausted (nothing processed)
     else non-VD session
         S->>Q: enqueue {request, responder, session} (hash(agentId) → shard)
-        Note over S: strand freed; the byte reservation travels with the request
+        Note over S: strand freed, the byte reservation travels with the request
         Q->>Q: per-document policy (index allowlist, ids, overlay)
         Q->>IDX: stage: bulk (delta) / deleteByQuery (cleans)<br/>updateByQuery (metadata, groups) / search (checksum)
         Q->>IDX: flush() of the worker's OWN connector (group commit)

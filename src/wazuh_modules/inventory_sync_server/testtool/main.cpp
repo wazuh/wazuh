@@ -267,8 +267,17 @@ namespace
     // ---- FullSession building --------------------------------------------------------------------
 
     /// One whole session as one buffer: Message{FullSession{Start, SyncData{values, contexts}}}.
-    std::vector<uint8_t>
-    buildFullSession(const AgentTestData& testData, const std::string& clusterName, const std::string& nodeName)
+    ///
+    /// @param defaultFeedOffset Used verbatim UNLESS the input JSON's Start sets its own
+    /// "feed_offset" -- fixtures that mean to exercise a deliberate mismatch (e.g. a stale-offset
+    /// 409 test) can still hardcode one. Every other fixture predates the feed_offset gate
+    /// (vdScanLane.cpp) entirely, so the caller passes the scanner's actual current offset here;
+    /// hardcoding fixtures to a fixed value would silently drift the moment vd_reduced_feed.json's
+    /// offsets change.
+    std::vector<uint8_t> buildFullSession(const AgentTestData& testData,
+                                          const std::string& clusterName,
+                                          const std::string& nodeName,
+                                          uint64_t defaultFeedOffset)
     {
         flatbuffers::FlatBufferBuilder builder;
         const auto& startJson = testData.start;
@@ -377,12 +386,14 @@ namespace
         // the SAME config value the server was started with.
         const auto clusterNameOffset = builder.CreateString(clusterName);
         const auto clusterNodeOffset = builder.CreateString(nodeName);
+        const auto feedOffset = startJson.value("feed_offset", defaultFeedOffset);
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_module_(module);
         startBuilder.add_mode(parseMode(startJson.value("mode", std::string("delta"))));
         startBuilder.add_index(indicesOffset);
         startBuilder.add_option(parseOption(startJson.value("option", std::string("VDSync"))));
+        startBuilder.add_feed_offset(feedOffset);
         startBuilder.add_architecture(architecture);
         startBuilder.add_hostname(hostname);
         startBuilder.add_osname(osname);
@@ -623,13 +634,18 @@ int main(int argc, char* argv[])
             std::cout << "\n[INFO] Session from: " << input << std::endl;
             const auto testData = loadInput(input);
             const auto agentId = testData.start.value("agentid", std::string("001"));
-            const auto session = buildFullSession(testData, clusterName, nodeName);
 
             // 503 + Retry-After = the CVE feed is still downloading (D17): re-POST until ready.
+            // The session is rebuilt on EVERY attempt, not just the first: while this loop
+            // sleeps, the feed can finish loading and its offset can move off the 0 it had at
+            // the first attempt, so a stale session built before the wait would now get rejected
+            // with 409 version_mismatch instead of the retry ever landing.
             const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(config.feedTimeoutSecs);
             HttpResult result;
             while (true)
             {
+                const auto session =
+                    buildFullSession(testData, clusterName, nodeName, vulnerabilityScanner.currentFeedOffset());
                 result = postSession(DEFAULT_SOCKET_PATH, agentId, session);
                 if (result.status != 503 || result.retryAfter.empty() || std::chrono::steady_clock::now() >= deadline)
                 {

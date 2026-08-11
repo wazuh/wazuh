@@ -78,10 +78,7 @@ public:
 TEST_F(EndpointGetV1AgentsAllTest, HappyPathSingleAgent)
 {
     Sequence s;
-    EXPECT_CALL(*stmt, step())
-        .InSequence(s)
-        .WillOnce(Return(SQLITE_ROW))
-        .WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*stmt, step()).InSequence(s).WillOnce(Return(SQLITE_ROW)).WillOnce(Return(SQLITE_DONE));
 
     ON_CALL(*stmt, valueInt64).WillByDefault(Return(1));
 
