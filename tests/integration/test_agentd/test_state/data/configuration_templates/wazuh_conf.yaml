@@ -11,3 +11,9 @@
                 elements:
                 - verification_mode:
                     value: 'none'
+            - stats_report:
+                elements:
+                - enabled:
+                    value: 'yes'
+                - interval:
+                    value: '3s'

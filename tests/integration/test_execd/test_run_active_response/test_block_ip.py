@@ -48,6 +48,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.execd import patterns as execd_paterns
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -74,20 +75,17 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {EXECD_DEBUG: '2', 'agent.remote_conf': '0'}
+# AGENTD_DEBUG/AGENTD_WINDOWS_DEBUG must be >=1 for mdebug1() to log
+# AGENTD_HTTPS_STARTUP_ACCEPTED (https_client_bridge.c) -- without it, the fixture's
+# connection wait (send_execd_message, test_execd/conftest.py) never sees a match.
+local_internal_options = {
+    EXECD_DEBUG: '2',
+    'agent.remote_conf': '0',
+    AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else AGENTD_DEBUG: '2',
+}
 daemons_handler_configuration = {'all_daemons': True}
 
 
-# Test function.
-@pytest.mark.skip(reason="Depends on the manager pushing an active-response command that execd "
-                          "then runs. Under the HTTPS client (wazuh/wazuh#37831), that path is "
-                          "bridge_on_task() in client-agent/src/https_client_bridge.c, which is "
-                          "currently a stub -- it logs task_id/task_type and does nothing else; the "
-                          "code's own comment says execd/module-com routing for on_task is 'still "
-                          "pending (later integration workstreams)'. Not a RemotedSimulator API "
-                          "migration issue (there's also no send_custom_message() equivalent, only "
-                          "add_task() feeding /control notify) -- the agent-side task dispatch this "
-                          "test needs doesn't exist yet.")
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_block_ip(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                         set_wazuh_configuration, remoted_simulator, authd_simulator,

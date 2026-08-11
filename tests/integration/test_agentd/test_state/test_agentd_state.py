@@ -46,12 +46,10 @@ tags:
     - stats_file
 '''
 
-import json
 import pytest
 from pathlib import Path
 import sys
 import time
-from queue import Empty
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
@@ -60,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
+from utils import wait_state_update
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -73,20 +71,12 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
-# Cases with a "remote" output block query agentd's state via a #!-req remote command
-# injected through RemotedSimulator.send_custom_message() and read back from its
-# _queue_response_req_message queue -- neither exists on the HTTPS RemotedSimulator
-# (wazuh/wazuh#37831), and there is no send_custom_message()-equivalent to migrate to
-# (see test_block_ip.py's skip reason: agent-side task/command dispatch is still a stub).
-_remote_query_skip_reason = ("Depends on RemotedSimulator.send_custom_message() / "
-                              "_queue_response_req_message to query agentd state via a remote "
-                              "'#!-req ... agent getstate' command; neither exists on the HTTPS "
-                              "RemotedSimulator and there's no equivalent to migrate to yet "
-                              "(wazuh/wazuh#37831).")
+# Cases with a "remote" output block check agentd's state as seen from the manager's side.
+# The legacy synchronous '#!-req ... agent getstate' request/response has no equivalent
+# under the HTTPS client (wazuh/wazuh#37831); this now reads the same state document off the
+# periodic /stats push instead (see wait_for_custom_message_response() below).
 test_cases_params = [
-    pytest.param(config, metadata, marks=pytest.mark.skip(reason=_remote_query_skip_reason))
-    if any(output.get('type') == 'remote' for output in metadata.get('output', []))
-    else pytest.param(config, metadata)
+    pytest.param(config, metadata)
     for config, metadata in zip(test_configuration, test_metadata)
 ]
 
@@ -176,42 +166,44 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
             remoted_server.destroy()
 
 def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 120):
-    """Request remoted_server the status of the agent
+    """Get the agent's live state via the periodic /stats push.
+
+    There is no manager-initiated, on-demand state query under the HTTPS client (the legacy
+    '#!-req ... agent getstate' request/response was a synchronous, persistent-connection
+    mechanism with no equivalent here) -- but the same data (w_agentd_state_get(), agcom.c's
+    "getallstats") rides the periodic /stats push (wazuh/wazuh#37843) under the "agent"
+    module entry, so this waits for a fresh push instead of sending a request.
 
     Args:
         parameters:
         - expected_status:
             type: string
-            brief: Expected status reported from RemotedSimulator
+            brief: Expected status reported from RemotedSimulator (kept for signature
+                compatibility with the 'file' path; the value itself is read from /stats).
         - remoted_server:
             type: RemotedSimulator
             brief: RemotedSimulator instance
         - timeout:
             type: int
-            brief: Timeout to find the message with the requested information
+            brief: Timeout to wait for a fresh /stats push carrying the "agent" module
     Returns:
-        dict with state info
+        dict with state info, or None if no fresh push with an "agent" entry arrived in time
     """
-    custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
-    remoted_server.send_custom_message(custom_message)
+    # A push already received before this call (e.g. from an earlier field check in the same
+    # test) may predate whatever just happened on the remote path (no precondition runs
+    # there, see check_fields() below) -- only a push that lands from here on is guaranteed
+    # to reflect it.
+    remoted_server.last_stats = None
+    deadline = time.time() + timeout
 
-    try:
-        log_line = remoted_server._queue_response_req_message.get(timeout=timeout)
+    while time.time() < deadline:
+        stats = remoted_server.last_stats
+        if stats:
+            for module in stats.get('modules', []):
+                if module.get('module') == 'agent':
+                    return module.get('stats', {}).get('data')
+        time.sleep(1)
 
-        if expected_status in log_line:
-            start_json_index = log_line.find('{')
-            end_json_index = log_line.rfind('}')
-
-            if start_json_index != -1 and end_json_index != -1 and end_json_index > start_json_index:
-                json_str = log_line[start_json_index : end_json_index + 1]
-                try:
-                    response = json.loads(json_str)
-                    response = response['data']
-                    return response
-                except json.JSONDecodeError:
-                    pass
-    except Exception as e:
-        pass
     return None
 
 
@@ -226,10 +218,16 @@ def check_fields(expected_output, remoted_server):
             type: RemotedSimulator
             brief: RemotedSimulator instance
     """
+    # wait_keepalive()/wait_ack() watch for legacy log lines ("Sending keep alive",
+    # "Received message: '#!-agent ack") that have no caller left anywhere in
+    # client-agent/src (dead since the HTTPS migration, wazuh/wazuh#37831) -- both
+    # preconditions are replaced with wait_state_update(), which is still live
+    # (state.c's periodic refresh loop) and serves the same "a fresh round of state
+    # has happened" purpose regardless of transport.
     checks = {
-        'last_ack': {'handler': check_last_ack, 'precondition': [wait_ack]},
-        'last_keepalive': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
-        'msg_count': {'handler': check_msg_count, 'precondition': [wait_keepalive]},
+        'last_ack': {'handler': check_last_ack, 'precondition': [wait_state_update]},
+        'last_keepalive': {'handler': check_last_keepalive, 'precondition': [wait_state_update]},
+        'msg_count': {'handler': check_msg_count, 'precondition': [wait_state_update]},
         'status': {'handler': check_status, 'precondition': []}
     }
 
@@ -241,8 +239,14 @@ def check_fields(expected_output, remoted_server):
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
         if expected_value != '':
-            for precondition in checks[field].get('precondition'):
-                precondition()
+            # wait_state_update() ties to state.c's file-writing loop, which some cases
+            # (e.g. "Only_remote_request_available") disable outright via
+            # agent.state_interval=0 to force the remote-only path -- it would never fire
+            # there. The remote path's own handler (wait_for_custom_message_response())
+            # already synchronizes on a fresh /stats push, so it needs no separate wait here.
+            if get_state_callback == parse_state_file:
+                for precondition in checks[field].get('precondition'):
+                    precondition()
             assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server)
 
 
@@ -270,15 +274,16 @@ def check_last_ack(expected_value: str=None, get_state_callback=None, expected_s
         wait_state_update()
         current_value = get_state_callback()['last_ack']
     else:
+        # No further wait on a miss: some remote-only cases disable the file-writing loop
+        # wait_state_update() ties to (agent.state_interval=0), and the callback above
+        # already synchronizes on a fresh /stats push on its own.
         current_value = get_state_callback(expected_status, remoted_server)
         if current_value:
             current_value = current_value['last_ack']
-        else:
-            wait_ack()
     if expected_value == '':
         return expected_value == current_value
 
-    return True
+    return current_value is not None
 
 
 def check_last_keepalive(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
@@ -305,15 +310,16 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
         wait_state_update()
         current_value = get_state_callback()['last_keepalive']
     else:
+        # No further wait on a miss: some remote-only cases disable the file-writing loop
+        # wait_state_update() ties to (agent.state_interval=0), and the callback above
+        # already synchronizes on a fresh /stats push on its own.
         current_value = get_state_callback(expected_status, remoted_server)
         if current_value:
             current_value = current_value['last_keepalive']
-        else:
-            wait_ack()
     if expected_value == '':
         return expected_value == current_value
 
-    return True
+    return current_value is not None
 
 
 def check_msg_count(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
@@ -346,8 +352,11 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
     if expected_value == '':
         return expected_value == current_value
 
-    wait_agent_notification(current_value)
-    return True
+    # wait_agent_notification() used to cross-validate msg_count against a legacy "Sending
+    # agent notification" log line -- dead since the HTTPS migration (msg_count now
+    # increments per forwarded /stateless event, EventForward()/event-forward.c, with no
+    # comparable per-increment log). Just confirm a value was actually retrieved.
+    return current_value is not None
 
 
 def check_status(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
@@ -373,19 +382,24 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
     current_value = None
 
     if expected_value != 'pending':
-        wait_keepalive()
         if get_state_callback == parse_state_file:
+            wait_state_update()
             # Sleep while file is updated
             time.sleep(5)
             wait_state_update()
             current_value = get_state_callback()['status']
         else:
+            # No wait_state_update() here: some remote-only cases disable the file-writing
+            # loop entirely (agent.state_interval=0) that log ties to. The callback below
+            # already synchronizes on a fresh /stats push on its own.
             current_value = get_state_callback(expected_status, remoted_server)
             if current_value:
                 current_value = current_value['status']
             else:
-                wait_keepalive()
-                return True
+                # No /stats push with the "agent" module arrived within the timeout --
+                # unlike the other fields, status is the one thing this test exists to
+                # confirm, so a miss here is a real failure, not a silent pass.
+                return False
     else:
         # Sleep while file is updated
         time.sleep(5)
