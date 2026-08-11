@@ -132,6 +132,16 @@ matrix a *second* time without cleaning up first will (enrollment fails with "Du
 name"). Not needed in `uds` mode: those runs never enroll a real agent, so nothing ever deletes
 their indexed documents.
 
+**`scenarios/real_inspect_fleet.json`** is purpose-built for this: one Windows agent and one Linux
+agent, each replaying every real inventory module (FIM, syscollector, SCA, VD) at full fidelity, plus
+a basic engine lane whose own `repeat_count` keeps both agents connected and keepaliving for several
+extra minutes after the inventory sessions land — time to actually get to the dashboard before the
+run exits. Pair it with `--keep-agents` so the documents survive after that too:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_inspect_fleet.json --mode agent --keep-agents
+```
+
 ## Helper scripts
 
 | Script | What it does |
