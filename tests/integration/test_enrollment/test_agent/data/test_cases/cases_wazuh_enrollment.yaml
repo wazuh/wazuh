@@ -342,10 +342,14 @@
       USE_SOURCE_IP: "no"
       PORT: 1515
   metadata:
+    # A valid 32-hex-char secret, not "TopSecret": bridge_build_config() (https_client_bridge.c)
+    # refuses to even start the HTTPS client on an existing key that isn't 32/48/64 hex chars,
+    # which would prevent the live connection this re-enrollment case depends on from ever
+    # being attempted.
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any' K:'58bad16e6a402d8e8ed8d5f39830b1510e7d538c'\n"
       response: "OSSEC K:'001 devel any TopSecret'\n"
 
 - name: Valid agent address with key hash
@@ -361,10 +365,14 @@
   metadata:
     configuration:
       agent_address: 192.168.0.10
+    # A valid 32-hex-char secret, not "TopSecret": bridge_build_config() (https_client_bridge.c)
+    # refuses to even start the HTTPS client on an existing key that isn't 32/48/64 hex chars,
+    # which would prevent the live connection this re-enrollment case depends on from ever
+    # being attempted.
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10' K:'58bad16e6a402d8e8ed8d5f39830b1510e7d538c'\n"
       response: "OSSEC K:'001 devel 192.168.0.10 TopSecret'\n"
 
 - name: Groups with key hash
@@ -380,10 +388,14 @@
   metadata:
     configuration:
       groups: group_1
+    # A valid 32-hex-char secret, not "TopSecret": bridge_build_config() (https_client_bridge.c)
+    # refuses to even start the HTTPS client on an existing key that isn't 32/48/64 hex chars,
+    # which would prevent the live connection this re-enrollment case depends on from ever
+    # being attempted.
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1' IP:'any' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1' IP:'any' K:'58bad16e6a402d8e8ed8d5f39830b1510e7d538c'\n"
       response: "OSSEC K:'001 devel any TopSecret'\n"
 
 - name: Valid agent IPv6 address

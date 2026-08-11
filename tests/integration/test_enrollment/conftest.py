@@ -10,6 +10,7 @@ import sys
 from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
 
@@ -49,6 +50,19 @@ def set_keys(test_metadata):
 
 
 @pytest.fixture()
+def clean_keys():
+    """Truncate client.keys before the case runs.
+
+    Without this, a case that actually enrolls (e.g. "expected_connection: True") leaves a
+    real key on disk for every later case in the same module -- keys.keysize > 0 then skips
+    w_agentd_keys_init()'s enrollment attempt (start_agent.c) regardless of what that later
+    case's own server address is, so it never even tries to connect/resolve.
+    """
+    with open(WAZUH_CLIENT_KEYS_PATH, 'w'):
+        pass
+
+
+@pytest.fixture()
 def set_password(test_metadata):
     """Writes the password file with the content defined in the configuration.
     Args:
@@ -67,6 +81,13 @@ def set_password(test_metadata):
 def configure_socket_listener(request, test_metadata):
     """
     Configures the socket listener to start listening on the socket.
+
+    A real (non-empty) pre-existing key means this case re-enrolls at runtime rather than at
+    first startup: with a key already on disk, w_agentd_keys_init() (start_agent.c) never
+    attempts enrollment itself (that path is gated on keys.keysize == 0). The only current
+    trigger that re-enrolls anyway is bridge_on_reenroll_required() (https_client_bridge.c),
+    fired when the HTTPS control connection gets a live 401 -- so a RemotedSimulator rejecting
+    auth is started here to produce that rejection, standing in for the real manager.
     """
 
     address_family = 'AF_INET6' if 'ipv6' in test_metadata else 'AF_INET'
@@ -78,8 +99,16 @@ def configure_socket_listener(request, test_metadata):
 
     setattr(request.module, 'socket_listener', socket_listener)
 
+    has_real_pre_existent_key = any(test_metadata.get('pre_existent_keys', []))
+    remoted_server = None
+    if has_real_pre_existent_key:
+        remoted_server = RemotedSimulator(mode='REJECT_AUTH')
+        remoted_server.start()
+
     yield
 
+    if remoted_server:
+        remoted_server.destroy()
     socket_listener.shutdown()
 
 

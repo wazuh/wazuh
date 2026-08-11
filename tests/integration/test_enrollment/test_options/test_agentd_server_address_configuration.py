@@ -100,7 +100,7 @@ daemons_handler_configuration = {'all_daemons': True}
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_agentd_server_address_configuration(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                              truncate_monitored_files, daemons_handler_module, shutdown_agentd,
-                                             configure_socket_listener, restart_agentd):
+                                             clean_keys, configure_socket_listener, restart_agentd):
 
     '''
     description: Check the messages produced by the agent when introducing

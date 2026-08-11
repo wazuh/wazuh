@@ -151,9 +151,18 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
         socket_monitor = queue_monitor.QueueMonitor(socket_listener.queue)
         event = (test_expected, test_response)
 
+        # Cases with a real pre-existing key re-enroll via a live HTTPS control connection
+        # getting rejected (bridge_on_reenroll_required(), see configure_socket_listener) --
+        # that round trip (TLS handshake, /control notify, 401, thread dispatch, then this
+        # classic-protocol exchange) takes longer than the immediate, no-network first-boot
+        # enrollment the other cases exercise.
+        has_real_pre_existent_key = any(test_metadata.get('pre_existent_keys', []))
+        base_timeout = 60 if sys.platform == WINDOWS else 20
+        timeout = base_timeout * 3 if has_real_pre_existent_key else base_timeout
+
         try:
             # Start socket monitoring
-            socket_monitor.start(timeout=60 if sys.platform == WINDOWS else 20, accumulations=2, callback=lambda received_event: received_event.encode() in event)
+            socket_monitor.start(timeout=timeout, accumulations=2, callback=lambda received_event: received_event.encode() in event)
 
             assert socket_monitor.matches == 2
         except Exception as error:
