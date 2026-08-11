@@ -23,7 +23,6 @@ include_directories(
   ${SRC_FOLDER}/external/openssl/include/
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/external/rocksdb/include
-  ${SRC_FOLDER}/external/simdjson/include
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/shared/include/error_messages
@@ -44,6 +43,11 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/sync_protocol/include
   ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/wazuh_db/include)
+
+# simdjson's ondemand API instantiates templates (logger, string_format) that trip
+# -Wformat-nonliteral/-Wdangling-reference under some GCC versions; SYSTEM keeps those out of our
+# warning budget without patching vendored code.
+include_directories(SYSTEM ${SRC_FOLDER}/external/simdjson/include)
 
 # Submodule include directories
 include_directories(

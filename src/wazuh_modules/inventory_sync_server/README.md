@@ -46,7 +46,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-6 | `ModuleCheck`: checksum-of-checksums (SHA-1 of the ordered concatenation of `checksum.hash.sha1`), answering ok/mismatch/error | kept (single attempt — D16) |
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
-| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, feed-update in progress, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
+| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
 | RF-10 | Whole-agent deletion sweeping `wazuh-states-*`, retriable | kept (`DELETE /agents`; authd is the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
@@ -127,7 +127,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D19 | `Mode` has no `ModuleFull`: a full resync is composed as `Cleans` + `ModuleDelta` with the full dataset — no special case in the server. Acks/`End`/`seq`/batching were REMOVED from the schema, not merely unused |
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path (and its router wiring) was removed, not migrated |
-| D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled, feed-update covers the agent) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
+| D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
 
 ## Layout
 
@@ -352,7 +352,8 @@ flowchart LR
     S[strand: validated VD session] -->|feed downloading| RA[503 + Retry-After]
     S -->|queue full| C503[503 scan capacity exhausted]
     S --> L[[bounded queue\nvd_workers, own connectors]]
-    L --> W[worker: acquire agent → re-check feed →\nscan → stage inventory + flush → 200]
+    L --> W[worker: acquire agent → re-check feed →\ncheck feed_offset → scan → stage inventory + flush → 200]
+    W -->|feed_offset mismatch| C409[409 version_mismatch\n+ current_version]
     W -->|scan throws| E500[500 — nothing indexed]
     P[SyncPipeline] <-.->|AgentInFlightRegistry| L
 ```
@@ -361,15 +362,20 @@ The lane worker's dispatch order is the D-contract in code: acquire the agent in
 (non-reentrant — a second session of the same agent waits), re-check connector availability,
 re-check `feedReady()` (the admission check may be stale for a queued item — answering
 `503 + Retry-After` here keeps the invariant that a not-ready feed never processes anything),
-run the scan inside a try/catch (a throw answers `500` with ZERO indexing), then stage the
-inventory bulk and `flush()` — one session per flush, no group commit in this lane — and answer
-`200`.
+check `Start.feed_offset` against `IVdScanner::currentFeedOffset()` for VD-flagged sessions
+(answering `409 {"error":"version_mismatch","current_version":N}` — the same body shape as
+remoted's `/scan/vd` REST endpoint, so an agent handles either 409 the same way — if the session
+was built against a feed offset this node doesn't currently have; a non-VD session has no
+meaningful `feed_offset` and skips this check entirely), run the scan inside a try/catch (a throw
+answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
+flush, no group commit in this lane — and answer `200`.
 
-**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()` and
+**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `currentFeedOffset()`
+(this node's current VD feed offset, backing the `feed_offset` check above), and
 `scan() -> Ok | Skipped`. `feedReady()` is `!isInitialized() || isFeedReady()` — a DISABLED
 scanner passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
-(and a feed-update fleet scan that already covers the agent is the other legitimate skip; both
-still index and answer `200`). The production adapter lives in exactly one translation unit,
+(the only legitimate skip; it still indexes and answers `200`). The production adapter lives in
+exactly one translation unit,
 `vdScannerAdapter.cpp`, because the scanner's headers pull include-dir baggage the rest of this
 module must not inherit; the boundary itself is the scanner's neutral view interface
 (`vulnerabilityScannerSync.hpp` — flat `string_view`/span structs, no FlatBuffers types in either
@@ -383,10 +389,15 @@ lane holds — per-agent FIFO without head-of-line blocking the shard's other ag
 registry's release listeners wake the parked shards. `couldAcquire()` is the const mirror the
 worker's cv predicate uses; `pause/resume` + `waitUntilIdle` serve the coordinator below.
 
-**`ServerScanCoordinator`** registers with the scanner's coordination registry so feed-update
-fleet scans and session scans never race: it exposes which agents have sessions in flight, can
-pause an agent (with a bounded quiesce wait, configurable for tests) and drain what is running.
-On `stop()` it unregisters FIRST, before the lane dies under the scanner's feet.
+**`ServerScanCoordinator`** registers with the scanner's coordination registry so a
+feed-update-triggered scan (per-agent, on-demand via `/scan/vd`, or the master-only sweep over
+disconnected agents — see [vulnerability-scanner's
+architecture.md](../../../docs/ref/modules/vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)
+for both paths) and a session scan for the SAME agent never race: it exposes which agents have
+sessions in flight, can pause an agent (with a bounded quiesce wait, configurable for tests) and
+drain what is running. There is no fleet-wide coordination here — each feed-update rescan fences
+only the one agent it is about to scan, the same way a lane session does. On `stop()` it
+unregisters FIRST, before the lane dies under the scanner's feet.
 
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
@@ -535,7 +546,10 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `testtool/` — `inventory_sync_server_testtool`, the vulnerability-detection integration driver:
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by
-  `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`.
+  `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`. Stamps each VDFirst/VDSync
+  session's `Start.feed_offset` from the scanner's actual current offset unless the input JSON
+  sets one explicitly — queried fresh on every `503`-retry attempt, not just once, so a session
+  built before the feed finished loading never goes stale by the time it's resent.
 
 ## Load & benchmarking
 
@@ -553,7 +567,12 @@ What it pins about THIS module (scenario map in
 - The **response contracts under pressure**: `contract_invalid_bodies` (the `400` paths),
   `contract_oversized_413` (the budget `413`), `contract_ramp_503` (the `sync_queue_bytes` shed,
   calibrated to trip on any hardware), `contract_feed_not_ready_retry` (the `503 + Retry-After`
-  loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_delete_under_load`.
+  loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_vd_version_mismatch` (the
+  `feed_offset` gate's `409 version_mismatch`), `contract_delete_under_load`.
+- **`feed_offset` for VDFirst/VDSync sessions**: `agent` mode learns it live from remoted's
+  `/control` `vd_feed_offset` (the same signal a real agent uses); `uds` mode has no `/control` to
+  learn it from, so pass `-vd-feed-offset` explicitly against a target whose feed offset is not 0
+  — see [SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md) for which scenarios need it.
 - **Real captured payloads** (`real_*` scenarios) for production-shaped sessions, including a full
   first connection at fidelity (the 27,726-document Windows FIM registry corpus in one session).
 - Every run scrapes [`GET /metrics`](#statistics-d18) alongside the client-side counters, so
@@ -568,8 +587,8 @@ server's restart retries. Everything downstream resolves its instruments from it
 (`common/metricNames.hpp` is the catalog): the pipeline (request counters by code, shed total,
 bulk-flush counters, per-shard depth/bytes gauges, session-duration histograms), the session
 processor (docs indexed/skipped, bytes ingested), the VD lane (lane depth/time, scan duration,
-scans ok/failed/skipped, capacity and Retry-After totals) and the sync endpoint (its inline
-rejections). Constructors take the manager as an optional trailing parameter; a null falls back
+scans ok/failed/skipped, capacity and Retry-After totals, `vd.offset_mismatch.total` for the
+`feed_offset` gate above) and the sync endpoint (its inline rejections). Constructors take the manager as an optional trailing parameter; a null falls back
 to a private disconnected manager, so instrumentation stays branch-free and tests need no change.
 
 Three invariants worth keeping: every response is counted exactly ONCE, at the site that sends it

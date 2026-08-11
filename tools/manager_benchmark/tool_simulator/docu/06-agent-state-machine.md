@@ -79,14 +79,24 @@ flowchart TD
 ```
 
 The only branch that re-sends is FR-11: a `503` carrying `Retry-After` means the CVE feed is not
-ready, so the same buffer is re-sent after the delay (bounded by `--feed-timeout`). Every other
-status ends the step and is recorded.
+ready, so the buffer goes back through `build request` after the delay (bounded by
+`--feed-timeout`) rather than straight to `send`. Every other status ends the step and is recorded.
+
+For a VDFirst/VDSync step specifically, that trip back through `build request` is not a no-op:
+`Start.feed_offset` is re-read from the sender's own tracked value (step override, `-vd-feed-offset`,
+or whatever the keepalive loop has learned by then — [05](05-flatbuffers-messages.md)) before
+re-encoding, since the feed can finish loading, and the server's current offset can therefore
+change, during a wait this long. Every OTHER field of the rebuilt buffer is identical to the first
+attempt — the documents are a deterministic function of `(seed, docKey, spec)`, not regenerated
+differently each time.
 
 ## The session itself has no state
 
 There is no session state machine beyond "one request, one response": no acknowledgments, no
-sequence numbers, no session id. Re-POSTing the identical buffer is idempotent, and that is the
-whole retry story ([05](05-flatbuffers-messages.md)).
+sequence numbers, no session id. Re-POSTing an identical buffer is idempotent, and that is the whole
+retry story for every path except the one exception above — which does not reintroduce session
+state either, since `feed_offset` is the SENDER's own tracked knowledge, not anything learned from
+or about this particular session ([05](05-flatbuffers-messages.md)).
 
 Two properties the sender **MUST** preserve so scenarios mean what they claim:
 

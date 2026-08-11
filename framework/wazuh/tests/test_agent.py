@@ -50,13 +50,6 @@ test_data = InitAgent(data_path=test_data_path)
 full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']
 short_agent_list = ['001', '002', '003', '004', '005', '010']
 
-def send_msg_to_wdb_http_post_restartinfo(endpoint: str, data: Any, empty_response: bool = False):
-    ids = ",".join(map(str, data["ids"]))
-    negate = "NOT" if data['negate'] else ""
-    query = f"SELECT id, version, connection_status as status FROM agent WHERE id {negate} IN ({ids});"
-    result = [ dict(row) for row in test_data.cur.execute(query).fetchall() ]
-    return {"items": result} if result else {}
-
 def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))

@@ -14,7 +14,6 @@
 #include "remoted_op.h"
 #include "wazuhdb_queries_op.h"
 #include <cJSON.h>
-#include "sym_load.h"
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -275,16 +274,9 @@ void sync_keys_with_wdb(keystore *keys) {
                 continue;
             }
 
-            // Agent not found. Removing agent artifacts
             delete_diff(agent_name);
-
-            // Remove agent-related files
             OS_RemoveCounter(ids[i]);
             OS_RemoveAgentTimestamp(ids[i]);
-
-            // No indexer-side deletion here: only authd deletes agents (it notifies the inventory
-            // sync server itself); this sweep reconciles wazuh-db with client.keys and nothing else.
-
             os_free(agent_name);
         }
     }

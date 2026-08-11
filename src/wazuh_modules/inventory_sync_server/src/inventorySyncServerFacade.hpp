@@ -966,8 +966,7 @@ namespace invsync
                     m_vdScanner = std::move(builtScanner);
                     if (!m_scanCoordinator)
                     {
-                        m_scanCoordinator =
-                            std::make_shared<invsync::vd::ServerScanCoordinator>(m_agentRegistry, m_vdScanLane);
+                        m_scanCoordinator = std::make_shared<invsync::vd::ServerScanCoordinator>(m_agentRegistry);
                         vd_sync::ScanCoordinatorRegistry::instance().add(m_scanCoordinator);
                     }
                 }

@@ -88,21 +88,12 @@ namespace invsync::vd
         /**
          * @brief Stop: answer 503 to everything queued and join the workers.
          *
-         * A scan ALREADY RUNNING cannot be aborted -- VD's runScan has no cancellation point -- so
+         * A scan ALREADY RUNNING cannot be aborted; it is the caller's responsibility so
          * stop() waits for it (same exposure the legacy module had on its completion thread; the
          * risk window is one scan). Everything not yet dispatched answers 503 immediately.
          * Idempotent.
          */
         void stop();
-
-        /// Introspection for the coordinator (doc 06 §5).
-        bool hasVDSyncInFlight() const;
-        std::vector<std::string> agentsWithVDFirstInFlight() const;
-        /// @brief Whether @p agentId has a session QUEUED in this lane (not yet acquired in the
-        /// registry, so the registry alone cannot see it).
-        bool hasAgentQueued(const std::string& agentId) const;
-        /// @brief Wait until no VDSync session is queued or in flight. @return false on timeout.
-        bool drainVDSync(std::chrono::seconds timeout);
 
         std::size_t workerCount() const noexcept
         {
@@ -129,16 +120,14 @@ namespace invsync::vd
         std::shared_ptr<wazuh::metrics::ICounter> m_scansOk;
         std::shared_ptr<wazuh::metrics::ICounter> m_scansFailed;
         std::shared_ptr<wazuh::metrics::ICounter> m_scansSkipped;
+        std::shared_ptr<wazuh::metrics::ICounter> m_offsetMismatchTotal;
         std::shared_ptr<wazuh::metrics::IGaugeInt> m_laneDepth;
         std::shared_ptr<wazuh::metrics::IHistogram> m_laneTime;
         std::shared_ptr<wazuh::metrics::IHistogram> m_scanDuration;
 
-        mutable std::mutex m_mutex;        ///< Guards the queue and the in-flight bookkeeping.
-        std::condition_variable m_cv;      ///< Wakes workers on enqueue/release/stop.
-        std::condition_variable m_drainCv; ///< Wakes drainVDSync() waiters.
+        mutable std::mutex m_mutex;   ///< Guards the queue and the in-flight bookkeeping.
+        std::condition_variable m_cv; ///< Wakes workers on enqueue/release/stop.
         std::deque<Item> m_queue;
-        std::size_t m_vdSyncPending {0};                  ///< VDSync sessions queued or in flight.
-        std::vector<std::string> m_inFlightVDFirstAgents; ///< Agents with a VDFirst scan running.
         std::atomic<bool> m_stopping {false};
         std::mutex m_stopMutex;
         bool m_stopped {false};

@@ -58,6 +58,10 @@ namespace invsync::sync
         std::vector<std::string> groups;
         std::vector<std::string> indices; ///< Start.index, verbatim (allowlist is applied at use).
         std::uint64_t globalVersion {0};
+        /// Start.feed_offset, verbatim. Only meaningful when isVD is true: the agent's locally
+        /// stored VD feed offset at the time it built this session, checked against this node's
+        /// current offset before the scan lane runs the scan (see IVdScanner::currentFeedOffset).
+        std::uint64_t feedOffset {0};
         /// EFFECTIVE cluster name: the session's when non-empty (it was validated against the
         /// manager's), the manager's otherwise -- the same fallback the legacy `_id` builder used.
         std::string clusterName;

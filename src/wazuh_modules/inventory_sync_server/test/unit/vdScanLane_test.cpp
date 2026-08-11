@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <future>
+#include <json.hpp>
 #include <memory>
 #include <string>
 #include <thread>
@@ -94,11 +95,13 @@ namespace
 
     std::string vdDeltaBody(const char* docId = "doc-1",
                             invsync::test::fb::Option option = invsync::test::fb::Option_VDFirst,
-                            const char* agentId = "1")
+                            const char* agentId = "1",
+                            std::uint64_t feedOffset = 0)
     {
         SessionSpec spec;
         spec.option = option;
         spec.agentId = agentId;
+        spec.feedOffset = feedOffset;
         ValueSpec value;
         value.id = docId;
         return invsync::test::buildSyncDataSession(spec, {value});
@@ -364,12 +367,12 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
     pipeline->stop();
 }
 
-TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
+TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnceItFinishes)
 {
     LaneUnderTest fixture;
     fixture.events->closeScanGate();
 
-    invsync::vd::ServerScanCoordinator coordinator {fixture.registry, fixture.lane, std::chrono::seconds {0}};
+    invsync::vd::ServerScanCoordinator coordinator {fixture.registry, std::chrono::seconds {0}};
 
     auto vdFirst = std::make_shared<FutureResponder>();
     ASSERT_EQ(
@@ -377,24 +380,10 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    auto vdSync = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDSync, "2"), vdSync, "2")));
-
-    const auto agents = coordinator.agentsWithActiveVDFirstSessions();
-    EXPECT_EQ(1U, agents.count("001")) << "the feed update must know which agents a VDFirst already covers";
-
-    EXPECT_TRUE(coordinator.hasActiveSessionForAgent("002", std::chrono::seconds {0}))
-        << "a QUEUED session counts as active";
     EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
-    EXPECT_EQ(200, vdSync->get().status);
-
-    EXPECT_FALSE(coordinator.waitForVDSyncSessionsToDrain(std::chrono::seconds {1}))
-        << "nothing left to drain reports false (nothing was waited for)";
 
     EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";
@@ -484,4 +473,71 @@ TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
     EXPECT_EQ(
         VdScanLane::Admission::Stopping,
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-3", invsync::test::fb::Option_VDFirst, "3"), late, "3")));
+}
+
+/**
+ * The offset gate (mirrors /scan/vd's REST version check, see vdScanLane.cpp's comment right
+ * above the check): a VDFirst/VDSync session built against a feed offset this node doesn't
+ * currently have must be rejected with 409 before ever reaching the scanner, so the agent retries
+ * once offsets align instead of scanning against a node whose feed doesn't match what the agent
+ * synced its session against.
+ */
+TEST(VdScanLaneTest, VdSessionWithMatchingFeedOffsetProceedsToScan)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdCurrentOffset.store(100);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/100), responder)));
+
+    EXPECT_EQ(200, responder->get().status);
+    const auto ops = fixture.events->syncOps();
+    ASSERT_FALSE(ops.empty());
+    EXPECT_EQ("scan", std::get<0>(ops[0])) << "a matching offset must let the session reach the scanner";
+}
+
+TEST(VdScanLaneTest, VdSessionWithMismatchedFeedOffsetIsRejectedWith409BeforeScanning)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdCurrentOffset.store(100);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1", /*feedOffset=*/50), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(409, response.status);
+    const auto body = nlohmann::json::parse(response.body);
+    EXPECT_EQ("version_mismatch", body.at("error").get<std::string>());
+    EXPECT_EQ(100u, body.at("current_version").get<std::uint64_t>());
+
+    EXPECT_TRUE(fixture.events->syncOps().empty())
+        << "a stale-offset VD session must never reach the scanner or the indexer";
+    EXPECT_EQ(0, fixture.events->m_syncFlushes.load());
+
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }))
+        << "a rejected session must still release the agent, or it is fenced forever";
+}
+
+TEST(VdScanLaneTest, NonVdSessionIgnoresFeedOffsetMismatch)
+{
+    LaneUnderTest fixture;
+    fixture.events->m_vdCurrentOffset.store(100);
+    auto responder = std::make_shared<FutureResponder>();
+
+    // option=Sync -> isVD is false (fullSessionValidator.cpp), so feedOffset (here, deliberately
+    // way off from currentFeedOffset) must be irrelevant: this is a plain syscollector delta, not
+    // a VD session, and must proceed exactly as any other non-VD item would.
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(
+                  vdDeltaBody("doc-1", invsync::test::fb::Option_Sync, "1", /*feedOffset=*/999999), responder)));
+
+    EXPECT_EQ(200, responder->get().status);
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(2U, ops.size());
+    EXPECT_EQ("scan", std::get<0>(ops[0]));
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[1]));
 }

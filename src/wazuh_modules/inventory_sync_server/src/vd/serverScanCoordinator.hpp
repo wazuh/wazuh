@@ -13,15 +13,12 @@
 #define _INVSYNC_VD_SERVER_SCAN_COORDINATOR_HPP
 
 #include "vd/agentInFlightRegistry.hpp"
-#include "vd/vdScanLane.hpp"
 
 #include "vulnerabilityScannerSync.hpp"
 
 #include <chrono>
 #include <memory>
 #include <string>
-#include <thread>
-#include <unordered_set>
 #include <utility>
 
 namespace invsync::vd
@@ -31,13 +28,9 @@ namespace invsync::vd
      * @brief This server's side of the vulnerability scanner's NEUTRAL coordination boundary.
      *
      * The design's simplification (doc 06 §5) made concrete: with the scan synchronous, "session
-     * in flight" and "scan in flight" are the same thing, so every question the scanner's feed
-     * update asks is answered from the shared agent registry plus the lane's short queue -- no
-     * session table, no ghost state between response and scan.
-     *
-     * The lane is held WEAKLY: the facade's stop() removes this coordinator from the scanner's
-     * registry before tearing the lane down, but a scanner call already past the registry snapshot
-     * may still land here, and it must degrade to "no sessions" instead of touching a dead lane.
+     * in flight" and "scan in flight" are the same thing, so the only question the scanner's feed
+     * update asks -- fence this agent and wait for it to go quiet -- is answered from the shared
+     * agent registry alone. No session table, no ghost state between response and scan.
      */
     class ServerScanCoordinator final : public vd_sync::IScanCoordinator
     {
@@ -45,62 +38,10 @@ namespace invsync::vd
         /// @param pauseQuiesceTimeout How long pauseAgent() waits for the agent's in-flight work
         ///        to drain before giving up (tests shrink it; production keeps the default).
         ServerScanCoordinator(std::shared_ptr<AgentInFlightRegistry> registry,
-                              std::weak_ptr<VdScanLane> lane,
                               std::chrono::seconds pauseQuiesceTimeout = std::chrono::seconds {30})
             : m_registry {std::move(registry)}
-            , m_lane {std::move(lane)}
             , m_pauseQuiesceTimeout {pauseQuiesceTimeout}
         {
-        }
-
-        std::unordered_set<std::string> agentsWithActiveVDFirstSessions() const override
-        {
-            std::unordered_set<std::string> agents;
-            if (const auto lane = m_lane.lock())
-            {
-                for (auto& agent : lane->agentsWithVDFirstInFlight())
-                {
-                    agents.insert(std::move(agent));
-                }
-            }
-            return agents;
-        }
-
-        bool waitForVDSyncSessionsToDrain(std::chrono::seconds timeout) override
-        {
-            const auto lane = m_lane.lock();
-            if (!lane)
-            {
-                return false;
-            }
-            const bool hadAny = lane->hasVDSyncInFlight();
-            if (hadAny)
-            {
-                lane->drainVDSync(timeout);
-            }
-            return hadAny;
-        }
-
-        bool hasActiveSessionForAgent(const std::string& agentId, std::chrono::seconds timeout) override
-        {
-            // Active = being applied (registry) OR still waiting in the lane's queue (the registry
-            // cannot see queued items -- they acquire only at dispatch). Poll: the two signals live
-            // behind different locks and the legacy behavior was a bounded poll too.
-            const auto deadline = std::chrono::steady_clock::now() + timeout;
-            while (true)
-            {
-                const auto lane = m_lane.lock();
-                const bool queued = lane && lane->hasAgentQueued(agentId);
-                if (!queued && m_registry->isFree(agentId))
-                {
-                    return false;
-                }
-                if (std::chrono::steady_clock::now() >= deadline)
-                {
-                    return true;
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds {100});
-            }
         }
 
         bool pauseAgent(const std::string& agentId, const std::string& /*reason*/) override
@@ -124,7 +65,6 @@ namespace invsync::vd
 
     private:
         std::shared_ptr<AgentInFlightRegistry> m_registry;
-        std::weak_ptr<VdScanLane> m_lane;
         std::chrono::seconds m_pauseQuiesceTimeout;
     };
 

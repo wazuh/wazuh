@@ -46,9 +46,15 @@ func run() int {
 		clusterNode = flag.String("cluster-node", "", "cluster node name (overrides the scenario)")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
-		noReuse  = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
-		seed     = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
-		validate = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
+		seed         = flag.Uint64("seed", 0, "deterministic document seed (0 = random, recorded in meta)")
+		validate     = flag.Bool("validate", false, "load and validate the scenario, then exit (no traffic)")
+		vdFeedOffset = flag.Uint64("vd-feed-offset", 0, "VDFirst/VDSync sessions declare this Start.feed_offset "+
+			"unless a step overrides it; a mismatch against the target's real current offset answers 409 "+
+			"version_mismatch instead of scanning. In uds mode this is the ONLY way to set it correctly (there is "+
+			"no /control to learn it from -- query it with 'curl --unix-socket queue/sockets/modulesd "+
+			"http://localhost/vulnerability-detector/offset'); in agent mode it defaults to whatever the agent's "+
+			"own keepalive loop learns from /control's vd_feed_offset")
 	)
 	flag.Parse()
 
@@ -103,7 +109,7 @@ func run() int {
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
 		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster, ClusterNode: *clusterNode,
-		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion,
+		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -85,7 +85,7 @@ independent.
 
 | `kind` | Session built | Notes |
 |---|---|---|
-| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count/size/`checksum.hash.sha1`; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync` |
+| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count/size/`checksum.hash.sha1`; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
 | `cleans` | `ModuleDelta` + `Cleans` | `indices` overrides the defaults |
 | `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |

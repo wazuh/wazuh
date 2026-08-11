@@ -49,6 +49,7 @@ namespace invsync::metrics
     constexpr auto VD_CAPACITY_503_TOTAL {"vd.capacity.503.total"};
     constexpr auto VD_LANE_DEPTH {"vd.lane.depth"};
     constexpr auto VD_LANE_TIME {"vd.lane.time"};
+    constexpr auto VD_OFFSET_MISMATCH_TOTAL {"vd.offset_mismatch.total"};
     constexpr auto VD_RETRY_AFTER_TOTAL {"vd.retry_after.total"};
     constexpr auto VD_SCAN_DURATION {"vd.scan.duration"};
     constexpr auto VD_SCANS_OK {"vd.scans.ok"};

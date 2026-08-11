@@ -22,16 +22,22 @@ remoted_module/
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
-│   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp
+│   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
+│   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
+│   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
+│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan queue (/scan/vd, see below)
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
-    └── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
+    ├── send_agent_json.py          # CLI to sign + POST /stats and /config, and check the answer
+    ├── send_control.py             # CLI to sign + POST /control (startup/notify/shutdown scenarios)
+    └── send_scan_vd.py             # CLI to sign + POST /scan/vd, incl. offset match/mismatch (see below)
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
@@ -359,15 +365,20 @@ sequenceDiagram
    - Calculates `settings_hash` (SHA256 of limits + cluster + groups from agent's startup data)
    - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
+   - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
+     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
+     module has never completed a feed update or is temporarily unreachable
    - **Response (no tasks)**:
      ```json
      {
        "agent": {"groups": ["web-servers"], "config_hash": "e3b0c44..."},
-       "settings_hash": "d7a8fbb..."
+       "settings_hash": "d7a8fbb...",
+       "vd_feed_offset": 12345678
      }
      ```
    - **Response (with tasks)**: same as above plus `"tasks": [{"task_id":"...","task_type":"active_response","payload":{...}}]`
-   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`), processes tasks
+   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`), processes tasks, compares `vd_feed_offset`
+     against its stored value (if strictly higher → request a re-scan via `POST /scan/vd`, see below)
    - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
 
 3. **`shutdown`** — agent sends on clean exit
@@ -448,6 +459,13 @@ Simple LRU cache (`std::list` + `std::unordered_map`) for file path → SHA256 h
 and re-hashing the same `.mg` file on every agent keepalive. Configurable `maxSize` (default 256).
 Thread-safe via a single `std::mutex`.
 
+#### VdClient (`common/vdClient.hpp/.cpp`)
+
+Cached UDS client for the Vulnerability Detection module's feed offset, shared verbatim between
+`/control` (populates `vd_feed_offset`) and `/scan/vd` (validates the agent's requested offset —
+see [Scan endpoint](#scan-endpoint-post-scanvd--srcscanvd) below for the full picture, including why
+this client never blocks a concurrent caller behind a slow VD module).
+
 #### controlEndpoint (`endpoints/controlEndpoint.hpp/.cpp`)
 
 The HTTP endpoint registration. Parses the JSON body (validates it's an object with a `"type"` field),
@@ -523,6 +541,117 @@ and clients, which are all thread-safe internally.
 3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
    then stops the wazuh-db and task-manager clients (drains their queues), then destroys the
    registry (eviction thread stops automatically on destruction).
+
+## Scan endpoint (`POST /scan/vd`) — `src/scanvd/`
+
+`/scan/vd` is the on-demand Vulnerability Detection re-scan request: an agent that notices (via
+`/control`'s `vd_feed_offset`, above) that this node's feed has moved past what it last synced
+against asks this node to re-scan it. It replaces the pre-HTTPS mechanism, where each node held a
+persistent connection to a fixed set of agents and, on every feed update, queried global.db for
+"its" agents and rescanned all of them — a mechanism that assumed a stable agent-to-node mapping
+that stateless HTTPS load balancing no longer provides.
+
+```mermaid
+sequenceDiagram
+    participant Ag as Agent
+    participant EP as POST /scan/vd<br/>(scanVdEndpoint)
+    participant SH as ScanVdHandlerImpl
+    participant VC as VdClient
+    participant VD as vulnerability_scanner<br/>(UDS)
+
+    Ag->>EP: POST /scan/vd {"type":"feed_update","feed_offset":100}
+    EP->>SH: handleVdScan(agentId, 100, callback)
+    SH->>VC: getOffset()
+    VC-->>SH: 100 (matches)
+    SH->>SH: track agent, push to queue
+    SH-->>EP: Accepted
+    EP-->>Ag: 200 OK {}
+
+    Note over SH: A pooled worker thread later dequeues the agent
+    SH->>VC: getOffset() (re-validate: feed may have moved since admission)
+    VC-->>SH: 100 (still matches)
+    SH->>VD: POST /vulnerability-detector/scan {"agent_id":"..."}
+    VD-->>SH: 200 OK
+```
+
+### Components
+
+#### scanVdEndpoint (`endpoints/scanVdEndpoint.hpp/.cpp`)
+
+The HTTP endpoint registration. Parses the JSON body (`type`, `feed_offset`), validates the agent
+ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome` to its wire
+response:
+- `Accepted` → `200 {}`
+- `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
+- `QueueFull` → `503 {"error":"scan_queue_full"}`
+- `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
+- Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
+  `feed_offset`) → `400` with a specific `error` code (see
+  [https-events-api.md](../../../docs/ref/modules/remoted/https-events-api.md#scan-endpoint-post-scanvd))
+
+Body cap is 4 KiB (`kMaxScanVdBodySize`), far tighter than `/control`'s 64 KiB — a scan request only
+ever carries `type` and `feed_offset`.
+
+#### ScanVdHandlerImpl (`scanvd/scanVdHandler.hpp/.cpp`)
+
+Core business logic: an offset-gated admission check plus a small worker-pool queue that actually
+triggers the scan against the `vulnerability_scanner` module.
+
+- **Admission** (`handleVdScan`, called synchronously from the HTTP handler thread): rejects
+  `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with `VersionMismatch` unless
+  the request's `feed_offset` matches exactly; otherwise tracks the agent (a per-agent state map
+  keyed by agent ID — a fresh request for an already-tracked agent just refreshes the tracked
+  offset instead of queuing a duplicate entry) and pushes it onto the ready queue. Rejects with
+  `QueueFull` above a configurable tracked-agent cap (production default: 10000).
+- **Worker pool** (`scanWorkerPoolSize()`, sized to the host's available CPUs via `cpp_get_nproc()`):
+  each worker re-validates the offset immediately before calling `POST
+  /vulnerability-detector/scan` on the VD module (over the *same* modulesd UDS socket `VdClient`
+  uses for `/offset` — see below) — the feed may have moved on again while the request sat queued,
+  in which case the task is silently discarded (the agent will notice the newer offset on its next
+  `/control` notify and re-request; no error is returned for this since the original HTTP response
+  was already sent at admission time). A pool larger than one bounds the "blast radius" of one
+  agent's worst-case wait (the VD module's scan call can legitimately block up to ~30s draining a
+  syscollector VDFirst/VDSync session already in flight for the same agent, before it even starts
+  scanning) — it doesn't reflect how many scans the VD module can truly run in parallel, which is
+  exactly one, since
+  `ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock for the whole scan regardless
+  of how many worker threads call it concurrently.
+- **Retry**: a *retryable* failure (VD module briefly unready, network error) gets exponential
+  backoff (1s, 2s, 4s) up to 3 attempts, then the tracked state is dropped — the agent's next
+  `/control` notify will still show the (unaffected) higher offset and it will re-request.
+
+#### VdClient (`common/vdClient.hpp/.cpp`)
+
+Already introduced under [Control endpoint](#control-endpoint-post-control--srccontrol) above,
+since it's the same client instance — this is the rest of its contract. `getOffset()`:
+
+1. Returns the cached offset immediately if still within TTL (default 30s).
+2. Otherwise, exactly one caller becomes the "refresher" and performs the actual UDS round trip to
+   `GET /vulnerability-detector/offset`; every other concurrent caller gets the last-known-good
+   cached value instead of blocking behind it. This matters because `/control` is a hot path (every
+   connected agent's `notify`, every ~10s) — without single-flight, a slow or hung VD module could
+   serialize the entire node's control-plane throughput down to roughly one request per query
+   latency.
+3. On a failed refresh, the last known-good value is returned (0 if none was ever obtained), and
+   the next attempt is gated to a short, separate `failureRetryInterval` (default 5s) rather than
+   the normal 30s TTL — recovers quickly once VD comes back, without hammering it (or serializing
+   every caller) on every single call during an outage.
+
+### Metrics
+
+`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) tracks, per the design doc's Phase 4 observability
+goals: `requestsTotal`, `versionMismatchCount`, `queueFullCount`, `invalidAgentCount`,
+`acceptedCount`, `scanSucceededCount`, `scanRetriedCount`, `scanRetriesExhaustedCount`,
+`scanPermanentFailureCount`, `scanDiscardedCount` (offset moved on while queued). All atomic
+`uint64_t`, incremented inline at each outcome — same shape as `ControlMetrics`.
+
+### Lifecycle
+
+`ScanVdHandlerImpl` shares its `VdClient` instance with `ControlHandler` (constructed once in
+`RemotedModuleFacade::start()` and passed to both), so the two endpoints never see different
+offsets due to independent cache state. Its worker threads are joined in its destructor (queue
+drains are not attempted — an in-flight scan trigger already committed to the VD module completes
+or times out on its own; anything still purely queued is simply dropped).
 
 ## Streamed responses — `POST /download`
 
@@ -965,6 +1094,21 @@ core `cmac_test.cpp`, `authMiddleware_test.cpp` (incl. a non-numeric `Authorizat
 `MalformedAuthorization`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
 skipped without blocking the rest of the file).
 
+VD re-scan coverage: `vdClient_test.cpp` (a real `httplib::Server` fake VD backend — cache hit
+within TTL, single-flight refresh under a concurrent caller with the lock released during the UDS
+round trip, stale-value fallback and bounded retry gating on a failed query, recovery clearing the
+failure state), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
+`ScanVdHandler`: every rejection code, the `ScanVdOutcome` → response mapping), `scanVdHandler_test.cpp`
+(the queue/dedup/backoff state machine against a real `VdClient` + fake VD backend: version
+mismatch, retry-with-backoff, permanent failure, queue-full at capacity, an offset change during an
+in-flight attempt triggering an automatic re-scan with the new offset, and a purely-queued task
+being discarded — never reaching the VD backend at all — when the offset moves on before it's
+dequeued), and `controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
+`RestinioHttpServer` + real `AuthGateway` + real `ControlHandler`/`ScanVdHandlerImpl`, with only
+wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409 responses
+survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files exercise
+directly).
+
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V
 ```
@@ -1021,3 +1165,25 @@ endpoint-independent and already covered by `send_stateless.py --all`.
 > The signing helpers are duplicated between the two scripts rather than shared, so each stays a
 > single file you can copy onto a manager and run. If the canonical string ever changes on the C++
 > side, both copies fail loudly with `401 InvalidMac` rather than silently mis-signing.
+
+### Manual / end-to-end (`tools/send_control.py`, `tools/send_scan_vd.py`)
+
+Same signing convention, for the VD re-scan pair: `send_control.py` covers `/control`
+(startup/notify/shutdown, including the auth-layer scenarios), and `send_scan_vd.py` covers
+`/scan/vd` specifically.
+
+```bash
+python3 tools/send_control.py --type notify                # prints the vd_feed_offset it got back
+python3 tools/send_control.py --all                         # every /control success/failure scenario
+
+python3 tools/send_scan_vd.py --auto-offset                 # looks up the current offset via
+                                                              # /control first, then a matching request -> 200
+python3 tools/send_scan_vd.py --feed-offset 1                # a deliberately wrong offset -> 409,
+                                                              # prints the manager's real current_version
+python3 tools/send_scan_vd.py --all                          # every /scan/vd success/failure scenario
+# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
+```
+
+`send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling
+`/scan/vd`: read the current offset off a live `/control` notify response rather than requiring you
+to already know it.

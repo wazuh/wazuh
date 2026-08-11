@@ -271,7 +271,7 @@ sequenceDiagram
     Note over ASP: lastSyncResult = PROTOCOL_ERROR<br/>syncFailed = true
 
     ASP-->>Module: SyncModuleResult{success=false}
-    Note over Module: Items stay/return to PENDING;<br/>next periodic cycle retries.
+    Note over Module: Items stay/return to PENDING,<br/>next periodic cycle retries.
 ```
 
 ### Stop Requested While Waiting for a Response

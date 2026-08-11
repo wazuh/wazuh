@@ -31,25 +31,30 @@ const octetStream = "application/octet-stream"
 // is real traffic the server answered, so sessions_sent counts attempts, and
 // retries_feed/retries_503 tell the logical sessions apart.
 func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step) {
-	start, payload, docs, docBytes := a.buildSession(lane, step)
-	body := fbbuild.BuildSession(start, payload)
-	if raw := rawOverride(step); raw != nil {
-		body = raw
-	}
-	_ = docBytes
-
-	// Compress ONCE, outside the retry loop: retries re-send the same wire
-	// bytes. `raw` steps are exempt -- their deliberately invalid bodies must
-	// reach the server byte-exact, or the 400-contract scenarios would be
-	// measuring the decoder instead. The CMAC in client.Do signs the body as
-	// passed, i.e. the compressed bytes, which is remoted's contract; and
-	// RecordSession below sees len(body) post-compression, so bytes_sent stays
-	// what actually crossed the wire.
+	// encode builds the wire body fresh: Start (with whatever feed_offset is
+	// current right now) + payload, raw-overridden, then compressed. Documents
+	// are deterministic in (seed, docKey, spec) -- calling this more than once
+	// for the same step reproduces identical bytes except for feed_offset.
+	var docs int
 	encoding := ""
-	if a.r.compression() == "zstd" && step.Kind != "raw" {
-		body = wire.Compress(body)
-		encoding = "zstd"
+	encode := func() []byte {
+		var start fbbuild.Start
+		var payload fbbuild.Payload
+		start, payload, docs, _ = a.buildSession(lane, step)
+		b := fbbuild.BuildSession(start, payload)
+		if raw := rawOverride(step); raw != nil {
+			b = raw
+		}
+		// `raw` steps are exempt from compression: their deliberately invalid
+		// bodies must reach the server byte-exact, or the 400-contract
+		// scenarios would be measuring the decoder instead.
+		if a.r.compression() == "zstd" && step.Kind != "raw" {
+			b = wire.Compress(b)
+			encoding = "zstd"
+		}
+		return b
 	}
+	body := encode()
 
 	retry := a.r.scn.Defaults.Retry
 	feedDeadline := time.Now().Add(a.r.feedTimeout)
@@ -90,6 +95,18 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 			if err := sleepCtx(ctx, retryAfterDelay(resp.RetryAfter)); err != nil {
 				return
 			}
+			// Re-encode, not resend: a real agent's control-learned
+			// vd_feed_offset can move during a feed-not-ready wait (this loop
+			// can span minutes; the keepalive loop ticks every ~10s in agent
+			// mode), and a VDFirst/VDSync session built before the feed
+			// finished loading would otherwise keep declaring a now-stale
+			// offset forever, turning "the feed became ready" into a
+			// version_mismatch 409 instead of the 200 this scenario expects.
+			// The backpressure branch below intentionally does NOT do this:
+			// a real agent resends its already-queued buffer byte-identical
+			// on plain backpressure, only a feed-not-ready wait is long
+			// enough for its own offset knowledge to have moved on.
+			body = encode()
 			continue
 		}
 		if !retry.RetryEnabled() {

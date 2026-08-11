@@ -163,6 +163,22 @@ def _make_dapi_result(items):
     return result
 
 
+def _agents_http_patch(items):
+    """Patch get_wdb_http_client so _collect_agents() sees `items` from get_all_agents().
+
+    Mirrors the async-context-manager shape production code expects:
+    `async with get_wdb_http_client() as wdb_client: ... wdb_client.get_all_agents()`.
+    """
+    mock_wdb_client = AsyncMock()
+    mock_wdb_client.get_all_agents.return_value = items
+    mock_get_wdb_http_client = MagicMock()
+    mock_get_wdb_http_client.return_value.__aenter__.return_value = mock_wdb_client
+    return patch(
+        "wazuh.core.indexer.metrics_snapshot.get_wdb_http_client",
+        mock_get_wdb_http_client,
+    )
+
+
 def _deep_keys(doc, prefix=""):
     """Return all dotted-path keys in a nested dict (for field presence checks)."""
     keys = set()
@@ -181,25 +197,23 @@ def _deep_keys(doc, prefix=""):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-async def test_collect_agents(mock_wazuh_db_query_agents):
+@patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client")
+async def test_collect_agents(mock_get_wdb_http_client):
     mock_server = _make_server(node_name="node01")
 
-    mock_query_instance = MagicMock()
-    mock_query_instance.run.return_value = {
-        "items": [
-            {"id": "001", "name": "ubuntu-agent"},
-            {"id": "002", "name": "windows-agent"},
-        ]
-    }
-    mock_wazuh_db_query_agents.return_value = mock_query_instance
+    mock_wdb_client = AsyncMock()
+    mock_wdb_client.get_all_agents.return_value = [
+        {"id": "001", "name": "ubuntu-agent"},
+        {"id": "002", "name": "windows-agent"},
+    ]
+    mock_get_wdb_http_client.return_value.__aenter__.return_value = mock_wdb_client
 
     task = MetricsSnapshotTasks(server=mock_server, cluster_items=CLUSTER_ITEMS)
     TEST_TIMESTAMP = "2026-03-13T10:00:00Z"
 
     result = await task._collect_agents(TEST_TIMESTAMP)
 
-    mock_wazuh_db_query_agents.assert_called_once_with(limit=None)
+    mock_wdb_client.get_all_agents.assert_called_once()
 
     assert len(result) == 2
     for agent_doc in result:
@@ -402,7 +416,9 @@ class TestCollectCommsAllNodes:
 # Agent field mapping
 # ---------------------------------------------------------------------------
 
-# Representative raw agent document as returned by WazuhDBQueryAgents.run()["items"].
+# Representative raw agent document. Uses the nested "os" dict / datetime shape that
+# _normalize_agent_doc also supports (its legacy/WazuhDBQueryAgents-compatible input format),
+# exercising that code path independently of the flat-field HTTP endpoint format.
 AGENT_DOC_FULL = {
     "id": "001",
     "name": "ubuntu-agent",
@@ -459,15 +475,11 @@ class TestAgentFieldMapping:
     """TC-1 – All expected normalized agent fields are present and correctly typed."""
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_all_fields_present(self, mock_wazuh_db_query_agents):
+    async def test_all_fields_present(self):
         """Every normalized field key exists in the output document."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [dict(AGENT_DOC_FULL)]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([dict(AGENT_DOC_FULL)]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         assert len(docs) == 1
         doc = docs[0]
@@ -476,15 +488,11 @@ class TestAgentFieldMapping:
         assert not missing, f"Missing normalized fields: {missing}"
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_field_types(self, mock_wazuh_db_query_agents):
+    async def test_field_types(self):
         """Spot-check field types: normalized string/bool/list fields have correct types."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [dict(AGENT_DOC_FULL)]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([dict(AGENT_DOC_FULL)]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         doc = docs[0]
         assert isinstance(doc["wazuh"]["agent"]["id"], str)
@@ -497,20 +505,16 @@ class TestAgentFieldMapping:
         assert isinstance(doc["wazuh"]["schema"]["version"], str)
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_multiple_agents_all_have_expected_fields(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_multiple_agents_all_have_expected_fields(self):
         """Normalization applies to every document in a multi-agent result."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [
+        tasks = _make_tasks()
+        with _agents_http_patch(
+            [
                 dict(AGENT_DOC_FULL),
                 {**AGENT_DOC_FULL, "id": "002", "name": "windows-agent"},
             ]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         assert len(docs) == 2
         for doc in docs:
@@ -522,55 +526,39 @@ class TestAgentFieldMapping:
             )
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_register_ip_any_converted_to_cidr(self, mock_wazuh_db_query_agents):
+    async def test_register_ip_any_converted_to_cidr(self):
         """registerIP='any' is converted to '0.0.0.0' for the ip field type."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "registerIP": "any"}]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{**AGENT_DOC_FULL, "registerIP": "any"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         assert docs[0]["wazuh"]["agent"]["register"]["ip"] == "0.0.0.0"
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_register_ip_real_value_preserved(self, mock_wazuh_db_query_agents):
+    async def test_register_ip_real_value_preserved(self):
         """A real IP for registerIP passes through unchanged."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "registerIP": "10.0.1.5"}]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{**AGENT_DOC_FULL, "registerIP": "10.0.1.5"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         assert docs[0]["wazuh"]["agent"]["register"]["ip"] == "10.0.1.5"
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_register_ip_empty_field_omitted(self, mock_wazuh_db_query_agents):
+    async def test_register_ip_empty_field_omitted(self):
         """An empty/missing registerIP does not produce an empty string in the output."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "registerIP": ""}]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{**AGENT_DOC_FULL, "registerIP": ""}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         agent = docs[0].get("wazuh", {}).get("agent", {})
         assert agent.get("register") is None or "ip" not in agent.get("register", {})
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_redundant_raw_fields_dropped(self, mock_wazuh_db_query_agents):
+    async def test_redundant_raw_fields_dropped(self):
         """Raw fields (manager, node_name, id, etc.) are absent after normalization."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [dict(AGENT_DOC_FULL)]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([dict(AGENT_DOC_FULL)]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         doc = docs[0]
         # Top-level keys must only be "@timestamp" and "wazuh" — no raw fields
@@ -600,19 +588,14 @@ class TestMetadataInjection:
     """TC-2 – @timestamp, wazuh.cluster.node, wazuh.cluster.name in every document."""
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_agent_docs_have_all_metadata_fields(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_agent_docs_have_all_metadata_fields(self):
         """All three metadata fields are injected into every agent document."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{"id": "001"}, {"id": "002"}, {"id": "003"}]
-        }
-
         server = _make_server(node_name="node01")
         tasks = _make_tasks(server=server)
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{"id": "001"}, {"id": "002"}, {"id": "003"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
+        assert len(docs) == 3
         for doc in docs:
             assert "@timestamp" in doc, f"@timestamp missing in doc {doc}"
             assert "wazuh" in doc
@@ -620,18 +603,12 @@ class TestMetadataInjection:
             assert "name" in doc["wazuh"]["cluster"]
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_agent_metadata_values_match_server_config(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_agent_metadata_values_match_server_config(self):
         """Metadata values are sourced from server.configuration."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{"id": "001"}]
-        }
-
         server = _make_server(node_name="node01")
         tasks = _make_tasks(server=server)
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{"id": "001"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         doc = docs[0]
         assert doc["@timestamp"] == TIMESTAMP
@@ -867,27 +844,23 @@ class TestDisconnectionTimeOmission:
     """TC-5 – wazuh.agent.disconnected_at is absent when disconnection_time is 0."""
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_disconnection_time_zero_is_absent(self, mock_wazuh_db_query_agents):
-        """TC-5: WazuhDBQueryAgents strips disconnection_time=0; normalized field must not appear."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{"id": "001", "name": "agent-active", "status": "active"}]
-        }
-
+    async def test_disconnection_time_zero_is_absent(self):
+        """TC-5: an active agent has no disconnection_time; normalized field must not appear."""
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch(
+            [{"id": "001", "name": "agent-active", "status": "active"}]
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         agent = docs[0].get("wazuh", {}).get("agent", {})
         assert "disconnected_at" not in agent
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_nonzero_disconnection_time_is_preserved(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_nonzero_disconnection_time_is_preserved(self):
         """A non-zero disconnection_time maps to wazuh.agent.disconnected_at as ISO 8601."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [
+        tasks = _make_tasks()
+        with _agents_http_patch(
+            [
                 {
                     "id": "002",
                     "name": "agent-disconnected",
@@ -897,21 +870,17 @@ class TestDisconnectionTimeOmission:
                     ),
                 }
             ]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         assert docs[0]["wazuh"]["agent"]["disconnected_at"] == "1970-08-12T21:50:09Z"
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_mixed_agents_disconnection_time_handled_per_agent(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_mixed_agents_disconnection_time_handled_per_agent(self):
         """Active (no key) and disconnected (non-zero value) agents are handled independently."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [
+        tasks = _make_tasks()
+        with _agents_http_patch(
+            [
                 {"id": "001", "status": "active"},
                 {
                     "id": "002",
@@ -921,10 +890,8 @@ class TestDisconnectionTimeOmission:
                     ),
                 },
             ]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         active_doc = next(
             d for d in docs if d.get("wazuh", {}).get("agent", {}).get("id") == "001"
@@ -948,11 +915,11 @@ class TestDatetimeFieldsSerialization:
     JSON-serializable)."""
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_datetime_inputs_become_iso_strings(self, mock_wazuh_db_query_agents):
+    async def test_datetime_inputs_become_iso_strings(self):
         """dateAdd, lastKeepAlive and disconnection_time datetimes map to ISO strings."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [
+        tasks = _make_tasks()
+        with _agents_http_patch(
+            [
                 {
                     "id": "003",
                     "name": "agent-disconnected",
@@ -966,10 +933,8 @@ class TestDatetimeFieldsSerialization:
                     ),
                 }
             ]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
         agent = docs[0]["wazuh"]["agent"]
 
         assert agent["registered_at"] == "2026-07-01T10:00:00Z"
@@ -1022,11 +987,11 @@ class TestDisconnectedAgentPassesSchemaValidation:
     }
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_disconnected_agent_doc_is_valid(self, mock_wazuh_db_query_agents):
+    async def test_disconnected_agent_doc_is_valid(self):
         """A document with a datetime disconnection_time survives _validate_documents."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [
+        tasks = _make_tasks()
+        with _agents_http_patch(
+            [
                 {
                     "id": "003",
                     "name": "agent-disconnected",
@@ -1036,10 +1001,8 @@ class TestDisconnectedAgentPassesSchemaValidation:
                     ),
                 }
             ]
-        }
-
-        tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        ):
+            docs = await tasks._collect_agents(TIMESTAMP)
         schema = _opensearch_template_to_jsonschema(self.MINIMAL_TEMPLATE)
 
         valid = tasks._validate_documents(docs, schema, "wazuh-metrics-agents")
@@ -1875,18 +1838,12 @@ class TestNormalizeAgentDocNoEmptyHash:
     """config.hash must not appear when configSum is absent from the raw doc."""
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_config_hash_absent_when_configsum_missing(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_config_hash_absent_when_configsum_missing(self):
         """wazuh.agent.config.hash is absent from the output when configSum is not in the raw doc."""
         # AGENT_DOC_FULL does not contain 'configSum', matching real v5.0 agent rows.
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [dict(AGENT_DOC_FULL)]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([dict(AGENT_DOC_FULL)]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         agent_config = docs[0].get("wazuh", {}).get("agent", {}).get("config", {})
         assert "hash" not in agent_config, (
@@ -1895,20 +1852,70 @@ class TestNormalizeAgentDocNoEmptyHash:
         )
 
     @pytest.mark.asyncio
-    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
-    async def test_config_hash_present_when_configsum_provided(
-        self, mock_wazuh_db_query_agents
-    ):
+    async def test_config_hash_present_when_configsum_provided(self):
         """wazuh.agent.config.hash.md5 is present and correct when configSum IS supplied."""
-        mock_wazuh_db_query_agents.return_value.run.return_value = {
-            "items": [{**AGENT_DOC_FULL, "configSum": "deadbeef"}]
-        }
-
         tasks = _make_tasks()
-        docs = await tasks._collect_agents(TIMESTAMP)
+        with _agents_http_patch([{**AGENT_DOC_FULL, "configSum": "deadbeef"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
 
         agent_config = docs[0]["wazuh"]["agent"]["config"]
         assert agent_config["hash"]["md5"] == "deadbeef"
+
+
+# ---------------------------------------------------------------------------
+# Agent id zero-padding (regression: /agents/all returns a raw int64 id;
+# every other Wazuh index expects the 3-digit zero-padded string convention)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeAgentDocIdZeroPadding:
+    """wazuh.agent.id must always be a 3-digit zero-padded string, regardless of
+    whether the raw doc's id arrived as an int (HTTP endpoint) or a string."""
+
+    @pytest.mark.asyncio
+    async def test_int_id_is_zero_padded(self):
+        """A raw int id (as returned by /agents/all) is zero-padded to 3 digits."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 1, "name": "ubuntu-agent"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["id"] == "001"
+
+    @pytest.mark.asyncio
+    async def test_larger_int_id_is_zero_padded(self):
+        """A multi-digit int id is padded up to (but not beyond) 3 digits."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 42, "name": "windows-agent"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["id"] == "042"
+
+    @pytest.mark.asyncio
+    async def test_id_beyond_three_digits_is_not_truncated(self):
+        """An id with more than 3 digits is left as-is, not truncated."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": 12345, "name": "agent-12345"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["id"] == "12345"
+
+    @pytest.mark.asyncio
+    async def test_already_padded_string_id_is_unchanged(self):
+        """A string id that's already zero-padded (legacy input shape) is left unchanged."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"id": "001", "name": "ubuntu-agent"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh"]["agent"]["id"] == "001"
+
+    @pytest.mark.asyncio
+    async def test_missing_id_stays_absent(self):
+        """No id in the raw doc means no wazuh.agent.id in the output (not '000' or 'None')."""
+        tasks = _make_tasks()
+        with _agents_http_patch([{"name": "no-id-agent"}]):
+            docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert "id" not in docs[0].get("wazuh", {}).get("agent", {})
 
 
 # ---------------------------------------------------------------------------

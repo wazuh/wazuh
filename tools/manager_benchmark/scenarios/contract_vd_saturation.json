@@ -1,6 +1,6 @@
 {
   "name": "contract_vd_saturation",
-  "description": "Saturates the vulnerability-detection scan lane (D22). A large fleet fires VDFirst first-scans back to back, so the scan lane's per-capacity 503 shedding and time-in-lane become visible in by_lane. The scan lane is single-worker until F9d, so this is the scenario that measures that ceiling. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
+  "description": "Saturates the vulnerability-detection scan lane (D22). A large fleet fires VDFirst first-scans back to back, so the scan lane's per-capacity 503 shedding and time-in-lane become visible in by_lane. The scan lane is single-worker until F9d, so this is the scenario that measures that ceiling. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false). uds mode has no /control to learn the manager's current VD feed offset from, so every session declares feed_offset=0 unless -vd-feed-offset is passed: against a target whose feed has a nonzero offset, sessions get a fast 409 version_mismatch instead of actually reaching the scanner, which would understate the lane's real saturation profile. Pass -vd-feed-offset matching the target's current offset to measure real scan-lane pressure.",
   "mode": "uds",
   "defaults": {
     "retry": { "enabled": false },

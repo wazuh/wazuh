@@ -25,10 +25,14 @@ namespace invsync::vd
      *
      * Translates a ValidatedSession into the scanner's NEUTRAL views (no FlatBuffers cross this
      * boundary; the views alias the request body, which the lane keeps alive for the whole call)
-     * and reproduces the legacy gate decisions:
-     *  - scanner not initialized (disabled, or still starting) -> legitimate skip, index anyway;
-     *  - feed-update scan in progress and the session is VDSync -> skip (the fleet pass covers it);
-     *  - VDFirst scanned successfully -> register the agent as covered by the running feed cycle.
+     * and reproduces the legacy gate decision:
+     *  - scanner not initialized (disabled, or still starting) -> legitimate skip, index anyway.
+     *
+     * There is no manager-initiated "feed-update fleet scan" to coordinate with anymore -- feed
+     * updates no longer trigger an automatic rescan of every agent; agents detect the offset
+     * change themselves and request a targeted rescan via /scan/vd. So every VDFirst/VDSync
+     * session runs its own scan unconditionally; occasional overlap with an agent-requested
+     * on-demand scan is a rare, accepted duplicate, not a correctness issue.
      */
     class VdScannerAdapter final : public IVdScanner
     {
@@ -41,6 +45,11 @@ namespace invsync::vd
             return !scanner.isInitialized() || scanner.isFeedReady();
         }
 
+        std::uint64_t currentFeedOffset() const override
+        {
+            return VulnerabilityScannerFacade::instance().currentFeedOffset();
+        }
+
         ScanVerdict scan(const sync::ValidatedSession& session) override
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
@@ -51,12 +60,6 @@ namespace invsync::vd
             }
 
             const bool vdFirst = session.option == schema::fb::Option_VDFirst;
-            if (!vdFirst && scanner.isFeedUpdateScanInProgress())
-            {
-                // The feed-update fleet scan reads this agent's packages from the indexer and
-                // covers it; the inventory below still has to land for that read to see it.
-                return ScanVerdict::Skipped;
-            }
 
             vd_sync::SessionInfoView info;
             info.vdFirst = vdFirst;
@@ -77,11 +80,6 @@ namespace invsync::vd
             const auto items = buildItems(session);
 
             const bool executed = scanner.runScannerFromViews(info, items);
-
-            if (executed && vdFirst)
-            {
-                scanner.registerFeedUpdateCoveredAgent(session.agentId);
-            }
 
             return executed ? ScanVerdict::Ok : ScanVerdict::Skipped;
         }

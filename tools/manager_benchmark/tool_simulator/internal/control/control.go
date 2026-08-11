@@ -1,7 +1,10 @@
 // Package control builds and sends the POST /control messages an agent emits:
 // startup, notify (the keepalive) and shutdown. It VALIDATES the response
-// (status 200, parseable JSON) and DISCARDS its contents: no field of the reply
-// changes the sender's behavior (docu/03-control-protocol.md).
+// (status 200, parseable JSON) and otherwise DISCARDS its contents, with ONE
+// exception: a notify response's vd_feed_offset is read out and returned,
+// because a real agent uses it to decide when to request a VD re-scan
+// (docu/03-control-protocol.md, docu/05-flatbuffers-messages.md). No other
+// field of any reply changes the sender's behavior.
 package control
 
 import (
@@ -26,11 +29,15 @@ type HostInfo struct {
 }
 
 // Result is what the caller records: the status, latency and body size. The
-// body itself is intentionally not returned — it is validated and dropped here.
+// body itself is intentionally not returned — it is validated and dropped
+// here, except for VDFeedOffset (see the package doc).
 type Result struct {
 	Status   int
 	Latency  time.Duration
 	BodySize int
+	// VDFeedOffset is the notify response's vd_feed_offset (0 for Startup and
+	// Shutdown, which never carry it, or if the field was absent/non-numeric).
+	VDFeedOffset uint64
 }
 
 // ErrProtocol signals a malformed or unexpected control answer: a run-
@@ -83,11 +90,16 @@ func send(c *wire.Client, body []byte, now int64) (Result, error) {
 		return result, &ErrProtocol{fmt.Sprintf("control %s answered %d: %s", bodyType(body), resp.Status, truncate(resp.Body))}
 	}
 
-	// Validate-and-discard: the body must be a JSON object, and nothing more is
-	// read from it.
-	var discard map[string]any
-	if err := json.Unmarshal(resp.Body, &discard); err != nil {
+	// Validate-and-mostly-discard: the body must be a JSON object; the only
+	// field read out of it is vd_feed_offset (see the package doc).
+	var reply map[string]any
+	if err := json.Unmarshal(resp.Body, &reply); err != nil {
 		return result, &ErrProtocol{fmt.Sprintf("control %s: 200 with a non-JSON body: %v", bodyType(body), err)}
+	}
+	if raw, ok := reply["vd_feed_offset"]; ok {
+		if f, ok := raw.(float64); ok && f >= 0 {
+			result.VDFeedOffset = uint64(f)
+		}
 	}
 	return result, nil
 }

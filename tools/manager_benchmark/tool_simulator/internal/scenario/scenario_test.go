@@ -134,6 +134,33 @@ func TestLoaderConstrainsCompression(t *testing.T) {
 	}
 }
 
+// feed_offset is a pointer so a scenario can force a version_mismatch test by
+// declaring it explicitly as 0 -- that must stay distinguishable from a step
+// that never mentions the field at all (deferring to -vd-feed-offset or the
+// agent's learned value; see runner.agent.feedOffsetFor).
+func TestLoaderParsesFeedOffset(t *testing.T) {
+	scn, err := loadFromLiteral(t, sprintf(minimalUDS,
+		`{"kind": "delta", "option": "VDFirst", "feed_offset": 0}`, ""))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	step := scn.Lanes["main"][0]
+	if step.FeedOffset == nil {
+		t.Fatal("an explicit feed_offset of 0 must still be present (non-nil), not absent")
+	}
+	if *step.FeedOffset != 0 {
+		t.Fatalf("feed_offset = %d, want 0", *step.FeedOffset)
+	}
+
+	scn, err = loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`, ""))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if scn.Lanes["main"][0].FeedOffset != nil {
+		t.Fatalf("an absent feed_offset must stay nil, got %v", *scn.Lanes["main"][0].FeedOffset)
+	}
+}
+
 // The DEFAULT is what a real agent does on each transport: zstd over remoted,
 // plain over the local socket. "none" opts out; an explicit "zstd" sticks.
 func TestCompressionForResolvesTheDefaultPerTransport(t *testing.T) {

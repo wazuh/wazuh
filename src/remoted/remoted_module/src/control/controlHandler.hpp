@@ -21,6 +21,11 @@
 #include "wazuhDBClient.hpp"
 #include <memory>
 
+namespace remoted::common
+{
+    class VdClient;
+}
+
 namespace remoted::control
 {
     class ControlHandler
@@ -30,6 +35,7 @@ namespace remoted::control
                        std::shared_ptr<WazuhDBClient> wdbClient,
                        std::shared_ptr<TaskClient> taskClient,
                        std::shared_ptr<HashCache> hashCache,
+                       std::shared_ptr<remoted::common::VdClient> vdClient,
                        ControlMetrics& metrics,
                        const Config& config);
         ~ControlHandler();

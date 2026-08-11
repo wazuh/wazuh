@@ -132,19 +132,32 @@ path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** st
 
 ## What the sender does with the response
 
-**Validate and discard.** For each control request the sender **MUST**:
+**Validate and mostly discard.** For each control request the sender **MUST**:
 
 1. record the status code (and fail the run on `401` or any `400`);
 2. assert the body parses as JSON — a malformed body is a server regression and **MUST** be
    reported;
 3. record the response latency and byte size into the metrics for this request type.
 
-And it **MUST NOT** use any field of the body to change what it does next: `limits` does not become
-a rate limit, `agent.groups` does not reach the sessions' `Start.groups`, `config_hash` and
-`settings_hash` are not compared across requests, and `tasks` are never executed or acknowledged.
-The reasons are two: a load generator whose shape depends on the system under test produces
-incomparable numbers between runs, and consuming that payload would make the tool a conformance
-checker for a contract that is not what this benchmark measures.
+And it **MUST NOT** use any field of the body to change what it does next, with exactly ONE
+exception: `limits` does not become a rate limit, `agent.groups` does not reach the sessions'
+`Start.groups`, `config_hash` and `settings_hash` are not compared across requests, and `tasks` are
+never executed or acknowledged. The reasons are two: a load generator whose shape depends on the
+system under test produces incomparable numbers between runs, and consuming that payload would make
+the tool a conformance checker for a contract that is not what this benchmark measures.
+
+The exception is `notify`'s `vd_feed_offset`: it is the one piece of server state a real agent
+DOES act on (deciding when to request a VD re-scan — see
+[stateless-api.yaml's `/control` docs](../../../../docs/ref/modules/remoted/https-events-api.md)),
+and VD sessions' `Start.feed_offset` must match the server's current offset or they are rejected
+with `409 version_mismatch` before ever reaching the scanner (see
+[05-flatbuffers-messages.md](05-flatbuffers-messages.md)). Not tracking it would not make the
+sender's shape independent of the system under test — it would make every `agent`-mode VD scenario
+send sessions the server is guaranteed to reject once its feed has moved past offset 0, which
+measures the version_mismatch fast-path instead of the scan lane. The sender therefore stores the
+latest `vd_feed_offset` per agent (updated on every successful notify) and uses ONLY that one value
+when building a VD session's `Start.feed_offset` — nothing else about session content, pacing or
+routing depends on any control response.
 
 A scenario **MAY** ask for a sample of control responses to be written to an artifact for manual
 inspection; that is evidence in the report, still not behavior.

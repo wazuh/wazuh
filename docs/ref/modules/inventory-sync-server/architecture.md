@@ -71,7 +71,7 @@ sequenceDiagram
         S-->>R: 503 scan capacity exhausted (nothing processed)
     else non-VD session
         S->>Q: enqueue {request, responder, session} (hash(agentId) → shard)
-        Note over S: strand freed; the byte reservation travels with the request
+        Note over S: strand freed, the byte reservation travels with the request
         Q->>Q: per-document policy (index allowlist, ids, overlay)
         Q->>IDX: stage: bulk (delta) / deleteByQuery (cleans)<br/>updateByQuery (metadata, groups) / search (checksum)
         Q->>IDX: flush() of the worker's OWN connector (group commit)
@@ -79,12 +79,16 @@ sequenceDiagram
         Q-->>R: 200 {"status":"ok"} · 409 {"status":"checksum_mismatch"} · 503/500
     else VD session
         S->>VQ: enqueue on the scan lane (deferred response)
-        Note over VQ: lane worker: build the scan views (neutral interface) →<br/>run the vulnerability scan SYNCHRONOUSLY
-        alt scan succeeded (or was legitimately skipped)
-            VQ->>IDX: stage the inventory bulk + flush() (the lane's connector)
-            VQ-->>R: 200 — guarantees scan AND ingest
-        else scan failed
-            VQ-->>R: 500 — ZERO documents indexed
+        Note over VQ: lane worker: re-check feed → check Start.feed_offset<br/>against the node's current VD feed offset
+        alt feed_offset mismatch
+            VQ-->>R: 409 {"error":"version_mismatch","current_version":N}
+        else offset matches: run the vulnerability scan SYNCHRONOUSLY
+            alt scan succeeded (or was legitimately skipped)
+                VQ->>IDX: stage the inventory bulk + flush() (the lane's connector)
+                VQ-->>R: 200 — guarantees scan AND ingest
+            else scan failed
+                VQ-->>R: 500 — ZERO documents indexed
+            end
         end
     end
 ```
@@ -157,7 +161,7 @@ The gates, in order:
 | Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
-| Scan legitimately skipped (scanner disabled, or a feed-update fleet scan already covers this agent) | index + `200` | Inventory must keep flowing with the scanner off, and the fleet scan reads packages FROM the indexer — it needs them indexed. |
+| Scan legitimately skipped (scanner disabled) | index + `200` | Inventory must keep flowing even with the scanner off. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
 
 Two pieces coordinate the lane with the rest of the system:
@@ -170,9 +174,13 @@ Two pieces coordinate the lane with the rest of the system:
   agent at once); lane holds are not. Releases are lane-checked, so one lane can never free the
   other's hold.
 - **The scan coordinator** (`src/vd/serverScanCoordinator.hpp`) registers with the scanner's
-  coordination registry so feed-update fleet scans and session scans never race: the scanner can
-  ask which agents have sessions in flight, pause new dispatches for an agent, and drain what is
-  already running before it rescans the fleet.
+  coordination registry so a feed-update rescan (per-agent, on-demand via `/scan/vd`, or the
+  master-only sweep over disconnected agents — see
+  [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents))
+  and a session scan for the SAME agent never race: the scanner can ask which agents have sessions
+  in flight, pause new dispatches for an agent, and drain what is already running before it
+  rescans that agent. There is no fleet-wide coordination — each feed-update rescan fences only
+  the one agent it is about to scan.
 
 The scanner itself stays behind a **neutral view interface** — flat `string_view`/span structs —
 so the boundary between the two modules carries no FlatBuffers types in either direction. The
