@@ -108,6 +108,14 @@ void __wrap_startup_gate_release_from_https_apply(void)
     function_called();
 }
 
+/* bridge_on_config_downloaded() reads the gate to tell an initial apply
+ * (modules still blocked, reload regardless of <auto_restart>) from a
+ * configuration change on a running agent (<auto_restart> decides). */
+bool __wrap_startup_gate_is_ready(void)
+{
+    return mock();
+}
+
 /* WAIT_FILE producer lock: no pre-existing wrapper for either ABI. */
 void __wrap_os_delwait(void)
 {
@@ -988,27 +996,35 @@ static void expect_copy_unmerge_cleanup_ok(void)
     will_return(__wrap_cldir_ex_ignore, 0);
 }
 
-/* Anti-race sequencing (per receiver.c's own "the reload chain ... is the
- * normal release path" comment): when reloadAgent() actually dispatches, the
- * gate must NOT be released here -- agentd.c's own SIGUSR1 handling
- * (needs_config_reload) releases it once the restart that reload triggers
- * has actually happened, exactly mirroring how it already does this for the
- * legacy path via startup_gate_refresh_from_local_hash(). Releasing inline
- * regardless of reloadAgent()'s outcome would let a module still blocked in
- * startup_gate_wait_for_ready() unblock and start a moment before the reload
- * chain restarts it anyway. */
+/* The hash of the bytes just applied: a debug detail, unlike the reload the
+ * user does see reported at INFO. */
+static void expect_applying_config_log(void)
+{
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Applying configuration downloaded over HTTPS (hash="
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85).");
+}
+
+/* Anti-race sequencing: when reloadAgent() actually dispatches, the gate must
+ * NOT be released here -- agentd.c's own SIGUSR1 handling
+ * (needs_config_reload) releases it once the restart that reload triggers has
+ * actually happened. Releasing inline regardless of reloadAgent()'s outcome
+ * would let a module still blocked in startup_gate_wait_for_ready() unblock
+ * and start a moment before the reload chain restarts it anyway. */
 static void test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_sigusr1(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
+    agt->flags.auto_restart = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
     expect_copy_unmerge_cleanup_ok();
     will_return(__wrap_verifyRemoteConf, 0); /* valid */
+    expect_applying_config_log();
+    will_return(__wrap_startup_gate_is_ready, false); /* Still blocked: initial apply. */
     expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: applying configuration downloaded over HTTPS (hash="
-                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85).");
+                  "Agent is reloading due to shared configuration changes.");
     will_return(__wrap_reloadAgent, true);
     /* No expect_function_call(__wrap_startup_gate_release_from_https_apply):
      * must NOT be reached when the reload chain actually dispatched. */
@@ -1029,19 +1045,73 @@ static void test_config_downloaded_releases_gate_when_reload_chain_unreachable(v
 {
     (void)state;
     agt->flags.remote_conf = 1;
+    agt->flags.auto_restart = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
     expect_copy_unmerge_cleanup_ok();
     will_return(__wrap_verifyRemoteConf, 0);
+    expect_applying_config_log();
+    will_return(__wrap_startup_gate_is_ready, false);
     expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: applying configuration downloaded over HTTPS (hash="
-                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85).");
+                  "Agent is reloading due to shared configuration changes.");
     will_return(__wrap_reloadAgent, false); /* Control socket unreachable (e.g. first boot). */
     expect_string(__wrap__mdebug1, formatted_msg,
-                  "https_client: could not dispatch the reload chain; releasing "
+                  "Could not dispatch the reload chain; releasing "
                   "the startup gate directly instead (no restart will arrive to do it).");
     expect_function_call(__wrap_startup_gate_release_from_https_apply);
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* <auto_restart>no</auto_restart> on an agent whose modules are already
+ * running: the configuration is staged for the next restart, nothing is
+ * reloaded behind the user's back, and the operator is told at INFO that the
+ * agent is now running configuration older than what is on disk. */
+static void test_config_downloaded_auto_restart_disabled_stages_without_reloading(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    agt->flags.auto_restart = 0;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    will_return(__wrap_verifyRemoteConf, 0);
+    expect_applying_config_log();
+    will_return(__wrap_startup_gate_is_ready, true); /* Modules already started. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Agent must restart to apply the new shared configuration; auto_restart is disabled.");
+    /* No reloadAgent/gate-release expectation: must not be reached. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* <auto_restart>no</auto_restart> cannot leave modules blocked forever: with
+ * the gate still closed they are waiting for this very configuration to
+ * start, so the reload runs anyway, and is reported like any other restart the
+ * agent decides on its own. */
+static void test_config_downloaded_blocked_gate_reloads_despite_auto_restart_disabled(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    agt->flags.auto_restart = 0;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    will_return(__wrap_verifyRemoteConf, 0);
+    expect_applying_config_log();
+    will_return(__wrap_startup_gate_is_ready, false);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Agent is reloading to apply startup hash validated configuration.");
+    will_return(__wrap_reloadAgent, true);
 
     g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
 
@@ -1059,7 +1129,7 @@ static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **s
     expect_copy_unmerge_cleanup_ok();
     will_return(__wrap_verifyRemoteConf, -1); /* invalid */
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: downloaded configuration failed validation; not reloading.");
+                  "Downloaded configuration failed validation; not reloading.");
     /* No reloadAgent/gate-release expectation: must not be reached. */
 
     g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
@@ -1100,7 +1170,7 @@ static void test_config_downloaded_copy_failure_corrects_module_hash(void **stat
     will_return(__wrap_w_copy_file, -1); /* I/O error */
 
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: could not copy the downloaded configuration into "
+                  "Could not copy the downloaded configuration into "
                   "'" SHAREDCFG_FILE "'; keeping the previously applied one.");
     expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_config_hash, config_hash, "");
@@ -1134,7 +1204,7 @@ static void test_config_downloaded_unmerge_failure_corrects_module_hash(void **s
     will_return(__wrap_UnmergeFiles, 0); /* failure */
 
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: failed to unmerge the downloaded configuration "
+                  "Failed to unmerge the downloaded configuration "
                   "('" SHAREDCFG_FILE "'); keeping the previously applied files.");
     /* AG_IN_UNMERGE manager-visible report, now submitted to the /stateless
      * accumulator like any other event. */
@@ -1263,7 +1333,7 @@ static void test_startup_result_limits_changed_reloads_under_auto_restart(void *
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
-    expect_string(__wrap__minfo, formatted_msg, "https_client: reloading due to module limits changes.");
+    expect_string(__wrap__minfo, formatted_msg, "Agent is reloading due to module limits changes.");
     will_return(__wrap_reloadAgent, true);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
@@ -1294,7 +1364,7 @@ static void test_startup_result_limits_changed_no_reload_without_auto_restart(vo
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits have been updated.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Module limits have been updated.");
     /* No reloadAgent expectation: must not be reached. */
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
@@ -2021,6 +2091,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_once_stopping, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_sigusr1, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_releases_gate_when_reload_chain_unreachable, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_auto_restart_disabled_stages_without_reloading, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_blocked_gate_reloads_despite_auto_restart_disabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_skips_reload_and_gate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_remote_conf_disabled_stages_files_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_copy_failure_corrects_module_hash, setup_test, teardown_test),

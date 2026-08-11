@@ -87,7 +87,7 @@ bool HttpsClientFacade::start()
 
     if (m_started)
     {
-        LOGFN_WARN(m_logFn, "https_client already started, ignoring start request.");
+        LOGFN_WARN(m_logFn, "Already started, ignoring start request.");
         return true;
     }
 
@@ -96,7 +96,7 @@ bool HttpsClientFacade::start()
         // Single-shot: per-run state (waiter, gate, state machine) is not reset,
         // so a restart would launch a control thread that exits immediately.
         // Fail closed instead of returning a misleading success.
-        LOGFN_WARN(m_logFn, "https_client was stopped; create a new instance to start again.");
+        LOGFN_WARN(m_logFn, "Stopped; create a new instance to start again.");
         return false;
     }
 
@@ -162,12 +162,12 @@ void HttpsClientFacade::startSyncIntake()
 
     if (m_syncIntake->start())
     {
-        LOGFN_INFO(m_logFn, "https_client sync intake listening on %s.",
+        LOGFN_INFO(m_logFn, "Sync intake listening on %s.",
                    m_config.syncSocketPath.c_str());
     }
     else
     {
-        LOGFN_ERROR(m_logFn, "https_client sync intake failed to bind %s.",
+        LOGFN_ERROR(m_logFn, "Sync intake failed to bind %s.",
                     m_config.syncSocketPath.c_str());
         m_syncIntake.reset();
     }

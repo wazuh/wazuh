@@ -109,6 +109,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
                                 -Wl,--wrap,w_agentd_populate_metadata \
                                 -Wl,--wrap,startup_gate_release_from_https_apply \
+                                -Wl,--wrap,startup_gate_is_ready \
                                 -Wl,--wrap,os_delwait -Wl,--wrap,os_setwait \
                                 -Wl,--wrap,OS_SHA256_File \
                                 -Wl,--wrap,task_registry_check_and_record \

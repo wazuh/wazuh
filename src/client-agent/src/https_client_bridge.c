@@ -378,10 +378,10 @@ static void bridge_on_startup_result(bool accepted, const char *metadata_json, v
 
         if (previous_limits.limits_received && module_limits_changed(&previous_limits, &agent_module_limits)) {
             if (agt->flags.auto_restart) {
-                minfo("https_client: reloading due to module limits changes.");
+                minfo("Agent is reloading due to module limits changes.");
                 reloadAgent();
             } else {
-                mdebug1("https_client: module limits have been updated.");
+                mdebug1("Module limits have been updated.");
             }
         }
     } else {
@@ -927,28 +927,25 @@ static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
  * received it returns (the module deletes it right after) -- so the very
  * first thing this does is copy it into SHAREDCFG_FILE.
  *
- * Mirrors the legacy apply chain (client-agent/src/receiver.c's FILE_CLOSE_HEADER
- * handling: UnmergeFiles -> cldir_ex_ignore -> verifyRemoteConf -> reloadAgent),
- * reusing the exact same shared-code calls, including receiver.c's own
- * anti-race sequencing between reloadAgent() and the gate release (see its
- * "the reload chain ... is the normal release path" comment): if
- * reloadAgent() actually dispatches, the gate is deliberately NOT released
- * here -- releasing it unconditionally could let a module still blocked in
+ * The apply chain is UnmergeFiles -> cldir_ex_ignore -> verifyRemoteConf ->
+ * reloadAgent, and whether that last step runs depends on two things: a
+ * blocked startup gate (modules are waiting for this very configuration to
+ * start, so they must be started with it) and <auto_restart> (which governs
+ * picking up a configuration change on an agent already running).
+ *
+ * Anti-race sequencing between reloadAgent() and the gate release: when
+ * reloadAgent() dispatches, the gate is deliberately NOT released here --
+ * releasing it unconditionally could let a module still blocked in
  * startup_gate_wait_for_ready() unblock and start a moment before the reload
  * chain (modulesd CONTROL_SOCK -> wazuh-control reload -> SIGUSR1) restarts
  * it anyway. client-agent/src/agentd.c's own SIGUSR1 handling
  * (needs_config_reload) calls startup_gate_release_from_https_apply()
- * once that restart has actually happened -- this is the transport-agnostic
- * release path for the common case.
+ * once that restart has actually happened.
  *
- * The one deliberate difference from receiver.c: the HTTPS /control contract
- * has no merged_sum handshake field, so there is no later handshake
- * retry to lean on if reloadAgent() cannot even dispatch (control socket
- * unreachable). receiver.c's own fallback ("release inline only if
- * reloadAgent() fails") is mirrored exactly below for that case -- see the
- * reload/gate block near the end of this function, and
- * startup_gate_release_from_https_apply()'s own comment for why that inline
- * release is safe even without the legacy MD5 comparison.
+ * When reloadAgent() cannot even dispatch (control socket unreachable) no
+ * SIGUSR1 will ever arrive, and the /control contract has no handshake retry
+ * to lean on, so the gate is released inline instead -- see
+ * startup_gate_release_from_https_apply()'s own comment for why that is safe.
  */
 static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
                                         void *user_data)
@@ -978,7 +975,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * manager's hash, forcing an endless re-download/reload loop (observed
      * as a real, Windows-only regression during real-package validation). */
     if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
-        merror("https_client: could not copy the downloaded configuration into '%s'; "
+        merror("Could not copy the downloaded configuration into '%s'; "
                "keeping the previously applied one.", SHAREDCFG_FILE);
         if (handle) {
             /* What's actually on disk is still the old config, not config_hash:
@@ -994,7 +991,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     os_strdup(SHAREDCFG_FILENAME, *ignore_list);
 
     if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
-        merror("https_client: failed to unmerge the downloaded configuration "
+        merror("Failed to unmerge the downloaded configuration "
                "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
         /* Manager-visible report, now over /stateless. */
         char unmerge_fail_msg[OS_MAXSTR];
@@ -1008,50 +1005,55 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     }
 
     if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
-        mwarn("https_client: could not clean up the shared configuration directory.");
+        mwarn("Could not clean up the shared configuration directory.");
     }
     free_strarray(ignore_list);
 
     if (!agt->flags.remote_conf) {
-        /* Mirrors receiver.c: the files are staged either way, but nothing
-         * reloads or gates on remote configuration when the agent has opted
-         * out of it. */
+        /* The files are staged either way, but nothing reloads or gates on
+         * remote configuration when the agent has opted out of it. */
         return;
     }
 
     if (verifyRemoteConf()) {
         /* Invalid remote configuration: verifyRemoteConf() already reported it
          * to the manager (AG_IN_RCON). Do not reload or release the gate with
-         * a configuration known to be broken -- mirrors receiver.c, which
-         * skips its own reload/gate block on the same check. */
-        merror("https_client: downloaded configuration failed validation; not reloading.");
+         * a configuration known to be broken. */
+        merror("Downloaded configuration failed validation; not reloading.");
         return;
     }
 
-    minfo("https_client: applying configuration downloaded over HTTPS (hash=%s).",
-          config_hash ? config_hash : "?");
+    mdebug1("Applying configuration downloaded over HTTPS (hash=%s).",
+            config_hash ? config_hash : "?");
 
-    /* Anti-race sequencing, mirroring receiver.c's own FILE_CLOSE_HEADER
-     * handling (see its "the reload chain ... is the normal release path"
-     * comment): if reloadAgent() actually dispatches, do NOT release the gate
-     * here. Doing so unconditionally could let a module still blocked in
-     * startup_gate_wait_for_ready() unblock and start a moment before the
-     * reload chain (modulesd CONTROL_SOCK -> wazuh-control reload -> SIGUSR1)
-     * restarts it anyway -- the exact "briefly start with the new config and
-     * then get killed" race receiver.c was written to avoid. agentd.c's own
-     * SIGUSR1 handling (needs_config_reload) already calls
-     * startup_gate_release_from_https_apply() once that restart has actually
-     * happened.
+    /* A blocked gate means modules are still waiting in
+     * startup_gate_wait_for_ready() for the configuration that just arrived:
+     * they have to be started with it, so that reload runs whatever
+     * <auto_restart> says. The gate's precondition holds by construction here:
+     * the module SHA-256-verified these bytes against the manager's
+     * config_hash before the callback fired, and they are now what
+     * SHAREDCFG_FILE holds.
      *
-     * Only release inline here as a fallback when reloadAgent() itself could
-     * not even dispatch (control socket unreachable) -- no SIGUSR1 will ever
-     * arrive to do it later in that case, so the gate would otherwise stay
-     * stuck. This is also, concretely, the fresh-install/first-boot case:
-     * modulesd/monitoring processes are still blocked in their very first
-     * startup_gate_wait_for_ready() call and have no prior instance to
-     * restart, so there is nothing to race against. */
+     * With the gate already open the reload only serves to pick up a changed
+     * configuration, which is exactly what <auto_restart> governs: when it is
+     * off the files stay staged for whenever the agent restarts next. Say so at
+     * INFO -- what is on disk is no longer what the running agent applies, and
+     * only an operator can close that gap. */
+    const bool gate_was_blocked = !startup_gate_is_ready();
+
+    if (!agt->flags.auto_restart && !gate_was_blocked) {
+        minfo("Agent must restart to apply the new shared configuration; auto_restart is disabled.");
+        return;
+    }
+
+    if (!agt->flags.auto_restart) {
+        minfo("Agent is reloading to apply startup hash validated configuration.");
+    } else {
+        minfo("Agent is reloading due to shared configuration changes.");
+    }
+
     if (!reloadAgent()) {
-        mdebug1("https_client: could not dispatch the reload chain; releasing "
+        mdebug1("Could not dispatch the reload chain; releasing "
                 "the startup gate directly instead (no restart will arrive to do it).");
         startup_gate_release_from_https_apply();
     }

@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 
 #include "digest.hpp"
+#include "loggerHelper.h"
 #include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -242,8 +243,8 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (outcome %d).",
-                   static_cast<int>(result.outcome));
+        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s).",
+                   outcomeName(result.outcome));
     }
     else
     {
@@ -463,16 +464,19 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
                                         Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
-    LOGFN_DEBUG2(m_logFn, "config_hash check: manager=%s local=%s",
-                 managerHash.c_str(), localHash.c_str());
 
     if (managerHash.empty() || managerHash == localHash)
     {
+        // Every notify reports a hash, so this is the steady state: DEBUG2 to
+        // keep DEBUG1 for the notifies that actually make something happen.
+        LOGFN_DEBUG2(m_logFn, "Shared agent configuration unchanged (manager=%s local=%s); "
+                     "nothing to download.", managerHash.c_str(), localHash.c_str());
         return; // Nothing reported, or already in sync.
     }
 
-    LOGFN_INFO(m_logFn, "Manager config hash %s differs from the local one; downloading "
-               "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
+    LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "
+                 "the new configuration (group '%s').", managerHash.c_str(), localHash.c_str(),
+                 group.c_str());
     auto file = m_fetcher.fetch(managerHash, group, waiter);
 
     if (!file)
@@ -604,15 +608,15 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
 
     if (++m_undeliverableStreak < CONTROL_UNDELIVERABLE_THRESHOLD)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u).",
-                     static_cast<int>(outcome), m_undeliverableStreak,
+        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u).",
+                     outcomeName(outcome), m_undeliverableStreak,
                      CONTROL_UNDELIVERABLE_THRESHOLD);
         return;
     }
 
     m_producersPaused = true;
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable, outcome %d (%u/%u); pausing event production.",
-                 static_cast<int>(outcome), m_undeliverableStreak,
+    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production.",
+                 outcomeName(outcome), m_undeliverableStreak,
                  CONTROL_UNDELIVERABLE_THRESHOLD);
     m_sink.onProducerPause(true);
 }
