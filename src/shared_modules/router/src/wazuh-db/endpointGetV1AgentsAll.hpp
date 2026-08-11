@@ -48,26 +48,24 @@ class TEndpointGetV1AgentsAll final
         std::string disconnection_time;
         int64_t status_code;
 
-        REFLECTABLE(
-            MAKE_FIELD("id", &AgentData::id),
-            MAKE_FIELD("name", &AgentData::name),
-            MAKE_FIELD("ip", &AgentData::ip),
-            MAKE_FIELD("status", &AgentData::status),
-            MAKE_FIELD("os.name", &AgentData::os_name),
-            MAKE_FIELD("os.version", &AgentData::os_version),
-            MAKE_FIELD("os.type", &AgentData::os_type),
-            MAKE_FIELD("os.platform", &AgentData::os_platform),
-            MAKE_FIELD("version", &AgentData::version),
-            MAKE_FIELD("dateAdd", &AgentData::date_add),
-            MAKE_FIELD("os.major", &AgentData::os_major),
-            MAKE_FIELD("os.minor", &AgentData::os_minor),
-            MAKE_FIELD("os.arch", &AgentData::os_arch),
-            MAKE_FIELD("node_name", &AgentData::node_name),
-            MAKE_FIELD("lastKeepAlive", &AgentData::last_keepalive),
-            MAKE_FIELD("registerIP", &AgentData::register_ip),
-            MAKE_FIELD("disconnection_time", &AgentData::disconnection_time),
-            MAKE_FIELD("status_code", &AgentData::status_code)
-        )
+        REFLECTABLE(MAKE_FIELD("id", &AgentData::id),
+                    MAKE_FIELD("name", &AgentData::name),
+                    MAKE_FIELD("ip", &AgentData::ip),
+                    MAKE_FIELD("status", &AgentData::status),
+                    MAKE_FIELD("os.name", &AgentData::os_name),
+                    MAKE_FIELD("os.version", &AgentData::os_version),
+                    MAKE_FIELD("os.type", &AgentData::os_type),
+                    MAKE_FIELD("os.platform", &AgentData::os_platform),
+                    MAKE_FIELD("version", &AgentData::version),
+                    MAKE_FIELD("dateAdd", &AgentData::date_add),
+                    MAKE_FIELD("os.major", &AgentData::os_major),
+                    MAKE_FIELD("os.minor", &AgentData::os_minor),
+                    MAKE_FIELD("os.arch", &AgentData::os_arch),
+                    MAKE_FIELD("node_name", &AgentData::node_name),
+                    MAKE_FIELD("lastKeepAlive", &AgentData::last_keepalive),
+                    MAKE_FIELD("registerIP", &AgentData::register_ip),
+                    MAKE_FIELD("disconnection_time", &AgentData::disconnection_time),
+                    MAKE_FIELD("status_code", &AgentData::status_code))
     };
 
 public:
