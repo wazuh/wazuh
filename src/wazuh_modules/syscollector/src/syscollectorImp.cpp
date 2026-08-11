@@ -756,6 +756,21 @@ void Syscollector::quiesce()
 
 void Syscollector::releaseResources()
 {
+    // Take the flush controller out under the exclusive lock (so a concurrent "flush" query
+    // sees either the live controller or none) but destroy it outside of it: its destructor
+    // joins the flush worker, which runs executeFlushSync() -> synchronizeModule() without
+    // taking m_resourcesMutex, so joining it while holding the lock would be pointless and
+    // resetting the protocols before the join would be a use-after-free. quiesce()'s
+    // waitForFlushToFinish() is not enough on its own: it only joins the worker that exists
+    // at that instant, and flush() has no m_stopping check, so a "flush" query accepted
+    // right afterwards spawns a worker that outlives it.
+    std::unique_ptr<Utils::AsyncFlushController> flushController;
+    {
+        std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+        flushController = std::move(m_asyncFlushController);
+    }
+    flushController.reset();
+
     // Exclude the entry points that other threads keep driving while the module tears down.
     // The scan and sync workers are joined before this runs (see wm_syscollector.c), but
     // query() is not: wcom's dispatcher is detached and agent-info polls it in-process, so
@@ -2902,7 +2917,17 @@ void Syscollector::deleteDatabase()
     // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
     // coordination polls), so the members it reaches must not be reset underneath it.
     std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+    deleteDatabaseUnlocked();
+}
 
+void Syscollector::deleteDatabaseUnlocked()
+{
+    // The caller must already hold m_resourcesMutex. This body is split out of
+    // deleteDatabase() so deleteDisableCollectorsData(), which holds the mutex shared for
+    // its whole body, does not acquire a second shared lock on the same thread: most
+    // std::shared_mutex implementations block new readers once a writer is queued, so the
+    // nested acquisition would wait behind a pending releaseResources() or
+    // initSyncProtocol() while still holding the outer lock those writers are waiting for.
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
@@ -4392,7 +4417,9 @@ void Syscollector::deleteDisableCollectorsData()
             m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
         }
 
-        deleteDatabase();
+        // Already holding m_resourcesMutex shared; call the non-locking body so we do not
+        // take a second shared lock on this thread (see deleteDatabaseUnlocked()).
+        deleteDatabaseUnlocked();
         m_disabledCollectorsIndicesWithData.clear();
         return;
         // LCOV_EXCL_STOP

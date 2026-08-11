@@ -2998,6 +2998,104 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
     Syscollector::instance().destroy();
 }
 
+// Regression test for the flush path of issue #38203.
+//
+// releaseResources() must join the asynchronous flush worker before resetting the sync
+// protocols. That worker runs executeFlushSync() -> synchronizeModule() on
+// AsyncFlushController's own thread, which takes no lock and is not covered by the module
+// teardown: quiesce()'s waitForFlushToFinish() only joins a worker that already exists when
+// it runs, and flush() has no m_stopping check, so a "flush" query accepted right afterwards
+// spawns one that outlives it. Resetting m_spSyncProtocol while that worker is inside it is
+// a use-after-free.
+//
+// The MQ start callback parks the worker inside the sync protocol, so the race is
+// deterministic rather than timing dependent.
+TEST_F(SyscollectorImpTest, releaseResourcesJoinsInFlightFlushBeforeResettingSyncProtocol)
+{
+    static std::atomic<bool> s_blockStart {false};
+    static std::atomic<bool> s_startEntered {false};
+    static std::atomic<bool> s_workerLeftProtocol {false};
+    s_blockStart = true;
+    s_startEntered = false;
+    s_workerLeftProtocol = false;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions blockingMq {};
+    blockingMq.start = [](const char*, short, short) -> int
+    {
+        s_startEntered = true;
+
+        while (s_blockStart)
+        {
+            std::this_thread::yield();
+        }
+
+        // Set on the flush worker thread, while it is still inside the sync protocol.
+        s_workerLeftProtocol = true;
+        return 1;
+    };
+    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              blockingMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    // Start a flush and wait until its worker is parked inside the sync protocol.
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_TRUE(waitUntil([]()
+    {
+        return s_startEntered.load();
+    }));
+
+    std::atomic<bool> releaseReturned {false};
+    std::atomic<bool> workerHadFinished {false};
+
+    std::thread releaser([&releaseReturned, &workerHadFinished]()
+    {
+        Syscollector::instance().releaseResources();
+        // The invariant under test: by the time releaseResources() returns, the flush
+        // worker must already have left the sync protocol.
+        workerHadFinished = s_workerLeftProtocol.load();
+        releaseReturned = true;
+    });
+
+    // While the worker is parked, releaseResources() must not complete.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_FALSE(releaseReturned.load())
+            << "releaseResources() returned while a flush worker was still inside the sync protocol";
+
+    s_blockStart = false;
+    releaser.join();
+
+    EXPECT_TRUE(workerHadFinished.load())
+            << "releaseResources() reset the sync protocols before joining the flush worker";
+
+    Syscollector::instance().destroy();
+}
+
 TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};

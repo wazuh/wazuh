@@ -169,6 +169,11 @@ class EXPORTED Syscollector final
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
         bool isVDFirstSyncDone();
+
+        /// @brief Body of deleteDatabase() without taking m_resourcesMutex.
+        /// @note The caller must already hold m_resourcesMutex. Exists so callers that
+        /// already hold it shared do not acquire it a second time on the same thread.
+        void deleteDatabaseUnlocked();
         void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
         /**
          * @brief Processes VD DataContext after scan completes
