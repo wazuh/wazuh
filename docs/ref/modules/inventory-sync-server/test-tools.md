@@ -63,7 +63,7 @@ inventory_sync_server_testtool <input.json>|<directory>
                                [--feed-timeout <secs>]  # how long to retry 503 feed-not-ready (default 300)
                                [--verbose]
 
-inventory_sync_server_testtool --serve [--no-vd] [--config <file>]   # QA harness mode
+inventory_sync_server_testtool --serve [--no-vd] [--config <file>] [--logFile <file>]   # QA harness mode
 ```
 
 Behavior worth knowing:
@@ -111,7 +111,7 @@ Index inference when `index` is omitted: a payload with `package.hotfix` maps to
 `wazuh-states-inventory-hotfixes`, any other `package` to `wazuh-states-inventory-packages`, and a
 `host` to `wazuh-states-inventory-system`.
 
-The `--config` file is the same JSON the QA suite uses (`qa/test_data/config.json`): a
+The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
 answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
 scanner should reach.
@@ -127,6 +127,15 @@ cleans and the composed full resync, checksum verification (including `search_af
 metadata/group reconciliation with the `global_version` guard, agent deletion, and the VD
 legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
 `5_testintegration_inventory-sync-server.yml` workflow.
+
+## Load and performance (`tools/manager_benchmark/`)
+
+Correctness lives in the QA above; load lives in `tools/manager_benchmark/` (plain path — outside
+this book): a Go sender that reproduces the agent's wire over the module's UDS socket or through
+remoted's relay. Its `contract_*` scenarios pin this module's `400`/`413`/`503` contracts under
+pressure (including the admission-queue shed and the VD lane's capacity), its `real_*` scenarios
+replay real captured payloads, and every run scrapes `GET /metrics` alongside the client-side
+counters. `tools/manager_benchmark/README.md` and `SCENARIOS.md` are the entry points.
 
 ## See Also
 

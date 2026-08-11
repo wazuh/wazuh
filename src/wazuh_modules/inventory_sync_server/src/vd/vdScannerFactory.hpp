@@ -23,9 +23,8 @@ namespace invsync::vd
      * @brief Build the production scanner seam (the bridge to the vulnerability_scanner module).
      *
      * A factory function rather than exposing the adapter class: the adapter's translation unit is
-     * the ONE place in this module that compiles the scanner's headers (which transitively pull the
-     * legacy sync schema and the legacy Context), and keeping it out of every other TU is what
-     * keeps that coupling contained until the legacy module retires.
+     * the ONE place in this module that compiles the scanner's headers (and their transitive
+     * include soup), and keeping it out of every other TU is what keeps that coupling contained.
      */
     std::shared_ptr<IVdScanner> makeProductionVdScanner();
 

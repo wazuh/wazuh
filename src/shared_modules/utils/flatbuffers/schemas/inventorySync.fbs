@@ -6,8 +6,9 @@
 // in inventory_sync_server_docs).
 //
 // This file replaced the legacy session-based schema when the inventory_sync
-// module was retired from the build; inventory_sync_server and the router's
-// anti-spoofing (which only reads Start) are its manager-side consumers.
+// module was retired; inventory_sync_server is its only manager-side consumer
+// (remoted relays the body opaquely, and the module itself cross-checks
+// Start.agentid against the authenticated identity).
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {

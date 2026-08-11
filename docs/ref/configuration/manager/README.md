@@ -29,7 +29,7 @@ Configuration reference for Wazuh manager components.
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `<vulnerability-detection>` | - | `vulnerability-detection.*` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `<wdb>` | - | `wazuh_db.*` |
 
-**Note:** All wodle-based modules (Task Manager, Inventory Sync, Vulnerability Scanner) also use common `wazuh_modules.*` options documented in [Common Internal Options](#common-internal-options).
+**Note:** All wodle-based modules (Task Manager, Inventory Sync Server, Vulnerability Scanner) also use common `wazuh_modules.*` options documented in [Common Internal Options](#common-internal-options).
 
 ---
 
@@ -54,7 +54,7 @@ wazuh_modules.kill_timeout=10
 wazuh_modules.rlimit_nofile=8192
 ```
 
-**Used by modules:** Task Manager, Inventory Sync, Vulnerability Scanner, and other wodle-based modules.
+**Used by modules:** Task Manager, Inventory Sync Server, Vulnerability Scanner, and other wodle-based modules.
 
 ---
 

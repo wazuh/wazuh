@@ -11,9 +11,123 @@ The module also hosts the whole-agent deletion endpoint (`DELETE /agents`, calle
 runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
 `200` for a VD session guarantees the scan ran AND the inventory was flushed.
 
-Operator-facing documentation lives in `docs/ref/modules/inventory-sync-server/` (architecture,
-API reference, configuration, schemas, test tools). This README is the developer's map: how the
-pieces fit, which invariants are load-bearing, and where to touch what.
+Three documentation layers cover this module, each with its own job:
+
+- **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
+  where to touch what, and WHY it is built this way ([requirements](#requirements),
+  [design decisions](#design-decisions-d1d22), [developer FAQ](#developer-faq)).
+- **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
+  — the operator- and integrator-facing reference:
+  [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
+  [API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md),
+  [configuration](../../../docs/ref/modules/inventory-sync-server/configuration.md),
+  [schemas](../../../docs/ref/modules/inventory-sync-server/flatbuffers.md),
+  [test tools](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
+- **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
+  contract harness that measures this module end to end (see
+  [Load & benchmarking](#load--benchmarking)).
+
+## Requirements
+
+Distilled (and translated) from the migration's design corpus, where they were extracted from the
+legacy module's observable behavior before this rewrite. They are inlined here because the corpus
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d22)
+below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
+
+### Functional (RF)
+
+| # | Requirement | Status |
+|---|---|---|
+| RF-1 | Ingest synchronizations from the 5 agent producers (syscollector, syscollector-VD, FIM, SCA, agent-info) across every `Mode` | kept |
+| RF-2 | Per-document Upsert/Delete with a mandatory `id` and optional external versioning (`version > 0` → versioned upsert) | kept |
+| RF-3 | `ModuleFull` = delete-and-reindex per declared index; `ModuleDelta` = apply the delta | **superseded by D19** — no `ModuleFull`; a full resync is `Cleans` + `ModuleDelta` |
+| RF-4 | `DataClean`: per-index deletion on the agent's request — the ONLY cleanup path for `wazuh-states-vulnerabilities` | kept |
+| RF-5 | `DataContext`: session data for VD that is NEVER indexed | kept |
+| RF-6 | `ModuleCheck`: checksum-of-checksums (SHA-1 of the ordered concatenation of `checksum.hash.sha1`), answering ok/mismatch/error | kept (single attempt — D16) |
+| RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
+| RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
+| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, feed-update in progress, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
+| RF-10 | Whole-agent deletion sweeping `wazuh-states-*`, retriable | kept (`DELETE /agents`; authd is the only producer — D21) |
+| RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
+| RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
+| RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
+
+### Non-functional (RNF)
+
+| # | Requirement | Where it lands |
+|---|---|---|
+| RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
+| RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer |
+| RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
+| RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
+| RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |
+| RNF-7 | Observability: effective config and metrics exposed | debug dump of every tunable + `GET /metrics` ([Statistics](#statistics-d18)) |
+| RNF-8 | An explicit interface toward VD instead of shared internals | `IVdScanner` + the scanner's neutral views (D20) |
+| RNF-9 | The keystore socket's fate decided OUTSIDE this module | the `keystore_server` module (D11) |
+| RNF-10 | Satisfy the indexer-connector synchronization contract (REQ-SYNC below) — preconditions, not nice-to-haves, once the endpoint is synchronous | the pipeline's connector-per-worker design |
+
+### Indexer-connector synchronization (REQ-SYNC)
+
+The connector-locking contract extracted from the legacy module's failure modes; the sharded
+pipeline satisfies it structurally rather than by discipline:
+
+| # | Requirement | How |
+|---|---|---|
+| REQ-SYNC-1 | Locking contract explicit and verifiable, not a caller convention | one PRIVATE connector per worker — no shared staging to lock |
+| REQ-SYNC-2 | Never HTTP nor sleeps under the staging mutex | staging and I/O both live on the worker; nothing else contends |
+| REQ-SYNC-3 | Completion notifies with per-session ownership, not a global vector + flag | `registerNotify` is NOT used at all; `flush()` returning is the signal |
+| REQ-SYNC-4 | Ack only after the WHOLE session is durable | group commit answers after its flush; "200 means flushed" |
+| REQ-SYNC-5 | The completion path must not hold the connector lock waiting on third parties | scans run on their own lane; immediates cut the batch and own their I/O |
+| REQ-SYNC-6 | Bounded retries (no infinite 429 loop holding the agent's connection) | connector retry ceilings are configuration; a stuck shard delays only its agents |
+| REQ-SYNC-7 | Preserve the wait-free availability monitor | one shared `IndexerSession`, one monitor per process |
+| REQ-SYNC-8 | Redesign the notify/flag model BEFORE parallelizing completion | moot: there is no notify model to misuse |
+
+### VD handoff (REQ-VDQ)
+
+| # | Requirement | Status |
+|---|---|---|
+| REQ-VDQ-1 | Enqueue AFTER building the scan context, in RAM, byte-bounded | kept (the lane queues validated sessions; contexts are built in the worker from the request body) |
+| REQ-VDQ-2 | Per-agent FIFO, one scan in flight per agent | kept (`AgentInFlightRegistry`) |
+| REQ-VDQ-3 | Feed/dedup gating moved to admission/consumer — the producer never blocks waiting for the feed | kept (feed gate answers `503 + Retry-After` at admission — D17) |
+| REQ-VDQ-4 | No silent drop; degrade with explicit coalescing | **superseded by D22** — the lane is short and synchronous; a full lane answers `503` and the agent re-POSTs (nothing to coalesce) |
+| REQ-VDQ-5 | Redefine the ack contract for VD sessions (scan decoupled from ack) | **superseded by D22** — the OPPOSITE was chosen: the scan gates the response; `200` guarantees scan + ingest |
+| REQ-VDQ-6 | Two-phase shutdown: stop admitting → drain/abort → reset the orchestrator | kept (lane stop before scanner reset; coordinator unregisters first) |
+| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **pending** — `vd_workers` defaults to 1 until the scanner stops serializing scans globally |
+| REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from lane + registry state) |
+| REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
+| REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
+
+## Design decisions (D1–D22)
+
+The numbered decisions the requirements above refer to, in their original numbering. The
+[official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
+carries the narrative version of the load-bearing ones; this is the complete catalog.
+
+| # | Decision |
+|---|---|
+| D1 | The whole session in ONE request (`FullSession`) — no GapSet, no retransmission protocol |
+| D2 | The result IS the HTTP response (status + JSON body); no FlatBuffers ack messages |
+| D3 | No session/idempotency id: re-applying a session is idempotent; dedup would be manager-internal and is unnecessary |
+| D4 | `seq` fields are unused — order is the vector's order |
+| D5 | No body cap of its own: `max_body_size` defaults to unlimited; the effective session limit is `max_inflight_bytes` (declaring more than the TOTAL budget ⇒ `413`) |
+| D6 | `mode=ModuleDelta` + `payload=Cleans` is accepted — the mode is non-significant for cleanups; routing is by payload |
+| D7 | One checksum per request, enforced by the SCHEMA (`SessionPayload` references `ChecksumModule` directly, no vector wrapper) |
+| D8 | A valid `SyncData` has `values` ≥ 1 (`contexts` optional); contexts-only or empty ⇒ `400` |
+| D9 | No RocksDB anywhere in the module: scan context is built from the request body in RAM |
+| D10 | Whole-agent deletion becomes its own endpoint (revised by D21) |
+| D11 | The keystore socket moves to its own minimal module (`keystore_server`) |
+| D12 | The new schema lands even if it breaks the agent's build (parallel teams; `TARGET=manager` unaffected) |
+| D13 | Ingress via remoted's authenticated `POST /stateful` (AES-CMAC per agent, opaque forward) — no router, no `s:` header, no `HandleSecureMessage` |
+| D14 | The server endpoint is `POST /stateful`, mirroring remoted's route name |
+| D15 | The deletion endpoint is NOT exposed through remoted: UDS-local consumers only |
+| D16 | Checksum verification is single-attempt — no retry loop (the legacy did 5×10 s) |
+| D17 | CVE feed not ready ⇒ `503 + Retry-After` for VD sessions, rejected WITHOUT processing — nobody blocks waiting for the feed |
+| D18 | Statistics deferred at first, shipped later against greppable placeholder markers (now [implemented](#statistics-d18)) |
+| D19 | `Mode` has no `ModuleFull`: a full resync is composed as `Cleans` + `ModuleDelta` with the full dataset — no special case in the server. Acks/`End`/`seq`/batching were REMOVED from the schema, not merely unused |
+| D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
+| D21 | Only authd deletes agents: the legacy `wm_database` delete path (and its router wiring) was removed, not migrated |
+| D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled, feed-update covers the agent) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
 
 ## Layout
 
@@ -148,19 +262,29 @@ sequenceDiagram
     participant IDX as indexer (worker's connector)
     participant VQ as VD scan lane
     R->>S: POST /stateful + X-Wazuh-Agent-Id
-    Note over S: admission: byte budget / connection cap → 503<br/>declares > TOTAL budget → 413
+    Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503; declares > TOTAL budget → 413
     Note over S: validateFullSession(): verifier → FullSession →<br/>shape → identity (403) → mode×payload → per-payload
     alt invalid
         S-->>R: 400 / 403
     else VD data session
-        S->>VQ: feed gate (503+Retry-After) / lane queue (503 full) / enqueue
-        VQ->>VQ: scan (synchronous, gates everything)
-        VQ->>IDX: stage inventory + flush (only if scan ok/skip)
-        VQ-->>R: 200, or 500 with NOTHING indexed
+        alt feed still downloading (D17)
+            S-->>R: 503 + Retry-After, NOTHING processed
+        else lane queue full (vd_scan_queue_slots, D22)
+            S-->>R: 503 scan capacity exhausted
+        else
+            S->>VQ: enqueue on the scan lane
+            VQ->>VQ: scan (synchronous, gates everything)
+            VQ->>IDX: stage inventory + flush (only if scan ok/skip)
+            VQ-->>R: 200, or 500 with NOTHING indexed
+        end
     else everything else
-        S->>Q: enqueue on hash(agentId) % workers
-        Q->>IDX: stage / execute + flush (group commit)
-        Q-->>R: 200 / 200 noop / 409 / 503 / 500
+        alt pipeline admission queue over sync_queue_bytes (GLOBAL)
+            S-->>R: 503 shed (sync.pipeline.shed.total)
+        else
+            S->>Q: enqueue on hash(agentId) % workers
+            Q->>IDX: stage / execute + flush (group commit)
+            Q-->>R: 200 / 200 noop / 409 / 503 / 500
+        end
     end
 ```
 
@@ -325,9 +449,51 @@ absence is a contract violation by the caller, not agent input, and answers `400
 `shared_modules/utils/flatbuffers/schemas/inventorySync.fbs` by the `compile_schemas_input`
 target) and aliases `namespace fb = Wazuh::SyncSchema`. All module code says
 `invsync::schema::fb::...` — if the schema's namespace or location ever moves again, this alias
-is the one line that changes. The contract itself (tables, pinned enum values, validity matrix)
-is documented in `docs/ref/modules/inventory-sync-server/flatbuffers.md` and pinned by
-`schemaRoundtrip_test.cpp`.
+is the one line that changes. The field-by-field contract (tables, pinned enum values) is
+documented in [flatbuffers.md](../../../docs/ref/modules/inventory-sync-server/flatbuffers.md)
+and pinned by `schemaRoundtrip_test.cpp`.
+
+The shape, annotated — every absence is a design decision, not an omission:
+
+```text
+enum  Mode { ModuleDelta, ModuleCheck, MetadataDelta, MetadataCheck,
+             GroupDelta, GroupCheck }                 // no ModuleFull (D19)
+table DataValue      { operation, id, index, version, data }   // no seq, no session id (D3/D4)
+table DataContext    { id, index, data }              // VD-only context, never indexed (RF-5)
+table DataClean      { index }
+table ChecksumModule { index, checksum }
+table SyncData    { values: [DataValue]; contexts: [DataContext]; }
+table Cleans      { items: [DataClean]; }
+union SessionPayload { SyncData, Cleans, ChecksumModule }  // ChecksumModule DIRECT: "exactly one
+                                                           // checksum" is enforced by the schema (D7)
+table FullSession { start: Start; payload: SessionPayload; }   // no End table (D1/D2)
+```
+
+There are no ack tables, no `End`, no retransmission requests, no per-item sequence numbers and
+no declared counts (`Start.size` was removed — the real counts are the vectors'): the legacy
+protocol's fragmentation machinery was deleted from the wire, so no code path can quietly
+resurrect it.
+
+**Mode × payload matrix** (what `validateFullSession` accepts; anything else ⇒ `400`):
+
+| `Start.mode` | Payload | Semantics |
+|---|---|---|
+| `ModuleDelta` | `SyncData` | apply the delta (upserts/deletes, optional versioning) |
+| `ModuleDelta` | `Cleans` | per-index cleanup — routed by PAYLOAD, the mode is non-significant here (D6) |
+| `ModuleCheck` | `ChecksumModule` | checksum-of-checksums verification, single attempt (D16) |
+| `MetadataDelta` / `MetadataCheck` / `GroupDelta` / `GroupCheck` | absent (`NONE`) | agent-info metadata/groups update or check-repair across the agent's documents |
+
+**Full resync without `ModuleFull` (D19)**: the agent composes it as two ordinary requests —
+`FullSession{ModuleDelta, Cleans{module's indices}}` then `FullSession{ModuleDelta, SyncData{full
+dataset}}`. The server has NO special case: both ride the normal pipeline, and the shard FIFO
+guarantees their order. The window between them (empty index) is equivalent to the legacy's
+internal delete-to-flush window — eventually consistent either way.
+
+**What the server deliberately does NOT validate**: declared counts (none exist); duplicate or
+out-of-order `id`s inside `values` (last-write-wins in vector order); a re-POST of the same
+session (re-applied — idempotent by construction, D3). Per-document problems (unlisted index,
+empty id, invalid JSON on upsert) skip that DOCUMENT with a WARN and never fail the request — a
+session whose every document was skipped answers a no-op `200`.
 
 ## Tests
 
@@ -364,11 +530,35 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 ## Tools
 
 - `tools/send_sync.py` — stdlib-only smoke sender for a live socket (health probe, every
-  transport rejection on demand). See `docs/ref/modules/inventory-sync-server/test-tools.md`.
+  transport rejection on demand). See
+  [test-tools.md](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
 - `testtool/` — `inventory_sync_server_testtool`, the vulnerability-detection integration driver:
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by
   `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`.
+
+## Load & benchmarking
+
+[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md) is the load harness that
+measures this module end to end — a Go sender reproducing the agent's wire (AES-CMAC signatures,
+`FullSession` buffers, zstd in agent mode) over two transports:
+
+- `--mode uds` POSTs straight to `queue/sockets/inventory-sync.sock`: the ingestion pipeline
+  alone (validation, sharded workers, group commit, the VD lane).
+- `--mode agent` enrolls a synthetic fleet and goes through remoted's relay, like a real fleet.
+
+What it pins about THIS module (scenario map in
+[SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md)):
+
+- The **response contracts under pressure**: `contract_invalid_bodies` (the `400` paths),
+  `contract_oversized_413` (the budget `413`), `contract_ramp_503` (the `sync_queue_bytes` shed,
+  calibrated to trip on any hardware), `contract_feed_not_ready_retry` (the `503 + Retry-After`
+  loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_delete_under_load`.
+- **Real captured payloads** (`real_*` scenarios) for production-shaped sessions, including a full
+  first connection at fidelity (the 27,726-document Windows FIM registry corpus in one session).
+- Every run scrapes [`GET /metrics`](#statistics-d18) alongside the client-side counters, so
+  client-observed behavior correlates with shard depths, sheds and lane timings — when touching
+  the pipeline or the lane, `run_matrix.sh` regenerates the module's load report on your machine.
 
 ## Statistics (D18)
 
@@ -389,6 +579,42 @@ GAUGES the workers update, never pull metrics (a pull would capture a `this` tha
 `stop()` while the manager persists — there is no `remove()`); and `Item::enqueuedAt` is stamped
 by the endpoint, so a default (epoch) timestamp means "no duration sample", which keeps
 hand-built test items out of the histograms.
+
+## Developer FAQ
+
+- **Why no acks, no session id, no retransmission?** Because the transport already provides what
+  the legacy protocol built by hand: the request is the session, the response is the result (D1/
+  D2), and idempotent re-application (D3) makes "the agent re-POSTs" the entire recovery story.
+  Every piece of state the old module kept existed to reassemble fragments — with no fragments,
+  the state (and its failure modes: gap tracking, stuck sessions, ack races) has nothing to track.
+- **Why does the scan GATE indexing (D22)?** So `200` means something: scan ran AND inventory is
+  flushed. The legacy indexed even when the scan failed, leaving vulnerability state silently
+  stale — the agent believed the sync succeeded and never resent. A `500` with nothing indexed is
+  recoverable (the agent re-POSTs); a half-applied session is not.
+- **Why no RocksDB (D9)?** The store existed to reassemble fragmented sessions and to queue scan
+  contexts. Whole sessions killed the first use; building scan contexts from the request body in
+  RAM killed the second. Pending scans never survived a restart anyway (the legacy wiped its
+  store on start), so nothing was lost — and a whole class of leases/wipes/GC went with it.
+- **Why is the byte-queue `503` body generic while the VD `503`s carry a reason?** Which
+  admission gate fired (budget, queue, indexer, shutdown) is an operator concern — visible in
+  logs and `GET /metrics` — and the agent's reaction is identical: retry later. The two VD gates
+  differ because the AGENT reacts differently: `Retry-After` schedules the re-POST, and "scan
+  capacity exhausted" is a normal-cycle retry.
+- **Why one connector per worker + group commit?** A shared connector is a shared staging buffer,
+  which is a lock, which is REQ-SYNC-2's root cause (HTTP under the staging mutex — the legacy's
+  deadlock family). Private connectors make ordering topological, and the group commit amortizes
+  `_bulk` overhead under load while degrading to flush-per-request when idle.
+- **Why is `sync_queue_bytes` GLOBAL and not per shard?** It bounds total memory awaiting workers
+  — the failure it prevents (a flood of accepted sessions exhausting RAM) is process-wide, and a
+  per-shard split would let a skewed fleet blow the total while every individual shard looks fine.
+  Fairness across shards is the topology's job, not the byte cap's.
+- **Why is the store path hyphenated (`queue/inventory-sync-server`)?** The legacy module
+  recursively removed `queue/inventory_sync` at startup, and an underscored sibling would match an
+  `inventory_sync*` glob on upgraded installs. Reserved, currently unused.
+- **Why does `200` mean FLUSHED and not queued?** Because the agent deletes its outbox on `200`.
+  Anything weaker (accepted, staged, timer-flushed-later) makes data loss invisible to the only
+  party that can retry — that is also why the connectors' timer flush is overridden
+  ([the flush-interval override](#the-connector-flush-interval-override)).
 
 ## Operational notes
 

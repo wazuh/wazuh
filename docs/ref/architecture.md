@@ -44,7 +44,7 @@ subgraph manager[" "]
   subgraph modulesd["Modulesd"]
     direction TB
     vs["Vuln Scanner"]:::m
-    is["Inventory Sync"]:::m
+    is["Inventory Sync Server"]:::m
     au["Agent Upgrade"]:::m
     tm["Task Manager"]:::m
     ctrl["Control"]:::m
@@ -73,12 +73,12 @@ vs -->|3| engine
 tm -->|5| wdb
 monitord -->|9| wdb
 
-%% Modulesd internal
-is <-->|3| vs
+%% Modulesd internal (in-process VD scan lane)
+is -->|3| vs
 au -->|5| tm
 
-%% Modulesd ↔ Gateway (via Router)
-is <-->|3| remoted
+%% Modulesd ↔ Gateway (UDS relay: POST /stateful → queue/sockets/inventory-sync.sock)
+remoted <-->|3| is
 authd -->|10| is
 
 %% Core / Modulesd → Indexer
@@ -110,7 +110,7 @@ clients -->|1,5,6,7,8,10| api
 | **Monitord**   | `wazuh-manager-monitord`  | Agent monitoring and log rotation                                                                                            |
 | **Auth**       | `wazuh-manager-authd`     | Agent registration and enrollment via TLS (port 1515)                                                                        |
 | **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC                                                                    |
-| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync, agent upgrade, task manager, and control (restart/reload) |
+| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, agent upgrade, task manager, and control (restart/reload) |
 | **Cluster**    | `wazuh-manager-clusterd`  | Multi-node master-worker synchronization (Python, asyncio)                                                                   |
 
 > **Note:** The manager also ships CLI tools (`wazuh-manager-control`, `wazuh-manager-keystore`, etc.) listed in the [CLI Tools](#cli-tools) section below.
@@ -119,10 +119,10 @@ clients -->|1,5,6,7,8,10| api
 
 | Library               | Source                             | Consumers                                                      | Purpose                                                                           |
 | --------------------- | ---------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **Indexer Connector** | `shared_modules/indexer_connector` | Engine, Vulnerability Scanner, Inventory Sync, Content Manager | Client library for pushing data to the Wazuh Indexer                              |
+| **Indexer Connector** | `shared_modules/indexer_connector` | Engine, Vulnerability Scanner, Inventory Sync Server, Content Manager | Client library for pushing data to the Wazuh Indexer                              |
 | **Content Manager**   | `shared_modules/content_manager`   | Vulnerability Scanner, Modulesd                                | Plugin framework for downloading and managing content (feeds, rulesets)           |
-| **Router**            | `shared_modules/router`            | Remoted, Wazuh DB, Auth, Inventory Sync                        | Pub/sub IPC messaging between daemons via per-topic sockets under `queue/router/` |
-| **Keystore**          | `shared_modules/keystore`          | Indexer Connector                                              | AES-256 encrypted credential store (RocksDB)                                      |
+| **Router**            | `shared_modules/router`            | Remoted, Wazuh DB, Auth                                        | Pub/sub IPC messaging between daemons via per-topic sockets under `queue/router/` |
+| **Keystore**          | `shared_modules/keystore`          | Indexer Connector; served over `queue/sockets/keystore` by the `keystore_server` module for the API framework | AES-256 encrypted credential store (RocksDB)                                      |
 
 ### CLI Tools
 

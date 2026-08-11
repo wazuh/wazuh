@@ -14,12 +14,10 @@ add_executable(inventory_sync_server_testtool main.cpp)
 target_include_directories(
   inventory_sync_server_testtool
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include # inventory_sync_server.h
-          # vulnerabilityScannerFacade.hpp and its transitive include soup: the scanner's headers
-          # still pull the legacy module's context.hpp and headers spelled relative to the source
-          # root -- the same set the module's own vdScannerAdapter.cpp needs.
+          # vulnerabilityScannerFacade.hpp and headers spelled relative to the source root -- the
+          # same set the module's own vdScannerAdapter.cpp needs.
           ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
           ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/src
-          ${SRC_FOLDER}/wazuh_modules/inventory_sync/src
           ${SRC_FOLDER}
           ${SRC_FOLDER}/shared_modules/utils # flatbuffers/include/inventorySync_generated.h
           ${SRC_FOLDER}/external/flatbuffers/include

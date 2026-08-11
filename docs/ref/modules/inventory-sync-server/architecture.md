@@ -95,7 +95,7 @@ What runs where, and what it can block:
 |---|---|---|---|
 | Admission + HTTP parse | connection strand | no | O(headers) |
 | FlatBuffers verify + identity + shape | strand | no | O(body bytes), CPU only |
-| Enqueue to a shard / the lane | strand | no | O(1); a full queue answers `503` immediately (explicit backpressure) |
+| Enqueue to a shard / the lane | strand | no | O(1); a full queue answers `503` immediately (explicit backpressure). The cap is `sync_queue_bytes` (64 MiB default), one GLOBAL byte counter across every shard — not per shard |
 | Per-document policy + staging | shard worker | no | O(documents) |
 | bulk/deleteByQuery/updateByQuery/search + flush | shard worker | yes | dominated by the indexer; only delays the agents of THAT shard |
 | Scan + index + respond (VD sessions) | scan lane worker | yes | dominated by the scanner; only delays the lane, never the pipeline or the transport |
@@ -290,7 +290,7 @@ percentiles) and dumps them on `GET /metrics` over the same local socket — see
 
 | Stage | Metrics |
 |---|---|
-| Responses | `sync.requests.total.<code>` — one counter per contract status, counted exactly once at the send site (endpoint rejection, pipeline, or scan lane) |
+| Responses | `sync.requests.total.<code>` — one counter per contract status, counted exactly once at the send site (endpoint rejection, pipeline, or scan lane), plus a `sync.requests.total.other` catch-all for any status outside the contract |
 | Pipeline | `sync.pipeline.shed.total` (queue-full refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
 | Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total` |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
@@ -301,7 +301,10 @@ per process and never reset), so totals read across a retry are cumulative.
 
 ## Design decisions
 
-The decisions that shape the module, and what each one buys:
+The decisions that shape the module, and what each one buys. This is the narrative distillation;
+the complete numbered catalog (D1–D22, plus the functional and non-functional requirements it
+answers to) lives in the module's in-tree developer README,
+`src/wazuh_modules/inventory_sync_server/README.md`:
 
 | # | Decision | Rationale |
 |---|---|---|
