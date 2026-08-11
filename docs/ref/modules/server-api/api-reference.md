@@ -186,6 +186,12 @@ curl -k -X PUT "https://localhost:55000/agents/node/worker-01/reload?pretty=true
 
 **`DELETE /agents`** — Delete agents by ID or criteria. Requires `agents_list` and `status`.
 
+Deleting an agent also removes its documents from the Wazuh Indexer (inventory state, reported
+configuration and statistics), which is why its data disappears from the dashboard. That cleanup is
+performed by `wazuh-manager-authd` after this call returns; if the indexer is unhealthy at that
+moment the documents can survive and authd logs an error naming the agent — see the
+[Inventory Sync Server FAQ](../inventory-sync-server/README.md) for the recovery.
+
 ```bash
 # Delete disconnected agents older than 30 days
 curl -k -X DELETE "https://localhost:55000/agents?agents_list=all&status=disconnected&older_than=30d&pretty=true" \

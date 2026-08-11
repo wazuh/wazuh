@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from helpers.indexer import AGENT_CONFIG_INDEX, AGENT_STATS_INDEX
 from helpers.session_builder import build_session, default_start
 
@@ -33,7 +35,13 @@ def _seed_config_and_stats(client, agent_id):
 
 def _await_config_and_stats(indexer, agent_id):
     """Blocks until both async writes are searchable. Asserting on their absence later would
-    otherwise pass for the wrong reason: nothing was there to delete."""
+    otherwise pass for the wrong reason: nothing was there to delete.
+
+    Read with test_a_report_in_flight_survives_the_deletion below: waiting here is also what MASKS
+    the async connector's window. `/config` and `/stats` are written through the async connector,
+    whose queue drains on its own timer, and the deletion cannot refresh or drain it -- so a report
+    still queued when the deletion runs lands afterwards and resurrects the document. Every test
+    that waits first is testing the deletion, not that window."""
     for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
         docs = indexer.wait_for_docs(agent_id, 1, index=index, timeout=ASYNC_WRITE_TIMEOUT)
         assert docs, f"agent {agent_id} has no document in {index} after {ASYNC_WRITE_TIMEOUT}s"
@@ -123,3 +131,29 @@ def test_delete_orders_after_the_same_agents_session(client, cluster, indexer, a
 
     assert client.delete_agent(agent_id).status == 200
     assert indexer.wait_for_docs(agent_id, 0) == []
+
+
+@pytest.mark.skip(reason="KNOWN LIMITATION, not yet fixed: /config and /stats are written through "
+                         "the ASYNC connector, whose queue the deletion cannot refresh or drain. "
+                         "See the follow-up to route both endpoints through the pipeline.")
+def test_a_report_in_flight_survives_the_deletion(client, cluster, indexer, agent_id):
+    """The window every other test in this file steps around, recorded so it is not rediscovered
+    as a mystery.
+
+    The ordering `test_delete_orders_after_the_same_agents_session` proves holds for `/stateful`
+    because that path goes through the agent's shard. `/config` and `/stats` do NOT: they hand the
+    document to the async connector, which drains on its own timer
+    (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). Deleting inside
+    that window leaves the queued report to land afterwards, and since the agent is gone from
+    client.keys nothing ever overwrites it again.
+
+    Unskip once the reports are ordered against the deletion (routing them through the pipeline, as
+    `DELETE /agents` already is). Repeating the deletion is the manual recovery meanwhile -- it is
+    idempotent.
+    """
+    _seed_config_and_stats(client, agent_id)     # deliberately NOT awaited: still in the async queue
+    assert client.delete_agent(agent_id).status == 200
+
+    for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
+        assert indexer.wait_for_docs(agent_id, 0, index=index, timeout=ASYNC_WRITE_TIMEOUT + 10) == [], \
+            f"a report queued at deletion time resurrected agent {agent_id} in {index}"

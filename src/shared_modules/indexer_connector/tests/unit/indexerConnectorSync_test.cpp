@@ -1291,6 +1291,69 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
 }
 
+/// A _delete_by_query answers 200 even when it deleted nothing it was asked to. These pin the two
+/// ways that happens, because reporting either as success is how documents outlive a deletion
+/// everyone upstream believes worked -- and for a whole-agent deletion nothing ever overwrites them.
+class IndexerConnectorSyncDeleteByQueryOutcomeTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<std::string, bool>>
+{
+};
+
+TEST_P(IndexerConnectorSyncDeleteByQueryOutcomeTest, ADeleteByQueryReportsWhatItLeftBehind)
+{
+    const auto& [responseBody, shouldThrow] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [body = responseBody](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    if (shouldThrow)
+    {
+        EXPECT_THROW(connector.flush(), IndexerConnectorException) << "response: " << responseBody;
+    }
+    else
+    {
+        EXPECT_NO_THROW(connector.flush()) << "response: " << responseBody;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DeleteByQueryOutcomes,
+    IndexerConnectorSyncDeleteByQueryOutcomeTest,
+    ::testing::Values(
+        // Everything the query matched was deleted: the only response that may pass silently.
+        std::make_pair(std::string(R"({"took":5,"deleted":10,"version_conflicts":0,"failures":[]})"), false),
+        // A response that predates these fields must still pass (the connector serves other callers).
+        std::make_pair(std::string(R"({"took":5,"deleted":10})"), false),
+        // Per-shard error inside a 200.
+        std::make_pair(std::string(R"({"took":5,"deleted":4,"failures":[{"index":"wazuh-states-inventory-packages",)"
+                                   R"("shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
+                       true),
+        // `conflicts: "proceed"` tallies skipped documents HERE, not in `failures` -- the path the
+        // shard-failure check alone misses.
+        std::make_pair(std::string(R"({"took":5,"deleted":9,"version_conflicts":3,"failures":[]})"), true),
+        // Both at once.
+        std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
+                                   R"("failures":[{"shard":1,"status":503}]})"),
+                       true)));
+
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
     // This test verifies the fix for DataClean: when there's only deleteByQuery (no bulk data),
@@ -4401,6 +4464,67 @@ TEST_F(IndexerConnectorSyncTest, Refresh_AcceptsWildcard)
 
     EXPECT_NO_THROW(connector.refresh("wazuh-states-*"));
     EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-*/_refresh"));
+}
+
+/// Refreshing an index that does not exist yet is a no-op, not a failure: callers refresh a FIXED
+/// scope (the whole-agent deletion's wazuh-agent-config / wazuh-agent-stats) whose indices appear
+/// only with their first document, so a manager whose agents never reported config or statistics
+/// must not see the deletion fail.
+TEST_F(IndexerConnectorSyncTest, Refresh_ToleratesAMissingIndex)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not found", 404, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Not found", 404, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    EXPECT_NO_THROW(connector.refresh("wazuh-agent-config"));
+}
+
+/// Any OTHER refresh failure is RAISED, and this is load-bearing rather than tidy: a refresh exists
+/// to make the following delete_by_query see the agent's last writes, so swallowing the failure
+/// would let that delete run on a stale view and answer 200 for documents it never saw. 403 is the
+/// case that makes it concrete -- `indices:admin/refresh` is outside the crud/write action groups,
+/// so a least-privilege indexer role denies it.
+TEST_F(IndexerConnectorSyncTest, Refresh_RaisesEveryOtherFailure)
+{
+    for (const long statusCode : {403L, 500L, 503L})
+    {
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+        EXPECT_CALL(mockHttpRequest, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [statusCode](RequestParamsVariant, auto postParams, ConfigurationParameters)
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("refresh refused", statusCode, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onError("refresh refused", statusCode, "");
+                    }
+                }));
+
+        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        EXPECT_THROW(connector.refresh("wazuh-states-*"), IndexerConnectorException)
+            << "refresh must raise HTTP " << statusCode << " instead of warning and continuing";
+    }
 }
 
 TEST_F(IndexerConnectorSyncTest, IsSafeIndexName_Allowlist)

@@ -450,8 +450,11 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
     EXPECT_EQ(200, delta->get().status);
     EXPECT_EQ(200, deletion->get().status);
 
+    // Exact, not just non-empty: the assertions below index ops[1], so a regression that collapsed
+    // the deletion to a single op would read out of bounds instead of failing. One bulkIndex for the
+    // delta, then the scope's three refreshes and three deletes.
     const auto ops = fixture.events->syncOps();
-    ASSERT_FALSE(ops.empty());
+    ASSERT_EQ(7U, ops.size());
     EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
     EXPECT_EQ("refresh", std::get<0>(ops[1])) << "the deletion refreshes what the delta just wrote";
     EXPECT_EQ("deleteByQuery", std::get<0>(ops.back()));

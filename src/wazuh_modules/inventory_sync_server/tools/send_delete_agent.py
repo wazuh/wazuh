@@ -143,6 +143,17 @@ def indexer_unreadable(counts):
     return any(value is None for value in counts.values())
 
 
+def same_agent(one, other):
+    """Compare ids the way the manager does: NUMERICALLY. client.keys stores them zero-padded to
+    three characters and the endpoint pads before deleting, so a raw "7" and an enrolled "007" are
+    the same agent -- comparing the strings is what let `--agent-id 7` (this tool's own documented
+    example for agent 007) walk straight past the enrolled-agent guard."""
+    try:
+        return int(one) == int(other)
+    except (TypeError, ValueError):
+        return one == other                # non-numeric: the endpoint answers 400 anyway
+
+
 def warn_if_enrolled(agent_id, client_keys):
     """A deletion targeting an ENROLLED agent destroys live data that only a full resync brings
     back. This tool is for manual testing, so it refuses instead of asking."""
@@ -151,7 +162,7 @@ def warn_if_enrolled(agent_id, client_keys):
             enrolled = {line.split()[0] for line in handle if line.strip() and line[0] not in "#"}
     except OSError:
         return None                        # cannot read it; not this tool's job to insist
-    return agent_id in enrolled
+    return any(same_agent(agent_id, enrolled_id) for enrolled_id in enrolled)
 
 
 def main():
@@ -237,6 +248,17 @@ def main():
     if args.witness:
         witness_after = count_documents(args.witness, args.indexer, args.cert, args.key)
         print_counts("after", args.witness, witness_after)
+
+    # Same guard as the `before` snapshot, and for the same reason: an unreadable indexer answers
+    # None for every count, and `if value` treats None exactly like 0 -- so without this the tool
+    # would print "clean" and exit 0 precisely when it verified nothing.
+    if indexer_unreadable(after):
+        print("\nerror: could not read the indexer after the deletion, so nothing was verified.",
+              file=sys.stderr)
+        print("       The deletion itself answered "
+              f"{status if status else 'no status'}; re-run with --verify once the indexer is readable.",
+              file=sys.stderr)
+        return 2
 
     leftovers = {index: value for index, value in after.items() if value}
     if leftovers:

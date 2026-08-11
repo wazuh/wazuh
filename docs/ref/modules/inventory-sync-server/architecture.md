@@ -200,10 +200,24 @@ the index refresh interval would otherwise be invisible to it. The production ca
 The deletion is not executed inline: it is enqueued on the TARGET agent's pipeline shard as a
 special item kind, so it orders FIFO against any in-flight session of that same agent — a
 delete-then-reenroll can never resurrect state, and a scan in flight for that agent is respected
-through the same registry. The HTTP status makes the outcome visible: `200` means the
-delete-by-query was flushed (an index that does not exist counts as success, so repeating a
-deletion is harmless); `503`/`500` tell the caller to retry. authd retries once after a short
-pause and logs a warning with the status code on final failure.
+through the same registry. The HTTP status makes the outcome visible: `200` means every
+delete-by-query in the scope was flushed (an index that does not exist counts as success, so
+repeating a deletion is harmless); `503`/`500` tell the caller to retry. A `200` also means no
+delete-by-query left documents behind: a per-shard failure or a skipped document (a version
+conflict, which `conflicts: "proceed"` counts separately) fails the deletion instead of passing as
+success, because with the agent gone nothing would ever overwrite what was missed.
+
+authd retries up to three times with a widening pause (0 s, 1 s, 3 s), logging each pause at info
+level because its writer thread is blocked meanwhile, and, when it gives up, logs a `WARNING` naming
+the agent — separately for a request that never completed (no HTTP status: modulesd down or the
+transfer timed out) and for one the server refused with a status. A warning, not an error: the agent
+is already gone and cannot reconnect, so what is left behind is orphaned documents. It abandons the
+retries if the daemon is shutting down, and the operator's recovery is to repeat the deletion.
+
+One window this does NOT cover: `POST /config` and `POST /stats` are written through the
+asynchronous connector, whose queue the deletion cannot refresh or drain, so a report still queued
+when the deletion runs lands after it and recreates that agent's document. Repeating the deletion
+clears it.
 
 ## The transport
 

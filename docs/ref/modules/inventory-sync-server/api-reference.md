@@ -131,6 +131,24 @@ A `POST /config` that fails indexer-availability validation (see status codes be
 write path; a request that passes validation but whose serialization later fails (e.g. an agent id
 header that is not valid UTF-8) is answered `400` rather than crashing the handler.
 
+## Whole-agent deletion semantics
+
+`DELETE /agents` (and its `POST /agents/delete` alias) removes every document of one agent across the
+deletion scope: `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`. Each index is
+`_refresh`ed before its delete-by-query, because a delete-by-query is a SEARCH and would otherwise not
+see what the agent's last session wrote inside the index refresh interval — with the agent already
+gone from `client.keys`, nothing would ever overwrite those documents.
+
+What a `200` guarantees: every delete-by-query in the scope was flushed, AND none of them reported
+per-shard failures or skipped documents. An index that does not exist counts as success, so repeating
+a deletion is harmless — that is the caller's retry contract, and authd relies on it.
+
+One caveat: `POST /config` and `POST /stats` are written through the module's asynchronous connector,
+whose queue the deletion cannot refresh or drain. A report still queued when the deletion runs lands
+after it and recreates that single document; repeating the deletion clears it. Ordering those two
+routes against the deletion (as `/stateful` sessions already are, through the agent's worker shard) is
+tracked as a follow-up.
+
 ## The `/stateful` session semantics
 
 The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md)):
