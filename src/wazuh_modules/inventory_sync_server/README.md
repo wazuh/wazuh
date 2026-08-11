@@ -47,7 +47,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
 | RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
-| RF-10 | Whole-agent deletion sweeping `wazuh-states-*`, retriable | kept (`DELETE /agents`; authd is the only producer — D21) |
+| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`DELETE /agents`; authd is the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
@@ -264,7 +264,7 @@ sequenceDiagram
     participant IDX as indexer (worker's connector)
     participant VQ as VD scan lane
     R->>S: POST /stateful + X-Wazuh-Agent-Id
-    Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503; declares > TOTAL budget → 413
+    Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503 declares > TOTAL budget → 413
     Note over S: validateFullSession(): verifier → FullSession →<br/>shape → identity (403) → mode×payload → per-payload
     alt invalid
         S-->>R: 400 / 403
@@ -427,7 +427,20 @@ removing the agent from `client.keys`. Without refreshing first, everything the 
 session wrote inside that window is invisible to the query — the deletion answers `200` having
 matched nothing, and with the agent gone nothing ever overwrites those documents. A refresh that
 FAILS therefore fails the whole deletion (`500`/`503`, caller retries) rather than falling through
-to a delete on a stale view.
+to a delete on a stale view: the connector raises everything except a `404` (an index that does not
+exist yet has nothing to refresh). `403` is why that is not pedantry — `indices:admin/refresh` is
+outside the `crud`/`write` action groups, so a least-privilege indexer role denies it, and a
+swallowed `403` would silently reinstate the very bug the refresh exists to fix.
+
+**The window the refresh does NOT close.** `POST /config` and `POST /stats` write through the
+ASYNCHRONOUS connector, whose queue drains on its own timer
+(`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs on
+the sync connector and cannot refresh or drain that queue, so a report still queued when the
+deletion runs lands after the delete-by-query and recreates that agent's document. Repeating the
+deletion clears it (it is idempotent). Closing it properly means ordering those two endpoints
+against the deletion the way `DELETE /agents` already is — as pipeline items on the agent's shard —
+which is tracked as a follow-up; `qa/test_delete_agent.py` carries a skipped test that records the
+gap.
 
 ## Transport (`src/http_server/`)
 

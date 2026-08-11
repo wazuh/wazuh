@@ -172,13 +172,18 @@ TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)
     // hands over -- every deletion must carry the SAME padded form the documents were written with.
     const auto ops = fixture.events->syncOps();
     ASSERT_EQ(6U, ops.size());
+    std::size_t deletes = 0;
     for (const auto& op : ops)
     {
         if (std::get<0>(op) == "deleteByQuery")
         {
+            ++deletes;
             EXPECT_EQ("007", std::get<1>(op)) << "padded to the historical 3-character form";
             EXPECT_EQ(CLUSTER, std::get<3>(op));
         }
     }
+    // Counted, not just inspected: without this, six ops of any other kind would satisfy the size
+    // assertion above while the per-delete expectations never ran at all.
+    EXPECT_EQ(3U, deletes) << "one deleteByQuery per index of the deletion scope";
     EXPECT_GE(fixture.events->m_syncFlushes.load(), 1);
 }

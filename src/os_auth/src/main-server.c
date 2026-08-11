@@ -1177,7 +1177,7 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         };
         client = uhttp_client_new(&opts);
         if (!client) {
-            merror("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
+            mwarn("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
             return;
         }
     }
@@ -1199,8 +1199,30 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
     static const unsigned int backoff_seconds[INV_SYNC_DELETE_ATTEMPTS] = {0, 1, 3};
 
     for (int attempt = 0; attempt < INV_SYNC_DELETE_ATTEMPTS; attempt++) {
+        // Signals are blocked in this thread (authd_sigblock()), so nothing interrupts a sleep() or
+        // a request in flight: without these checks a shutdown asked for while the writer is working
+        // its removal queue waits out the whole budget (up to ~94 s) for EVERY queued agent before
+        // the daemon can exit. Giving up on shutdown is safe -- the deletion is idempotent and the
+        // warning below tells the operator to repeat it.
+        if (!running) {
+            mdebug1("Shutting down; abandoning the deletion of agent '%s' after %d attempt(s). "
+                    "Its documents remain in the indexer; repeat the deletion after the restart.",
+                    agent_id, attempt);
+            return;
+        }
+
         if (backoff_seconds[attempt] > 0) {
-            sleep(backoff_seconds[attempt]);
+            // Announced rather than silent: this is the WRITER thread, and it is the only one that
+            // persists client.keys. While it waits here nothing else it owns moves -- no key write,
+            // no other queued agent's deletion, no shutdown -- so a fleet-wide removal against an
+            // unhealthy indexer makes authd look stalled with nothing in the log to explain it.
+            minfo("Retrying the deletion of agent '%s' in %u s (attempt %d/%d); the writer thread stays "
+                  "blocked meanwhile, delaying client.keys writes and any other pending deletion.",
+                  agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
+        }
+
+        for (unsigned int slept = 0; slept < backoff_seconds[attempt] && running; slept++) {
+            sleep(1);
         }
 
         uhttp_result_t result = {0};
@@ -1220,9 +1242,9 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
                     attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
 
             if (last_attempt) {
-                merror("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
-                       "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
-                       agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
+                mwarn("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
+                      "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
             }
             continue;
         }
@@ -1231,9 +1253,9 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
                 attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
 
         if (last_attempt) {
-            merror("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) (HTTP status %ld). "
-                   "Its documents remain in the indexer; repeat the deletion once the indexer is healthy.",
-                   agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
+            mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) (HTTP status %ld). "
+                  "Its documents remain in the indexer; repeat the deletion once the indexer is healthy.",
+                  agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
         }
     }
 }

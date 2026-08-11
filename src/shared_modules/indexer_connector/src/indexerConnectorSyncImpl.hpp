@@ -356,16 +356,38 @@ class IndexerConnectorSyncImpl final
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             const auto parsed = nlohmann::json::parse(response, nullptr, false);
-            if (parsed.is_discarded() || !parsed.contains("failures") || parsed.at("failures").empty())
+            if (parsed.is_discarded())
+            {
+                return;
+            }
+
+            const auto failures =
+                (parsed.contains("failures") && parsed.at("failures").is_array()) ? parsed.at("failures").size() : 0;
+
+            // The OTHER way a 200 leaves documents behind. `conflicts: "proceed"` (set when the
+            // query is staged) makes the run skip a document whose version moved between the search
+            // and the delete instead of aborting -- and OpenSearch tallies those skips in
+            // `version_conflicts`, NOT in `failures`. To the caller both mean the same thing:
+            // documents it asked to delete are still there. So both are raised, because for a
+            // whole-agent deletion the documented recovery is re-running the delete, and nothing
+            // re-runs it while this reports success.
+            const auto conflicts =
+                (parsed.contains("version_conflicts") && parsed.at("version_conflicts").is_number_integer())
+                    ? parsed.at("version_conflicts").get<std::size_t>()
+                    : 0;
+
+            if (failures == 0 && conflicts == 0)
             {
                 return;
             }
 
             LOGFN_WARN(m_logFn,
-                       "deleteByQuery reported %zu shard failure(s); some documents were not deleted: %s",
-                       parsed.at("failures").size(),
-                       parsed.at("failures").dump().c_str());
-            throw IndexerConnectorException("deleteByQuery reported shard failures");
+                       "deleteByQuery left documents behind: %zu shard failure(s), %zu version conflict(s). "
+                       "Response: %s",
+                       failures,
+                       conflicts,
+                       response.c_str());
+            throw IndexerConnectorException("deleteByQuery did not delete every matching document");
         };
 
         const auto onErrorDeleteByQuery =
@@ -1579,7 +1601,14 @@ public:
                 LOGFN_DEBUG2(m_logFn, "Index not found (404) for refresh - nothing to refresh, continuing.");
                 return;
             }
+            // Anything else is raised, NOT swallowed. Callers refresh to make a following search
+            // (delete_by_query, update_by_query) see the writes it must act on; a swallowed failure
+            // would let that search run on a stale view and report success for documents it never
+            // saw. A 403 is the case that makes this load-bearing: `indices:admin/refresh` is not in
+            // the `crud`/`write` action groups, so a least-privilege indexer role denies it, and
+            // warning-and-continuing would silently reinstate the very bug the refresh exists to fix.
             LOGFN_WARN(m_logFn, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
+            throw IndexerConnectorException(error);
         };
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
