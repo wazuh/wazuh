@@ -37,6 +37,7 @@ enum class CurlOption
     SslKey,         ///< string client key path
     SslVersion,     ///< long, the minimum TLS version to negotiate
     SslCiphers,     ///< string TLS 1.3 ciphersuite list
+    SslOptions,     ///< long, the TLS behaviour bitmask
     FollowLocation, ///< long, always 0 (H4: no redirects)
     NoSignal        ///< long, always 1 (H6)
 };
@@ -47,6 +48,12 @@ enum class CurlOption
 /// stays curl-agnostic like the ids above. curlHandle.cpp static_asserts the two
 /// against each other, so the literal cannot drift from what curl expects.
 inline constexpr long TLS_MIN_VERSION_1_3 {7};
+
+/// Value for CurlOption::SslOptions: trust the platform's own certificate store.
+///
+/// Numerically libcurl's CURLSSLOPT_NATIVE_CA, static_asserted in curlHandle.cpp
+/// like the version above.
+inline constexpr long TLS_NATIVE_CA_STORE {1L << 4};
 
 /**
  * @brief One HTTP transfer, at the option level.
