@@ -759,15 +759,18 @@ stages:
       params:
         agents_list: '001'
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1820
+              id:
+                - "001"
         message: !anystr
 
   - name: Try to upgrade an agent that is updated to the latest version
@@ -780,16 +783,18 @@ stages:
       params:
         agents_list: '001'
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Would return error 1823 if WPK existed and agent already up-to-date, but 1823 in exclude_codes)
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1820
+              id:
+                - "001"
         message: !anystr
 
   - name: Upgrade an agent using http and wpk repo
@@ -827,15 +832,19 @@ stages:
         agents_list: '009,010'
         upgrade_version: '4.0.0'
     response: &agents_not_upgraded_response
-      # Agents exist but WPK file doesn't exist, errors filtered by exclude_codes
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 2
+          failed_items:
+            - error:
+                code: 1820
+              id:
+                - "009"
+                - "010"
         message: !anystr
 
   - name: Try to upgrade a list of agents expecting socket error (agent version greater or equal)
@@ -849,16 +858,20 @@ stages:
         agents_list: '001,002,003'
         upgrade_version: '2.0.0'
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Would return error 1823 if WPK existed, but 1823 in exclude_codes)
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 3
+          failed_items:
+            - error:
+                code: 1820
+              id:
+                - "001"
+                - "002"
+                - "003"
         message: !anystr
 
   - name: Try to upgrade a list of agents with filters not matching them
@@ -897,16 +910,18 @@ stages:
         upgrade_version: '4.0.0'
         group: 'group1'
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Only agent 001 in group1, would return error 1823 if WPK existed, but 1823 in exclude_codes)
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1820
+              id:
+                - "001"
         message: !anystr
 
   - name: Upgrade all agents with os version 18.04.6 LTS and query

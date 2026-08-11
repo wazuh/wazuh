@@ -1489,10 +1489,10 @@ test_name: GET /agents/{agent_id}/daemons/stats
 
 stages:
 
-  - name: Get all daemons' stats from agent 001
+  - name: Get all daemons' stats from agent 005
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1505,7 +1505,7 @@ stages:
             - timestamp: !anystr
               name: wazuh-manager-remoted
               agents:
-                - id: 1
+                - id: 5
                   uptime: !anystr
                   metrics: !anything
           failed_items:
@@ -1514,10 +1514,10 @@ stages:
           total_failed_items: 1
 
 
-  - name: Try to get all daemons' stats from agent 001 with a wrong daemons list
+  - name: Try to get all daemons' stats from agent 005 with a wrong daemons list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/daemons/stats"
       method: GET
       params:
         daemons_list: wrong_daemon_1,wrong_daemon_2
@@ -1529,10 +1529,10 @@ stages:
         title: !anystr
         detail: !anystr
 
-  - name: Get all daemons' stats from agent 001 with a specified daemons list
+  - name: Get all daemons' stats from agent 005 with a specified daemons list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/daemons/stats"
       method: GET
       params:
         daemons_list: wazuh-manager-remoted
@@ -1547,7 +1547,7 @@ stages:
             - timestamp: !anystr
               name: wazuh-manager-remoted
               agents:
-                - id: 1
+                - id: 5
                   uptime: !anystr
                   metrics: !anything
           failed_items: []

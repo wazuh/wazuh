@@ -176,10 +176,10 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Get all daemons' stats from agent 002 (Allowed)
+  - name: Get all daemons' stats from agent 006 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/006/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -192,7 +192,7 @@ stages:
             - timestamp: !anystr
               name: wazuh-manager-remoted
               agents:
-                - id: 2
+                - id: 6
                   uptime: !anystr
                   metrics: !anything
           failed_items:
