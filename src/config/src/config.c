@@ -287,11 +287,17 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         } else {
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         }
+
+        /* A failed read still leaves the object holding whatever it allocated before
+         * giving up, exactly like the successful path -- every other exit below
+         * clears it, these two early ones were simply missed. */
+        OS_ClearXML(&xml);
         return (OS_INVALID);
     }
 
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
+        OS_ClearXML(&xml);
         return (0);
     }
 
