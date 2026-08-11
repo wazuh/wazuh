@@ -72,7 +72,13 @@ def configure_socket_listener(request, test_metadata):
     address_family = 'AF_INET6' if 'ipv6' in test_metadata else 'AF_INET'
     manager_address = '::1' if 'ipv6' in test_metadata else MANAGER_ADDRESS
 
-    socket_listener = AuthdSimulator(server_ip = manager_address, family=address_family, secret="TopSecret")
+    # No explicit secret: let it fall back to AuthdSimulator's own default
+    # (DEFAULT_AUTHD_SECRET, client_keys.py) -- a valid 32/48/64-hex-char key. The old
+    # hardcoded "TopSecret" (9 chars, not even hex) fails bridge_key_is_valid() on the
+    # real agent's HTTPS client (https_client_bridge.c) once it's written to
+    # client.keys, so the agent never got past enrollment: no HTTPS client, no
+    # /control traffic, nothing the rest of the test could observe.
+    socket_listener = AuthdSimulator(server_ip = manager_address, family=address_family)
     socket_listener.start()
     socket_listener.clear()
 
