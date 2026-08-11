@@ -149,17 +149,19 @@ function Get-MSIProductVersion {
     }
 
     try {
-        # Get the line that contains "ProductVersion"
-        $msi_version_info = Get-Content $logFilePath | Select-String "ProductVersion" | ForEach-Object { $_.Line }
+        # Match "ProductVersion = x.y.z" and take the first hit. Matching directly with
+        # Select-String avoids running -match against a collection of lines, which does not
+        # populate $Matches and would leave a stale or empty version.
+        $match = Get-Content $logFilePath | Select-String -Pattern "ProductVersion\s*=\s*([0-9\.]+)" | Select-Object -First 1
 
         # Check if the version format is valid
-        if (-not ($msi_version_info -match "ProductVersion\s*=\s*([0-9\.]+)")) {
+        if (-not $match) {
             write-output "$(Get-Date -format u) - Invalid ProductVersion format in the MSI log: $logFilePath" >> .\upgrade\upgrade.log
             return $null
         }
 
         # Return the version with the 'v' prefix
-        $product_version = "v$($matches[1])"
+        $product_version = "v$($match.Matches[0].Groups[1].Value)"
         return $product_version
 
     } catch {
@@ -272,7 +274,12 @@ Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >>
 # (exit code 0; a reboot-required result is a failure because a restart is never
 # allowed), the version written to disk matches the MSI, and the agent reconnects.
 $new_version = get-version
-$version_ok = ($msi_new_version -eq $null) -or ("v$new_version" -eq $msi_new_version)
+if ($msi_new_version -eq $null) {
+    write-output "$(Get-Date -format u) - Skipping on-disk version check: the MSI version could not be determined." >> .\upgrade\upgrade.log
+    $version_ok = $true
+} else {
+    $version_ok = ("v$new_version" -eq $msi_new_version)
+}
 
 if ($msi_exit_code -ne 0 -Or (-Not $version_ok) -Or ($status -ne "connected")) {
     write-output "$(Get-Date -format u) - Upgrade failed (msiexec exit code: $($msi_exit_code), on-disk version: $($new_version), status: $($status))." >> .\upgrade\upgrade.log
