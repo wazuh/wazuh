@@ -1,0 +1,9 @@
+    - sections:
+      - section: client
+        elements:
+            - manager:
+                elements:
+                - address:
+                    value: '127.0.0.1'
+                - port:
+                    value: '1514'

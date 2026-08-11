@@ -1,0 +1,15 @@
+- name: Connected agent exits promptly on service stop
+  description: With the agent connected to a (simulated) manager, stopping WazuhSvc must
+    let wazuh-agent.exe exit within the grace period instead of lingering in the
+    receiver_messages() select loop.
+  configuration_parameters:
+  metadata:
+    connect_to_manager: true
+
+- name: Never-connected agent exits promptly on service stop
+  description: With no manager reachable (agent looping in start_agent()), stopping
+    WazuhSvc must let wazuh-agent.exe exit within the grace period instead of
+    lingering in the connection retry loop.
+  configuration_parameters:
+  metadata:
+    connect_to_manager: false
