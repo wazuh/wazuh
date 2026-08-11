@@ -55,6 +55,9 @@ namespace
             case CurlOption::SslCiphers:
                 return "TLS13_CIPHERS";
 
+            case CurlOption::SslOptions:
+                return "SSL_OPTIONS";
+
             case CurlOption::FollowLocation:
                 return "FOLLOWLOCATION";
 
@@ -261,8 +264,23 @@ bool CurlPerformer::applyTls(ICurlHandle& handle) const
 
 bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
 {
-    return m_config.caPath.empty()
-           || setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
+    if (!m_config.caPath.empty())
+    {
+        // An explicit <ca> is the whole trust set; adding the machine's stores
+        // on top of it would widen what the agent accepts.
+        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
+    }
+
+#ifdef WIN32
+    // Windows curl is built against our OpenSSL (src/external/CMakeLists.txt),
+    // which carries no CA bundle there, so without this nothing is trusted at
+    // all. Schannel used to consult the Windows stores implicitly; this asks
+    // OpenSSL for the same ROOT+CA stores through the Win32 crypto API.
+    return setMandatoryOption(handle, CurlOption::SslOptions, TLS_NATIVE_CA_STORE);
+#else
+    // Elsewhere libcurl already defaults to the system bundle it was built with.
+    return true;
+#endif
 }
 
 bool CurlPerformer::applyClientCertificate(ICurlHandle& handle) const
