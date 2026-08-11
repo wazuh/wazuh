@@ -91,7 +91,7 @@ func (a *agent) startupWhenAuthenticated(ctx context.Context) (control.Result, e
 func (a *agent) keepaliveLoop(ctx context.Context) {
 	interval := a.r.scn.Defaults.Control.KeepaliveInterval.D()
 	if interval <= 0 {
-		interval = 20 * time.Second
+		interval = 10 * time.Second
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

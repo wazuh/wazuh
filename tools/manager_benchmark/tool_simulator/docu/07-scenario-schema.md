@@ -18,7 +18,7 @@ production-shaped pressure.
   "defaults": {
     "module": "syscollector",
     "option": "Sync",
-    "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true, "startup_version": "5.0.0" },
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" },
     "retry": { "enabled": true, "interval": "500ms", "max_attempts": 10 }
   },
   "lanes": {

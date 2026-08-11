@@ -64,7 +64,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
     "cluster_name": "cluster01",
     "agents_requested": 100, "agents_enrolled": 100, "agents_failed": 0,
     "concurrent_agents": 0, "requests_per_second_target": 0,
-    "keepalive_interval": "20s", "control_enabled": true, "connection_reuse": true,
+    "keepalive_interval": "10s", "control_enabled": true, "connection_reuse": true,
     "document_seed": 1234567,
     "server_vd_workers": 1,
     "start_time": "2026-08-06T18:00:00Z", "end_time": "2026-08-06T18:05:00Z", "duration_sec": 300.0,

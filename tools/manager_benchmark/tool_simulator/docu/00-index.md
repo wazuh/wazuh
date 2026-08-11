@@ -40,7 +40,7 @@ originates.
 | **Lane** | A named, ordered list of steps one agent runs. An agent runs all of its fleet's lanes **in parallel** (FIM, SCA, syscollector, VD, engine…), the way a real agent does |
 | **Scenario** | A JSON file describing a run: mode, lanes, fleets, pacing |
 | **Session** | ONE `POST /stateful` request carrying one whole `Message{FullSession}`, and its response |
-| **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 20 s) |
+| **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 10 s) |
 | **Engine stream** | A lane that ships log events to `POST /stateless` (the engine ingress) instead of inventory sessions |
 | **EPS** | Requests per second the sender aims for, enforced by a leaky bucket |
 | **Drain** | The bounded shutdown window: stop starting work, let in-flight responses land, then report |
