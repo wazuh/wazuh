@@ -1029,24 +1029,25 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     /* A blocked gate means modules are still waiting in
      * startup_gate_wait_for_ready() for the configuration that just arrived:
      * they have to be started with it, so that reload runs whatever
-     * <auto_restart> says (and stays quiet -- it is the initial apply, not a
-     * change to what the agent was already running). The gate's precondition
-     * holds by construction here: the module SHA-256-verified these bytes
-     * against the manager's config_hash before the callback fired, and they
-     * are now what SHAREDCFG_FILE holds.
+     * <auto_restart> says. The gate's precondition holds by construction here:
+     * the module SHA-256-verified these bytes against the manager's
+     * config_hash before the callback fired, and they are now what
+     * SHAREDCFG_FILE holds.
      *
      * With the gate already open the reload only serves to pick up a changed
      * configuration, which is exactly what <auto_restart> governs: when it is
-     * off the files stay staged for whenever the agent restarts next. */
+     * off the files stay staged for whenever the agent restarts next. Say so at
+     * INFO -- what is on disk is no longer what the running agent applies, and
+     * only an operator can close that gap. */
     const bool gate_was_blocked = !startup_gate_is_ready();
 
     if (!agt->flags.auto_restart && !gate_was_blocked) {
-        mdebug1("Shared agent configuration has been updated.");
+        minfo("Agent must restart to apply the new shared configuration; auto_restart is disabled.");
         return;
     }
 
     if (!agt->flags.auto_restart) {
-        mdebug1("Agent is reloading to apply startup hash validated configuration.");
+        minfo("Agent is reloading to apply startup hash validated configuration.");
     } else {
         minfo("Agent is reloading due to shared configuration changes.");
     }

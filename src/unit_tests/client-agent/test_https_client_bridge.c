@@ -1068,8 +1068,9 @@ static void test_config_downloaded_releases_gate_when_reload_chain_unreachable(v
 }
 
 /* <auto_restart>no</auto_restart> on an agent whose modules are already
- * running: the configuration is staged for the next restart, and nothing is
- * reloaded behind the user's back. */
+ * running: the configuration is staged for the next restart, nothing is
+ * reloaded behind the user's back, and the operator is told at INFO that the
+ * agent is now running configuration older than what is on disk. */
 static void test_config_downloaded_auto_restart_disabled_stages_without_reloading(void **state)
 {
     (void)state;
@@ -1082,8 +1083,8 @@ static void test_config_downloaded_auto_restart_disabled_stages_without_reloadin
     will_return(__wrap_verifyRemoteConf, 0);
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, true); /* Modules already started. */
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "Shared agent configuration has been updated.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Agent must restart to apply the new shared configuration; auto_restart is disabled.");
     /* No reloadAgent/gate-release expectation: must not be reached. */
 
     g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
@@ -1094,8 +1095,8 @@ static void test_config_downloaded_auto_restart_disabled_stages_without_reloadin
 
 /* <auto_restart>no</auto_restart> cannot leave modules blocked forever: with
  * the gate still closed they are waiting for this very configuration to
- * start, so the reload runs anyway -- quietly, since it applies the initial
- * configuration rather than a change to a running one. */
+ * start, so the reload runs anyway, and is reported like any other restart the
+ * agent decides on its own. */
 static void test_config_downloaded_blocked_gate_reloads_despite_auto_restart_disabled(void **state)
 {
     (void)state;
@@ -1108,7 +1109,7 @@ static void test_config_downloaded_blocked_gate_reloads_despite_auto_restart_dis
     will_return(__wrap_verifyRemoteConf, 0);
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, false);
-    expect_string(__wrap__mdebug1, formatted_msg,
+    expect_string(__wrap__minfo, formatted_msg,
                   "Agent is reloading to apply startup hash validated configuration.");
     will_return(__wrap_reloadAgent, true);
 
