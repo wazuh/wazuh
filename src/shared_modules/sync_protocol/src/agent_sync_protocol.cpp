@@ -61,12 +61,23 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
     return failureReason;
 }
 
+std::atomic<size_t> AgentSyncProtocol::s_sessionMaxBytes {AgentSyncProtocol::FULLSESSION_MAX_BYTES};
+
+void AgentSyncProtocol::setSessionMaxBytes(size_t maxBytes)
+{
+    if (maxBytes > 0)
+    {
+        s_sessionMaxBytes.store(maxBytes);
+    }
+}
+
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                      std::shared_ptr<IPersistentQueue> queue,
                                      std::shared_ptr<ISyncSessionTransport> syncTransport)
     : m_moduleName(moduleName),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
-      m_logger(std::move(logger))
+      m_logger(std::move(logger)),
+      m_sessionMaxBytes(s_sessionMaxBytes.load())
 {
     if (!m_logger)
     {
@@ -193,9 +204,9 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     const size_t fetchMaxBytes =
         uncapped
         ? 0
-        : (FULLSESSION_MAX_BYTES > FULLSESSION_PREFILTER_GRACE_BYTES
-           ? FULLSESSION_MAX_BYTES - FULLSESSION_PREFILTER_GRACE_BYTES
-           : FULLSESSION_MAX_BYTES);
+        : (m_sessionMaxBytes > FULLSESSION_PREFILTER_GRACE_BYTES
+           ? m_sessionMaxBytes - FULLSESSION_PREFILTER_GRACE_BYTES
+           : m_sessionMaxBytes);
     bool success = true;
     bool sentAny = false;
     size_t blocksSent = 0;

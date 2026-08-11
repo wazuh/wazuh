@@ -41,7 +41,7 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(1024u * 1024u, typed.batchSizeBytes);
     EXPECT_EQ(10000u, typed.batchIntervalMs);
     EXPECT_EQ(4u, typed.bufferCapMultiplier);
-    EXPECT_EQ(20u, typed.notifyIntervalS);
+    EXPECT_EQ(10u, typed.notifyIntervalS);
     EXPECT_EQ(60u, typed.rejectedRetryIntervalS);
     EXPECT_EQ(10000u, typed.requestTimeoutMs);
     EXPECT_EQ(120000u, typed.statefulTimeoutMs);

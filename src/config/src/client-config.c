@@ -294,17 +294,36 @@ int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, __att
     return (0);
 }
 
-int Read_Agent_Shared(XML_NODE node, void *d1)
+int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 {
+    /* XML definitions - what a manager may set through the centralized
+     * configuration. Everything else in <agent> stays local to the endpoint. */
+    const char *xml_agent_batch = "batch";
+
+    agent * logr = (agent *)d1;
     int i = 0;
 
     for (i = 0; node[i]; i++) {
+        XML_NODE chld_node = NULL;
+
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_agent_batch) == 0) {
+            /* How much traffic an agent is allowed to push at the manager is a
+             * fleet-wide call, not a per-endpoint one, so <batch> is pushed the
+             * same way the module configurations already are (#38163). */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Agent_Batch(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+
+                OS_ClearNode(chld_node);
+            }
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else {
@@ -618,6 +637,12 @@ int Read_Agent_Batch(XML_NODE node, agent * logr)
      * keeps the milliseconds the module wants inside 32 bits. */
     const long max_interval = 86400;
 
+    /* Upper bound so the value survives the trip into a 32-bit agent's size_t, where
+     * anything past 4 GiB wraps -- and exactly 4 GiB wraps to zero, which every reader
+     * takes as "unset". A gigabyte is already far past useful: the stateless
+     * accumulator reserves a multiple of this, and one sync session is held to it. */
+    const long long max_size = 1024LL * 1024 * 1024;
+
     for (int j = 0; node[j]; j++) {
         if (!node[j]->element) {
             merror(XML_ELEMNULL);
@@ -628,7 +653,7 @@ int Read_Agent_Batch(XML_NODE node, agent * logr)
         } else if (strcmp(node[j]->element, xml_size) == 0) {
             const long long size = w_validate_bytes(node[j]->content);
 
-            if (size <= 0) {
+            if (size <= 0 || size > max_size) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
                 return (OS_INVALID);
             }
@@ -650,6 +675,153 @@ int Read_Agent_Batch(XML_NODE node, agent * logr)
     }
 
     return (0);
+}
+
+/**
+ * @brief Read <batch> out of one <agent> block, ignoring every other option.
+ * @return 0 on success, OS_INVALID when the block does not parse.
+ */
+static int read_batch_of_agent_block(const OS_XML *xml, xml_node *agent_node, agent *out)
+{
+    XML_NODE options = OS_GetElementsbyNode(xml, agent_node);
+    int result = 0;
+
+    for (int i = 0; options && options[i]; i++) {
+        XML_NODE limits = NULL;
+
+        if (!options[i]->element || strcmp(options[i]->element, "batch") != 0) {
+            continue;
+        }
+
+        if ((limits = OS_GetElementsbyNode(xml, options[i]))) {
+            if (Read_Agent_Batch(limits, out) < 0) {
+                result = OS_INVALID;
+            }
+
+            OS_ClearNode(limits);
+        }
+    }
+
+    OS_ClearNode(options);
+    return result;
+}
+
+/**
+ * @brief Walk one configuration root looking for <agent> blocks.
+ * @return 0 on success, OS_INVALID when any of them does not parse.
+ */
+static int read_batch_of_root(const OS_XML *xml, xml_node *root_node, agent *out)
+{
+    XML_NODE blocks = OS_GetElementsbyNode(xml, root_node);
+    int result = 0;
+
+    for (int i = 0; blocks && blocks[i]; i++) {
+        if (blocks[i]->element && strcmp(blocks[i]->element, "agent") == 0) {
+            if (read_batch_of_agent_block(xml, blocks[i], out) < 0) {
+                result = OS_INVALID;
+            }
+        }
+    }
+
+    OS_ClearNode(blocks);
+    return result;
+}
+
+/**
+ * @brief Read <agent><batch> straight out of a local configuration file.
+ * @return 0 when the file had nothing to object to (including having nothing to say,
+ *         or not being there at all), OS_INVALID when a block was rejected.
+ */
+static int read_local_agent_batch(const char *cfgfile, agent *out)
+{
+    OS_XML xml;
+    XML_NODE root = NULL;
+    int result = 0;
+
+    if (OS_ReadXML(cfgfile, &xml) < 0) {
+        /* Absent or unreadable: nothing to contribute, and not this function's to
+         * report -- the daemon reads the same file for its own configuration and
+         * fails loudly there. A failed read still leaves the object holding
+         * whatever it allocated before giving up, so it is cleared either way. */
+        OS_ClearXML(&xml);
+        return 0;
+    }
+
+    root = OS_GetElementsbyNode(&xml, NULL);
+
+    for (int i = 0; root && root[i]; i++) {
+        if (read_batch_of_root(&xml, root[i], out) < 0) {
+            result = OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(root);
+    OS_ClearXML(&xml);
+    return result;
+}
+
+/**
+ * @brief Copy the limits one source set over what the caller already had.
+ *
+ * Each limit stands on its own, so a source naming only one leaves the other alone --
+ * which is how the centralized block overrides just the parts it mentions.
+ */
+static void apply_agent_batch(const agent_batch *from, agent_batch *to)
+{
+    if (from->size > 0) {
+        to->size = from->size;
+    }
+
+    if (from->interval > 0) {
+        to->interval = from->interval;
+    }
+}
+
+void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch)
+{
+    agent local = { .server = NULL };
+    agent shared = { .server = NULL };
+
+    if (!batch) {
+        return;
+    }
+
+    /* Read_Agent_Batch fills each limit as it walks it, so a block whose second
+     * element is invalid has already assigned the first. Nothing is applied unless the
+     * read comes back clean: a rejected configuration must leave the caller on its
+     * defaults, not on the half of it that happened to parse. */
+    if (cfgfile && read_local_agent_batch(cfgfile, &local) < 0) {
+        return;
+    }
+
+    apply_agent_batch(&local.batch, batch);
+
+    /* The centralized file goes through ReadConfig so it gets the same
+     * agent_config name/os/profile filtering every other module gets; the local
+     * one cannot, because Read_Agent expects structures agentd sets up first.
+     *
+     * Checked for existence first because ReadConfig answers OS_INVALID for a file
+     * that is merely absent, and most agents have never been pushed one -- without
+     * this, "no shared configuration" would throw away the local <batch> too.
+     *
+     * Read into a struct of its own so a rejected centralized block cannot be
+     * half-applied on top of a local one that did parse, and so that local one still
+     * stands when the centralized file is unusable. That last part is what agentd
+     * already does with the same two files -- ClientConf does not check this call at
+     * all -- and without it one agent runs two different session limits, agentd on
+     * the local value and syscheckd and the modules on the built-in default.
+     *
+     * Warned about here because ReadConfig stays quiet on the agent: its XML_ERROR is
+     * compiled out under CLIENT for centralized reads, so nothing else says why the
+     * pushed limits were ignored. */
+    if (sharedcfg && w_is_file(sharedcfg) &&
+            ReadConfig(CCLIENT | CAGENT_CONFIG, sharedcfg, &shared, NULL) < 0) {
+        mwarn("Could not read the centralized configuration '%s'. Keeping the local <agent><batch> limits.",
+              sharedcfg);
+        return;
+    }
+
+    apply_agent_batch(&shared.batch, batch);
 }
 
 int Read_Agent_Enrollment(XML_NODE node, agent * logr){

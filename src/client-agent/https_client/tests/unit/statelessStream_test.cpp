@@ -52,7 +52,7 @@ namespace
         const auto jsonStart = start + prefix.size();
         const auto newline = sentBody.find('\n', jsonStart);
         const auto jsonText = sentBody.substr(
-            jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
+                                  jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
         return nlohmann::json::parse(jsonText)["wazuh"];
     }
 
@@ -131,6 +131,22 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
     EXPECT_NE(std::string::npos, sentBody.find("E event-aaaa\n"));
     EXPECT_EQ(std::string::npos, sentBody.find("E event-bbbb\n"));
     EXPECT_LE(sentBody.size(), m_config.batchSizeBytes);
+}
+
+TEST_F(StatelessStreamTest, FlushesOnTheIntervalWithoutEverReachingTheSize)
+{
+    // The other arm of <batch>: a batch leaves on size OR on interval. One short
+    // event never crosses the size threshold, so the interval is the only thing
+    // that can get it out -- without it a quiet agent would sit on its events.
+    // WillOnce also pins the first half of the rule: the tick before the interval
+    // elapses must not send, or this expectation sees two calls.
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    EXPECT_FALSE(submitResult("a").shouldWakeSender); // Below the size threshold.
+    EXPECT_EQ(std::chrono::milliseconds {m_config.batchIntervalMs}, m_stream.tick(m_waiter, false));
+
+    m_clock.advance(std::chrono::milliseconds {m_config.batchIntervalMs});
+    m_stream.tick(m_waiter, false);
 }
 
 TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
@@ -265,7 +281,8 @@ TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruc
     // line must reflect collectHost's CURRENT return value at each flush, not
     // whatever was available when the stream was built.
     std::string clusterName = "";
-    StatelessStream stream {
+    StatelessStream stream
+    {
         m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
         [&clusterName]
         {

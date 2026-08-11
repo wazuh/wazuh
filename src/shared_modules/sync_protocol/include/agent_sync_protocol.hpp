@@ -69,6 +69,18 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::deleteDatabase
         void deleteDatabase() override;
 
+        /// @brief Set the ceiling on how many bytes one sync session may carry.
+        ///
+        /// The value belongs to <agent><batch><size>, the same limit that bounds a
+        /// /stateless request, but this library cannot read it: it links neither the
+        /// configuration layer nor an XML parser. The daemon hosting the modules reads
+        /// it and hands it down before any module builds its protocol instance;
+        /// instances take a copy at construction, so a late call never changes a
+        /// session already being planned. Zero leaves the built-in default in place.
+        ///
+        /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
+        static void setSessionMaxBytes(size_t maxBytes);
+
         /// @copydoc IAgentSyncProtocol::stop
         void stop() override;
 
@@ -336,7 +348,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
 
+        /// Built-in ceiling on one session, used until a daemon calls
+        /// setSessionMaxBytes() with what <agent><batch><size> says.
         static constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+
+        /// Process-wide, because the limit is one agent-wide decision and the modules
+        /// that build these instances have no configuration of their own to carry it.
+        static std::atomic<size_t> s_sessionMaxBytes;
+
+        /// This instance's copy, taken at construction.
+        size_t m_sessionMaxBytes {FULLSESSION_MAX_BYTES};
+
         static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
         static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
         static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";

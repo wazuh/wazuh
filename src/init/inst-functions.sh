@@ -369,12 +369,6 @@ WriteAgent()
     fi
     echo "      <port>1517</port>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
-    # verification_mode defaults to 'none'; set to 'full' or 'certificate' and
-    # provide certificate_authorities to verify the manager's certificate.
-    echo "    <ssl>" >> $NEWCONFIG
-    echo "      <!-- <certificate_authorities>etc/certs/root-ca.pem</certificate_authorities> -->" >> $NEWCONFIG
-    echo "      <verification_mode>none</verification_mode>" >> $NEWCONFIG
-    echo "    </ssl>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
@@ -389,8 +383,6 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
-    echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </agent>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 

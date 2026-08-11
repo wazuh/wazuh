@@ -88,7 +88,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(chld_node, d1) < 0) {
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0) {
                         goto fail;
                     }
                 }
@@ -104,7 +104,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
              * is read from it - as the fallback for <agent><server><address>. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(chld_node, d1) < 0){
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0){
                         goto fail;
                     }
                 }
@@ -287,11 +287,17 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         } else {
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         }
+
+        /* A failed read still leaves the object holding whatever it allocated before
+         * giving up, exactly like the successful path -- every other exit below
+         * clears it, these two early ones were simply missed. */
+        OS_ClearXML(&xml);
         return (OS_INVALID);
     }
 
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
+        OS_ClearXML(&xml);
         return (0);
     }
 

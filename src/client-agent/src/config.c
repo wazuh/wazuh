@@ -52,6 +52,12 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
+    /* The shipped configuration carries no <ssl> block, so this is the posture most
+     * agents actually run with -- as is any config written before the HTTPS transport
+     * existed. It is not the enum's zero value (FULL), which would make every one of
+     * those agents refuse to start on a missing CA, so it has to be set by hand. */
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+
 #ifndef WIN32
     atc->package_uninstallation = false;
 #endif

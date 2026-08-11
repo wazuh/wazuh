@@ -19,6 +19,16 @@
 extern "C" {
 #endif
 
+/// @brief Sets the ceiling on how many bytes one sync session may carry.
+///
+/// The value belongs to <agent><batch><size>, which this library cannot read: it links
+/// neither the configuration layer nor an XML parser. The daemon hosting the modules
+/// reads it and calls this before any module builds its protocol instance. Zero leaves
+/// the built-in default in place.
+///
+/// @param max_session_bytes Maximum bytes per session, or 0 to keep the default.
+void asp_set_session_max_bytes(uint64_t max_session_bytes);
+
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.

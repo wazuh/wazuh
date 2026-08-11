@@ -30,9 +30,8 @@ typedef struct agent_server {
 /* TLS verification posture for the HTTPS transport.
  * Values mirror the module ABI's hc_verify_mode_t so the bridge can copy them
  * verbatim into hc_config_t. FULL is 0, so a zero-initialized struct that never
- * goes through the agent's own default-setting path (main.c/win_utils.c, right
- * after allocating agt) still fails closed. The agent's own configured default
- * (when <ssl> is absent) is NONE, set explicitly there -- see AGENT_VERIFY_NONE. */
+ * goes through the agent's own default-setting path (ClientConf) still fails
+ * closed. The agent's own default, applied when <ssl> is absent, is NONE. */
 typedef enum agent_verify_mode_t {
     AGENT_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
     AGENT_VERIFY_CERT = 1, ///< Verify peer against the CA only.
@@ -115,6 +114,20 @@ bool Validate_Address(agent_server *servers);
  * @return Returns true if successful and false if not success.
  */
 bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
+
+/**
+ * @brief Read the <agent><batch> limits, for daemons that do not own the block.
+ *
+ * agentd reads the whole <agent> block; the daemons hosting the sync protocol need
+ * the same limits without it, since Read_Agent fills structures agentd allocates
+ * beforehand. The local file is read first and the centralized one second, so the
+ * manager's value wins - the order ClientConf applies them in.
+ *
+ * @param cfgfile Local configuration file, or NULL to skip it.
+ * @param sharedcfg Centralized configuration file, or NULL to skip it.
+ * @param batch Limits to fill; each value is left alone when unconfigured.
+ */
+void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch);
 
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10

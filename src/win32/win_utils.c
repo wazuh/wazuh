@@ -20,6 +20,7 @@
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
@@ -182,12 +183,6 @@ int local_start()
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);
 
-    /* Default to no TLS verification when <ssl> is absent from the config -- e.g. an
-     * unmodified pre-HTTPS config (upgrade case: no <ssl> block at all), which would
-     * otherwise hard-exit on AG_INV_SSL_CA. ClientConf()/Read_Client_SSL() below still
-     * overrides this to whatever <ssl><verification_mode> the config actually sets. */
-    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
-
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
         merror_exit("Configuration file '%s' not found", cfg);
@@ -229,6 +224,18 @@ int local_start()
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
+    }
+
+    /* Same session ceiling modulesd applies on the other platforms, taken straight from
+     * the configuration this process already read (local and centralized merged) rather
+     * than re-reading the files. It has to be set here, while the configuration is being
+     * finalized and before any thread exists: syscheck is started below and builds its
+     * protocol instance on that thread, and an instance copies the limit once, when it
+     * is constructed. Setting it any later is a race the module usually wins. */
+    asp_set_session_max_bytes((uint64_t)agt->batch.size);
+
+    if (agt->batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
