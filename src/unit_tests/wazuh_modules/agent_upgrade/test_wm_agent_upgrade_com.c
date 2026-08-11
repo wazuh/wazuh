@@ -122,6 +122,32 @@ void test_jailfile_valid_path(void **state) {
 #endif
 }
 
+void test_jailfile_empty_name(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "");
+    assert_int_equal(ret, -1);
+}
+
+void test_jailfile_current_folder(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, ".");
+    assert_int_equal(ret, -1);
+}
+
+void test_jailfile_path_separator(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "subfolder/test_filename");
+    assert_int_equal(ret, -1);
+
+#ifdef TEST_WINAGENT
+    ret = _jailfile(finalpath, TMP_DIR, "subfolder\\test_filename");
+    assert_int_equal(ret, -1);
+#endif
+}
+
 void test_unsign_invalid_source_incomming(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
@@ -549,9 +575,7 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 0);
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", NULL);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg,   "(1103): Could not open file 'test_file' due to [(2)-(No such file or directory)].");
@@ -565,15 +589,38 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     os_free(response);
 }
 
+void test_wm_agent_upgrade_com_open_symlink_rejected(void **state) {
+    cJSON * command = *state;
+
+    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", NULL);
+
+    // The dedicated message, not the strerror-based one: on Windows strerror(ELOOP) has no text.
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg,
+                  "(8142): At open: Refused to open 'test_file': the path is a symbolic link.");
+
+    errno = ELOOP;
+
+    char *response = wm_agent_upgrade_com_open(command);
+    cJSON *response_object = cJSON_Parse(response);
+    assert_int_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR])->valueint, 6);
+    // The ack carries the fixed reason too, not strerror(ELOOP).
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring,
+                        "File Open Error: the path is a symbolic link");
+    cJSON_Delete(response_object);
+    os_free(response);
+}
+
 void test_wm_agent_upgrade_com_open_success(void **state) {
     cJSON * command = *state;
 
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 4);
+    expect_w_fopen_nofollow(INCOMING_DIR, "test_file", "w", (FILE *)4);
 
     char *response = wm_agent_upgrade_com_open(command);
     cJSON *response_object = cJSON_Parse(response);
@@ -1857,6 +1904,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_jailfile_invalid_path, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_jailfile_valid_path, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test(test_jailfile_empty_name),
+        cmocka_unit_test(test_jailfile_current_folder),
+        cmocka_unit_test(test_jailfile_path_separator),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_incomming, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_temp, setup_jailfile, teardown_jailfile),
         #ifdef TEST_WINAGENT
@@ -1879,6 +1929,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_unsopported_mode, setup_open1, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_file_name, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_open, setup_open2, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_symlink_rejected, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_success, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_file_closed, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_invalid_file_name, setup_write, teardown_commands),

@@ -159,9 +159,19 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (ftarget = wfopen(final_target, "wb"), !ftarget) {
+    // Not wfopen(): a symlink left at final_target would be followed, truncating its target.
+    if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget) {
+        // Saved before gzclose(): the close() and free() it performs internally are free to clobber
+        // errno, which would silently downgrade the message below to the generic one.
+        const int open_errno = errno;
         gzclose(fsource);
-        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        // Same reasoning as in the upgrade module: strerror() has no useful text for ELOOP on Windows,
+        // so the one failure worth alerting on gets its own message.
+        if (open_errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link", final_target);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        }
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
@@ -536,7 +546,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
 int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
-    if (w_ref_parent_folder(filename)) {
+    // A bare file name is all that is ever legitimate here. Rejecting separators also keeps the
+    // directory-relative open in w_fopen_nofollow() confined to basedir, since a separator-containing
+    // or absolute name would otherwise be resolved ignoring the directory descriptor.
+    if (!w_is_bare_filename(filename)) {
         return -1;
     }
 

@@ -49,6 +49,9 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
 FILE *__wrap_wfopen(const char * __filename, const char * __modes);
 void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
 
+FILE *__wrap_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode);
+void expect_w_fopen_nofollow(const char * basedir, const char * filename, const char * mode, FILE *ret);
+
 char ** __wrap_wreaddir(const char * name);
 
 void expect_wreaddir_call(const char *dir, char **files);

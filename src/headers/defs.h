@@ -368,6 +368,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define O_CLOEXEC 0
 #endif
 
+/* Not every agent platform this tree still builds for (AIX, Solaris 10, HP-UX) is guaranteed to define
+ * O_DIRECTORY. Falling back to 0 only loses an early "this must be a directory" check: openat() on a
+ * descriptor that is not a directory fails with ENOTDIR anyway. Note that O_NOFOLLOW deliberately gets
+ * no such fallback -- defining it to 0 would silently disable a security check instead of failing the
+ * build, which is the outcome we want to hear about. */
+#ifndef O_DIRECTORY
+#define O_DIRECTORY 0
+#endif
+
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
