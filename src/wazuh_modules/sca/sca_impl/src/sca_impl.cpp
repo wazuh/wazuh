@@ -594,6 +594,12 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             // Report it as an expected event, not a WARNING.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
         }
+        else if (result.awaitingPrerequisite)
+        {
+            // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+            // most commonly right after enrollment/restart. Expected to clear on its own.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
+        }
         else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
             // The manager is not ready for this agent yet, mostly right after a restart, and the sync
@@ -857,6 +863,13 @@ int SecurityConfigurationAssessment::executeFlushSync()
     {
         // Not a real failure: the flush sync was aborted because the module is stopping.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
+        return -1;
+    }
+    else if (result.awaitingPrerequisite)
+    {
+        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+        // most commonly right after enrollment/restart. Expected to clear on its own.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
         return -1;
     }
     else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)

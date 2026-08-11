@@ -50,4 +50,10 @@ struct SyncModuleResult
     /// Reset to zero on the first success. A single failure that recovers on the next cycle is an
     /// expected hiccup; a growing count means the condition is not clearing and deserves a WARNING.
     unsigned int consecutiveFailures{0};
+    /// @brief True when the sync was aborted because a prerequisite the manager has to supply
+    /// first (assigned groups, or -- for a VD sync -- a feed offset) has not arrived yet. Same
+    /// intent as @ref stopped: lets the calling module demote this from WARNING to INFO/DEBUG,
+    /// since it is expected and normally clears within the next cycle or two (e.g. right after
+    /// an agent restart, before the first /control round trip completes).
+    bool awaitingPrerequisite{false};
 };

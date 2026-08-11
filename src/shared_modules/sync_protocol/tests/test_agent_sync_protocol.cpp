@@ -981,6 +981,10 @@ TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
     EXPECT_FALSE(result.success);
     EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
     EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No VD feed offset available"));
+    // Expected/benign, not a real failure: lets the caller (Syscollector::syncModule()) log
+    // this at INFO instead of WARNING.
+    EXPECT_TRUE(result.awaitingPrerequisite);
+    EXPECT_FALSE(result.managerNotReady);
 }
 
 // The gate is VD-specific (isUncappedSyncOption): a plain SYNC must proceed even with no

@@ -48,7 +48,7 @@ class AgentInfoVdOffsetTest : public ::testing::Test
         /// value and records whether it was called.
         std::function<int(const std::string&, const std::string&, char**)> vdFirstSyncQueryFunc(bool done)
         {
-            return [this, done](const std::string& moduleName, const std::string& query, char** response) -> int
+            return [this, done](const std::string & moduleName, const std::string & query, char** response) -> int
             {
                 m_queryModuleCalls.push_back(moduleName + ":" + query);
 
@@ -64,7 +64,7 @@ class AgentInfoVdOffsetTest : public ::testing::Test
                 }
 
                 const std::string responseStr = responseJson.dump();
-                *response = strdup(responseStr.c_str());
+                * response = strdup(responseStr.c_str());
                 return 0;
             };
         }
@@ -86,7 +86,7 @@ class AgentInfoVdOffsetTest : public ::testing::Test
         {
             EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillOnce(::testing::Invoke([offset, pending, pendingOffset](const nlohmann::json&,
-                    ResultCallbackData callback)
+                                                                         ResultCallbackData callback)
             {
                 nlohmann::json row;
                 row["has_offset"] = 1;
@@ -107,7 +107,7 @@ class AgentInfoVdOffsetTest : public ::testing::Test
 TEST_F(AgentInfoVdOffsetTest, ObserveFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
     m_agentInfo->stop(); // Resets the DBSync connection (see AgentInfoImpl::stop()).
 
     const auto result = m_agentInfo->observeVdFeedOffset(100);
@@ -118,7 +118,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveFailsClosedWithoutDBSync)
 TEST_F(AgentInfoVdOffsetTest, ClearPendingFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
     m_agentInfo->stop();
 
     EXPECT_FALSE(m_agentInfo->clearVdRescanPending(100));
@@ -127,7 +127,7 @@ TEST_F(AgentInfoVdOffsetTest, ClearPendingFailsClosedWithoutDBSync)
 TEST_F(AgentInfoVdOffsetTest, GetStateFailsClosedWithoutDBSync)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
     m_agentInfo->stop();
 
     const auto state = m_agentInfo->getVdFeedState();
@@ -140,7 +140,7 @@ TEST_F(AgentInfoVdOffsetTest, GetStateFailsClosedWithoutDBSync)
 TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstDoneMarksPending)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     ::testing::InSequence seq;
     expectNotFound(m_mockDBSync);                    // initial read: nothing stored yet
@@ -161,7 +161,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstDoneMarksPending)
 TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstNotDoneDoesNotMarkPending)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(false), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(false), m_mockDBSync);
 
     // Only ONE selectRows call: the re-check-and-mark-pending branch is never reached
     // when VDFirst is not done.
@@ -179,7 +179,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveNewOffsetWithVDFirstNotDoneDoesNotMarkPendi
 TEST_F(AgentInfoVdOffsetTest, ObserveOlderOffsetIsNoOp)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 100, true, 100);
 
@@ -194,7 +194,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveOlderOffsetIsNoOp)
 TEST_F(AgentInfoVdOffsetTest, ObserveEqualOffsetIsNoOp)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 100, false, 0);
 
@@ -209,7 +209,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveEqualOffsetIsNoOp)
 TEST_F(AgentInfoVdOffsetTest, ObserveZeroTwiceIsIdempotent)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 0, false, 0);
 
@@ -221,7 +221,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveZeroTwiceIsIdempotent)
 TEST_F(AgentInfoVdOffsetTest, ClearPendingSucceedsForMatchingOffset)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 100, true, 100);
 
@@ -233,7 +233,7 @@ TEST_F(AgentInfoVdOffsetTest, ClearPendingSucceedsForMatchingOffset)
 TEST_F(AgentInfoVdOffsetTest, ClearPendingIsNoOpForMismatchedOffset)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 200, true, 200);
 
@@ -243,7 +243,7 @@ TEST_F(AgentInfoVdOffsetTest, ClearPendingIsNoOpForMismatchedOffset)
 TEST_F(AgentInfoVdOffsetTest, ClearPendingIsNoOpWhenNothingPending)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 100, false, 0);
 
@@ -253,7 +253,7 @@ TEST_F(AgentInfoVdOffsetTest, ClearPendingIsNoOpWhenNothingPending)
 TEST_F(AgentInfoVdOffsetTest, GetVdFeedStateReturnsStoredValues)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc,
-                  vdFirstSyncQueryFunc(true), m_mockDBSync);
+                                                  vdFirstSyncQueryFunc(true), m_mockDBSync);
 
     expectStoredState(m_mockDBSync, 100, true, 100);
 

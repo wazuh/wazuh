@@ -2411,7 +2411,7 @@ AgentInfoImpl::VdFeedState AgentInfoImpl::readVdFeedStateLocked() const
 
     try
     {
-        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json& data)
+        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json & data)
         {
             if (data.contains("has_offset") && data["has_offset"].is_number())
             {
