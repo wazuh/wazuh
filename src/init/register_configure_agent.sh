@@ -267,19 +267,68 @@ tolower () {
 add_auto_enrollment () {
 
     # Only the children are collected here; concat_conf writes the block around them.
-    start_config="$(grep -n "<enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
-    end_config="$(grep -n "</enrollment>" "${CONF_FILE}" | cut -d':' -f 1)"
-    if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-        start_config=$(( start_config + 1 ))
-        end_config=$(( end_config - 1 ))
-        sed -n "${start_config},${end_config}p" "${CONF_FILE}" >> "${TMP_ENROLLMENT}"
+    # The block is taken out as it is read, because concat_conf puts it back: leaving
+    # the original in place is what used to give two enrollment blocks on a re-run.
+    #
+    # One awk pass rather than grep plus a sed range, because both mishandle a block
+    # written on a single line. `sed "/<enrollment>/,/<\/enrollment>/d"` only starts
+    # looking for the closing pattern on the line AFTER the opening match, so with
+    # both tags on one line the range never closes and the delete runs to the end of
+    # the file -- </agent>, every block below it and </ossec_config> along with it.
+    # The grep line numbers have the mirror problem: start equals end, so the
+    # "children" range is inverted and copies out the wrong line.
+    #
+    # Comments are skipped for the same reason insert_into_agent_block skips them: a
+    # block someone commented out is not the one being configured. A second block is
+    # dropped rather than left behind, so a re-run cannot accumulate them.
+    #
+    # Truncated up front: awk only opens the file when the block has children, so a
+    # leftover from an interrupted run would otherwise be picked up as this one's.
+    : > "${TMP_ENROLLMENT}"
 
-        # Take the block out while it is being rewritten. Without this the original
-        # stays put and concat_conf adds a second one, so running the configuration
-        # twice leaves two enrollment blocks in the file.
-        ${sed} "/<enrollment>/,/<\/enrollment>/d" "${CONF_FILE}"
+    if awk -v children="${TMP_ENROLLMENT}" '
+        in_comment {
+            if ($0 ~ /-->/) { in_comment = 0 }
+            print
+            next
+        }
+        /<!--/ {
+            if ($0 !~ /-->/) { in_comment = 1 }
+            print
+            next
+        }
+        in_block {
+            if ($0 ~ /<\/enrollment>/) { in_block = 0; next }
+            if (capture) { print > children }
+            next
+        }
+        /<enrollment>/ {
+            capture = !found
+            found = 1
+            if ($0 ~ /<\/enrollment>/) {
+                # Whole block on one line: keep what sits between the tags.
+                inner = $0
+                sub(/^.*<enrollment>/, "", inner)
+                sub(/<\/enrollment>.*$/, "", inner)
+                if (capture && inner ~ /[^[:space:]]/) { print inner > children }
+            } else {
+                in_block = 1
+            }
+            next
+        }
+        { print }
+        # An unterminated block means the file is not what we think it is; report it
+        # as unusable so the copy is discarded and the original is left untouched.
+        # Spelled out rather than with a ternary, which not every awk parses after
+        # exit -- the macOS agent runs this through BSD awk.
+        END {
+            if (found && !in_block) { exit 0 }
+            exit 1
+        }
+    ' "${CONF_FILE}" > "${TMP_INSERT}"; then
+        cat "${TMP_INSERT}" > "${CONF_FILE}"
     else
-        # Write the client configuration block
+        # No block to reuse. Truncating also drops whatever a half-read one left.
         {
             echo "      <enabled>yes</enabled>"
             echo "      <manager_address>MANAGER_IP</manager_address>"
@@ -291,8 +340,10 @@ add_auto_enrollment () {
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
             echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
-        } >> "${TMP_ENROLLMENT}"
+        } > "${TMP_ENROLLMENT}"
     fi
+
+    rm -f "${TMP_INSERT}"
 
 }
 
