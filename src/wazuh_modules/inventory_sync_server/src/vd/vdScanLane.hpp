@@ -95,11 +95,6 @@ namespace invsync::vd
          */
         void stop();
 
-        /// @brief Whether @p agentId has a session QUEUED in this lane (not yet acquired in the
-        /// registry, so the registry alone cannot see it). Introspection for the coordinator
-        /// (doc 06 §5).
-        bool hasAgentQueued(const std::string& agentId) const;
-
         std::size_t workerCount() const noexcept
         {
             return m_connectors.size();

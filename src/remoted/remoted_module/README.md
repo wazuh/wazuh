@@ -610,9 +610,10 @@ triggers the scan against the `vulnerability_scanner` module.
   in which case the task is silently discarded (the agent will notice the newer offset on its next
   `/control` notify and re-request; no error is returned for this since the original HTTP response
   was already sent at admission time). A pool larger than one bounds the "blast radius" of one
-  agent's worst-case wait (the VD module's scan call can legitimately block up to 150s if a
-  syscollector VDFirst/VDSync session is concurrently active for the same agent) — it doesn't
-  reflect how many scans the VD module can truly run in parallel, which is exactly one, since
+  agent's worst-case wait (the VD module's scan call can legitimately block up to ~30s draining a
+  syscollector VDFirst/VDSync session already in flight for the same agent, before it even starts
+  scanning) — it doesn't reflect how many scans the VD module can truly run in parallel, which is
+  exactly one, since
   `ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock for the whole scan regardless
   of how many worker threads call it concurrently.
 - **Retry**: a *retryable* failure (VD module briefly unready, network error) gets exponential

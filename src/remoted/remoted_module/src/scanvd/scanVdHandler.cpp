@@ -40,8 +40,8 @@ namespace remoted::scanvd
         constexpr auto QUEUE_PROCESS_INTERVAL_MS = 100;
         constexpr uint8_t MAX_RETRIES = 3;
 
-        // A single worker would let one agent's worst-case wait (VD_SCAN_READ_TIMEOUT_SECONDS,
-        // up to 150s -- see below) head-of-line-block every other queued agent on this node. A
+        // A single worker would let one agent's worst-case wait (VD_SCAN_READ_TIMEOUT_SECONDS --
+        // see below) head-of-line-block every other queued agent on this node. A
         // pool bounds that blast radius as 1/N of total capacity, without the complexity of a
         // fully dynamic sizing scheme. This is a client-side occupancy concern (how many of
         // *this* pool's workers can be stuck waiting on one slow HTTP response at once) --
@@ -64,13 +64,14 @@ namespace remoted::scanvd
         }
 
         // VD's POST /vulnerability-detector/scan handler runs synchronously and can legitimately
-        // block for up to 120s (ScanAgentList::scanAgent's hasActiveSessionForAgent wait: 60s *
-        // 2 retries, see scanOrchestrator/scanAgentList.hpp) before it even starts scanning, when
-        // a VDFirst/VDSync session is concurrently active for the same agent. The read timeout
-        // here MUST exceed that window (plus margin for the scan itself) -- otherwise a
-        // legitimate in-progress wait gets misread as a network failure, triggering a retry here
-        // while the original attempt is still running in the VD module.
-        constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 150;
+        // block for up to ~30s (ServerScanCoordinator::pauseAgent()'s drain wait for a
+        // concurrently active VDFirst/VDSync session on the same agent -- see
+        // serverScanCoordinator.hpp's pauseQuiesceTimeout, 30s by default in production) before it
+        // even starts scanning. The read timeout here MUST exceed that window (plus margin for
+        // the scan itself) -- otherwise a legitimate in-progress wait gets misread as a network
+        // failure, triggering a retry here while the original attempt is still running in the VD
+        // module.
+        constexpr long VD_SCAN_READ_TIMEOUT_SECONDS = 60;
         constexpr long VD_SCAN_WRITE_TIMEOUT_SECONDS = 5;
     } // namespace
 
