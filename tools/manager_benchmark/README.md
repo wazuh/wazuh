@@ -95,7 +95,12 @@ anything; the whole library is kept green that way.
 
 Most scenarios generate documents deterministically from a seed, but the `real_*` ones replay **real
 captured payloads** from [`sample_payloads/dumps/`](sample_payloads/dumps/) so the wire bytes match
-production shapes — see the real-payloads section of `SCENARIOS.md`.
+production shapes — see the real-payloads section of `SCENARIOS.md`. The `real_first_connect*` pair
+replays a Windows and a Linux agent's first connection at FULL fidelity (the Windows FIM registry
+corpus is 27,726 documents in one ~26 MB session), which in agent mode requires the sender's
+**zstd request compression** — the agent-mode default, like a real 5.x agent (`defaults.compression`
+in the scenario or `--compression zstd|none` per run; remoted decompresses, the UDS socket takes
+only plain bodies, so uds runs are always plain).
 
 ## Manager preparation (agent mode)
 
@@ -105,6 +110,37 @@ Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be op
 writes a one-time `.bak`. The compiled default is already `use_password=0`, but upstream #36705 turned
 the shared password **on by default in the installer**, so a fresh install rejects unauthenticated
 enrollment until this is undone.
+
+## Inspecting a run's indexed data (agent mode)
+
+By default an agent-mode run's `bench-*` agents are **not** deleted afterward — but the *next*
+agent-mode run (or the next `run_matrix.sh` entry) deletes them first, to avoid an enrollment name
+clash, and deleting an agent purges its documents from the indexer too. So a single run's data
+already survives; a second run wipes it. To inspect the real dumps' data in the indexer's dashboard
+across several runs, pass `--keep-agents` to `run_benchmark.sh` or `run_matrix.sh`:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_first_connect.json --mode agent --keep-agents
+# ... inspect wazuh-states-* in the indexer's dashboard, filtering by the bench-* agent(s) ...
+./cleanup_agents.sh   # delete the bench-* agents (and their indexed documents) when done
+```
+
+`--keep-agents` is mutually exclusive with `--cleanup-after`. In `run_matrix.sh` it applies to every
+agent-mode entry in the matrix; since the matrix's own scenarios use non-overlapping `first_id`
+ranges, one full pass (or a `--only` subset) does not collide with itself — re-running the whole
+matrix a *second* time without cleaning up first will (enrollment fails with "Duplicate agent
+name"). Not needed in `uds` mode: those runs never enroll a real agent, so nothing ever deletes
+their indexed documents.
+
+**`scenarios/real_inspect_fleet.json`** is purpose-built for this: one Windows agent and one Linux
+agent, each replaying every real inventory module (FIM, syscollector, SCA, VD) at full fidelity, plus
+a basic engine lane whose own `repeat_count` keeps both agents connected and keepaliving for several
+extra minutes after the inventory sessions land — time to actually get to the dashboard before the
+run exits. Pair it with `--keep-agents` so the documents survive after that too:
+
+```bash
+./run_benchmark.sh --scenario scenarios/real_inspect_fleet.json --mode agent --keep-agents
+```
 
 ## Helper scripts
 
@@ -139,8 +175,11 @@ Optionally describe the host in `bench_env.txt` (one `key: value` per line — `
 `mem_total`, `kernel`, `indexer`, `git_head`) and `make_report_tables.py` puts it in the environment
 table; anything missing is skipped rather than guessed.
 
-A run that exits non-zero is **not** a slow manager — it means the measurement itself is invalid (an
-unauthenticated fleet, a transport error). Fix it before quoting numbers.
+A run that exits `1` or `2` is **not** a slow manager — it means the measurement itself is invalid
+(an unauthenticated fleet, a transport error, a setup failure). Fix it before quoting numbers. Exit
+`3` is different: the measurement is valid, but the scenario's optional `expected` block (counter
+assertions — see `tool_simulator/docu/07-scenario-schema.md`) failed; `sender_summary.json` names
+each failed assertion with its actual value.
 
 ## What it will measure
 
@@ -150,11 +189,12 @@ The same scenarios over two transports, so the difference isolates the relay:
   ingestion pipeline alone: validation, sharded workers, group commit, the vulnerability-detection
   scan lane.
 - **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with AES-CMAC
-  signatures, sending `POST /control` (`startup`, a `notify` keepalive every 20 s, `shutdown`) and
+  signatures, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
   the `POST /stateful` sessions.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
-`sender_summary.json` (metadata, totals, per-kind histograms — no verdict) and a scrape of the
+`sender_summary.json` (metadata, totals, per-kind histograms — plus the `expected` verdict when the
+scenario opts into one) and a scrape of the
 server's own `GET /metrics`, so client-observed behavior can be correlated with shard depths, bulk
 flushes and scan-lane timings.
 
@@ -168,5 +208,7 @@ documented for a synthetic client until now).
 ## Related
 
 - System under test: [`docs/ref/modules/inventory-sync-server/`](../../docs/ref/modules/inventory-sync-server/README.md)
+- The module's developer map (requirements, design decisions D1–D22, developer FAQ):
+  [`inventory_sync_server/README.md`](../../src/wazuh_modules/inventory_sync_server/README.md)
 - Correctness (not performance): the integration QA in [`inventory_sync_server/qa/`](../../src/wazuh_modules/inventory_sync_server/qa/README.md)
 - Runtime statistics the monitor scrapes: `GET /metrics`, documented in the API reference

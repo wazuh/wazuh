@@ -15,7 +15,7 @@
 - [Indexer Connector](indexer_connector/index.html) - OpenSearch indexing library (Filebeat replacement)
 - [Integrations](integrations/index.html) - Cloud services and third-party platform integrations
 - [Inventory Sync Server](inventory-sync-server/index.html) - Manager-side synchronization service for agent state data (HTTP over UDS)
-- [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB)
+- [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB), served over UDS by the `keystore_server` module
 - [Logcollector](logcollector/index.html) - Log ingestion
 - [Logging](logging/index.html) - Log format configuration (plain text, JSON, or dual output)
 - [Monitord](monitord/index.html) - Agent disconnection monitoring and log rotation

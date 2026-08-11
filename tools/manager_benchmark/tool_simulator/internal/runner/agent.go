@@ -91,7 +91,7 @@ func (a *agent) startupWhenAuthenticated(ctx context.Context) (control.Result, e
 func (a *agent) keepaliveLoop(ctx context.Context) {
 	interval := a.r.scn.Defaults.Control.KeepaliveInterval.D()
 	if interval <= 0 {
-		interval = 20 * time.Second
+		interval = 10 * time.Second
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -117,8 +117,8 @@ func (a *agent) keepaliveLoop(ctx context.Context) {
 }
 
 // laneLoop walks a lane's steps, honoring repeat/initial delays, until ctx is
-// done. An engine lane marked run_while_siblings_active is not special here:
-// the shared ctx cancels it at drain like everything else.
+// done. Engine lanes are not special here: the shared ctx cancels them at
+// drain like everything else.
 func (a *agent) laneLoop(ctx context.Context, lane string, steps []scenario.Step) {
 	repeatUntil := a.r.scn.Pacing.RepeatUntil.D()
 	deadline := time.Time{}

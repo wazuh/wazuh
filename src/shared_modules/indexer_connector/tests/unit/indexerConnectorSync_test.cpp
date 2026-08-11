@@ -2013,7 +2013,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
 
-    // Build a sample update query (simulating what inventory_sync would build)
+    // Build a sample update query (simulating what inventory_sync_server would build)
     nlohmann::json updateQuery;
     updateQuery["query"]["bool"]["must"][0]["term"]["wazuh.agent.id"] = "agent-001";
     updateQuery["query"]["bool"]["should"][0]["bool"]["must_not"]["exists"]["field"] = "state.document_version";
@@ -4298,7 +4298,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AllUnsafe_FiresPendingNoti
 TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AcceptsAnyValidNameRegardlessOfPrefix)
 {
     // The connector no longer enforces the "wazuh-states-" prefix — that domain
-    // rule belongs to the inventory_sync caller. The connector only refuses
+    // rule belongs to the inventory_sync_server caller. The connector only refuses
     // injection-unsafe characters. Therefore an arbitrary safe name like
     // "wazuh-other-foo" must be forwarded to the indexer.
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

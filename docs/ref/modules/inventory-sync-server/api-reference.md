@@ -11,7 +11,7 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 
 | Method | Path | Success | Notes |
 |---|---|---|---|
-| `GET` | `/` | `200` | Liveness probe. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
+| `GET` | `/` | `200` | Liveness probe, answers `{"status":"ok","module":"inventory_sync_server"}`. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` (the agent full-resyncs), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
 | `DELETE` | `/agents` | `200` | Deletes every state document of the agent named by `X-Wazuh-Agent-Id` (`wazuh-states-*`, this cluster's scope). Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means the delete-by-query was flushed. UDS-local only: the production caller is authd. |
@@ -164,7 +164,7 @@ whole retry contract — there are no acknowledgments and no session state to re
 | `403` | `{"error":"identity mismatch","code":403}` | claimed an identity that does not match the authenticated one (or a foreign cluster). |
 | `413` | `{"error":...,"code":413}` | declared more bytes than the server's TOTAL in-flight budget; must split the session. |
 | `500` | `{"error":"vulnerability scan failed","code":500}` or `{"error":"Internal error","code":500}` | retries next cycle; NOTHING was indexed for this session. |
-| `503` | `{"error":...,"code":503}` — with `Retry-After: <seconds>` when the CVE feed is still downloading | retries later. Causes: indexer unavailable, queue/budget full, scan capacity exhausted, feed downloading, shutdown. |
+| `503` | One deliberately GENERIC body for indexer-unavailable / admission-queue-full / shutting-down (which of them fired is an operator concern, visible in logs and `GET /metrics`, not the agent's). The two VD gates are the exception, with reason-specific bodies: `"vulnerability feed not ready"` — the only `503` that carries `Retry-After: <seconds>` — and `"scan capacity exhausted"`. | retries later; on `Retry-After` it re-sends the same session after the delay. |
 
 ## `GET /metrics`
 
@@ -234,5 +234,5 @@ A `/config` report, simulating what remoted forwards for an authenticated agent:
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock http://localhost/config \
   -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
-  -d '[{"module":"fim","config":{"frequency":43200}},{"module":"logcollector","config":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}]'
+  -d '{"modules":{"fim":{"frequency":43200},"logcollector":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}}'
 ```

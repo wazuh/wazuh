@@ -44,7 +44,7 @@ namespace invsync::sync
 
         std::string moduleName;
         /// Agent id LEFT-PADDED to 3 characters -- the form every document `_id` and every
-        /// `wazuh.agent.id` field has always used (legacy agentSession.hpp:126-131). Used
+        /// `wazuh.agent.id` field has always used (inherited from the legacy module). Used
         /// consistently for indexing, queries and deletes.
         std::string agentId;
         std::string agentName;
@@ -96,8 +96,8 @@ namespace invsync::sync
     /// non-empty. Shared with DELETE /agents, which validates the same header the same way.
     bool isNumericAgentId(std::string_view value);
 
-    /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form (legacy
-    /// agentSession.hpp:126-131). Every query, document id and deletion uses this form.
+    /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form inherited from the
+    /// legacy module. Every query, document id and deletion uses this form.
     std::string padAgentId(std::string_view agentId);
 
 } // namespace invsync::sync

@@ -230,6 +230,15 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   OK`** with a JSON response on success, **`400`** on malformed requests, **`401`** on auth
   failures, or **`503`** when wazuh-db/task-manager are unreachable. See
   [Control endpoint](#control-endpoint-post-control) below for details.
+- **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
+  the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
+  to the [Inventory Sync Server](../inventory-sync-server/README.md) over its Unix-domain socket
+  (`queue/sockets/inventory-sync.sock`) and returns the downstream answer verbatim — the response
+  IS the session result (see the server's
+  [response contract](../inventory-sync-server/api-reference.md)). The wait for the downstream
+  answer is bounded by `remoted.downstream_stateful_response_timeout`
+  (see [configuration](configuration.md)). Bodies may be zstd-compressed
+  (`Content-Encoding: zstd`); remoted decompresses before relaying.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).

@@ -2,7 +2,7 @@
 
 A self-contained C++17 module that `remoted` launches in its own thread, receiving a
 configuration struct to initialize itself. It mirrors the pattern `modulesd` uses for
-`inventory_sync` / `vulnerability_scanner`, but integrates via **direct link** (like
+`inventory_sync_server` / `vulnerability_scanner`, but integrates via **direct link** (like
 `router`) instead of `dlopen`, and passes configuration as a **typed C struct** instead of
 a serialized `cJSON`.
 

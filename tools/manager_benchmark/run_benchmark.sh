@@ -22,6 +22,13 @@ set -euo pipefail
 #
 # Agent mode needs the manager configured for open enrollment first:
 #   sudo ./prepare_manager.sh
+#
+# --keep-agents (agent mode only): skip the pre-run cleanup of bench-* agents, so a
+# previous run's agents AND their indexed documents survive -- e.g. to inspect a
+# real_* scenario's data in the indexer's dashboard afterward. Mutually exclusive
+# with --cleanup-after. Re-running the SAME scenario/label while agents are still
+# kept fails enrollment with "Duplicate agent name" (by design, not silently);
+# clean up first with ./cleanup_agents.sh.
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,6 +52,7 @@ DO_METRICS=true
 DO_MONITOR=true
 DO_CHARTS=true
 CLEANUP_AFTER=false
+KEEP_AGENTS=false
 METRICS_INTERVAL=1
 
 MONITOR_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor.py"
@@ -87,6 +95,7 @@ while [[ $# -gt 0 ]]; do
         --no-monitor)   DO_MONITOR=false; shift ;;
         --no-charts)    DO_CHARTS=false; shift ;;
         --cleanup-after) CLEANUP_AFTER=true; shift ;;
+        --keep-agents)  KEEP_AGENTS=true; shift ;;
         -h|--help)      usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
     esac
@@ -94,6 +103,10 @@ done
 
 [[ -z "$SCENARIO" ]] && { echo "Error: --scenario is required." >&2; usage; exit 1; }
 [[ -f "$SCENARIO" ]] || { echo "Error: scenario not found: $SCENARIO" >&2; exit 1; }
+if $KEEP_AGENTS && $CLEANUP_AFTER; then
+    echo "Error: --keep-agents and --cleanup-after contradict each other (keep vs delete)." >&2
+    exit 1
+fi
 
 # Resolve the effective mode: CLI override, else the scenario's own field.
 EFFECTIVE_MODE="$MODE"
@@ -178,10 +191,18 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
 }
 PARAMS
 
-# Pre-run agent cleanup (never touches non-bench agents).
+# Pre-run agent cleanup (never touches non-bench agents). Skipped under
+# --keep-agents: this is the step that actually destroys a PREVIOUS run's
+# agents (and, transitively, its indexed documents) — the enroll-time
+# "Duplicate agent name" it exists to avoid is the tradeoff for keeping them.
 if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
-    echo "Cleaning up stale bench-* agents..."
-    "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (skipped — API not reachable)"
+    if $KEEP_AGENTS; then
+        echo "Skipping pre-run cleanup (--keep-agents): a stale bench-* agent from a" \
+             "previous kept run will fail enrollment with 'Duplicate agent name'."
+    else
+        echo "Cleaning up stale bench-* agents..."
+        "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (skipped — API not reachable)"
+    fi
 fi
 
 # 1. Process + API monitor. It samples the manager's processes AND polls each
@@ -284,6 +305,11 @@ if $CLEANUP_AFTER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "Deleting bench-* agents (--cleanup-after)..."
     "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || true
+elif $KEEP_AGENTS && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
+    echo ""
+    echo "--keep-agents: this run's bench-* agents (and their indexed documents) were left" \
+         "in place for inspection — e.g. in the indexer's dashboard. Delete them with" \
+         "./cleanup_agents.sh when done."
 fi
 
 echo ""
@@ -292,6 +318,13 @@ echo "  Done — artifacts in $RESULTS_DIR/"
 echo "    bench.csv, sender_summary.json, summary.json"
 [[ -f "$SERVER_METRICS_CSV" ]] && echo "    server_metrics.csv"
 [[ -d "$MONITOR_DIR" ]] && echo "    monitor/"
-echo "  Sender exit code: $SENDER_RC ($([[ $SENDER_RC -eq 0 ]] && echo VALID || echo INVALID))"
+# Sender exit contract: 0 ok, 1 measurement invalid, 2 setup failure,
+# 3 measurement VALID but the scenario's expected block failed.
+case "$SENDER_RC" in
+    0) VERDICT="VALID" ;;
+    3) VERDICT="VALID, expected block FAILED (see sender_summary.json)" ;;
+    *) VERDICT="INVALID" ;;
+esac
+echo "  Sender exit code: $SENDER_RC ($VERDICT)"
 echo "======================================================="
 exit "$SENDER_RC"

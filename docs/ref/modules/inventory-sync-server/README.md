@@ -45,6 +45,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 | `DELETE /agents` / `POST /agents/delete` | authd | Delete every state document of an agent |
 | `POST /stats`, `POST /config` | Remoted (relaying agents) | Agent stats/config documents |
 | `GET /` | anyone local | Liveness probe |
+| `GET /metrics` | anyone local (operators, the benchmark harness) | Runtime statistics as JSON |
 
 ## Overview
 
@@ -59,6 +60,50 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
    applied AND flushed to the indexer (and scanned, for VD sessions); any other status tells the
    agent exactly what to do next (retry, resync, or fix the request).
 
+## What flows through it (use cases)
+
+Five agent-side producers feed this one pipeline: **Syscollector** (hardware, OS, packages,
+processes, ports, networks, users, groups, services... → `wazuh-states-inventory-*`),
+**Syscollector's VD sessions** (the package/OS data that drives vulnerability detection), **FIM**
+(files and Windows registry → `wazuh-states-fim-*`), **SCA** (policy checks →
+`wazuh-states-sca`), and **agent-info** (metadata and group membership reconciliation across the
+agent's documents). The situations an operator will recognize:
+
+- **First connection**: the agent sends each module's full state — large single sessions (a
+  Windows FIM registry corpus can be one ~26 MB session, which is what remoted's zstd request
+  compression exists for).
+- **Steady state**: small periodic deltas per module.
+- **Checksum reconciliation**: the agent periodically sends a checksum-of-checksums
+  (`ModuleCheck`); a `409` answer tells it to full-resync that module.
+- **Full resync**: two ordinary requests — clean the module's indices, then re-send the full
+  dataset. Their order is guaranteed by the per-agent worker shard.
+- **Agent deletion**: authd calls `DELETE /agents` when an agent is removed, purging every
+  `wazuh-states-*` document of that agent (this is why deleting an agent also removes its data
+  from the dashboard).
+
+## FAQ (operations)
+
+- **Why am I seeing `503`s under load?** Four gates shed on purpose rather than queueing
+  unboundedly: the connection cap, the in-flight byte budget, the pipeline's admission queue, and
+  the VD lane's capacity — see the
+  [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
+  option matches which gate. Sheds are expected backpressure: agents retry on their own.
+- **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
+  so vulnerability-detection sessions are rejected *without processing* and the agent re-sends
+  the same session after the given seconds. No other `503` schedules the retry for the agent.
+- **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
+  manager-side checksum of that module's documents did not match the agent's. The resync is the
+  repair, not the problem.
+- **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
+  reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock
+  http://localhost/metrics`. Shard depths/bytes tell you whether load is skewed;
+  `sync.pipeline.shed.total` counts admission-queue sheds; `vd.lane.*` covers the scan lane. See
+  the [API reference](api-reference.md#get-metrics).
+- **What should I tune first?** If the admission queue sheds while CPUs sit idle, raise
+  `sync_workers` — the queue (`sync_queue_bytes`) is a buffer, not throughput. Raise the byte
+  budget or the connection cap only when those specific gates are the ones logging. Every option:
+  [configuration](configuration.md).
+
 ## Related Modules
 
 - [Remoted](../remoted/README.md) - relays agent sessions to this module.
@@ -66,3 +111,14 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
 - [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
 - [Indexer Connector](../indexer_connector/README.md) - the library used to reach the indexer.
+
+## Development
+
+Two in-repo companions to these pages (plain paths — they live outside this book):
+
+- `src/wazuh_modules/inventory_sync_server/README.md` — the developer's map of the module: the
+  functional/non-functional requirements catalog, the full set of design decisions (D1–D22), the
+  annotated schema, the developer FAQ, and where to touch what.
+- `tools/manager_benchmark/` — the load harness: the same wire as a real fleet over UDS or
+  through remoted, the `contract_*` scenarios that pin this module's `400`/`413`/`503` contracts,
+  and real captured payloads for production-shaped sessions.

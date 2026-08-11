@@ -25,7 +25,7 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `syscollector_init_debian` / `syscollector_init_windows` | A syscollector first scan followed by a `ModuleCheck` checksum reconcile |
 | `checksum_reconcile` | The checksum path both ways: a `"correct"` checksum (matches what the agent sent) and a `"mismatch"` (forces a resync) |
 | `vd_first_then_sync_debian` / `vd_first_then_sync_windows` | The VD lane: a `VDFirst` first scan then a `VDSync` delta stream (the feed gate → scan lane path) |
-| `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta replay (bulk bytes, group commit) |
+| `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta (bulk bytes, group commit). Despite the name it GENERATES 2000 synthetic documents — for real captured payloads see the `real_*` scenarios |
 | `mega_burst` | A big single fleet, unpaced, one delta lane — maximum session rate |
 
 ## Mixed fleet (the flagship pair)
@@ -52,19 +52,45 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 
 ## Contract under pressure
 
-These aim at a specific response contract. There is no pass/fail gate — a scenario declares *what to
-send*; whether the target status actually appears depends on the server's configured limits and the
-live load, and that is the measurement F9c-4 reports. The exact trigger points (max body size,
-in-flight byte budget, scan-lane capacity) are server config, noted in each file's description.
+These aim at a specific response contract. Where the outcome is deterministic on ANY manager, the
+scenario carries an `expected` block (counter assertions; a failure exits `3` — see
+`tool_simulator/docu/07-scenario-schema.md`); where it depends on server config or live load, it
+deliberately does not. Two footnotes from running these against a real manager:
 
-| Scenario | Aimed at |
-|---|---|
-| `contract_oversized_413` | The body-size limit (`413`): an intentionally huge single session |
-| `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies |
-| `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load |
-| `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-sends the same buffer bounded by `--feed-timeout` |
-| `contract_ramp_503` | The in-flight byte budget (`503` + shed): a big unpaced fleet. `503`s here are expected backpressure, not a failure |
-| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back. The lane is single-worker until F9d, so this measures that limit |
+- `contract_oversized_413` has **no** `expected`: the default `max_body_size` is unlimited, so on a
+  default manager the sessions are simply accepted — the `413` only appears when the server is
+  configured with a cap (F9c-4 measured exactly that).
+- The shed-measuring scenarios (`contract_ramp_503`, `contract_vd_saturation`, plus `session_storm`
+  and `mega_burst`) set `retry: {"enabled": false}`: the agent-like default retry would convert the
+  `503`s they exist to count into eventual `200`s.
+- `contract_ramp_503` was recalibrated against a live 32-core manager (2026-08-10): its original
+  fixed-count design (`repeat_count`, no duration) finished before any backlog could build and
+  produced **zero** `503`s on fast hardware. Two findings from that calibration, verified with a
+  mid-run `GET /metrics` probe of `sync.pipeline.shed.total`:
+  - **Duration alone does not fix it.** Switching to a fixed-duration unpaced flood (like
+    `session_storm`) at the original 80 agents / moderate document size still produced zero
+    shedding at both 20s and 60s — with only 80 agents blocking one request each, the pipeline's
+    admission queue never accumulates enough concurrent bytes regardless of how long the flood runs.
+  - **`session_storm`'s own description is imprecise.** Its massive shedding was confirmed (via the
+    same probe) to come from the indexer-availability path (`!indexer->isAvailable()`), not the
+    pipeline byte-queue gate its description names — and that path is noisy: identical 500-agent /
+    60s runs of a scaled-up `contract_ramp_503` variant produced anywhere from 0% to 82% shed
+    across repeats, with 1000 agents additionally triggering `transport_errors` (uds accept-path
+    saturation) that invalidate the run. Not calibratable to a reliable threshold this way.
+  - The fix that reproduced cleanly (5/5 runs, 79-90% shed) keeps the **original 80 agents**, sizes
+    each session enough (`150 docs × 16 KiB ≈ 2.4 MiB`) that even 80 concurrent in-flight sessions
+    approach the pipeline's 64 MiB admission cap directly, and runs for a fixed 60s so a faster
+    manager simply admits more sessions before any one drains — both self-scaling with hardware,
+    unlike the retired fixed-count design.
+
+| Scenario | Aimed at | `expected` |
+|---|---|---|
+| `contract_oversized_413` | The body-size limit (`413`): an intentionally huge single session | none (server-config dependent) |
+| `contract_invalid_bodies` | The `400` rejection paths: `garbage`, `empty`, `not_full_session` raw bodies | all 12 answered `400` |
+| `contract_delete_under_load` | `DELETE /agents` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
+| `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-sends the same buffer bounded by `--feed-timeout` | all 8 logical sessions end `200`, no budget exhausted (holds cold or warm) |
+| `contract_ramp_503` | The pipeline's own admission queue (`sync_queue_bytes`, 64 MiB default) — an 80-agent unpaced fleet of large (~2.4 MiB) sessions for a fixed 60s, retry off. `503`s here are expected backpressure, not a failure | `sessions.s503 >= 1`, no transport errors |
+| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit | none (load dependent) |
 
 ## Real captured payloads
 
@@ -82,6 +108,21 @@ matter, and volume is reached with `repeat_count` and fleet size). A step names 
 | `real_vd_debian` (uds) | Real VDFirst + VDSync sessions on the VD lane |
 | `real_sca_full` (uds) | Real SCA full syncs for Ubuntu, CentOS and Windows at once (large check documents → bulk-bytes path) |
 | `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
+| `real_first_connect_uds` (uds) | **A freshly connected Windows agent + Linux agent at FULL fidelity**: FIM first sync (Windows: the whole 27,726-item registry corpus — 21,091 registry-values + 6,625 registry-keys — in ONE ~26 MB session), syscollector, SCA full and VDFirst, each as its first-connection shape. `expected` pins all 14 sessions OK and the exact 31,950 documents |
+| `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**: uncompressed, the Windows FIM session exceeds remoted's 10 MiB body cap — this payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
+| `real_inspect_fleet` (agent) | A **dashboard-inspection showcase, not a measurement**: the same `real_first_connect` full-fidelity payload (1 Windows + 1 Linux agent, all 31,950 documents across FIM/syscollector/SCA/VD) plus a basic syslog `engine` lane, kept connected on `/control` keepalives for several extra minutes after the inventory sessions finish — see the note below |
+
+**Keeping a fleet connected without replaying its dumps.** `real_inspect_fleet` wants the two agents
+to stay visibly connected long enough to go look at `wazuh-states-*` in the indexer dashboard, but
+`pacing.repeat_until` is the wrong knob for that: set to a duration, it replays **every** lane's full
+step list (agent.go's `laneLoop`) — including each `full_resync`'s `Cleans`, which would wipe and
+re-populate the real dumps' indices on every loop instead of leaving them alone. An agent's keepalive
+loop is tied to `lanes.Wait()` and only stops once **all** of that agent's lanes finish, so the fix is
+a per-step `repeat_count`/`repeat_delay` on just the `engine` lane (the same mechanism
+[13-engine-event-streams.md](tool_simulator/docu/13-engine-event-streams.md) documents for sustained
+event pressure): the heavy FIM/SCA/syscollector/VD dumps send once and are done in seconds, while the
+still-repeating `engine` lane keeps that agent's keepalive ticking for several more minutes, `pacing.
+repeat_until` itself staying `"0"`.
 
 ## First-id ranges
 

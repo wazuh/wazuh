@@ -9,10 +9,13 @@ import (
 )
 
 // Known step kinds, so a typo is a load-time error, not a silent no-op.
+// Concurrency is expressed with LANES (a fleet's lanes run in parallel), never
+// with a step kind: an earlier "parallel" kind was accepted here without an
+// implementation and silently degraded to a delta.
 var validKinds = map[string]bool{
 	"delta": true, "cleans": true, "checksum": true,
 	"metadata": true, "groups": true, "full_resync": true,
-	"delete_agent": true, "engine": true, "raw": true, "parallel": true,
+	"delete_agent": true, "engine": true, "raw": true,
 }
 
 // Load reads and strictly validates a scenario file. Unknown fields and unknown
@@ -77,6 +80,20 @@ func (s *Scenario) validate() error {
 	if len(s.Fleets) == 0 {
 		return fmt.Errorf("no fleets")
 	}
+	if s.Defaults.Retry.Interval.D() < 0 {
+		return fmt.Errorf("retry.interval must not be negative")
+	}
+	switch s.Defaults.Compression {
+	case "", "none", "zstd":
+	default:
+		return fmt.Errorf("compression must be \"zstd\", \"none\" or absent, got %q", s.Defaults.Compression)
+	}
+	// Absent degrades to plain in uds mode on its own (CompressionFor); only an
+	// EXPLICIT zstd is a contradiction worth refusing.
+	if s.Defaults.Compression == "zstd" && s.Mode != "agent" {
+		return fmt.Errorf("compression: \"zstd\" needs agent mode: remoted decompresses zstd bodies, " +
+			"but the inventory sync server's UDS ingress has no decoder")
+	}
 
 	for _, fleet := range s.Fleets {
 		if fleet.Agents <= 0 {
@@ -112,6 +129,15 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 		if step.Engine == "" || step.Location == "" {
 			return fmt.Errorf("%s: engine step needs \"engine\" and \"location\"", where)
 		}
+		if step.EventsPerSecond < 0 {
+			return fmt.Errorf("%s: events_per_second must not be negative", where)
+		}
+		if step.EventsPerBatch < 0 {
+			return fmt.Errorf("%s: events_per_batch must not be negative", where)
+		}
+	}
+	if step.Kind != "engine" && (step.EventsPerSecond != 0 || step.EventsPerBatch != 0) {
+		return fmt.Errorf("%s: events_per_second/events_per_batch only apply to engine steps", where)
 	}
 	if step.Kind == "delete_agent" && s.Mode != "uds" {
 		return fmt.Errorf("%s: delete_agent is uds-mode only", where)

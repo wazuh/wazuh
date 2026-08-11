@@ -7,7 +7,7 @@
     "option": "Sync",
     "cluster_name": "cluster01",
     "cluster_node": "node01",
-    "control": { "enabled": true, "keepalive_interval": "20s", "send_host_info": true }
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true }
   },
   "lanes": {
     "fim": [
@@ -22,7 +22,7 @@
     ],
     "engine": [
       { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
-        "max_eps": 300, "loop": true, "run_while_siblings_active": true }
+        "events_per_second": 300, "events_per_batch": 100 }
     ]
   },
   "fleets": [

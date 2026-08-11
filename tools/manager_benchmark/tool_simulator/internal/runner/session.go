@@ -11,26 +11,58 @@ import (
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/fbbuild"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/source"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
 
 const octetStream = "application/octet-stream"
 
 // runSession builds one FullSession from a step, sends it (honoring the shared
-// EPS limiter and the feed-retry contract), and records the outcome.
+// rate limiter and the 503 retry contracts), and records the outcome.
+//
+// Two distinct 503 retry paths, because they mean different things:
+//   - 503 WITH Retry-After (FR-11): the CVE feed is still downloading. The
+//     header dictates the delay and --feed-timeout bounds the budget.
+//   - 503 WITHOUT the header: backpressure (pipeline full, scan lane full,
+//     indexer unhealthy). A real agent re-POSTs the same session, so the
+//     sender does too: scenario retry interval (default 500ms), bounded by
+//     max_attempts (default 10 sends). Shed-counting scenarios disable it.
+//
+// Every attempt takes a token from the shared limiter and is recorded: a retry
+// is real traffic the server answered, so sessions_sent counts attempts, and
+// retries_feed/retries_503 tell the logical sessions apart.
 func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step) {
-	if err := a.r.sessionLimiter.Wait(ctx); err != nil {
-		return
-	}
-
 	start, payload, docs, docBytes := a.buildSession(lane, step)
 	body := fbbuild.BuildSession(start, payload)
 	if raw := rawOverride(step); raw != nil {
 		body = raw
 	}
+	_ = docBytes
 
-	deadline := time.Now().Add(a.r.feedTimeout)
+	// Compress ONCE, outside the retry loop: retries re-send the same wire
+	// bytes. `raw` steps are exempt -- their deliberately invalid bodies must
+	// reach the server byte-exact, or the 400-contract scenarios would be
+	// measuring the decoder instead. The CMAC in client.Do signs the body as
+	// passed, i.e. the compressed bytes, which is remoted's contract; and
+	// RecordSession below sees len(body) post-compression, so bytes_sent stays
+	// what actually crossed the wire.
+	encoding := ""
+	if a.r.compression() == "zstd" && step.Kind != "raw" {
+		body = wire.Compress(body)
+		encoding = "zstd"
+	}
+
+	retry := a.r.scn.Defaults.Retry
+	feedDeadline := time.Now().Add(a.r.feedTimeout)
+	attempts := 0
 	for {
-		resp, err := a.client.Do("POST", "/stateful", body, octetStream, now(), a.r.mode == "uds")
+		if err := a.r.sessionLimiter.Wait(ctx); err != nil {
+			return
+		}
+		attempts++
+
+		a.r.requestStarted()
+		resp, err := a.client.Do("POST", "/stateful", body, octetStream, encoding, now(), a.r.mode == "uds")
+		a.r.requestFinished()
 		if err != nil {
 			a.r.reg.RecordTransportError(a.fleet.Name, lane)
 			return
@@ -45,18 +77,32 @@ func (a *agent) runSession(ctx context.Context, lane string, step scenario.Step)
 		noop := isNoop(resp.Body)
 		hasRetry := resp.RetryAfter != ""
 		a.r.reg.RecordSession(a.fleet.Name, lane, resp.Status, noop, hasRetry, us(resp.Latency), uint64(len(body)), uint64(docs))
-		_ = docBytes
 
-		// FR-11: 503 + Retry-After is the feed still downloading; re-send the
-		// SAME buffer after the delay, bounded by --feed-timeout.
-		if resp.Status == 503 && hasRetry && time.Now().Before(deadline) {
+		if resp.Status != 503 {
+			return
+		}
+		if hasRetry {
+			if time.Now().After(feedDeadline) {
+				a.r.reg.RecordRetryExhausted(a.fleet.Name, lane)
+				return
+			}
 			a.r.reg.RecordFeedRetry(a.fleet.Name, lane)
 			if err := sleepCtx(ctx, retryAfterDelay(resp.RetryAfter)); err != nil {
 				return
 			}
 			continue
 		}
-		return
+		if !retry.RetryEnabled() {
+			return
+		}
+		if max := retry.RetryMaxAttempts(); max > 0 && attempts >= max {
+			a.r.reg.RecordRetryExhausted(a.fleet.Name, lane)
+			return
+		}
+		a.r.reg.RecordRetry503(a.fleet.Name, lane)
+		if err := sleepCtx(ctx, retry.RetryInterval()); err != nil {
+			return
+		}
 	}
 }
 
@@ -204,33 +250,54 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 	}
 }
 
-// runEngine ships one H/E batch to /stateless.
+// runEngine ships the step's sample file to /stateless in batches of
+// events_per_batch H/E events (0 = the whole file at once). The lane's
+// events_per_second limiter charges each batch its REAL cost in events
+// (WaitN), so the configured rate holds no matter how the events are grouped.
+// One call always covers the entire file; a 503'd batch is counted and
+// dropped, never retried -- an agent's events are lost the same way.
 func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) {
-	limiter := a.r.engineLimiter(lane, step.MaxEPS)
-	if err := limiter.Wait(ctx); err != nil {
-		return
-	}
 	lines := a.r.engineLines(step.Engine)
 	if len(lines) == 0 {
 		return
 	}
-	body := engine.Batch(a.id, "1", step.Location, lines)
-	resp, err := a.client.Do("POST", "/stateless", body, "", now(), false)
-	if err != nil {
-		a.r.reg.RecordTransportError(a.fleet.Name, lane)
-		return
+	batch := step.EventsPerBatch
+	if batch <= 0 || batch > len(lines) {
+		batch = len(lines)
 	}
-	if resp.Status == 400 {
-		a.r.fatalf("agent %s engine batch answered 400: %s", a.id, truncate(resp.Body))
+	limiter := a.r.engineLimiter(lane, step.EventsPerSecond, batch)
+
+	for off := 0; off < len(lines); off += batch {
+		end := off + batch
+		if end > len(lines) {
+			end = len(lines)
+		}
+		chunk := lines[off:end]
+		if err := limiter.WaitN(ctx, len(chunk)); err != nil {
+			return
+		}
+		body := engine.Batch(a.id, "1", step.Location, chunk)
+		a.r.requestStarted()
+		resp, err := a.client.Do("POST", "/stateless", body, "", "", now(), false)
+		a.r.requestFinished()
+		if err != nil {
+			a.r.reg.RecordTransportError(a.fleet.Name, lane)
+			return
+		}
+		if resp.Status == 400 {
+			a.r.fatalf("agent %s engine batch answered 400: %s", a.id, truncate(resp.Body))
+		}
+		a.r.reg.RecordStateless(a.fleet.Name, lane, resp.Status, uint64(len(chunk)), us(resp.Latency))
 	}
-	a.r.reg.RecordStateless(a.fleet.Name, lane, resp.Status, uint64(len(lines)), us(resp.Latency))
 }
 
 func (a *agent) runDelete(ctx context.Context, lane string) {
 	if err := a.r.sessionLimiter.Wait(ctx); err != nil {
 		return
 	}
-	resp, err := a.client.Do("DELETE", "/agents", nil, "", now(), true)
+	a.r.requestStarted()
+	defer a.r.requestFinished()
+	resp, err := a.client.Do("DELETE", "/agents", nil, "", "", now(), true)
 	if err != nil {
 		a.r.reg.RecordTransportError(a.fleet.Name, lane)
 		return

@@ -4,9 +4,9 @@ FlatBuffers is a high-performance serialization library used throughout Wazuh fo
 
 ## Usage in Wazuh
 
-### Inventory Sync Module
+### Inventory Sync Server Module
 
-The Inventory Sync module uses FlatBuffers as its primary communication protocol for synchronizing inventory data between agents and the manager. The protocol supports multiple synchronization modes:
+The Inventory Sync Server module uses FlatBuffers as its primary communication protocol for synchronizing inventory data between agents and the manager. The protocol supports multiple synchronization modes:
 
 **Module Synchronization** (agent-side inventory modules):
 - `ModuleDelta`: Incremental updates for inventory changes. A full-replace resync (e.g. after a
@@ -20,7 +20,7 @@ The Inventory Sync module uses FlatBuffers as its primary communication protocol
 - `GroupDelta`: Agent group membership updates
 - `GroupCheck`: Disaster recovery for groups across all indices
 
-All synchronization messages (Start, Data, End, Acknowledgments) are encoded as FlatBuffers, providing:
+A whole synchronization session travels as ONE FlatBuffers `Message{FullSession}` (Start metadata plus the session's data items — there are no acks, no `End` and no per-item sequence numbers; the HTTP response is the session result), providing:
 
 - **Zero-copy access**: Direct field access without intermediate object creation
 - **Compact binary format**: Significantly smaller than JSON for large inventory datasets
@@ -35,7 +35,7 @@ The Vulnerability Scanner uses FlatBuffers for processing vulnerability feeds, p
 
 ### Agent Info Module
 
-The Agent Info module uses FlatBuffers to communicate metadata and group information updates to the Inventory Sync module, ensuring efficient propagation of agent context changes.
+The Agent Info module uses FlatBuffers to communicate metadata and group information updates to the manager's Inventory Sync Server, ensuring efficient propagation of agent context changes.
 
 ## Performance Characteristics
 
@@ -55,16 +55,9 @@ FlatBuffer schemas are defined in `.fbs` files located in `src/shared_modules/ut
 
 These schemas are compiled into C++ headers during the build process.
 
-### `inventorySync.fbs` — Status Enum
+### `inventorySync.fbs` — Session outcome
 
-The `Status` enum is used in the `EndAck` acknowledgment message to convey the outcome of a protocol phase:
-
-| Value | Meaning |
-|-------|---------|
-| `Ok` | Operation completed successfully |
-| `Error` | Operation failed (e.g. manager-side error) |
-| `Offline` | Agent is offline |
-| `ChecksumMismatch` | Integrity check detected a mismatch; full sync required |
-| `Processing` | Manager acknowledged receipt of `End` but is still processing the session; the agent must wait without resending `End` |
-
-The `Processing` status is sent by the manager as an intermediate `EndAck` when the session is queued for indexing but not yet complete. This prevents the agent from interpreting the absence of a final `EndAck` as a timeout and retransmitting `End`, which would otherwise cause duplicate first-scan events.
+There is no status enum and no acknowledgment message in the wire protocol: the HTTP response to
+`POST /stateful` carries the session's outcome (`200` applied and flushed, `409` checksum mismatch
+triggering a full resync, `4xx`/`5xx`/`503` per the
+[response contract](../../inventory-sync-server/api-reference.md)).

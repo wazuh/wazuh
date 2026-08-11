@@ -23,6 +23,7 @@ type Meta struct {
 	KeepaliveInterval string  `json:"keepalive_interval"`
 	ControlEnabled    bool    `json:"control_enabled"`
 	ConnectionReuse   bool    `json:"connection_reuse"`
+	Compression       string  `json:"compression"`
 	DocumentSeed      uint64  `json:"document_seed"`
 	StartTime         string  `json:"start_time"`
 	EndTime           string  `json:"end_time"`
@@ -31,8 +32,10 @@ type Meta struct {
 	GoVersion         string  `json:"go_version"`
 }
 
-// WriteSummary serializes the whole run record to path.
-func (r *Registry) WriteSummary(path string, meta Meta) error {
+// WriteSummary serializes the whole run record to path. extra carries caller
+// sections merged at the top level (today: the "expected" verdict); nil adds
+// nothing.
+func (r *Registry) WriteSummary(path string, meta Meta, extra map[string]any) error {
 	global := r.GlobalSnapshot()
 	doc := map[string]any{
 		"meta":       meta,
@@ -41,6 +44,9 @@ func (r *Registry) WriteSummary(path string, meta Meta) error {
 		"by_lane":    snapshotMapJSON(r.LaneSnapshots()),
 		"throughput": throughputJSON(global.C, meta.DurationSec, meta.RPSTarget),
 		"latency_ms": latencyJSON(global),
+	}
+	for k, v := range extra {
+		doc[k] = v
 	}
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
@@ -57,7 +63,8 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 			"s400": c.S400, "s401": c.S401, "s403": c.S403, "s409": c.S409, "s413": c.S413,
 			"s500": c.S500, "s503": c.S503, "s503_retry_after": c.S503RetryAfter,
 			"other": c.SessOther, "abandoned_on_drain": c.AbandonedOnDrain,
-			"retries_feed": c.RetriesFeed, "transport_errors": c.TransportErrors,
+			"retries_feed": c.RetriesFeed, "retries_503": c.Retries503,
+			"retries_exhausted": c.RetriesExhausted, "transport_errors": c.TransportErrors,
 			"bytes_sent": c.BytesSent, "documents_sent": c.DocumentsSent,
 		},
 		"stateless": map[string]any{

@@ -78,7 +78,6 @@ typedef enum crypto_type {
 #include "wm_content_manager.h"
 #include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"
-#include "wm_inventory_sync.h"
 #include "wm_inventory_sync_server.h"
 #include "wm_keystore_server.h"
 

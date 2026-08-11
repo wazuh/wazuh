@@ -19,5 +19,6 @@
     { "name": "linux", "agents": 4, "first_id": 30000, "lanes": ["vd"],
       "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
   ],
-  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" },
+  "expected": { "sessions": { "ok": { "eq": 8 } }, "retries_exhausted": { "eq": 0 }, "transport_errors": { "eq": 0 } }
 }
