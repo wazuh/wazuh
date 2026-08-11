@@ -233,6 +233,37 @@ TEST(CurlPerformerTest, ClientCertAndCiphersApplied)
     performer.perform(HttpRequestSpec {});
 }
 
+TEST(CurlPerformerTest, RejectedTlsOptionAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    // What a backend that does not implement the option answers.
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslVersion, _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
+TEST(CurlPerformerTest, RejectedCipherListAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_FULL);
+    config.ciphers = "TLS_AES_128_GCM_SHA256";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::SslCiphers, _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(config, std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
 TEST(CurlPerformerTest, FileBodyStreamsInsteadOfPostFields)
 {
     const std::string path = ::testing::TempDir() + "hc_curl_performer_body.tmp";
