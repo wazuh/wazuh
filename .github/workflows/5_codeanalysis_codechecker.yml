@@ -47,7 +47,7 @@ env:
 jobs:
   prepare:
     name: Prepare scan parameters
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     outputs:
       scan_name: ${{ steps.params.outputs.scan_name }}
       target_name: ${{ steps.params.outputs.target_name }}
@@ -67,7 +67,7 @@ jobs:
 
   scan:
     name: Run CodeChecker scan (${{ inputs.scan_target }})
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     needs: prepare
     permissions:
       contents: read
@@ -75,6 +75,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          df -h /
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
