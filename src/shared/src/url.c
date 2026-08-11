@@ -336,6 +336,31 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
+/*
+ * Point libcurl at the CA certificates this host trusts. HTTPS URLs only; a
+ * plain HTTP request needs no trust anchors.
+ *
+ * On Windows the agent's libcurl is built against our own OpenSSL rather than
+ * Schannel (src/external/CMakeLists.txt), and that build carries no CA bundle,
+ * so the Windows certificate stores have to be asked for explicitly — Schannel
+ * used to consult them on its own. Elsewhere the bundle path libcurl was
+ * compiled with may not exist on this host (the dependency is precompiled), so
+ * the file is looked up at run time instead.
+ */
+static CURLcode wurl_set_trust_anchors(CURL *curl, const char *url) {
+    if (strncmp(url, "https", 5) != 0) {
+        return CURLE_OK;
+    }
+
+#ifdef WIN32
+    return curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, (long)CURLSSLOPT_NATIVE_CA);
+#else
+    char const *cert = find_cert_list();
+
+    return cert ? curl_easy_setopt(curl, CURLOPT_CAINFO, cert) : CURLE_OK;
+#endif
+}
+
 curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout, const char *userpass, bool ssl_verify) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
@@ -358,17 +383,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     }
 
     res = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
-
-#ifndef WIN32
-    char const *cert = find_cert_list();
-
-    // Enable SSL check if url is HTTPS
-    if (!strncmp(url, "https", 5)) {
-        if (NULL != cert) {
-            res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
-        }
-    }
-#endif
+    res += wurl_set_trust_anchors(curl, url);
 
     // Ignore SSL verification
     if (!ssl_verify) {
