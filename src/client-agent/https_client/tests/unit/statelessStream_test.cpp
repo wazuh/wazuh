@@ -52,7 +52,7 @@ namespace
         const auto jsonStart = start + prefix.size();
         const auto newline = sentBody.find('\n', jsonStart);
         const auto jsonText = sentBody.substr(
-            jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
+                                  jsonStart, newline == std::string::npos ? std::string::npos : newline - jsonStart);
         return nlohmann::json::parse(jsonText)["wazuh"];
     }
 
@@ -281,7 +281,8 @@ TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruc
     // line must reflect collectHost's CURRENT return value at each flush, not
     // whatever was available when the stream was built.
     std::string clusterName = "";
-    StatelessStream stream {
+    StatelessStream stream
+    {
         m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
         [&clusterName]
         {
