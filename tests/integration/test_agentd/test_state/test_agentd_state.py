@@ -52,6 +52,7 @@ import sys
 import time
 
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.logger import logger
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.agentd.utils import parse_state_file
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
@@ -198,10 +199,36 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
 
     while time.time() < deadline:
         stats = remoted_server.last_stats
-        if stats:
-            for module in stats.get('modules', []):
-                if module.get('module') == 'agent':
-                    return module.get('stats', {}).get('data')
+        # Defensive against an unexpected shape: seen once in a real CI run (job
+        # https://github.com/wazuh/wazuh/actions/runs/31450520451/job/93655451743,
+        # "modules" iterated into something that wasn't a dict), root cause unconfirmed --
+        # not reproduced in 6 further local attempts (5 isolated + 1 full-suite run) against
+        # a real compiled agent. Every C-side path traced (module_report_add() in
+        # shared/src/module_report.c, agent_report.c's report_collect(), agcom.c's
+        # agcom_getallstats()) always wraps each module as {"module": str, "stats": dict}
+        # inside a "modules" list -- this has never matched a known-bad shape locally, only
+        # ever guarded against one actually observed in CI. Log what was received instead of
+        # silently retrying, so a repeat leaves an actual clue instead of just a timeout.
+        if isinstance(stats, dict):
+            modules = stats.get('modules')
+            if isinstance(modules, list):
+                for module in modules:
+                    if not isinstance(module, dict):
+                        logger.warning(f"wait_for_custom_message_response: 'modules' entry was "
+                                        f"not a dict: {module!r}")
+                        continue
+                    if module.get('module') != 'agent':
+                        continue  # A valid entry for another module (e.g. logcollector).
+                    module_stats = module.get('stats')
+                    if isinstance(module_stats, dict):
+                        return module_stats.get('data')
+                    logger.warning(f"wait_for_custom_message_response: 'agent' module's 'stats' "
+                                    f"was not a dict: {module_stats!r}")
+            elif modules is not None:
+                logger.warning(f"wait_for_custom_message_response: 'modules' was not a list: "
+                                f"{modules!r}")
+        elif stats is not None:
+            logger.warning(f"wait_for_custom_message_response: last_stats was not a dict: {stats!r}")
         time.sleep(1)
 
     return None
@@ -383,11 +410,17 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
 
     if expected_value != 'pending':
         if get_state_callback == parse_state_file:
-            wait_state_update()
-            # Sleep while file is updated
-            time.sleep(5)
+            # Poll across state-file refresh cycles (agent.state_interval, 5s by default)
+            # until status catches up, instead of assuming 2 fixed cycles are always enough --
+            # this check can run right after start_remoted_server(), before the agent has
+            # necessarily finished enrollment/connecting, and a fixed ~10s budget was observed
+            # to flake under CI load (status still "pending" when read).
             wait_state_update()
             current_value = get_state_callback()['status']
+            deadline = time.time() + 60
+            while current_value != expected_value and time.time() < deadline:
+                wait_state_update()
+                current_value = get_state_callback()['status']
         else:
             # No wait_state_update() here: some remote-only cases disable the file-writing
             # loop entirely (agent.state_interval=0) that log ties to. The callback below
