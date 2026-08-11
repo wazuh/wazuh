@@ -367,12 +367,12 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
     pipeline->stop();
 }
 
-TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
+TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnceItFinishes)
 {
     LaneUnderTest fixture;
     fixture.events->closeScanGate();
 
-    invsync::vd::ServerScanCoordinator coordinator {fixture.registry, fixture.lane, std::chrono::seconds {0}};
+    invsync::vd::ServerScanCoordinator coordinator {fixture.registry, std::chrono::seconds {0}};
 
     auto vdFirst = std::make_shared<FutureResponder>();
     ASSERT_EQ(
@@ -380,18 +380,10 @@ TEST(VdScanLaneTest, CoordinatorSeesInFlightSessionsAndPausesAgents)
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    auto vdSync = std::make_shared<FutureResponder>();
-    ASSERT_EQ(
-        VdScanLane::Admission::Accepted,
-        fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDSync, "2"), vdSync, "2")));
-
-    EXPECT_TRUE(coordinator.hasActiveSessionForAgent("002", std::chrono::seconds {0}))
-        << "a QUEUED session counts as active";
     EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
-    EXPECT_EQ(200, vdSync->get().status);
 
     EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";

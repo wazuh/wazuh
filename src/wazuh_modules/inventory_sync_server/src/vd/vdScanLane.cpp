@@ -186,13 +186,6 @@ namespace invsync::vd
         }
     }
 
-    bool VdScanLane::hasAgentQueued(const std::string& agentId) const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return std::any_of(
-            m_queue.begin(), m_queue.end(), [&agentId](const Item& item) { return item.session.agentId == agentId; });
-    }
-
     void VdScanLane::respond(Item& item, int status, const std::string& body)
     {
         if (item.responder)
