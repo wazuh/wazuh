@@ -110,6 +110,19 @@ matter, and volume is reached with `repeat_count` and fleet size). A step names 
 | `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
 | `real_first_connect_uds` (uds) | **A freshly connected Windows agent + Linux agent at FULL fidelity**: FIM first sync (Windows: the whole 27,726-item registry corpus — 21,091 registry-values + 6,625 registry-keys — in ONE ~26 MB session), syscollector, SCA full and VDFirst, each as its first-connection shape. `expected` pins all 14 sessions OK and the exact 31,950 documents |
 | `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**: uncompressed, the Windows FIM session exceeds remoted's 10 MiB body cap — this payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
+| `real_inspect_fleet` (agent) | A **dashboard-inspection showcase, not a measurement**: the same `real_first_connect` full-fidelity payload (1 Windows + 1 Linux agent, all 31,950 documents across FIM/syscollector/SCA/VD) plus a basic syslog `engine` lane, kept connected on `/control` keepalives for several extra minutes after the inventory sessions finish — see the note below |
+
+**Keeping a fleet connected without replaying its dumps.** `real_inspect_fleet` wants the two agents
+to stay visibly connected long enough to go look at `wazuh-states-*` in the indexer dashboard, but
+`pacing.repeat_until` is the wrong knob for that: set to a duration, it replays **every** lane's full
+step list (agent.go's `laneLoop`) — including each `full_resync`'s `Cleans`, which would wipe and
+re-populate the real dumps' indices on every loop instead of leaving them alone. An agent's keepalive
+loop is tied to `lanes.Wait()` and only stops once **all** of that agent's lanes finish, so the fix is
+a per-step `repeat_count`/`repeat_delay` on just the `engine` lane (the same mechanism
+[13-engine-event-streams.md](tool_simulator/docu/13-engine-event-streams.md) documents for sustained
+event pressure): the heavy FIM/SCA/syscollector/VD dumps send once and are done in seconds, while the
+still-repeating `engine` lane keeps that agent's keepalive ticking for several more minutes, `pacing.
+repeat_until` itself staying `"0"`.
 
 ## First-id ranges
 
