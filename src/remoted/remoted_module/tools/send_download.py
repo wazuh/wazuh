@@ -18,15 +18,25 @@ What it verifies beyond "did it return 200":
     the transfer. RSS answers the issue's "memory usage is constant regardless of file
     size"; CPU is read as a /proc counter delta rather than sampled as a percentage, so
     it cannot miss time between samples; the fd count catches a descriptor leak.
+  * With --accept-encoding zstd: sends `Accept-Encoding: zstd` on the request and
+    transparently decodes a `Content-Encoding: zstd` response, streaming, chunk by
+    chunk. Omitted by default, so baseline behavior is unchanged.
+  * Timing/throughput metrics, always collected: time to first byte, transfer time,
+    decompression time, and wire/decoded throughput -- useful for comparing a plain
+    run against an --accept-encoding zstd run.
 
-Requires: pip install requests cryptography
+Requires: pip install -r requirements.txt (requests, cryptography, zstandard -- zstandard
+is already a hard dependency via send_stateless.py's own import, not new).
 
 Examples:
-  python3 send_download.py                            # config download for agent 001's group
-  python3 send_download.py --all                      # every success/failure scenario
+  python3 send_download.py                                     # config download for agent 001's group
+  python3 send_download.py --all                                # every success/failure scenario
   python3 send_download.py --resource-type wpk --resource-id pkg.wpk
-  python3 send_download.py --simulate 20 --repeat 5   # 20 concurrent simulated agents
-  python3 send_download.py --simulate 8 --watch-rss   # + RSS/CPU/fd/throughput report
+  python3 send_download.py --simulate 20 --repeat 5              # 20 concurrent simulated agents
+  python3 send_download.py --simulate 8 --watch-rss              # + RSS/CPU/fd/throughput report
+  python3 send_download.py --accept-encoding zstd                # negotiate compression, decode, verify
+  python3 send_download.py --accept-encoding zstd --save-to /tmp/merged.mg
+  python3 send_download.py --simulate 50 --accept-encoding zstd  # compression under concurrency
 """
 import argparse
 import concurrent.futures
@@ -39,6 +49,7 @@ import time
 
 import requests
 import urllib3
+import zstandard
 
 from send_stateless import _auth_header, read_agent_key
 
@@ -49,6 +60,15 @@ TARGET = "/download"
 
 # Mirrors MAX_RESOURCE_ID_SIZE in downloadEndpoint.cpp.
 MAX_RESOURCE_ID_SIZE = 255
+
+# Upper bound on decompressed output, so a hostile or malformed response can't make
+# this script allocate without limit.
+MAX_DECOMPRESSED_BYTES = 64 * 1024 * 1024
+
+
+class DecompressionBombError(Exception):
+    pass
+
 
 # --- Manager-side layout ---------------------------------------------------
 
@@ -103,54 +123,130 @@ class DownloadResult:
         self.status = None
         self.chunked = False
         self.content_length = None
+        # Wire (as received on the socket).
         self.bytes_received = 0
         self.sha256 = None
+        # Decoded (after undoing Content-Encoding, if any). Equal to the wire values
+        # when there's no compression, so callers can always compare against
+        # `decoded_sha256` regardless of whether the response was compressed.
+        self.content_encoding = None
+        self.decoded_bytes = 0
+        self.decoded_sha256 = None
+        # Timing, seconds. decompress_seconds is decode cost only, excluding network wait.
+        self.ttfb_seconds = None
+        self.transfer_seconds = None
+        self.decompress_seconds = 0.0
+        self.total_seconds = None
         self.error = None
         self.text = ""
 
 
-def post_download(base_url, agent_id, agent_key, body: bytes, timeout=120) -> DownloadResult:
+def post_download(base_url, agent_id, agent_key, body: bytes, accept_encoding: str = None,
+                   save_to: str = None, timeout=300) -> DownloadResult:
     """Signs and sends one /download request, consuming the body as a stream so the
-    client never holds the whole file either."""
+    client never holds the whole file either.
+
+    accept_encoding, if given, is sent as `Accept-Encoding`. Decoding is driven by
+    what the response's `Content-Encoding` actually says, not by what was requested --
+    a `zstd` response is decoded transparently, chunk by chunk; any other declared
+    encoding is passed through as opaque bytes. Omitted, this is unchanged from before."""
     result = DownloadResult()
     url = base_url.rstrip("/") + TARGET
     headers = _auth_header(agent_id, agent_key, "1", "POST", TARGET, int(time.time()), body)
+    if accept_encoding:
+        headers["Accept-Encoding"] = accept_encoding
 
+    t0 = time.perf_counter()
     try:
         response = requests.post(url, headers=headers, data=body, verify=False, stream=True, timeout=timeout)
     except requests.exceptions.RequestException as error:
         result.error = f"{type(error).__name__}: {error}"
         return result
+    t_headers = time.perf_counter()
 
     result.status = response.status_code
     result.chunked = response.headers.get("Transfer-Encoding", "").lower() == "chunked"
     result.content_length = response.headers.get("Content-Length")
+    result.content_encoding = response.headers.get("Content-Encoding") or None
 
-    digest = hashlib.sha256()
+    decompressor = None
+    if result.content_encoding and result.content_encoding.lower() == "zstd":
+        decompressor = zstandard.ZstdDecompressor().decompressobj()
+
+    wire_digest = hashlib.sha256()
+    decoded_digest = hashlib.sha256()
     # Keep the first few KiB only when the status says this is an error body: those are the
     # small JSON payloads worth printing, and a 2 GiB WPK must never be buffered. It has to be
     # captured HERE, while streaming -- once iter_content() has drained the response,
     # `response.content` is gone, so reading it afterwards yields nothing.
     error_body = bytearray() if response.status_code != 200 else None
+    out_handle = open(save_to, "wb") if (save_to and response.status_code == 200) else None
 
     try:
         for chunk in response.iter_content(64 * 1024):
             if not chunk:
                 continue
-            digest.update(chunk)
+            wire_digest.update(chunk)
             result.bytes_received += len(chunk)
             if error_body is not None and len(error_body) < 4096:
                 error_body.extend(chunk)
+
+            if decompressor is not None:
+                dt0 = time.perf_counter()
+                decoded = decompressor.decompress(chunk)
+                result.decompress_seconds += time.perf_counter() - dt0
+            else:
+                decoded = chunk
+
+            result.decoded_bytes += len(decoded)
+            if result.decoded_bytes > MAX_DECOMPRESSED_BYTES:
+                raise DecompressionBombError(
+                    f"decompressed past {MAX_DECOMPRESSED_BYTES} bytes for a single "
+                    f"resource -- aborting rather than continuing to allocate")
+            decoded_digest.update(decoded)
+            if out_handle:
+                out_handle.write(decoded)
     except requests.exceptions.RequestException as error:
         # An interrupted chunked transfer must surface as a failure, never as a short
         # but successful download.
         result.error = f"transfer interrupted: {type(error).__name__}: {error}"
         return result
+    except DecompressionBombError as error:
+        result.error = str(error)
+        return result
+    finally:
+        if out_handle:
+            out_handle.close()
 
-    result.sha256 = digest.hexdigest()
+    t_end = time.perf_counter()
+    result.ttfb_seconds = t_headers - t0
+    result.transfer_seconds = t_end - t_headers
+    result.total_seconds = t_end - t0
+
+    result.sha256 = wire_digest.hexdigest()
+    result.decoded_sha256 = decoded_digest.hexdigest()
     if error_body is not None:
         result.text = bytes(error_body).decode(errors="replace")[:200]
     return result
+
+
+def format_timing(result: DownloadResult) -> str:
+    parts = [f"ttfb={result.ttfb_seconds:.3f}s", f"transfer={result.transfer_seconds:.3f}s"]
+    if result.content_encoding:
+        parts.append(f"decompress={result.decompress_seconds:.3f}s")
+    parts.append(f"total={result.total_seconds:.3f}s")
+    line = "    timing: " + " ".join(parts)
+    if result.total_seconds and result.total_seconds > 0:
+        wire_rate = result.bytes_received / (1024 ** 2) / result.total_seconds
+        line += f"\n    throughput: wire {wire_rate:.1f} MiB/s"
+        if result.content_encoding:
+            decoded_rate = result.decoded_bytes / (1024 ** 2) / result.total_seconds
+            line += f", decoded {decoded_rate:.1f} MiB/s"
+    if result.content_encoding and result.decoded_bytes:
+        ratio = result.bytes_received / result.decoded_bytes
+        line += (f"\n    compression: {result.bytes_received} -> {result.decoded_bytes} bytes "
+                 f"(wire is {ratio * 100:.1f}% of decoded size)")
+    return line
 
 
 # --- RSS sampling ----------------------------------------------------------
@@ -337,7 +433,9 @@ def run_scenarios(base_url, agent_id, agent_key, scenarios):
 # --- Simulated agents ------------------------------------------------------
 
 def enrolled_agents(paths: ManagerPaths, limit=None):
-    """Every usable agent in client.keys, as (id, key) pairs."""
+    """Every usable agent in client.keys, as (id, key) pairs. A pure read -- adding
+    agents for a load test means adding real lines to that file, not something this
+    function does itself."""
     agents = []
     with open(paths.client_keys) as handle:
         for line in handle:
@@ -352,21 +450,38 @@ def enrolled_agents(paths: ManagerPaths, limit=None):
     return agents
 
 
-def simulate(base_url, agents, repeat, expected):
+def _aggregate_timing(results):
+    """min/avg/max across a batch, for whichever timing fields are present. Only
+    meaningful once there is more than one result -- a single request's own numbers
+    are already printed per-request."""
+    fields = ["ttfb_seconds", "transfer_seconds", "decompress_seconds", "total_seconds"]
+    lines = []
+    for field in fields:
+        values = [getattr(r, field) for _, r, _ in results if getattr(r, field) is not None]
+        if not values:
+            continue
+        lines.append(f"{field}: avg={sum(values) / len(values):.3f}s "
+                     f"min={min(values):.3f}s max={max(values):.3f}s")
+    return lines
+
+
+def simulate(base_url, agents, repeat, expected, accept_encoding: str = None):
     """Fires `repeat` config downloads per agent, all concurrently, and checks every one
-    byte-for-byte. Concurrency is where a per-connection streaming bug shows up: a shared
-    buffer or a mis-scoped descriptor produces interleaved or truncated bodies here and
-    nowhere else."""
+    byte-for-byte against the decoded body. Concurrency is where a per-connection
+    streaming bug shows up: a shared buffer or a mis-scoped descriptor produces
+    interleaved or truncated bodies here and nowhere else."""
     jobs = [(agent_id, key, round_index)
             for agent_id, key in agents
             for round_index in range(repeat)]
 
-    print(f"Simulating {len(agents)} agent(s) x {repeat} download(s) = {len(jobs)} concurrent requests")
+    print(f"Simulating {len(agents)} agent(s) x {repeat} download(s) = {len(jobs)} concurrent requests"
+          f"{f' (Accept-Encoding: {accept_encoding})' if accept_encoding else ''}")
 
     def one(job):
         agent_id, key, _ = job
         want = expected.get(agent_id)
-        result = post_download(base_url, agent_id, key, request_body("config", want["selector"]))
+        result = post_download(base_url, agent_id, key, request_body("config", want["selector"]),
+                               accept_encoding=accept_encoding)
         return agent_id, result, want
 
     started = time.time()
@@ -376,21 +491,28 @@ def simulate(base_url, agents, repeat, expected):
 
     failures = []
     total_bytes = 0
+    compressed_count = 0
     for agent_id, result, want in results:
         total_bytes += result.bytes_received
+        if result.content_encoding:
+            compressed_count += 1
         if result.error:
             failures.append(f"agent {agent_id}: {result.error}")
         elif result.status != 200:
             failures.append(f"agent {agent_id}: status {result.status} ({result.text})")
         elif not result.chunked:
             failures.append(f"agent {agent_id}: response was not chunked")
-        elif want["sha256"] and result.sha256 != want["sha256"]:
-            failures.append(f"agent {agent_id}: body mismatch -- got {result.sha256[:16]}, "
+        elif want["sha256"] and result.decoded_sha256 != want["sha256"]:
+            failures.append(f"agent {agent_id}: body mismatch -- got {result.decoded_sha256[:16]}, "
                             f"expected {want['sha256'][:16]} ({want['path']})")
 
     rate = (total_bytes / (1024 * 1024) / elapsed) if elapsed > 0 else 0
     print(f"  {len(results) - len(failures)}/{len(results)} succeeded in {elapsed:.2f}s "
           f"({total_bytes / (1024 * 1024):.1f} MiB, {rate:.1f} MiB/s)")
+    if accept_encoding:
+        print(f"  {compressed_count}/{len(results)} responses came back Content-Encoding-compressed")
+    for line in _aggregate_timing(results):
+        print(f"  {line}")
     for failure in failures[:20]:
         print(f"  [FAIL] {failure}")
     return not failures
@@ -424,7 +546,7 @@ def resolve_expectations(paths, agents, selectors):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
+    parser.add_argument("--url", default="https://127.0.0.1:1517", help="Base URL of the HTTPS server.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
                         help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
@@ -445,6 +567,12 @@ def main():
     parser.add_argument("--unknown-group", default="a-group-that-does-not-exist",
                         help="Group used by the 404 scenario; must not exist on the manager.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
+    parser.add_argument("--accept-encoding", default=None, metavar="VALUE",
+                        help="Send Accept-Encoding: VALUE (e.g. 'zstd') and transparently decode "
+                             "a compressed response. Omitted by default.")
+    parser.add_argument("--save-to", default=None,
+                        help="Write the DECODED body here, the way a real agent would save the file. "
+                             "Only used for a single (non --simulate, non --all) request.")
     args = parser.parse_args()
 
     paths = ManagerPaths(args.manager_home)
@@ -460,7 +588,7 @@ def main():
                   f"{'(unreadable)' if not want['sha256'] else ''}")
         watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
         with watcher:
-            ok = simulate(args.url, agents, args.repeat, expected)
+            ok = simulate(args.url, agents, args.repeat, expected, accept_encoding=args.accept_encoding)
         if args.watch_rss:
             print(f"  {watcher.report()}")
         return 0 if ok else 1
@@ -481,18 +609,31 @@ def main():
         raise SystemExit("--resource-id is required for a wpk download")
 
     body = request_body(args.resource_type, resource_id)
-    print(f"--> POST {args.url.rstrip('/')}{TARGET}  {body.decode()}")
+    print(f"--> POST {args.url.rstrip('/')}{TARGET}  {body.decode()}"
+          f"{f'  (Accept-Encoding: {args.accept_encoding})' if args.accept_encoding else ''}")
 
     watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
     with watcher:
-        result = post_download(args.url, args.agent_id, agent_key, body)
+        result = post_download(args.url, args.agent_id, agent_key, body,
+                               accept_encoding=args.accept_encoding, save_to=args.save_to)
 
     if result.error:
         print(f"<-- FAILED: {result.error}")
         return 1
 
-    print(f"<-- {result.status}  chunked={result.chunked}  content-length={result.content_length}")
-    print(f"    {result.bytes_received} bytes, sha256={result.sha256}")
+    print(f"<-- {result.status}  chunked={result.chunked}  content-length={result.content_length}"
+          f"{'  Content-Encoding=' + result.content_encoding if result.content_encoding else ''}")
+    print(f"    wire: {result.bytes_received} bytes, sha256={result.sha256}")
+    if result.content_encoding:
+        print(f"    decoded ({result.content_encoding}): {result.decoded_bytes} bytes, "
+              f"sha256={result.decoded_sha256}")
+    elif args.accept_encoding:
+        print("    no Content-Encoding on the response -- served as plain bytes "
+              "(today's baseline; also the correct outcome if compression is "
+              "disabled or the manager chose not to compress)")
+    print(format_timing(result))
+    if args.save_to and result.status == 200:
+        print(f"    saved decoded body to {args.save_to}")
     if result.text:
         print(f"    {result.text}")
     if args.watch_rss:
@@ -504,10 +645,10 @@ def main():
         print(f"    expected file: {want_path}")
         if want_digest is None:
             print("    (expected file unreadable from here; skipping byte comparison)")
-        elif want_digest == result.sha256:
-            print("    [PASS] body matches the file the manager should have served")
+        elif want_digest == result.decoded_sha256:
+            print("    [PASS] decoded body matches the file the manager should have served")
         else:
-            print(f"    [FAIL] body MISMATCH -- expected sha256={want_digest}")
+            print(f"    [FAIL] decoded body MISMATCH -- expected sha256={want_digest}")
             return 1
         if not result.chunked:
             print("    [FAIL] response was not chunked")
