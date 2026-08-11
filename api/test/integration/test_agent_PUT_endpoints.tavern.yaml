@@ -809,16 +809,20 @@ stages:
         use_http: true
         upgrade_version: 5.0.0
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Agent 007 has version < 5.0.0, cannot use HTTPS Task Manager)
+      # use_http has no real WPK repo to reach in this test environment, so the URL lookup
+      # (past the version check, since 5.0.0 > agent 007's real v4.14.1) fails with 1822.
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1822
+              id:
+                - "007"
         message: !anystr
 
   - name: Try to upgrade a list of agents that cannot be upgraded (agents with issues)
@@ -937,16 +941,18 @@ stages:
         os.version: '18.04.6 LTS'
         q: registerIP=any;id<7;id>5
     response:
-      # WPK file doesn't exist in test environment, no upgrade task created
-      # (Query filters to agent 006 only: id<7 AND id>5, agent 006 has version < 5.0.0)
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1822
+              id:
+                - "006"
         message: !anystr
 
 ---
