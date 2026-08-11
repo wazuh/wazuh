@@ -24,7 +24,7 @@ namespace
     /// "" when fn is null, so an unset callback degrades to "no extra metadata"
     /// rather than a crash.
     std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*),
-                                                        void* userData)
+                                                       void* userData)
     {
         return [fn, userData]() -> std::string
         {
