@@ -912,6 +912,52 @@ static void test_read_agent_batch_applies_nothing_when_the_block_is_rejected(voi
     remove(BATCH_TEST_CONF);
 }
 
+#define BATCH_SHARED_CONF "/tmp/test_client-config_https_batch_shared.conf"
+
+static void write_shared_conf(const char *body) {
+    FILE *fp = fopen(BATCH_SHARED_CONF, "w");
+
+    assert_non_null(fp);
+    fputs(body, fp);
+    fclose(fp);
+}
+
+static void test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_rejected(void **state) {
+    agent_batch batch = {0};
+
+    /* The local block parsed cleanly and stands on its own; a centralized file the
+     * agent cannot read is no reason to throw it away. Discarding it left the caller
+     * on zero, which the sync protocol reads as "unset" and answers with its built-in
+     * default -- while agentd, which never checks this same read, kept running on the
+     * local value, so one agent ran two different session limits.
+     *
+     * Broken at the XML level rather than with an invalid element: a rejected element
+     * sits behind ReadConfig's agent_config profile gate, which wants a real
+     * queue/sockets/.agent_info to get past. Both routes end in ReadConfig answering
+     * OS_INVALID, which is all this function reacts to.
+     *
+     * The warning is the only message the run produces. config.c is linked from the
+     * agent build, so its XML_ERROR for a centralized read is compiled out under
+     * CLIENT -- that silence is the reason the warning exists. */
+    write_conf("<ossec_config><agent>"
+               "<batch><size>3MB</size><interval>45s</interval></batch>"
+               "</agent></ossec_config>");
+    write_shared_conf("<agent_config><agent><batch><size>9MB</size>");
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Could not read the centralized configuration '" BATCH_SHARED_CONF
+                  "'. Keeping the local <agent><batch> limits.");
+
+    w_read_agent_batch(BATCH_TEST_CONF, BATCH_SHARED_CONF, &batch);
+
+    /* The local values, and nothing from the file that failed. */
+    assert_int_equal(batch.size, 3 * 1024 * 1024);
+    assert_int_equal(batch.interval, 45);
+
+    remove(BATCH_TEST_CONF);
+    remove(BATCH_SHARED_CONF);
+}
+
 static void test_read_agent_batch_survives_a_missing_file(void **state) {
     agent_batch batch = { .size = 777, .interval = 42 };
 
@@ -1120,6 +1166,7 @@ int main(void) {
         cmocka_unit_test(test_read_agent_batch_leaves_the_caller_defaults_when_absent),
         cmocka_unit_test(test_read_agent_batch_applies_the_local_file_with_no_shared_one),
         cmocka_unit_test(test_read_agent_batch_applies_nothing_when_the_block_is_rejected),
+        cmocka_unit_test(test_read_agent_batch_keeps_the_local_block_when_the_shared_one_is_rejected),
         cmocka_unit_test(test_read_agent_batch_survives_a_missing_file),
         cmocka_unit_test(test_shared_batch_is_parsed),
         cmocka_unit_test(test_shared_batch_is_validated_like_a_local_one),

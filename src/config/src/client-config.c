@@ -760,21 +760,41 @@ static int read_local_agent_batch(const char *cfgfile, agent *out)
     return result;
 }
 
+/**
+ * @brief Copy the limits one source set over what the caller already had.
+ *
+ * Each limit stands on its own, so a source naming only one leaves the other alone --
+ * which is how the centralized block overrides just the parts it mentions.
+ */
+static void apply_agent_batch(const agent_batch *from, agent_batch *to)
+{
+    if (from->size > 0) {
+        to->size = from->size;
+    }
+
+    if (from->interval > 0) {
+        to->interval = from->interval;
+    }
+}
+
 void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch *batch)
 {
-    agent parsed = { .server = NULL };
+    agent local = { .server = NULL };
+    agent shared = { .server = NULL };
 
     if (!batch) {
         return;
     }
 
     /* Read_Agent_Batch fills each limit as it walks it, so a block whose second
-     * element is invalid has already assigned the first. Nothing is applied unless
-     * both reads come back clean: a rejected configuration must leave the caller on
-     * its defaults, not on the half of it that happened to parse. */
-    if (cfgfile && read_local_agent_batch(cfgfile, &parsed) < 0) {
+     * element is invalid has already assigned the first. Nothing is applied unless the
+     * read comes back clean: a rejected configuration must leave the caller on its
+     * defaults, not on the half of it that happened to parse. */
+    if (cfgfile && read_local_agent_batch(cfgfile, &local) < 0) {
         return;
     }
+
+    apply_agent_batch(&local.batch, batch);
 
     /* The centralized file goes through ReadConfig so it gets the same
      * agent_config name/os/profile filtering every other module gets; the local
@@ -782,19 +802,26 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
      *
      * Checked for existence first because ReadConfig answers OS_INVALID for a file
      * that is merely absent, and most agents have never been pushed one -- without
-     * this, "no shared configuration" would throw away the local <batch> too. */
+     * this, "no shared configuration" would throw away the local <batch> too.
+     *
+     * Read into a struct of its own so a rejected centralized block cannot be
+     * half-applied on top of a local one that did parse, and so that local one still
+     * stands when the centralized file is unusable. That last part is what agentd
+     * already does with the same two files -- ClientConf does not check this call at
+     * all -- and without it one agent runs two different session limits, agentd on
+     * the local value and syscheckd and the modules on the built-in default.
+     *
+     * Warned about here because ReadConfig stays quiet on the agent: its XML_ERROR is
+     * compiled out under CLIENT for centralized reads, so nothing else says why the
+     * pushed limits were ignored. */
     if (sharedcfg && w_is_file(sharedcfg) &&
-            ReadConfig(CCLIENT | CAGENT_CONFIG, sharedcfg, &parsed, NULL) < 0) {
+            ReadConfig(CCLIENT | CAGENT_CONFIG, sharedcfg, &shared, NULL) < 0) {
+        mwarn("Could not read the centralized configuration '%s'. Keeping the local <agent><batch> limits.",
+              sharedcfg);
         return;
     }
 
-    if (parsed.batch.size > 0) {
-        batch->size = parsed.batch.size;
-    }
-
-    if (parsed.batch.interval > 0) {
-        batch->interval = parsed.batch.interval;
-    }
+    apply_agent_batch(&shared.batch, batch);
 }
 
 int Read_Agent_Enrollment(XML_NODE node, agent * logr){
