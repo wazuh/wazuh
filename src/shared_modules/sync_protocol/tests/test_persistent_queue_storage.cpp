@@ -13,6 +13,7 @@
 #include "mock_filesystem_wrapper.hpp"
 #include <memory>
 #include <filesystem>
+#include <algorithm>
 
 struct QueueScenario
 {
@@ -384,6 +385,64 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
     EXPECT_EQ(remainingItems.size(), static_cast<size_t>(1));
     EXPECT_EQ(remainingItems[0].id, "id3");
     EXPECT_EQ(remainingItems[0].index, "index2");
+}
+
+TEST_F(PersistentQueueStorageTest, SubmitBatchAppliesCoalesceLogicForEachItem)
+{
+    std::vector<PersistedData> batch =
+    {
+        PersistedData{0, "id1", "idx1", "{}", Operation::CREATE, 1},
+        PersistedData{0, "id2", "idx2", "{}", Operation::CREATE, 1},
+        PersistedData{0, "id1", "idx1", "{updated}", Operation::MODIFY, 2}
+    };
+
+    storage->submitBatch(batch);
+
+    auto rows = storage->fetchAndMarkForSync();
+    ASSERT_EQ(rows.size(), static_cast<size_t>(2));
+
+    const auto id1 = std::find_if(rows.begin(), rows.end(), [](const PersistedData& d) { return d.id == "id1"; });
+    ASSERT_NE(id1, rows.end());
+    EXPECT_EQ(id1->operation, Operation::MODIFY);
+}
+
+TEST_F(PersistentQueueStorageTest, SubmitBatchWithEmptyBatchIsANoOp)
+{
+    EXPECT_NO_THROW(storage->submitBatch({}));
+
+    auto rows = storage->fetchAndMarkForSync();
+    EXPECT_TRUE(rows.empty());
+}
+
+TEST_F(PersistentQueueStorageTest, FetchPendingFiltersDataContextWhenRequested)
+{
+    storage->submitOrCoalesce(PersistedData{0, "value1", "idx", "{}", Operation::CREATE, 0, false});
+    storage->submitOrCoalesce(PersistedData{0, "context1", "idx", "{}", Operation::CREATE, 0, true});
+
+    auto onlyValues = storage->fetchPending(true);
+    ASSERT_EQ(onlyValues.size(), static_cast<size_t>(1));
+    EXPECT_EQ(onlyValues[0].id, "value1");
+
+    auto everything = storage->fetchPending(false);
+    EXPECT_EQ(everything.size(), static_cast<size_t>(2));
+}
+
+TEST_F(PersistentQueueStorageTest, RemoveAllDataContextRemovesOnlyDataContextItems)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "idx", "{}", Operation::CREATE, 0, false});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "idx", "{}", Operation::CREATE, 0, true});
+
+    storage->removeAllDataContext();
+
+    auto remaining = storage->fetchPending(false);
+    ASSERT_EQ(remaining.size(), static_cast<size_t>(1));
+    EXPECT_EQ(remaining[0].id, "id1");
+}
+
+TEST(PersistentQueueStorageConstructorTest, ThrowsWhenLoggerIsNull)
+{
+    LoggerFunc nullLogger = nullptr;
+    EXPECT_THROW(PersistentQueueStorage(":memory:", nullLogger), std::invalid_argument);
 }
 
 // Test class for testing deleteDatabase method with mock filesystem wrapper

@@ -12,6 +12,45 @@
 #include <vector>
 #include "ipersistent_queue.hpp"
 
+/// @brief Defines the synchronization status of a persisted message.
+enum class SyncStatus : int
+{
+    PENDING = 0,        ///< The message is waiting to be synchronized.
+    SYNCING = 1,        ///< The message is currently being synchronized.
+    SYNCING_UPDATED = 2 ///< The message is being synchronized and its contents have been updated.
+};
+
+/// @brief Tracks the creation state of a persisted message, particularly for newly created items.
+enum class CreateStatus : int
+{
+    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
+    NEW = 1,          ///< The message was newly created during the current session.
+    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
+};
+
+/// @brief A single stored row, including the internal coalescing state.
+///
+/// Used to move the full queue state between the runtime backend (in-memory) and the
+/// on-disk snapshot format (SQLite) via fetchAll()/saveAll() — the two boundaries where
+/// the queue is persisted (agent startup / graceful shutdown).
+struct QueueRow
+{
+    /// @brief Row insertion order, used to preserve FIFO ordering across a save/load round trip.
+    uint64_t rowId{};
+
+    /// @brief The message payload.
+    PersistedData data;
+
+    /// @brief Current synchronization status.
+    SyncStatus syncStatus{SyncStatus::PENDING};
+
+    /// @brief Current creation status.
+    CreateStatus createStatus{CreateStatus::EXISTING};
+
+    /// @brief Operation captured while the previous version of this row was mid-sync.
+    Operation operationSyncing{Operation::NO_OP};
+};
+
 /// @brief Interface for persistent storage backend used by PersistentQueue.
 ///
 /// Implementations of this interface are responsible for saving, retrieving,
@@ -60,4 +99,14 @@ class IPersistentQueueStorage
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
+
+        /// @brief Fetches every row regardless of status, including internal coalescing state.
+        /// Used to load a full snapshot (e.g. from disk into memory at startup).
+        /// @return All rows in insertion order.
+        virtual std::vector<QueueRow> fetchAll() = 0;
+
+        /// @brief Replaces the entire contents of the store with the given rows, in one
+        /// transaction. Used to persist a full snapshot (e.g. from memory to disk at shutdown).
+        /// @param rows The complete set of rows to persist, in insertion order.
+        virtual void saveAll(const std::vector<QueueRow>& rows) = 0;
 };

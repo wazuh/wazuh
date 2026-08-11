@@ -479,6 +479,88 @@ void PersistentQueueStorage::removeAllDataContext()
     // LCOV_EXCL_STOP
 }
 
+std::vector<QueueRow> PersistentQueueStorage::fetchAll()
+{
+    std::vector<QueueRow> result;
+
+    try
+    {
+        const std::string selectQuery =
+            "SELECT rowid, id, idx, data, operation, version, is_data_context, sync_status, create_status, operation_syncing "
+            "FROM persistent_queue "
+            "ORDER BY rowid ASC;";
+
+        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
+
+        while (selectStmt.step() == SQLITE_ROW)
+        {
+            QueueRow row;
+            row.rowId = static_cast<uint64_t>(selectStmt.value<int64_t>(0));
+            row.data.id = selectStmt.value<std::string>(1);
+            row.data.index = selectStmt.value<std::string>(2);
+            row.data.data = selectStmt.value<std::string>(3);
+            row.data.operation = static_cast<Operation>(selectStmt.value<int>(4));
+            row.data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
+            row.data.is_data_context = selectStmt.value<int>(6) != 0;
+            row.syncStatus = static_cast<SyncStatus>(selectStmt.value<int>(7));
+            row.createStatus = static_cast<CreateStatus>(selectStmt.value<int>(8));
+            row.operationSyncing = static_cast<Operation>(selectStmt.value<int>(9));
+
+            result.emplace_back(std::move(row));
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Failed to fetch all items: ") + e.what());
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+
+    return result;
+}
+
+void PersistentQueueStorage::saveAll(const std::vector<QueueRow>& rows)
+{
+    m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    try
+    {
+        m_connection.execute("DELETE FROM persistent_queue;");
+
+        const std::string insertQuery =
+            "INSERT INTO persistent_queue (id, idx, data, operation, version, sync_status, create_status, operation_syncing, is_data_context) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+        for (const auto& row : rows)
+        {
+            SQLite3Wrapper::Statement insertStmt(m_connection, insertQuery);
+            insertStmt.bind(1, row.data.id);
+            insertStmt.bind(2, row.data.index);
+            insertStmt.bind(3, row.data.data);
+            insertStmt.bind(4, static_cast<int>(row.data.operation));
+            insertStmt.bind(5, static_cast<int64_t>(row.data.version));
+            insertStmt.bind(6, static_cast<int>(row.syncStatus));
+            insertStmt.bind(7, static_cast<int>(row.createStatus));
+            insertStmt.bind(8, static_cast<int>(row.operationSyncing));
+            insertStmt.bind(9, row.data.is_data_context ? 1 : 0);
+            insertStmt.step();
+        }
+
+        m_connection.execute("COMMIT;");
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in saveAll: ") + e.what());
+        m_connection.execute("ROLLBACK;");
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+}
+
 void PersistentQueueStorage::deleteDatabase()
 {
     try

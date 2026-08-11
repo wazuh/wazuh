@@ -14,22 +14,6 @@
 #include "agent_sync_protocol_types.hpp"
 #include "ifilesystem_wrapper.hpp"
 
-/// @brief Defines the synchronization status of a persisted message.
-enum class SyncStatus : int
-{
-    PENDING = 0,        ///< The message is waiting to be synchronized.
-    SYNCING = 1,        ///< The message is currently being synchronized.
-    SYNCING_UPDATED = 2 ///< The message is being synchronized and its contents have been updated.
-};
-
-/// @brief Tracks the creation state of a persisted message, particularly for newly created items.
-enum class CreateStatus : int
-{
-    EXISTING = 0,     ///< The message existed prior to the current session; it was not newly created.
-    NEW = 1,          ///< The message was newly created during the current session.
-    NEW_DELETED = 2   ///< The message was newly created, but then deleted before it could be synchronized.
-};
-
 /// @brief SQLite-backed implementation of IPersistentQueueStorage.
 ///
 /// Persists module messages into a local SQLite database file.
@@ -83,6 +67,14 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
+
+        /// @brief Fetches every row regardless of status, including internal coalescing state.
+        /// @return All rows in insertion (rowid) order.
+        std::vector<QueueRow> fetchAll() override;
+
+        /// @brief Replaces the entire contents of the table with the given rows, in one transaction.
+        /// @param rows The complete set of rows to persist, in insertion order.
+        void saveAll(const std::vector<QueueRow>& rows) override;
 
     private:
         /// @brief Active SQLite database connection.
