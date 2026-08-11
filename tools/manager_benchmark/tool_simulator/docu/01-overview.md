@@ -31,7 +31,7 @@ Behaves like a fleet of real agents:
 
 1. enrolls against authd (TCP/1515) to obtain an id and a key;
 2. `POST /control` `startup` over HTTPS/1517, signed with AES-CMAC;
-3. `POST /control` `notify` every 20 s per agent — the manager's real hot path;
+3. `POST /control` `notify` every 10 s per agent — the manager's real hot path;
 4. `POST /stateful` sessions, relayed by remoted to the server;
 5. optionally `POST /stateless` log-event batches, relayed by remoted to the engine (an *engine
    stream* lane — see [13-engine-event-streams.md](13-engine-event-streams.md)), so a scenario can

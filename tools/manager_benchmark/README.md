@@ -189,7 +189,7 @@ The same scenarios over two transports, so the difference isolates the relay:
   ingestion pipeline alone: validation, sharded workers, group commit, the vulnerability-detection
   scan lane.
 - **`--mode agent`** — like a real fleet: enroll against authd, then HTTPS to remoted with AES-CMAC
-  signatures, sending `POST /control` (`startup`, a `notify` keepalive every 20 s, `shutdown`) and
+  signatures, sending `POST /control` (`startup`, a `notify` keepalive every 10 s, `shutdown`) and
   the `POST /stateful` sessions.
 
 Per run it produces `bench.csv` (per-second cumulative counters and latency percentiles),
