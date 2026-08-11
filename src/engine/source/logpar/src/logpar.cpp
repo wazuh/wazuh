@@ -511,7 +511,7 @@ Logpar::Hlp Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfo
                     insideTokens.splice(insideTokens.end(), ref(std::get<parser::Group>(*it), ref));
                     it = std::next(it);
                 }
-                if (std::holds_alternative<parser::Literal>(*it))
+                if (it != group.children.cend() && std::holds_alternative<parser::Literal>(*it))
                 {
                     insideTokens.emplace_back(std::get<parser::Literal>(*it).value);
                 }

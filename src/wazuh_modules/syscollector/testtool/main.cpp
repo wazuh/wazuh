@@ -100,7 +100,12 @@ int main(int argc, const char* argv[])
                     std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
                 }
 
-                Syscollector::instance().destroy();
+                // Only signal stop from this thread. releaseResources() must run on the
+                // same thread that called start() (below), since it releases per-thread
+                // resources -- e.g. Windows' hotfixes() COM context -- on the calling
+                // thread. Calling destroy() here would release the wrong thread's
+                // resources; see Syscollector::destroy()'s documented contract.
+                Syscollector::instance().quiesce();
             }
         };
 

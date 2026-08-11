@@ -94,6 +94,7 @@ INSTANTIATE_TEST_SUITE_P(Parses,
                                            ParseExprT("lit<~>(?<~>:)|", false),
                                            ParseExprT("lit(?lit)(?lit)", false), // Must build if limit >= 2
                                            ParseExprT("lit(?(?lit)lit)", false), // Must build if limit >= 2
+                                           ParseExprT("<~>(?(?a)(?b))", false),  // Children are groups with no trailing literal
                                            ParseExprT("<~opt>?lit", false),
                                            ParseExprT("lit(?lit", false),
                                            ParseExprT("literal<text><_custom/long><~>", false),

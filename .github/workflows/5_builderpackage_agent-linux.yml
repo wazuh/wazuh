@@ -77,7 +77,7 @@ jobs:
       id-token: write
       contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Build DEB ${{ matrix.arch }} package
     strategy:
@@ -104,27 +104,15 @@ jobs:
           echo "CONTAINER_NAME=pkg_deb_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=deb" >> $GITHUB_ENV
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+      - name: Builder image compatibility fixes
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
+          # actions/checkout on newer git writes repositoryformatversion=1, which the
+          # older git inside the builder Docker images cannot read. Not runner-specific.
           git config core.repositoryformatversion 0
-          # Install uuidgen
+          # Self-skipping guards: GitHub-hosted images ship both, so these no-op there.
           if ! command -v uuidgen >/dev/null 2>&1; then
             sudo apt-get install -y uuid-runtime
           fi
-          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
-          #    install requests/packaging via pip, which the CodeBuild image lacks.
           if ! python3 -m pip --version >/dev/null 2>&1; then
             sudo apt-get install -y python3-pip
           fi
@@ -205,7 +193,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-deb
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Test DEB ${{ matrix.arch }} package
     strategy:
@@ -249,27 +237,15 @@ jobs:
           echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+      - name: Builder image compatibility fixes
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
+          # actions/checkout on newer git writes repositoryformatversion=1, which the
+          # older git inside the builder Docker images cannot read. Not runner-specific.
           git config core.repositoryformatversion 0
-          # Install uuidgen
+          # Self-skipping guards: GitHub-hosted images ship both, so these no-op there.
           if ! command -v uuidgen >/dev/null 2>&1; then
             sudo apt-get install -y uuid-runtime
           fi
-          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
-          #    install requests/packaging via pip, which the CodeBuild image lacks.
           if ! python3 -m pip --version >/dev/null 2>&1; then
             sudo apt-get install -y python3-pip
           fi
@@ -366,7 +342,7 @@ jobs:
       contents: read
     needs: [build-deb, test-deb]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
@@ -439,7 +415,7 @@ jobs:
       id-token: write
       contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Build RPM ${{ matrix.arch }} package
     strategy:
@@ -473,27 +449,15 @@ jobs:
           echo "CONTAINER_NAME=pkg_rpm_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=rpm" >> $GITHUB_ENV
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+      - name: Builder image compatibility fixes
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
+          # actions/checkout on newer git writes repositoryformatversion=1, which the
+          # older git inside the builder Docker images cannot read. Not runner-specific.
           git config core.repositoryformatversion 0
-          # Install uuidgen
+          # Self-skipping guards: GitHub-hosted images ship both, so these no-op there.
           if ! command -v uuidgen >/dev/null 2>&1; then
             sudo apt-get install -y uuid-runtime
           fi
-          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
-          #    install requests/packaging via pip, which the CodeBuild image lacks.
           if ! python3 -m pip --version >/dev/null 2>&1; then
             sudo apt-get install -y python3-pip
           fi
@@ -574,7 +538,7 @@ jobs:
       id-token: write
       contents: read
     needs: build-rpm
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Test RPM ${{ matrix.arch }} package
     strategy:
@@ -626,27 +590,15 @@ jobs:
           echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
 
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+      - name: Builder image compatibility fixes
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
-          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
+          # actions/checkout on newer git writes repositoryformatversion=1, which the
+          # older git inside the builder Docker images cannot read. Not runner-specific.
           git config core.repositoryformatversion 0
-          # Install uuidgen
+          # Self-skipping guards: GitHub-hosted images ship both, so these no-op there.
           if ! command -v uuidgen >/dev/null 2>&1; then
             sudo apt-get install -y uuid-runtime
           fi
-          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
-          #    install requests/packaging via pip, which the CodeBuild image lacks.
           if ! python3 -m pip --version >/dev/null 2>&1; then
             sudo apt-get install -y python3-pip
           fi
@@ -743,7 +695,7 @@ jobs:
       contents: read
     needs: [build-rpm, test-rpm]
     if: success()
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:
@@ -825,7 +777,7 @@ jobs:
 
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     name: Detect changed Linux test modules
     permissions:

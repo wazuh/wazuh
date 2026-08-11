@@ -46,6 +46,10 @@ typedef struct wm_context {
 
 typedef struct wmodule {
     pthread_t thread;                   // Thread ID
+#ifdef WIN32
+    HANDLE win_thread;                  // Module's own worker thread handle, so stop_wmodules()
+                                         // can join it before the service reports SERVICE_STOPPED
+#endif
     const wm_context *context;          // Context (common structure)
     char *tag;                          // Module tag
     void *data;                         // Data (module-dependent structure)
