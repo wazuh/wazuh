@@ -172,8 +172,18 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
     There is no manager-initiated, on-demand state query under the HTTPS client (the legacy
     '#!-req ... agent getstate' request/response was a synchronous, persistent-connection
     mechanism with no equivalent here) -- but the same data (w_agentd_state_get(), agcom.c's
-    "getallstats") rides the periodic /stats push (wazuh/wazuh#37843) under the "agent"
-    module entry, so this waits for a fresh push instead of sending a request.
+    "getallstats") rides the periodic /stats push (wazuh/wazuh#37843) under modules.agent, so
+    this waits for a fresh push instead of sending a request.
+
+    Since wazuh/wazuh@72ace94e97 "modules" is an object keyed by module name (e.g.
+    {"modules": {"agent": {...}, "logcollector": {...}}}), not an array of {"module":,
+    "stats":} entries, counters nested as messages.count/tasks.*.total, and last_ack is gone
+    entirely -- confirmed against a fresh local build after that commit landed (git show
+    72ace94e97 -- src/client-agent/src/agent_report.c), and against the raw request bodies
+    RemotedSimulator actually received locally. UPDATE_ACK (state.c) has had no caller
+    anywhere in client-agent since the HTTPS migration, so the field is dead in the product
+    itself, not just missing from this one push -- see the "file" case in
+    wazuh_state_config_tests.yaml, which does not check it either for the same reason.
 
     Args:
         parameters:
@@ -186,9 +196,11 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
             brief: RemotedSimulator instance
         - timeout:
             type: int
-            brief: Timeout to wait for a fresh /stats push carrying the "agent" module
+            brief: Timeout to wait for a fresh /stats push carrying modules.agent
     Returns:
-        dict with state info, or None if no fresh push with an "agent" entry arrived in time
+        dict with state info (legacy flat field names, 'last_ack' always None -- kept only so
+        callers can index it without a KeyError), or None if no fresh push with a
+        modules.agent entry arrived in time
     """
     # A push already received before this call (e.g. from an earlier field check in the same
     # test) may predate whatever just happened on the remote path (no precondition runs
@@ -199,33 +211,29 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
 
     while time.time() < deadline:
         stats = remoted_server.last_stats
-        # Defensive against an unexpected shape: seen once in a real CI run (job
-        # https://github.com/wazuh/wazuh/actions/runs/31450520451/job/93655451743,
-        # "modules" iterated into something that wasn't a dict), root cause unconfirmed --
-        # not reproduced in 6 further local attempts (5 isolated + 1 full-suite run) against
-        # a real compiled agent. Every C-side path traced (module_report_add() in
-        # shared/src/module_report.c, agent_report.c's report_collect(), agcom.c's
-        # agcom_getallstats()) always wraps each module as {"module": str, "stats": dict}
-        # inside a "modules" list -- this has never matched a known-bad shape locally, only
-        # ever guarded against one actually observed in CI. Log what was received instead of
-        # silently retrying, so a repeat leaves an actual clue instead of just a timeout.
         if isinstance(stats, dict):
             modules = stats.get('modules')
-            if isinstance(modules, list):
-                for module in modules:
-                    if not isinstance(module, dict):
-                        logger.warning(f"wait_for_custom_message_response: 'modules' entry was "
-                                        f"not a dict: {module!r}")
-                        continue
-                    if module.get('module') != 'agent':
-                        continue  # A valid entry for another module (e.g. logcollector).
-                    module_stats = module.get('stats')
-                    if isinstance(module_stats, dict):
-                        return module_stats.get('data')
-                    logger.warning(f"wait_for_custom_message_response: 'agent' module's 'stats' "
-                                    f"was not a dict: {module_stats!r}")
+            if isinstance(modules, dict):
+                agent_stats = modules.get('agent')
+                if isinstance(agent_stats, dict):
+                    messages = agent_stats.get('messages')
+                    if isinstance(messages, dict):
+                        return {
+                            'status': agent_stats.get('status'),
+                            'last_keepalive': agent_stats.get('last_keepalive'),
+                            'msg_count': messages.get('count'),
+                            # Dead field in the product (no caller of UPDATE_ACK left in
+                            # client-agent) -- present so check_last_ack() can index it, but a
+                            # remote check for it always misses.
+                            'last_ack': None,
+                        }
+                    logger.warning(f"wait_for_custom_message_response: modules.agent.messages "
+                                    f"was not a dict: {messages!r}")
+                elif agent_stats is not None:
+                    logger.warning(f"wait_for_custom_message_response: modules.agent was not "
+                                    f"a dict: {agent_stats!r}")
             elif modules is not None:
-                logger.warning(f"wait_for_custom_message_response: 'modules' was not a list: "
+                logger.warning(f"wait_for_custom_message_response: 'modules' was not a dict: "
                                 f"{modules!r}")
         elif stats is not None:
             logger.warning(f"wait_for_custom_message_response: last_stats was not a dict: {stats!r}")

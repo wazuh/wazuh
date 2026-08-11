@@ -21,13 +21,19 @@
       fields:
         status: "connected"
         last_keepalive: true
-        last_ack: true
+        # Not checked: UPDATE_ACK (state.c) has had no caller anywhere in client-agent since
+        # the HTTPS migration, so agent_state.last_ack -- and this field, local or remote --
+        # is dead everywhere in the product, not just dropped from the /stats push.
+        last_ack: ""
         msg_count: true
     - type: "remote"
       fields:
         status: "connected"
         last_keepalive: true
-        last_ack: true
+        # Not checked: same dead field as the "file" block above (no producer left in the
+        # product at all, see that comment), and also dropped from the /stats push itself
+        # (wazuh/wazuh@72ace94e97).
+        last_ack: ""
         msg_count: true
 
 - name: "Only_remote_request_available"
@@ -42,5 +48,8 @@
       fields:
         status: "connected"
         last_keepalive: true
-        last_ack: true
+        # Not checked: no producer left in the product at all (UPDATE_ACK has had no caller
+        # anywhere in client-agent since the HTTPS migration), and also dropped from the
+        # /stats push itself (wazuh/wazuh@72ace94e97).
+        last_ack: ""
         msg_count: true
