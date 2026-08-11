@@ -164,6 +164,13 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
 
             if (!syntax::asset::isEnabledResource(decoder))
             {
+                if (decUUID == policy.getRootDecoderUUID())
+                {
+                    throw std::runtime_error(
+                        fmt::format("The root decoder '{}' [id: '{}'] is disabled; enable it before using this policy",
+                                    rootDecoderName.toStr(),
+                                    decUUID));
+                }
                 continue;
             }
 
