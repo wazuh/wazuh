@@ -1,6 +1,6 @@
 {
   "name": "vd_first_then_sync_windows",
-  "description": "Windows fleet running the vulnerability-detection first-scan (VDFirst) followed by a steady VDSync delta stream. Windows twin of vd_first_then_sync_debian.",
+  "description": "Windows fleet running the vulnerability-detection first-scan (VDFirst) followed by a steady VDSync delta stream. Windows twin of vd_first_then_sync_debian. Same -vd-feed-offset caveat applies: uds mode has no /control to learn the offset from, so pass it explicitly against a target whose feed offset is not 0.",
   "mode": "uds",
   "defaults": {
     "module": "syscollector",

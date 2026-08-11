@@ -21,6 +21,7 @@ func TestBuildSessionRoundTrip(t *testing.T) {
 		AgentName:   "bench-1",
 		ClusterName: "cluster01",
 		Groups:      []string{"default"},
+		FeedOffset:  987654321,
 	}
 	payload := Payload{Sync: &SyncData{
 		Values: []Value{
@@ -58,6 +59,9 @@ func TestBuildSessionRoundTrip(t *testing.T) {
 	}
 	if startTbl.Option() != fb.OptionVDSync {
 		t.Fatalf("option = %d, want VDSync", startTbl.Option())
+	}
+	if startTbl.FeedOffset() != 987654321 {
+		t.Fatalf("feed_offset = %d, want 987654321", startTbl.FeedOffset())
 	}
 
 	if session.PayloadType() != fb.SessionPayloadSyncData {

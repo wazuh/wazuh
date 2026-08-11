@@ -102,6 +102,14 @@ corpus is 27,726 documents in one ~26 MB session), which in agent mode requires 
 in the scenario or `--compression zstd|none` per run; remoted decompresses, the UDS socket takes
 only plain bodies, so uds runs are always plain).
 
+A VDFirst/VDSync session's `Start.feed_offset` MUST match the manager's current VD feed offset or
+it is rejected with `409 version_mismatch` before ever reaching the scanner. `--mode agent` learns
+the offset live from remoted's `/control` (the same signal a real agent uses); `--mode uds` has no
+`/control` to learn it from, so pass `--vd-feed-offset <value>` explicitly — query the live value
+with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-detector/offset` —
+against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
+instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
+
 ## Manager preparation (agent mode)
 
 Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be open and password-free.

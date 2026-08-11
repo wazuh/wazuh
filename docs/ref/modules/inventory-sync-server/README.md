@@ -10,8 +10,9 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 
 - **One request = one session** (`FullSession`): delta data, cleans, integrity checksums, and
   metadata/group reconciliation, all answered synchronously with the contract's status codes
-  (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch, `413` over budget,
-  `500` failed with nothing indexed, `503` + optional `Retry-After`).
+  (`200` ok/noop, `400`, `403` identity mismatch, `409` checksum mismatch (or `version_mismatch`
+  for a VDFirst/VDSync session whose `feed_offset` is stale), `413` over budget, `500` failed with
+  nothing indexed, `503` + optional `Retry-After`).
 - **Per-agent ordering by construction**: sessions are applied by workers sharded on the agent id
   (one indexer connector per worker, group-commit bulk flushes), so two requests of the same agent
   can never be reordered.

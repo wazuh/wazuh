@@ -46,7 +46,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-6 | `ModuleCheck`: checksum-of-checksums (SHA-1 of the ordered concatenation of `checksum.hash.sha1`), answering ok/mismatch/error | kept (single attempt — D16) |
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
-| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, feed-update in progress, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
+| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
 | RF-10 | Whole-agent deletion sweeping `wazuh-states-*`, retriable | kept (`DELETE /agents`; authd is the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
@@ -127,7 +127,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D19 | `Mode` has no `ModuleFull`: a full resync is composed as `Cleans` + `ModuleDelta` with the full dataset — no special case in the server. Acks/`End`/`seq`/batching were REMOVED from the schema, not merely unused |
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path (and its router wiring) was removed, not migrated |
-| D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled, feed-update covers the agent) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
+| D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
 
 ## Layout
 
@@ -546,7 +546,10 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `testtool/` — `inventory_sync_server_testtool`, the vulnerability-detection integration driver:
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by
-  `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`.
+  `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`. Stamps each VDFirst/VDSync
+  session's `Start.feed_offset` from the scanner's actual current offset unless the input JSON
+  sets one explicitly — queried fresh on every `503`-retry attempt, not just once, so a session
+  built before the feed finished loading never goes stale by the time it's resent.
 
 ## Load & benchmarking
 
@@ -564,7 +567,12 @@ What it pins about THIS module (scenario map in
 - The **response contracts under pressure**: `contract_invalid_bodies` (the `400` paths),
   `contract_oversized_413` (the budget `413`), `contract_ramp_503` (the `sync_queue_bytes` shed,
   calibrated to trip on any hardware), `contract_feed_not_ready_retry` (the `503 + Retry-After`
-  loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_delete_under_load`.
+  loop), `contract_vd_saturation` (the lane's capacity `503`), `contract_vd_version_mismatch` (the
+  `feed_offset` gate's `409 version_mismatch`), `contract_delete_under_load`.
+- **`feed_offset` for VDFirst/VDSync sessions**: `agent` mode learns it live from remoted's
+  `/control` `vd_feed_offset` (the same signal a real agent uses); `uds` mode has no `/control` to
+  learn it from, so pass `-vd-feed-offset` explicitly against a target whose feed offset is not 0
+  — see [SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md) for which scenarios need it.
 - **Real captured payloads** (`real_*` scenarios) for production-shaped sessions, including a full
   first connection at fidelity (the 27,726-document Windows FIM registry corpus in one session).
 - Every run scrapes [`GET /metrics`](#statistics-d18) alongside the client-side counters, so
