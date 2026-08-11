@@ -22,16 +22,16 @@ namespace invsync::sync
     constexpr std::string_view VULNERABILITIES_INDEX {"wazuh-states-vulnerabilities"};
 
     /// Query scope of a whole-agent deletion (DELETE /agents): every state index at once, the same
-    /// pattern the legacy module used (inventory_sync/src/inventorySyncFacade.hpp:47). A pattern,
-    /// not the allowlist above: deletion is manager-initiated (authd), not an agent session.
+    /// pattern the legacy module used. A pattern, not the allowlist above: deletion is
+    /// manager-initiated (authd), not an agent session.
     constexpr std::string_view WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
 
     /**
      * @brief Allowlist of state indices an agent session may target (its own scope).
      *
-     * Same predicate as the legacy module's (inventory_sync/src/agentSession.hpp:44-48), relocated:
-     * this is the layer-2, per-document control of the extraction's RNF-1 map, and it must survive
-     * the migration byte-for-byte so the set of writable indices does not silently widen.
+     * Same predicate as the legacy module's, relocated: this is the layer-2, per-document control
+     * of the extraction's RNF-1 map, and it must survive the migration byte-for-byte so the set of
+     * writable indices does not silently widen.
      */
     inline bool isAgentScopedStateIndex(std::string_view idx) noexcept
     {

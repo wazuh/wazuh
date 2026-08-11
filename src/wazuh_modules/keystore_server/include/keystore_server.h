@@ -15,11 +15,11 @@
 /*
  * C-ABI bridge for the keystore_server C++ module.
  *
- * The `queue/sockets/keystore` UDS used to be hosted by the inventory_sync module -- an accident
- * of history: the keystore has nothing to do with inventory synchronization, and its one
+ * The `queue/sockets/keystore` UDS used to be hosted by the legacy inventory_sync module -- an
+ * accident of history: the keystore has nothing to do with inventory synchronization, and its one
  * production consumer is the Python framework (credential_manager.py fetches the indexer
- * credentials for the manager API). Hosting it in its own minimal module is what lets
- * inventory_sync retire without taking the API's indexer access down with it.
+ * credentials for the manager API). Hosting it in its own minimal module is what let that module
+ * retire without taking the API's indexer access down with it.
  *
  * modulesd resolves the two entry points below with dlopen/dlsym (see
  * wazuh_modules/src/wm_keystore_server.c), so the function-pointer typedefs are load-bearing.

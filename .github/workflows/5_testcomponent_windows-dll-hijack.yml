@@ -21,17 +21,18 @@ on:
       - "!src/shared_modules/content_manager/src/**"
       - "!src/shared_modules/router/src/**"
       - "!src/wazuh_modules/vulnerability_scanner/src/**"
-      - "!src/wazuh_modules/inventory_sync/src/**"
+      - "!src/wazuh_modules/inventory_sync_server/src/**"
       # Test trees: UNIT_TEST-gated, never built by this workflow
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
+      - "!src/wazuh_modules/inventory_sync_server/test/**"
       - "!src/**/integrationTests/**"
       # qa/ suites run in other workflows; win32/qa stays (executed here)
       - "!src/data_provider/qa/**"
       - "!src/shared_modules/indexer_connector/qa/**"
       - "!src/shared_modules/keystore/qa/**"
-      - "!src/wazuh_modules/inventory_sync/qa/**"
       - "!src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "!src/wazuh_modules/inventory_sync_server/qa/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

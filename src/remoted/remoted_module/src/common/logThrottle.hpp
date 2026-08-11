@@ -24,9 +24,8 @@ namespace remoted::common
      * @brief Rate-limits a repeated log line to one emission per window, aggregating the
      *        occurrences it suppressed so the emitted line can report them.
      *
-     * Same shape as remoted's own C throttle (src/remoted/src/secure.c, maybe_log_events_queue_drop)
-     * and inventory_sync's C++ one (wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp,
-     * shouldLogThrottled), with two deliberate differences:
+     * Same shape as remoted's own C throttle (src/remoted/src/secure.c,
+     * maybe_log_events_queue_drop), with two deliberate differences:
      *   - steady_clock, not time(NULL): an NTP step backwards must not hold the gate shut, and a
      *     step forwards must not open it early.
      *   - the suppressed occurrences are counted and handed back, so nothing is silently lost.

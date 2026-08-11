@@ -518,9 +518,8 @@ void HandleSecure()
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
-    // No router provider anymore: the stateful-sync path is the C++ module's authenticated
-    // POST /stateful route (relayed to inventory_sync_server over UDS); the legacy
-    // 'inventory-states' topic has neither publishers nor subscribers left.
+    // No router provider here: the stateful-sync path is the C++ module's authenticated
+    // POST /stateful route, relayed to inventory_sync_server over UDS.
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
