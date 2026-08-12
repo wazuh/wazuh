@@ -756,6 +756,28 @@ void Syscollector::quiesce()
 
 void Syscollector::releaseResources()
 {
+    // Exclude the entry points that other threads keep driving while the module tears
+    // down. The scan and sync workers are joined before this runs (see wm_syscollector.c),
+    // but query() is not: wcom's dispatcher is detached and agent-info polls it in-process,
+    // so without this lock a get_first_sync_completed query could be inside
+    // getMetadataValue() dereferencing m_spDBSync while it is reset here (issue #38203).
+    std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
+    // Join any in-flight asynchronous flush before the members it uses are reset.
+    // The worker runs executeFlushSync() -> synchronizeModule() on its own thread and
+    // takes no lock, so quiesce()'s waitForFlushToFinish() misses a flush accepted
+    // afterwards (flush() has no m_stopping check). Holding the exclusive lock here also
+    // stops a new flush being accepted, because flush() is only reachable through
+    // query(), which takes the lock shared.
+    //
+    // The controller is joined, not destroyed: it is created once in the constructor of
+    // this singleton, so destroying it would leave the module permanently unable to flush
+    // for the rest of the process lifetime.
+    if (m_asyncFlushController)
+    {
+        m_asyncFlushController->waitForFlushToFinish();
+    }
+
     // Explicitly release all resources to ensure clean state between tests
     // and prevent use-after-free when Syscollector singleton destructs
     // after static dependencies have already been destroyed
@@ -2271,6 +2293,10 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
                                     unsigned int retries,
                                     size_t maxEps, uint32_t integrityInterval)
 {
+    // Publish the protocols under the exclusive lock so a concurrent reader taking the
+    // shared lock sees either a fully constructed protocol or none, never a half-assigned one.
+    std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
     m_integrityIntervalValue = integrityInterval;
 
@@ -2462,6 +2488,11 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
 
 void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext)
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // VD tables: system (os), packages, hotfixes
     bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
                       index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
@@ -2479,6 +2510,11 @@ void Syscollector::persistDifference(const std::string& id, Operation operation,
 
 bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // Route to regular (non-VD) sync protocol only
     if (m_spSyncProtocol)
     {
@@ -2490,6 +2526,11 @@ bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
 
 bool Syscollector::parseResponseBufferVD(const uint8_t* data, size_t length)
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // Route to VD sync protocol only
     if (m_spSyncProtocolVD)
     {
@@ -2855,6 +2896,11 @@ void Syscollector::processVDDataContext()
 
 bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->notifyDataClean(indices);
@@ -2865,6 +2911,21 @@ bool Syscollector::notifyDataClean(const std::vector<std::string>& indices)
 
 void Syscollector::deleteDatabase()
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+    deleteDatabaseUnlocked();
+}
+
+void Syscollector::deleteDatabaseUnlocked()
+{
+    // The caller must already hold m_resourcesMutex. This body is split out of
+    // deleteDatabase() so deleteDisableCollectorsData(), which holds the mutex shared for
+    // its whole body, does not acquire a second shared lock on the same thread: most
+    // std::shared_mutex implementations block new readers once a writer is queued, so the
+    // nested acquisition would wait behind a pending releaseResources() or
+    // initSyncProtocol() while still holding the outer lock those writers are waiting for.
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
@@ -3234,6 +3295,11 @@ void Syscollector::unlockScanMutex()
 
 std::string Syscollector::query(const std::string& jsonQuery)
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // Log the received query
     if (m_logFunction)
     {
@@ -4276,6 +4342,11 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
 
 bool Syscollector::notifyDisableCollectorsDataClean()
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     if (m_disabledCollectorsIndicesWithData.empty())
     {
         if (m_logFunction)
@@ -4320,6 +4391,11 @@ bool Syscollector::notifyDisableCollectorsDataClean()
 
 void Syscollector::deleteDisableCollectorsData()
 {
+    // Serialize against releaseResources(): this entry point is driven by threads that
+    // outlive the module teardown (wcom's detached dispatcher and agent-info's in-process
+    // coordination polls), so the members it reaches must not be reset underneath it.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     if (m_disabledCollectorsIndicesWithData.empty())
     {
         if (m_logFunction)
@@ -4339,7 +4415,9 @@ void Syscollector::deleteDisableCollectorsData()
             m_logFunction(LOG_INFO, "All collectors are disabled. Deleting entire database.");
         }
 
-        deleteDatabase();
+        // Already holding m_resourcesMutex shared; call the non-locking body so we do not
+        // take a second shared lock on this thread (see deleteDatabaseUnlocked()).
+        deleteDatabaseUnlocked();
         m_disabledCollectorsIndicesWithData.clear();
         return;
         // LCOV_EXCL_STOP
@@ -4496,6 +4574,15 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 bool Syscollector::getMetadataValue(const std::string& key, int64_t& value)
 {
     value = 0;
+
+    // Callers reach this from query(), which holds m_resourcesMutex shared, so the pointer
+    // cannot be reset underneath us. Checked anyway, as every other DBSync user in this file
+    // does: a null dereference here raises an SEH access violation on Windows, which the
+    // catch below cannot handle, and it takes the whole agent process down.
+    if (!m_spDBSync)
+    {
+        return false;
+    }
 
     auto callback = [&value](ReturnTypeCallback result, const nlohmann::json & data)
     {
