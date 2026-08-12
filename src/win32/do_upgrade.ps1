@@ -238,6 +238,7 @@ if ($normalizedWazuhDir -ne $currentDir) {
     Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
     Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
     remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
     exit 1
 }
 
