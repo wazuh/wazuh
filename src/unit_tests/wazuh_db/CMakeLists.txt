@@ -133,7 +133,6 @@ foreach(counter RANGE ${count})
         wdb_lib
         wazuh_modulesd_lib
         ${TEST_DEPS}
-        router
     )
 
     if(NOT test_flags STREQUAL " ")
