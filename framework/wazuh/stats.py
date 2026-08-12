@@ -69,7 +69,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
             queryable_agents = set()
             for agent_id in eligible_agents:
                 version = agent_versions.get(agent_id)
-                if not version or WazuhVersion(version) >= WazuhVersion('v5.0.0'):
+                if not version or version == 'N/A' or WazuhVersion(version) >= WazuhVersion('v5.0.0'):
                     result.add_failed_item(id_=agent_id, error=exception.WazuhError(1762))
                     continue
                 queryable_agents.add(agent_id)
