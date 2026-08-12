@@ -137,20 +137,26 @@ fi
 # shellcheck disable=SC1091
 source "${WAZUH_SRC}/packages/externals/external_sources.sh"
 
-# Substitute {version}, {version_us}, and {version_concat} in a URL template.
+# Substitute {version}, {version_us}, {version_dash} and {version_concat} in a
+# URL template.
 # {version_concat} maps a dotted version like "3.51.1" to sqlite's
 # concatenated form "3510100" — major (raw) + minor (2 digits) + patch (2
 # digits) + a "00" trailing release counter. sqlite is the only consumer
 # today; the format is documented at https://www.sqlite.org/download.html.
+# {version_dash} maps "1.38.2" to "1-38-2", which is how asio tags its
+# releases (asio-1-38-2). Keeping the substitution here means every dep is
+# still named with a plain dotted version in the workflow input.
 expand_url() {
     local template="$1" version="$2"
     local version_us="${version//./_}"
+    local version_dash="${version//./-}"
     local maj min pat
     IFS='.' read -r maj min pat _ <<< "${version}"
     local version_concat
     version_concat="$(printf '%d%02d%02d00' "${maj:-0}" "${min:-0}" "${pat:-0}")"
     template="${template//\{version\}/${version}}"
     template="${template//\{version_us\}/${version_us}}"
+    template="${template//\{version_dash\}/${version_dash}}"
     template="${template//\{version_concat\}/${version_concat}}"
     echo "$template"
 }
