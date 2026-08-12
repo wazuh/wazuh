@@ -509,11 +509,10 @@ endif
 endif
 
 # zstd: request/response body compression. Manager-side decode is already
-# merged (#38129); agent-side compression (#38308) needs it too, so it moves
-# out of the manager-only set above. Built on every non-winagent target for
-# now -- winagent's MinGW cross-compile toolchain args are a dedicated
-# follow-up (verified against packages/windows/Dockerfile), not part of this
-# pass.
+# merged (#38129); agent-side compression needs it too, so it moves out of
+# the manager-only set above. Built on every non-winagent target for now --
+# winagent's MinGW cross-compile toolchain args are a dedicated follow-up
+# (verified against packages/windows/Dockerfile), not part of this pass.
 ifneq (${TARGET},winagent)
 	EXTERNAL_RES += zstd
 endif

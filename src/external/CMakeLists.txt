@@ -1081,8 +1081,8 @@ endif()
 # <BINARY_DIR>/lib/libzstd.a because upstream's lib/CMakeLists.txt is pulled
 # in via add_subdirectory(lib).
 #
-# Was manager-only; the agent now needs it too (#38308, request-body
-# compression). IS_WINDOWS stays excluded here -- winagent's MinGW
+# Was manager-only; the agent now needs it too, for request-body
+# compression. IS_WINDOWS stays excluded here -- winagent's MinGW
 # cross-compile toolchain args (mirroring curl/openssl's CMAKE_ARGS
 # CC=${MINGW_CC} --host=${MINGW_HOST} pattern above) are a dedicated
 # follow-up, verified against packages/windows/Dockerfile.

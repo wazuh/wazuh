@@ -62,7 +62,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         // One-shot compression retry: a 415 means the manager doesn't accept
         // Content-Encoding: zstd. Report it to the shared gate first -- every
         // RetrySender on this agent stops compressing from here on, for the
-        // rest of this run (#38308) -- then retry; attemptOnce() re-checks the
+        // rest of this run -- then retry; attemptOnce() re-checks the
         // now-disabled gate itself, so this retry is naturally uncompressed
         // with no separate "forced uncompressed" parameter needed.
         if (result.outcome == OutcomeClass::CompressionRejected && !compressionRetried)

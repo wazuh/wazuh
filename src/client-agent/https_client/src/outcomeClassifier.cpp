@@ -55,7 +55,7 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
 
     // 415: the manager's BodyDecoder doesn't accept Content-Encoding: zstd
     // (disabled server-side, or an intermediary stripped/rejected it) --
-    // RetrySender retries once, uncompressed (#38308).
+    // RetrySender retries once, uncompressed.
     if (code == 415)
     {
         return OutcomeClass::CompressionRejected;

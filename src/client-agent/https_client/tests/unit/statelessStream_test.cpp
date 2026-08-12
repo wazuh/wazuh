@@ -685,7 +685,7 @@ TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
 
 TEST_F(StatelessStreamTest, CompressionRejectionRecoversAndDeliversEventExactlyOnce)
 {
-    // End-to-end proof (#38308) that the RetrySender-level 415 recovery is
+    // End-to-end proof that the RetrySender-level 415 recovery is
     // invisible to StatelessStream: handleOutcome() only ever sees the final
     // OutcomeClass, so a compressed-then-rejected-then-uncompressed-retry
     // success looks exactly like any other Ok -- consumed once, not dropped,

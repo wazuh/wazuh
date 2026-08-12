@@ -89,7 +89,7 @@ INSTANTIATE_TEST_SUITE_P(
         // 413: the /stateless split-and-resend class (#37835), distinct from
         // the generic permanent drop.
         ClassifierCase {TransportStatus::Ok, 413, OutcomeClass::PayloadTooLarge},
-        // 415: the manager rejects Content-Encoding: zstd (#38308) --
+        // 415: the manager rejects Content-Encoding: zstd --
         // RetrySender retries once, uncompressed.
         ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
         // Permanent for this payload.
