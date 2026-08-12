@@ -10,6 +10,7 @@ import os
 import time
 import pytest
 import boto3
+from datetime import datetime, timedelta, timezone
 from botocore.exceptions import ClientError
 
 # qa-integration-framework imports
@@ -44,6 +45,14 @@ _PERMANENT_SEED_KEYS = frozenset({
 })
 # VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
 _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
+
+# An unexpected object at a test prefix is either a live sibling run's in-flight upload (still
+# within its own job's execution window) or an orphan a prior run's cleanup never reached (a hard
+# cancel skips pytest teardown; see _record_uploaded_key). The two look identical except for age.
+# Longer than the largest timeout_minutes across .github/test_modules_linux.json's aws* entries
+# (120 min) so a legitimate concurrent run is never mistaken for an orphan and deleted out from
+# under it; comfortably shorter than "the mess just sits there until someone notices manually".
+_ORPHAN_STALENESS_THRESHOLD = timedelta(hours=3)
 
 _GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
     'guardduty_discard_regex',
@@ -152,20 +161,45 @@ def _assert_prefix_clean(bucket_name, key, s3_client):
     """
     prefix = key.rsplit('/', 1)[0] + '/' if '/' in key else ''
     unexpected = [
-        obj.key for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix, Delimiter='/')
+        obj for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix, Delimiter='/')
         if obj.key not in _PERMANENT_SEED_KEYS
         and not any(fid in obj.key for fid in _PERMANENT_SEED_FLOW_LOG_IDS)
         and not obj.key.endswith('/')  # skip S3 folder-marker objects (empty keys ending with /)
     ]
-    if unexpected:
-        colliding = "\n".join(f"  {k}" for k in unexpected)
-        raise RuntimeError(
-            f"SETUP COLLISION: unexpected object(s) already exist at prefix '{prefix}' "
-            f"in bucket '{bucket_name}' before uploading '{key}'.\n"
-            f"Colliding key(s):\n{colliding}\n"
-            "Action: add the key to _PERMANENT_SEED_KEYS in conftest.py, or change "
-            "'only_logs_after' in the relevant YAML to a date past these objects."
-        )
+    if not unexpected:
+        return
+
+    now = datetime.now(timezone.utc)
+    stale = [obj for obj in unexpected if now - obj.last_modified > _ORPHAN_STALENESS_THRESHOLD]
+    fresh = [obj for obj in unexpected if obj not in stale]
+
+    if not fresh:
+        # Every colliding object is older than any run (including a hard-cancelled one) could
+        # still be alive for -- an orphan a prior cleanup never reached, not a live sibling.
+        # Self-heal instead of failing the whole run over garbage nobody's still using.
+        for obj in stale:
+            logger.warning(
+                "SETUP: deleting stale orphan '%s' in bucket '%s' (last modified %s, older than "
+                "the %s staleness threshold) before uploading '%s'.",
+                obj.key, bucket_name, obj.last_modified, _ORPHAN_STALENESS_THRESHOLD, key
+            )
+            _safe_delete_key(obj.key, bucket_name, s3_client)
+        return
+
+    colliding = "\n".join(
+        f"  {obj.key} (last modified {obj.last_modified}, "
+        f"{'stale orphan' if obj in stale else 'too recent to assume orphaned'})"
+        for obj in unexpected
+    )
+    raise RuntimeError(
+        f"SETUP COLLISION: unexpected object(s) already exist at prefix '{prefix}' "
+        f"in bucket '{bucket_name}' before uploading '{key}'.\n"
+        f"Colliding key(s):\n{colliding}\n"
+        f"At least one is within the {_ORPHAN_STALENESS_THRESHOLD} staleness threshold, so this "
+        "wasn't auto-cleaned as a likely orphan -- it may belong to a concurrently running job. "
+        "If it's confirmed stale, action: add the key to _PERMANENT_SEED_KEYS in conftest.py, or "
+        "change 'only_logs_after' in the relevant YAML to a date past these objects."
+    )
 
 
 @pytest.fixture
