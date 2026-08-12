@@ -104,6 +104,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
                                 -Wl,--wrap,wfopen \
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \

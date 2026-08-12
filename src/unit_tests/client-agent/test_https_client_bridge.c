@@ -177,6 +177,23 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return 0;
 }
 
+/* bridge_build_config() also reads the compression toggle (#38308) via
+ * getDefine_Int_default(), which -- unlike getDefine_Int() above -- returns
+ * default_val instead of merror_exit()ing when the key is missing. No case
+ * here exercises it either, so answer with the shipped default. */
+int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
+{
+    (void)high_name;
+    (void)min;
+    (void)max;
+
+    if (strcmp(low_name, "https_compression_enabled") == 0) {
+        return 0;
+    }
+
+    return default_val;
+}
+
 /* bridge_reenroll_thread is not static (see its own comment) precisely so it
  * can be called directly here, synchronously, bypassing w_create_thread.
  * g_https_client_stopping is likewise not static: setup_test() below resets
