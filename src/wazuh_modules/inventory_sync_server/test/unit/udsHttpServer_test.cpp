@@ -446,8 +446,8 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
     // lands, so this no longer races against CPU availability under ASan/CI load.
     {
         std::unique_lock<std::mutex> lock {parkedMutex};
-        parkedCv.wait_for(lock, std::chrono::seconds {120},
-                          [&] { return parked.size() >= static_cast<size_t>(CONCURRENCY); });
+        parkedCv.wait_for(
+            lock, std::chrono::seconds {120}, [&] { return parked.size() >= static_cast<size_t>(CONCURRENCY); });
         ASSERT_EQ(static_cast<size_t>(CONCURRENCY), parked.size()) << "all requests must be in flight simultaneously";
     }
 
