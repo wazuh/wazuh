@@ -1,5 +1,11 @@
+  # <agent> is the 5.x name for what 4.x spelled <client> (#38103): the base
+  # install's ossec.conf already has an <agent> section, and set_section_wazuh_conf()
+  # matches by tag name (ElementTree.find()) -- "client" never matches it, so it
+  # was creating a second, inert <client> block alongside the real one instead of
+  # replacing it, leaving every case here running against the package's default
+  # 127.0.0.1:1517 regardless of SERVER_ADDRESS.
   - sections:
-    - section: client
+    - section: agent
       elements:
           - server:
               elements:

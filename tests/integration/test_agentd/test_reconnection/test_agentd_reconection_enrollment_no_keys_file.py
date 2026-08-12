@@ -149,6 +149,14 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         # Wait until Agent is connected
         wait_connect()
 
+        # authd_server's underlying MitM signals "response sent" and "shut down"
+        # with the same threading.Event (mitm.py's StreamHandler.handle()): once
+        # the first enrollment sets it, any later connection on this same
+        # instance sees it already set and never even reads the request. clear()
+        # resets it so the REJECT_AUTH-triggered re-enrollment below can actually
+        # get a response instead of hanging until wait_connect()'s timeout.
+        authd_server.clear()
+
         # Reset simulator
         remoted_server.destroy()
 
