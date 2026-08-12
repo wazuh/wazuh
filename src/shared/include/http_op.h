@@ -133,9 +133,26 @@ void uhttp_client_free(uhttp_client_t* c);
 int uhttp_client_add_header(uhttp_client_t* c, const char* header_line);
 
 /**
- * @brief Remove all previously added extra headers from the client.
+ * @brief Remove ALL headers from the client, including the ones the constructor installed
+ *        (`Content-Type`, the `Expect: 100-continue` suppression and, when enabled,
+ *        `Connection: keep-alive`).
+ *
+ * Use uhttp_client_reset_headers() instead when the intent is "start this request's headers over":
+ * clearing and then adding only a per-request header leaves the client without its constructor
+ * defaults for the rest of its life.
  */
 void uhttp_client_clear_headers(uhttp_client_t* c);
+
+/**
+ * @brief Restore the header list the constructor installed, dropping any per-request additions.
+ *
+ * The list to build from is remembered at construction time, so this reproduces the original
+ * `Content-Type`, the `Expect:` suppression and the keep-alive exactly. Intended for a client
+ * reused across requests that differ by one header: reset, then add that header.
+ *
+ * @return 0 on success; non-zero on failure (the previous list is left in place).
+ */
+int uhttp_client_reset_headers(uhttp_client_t* c);
 
 /**
  * @brief Set a caller-provided buffer to capture the response body.
@@ -152,14 +169,20 @@ void uhttp_client_set_response_buffer(uhttp_client_t* c, char* buf, size_t cap);
 /**
  * @brief Send a POST request with a single contiguous payload buffer.
  * @param c      Client handle.
- * @param data   Pointer to payload bytes.
- * @param len    Payload length in bytes.
+ * @param data   Pointer to payload bytes. May be NULL for a body-less POST (with `len` 0).
+ * @param len    Payload length in bytes. 0 sends `Content-Length: 0` and no body.
  * @param out    Optional: result metadata (HTTP status, curl code).
- * @return 0 on success; non-zero on failure.
+ * @return 0 on success; non-zero on failure. Refuses only the contradictory combination of a
+ *         NULL `data` with a positive `len`.
  *
  * On return, if `out` is provided, `out->curl_code` contains the libcurl
  * transfer result (CURLE_OK on success). `out->http_status` contains the
  * server's HTTP status if available (0 otherwise).
+ *
+ * NOTE for callers checking the outcome: because CURLE_OK is 0, `curl_code` alone cannot tell
+ * success from "never attempted" -- the argument-validation failures above return non-zero WITHOUT
+ * writing `out`. Treat `out->curl_code == 0 && out->http_status == 0` together with a non-zero
+ * return as "the request was never sent", not as a transport error.
  */
 int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* out);
 

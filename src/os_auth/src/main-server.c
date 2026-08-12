@@ -1182,10 +1182,15 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
         }
     }
 
-    // The header changes per call; clear-then-add keeps the client reusable.
+    // The header changes per call; reset-then-add keeps the client reusable. Reset rather than clear:
+    // clearing drops the headers the constructor installed (Content-Type, the Expect: suppression and
+    // the keep-alive this client asked for) and never rebuilds them.
     char header[64];
     snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
-    uhttp_client_clear_headers(client);
+    if (uhttp_client_reset_headers(client) != 0) {
+        mwarn("Could not prepare the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
+        return;
+    }
     if (uhttp_client_add_header(client, header) != 0) {
         merror("Could not build the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
         return;
@@ -1235,9 +1240,25 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
 
         const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
 
-        if (posted != 0 || result.http_status == 0) {
-            // No HTTP status at all: the request never completed (modulesd down, socket gone, or
-            // the transfer timed out against a server still working on it).
+        // Three outcomes hide behind a non-zero return, and naming the right one is what makes this
+        // log actionable. uhttp_post() returns the HTTP status itself for a non-2xx, so `posted`
+        // alone cannot classify anything -- the fields in `result` do:
+        //   - nothing set at all  -> the request was refused by the client and NEVER SENT. The
+        //     socket and the server are not the suspects; saying "could not reach the server" here
+        //     sends the operator to test an endpoint that was working all along.
+        //   - curl_code set       -> it was sent and failed in transport.
+        //   - http_status set     -> it was answered, with a status we did not want.
+        if (result.http_status != 0) {
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
+
+            if (last_attempt) {
+                mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) "
+                      "(HTTP status %ld). Its documents remain in the indexer; repeat the deletion once the indexer "
+                      "is healthy.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
+            }
+        } else if (result.curl_code != 0) {
             mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
                     attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
 
@@ -1246,16 +1267,16 @@ static void send_agent_delete_to_inventory_sync(const char *agent_id) {
                       "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
                       agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
             }
-            continue;
-        }
+        } else {
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' was not sent (client-side error).",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id);
 
-        mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
-                attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
-
-        if (last_attempt) {
-            mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) (HTTP status %ld). "
-                  "Its documents remain in the indexer; repeat the deletion once the indexer is healthy.",
-                  agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
+            if (last_attempt) {
+                mwarn("Could not build the deletion request for agent '%s' after %d attempt(s): it was never sent, "
+                      "so this is a manager-side fault, not an unreachable server. Its documents remain in the "
+                      "indexer; report this and repeat the deletion once fixed.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS);
+            }
         }
     }
 }
