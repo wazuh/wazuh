@@ -122,30 +122,6 @@ void test_w_agentd_state_update_keepalive(void ** state)
 
 }
 
-void test_w_agentd_state_update_ack_NULL(void ** state)
-{
-    w_agentd_state_update_t type = UPDATE_ACK;
-    time_t * data = NULL;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    w_agentd_state_update(type, &data);
-
-}
-
-void test_w_agentd_state_update_ack(void ** state)
-{
-    w_agentd_state_update_t type = UPDATE_ACK;
-    time_t data = 10;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    w_agentd_state_update(type, &data);
-
-}
-
 void test_w_agentd_state_update_msg_count(void ** state)
 {
     w_agentd_state_update_t type = INCREMENT_MSG_COUNT;
@@ -344,8 +320,6 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_state_update_status),
         cmocka_unit_test(test_w_agentd_state_update_keepalive_NULL),
         cmocka_unit_test(test_w_agentd_state_update_keepalive),
-        cmocka_unit_test(test_w_agentd_state_update_ack_NULL),
-        cmocka_unit_test(test_w_agentd_state_update_ack),
         cmocka_unit_test(test_w_agentd_state_update_msg_count),
         cmocka_unit_test(test_w_agentd_state_update_msg_send),
 

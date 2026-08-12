@@ -124,7 +124,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
 
     expected_output:
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -143,7 +143,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         authd_server.start()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -152,10 +152,22 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         # Reset simulator
         remoted_server.destroy()
 
+        # Start rejecting Agent: under HTTPS a dropped connection alone is
+        # just a TransientFailure, retried forever with backoff -- it never
+        # triggers re-enrollment (ControlStateMachine::onEvent, AuthGate is
+        # only armed by AuthFailed). Only an explicit credential rejection
+        # (401 on every request) escalates to AuthGate.reportAuthFailure()
+        # and drives the agent back to requesting a new key.
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
+        remoted_server.start()
+
         # Wait until Agent asks a new key to enrollment
         wait_enrollment_try()
 
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        # Reset simulator
+        remoted_server.destroy()
+
+        remoted_server = RemotedSimulator()
         remoted_server.start()
         # Wait until Agent is connected
         wait_connect()

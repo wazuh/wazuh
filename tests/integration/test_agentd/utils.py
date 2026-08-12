@@ -2,37 +2,52 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import time
+
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import *
+from wazuh_testing.modules.agentd.utils import parse_state_file
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 
 
-def wait_keepalive():
+def wait_keepalive(timeout=100, poll_interval=1):
     """
-        Watch ossec.log until "Sending keep alive" message is found
+        Poll the state file until "last_keepalive" is populated.
+
+        The legacy "Sending keep alive" log line has no HTTPS equivalent:
+        bridge_on_manager_config_hash() (https_client_bridge.c) updates the state file's
+        last_keepalive on every accepted Notify (its own comment: "An accepted Notify is
+        the agent's keepalive"), but never logs it as text -- it's a state update, not a
+        message. The state file is the real source of truth here, so poll that directly
+        instead of a log line that no longer exists.
     """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE), timeout = 100)
-    assert (wazuh_log_monitor.callback_result != None), f'Sending keep alive not found'
+    deadline = time.time() + timeout
+    last_keepalive = ''
+
+    while time.time() < deadline:
+        try:
+            last_keepalive = parse_state_file().get('last_keepalive', '')
+        except FileNotFoundError:
+            last_keepalive = ''
+
+        if last_keepalive:
+            return
+
+        time.sleep(poll_interval)
+
+    assert last_keepalive, f'Sending keep alive not found'
 
 
 def wait_connect():
     """
-        Watch ossec.log until received "Connected to the server" message is found
+        Watch ossec.log until the HTTPS startup is accepted (the legacy "Connected to the
+        server" line has no equivalent under the /control path; see
+        AGENTD_HTTPS_STARTUP_ACCEPTED's own comment, agentd/patterns.py).
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER), timeout = 150)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_HTTPS_STARTUP_ACCEPTED), timeout = 150)
     assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
-
-
-def wait_ack():
-    """
-        Watch ossec.log until "Received ack message" is found
-    """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_RECEIVED_ACK))
-    assert (wazuh_log_monitor.callback_result != None), f'Received ack message not found'
 
 
 def wait_state_update():
