@@ -202,5 +202,4 @@ elseif(NOT UNIT_TEST)
   wazuh_link_jemalloc(${WAZUH_MODULESD_DAEMON_NAME})
 
   wazuh_set_runtime_rpath(${WAZUH_MODULESD_DAEMON_NAME})
-
 endif()
