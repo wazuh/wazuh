@@ -387,6 +387,64 @@ void test_registry_value_attributes_json_dbsync(void **state) {
 }
 
 
+/* A NULL configuration must yield an empty attributes object instead of faulting.
+ * Every branch of these helpers reads configuration->opts, and at -O2 that load is hoisted above the
+ * `if (data)` test, so both the entry and the dbsync flavour crash without the guard. */
+
+void test_registry_key_attributes_json_null_configuration_with_data(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+
+    cJSON *event = fim_registry_key_attributes_json(NULL, &registry_data, NULL);
+
+    data->data2 = event;
+    *state = data;
+
+    assert_non_null(event);
+    assert_string_equal("{}", cJSON_PrintUnformatted(event));
+}
+
+void test_registry_key_attributes_json_null_configuration_dbsync(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    cJSON *dbsync_event = cJSON_Parse("{\"path\":\"HKEY_LOCAL_MACHINE\\\\Security\",\"uid\":\"110\",\"mtime\":1100}");
+
+    cJSON *event = fim_registry_key_attributes_json(dbsync_event, NULL, NULL);
+
+    data->data1 = dbsync_event;
+    data->data2 = event;
+    *state = data;
+
+    assert_non_null(event);
+    assert_string_equal("{}", cJSON_PrintUnformatted(event));
+}
+
+void test_registry_value_attributes_json_null_configuration_with_data(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    cJSON *event = fim_registry_value_attributes_json(NULL, &registry_data, NULL);
+
+    data->data2 = event;
+    *state = data;
+
+    assert_non_null(event);
+    assert_string_equal("{}", cJSON_PrintUnformatted(event));
+}
+
+void test_registry_value_attributes_json_null_configuration_dbsync(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    cJSON *dbsync_event = cJSON_Parse("{\"path\":\"HKEY_LOCAL_MACHINE\\\\Security\",\"size\":50,\"type\":1}");
+
+    cJSON *event = fim_registry_value_attributes_json(dbsync_event, NULL, NULL);
+
+    data->data1 = dbsync_event;
+    data->data2 = event;
+    *state = data;
+
+    assert_non_null(event);
+    assert_string_equal("{}", cJSON_PrintUnformatted(event));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // tests registry key transaction callback
@@ -408,6 +466,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_registry_key_attributes_json_dbsync, teardown_cjson_data),
         cmocka_unit_test_teardown(test_registry_value_attributes_json_entry, teardown_cjson_data),
         cmocka_unit_test_teardown(test_registry_value_attributes_json_dbsync, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_key_attributes_json_null_configuration_with_data, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_key_attributes_json_null_configuration_dbsync, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_value_attributes_json_null_configuration_with_data, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_value_attributes_json_null_configuration_dbsync, teardown_cjson_data),
 
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
