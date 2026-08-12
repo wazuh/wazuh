@@ -47,6 +47,7 @@
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
 #include "wmodules.h"    /* wmcom_send: the leg for every other module */
 #include "task_registry_client.h" /* durable task_id registry client */
+#include "vd_offset_client.h" /* durable VD feed offset registry client */
 #include "wm_agent_upgrade_agent.h" /* wm_agent_upgrade_process_command */
 #include "cJSON.h"
 #include "metadata_provider.h" /* metadata_provider_get(): host metadata for the Notify */
@@ -476,6 +477,43 @@ static int bridge_check_and_record_task(const char *task_id, void *user_data)
         w_agentd_state_update(INCREMENT_TASK_FAILED, NULL);
         return 0;
     }
+}
+
+/* Synchronous IVdOffsetStore backing (hc_vd_offset_observe_fn): fires on the
+ * CONTROL thread (ControlStream::handleNotifyBody), once per accepted Notify
+ * that carries a vd_feed_offset field. Same bounded-IPC-hop rationale as
+ * bridge_check_and_record_task above. */
+static void bridge_vd_offset_observe(uint64_t offset, int *out_changed, int *out_pending,
+                                     uint64_t *out_pending_offset, void *user_data)
+{
+    (void)user_data;
+
+    bool changed = false;
+    bool pending = false;
+    uint64_t pending_offset = 0;
+
+    /* vd_offset_client_observe() already zero-initializes these on any error
+     * path, so a failed round trip safely reports "no change, nothing
+     * pending" rather than inventing a re-scan request. */
+    vd_offset_client_observe(offset, &changed, &pending, &pending_offset);
+
+    if (out_changed) {
+        *out_changed = changed ? 1 : 0;
+    }
+    if (out_pending) {
+        *out_pending = pending ? 1 : 0;
+    }
+    if (out_pending_offset) {
+        *out_pending_offset = pending_offset;
+    }
+}
+
+/* Synchronous IVdOffsetStore backing (hc_vd_offset_clear_pending_fn): called
+ * only after a /scan/vd request succeeds (200 OK) -- see RescanRequester. */
+static int bridge_vd_offset_clear_pending(uint64_t offset, void *user_data)
+{
+    (void)user_data;
+    return vd_offset_client_clear_pending(offset) ? 1 : 0;
 }
 
 /* active_response: forwards the task's AR document to execd over agt->
@@ -985,6 +1023,15 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         }
         return;
     }
+
+    /* SHAREDCFG_FILE now holds these exact bytes, so its SHA-256 already matches
+     * the manager's config_hash -- startup_gate_check_manager_config_hash() (fired
+     * independently on every accepted Notify) would otherwise race ahead and
+     * release the gate with reason=https_hash_match before the reload this
+     * function is about to (maybe) dispatch actually completes. Mark the download
+     * pending now, before any of that can happen; only startup_gate_release_from_https_apply()
+     * (below, or via reloadAgent()'s own completion) clears it. */
+    startup_gate_mark_download_pending();
 
     char **ignore_list;
     os_calloc(2, sizeof(char *), ignore_list);
@@ -1691,6 +1738,8 @@ void w_https_client_start(void)
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
     callbacks.check_and_record_task = bridge_check_and_record_task;
+    callbacks.vd_offset_observe = bridge_vd_offset_observe;
+    callbacks.vd_offset_clear_pending = bridge_vd_offset_clear_pending;
     callbacks.on_remote_upgrade_ready = bridge_on_remote_upgrade_ready;
     callbacks.on_task_failed = bridge_on_task_failed;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;

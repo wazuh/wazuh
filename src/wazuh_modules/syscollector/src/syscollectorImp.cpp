@@ -2364,6 +2364,12 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Report it as an expected event, not a WARNING.
                 m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
             }
+            else if (result.awaitingPrerequisite)
+            {
+                // Not a real failure either: the manager hasn't synchronized this agent's groups
+                // yet, most commonly right after enrollment/restart. Expected to clear on its own.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason);
+            }
             else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
                 // The manager is not ready for this agent yet, mostly right after a restart, and the
@@ -2427,6 +2433,14 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             {
                 // Not a real failure: the VD sync was aborted because the module is stopping
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else if (vdResult.awaitingPrerequisite)
+            {
+                // Not a real failure either: no VD feed offset has been received from the manager
+                // yet (via /control), most commonly during the first cycle(s) after an agent
+                // restart, before the first notify round trip completes. Expected to clear on its
+                // own within the next cycle or two.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
             }
             else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {

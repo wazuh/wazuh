@@ -13,6 +13,7 @@
 #include "digest.hpp"
 #include "fakeSysSeams.hpp"
 #include "fakeTaskIdStore.hpp"
+#include "fakeVdOffsetStore.hpp"
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 
@@ -82,7 +83,7 @@ namespace
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
                        m_spoolFactory, m_configHash, m_cluster, m_authGate, m_taskStore,
-                       [this] { return m_hostJson; })
+                       m_vdOffsetStore, [this] { return m_hostJson; })
             {
             }
 
@@ -110,6 +111,7 @@ namespace
             AuthGate m_authGate;
             FakeWaiter m_waiter;
             FakeTaskIdStore m_taskStore;
+            FakeVdOffsetStore m_vdOffsetStore;
             std::string m_hostJson; ///< Injected Notify host block ("" -> omitted).
             ControlStream m_stream;
     };
@@ -1245,5 +1247,124 @@ TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
 
     m_stream.step(m_waiter);
     EXPECT_EQ(1, pauses); // Two real steps are still what arms it.
+}
+
+TEST_F(ControlStreamTest, NotifyWithVdFeedOffsetObservesIt)
+{
+    // FakeVdOffsetStore defaults VDFirst-done to true, so this advancing offset also marks
+    // pending and triggers an inline /scan/vd request (see PendingRescanTriggersScanVdRequest
+    // AndClearsOnSuccess below for that behavior specifically) -- accept it here with a
+    // WillRepeatedly rather than pinning an exact call count this test isn't about.
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: carries vd_feed_offset.
+
+    ASSERT_EQ(1u, m_vdOffsetStore.observeCalls().size());
+    EXPECT_EQ(100u, m_vdOffsetStore.observeCalls()[0]);
+}
+
+TEST_F(ControlStreamTest, NotifyWithoutVdFeedOffsetFieldDoesNotObserve)
+{
+    // Absent must NOT be treated as an observed 0 -- see maybeRequestVdRescan's contract.
+    const std::string notify = R"({"status":"ok","agent":{"groups":["default"]}})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: no vd_feed_offset field.
+
+    EXPECT_TRUE(m_vdOffsetStore.observeCalls().empty());
+}
+
+TEST_F(ControlStreamTest, PendingRescanTriggersScanVdRequestAndClearsOnSuccess)
+{
+    // FakeVdOffsetStore defaults VDFirst-done to true, so an advancing offset marks pending
+    // and the very next perform() call (still within the same Notify cycle) must target
+    // /scan/vd with the pending offset; a 200 must clear the pending flag.
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    std::vector<std::string> targetsSeen;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Invoke([&](const HttpRequestSpec & spec)
+    {
+        targetsSeen.push_back(spec.target);
+
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        return response(TransportStatus::Ok, 200, "{}"); // /scan/vd accepted.
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> observe() marks pending -> /scan/vd sent inline.
+
+    ASSERT_EQ(2u, targetsSeen.size());
+    EXPECT_EQ("/control", targetsSeen[0]);
+    EXPECT_EQ("/scan/vd", targetsSeen[1]);
+    EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
+}
+
+// D5/Case 6: a 409 on /scan/vd reporting a newer current_version must re-observe (which
+// advances the store and re-runs the VDFirst-done gate for the new offset) and retry with
+// it -- all within the same RescanRequester::requestRescan() call, bounded to a few rounds.
+TEST_F(ControlStreamTest, PendingRescanAdvancesOffsetAndRetriesOn409WithNewerVersion)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    std::vector<std::string> scanVdBodies;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke([&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        // /scan/vd.
+        const std::string body {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
+        scanVdBodies.push_back(body);
+
+        if (body.find("\"feed_offset\":100") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 409, R"({"error":"version_mismatch","current_version":150})");
+        }
+
+        return response(TransportStatus::Ok, 200, "{}"); // Accepts feed_offset=150.
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> pending(100) -> /scan/vd(100) 409 -> retry /scan/vd(150) 200.
+
+    ASSERT_EQ(2u, scanVdBodies.size());
+    EXPECT_THAT(scanVdBodies[0], ::testing::HasSubstr("\"feed_offset\":100"));
+    EXPECT_THAT(scanVdBodies[1], ::testing::HasSubstr("\"feed_offset\":150"));
+    EXPECT_THAT(m_vdOffsetStore.observeCalls(), ::testing::ElementsAre(100u, 150u));
+    EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(150u));
+    EXPECT_FALSE(m_vdOffsetStore.pending());
+}
+
+TEST_F(ControlStreamTest, NoPendingRescanMeansNoScanVdRequest)
+{
+    // VDFirst not done: observe() persists the offset but never marks pending, so no
+    // /scan/vd request should ever be sent.
+    m_vdOffsetStore.setVDFirstDone(false);
+
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: offset observed, but not pending.
+
+    EXPECT_FALSE(m_vdOffsetStore.pending());
 }
 

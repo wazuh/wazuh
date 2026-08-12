@@ -109,6 +109,8 @@ extern "C" {
 
             cResult.consecutive_failures = cppResult.consecutiveFailures;
 
+            cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
+
             return cResult;
         }
         catch (const std::exception& ex)
@@ -205,6 +207,8 @@ extern "C" {
             cResult.manager_not_ready = cppResult.managerNotReady;
 
             cResult.consecutive_failures = cppResult.consecutiveFailures;
+
+            cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
 
             return cResult;
         }

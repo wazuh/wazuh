@@ -162,8 +162,12 @@ TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsWithException)
     EXPECT_CALL(*throwingDBSync, handle())
     .WillRepeatedly(::testing::Return(nullptr));
 
+    // WillRepeatedly, not WillOnce: start() also calls getVdFeedState() (a second,
+    // unrelated selectRows on vd_feed_state) within the same run -- both paths are
+    // expected to independently catch a throwing DBSync and log their own failure,
+    // so both calls must see the same behavior, not just the first one.
     EXPECT_CALL(*throwingDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Throw(std::runtime_error("Database error")));
+    .WillRepeatedly(::testing::Throw(std::runtime_error("Database error")));
 
     m_logOutput.clear();
     m_agentInfo = std::make_shared<AgentInfoImpl>(

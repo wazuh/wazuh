@@ -68,6 +68,11 @@ class AgentSyncProtocolTest : public ::testing::Test
             char* groups[] = {const_cast<char*>("group1")};
             metadata.groups = groups;
             metadata.groups_count = 1;
+            // A VD feed offset already received from the manager, so existing VDFIRST/VDSYNC
+            // tests exercise the same "normal" path they did before the NO_VD_OFFSET_ERROR
+            // gate (A11) existed; the gate itself is covered separately, with its own
+            // explicit metadata (see the NoVdOffset* tests below).
+            metadata.vd_feed_offset = 12345;
             metadata_provider_update(&metadata);
 
             // Set logger via asp_create
@@ -943,6 +948,82 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
 
     runAndAck(Option::VDFIRST);
     runAndAck(Option::VDSYNC);
+}
+
+// A11: a VD sync must abort (no Start ever sent) when no feed offset has been received
+// from the manager yet -- the state right after an agent restart, before the first
+// /control notify reports one. Mirrors the NO_GROUPS_ERROR gate's shape exactly.
+TEST_F(AgentSyncProtocolTest, NoVdOffsetAbortsVDFirstSyncWithoutSendingStart)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata.vd_feed_offset = 0; // Not yet received.
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(testData));
+
+    const int sendCountBefore = mockSyncTransport->sendCount();
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::VDFIRST);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), sendCountBefore); // No Start was ever built/sent.
+    EXPECT_THAT(result.failureReason, ::testing::HasSubstr("No VD feed offset available"));
+    // Expected/benign, not a real failure: lets the caller (Syscollector::syncModule()) log
+    // this at INFO instead of WARNING.
+    EXPECT_TRUE(result.awaitingPrerequisite);
+    EXPECT_FALSE(result.managerNotReady);
+}
+
+// The gate is VD-specific (isUncappedSyncOption): a plain SYNC must proceed even with no
+// VD offset at all -- only VDFIRST/VDSYNC require one.
+TEST_F(AgentSyncProtocolTest, NoVdOffsetDoesNotAbortNonVdSync)
+{
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata.vd_feed_offset = 0;
+    metadata_provider_update(&metadata);
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(1);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(200);
+
+    syncThread.join();
+    EXPECT_TRUE(result.success);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAllowsOversizedRealPayloadWhenPrefilterSelectedIt)

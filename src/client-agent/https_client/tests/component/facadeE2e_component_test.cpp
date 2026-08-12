@@ -78,6 +78,74 @@ namespace
         recorder->states.push_back(state);
     }
 
+    /// Stands in for agent-info's durable vd_feed_state (issue #38204):
+    /// tracks the last observed offset and a pending flag in memory, same
+    /// monotonic + gate-free semantics as AgentInfoImpl::observeVdFeedOffset
+    /// (VDFirst-gating is a unit-level concern -- see FakeVdOffsetStore in
+    /// controlStream_test.cpp; this recorder always marks pending on a real
+    /// advance, since what THIS test exercises is the real wire round trip,
+    /// not the VDFirst gate).
+    struct VdRescanRecorder
+    {
+        std::atomic<int> startupCount {0};
+        std::mutex mutex;
+        uint64_t lastObserved {0};
+        bool pendingMarked {false};
+        int clearCount {0};
+    };
+
+    void vdOnStartup(bool accepted, const char*, void* userData)
+    {
+        if (accepted)
+        {
+            static_cast<VdRescanRecorder*>(userData)->startupCount++;
+        }
+    }
+
+    void vdOffsetObserve(uint64_t offset, int* outChanged, int* outPending,
+                         uint64_t* outPendingOffset, void* userData)
+    {
+        auto* recorder = static_cast<VdRescanRecorder*>(userData);
+        std::lock_guard<std::mutex> lock(recorder->mutex);
+        const bool changed = offset > recorder->lastObserved;
+
+        if (changed)
+        {
+            recorder->lastObserved = offset;
+            recorder->pendingMarked = true;
+        }
+
+        if (outChanged)
+        {
+            *outChanged = changed ? 1 : 0;
+        }
+
+        if (outPending)
+        {
+            *outPending = recorder->pendingMarked ? 1 : 0;
+        }
+
+        if (outPendingOffset)
+        {
+            *outPendingOffset = recorder->lastObserved;
+        }
+    }
+
+    int vdOffsetClearPending(uint64_t offset, void* userData)
+    {
+        auto* recorder = static_cast<VdRescanRecorder*>(userData);
+        std::lock_guard<std::mutex> lock(recorder->mutex);
+
+        if (!recorder->pendingMarked || recorder->lastObserved != offset)
+        {
+            return 0;
+        }
+
+        recorder->pendingMarked = false;
+        recorder->clearCount++;
+        return 1;
+    }
+
     hc_config_t tlsConfig()
     {
         hc_config_t config {};
@@ -906,4 +974,115 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
     EXPECT_NE(recorder.states.end(),
               std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
+}
+
+// Issue #38204: a real notify carrying vd_feed_offset must drive a real
+// POST /scan/vd over the wire (real TLS, real AES-CMAC signing verified
+// server-side), and a 200 must clear the pending flag through the real
+// callback -- this is the one thing the mocked-transport unit tests
+// (controlStream_test.cpp) cannot prove by themselves.
+TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetTriggersRealScanVdRequestAndClearsOnSuccess)
+{
+    const uint16_t port = TLS_PORT + 10;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/{},
+                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/{}, /*statefulHoldFile=*/{},
+                         /*vdFeedOffset=*/100, /*scanVdRejectFirstNAttempts=*/0};
+
+    VdRescanRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = vdOnStartup;
+    callbacks.vd_offset_observe = vdOffsetObserve;
+    callbacks.vd_offset_clear_pending = vdOffsetClearPending;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+
+    // The real client detected vd_feed_offset=100 on notify and issued a real
+    // /scan/vd request with it.
+    EXPECT_TRUE(waitForBody(peek, "/peek/scan-vd", R"("feed_offset":100)", 5000));
+
+    // The fake manager accepted it (200): the pending flag must be cleared
+    // through the real vd_offset_clear_pending callback, not just locally
+    // assumed from the request having been sent.
+    bool cleared = false;
+
+    for (int elapsed = 0; elapsed < scaledTimeout(3000) && !cleared; elapsed += 20)
+    {
+        {
+            std::lock_guard<std::mutex> lock(recorder.mutex);
+            cleared = recorder.clearCount > 0;
+        }
+
+        if (!cleared)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+    }
+
+    EXPECT_TRUE(cleared);
+
+    hc_destroy(handle);
+}
+
+// D5/Case 6, over the real wire: a 409 reporting a genuinely newer
+// current_version must be followed by a real retry with the advanced offset,
+// which the fake manager then accepts.
+TEST_F(FacadeE2eTest, NotifyWithVdFeedOffsetRetriesRealScanVdRequestAfter409)
+{
+    const uint16_t port = TLS_PORT + 11;
+    // current_version on the 409 is vdFeedOffset+1 = 101 (see fakeManager.hpp).
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/{},
+                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0,
+                         /*rotatedKeyHex=*/{}, /*statefulHoldFile=*/{},
+                         /*vdFeedOffset=*/100, /*scanVdRejectFirstNAttempts=*/1};
+
+    VdRescanRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = vdOnStartup;
+    callbacks.vd_offset_observe = vdOffsetObserve;
+    callbacks.vd_offset_clear_pending = vdOffsetClearPending;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+
+    // First attempt (feed_offset=100) is rejected 409; the client must retry
+    // with the manager's reported current_version (101), which is accepted.
+    EXPECT_TRUE(waitForBody(peek, "/peek/scan-vd", R"("feed_offset":101)", 5000));
+    EXPECT_TRUE(waitForCount(peek, "/peek/scan-vd-attempts", 2, 1000));
+
+    bool cleared = false;
+
+    for (int elapsed = 0; elapsed < scaledTimeout(3000) && !cleared; elapsed += 20)
+    {
+        {
+            std::lock_guard<std::mutex> lock(recorder.mutex);
+            cleared = recorder.clearCount > 0 && recorder.lastObserved == 101;
+        }
+
+        if (!cleared)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+    }
+
+    EXPECT_TRUE(cleared);
+
+    hc_destroy(handle);
 }

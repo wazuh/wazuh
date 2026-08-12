@@ -18,6 +18,7 @@
 #include "https_client_bridge.h"
 #include "https_client.h"
 #include "task_registry_client.h"
+#include "vd_offset_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "sha256_op.h"
@@ -216,6 +217,39 @@ task_registry_result_t __wrap_task_registry_check_and_record(const char *task_id
 {
     check_expected(task_id);
     return (task_registry_result_t)mock();
+}
+
+/* __wrap_vd_offset_client_observe/__wrap_vd_offset_client_clear_pending: same
+ * check_expected/mock() shape as __wrap_task_registry_check_and_record above.
+ * bridge_vd_offset_observe() forwards whatever ends up in *out_changed/
+ * *out_pending/*out_pending_offset regardless of the real function's bool
+ * return (vd_offset_client_observe() zero-initializes them on any failure
+ * path, so there is nothing else for the bridge to branch on) -- so this wrap
+ * does not need a will_return for its own return value; only the three out
+ * params are test-controlled. bridge_vd_offset_clear_pending()'s return DOES
+ * matter (it becomes the callback's own return value), so that wrap needs one. */
+bool __wrap_vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
+                                     uint64_t *out_pending_offset)
+{
+    check_expected(offset);
+
+    if (out_changed) {
+        *out_changed = (bool)mock();
+    }
+    if (out_pending) {
+        *out_pending = (bool)mock();
+    }
+    if (out_pending_offset) {
+        *out_pending_offset = (uint64_t)mock();
+    }
+
+    return true;
+}
+
+bool __wrap_vd_offset_client_clear_pending(uint64_t offset)
+{
+    check_expected(offset);
+    return (bool)mock();
 }
 
 bool __wrap_restartAgent(void)
@@ -1574,6 +1608,103 @@ static void test_check_and_record_task_null_id_returns_minus_one(void **state)
     w_https_client_stop();
 }
 
+/* vd_offset_observe/vd_offset_clear_pending: the IVdOffsetStore backing
+ * (hc_callbacks_t.vd_offset_observe/vd_offset_clear_pending) -- see
+ * bridge_vd_offset_observe()/bridge_vd_offset_clear_pending(). */
+
+static void test_vd_offset_observe_forwards_changed_pending_and_offset(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_observe, offset, 100);
+    will_return(__wrap_vd_offset_client_observe, true);  /* *out_changed */
+    will_return(__wrap_vd_offset_client_observe, true);  /* *out_pending */
+    will_return(__wrap_vd_offset_client_observe, 100);   /* *out_pending_offset */
+
+    int changed = -1;
+    int pending = -1;
+    uint64_t pending_offset = 0;
+    g_captured_callbacks.vd_offset_observe(100, &changed, &pending, &pending_offset,
+                                           g_captured_callbacks.user_data);
+
+    assert_int_equal(changed, 1);
+    assert_int_equal(pending, 1);
+    assert_int_equal(pending_offset, 100);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_vd_offset_observe_reports_no_change_when_not_newer(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_observe, offset, 50);
+    will_return(__wrap_vd_offset_client_observe, false); /* *out_changed */
+    will_return(__wrap_vd_offset_client_observe, true);  /* *out_pending: unrelated pending state */
+    will_return(__wrap_vd_offset_client_observe, 100);   /* *out_pending_offset */
+
+    int changed = -1;
+    int pending = -1;
+    uint64_t pending_offset = 0;
+    g_captured_callbacks.vd_offset_observe(50, &changed, &pending, &pending_offset,
+                                           g_captured_callbacks.user_data);
+
+    assert_int_equal(changed, 0);
+    assert_int_equal(pending, 1);
+    assert_int_equal(pending_offset, 100);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_vd_offset_observe_tolerates_null_out_params(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_observe, offset, 100);
+    will_return(__wrap_vd_offset_client_observe, true);
+    will_return(__wrap_vd_offset_client_observe, true);
+    will_return(__wrap_vd_offset_client_observe, 100);
+
+    /* Must not crash when the caller doesn't care about some outputs. */
+    g_captured_callbacks.vd_offset_observe(100, NULL, NULL, NULL, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_vd_offset_clear_pending_forwards_true(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_clear_pending, offset, 100);
+    will_return(__wrap_vd_offset_client_clear_pending, true);
+
+    assert_int_equal(g_captured_callbacks.vd_offset_clear_pending(100, g_captured_callbacks.user_data), 1);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_vd_offset_clear_pending_forwards_false(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_vd_offset_client_clear_pending, offset, 50);
+    will_return(__wrap_vd_offset_client_clear_pending, false);
+
+    assert_int_equal(g_captured_callbacks.vd_offset_clear_pending(50, g_captured_callbacks.user_data), 0);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 /* on_task routing: active_response forwards to execd inline; an
  * unknown/unsupported type (including remote_upgrade reaching here by
  * mistake) is rejected. */
@@ -2114,6 +2245,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_check_and_record_task_duplicate_returns_zero_and_counts_it, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_error_returns_zero_and_counts_failed_not_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_null_id_returns_minus_one, setup_test, teardown_test),
+
+        cmocka_unit_test_setup_teardown(test_vd_offset_observe_forwards_changed_pending_and_offset, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_vd_offset_observe_reports_no_change_when_not_newer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_vd_offset_observe_tolerates_null_out_params, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_vd_offset_clear_pending_forwards_true, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_vd_offset_clear_pending_forwards_false, setup_test, teardown_test),
 
         // on_task routing
         cmocka_unit_test_setup_teardown(test_on_task_active_response_missing_wazuh_key_counts_failed, setup_test, teardown_test),

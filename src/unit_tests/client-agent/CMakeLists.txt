@@ -113,6 +113,8 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,os_delwait -Wl,--wrap,os_setwait \
                                 -Wl,--wrap,OS_SHA256_File \
                                 -Wl,--wrap,task_registry_check_and_record \
+                                -Wl,--wrap,vd_offset_client_observe \
+                                -Wl,--wrap,vd_offset_client_clear_pending \
                                 -Wl,--wrap,restartAgent \
                                 -Wl,--wrap,OS_SendUnix -Wl,--wrap,w_ref_parent_folder \
                                 -Wl,--wrap,OS_ConnectUnixDomain \
@@ -229,4 +231,34 @@ if(${TARGET} STREQUAL "agent" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
       -ftest-coverage)
   add_test(NAME test_task_registry_ipc_component COMMAND test_task_registry_ipc_component)
   set_tests_properties(test_task_registry_ipc_component PROPERTIES LABELS "client-agent;agent_info")
+
+  # Component test for the VD feed offset IPC round-trip (issue #38204), same
+  # shape as test_task_registry_ipc_component above -- see
+  # test_vd_offset_ipc_component.cpp's file banner for what is real vs. harness.
+  add_executable(test_vd_offset_ipc_component test_vd_offset_ipc_component.cpp)
+  target_include_directories(
+      test_vd_offset_ipc_component
+      PRIVATE ${SRC_FOLDER}/external/googletest/googletest/include/
+              ${SRC_FOLDER}/wazuh_modules/agent_info/include
+              ${SRC_FOLDER}/wazuh_modules/src)
+  target_link_libraries(
+      test_vd_offset_ipc_component
+      debug gtestd
+      debug gtest_maind
+      optimized gtest
+      optimized gtest_main
+      CLIENT-AGENT
+      -Wl,--start-group
+      TASK_REGISTRY_IPC_WM_O
+      ${SRC_FOLDER}/build/lib/libagent_info.so
+      ${WAZUHLIB}
+      ${WAZUHEXT}
+      -Wl,--end-group
+      pthread
+      dl
+      cmocka
+      -fprofile-arcs
+      -ftest-coverage)
+  add_test(NAME test_vd_offset_ipc_component COMMAND test_vd_offset_ipc_component)
+  set_tests_properties(test_vd_offset_ipc_component PROPERTIES LABELS "client-agent;agent_info")
 endif()

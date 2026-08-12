@@ -35,6 +35,7 @@ constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
 constexpr auto TASKS_TABLE = "tasks";
+constexpr auto VD_FEED_STATE_TABLE = "vd_feed_state";
 
 // Module coordination configuration.
 // FIM is listed first so its async pause-completion probe runs before the other
@@ -139,6 +140,17 @@ const char* DB_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS db_metadata 
 const char* TASKS_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS tasks ("
                                   "task_id       TEXT NOT NULL PRIMARY KEY,"
                                   "recorded_at   INTEGER NOT NULL);";
+
+// Durable VD feed offset + pending-rescan state (see AgentInfoImpl::observeVdFeedOffset/
+// clearVdRescanPending/getVdFeedState). Single-row table (id=1), same shape as db_metadata.
+// has_offset distinguishes "never observed" from "observed 0" (a manager may legitimately
+// report offset 0, e.g. when VD is not enabled on that node).
+const char* VD_FEED_STATE_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS vd_feed_state ("
+                                          "id              INTEGER PRIMARY KEY CHECK (id = 1),"
+                                          "has_offset      INTEGER NOT NULL DEFAULT 0,"
+                                          "last_offset     INTEGER NOT NULL DEFAULT 0,"
+                                          "pending         INTEGER NOT NULL DEFAULT 0,"
+                                          "pending_offset  INTEGER NOT NULL DEFAULT 0);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
@@ -414,6 +426,7 @@ std::string AgentInfoImpl::GetCreateStatement() const
     ret += AGENT_GROUPS_SQL_STATEMENT;
     ret += DB_METADATA_SQL_STATEMENT;
     ret += TASKS_SQL_STATEMENT;
+    ret += VD_FEED_STATE_SQL_STATEMENT;
     return ret;
 }
 
@@ -562,6 +575,17 @@ void AgentInfoImpl::populateAgentMetadata()
         groups = readAgentGroups();
     }
 
+    // Surface the durable VD feed offset (0/absent = not yet received from the manager) so
+    // it reaches agent_sync_protocol's Start message via the metadata provider (D9). Read
+    // fresh every cycle rather than cached in memory, same reasoning as the live handshake
+    // query above: a single source of truth in agent_info.db, no separate cache to go stale.
+    const VdFeedState vdFeedState = getVdFeedState();
+
+    if (vdFeedState.hasOffset)
+    {
+        agentMetadata["vd_feed_offset"] = vdFeedState.offset;
+    }
+
     // Update the global metadata provider BEFORE updateChanges
     // This ensures the metadata is available when syncProtocol is triggered
     updateMetadataProvider(agentMetadata, groups);
@@ -645,6 +669,11 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
     copyField(metadata.cluster_node, sizeof(metadata.cluster_node), agentMetadata, "cluster_node");
+
+    if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
+    {
+        metadata.vd_feed_offset = agentMetadata["vd_feed_offset"].get<uint64_t>();
+    }
 
     // Copy groups
     if (!groups.empty())
@@ -1611,6 +1640,55 @@ bool AgentInfoImpl::isModuleFirstSyncCompleted(const std::string& moduleName)
     }
 }
 
+bool AgentInfoImpl::isVDFirstSyncDone()
+{
+    // Same shape as isModuleFirstSyncCompleted, but a distinct query: VDFirst completion is
+    // tracked separately from syscollector's general first_sync_completed marker (see
+    // syscollectorImp.cpp's SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY /
+    // get_vd_first_sync_completed). Reused here rather than reinvented: do not fire a
+    // /scan/vd request before VDFirst has completed, since VDFirst's own full scan already
+    // covers the current feed (Q5).
+    const std::string message = createJsonCommand("get_vd_first_sync_completed");
+    const ModuleResponse response = queryModuleWithRetry(SYSCOLLECTOR_WM_NAME, message);
+
+    try
+    {
+        const nlohmann::json parsed = nlohmann::json::parse(response.response);
+
+        if (parsed.contains("data") && parsed["data"].contains("vd_first_sync_completed"))
+        {
+            const auto& value = parsed["data"]["vd_first_sync_completed"];
+
+            if (value.is_number())
+            {
+                return value.get<int>() != 0;
+            }
+
+            if (value.is_boolean())
+            {
+                return value.get<bool>();
+            }
+        }
+
+        // No vd_first_sync_completed field. An error response with no such field means
+        // VDFirst genuinely has not run/completed yet (still in progress) -- defer.
+        if (parsed.contains("error") && parsed["error"].is_number() && parsed["error"].get<int>() != 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        // No / unparseable response (syscollector unreachable): fail open, same rationale as
+        // isModuleFirstSyncCompleted -- a transient hiccup must not permanently block re-scans.
+        m_logFunction(LOG_DEBUG,
+                      "Could not read vd_first_sync_completed from syscollector: " + std::string(e.what()));
+        return true;
+    }
+}
+
 AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
     for (const auto& module : COORDINATION_MODULES)
@@ -2325,6 +2403,193 @@ size_t AgentInfoImpl::countTasks()
     }
 
     return count;
+}
+
+AgentInfoImpl::VdFeedState AgentInfoImpl::readVdFeedStateLocked() const
+{
+    VdFeedState state;
+
+    try
+    {
+        const auto callback = [&state](ReturnTypeCallback, const nlohmann::json & data)
+        {
+            if (data.contains("has_offset") && data["has_offset"].is_number())
+            {
+                state.hasOffset = (data["has_offset"].get<int>() != 0);
+            }
+
+            if (data.contains("last_offset") && data["last_offset"].is_number())
+            {
+                state.offset = static_cast<uint64_t>(data["last_offset"].get<int64_t>());
+            }
+
+            if (data.contains("pending") && data["pending"].is_number())
+            {
+                state.pending = (data["pending"].get<int>() != 0);
+            }
+
+            if (data.contains("pending_offset") && data["pending_offset"].is_number())
+            {
+                state.pendingOffset = static_cast<uint64_t>(data["pending_offset"].get<int64_t>());
+            }
+        };
+
+        nlohmann::json input;
+        input["table"] = VD_FEED_STATE_TABLE;
+        input["query"]["column_list"] = nlohmann::json::array({"*"});
+        input["query"]["row_filter"] = "";
+        input["query"]["distinct_opt"] = false;
+        input["query"]["order_by_opt"] = "";
+        input["query"]["count_opt"] = 1;
+
+        m_dBSync->selectRows(input, callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_WARNING, "Failed to read vd_feed_state (treating as unset): " + std::string(e.what()));
+    }
+
+    return state;
+}
+
+void AgentInfoImpl::writeVdFeedStateLocked(const VdFeedState& state)
+{
+    try
+    {
+        auto handle = m_dBSync->handle();
+
+        if (!handle)
+        {
+            return;
+        }
+
+        const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        DBSyncTxn txn {handle, nlohmann::json {VD_FEED_STATE_TABLE}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json rowData;
+        rowData["id"] = 1;
+        rowData["has_offset"] = state.hasOffset ? 1 : 0;
+        rowData["last_offset"] = static_cast<int64_t>(state.offset);
+        rowData["pending"] = state.pending ? 1 : 0;
+        rowData["pending_offset"] = static_cast<int64_t>(state.pendingOffset);
+
+        nlohmann::json input;
+        input["table"] = VD_FEED_STATE_TABLE;
+        input["data"] = nlohmann::json::array({rowData});
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR, "Failed to persist vd_feed_state: " + std::string(e.what()));
+    }
+}
+
+AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t offset)
+{
+    VdOffsetObserveResult result;
+    VdFeedState state;
+
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (!m_dBSync)
+        {
+            m_logFunction(LOG_WARNING, "Cannot observe VD feed offset: DBSync not available");
+            return result;
+        }
+
+        state = readVdFeedStateLocked();
+
+        if (state.hasOffset && offset <= state.offset)
+        {
+            // Not newer: agents never move the stored offset backward (N3), and an exact
+            // repeat is a no-op too.
+            result.pending = state.pending;
+            result.pendingOffset = state.pendingOffset;
+            return result;
+        }
+
+        state.hasOffset = true;
+        state.offset = offset;
+        writeVdFeedStateLocked(state);
+    }
+
+    result.changed = true;
+
+    // Deliberately outside the lock above: queryModuleWithRetry can block for several
+    // seconds retrying syscollector, and holding m_dbSyncMutex across that would stall
+    // unrelated agent_info.db access (task dedup checks, metadata population) for the
+    // whole window.
+    if (isVDFirstSyncDone())
+    {
+        std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+        if (m_dBSync)
+        {
+            VdFeedState current = readVdFeedStateLocked();
+
+            // Only mark pending if no newer offset raced in while waiting on syscollector's
+            // answer -- a newer observeVdFeedOffset() call runs this same check for its own
+            // (newer) offset instead, and marking pending here for a stale offset would send
+            // a /scan/vd request for a feed version the agent has already moved past.
+            if (current.hasOffset && current.offset == offset)
+            {
+                current.pending = true;
+                current.pendingOffset = offset;
+                writeVdFeedStateLocked(current);
+            }
+
+            state = current;
+        }
+    }
+
+    // else: VDFirst has not completed yet. Its own full scan will cover this offset via
+    // Start.feed_offset (D9/Q5), so no re-scan request is needed here -- the offset itself
+    // is already persisted above, so it is not lost.
+
+    result.pending = state.pending;
+    result.pendingOffset = state.pendingOffset;
+    return result;
+}
+
+bool AgentInfoImpl::clearVdRescanPending(uint64_t offset)
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        m_logFunction(LOG_WARNING, "Cannot clear VD rescan pending: DBSync not available");
+        return false;
+    }
+
+    VdFeedState state = readVdFeedStateLocked();
+
+    if (!state.pending || state.pendingOffset != offset)
+    {
+        // Stale confirmation: either nothing is pending, or a newer offset has since
+        // superseded this one. The pending flag must only ever be cleared by a matching
+        // /scan/vd 200 OK (never a 409 or transport failure), so a mismatch here means the
+        // caller's request no longer corresponds to the current pending re-scan.
+        return false;
+    }
+
+    state.pending = false;
+    writeVdFeedStateLocked(state);
+    return true;
+}
+
+AgentInfoImpl::VdFeedState AgentInfoImpl::getVdFeedState()
+{
+    std::lock_guard<std::mutex> lock(m_dbSyncMutex);
+
+    if (!m_dBSync)
+    {
+        return {};
+    }
+
+    return readVdFeedStateLocked();
 }
 
 void AgentInfoImpl::resetSyncFlag(const std::string& table)

@@ -13,7 +13,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid agent address
   description: Check a valid agent_address configuration
@@ -32,7 +32,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10'\n"
-      response: "OSSEC K:'001 devel 192.168.0.10 TopSecret'\n"
+      response: "OSSEC K:'001 devel 192.168.0.10 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid agent address CIDR
   description: Check a valid agent_address configuration CIDR
@@ -51,7 +51,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10/24'\n"
-      response: "OSSEC K:'001 devel 192.168.0.10/24 TopSecret'\n"
+      response: "OSSEC K:'001 devel 192.168.0.10/24 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid Agent address CIDR
   description: Check an invalid CIDR agent_address in auto enrollment configuration
@@ -71,7 +71,7 @@
       os: win32
       reason: "Known Issue: Invalid adress is not checked. https://github.com/wazuh/wazuh/issues/4965"
     message:
-      response: "OSSEC K:'001 devel 192.168.0.10/24 TopSecret'\n"
+      response: "OSSEC K:'001 devel 192.168.0.10/24 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid Agent address
   description: Check an invalid agent_address in auto enrollment configuration
@@ -93,7 +93,7 @@
       os: any
       reason: "Known Issue: Invalid adress is not checked. https://github.com/wazuh/wazuh/issues/4965"
     message:
-      response: "OSSEC K:'001 devel 192.168.0.10/24 TopSecret'\n"
+      response: "OSSEC K:'001 devel 192.168.0.10/24 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid manager address
   description: Check a valid manager_address configuration
@@ -112,7 +112,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Groups
   description: Agent groups in auto enrollment configuration
@@ -131,7 +131,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1' IP:'any'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Multi Groups
   description: Agent multi groups in auto enrollment configuration
@@ -150,7 +150,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1,group_2' IP:'any'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid enabled
   description: Check an invalid enabled in auto enrollment configuration
@@ -186,7 +186,7 @@
       - ""
     message:
       expected: "OSSEC A:'test_agent' V:'{agent_version}' G:'' IP:'any'\n"
-      response: "OSSEC K:'001 test_agent any TopSecret'\n"
+      response: "OSSEC K:'001 test_agent any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid agent name config max length
   description: Check a valid agent_name configuration max length
@@ -207,7 +207,7 @@
       expected: "OSSEC A:'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\
                 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' V:'{agent_version}' G:'' IP:'any'\n"
       response: "OSSEC K:'001 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\
-                nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn any TopSecret'\n"
+                nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid agent name config
   description: Check an invalid agent_name configuration
@@ -343,10 +343,10 @@
       PORT: 1515
   metadata:
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any' K:'91375466ffb8edfd942bfc8c86582282b3ffca95'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid agent address with key hash
   description: Check a valid agent_address configuration when having a key hash
@@ -362,10 +362,10 @@
     configuration:
       agent_address: 192.168.0.10
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
-      response: "OSSEC K:'001 devel 192.168.0.10 TopSecret'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'192.168.0.10' K:'91375466ffb8edfd942bfc8c86582282b3ffca95'\n"
+      response: "OSSEC K:'001 devel 192.168.0.10 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Groups with key hash
   description: Check a registration command with groups and key hash
@@ -381,10 +381,10 @@
     configuration:
       groups: group_1
     pre_existent_keys:
-      - 001 test_name any TopSecret
+      - 001 test_name any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
     message:
-      expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1' IP:'any' K:'5f7b611efd8882c0b11d87d284158faefafddf21'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      expected: "OSSEC A:'devel' V:'{agent_version}' G:'group_1' IP:'any' K:'91375466ffb8edfd942bfc8c86582282b3ffca95'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid agent IPv6 address
   description: Check a valid IPv6 agent_address configuration
@@ -403,7 +403,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'02DB:4660:46AF:E523:D05E:A62E:4CA7:8E58'\n"
-      response: "OSSEC K:'001 devel 02DB:4660:46AF:E523:D05E:A62E:4CA7:8E58 TopSecret'\n"
+      response: "OSSEC K:'001 devel 02DB:4660:46AF:E523:D05E:A62E:4CA7:8E58 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid compressed agent IPv6 address
   description: Check a valid compressed IPv6 agent_address configuration
@@ -422,7 +422,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'2001:0DB8:0000:000B:0000:0000:0000:001A'\n"
-      response: "OSSEC K:'001 devel 2001:0DB8:0000:000B:0000:0000:0000:001A TopSecret'\n"
+      response: "OSSEC K:'001 devel 2001:0DB8:0000:000B:0000:0000:0000:001A a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid Agent IPv6 address double colon
   description: Check an invalid agent_address with double colon in auto enrollment configuration
@@ -445,7 +445,7 @@
       os: win32
       reason: "Known Issue: Invalid address is not checked. https://github.com/wazuh/wazuh/issues/4965"
     message:
-      response: "OSSEC K:'001 devel 56FE::2159:5BBC::6594 TopSecret'\n"
+      response: "OSSEC K:'001 devel 56FE::2159:5BBC::6594 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Valid manager IPv6 address
   description: Check a valid manager_address configuration
@@ -465,7 +465,7 @@
       - ""
     message:
       expected: "OSSEC A:'devel' V:'{agent_version}' G:'' IP:'any'\n"
-      response: "OSSEC K:'001 devel any TopSecret'\n"
+      response: "OSSEC K:'001 devel any a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid long agent IPv6 address
   description: Check an invalid agent_address in auto enrollment configuration
@@ -488,7 +488,7 @@
       os: win32
       reason: "Known Issue: Invalid address is not checked. https://github.com/wazuh/wazuh/issues/4965"
     message:
-      response: "OSSEC K:'001 devel 11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA TopSecret'\n"
+      response: "OSSEC K:'001 devel 11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA:11AA a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"
 
 - name: Invalid Agent IPv6 address with words
   description: Check an invalid agent_address in auto enrollment configuration
@@ -511,4 +511,4 @@
       os: win32
       reason: "Known Issue: Invalid address is not checked. https://github.com/wazuh/wazuh/issues/4965"
     message:
-      response: "OSSEC K:'001 devel 02db:4660:46af:invalid:d05e:a62e:4ca7:8e58 TopSecret'\n"
+      response: "OSSEC K:'001 devel 02db:4660:46af:invalid:d05e:a62e:4ca7:8e58 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4'\n"

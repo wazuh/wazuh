@@ -83,10 +83,18 @@ class FakeManager final
         /// exists, so a test can hold one session open and watch the other
         /// endpoints carry on. The server forks and shares no memory with the
         /// test, so the file is the release signal (#37836 isolation).
+        /// vdFeedOffset > 0: every notify additionally reports top-level
+        /// "vd_feed_offset":N (issue #38204), so a real client detects the
+        /// offset and issues a real /scan/vd request over the wire.
+        /// scanVdRejectFirstNAttempts > 0: the first that many /scan/vd
+        /// requests are answered 409 with {"error":"version_mismatch",
+        /// "current_version":vdFeedOffset} (simulating a load-balanced hit on
+        /// a manager node still on an older feed); subsequent attempts get 200.
         FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
                     int settingsFlipAfter = 0, std::string configBlob = {},
                     size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
-                    std::string rotatedKeyHex = {}, std::string statefulHoldFile = {})
+                    std::string rotatedKeyHex = {}, std::string statefulHoldFile = {},
+                    uint64_t vdFeedOffset = 0, int scanVdRejectFirstNAttempts = 0)
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -96,6 +104,8 @@ class FakeManager final
             , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
             , m_rotatedKeyHex(std::move(rotatedKeyHex))
             , m_statefulHoldFile(std::move(statefulHoldFile))
+            , m_vdFeedOffset(vdFeedOffset)
+            , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
         {
             m_pid = fork();
 
@@ -170,6 +180,8 @@ class FakeManager final
             const std::string configBlob = m_configBlob;
             const size_t statelessMaxBody = m_statelessMaxBody;
             const std::string holdFile = m_statefulHoldFile;
+            const uint64_t vdFeedOffset = m_vdFeedOffset;
+            const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
             const std::string configHash =
                 configBlob.empty() ? std::string {}
                 :
@@ -375,7 +387,7 @@ class FakeManager final
 
             server.Post("/control",
                         [verify, settingsFlipAfter, notifyCount, configHash, controlTypes,
-                                 controlContentTypes, lastNotifyBody, controlMutex](
+                                 controlContentTypes, lastNotifyBody, controlMutex, vdFeedOffset](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
@@ -450,9 +462,13 @@ class FakeManager final
                         ? std::string {R"({"groups":["default"]})"}
                         :
                         R"({"groups":["default"],"config_hash":")" + configHash + R"("})";
+                    const std::string vdFeedOffsetField =
+                        vdFeedOffset > 0
+                        ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset)
+                        : std::string {};
                     response.set_content(
                         R"({"agent":)" + agent + R"(,"settings_hash":")" +
-                        fakeManagerSettingsHash(startupBody) + R"("})",
+                        fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField + "}",
                         "application/json");
                     return;
                 }
@@ -493,6 +509,67 @@ class FakeManager final
                 std::lock_guard<std::mutex> lock(*controlMutex);
                 response.status = 200;
                 response.set_content(*lastNotifyBody, "text/plain");
+            });
+
+            // POST /scan/vd (issue #38204): the manager-side contract this
+            // workspace's agent-side code is built against (manager itself out
+            // of scope here -- see plan.md). Rejects the first
+            // scanVdRejectFirstNAttempts attempts with 409 + current_version =
+            // vdFeedOffset+1 (simulating a load-balanced hit on a node ALREADY
+            // ahead of the one that answered notify -- genuinely higher, so a
+            // real client's RescanRequester advances its offset and retries
+            // rather than giving up), then accepts. Records every accepted
+            // body's bytes via /peek/scan-vd, same peek idiom as /peek/last-notify.
+            auto scanVdAttempts = std::make_shared<std::atomic<int>>(0);
+            auto lastScanVdBody = std::make_shared<std::string>();
+            auto scanVdMutex = std::make_shared<std::mutex>();
+
+            server.Post("/scan/vd",
+                        [verify, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts,
+                                 lastScanVdBody, scanVdMutex](
+                            const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verify("/scan/vd", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(*scanVdMutex);
+                    *lastScanVdBody = request.body;
+                }
+
+                const int attempt = scanVdAttempts->fetch_add(1);
+
+                if (attempt < scanVdRejectFirstNAttempts)
+                {
+                    response.status = 409;
+                    response.set_content(
+                        R"({"error":"version_mismatch","current_version":)" +
+                        std::to_string(vdFeedOffset + 1) + "}",
+                        "application/json");
+                    return;
+                }
+
+                response.status = 200;
+                response.set_content("{}", "application/json");
+            });
+
+            server.Get("/peek/scan-vd",
+                       [lastScanVdBody, scanVdMutex](const httplib::Request&,
+                                                     httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*scanVdMutex);
+                response.status = 200;
+                response.set_content(*lastScanVdBody, "text/plain");
+            });
+
+            server.Get("/peek/scan-vd-attempts",
+                       [scanVdAttempts](const httplib::Request&, httplib::Response & response)
+            {
+                response.status = 200;
+                response.set_content(std::to_string(scanVdAttempts->load()), "text/plain");
             });
         }
 
@@ -563,6 +640,8 @@ class FakeManager final
         int m_rotateKeyAfterNotifies {0};
         std::string m_rotatedKeyHex;
         std::string m_statefulHoldFile;
+        uint64_t m_vdFeedOffset {0};
+        int m_scanVdRejectFirstNAttempts {0};
 };
 
 #endif // _HC_FAKE_MANAGER_HPP
