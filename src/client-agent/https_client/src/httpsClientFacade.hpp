@@ -17,6 +17,7 @@
 #include "clusterIdentity.hpp"
 #include "cmacSigner.hpp"
 #include "collectorSource.hpp"
+#include "compressionGate.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
 #include "reporterStream.hpp"
@@ -102,6 +103,9 @@ class HttpsClientFacade final
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
+        // Shared across every stream's RetrySender (#38308): one 415 disables
+        // compression agent-wide for the rest of this run.
+        CompressionGate m_compressionGate;
 
         CallbackCollectorSource m_collectors;
         StatelessStream m_stateless;

@@ -41,7 +41,7 @@ class StatefulStream final
     public:
         StatefulStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                        IClock& clock, IRandom& random, ISpoolFileFactory& spoolFactory,
-                       ICallbackSink& sink, AuthGate& authGate);
+                       ICallbackSink& sink, AuthGate& authGate, CompressionGate& compressionGate);
 
         /// Intake: spool the buffer to a temp file and enqueue it. Returns false
         /// when the queue is full or the spool fails.

@@ -45,7 +45,8 @@ class WpkFetcher final
     public:
         WpkFetcher(const ModuleConfig& config, IHttpPerformer& performer,
                    const ISigner& signer, IClock& clock, IRandom& random,
-                   ISpoolFileFactory& spoolFactory, AuthGate& authGate);
+                   ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+                   CompressionGate& compressionGate);
 
         /// Downloads the WPK named `wpkFile`, expecting the given SHA-1.
         /// Returns the verified spool file (deleted on drop) or nullptr on

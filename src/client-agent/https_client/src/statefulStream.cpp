@@ -22,11 +22,11 @@ namespace
 StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& performer,
                                const ISigner& signer, IClock& clock, IRandom& random,
                                ISpoolFileFactory& spoolFactory, ICallbackSink& sink,
-                               AuthGate& authGate)
+                               AuthGate& authGate, CompressionGate& compressionGate)
     : m_config(config)
     , m_authGate(authGate)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
     , m_spoolFactory(spoolFactory)
     , m_sink(sink)
     , m_maxQueue(STATEFUL_MAX_QUEUE)

@@ -40,7 +40,8 @@ class ConfigFetcher final
     public:
         ConfigFetcher(const ModuleConfig& config, IHttpPerformer& performer,
                       const ISigner& signer, IClock& clock, IRandom& random,
-                      ISpoolFileFactory& spoolFactory, AuthGate& authGate);
+                      ISpoolFileFactory& spoolFactory, AuthGate& authGate,
+                      CompressionGate& compressionGate);
 
         /// Downloads the config for `group`, expecting the given SHA-256.
         /// Returns the verified spool file (deleted on drop) or nullptr on

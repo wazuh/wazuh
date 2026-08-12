@@ -82,8 +82,8 @@ namespace
                 , m_configHash("abc")
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
-                       m_spoolFactory, m_configHash, m_cluster, m_authGate, m_taskStore,
-                       m_vdOffsetStore, [this] { return m_hostJson; })
+                       m_spoolFactory, m_configHash, m_cluster, m_authGate, m_compressionGate,
+                       m_taskStore, m_vdOffsetStore, [this] { return m_hostJson; })
             {
             }
 
@@ -109,6 +109,7 @@ namespace
             ConfigHashState m_configHash;
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
+            CompressionGate m_compressionGate;
             FakeWaiter m_waiter;
             FakeTaskIdStore m_taskStore;
             FakeVdOffsetStore m_vdOffsetStore;

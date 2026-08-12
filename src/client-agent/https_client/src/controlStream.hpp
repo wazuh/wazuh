@@ -49,8 +49,9 @@ class ControlStream final
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
-                      ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore,
-                      IVdOffsetStore& vdOffsetStore, std::function<std::string()> collectHost = {});
+                      ClusterIdentity& cluster, AuthGate& authGate, CompressionGate& compressionGate,
+                      ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
+                      std::function<std::string()> collectHost = {});
 
         /// Safety net for any destruction path that doesn't go through HttpsClientFacade::
         /// stop() first (e.g. a test constructing a bare ControlStream): joins m_upgradeThread

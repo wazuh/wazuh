@@ -47,6 +47,8 @@ enum class OutcomeClass
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
+    CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
+    ///< RetrySender retries once, uncompressed (#38308).
     Interrupted      ///< Aborted by shutdown: never a silent success.
 };
 
@@ -79,6 +81,9 @@ inline const char* outcomeName(OutcomeClass outcome)
 
         case OutcomeClass::VersionRejected:
             return "VersionRejected";
+
+        case OutcomeClass::CompressionRejected:
+            return "CompressionRejected";
 
         case OutcomeClass::Interrupted:
             return "Interrupted";
@@ -116,6 +121,12 @@ inline int toHcResult(OutcomeClass outcome)
             return HC_RESULT_PERMANENT;
 
         case OutcomeClass::VersionRejected:
+            return HC_RESULT_PERMANENT;
+
+        // Reached here only if RetrySender's one-shot uncompressed retry was
+        // itself rejected too (unexpected -- the manager should never 415 an
+        // uncompressed body) -- same terminal treatment as Permanent.
+        case OutcomeClass::CompressionRejected:
             return HC_RESULT_PERMANENT;
 
         default:

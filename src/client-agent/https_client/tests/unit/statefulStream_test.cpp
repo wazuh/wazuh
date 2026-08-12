@@ -60,7 +60,7 @@ namespace
                 , m_config(makeConfig())
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink,
-                       m_authGate)
+                       m_authGate, m_compressionGate)
             {
                 // By default the spool factory writes the bytes to a unique temp
                 // file (submit spools now, so every submit needs a real file).
@@ -96,6 +96,7 @@ namespace
             NiceMock<MockCallbackSink> m_sink;
             MockHttpPerformer m_performer;
             AuthGate m_authGate;
+            CompressionGate m_compressionGate;
             FakeWaiter m_waiter;
             StatefulStream m_stream;
             int m_spoolCounter {0};
