@@ -39,7 +39,7 @@ def _await_config_and_stats(indexer, agent_id):
 
     Read with test_a_report_in_flight_survives_the_deletion below: waiting here is also what MASKS
     the async connector's window. `/config` and `/stats` are written through the async connector,
-    whose queue drains on its own timer, and the deletion cannot refresh or drain it -- so a report
+    whose queue drains on its own timer, and the deletion cannot drain it -- so a report
     still queued when the deletion runs lands afterwards and resurrects the document. Every test
     that waits first is testing the deletion, not that window."""
     for index in (AGENT_CONFIG_INDEX, AGENT_STATS_INDEX):
@@ -73,6 +73,7 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
 
     _await_config_and_stats(indexer, agent_id)
     _await_config_and_stats(indexer, survivor)
+    indexer.refresh()  # the wazuh-states-* seeds too: the server does not refresh before deleting
 
     assert client.delete_agent(agent_id).status == 200
 
@@ -84,16 +85,24 @@ def test_delete_agent_wipes_config_and_stats_too(client, cluster, indexer, agent
     assert len(indexer.agent_docs(survivor, index=AGENT_STATS_INDEX)) == 1
 
 
+@pytest.mark.skip(reason="KNOWN LIMITATION, not yet fixed: the deletion does not refresh before its "
+                         "delete-by-query, because `_refresh` needs `indices:admin/refresh` and the "
+                         "manager's indexer role does not grant it. See the follow-up to restore it.")
 def test_delete_sees_documents_written_inside_the_refresh_interval(client, cluster, indexer, agent_id):
-    """No indexer.refresh() here, deliberately. A delete-by-query is a SEARCH, and the
-    state indices refresh every 2 s; authd deletes right behind the agent's last session,
-    so without the server refreshing first this deletion answers 200 having matched
-    nothing and the documents survive forever.
+    """No indexer.refresh() here, deliberately -- this is the window the deletion leaves open.
 
-    Only the state documents are seeded: they are written synchronously, so the session's
-    200 means they ARE in the indexer, just not searchable yet -- which is exactly the
-    window under test. Seeding /config and /stats here would prove nothing, since their
-    async write may not have reached the indexer at all by the time the deletion runs."""
+    A delete-by-query is a SEARCH, and the state indices refresh on their own interval; authd deletes
+    right behind the agent's last session, so documents that session wrote inside that interval are
+    invisible to the query. The deletion answers 200 having matched nothing and, with the agent gone
+    from client.keys, nothing ever overwrites them.
+
+    Refreshing each index first closed this, but it made every deletion fail with `403` on a manager
+    whose indexer role lacks `indices:admin/refresh`, so the refresh was removed. Unskip once the
+    privilege is granted and the refresh is restored; repeating the deletion is the recovery
+    meanwhile, and it is idempotent.
+
+    Only the state documents are seeded: they are written synchronously, so the session's 200 means
+    they ARE in the indexer, just not searchable yet -- which is exactly the window under test."""
     _seed(client, cluster, agent_id)
 
     assert client.delete_agent(agent_id).status == 200
@@ -111,8 +120,8 @@ def test_post_alias_behaves_identically(client, cluster, indexer, agent_id):
 
 
 def test_deleting_an_absent_agent_succeeds(client, agent_id):
-    """404-as-success: repeating a delete (authd's retry) is harmless, and it stays
-    quiet -- refreshing an index that was never created is a no-op, not a warning."""
+    """404-as-success: repeating a delete (authd's retry) is harmless -- a delete-by-query
+    against an index that was never created counts as success in the connector."""
     assert client.delete_agent(agent_id).status == 200
     assert client.delete_agent(agent_id).status == 200
 
@@ -134,7 +143,7 @@ def test_delete_orders_after_the_same_agents_session(client, cluster, indexer, a
 
 
 @pytest.mark.skip(reason="KNOWN LIMITATION, not yet fixed: /config and /stats are written through "
-                         "the ASYNC connector, whose queue the deletion cannot refresh or drain. "
+                         "the ASYNC connector, whose queue the deletion cannot drain. "
                          "See the follow-up to route both endpoints through the pipeline.")
 def test_a_report_in_flight_survives_the_deletion(client, cluster, indexer, agent_id):
     """The window every other test in this file steps around, recorded so it is not rediscovered

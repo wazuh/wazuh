@@ -12,13 +12,15 @@ The endpoint deletes every document of one agent across the whole deletion scope
     wazuh-agent-config    its reported configuration  (one document, agent id as _id)
     wazuh-agent-stats     its reported statistics     (one document, agent id as _id)
 
-Each index is refreshed before its delete-by-query, because a delete-by-query is a SEARCH: without
-the refresh, documents the agent's last session wrote inside the index refresh interval are
-invisible to it and would survive a deletion that answered 200.
+The server does NOT refresh the indices first, and a delete-by-query is a SEARCH: documents the
+agent's last session wrote inside the index refresh interval are invisible to the query and survive a
+deletion that answered 200. That is a known limitation (`_refresh` needs `indices:admin/refresh`,
+which the manager's indexer role does not grant); re-running the deletion clears the leftovers, since
+it is idempotent.
 
-`--verify` reads the three index scopes off the indexer before and after the deletion, which is the
-only way to see what the 200 actually did. Without it this tool proves the UDS hop and the status,
-nothing more.
+`--verify` reads the three index scopes off the indexer before and after the deletion, refreshing
+them itself first, which is the only way to see what the 200 actually did — including a leftover from
+the window above. Without it this tool proves the UDS hop and the status, nothing more.
 
 Examples:
     # Delete agent 007, no indexer access needed

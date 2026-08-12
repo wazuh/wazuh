@@ -24,8 +24,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 - **Agent deletion endpoint** (`DELETE /agents`, plus a `POST /agents/delete` alias for C callers):
   UDS-local, called by `wazuh-manager-authd` when an agent is removed. It reaches every index holding
   the agent's documents — `wazuh-states-*` plus `wazuh-agent-config` and `wazuh-agent-stats` — and
-  refreshes each one before its delete-by-query, so documents the agent's last session wrote inside
-  the index refresh interval are not missed. The deletion defers to the agent's worker shard, so it
+  issues one delete-by-query per index. The deletion defers to the agent's worker shard, so it
   orders correctly against in-flight sessions of that same agent, and the HTTP status makes a lost
   deletion visible instead of silent.
 - HTTP/1.1 over a Unix domain socket, so no TCP port is exposed; admission control before a body is

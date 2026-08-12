@@ -4466,67 +4466,6 @@ TEST_F(IndexerConnectorSyncTest, Refresh_AcceptsWildcard)
     EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-*/_refresh"));
 }
 
-/// Refreshing an index that does not exist yet is a no-op, not a failure: callers refresh a FIXED
-/// scope (the whole-agent deletion's wazuh-agent-config / wazuh-agent-stats) whose indices appear
-/// only with their first document, so a manager whose agents never reported config or statistics
-/// must not see the deletion fail.
-TEST_F(IndexerConnectorSyncTest, Refresh_ToleratesAMissingIndex)
-{
-    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
-    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-
-    EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .WillRepeatedly(Invoke(
-            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
-            {
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not found", 404, "");
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Not found", 404, "");
-                }
-            }));
-
-    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-    EXPECT_NO_THROW(connector.refresh("wazuh-agent-config"));
-}
-
-/// Any OTHER refresh failure is RAISED, and this is load-bearing rather than tidy: a refresh exists
-/// to make the following delete_by_query see the agent's last writes, so swallowing the failure
-/// would let that delete run on a stale view and answer 200 for documents it never saw. 403 is the
-/// case that makes it concrete -- `indices:admin/refresh` is outside the crud/write action groups,
-/// so a least-privilege indexer role denies it.
-TEST_F(IndexerConnectorSyncTest, Refresh_RaisesEveryOtherFailure)
-{
-    for (const long statusCode : {403L, 500L, 503L})
-    {
-        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
-        EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-
-        EXPECT_CALL(mockHttpRequest, post(_, _, _))
-            .WillRepeatedly(Invoke(
-                [statusCode](RequestParamsVariant, auto postParams, ConfigurationParameters)
-                {
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("refresh refused", statusCode, "");
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onError("refresh refused", statusCode, "");
-                    }
-                }));
-
-        IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
-        EXPECT_THROW(connector.refresh("wazuh-states-*"), IndexerConnectorException)
-            << "refresh must raise HTTP " << statusCode << " instead of warning and continuing";
-    }
-}
-
 TEST_F(IndexerConnectorSyncTest, IsSafeIndexName_Allowlist)
 {
     // Spot-check the helper directly with a representative set of vectors so

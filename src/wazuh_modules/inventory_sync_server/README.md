@@ -414,33 +414,30 @@ The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `40
 indexer availability (→ `503`; the caller retries rather than losing the deletion), and enqueues
 a `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET agent's shard — the deletion orders
 FIFO against that agent's in-flight sessions, and respects a scan in flight through the same
-registry. The worker treats it like an immediate: batch cut, then, over every index in
-`AGENT_DELETION_SCOPE` (`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), a
-`refresh(index)` followed by a `deleteByQuery(index, agent, cluster)`, and one `flush()` →
-`200 {"status":"ok"}`. A missing index counts as success inside the connector — both for the
-delete and for the refresh — so repeating a deletion is harmless and stays quiet, which is the
-callers' whole retry contract.
+registry. The worker treats it like an immediate: batch cut, then one
+`deleteByQuery(index, agent, cluster)` for every index in `AGENT_DELETION_SCOPE`
+(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()` →
+`200 {"status":"ok"}`. A missing index counts as success inside the connector, so repeating a
+deletion is harmless and stays quiet, which is the callers' whole retry contract.
 
-**Why the refresh, and why it is not best-effort.** A `_delete_by_query` runs a search, so it only
-sees refreshed segments; the state indices refresh every 2 s and authd deletes immediately after
-removing the agent from `client.keys`. Without refreshing first, everything the agent's last
-session wrote inside that window is invisible to the query — the deletion answers `200` having
-matched nothing, and with the agent gone nothing ever overwrites those documents. A refresh that
-FAILS therefore fails the whole deletion (`500`/`503`, caller retries) rather than falling through
-to a delete on a stale view: the connector raises everything except a `404` (an index that does not
-exist yet has nothing to refresh). `403` is why that is not pedantry — `indices:admin/refresh` is
-outside the `crud`/`write` action groups, so a least-privilege indexer role denies it, and a
-swallowed `403` would silently reinstate the very bug the refresh exists to fix.
+**Two windows where a document can outlive the deletion.** Both are known, both are recorded by a
+skipped test in `qa/test_delete_agent.py`, and repeating the deletion clears either one (it is
+idempotent). Neither makes the deletion report failure — that is what makes them worth knowing:
 
-**The window the refresh does NOT close.** `POST /config` and `POST /stats` write through the
-ASYNCHRONOUS connector, whose queue drains on its own timer
-(`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs on
-the sync connector and cannot refresh or drain that queue, so a report still queued when the
-deletion runs lands after the delete-by-query and recreates that agent's document. Repeating the
-deletion clears it (it is idempotent). Closing it properly means ordering those two endpoints
-against the deletion the way `DELETE /agents` already is — as pipeline items on the agent's shard —
-which is tracked as a follow-up; `qa/test_delete_agent.py` carries a skipped test that records the
-gap.
+- **The index refresh interval.** A `_delete_by_query` runs a SEARCH, so it only sees refreshed
+  segments, and authd deletes immediately after removing the agent from `client.keys`. Whatever the
+  agent's last session wrote inside that interval is invisible to the query, and with the agent gone
+  nothing ever overwrites it. Refreshing each index first closed this, and was implemented — but
+  `_refresh` needs `indices:admin/refresh`, which is outside the `crud`/`write` action groups, so the
+  manager's least-privilege indexer role denies it and EVERY deletion failed with `403`. The refresh
+  was removed until the privilege is granted; restoring it is a follow-up.
+- **The async connector's queue.** `POST /config` and `POST /stats` are written through the
+  ASYNCHRONOUS connector, whose queue drains on its own timer
+  (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs
+  on the sync connector and cannot drain that queue, so a report still queued when the deletion runs
+  lands after the delete-by-query and recreates that agent's document. Closing it properly means
+  ordering those two endpoints against the deletion the way `DELETE /agents` already is — as pipeline
+  items on the agent's shard — which is the other follow-up.
 
 ## Transport (`src/http_server/`)
 
