@@ -26,7 +26,7 @@ StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& perfo
     : m_config(config)
     , m_authGate(authGate)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &authGate)
     , m_spoolFactory(spoolFactory)
     , m_sink(sink)
     , m_maxQueue(STATEFUL_MAX_QUEUE)

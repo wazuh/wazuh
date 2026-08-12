@@ -23,8 +23,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <zstd.h>
+
 using ::testing::_;
+using ::testing::Contains;
 using ::testing::Invoke;
+using ::testing::Not;
 using ::testing::Return;
 
 namespace
@@ -44,7 +48,7 @@ namespace
             RetrySenderTest()
                 : m_signer("001", m_keyProvider)
                 , m_backoff(1000, 60000, m_random)
-                , m_sender(m_performer, m_signer, m_clock, m_backoff)
+                , m_sender(m_performer, m_signer, m_clock, m_backoff, false)
             {
             }
 
@@ -199,7 +203,7 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 {
     ::testing::NiceMock<MockCallbackSink> sink;
     AuthGate gate {sink, [] {}};
-    RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, &gate};
+    RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, &gate};
 
     // First send: a 401 then a 200 on the retry -> recovered, no pause.
     EXPECT_CALL(m_performer, perform(_))
@@ -270,7 +274,7 @@ TEST_F(RetrySenderTest, UnusableCredentialsArePermanentWithoutSending)
 {
     const ConfigKeyProvider badProvider {"zz"};
     const CmacSigner badSigner {"001", badProvider};
-    RetrySender sender {m_performer, badSigner, m_clock, m_backoff};
+    RetrySender sender {m_performer, badSigner, m_clock, m_backoff, false};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
 
     const auto result = sender.send(makeSpec(), m_waiter, 4);
@@ -287,5 +291,87 @@ TEST_F(RetrySenderTest, FileBackedSpecsAreSignedThroughSignFile)
     EXPECT_CALL(m_performer, perform(_)).Times(0);
 
     const auto result = m_sender.send(spec, m_waiter, 4);
+    EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+}
+
+TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
+{
+    // m_sender is built with compressionEnabled=false: the default, and what
+    // every test above this one already exercises implicitly.
+    std::vector<uint8_t> receivedBody;
+    std::vector<std::string> receivedHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        receivedBody.assign(spec.body, spec.body + spec.bodyLength);
+        receivedHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto spec = makeSpec();
+    const auto result = m_sender.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_THAT(receivedHeaders, Not(Contains("Content-Encoding: zstd")));
+    ASSERT_EQ(spec.bodyLength, receivedBody.size());
+    EXPECT_TRUE(std::equal(receivedBody.begin(), receivedBody.end(), spec.body));
+}
+
+TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
+{
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
+
+    // A longer, repetitive body: makeSpec()'s 4-byte "body" wouldn't actually
+    // shrink under zstd's frame overhead.
+    const std::string plain(200, 'a');
+    HttpRequestSpec spec = makeSpec();
+    spec.body = reinterpret_cast<const uint8_t*>(plain.data());
+    spec.bodyLength = plain.size();
+
+    std::vector<uint8_t> receivedBody;
+    std::vector<std::string> receivedHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        receivedBody.assign(attempt.body, attempt.body + attempt.bodyLength);
+        receivedHeaders = attempt.headers;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_THAT(receivedHeaders, Contains("Content-Encoding: zstd"));
+    EXPECT_LT(receivedBody.size(), plain.size()); // Actually shrank.
+
+    std::vector<uint8_t> decompressed(plain.size());
+    const size_t decompressedSize =
+        ZSTD_decompress(decompressed.data(), decompressed.size(), receivedBody.data(), receivedBody.size());
+    ASSERT_FALSE(ZSTD_isError(decompressedSize));
+    ASSERT_EQ(plain.size(), decompressedSize);
+    EXPECT_EQ(plain, std::string(decompressed.begin(), decompressed.end()));
+
+    // The CMAC must cover the wire (compressed) bytes, not the original --
+    // re-signing the exact received bytes at the same timestamp (the clock
+    // never advanced) must reproduce the exact Authorization header sent.
+    const auto expected =
+        m_signer.sign("POST", spec.target, receivedBody.data(), receivedBody.size(), m_clock.wallSeconds());
+    ASSERT_TRUE(expected.has_value());
+    EXPECT_THAT(receivedHeaders, Contains(expected->authorization));
+}
+
+TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
+{
+    // Same fixture as FileBackedSpecsAreSignedThroughSignFile above, but with
+    // compression on: /stateful's file-backed path must stay untouched.
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = "/nonexistent/hc-spool/session.bin";
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+
+    const auto result = compressing.send(spec, m_waiter, 4);
     EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
 }

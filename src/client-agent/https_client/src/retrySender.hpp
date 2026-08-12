@@ -40,10 +40,13 @@ class RetrySender final
             HttpResponse response;
         };
 
+        /// compressionEnabled: zstd-compress in-memory bodies (Content-Encoding:
+        /// zstd) before signing, so the CMAC covers the wire bytes (#38308).
+        /// File-backed bodies (/stateful) are untouched -- out of scope here.
         /// authGate (optional): a 401 from any send reports here, pausing all
         /// traffic and surfacing re-enrollment once (#37828).
         RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock, Backoff& backoff,
-                    AuthGate* authGate = nullptr);
+                    bool compressionEnabled, AuthGate* authGate = nullptr);
 
         /// spec.headers carry the non-auth headers; the auth pair is appended per
         /// attempt. AuthFail/Permanent/VersionRejected/Interrupted return
@@ -59,6 +62,7 @@ class RetrySender final
         const ISigner& m_signer;
         IClock& m_clock;
         Backoff& m_backoff;
+        bool m_compressionEnabled;
         AuthGate* m_authGate;
 };
 

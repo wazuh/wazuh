@@ -12,13 +12,24 @@
 #include "retrySender.hpp"
 
 #include <algorithm>
+#include <vector>
+
+#include <zstd.h>
+
+namespace
+{
+// Matches the level the manager's own test-only compressor
+// (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
+constexpr int kCompressionLevel = 3;
+} // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
-                         Backoff& backoff, AuthGate* authGate)
+                         Backoff& backoff, bool compressionEnabled, AuthGate* authGate)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
     , m_backoff(backoff)
+    , m_compressionEnabled(compressionEnabled)
     , m_authGate(authGate)
 {
 }
@@ -75,6 +86,30 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
 RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
+
+    // In-memory bodies only -- /stateful's file-backed path is untouched (its
+    // spool file is read twice, independently, by signFile() and the
+    // performer; compressing it needs a different design, out of scope here).
+    // Compressed before signing so the CMAC covers the wire bytes.
+    std::vector<uint8_t> compressedBody;
+    if (m_compressionEnabled && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
+    {
+        compressedBody.resize(ZSTD_compressBound(attempt.bodyLength));
+        const size_t written = ZSTD_compress(compressedBody.data(), compressedBody.size(), attempt.body,
+                                             attempt.bodyLength, kCompressionLevel);
+
+        if (!ZSTD_isError(written))
+        {
+            compressedBody.resize(written);
+            attempt.body = compressedBody.data();
+            attempt.bodyLength = compressedBody.size();
+            attempt.headers.push_back("Content-Encoding: zstd");
+        }
+        // else: fall through and send the original, uncompressed body -- a
+        // one-shot ZSTD_compress() into a ZSTD_compressBound()-sized buffer
+        // should never actually fail, but never lose the request over it.
+    }
+
     const auto timestamp = m_clock.wallSeconds();
     const auto headers =
         attempt.bodyFilePath.empty()

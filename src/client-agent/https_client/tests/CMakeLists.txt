@@ -24,6 +24,7 @@ target_link_libraries(
   optimized gtest
   optimized gmock
   https_client
+  ext_zstd
   pthread)
 
 target_include_directories(
