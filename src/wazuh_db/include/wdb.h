@@ -19,7 +19,6 @@
 #include "syscheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"
-#include "router.h"
 #include "global-config.h"
 
 #define WDB_MAX_COMMAND_SIZE    512
