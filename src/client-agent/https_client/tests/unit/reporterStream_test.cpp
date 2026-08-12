@@ -87,6 +87,7 @@ namespace
             ScriptedRandom m_random {{0.0}};
             NiceMock<MockCallbackSink> m_sink;
             AuthGate m_authGate;
+            CompressionGate m_compressionGate;
             ClusterIdentity m_cluster;
             FakeCollectorSource m_collectors;
             MockHttpPerformer m_performer;
@@ -97,7 +98,7 @@ namespace
 TEST_F(ReporterStreamTest, DisabledReportersNeverCollectOrSend)
 {
     const auto config = makeConfig(false, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     EXPECT_FALSE(reporter.anyEnabled());
     EXPECT_CALL(m_performer, perform(_)).Times(0);
@@ -110,7 +111,7 @@ TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
 {
     m_cluster.set("prod", "node01");
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
 
     std::string body;
@@ -134,7 +135,7 @@ TEST_F(ReporterStreamTest, StampOverwritesCollectorSuppliedIdentityFields)
     m_cluster.set("authoritative", "n1");
     m_collectors.m_stats = R"({"agent_id":"WRONG","cluster":"WRONG","x":1})";
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
 
     std::string body;
@@ -155,7 +156,7 @@ TEST_F(ReporterStreamTest, NullCollectorReturnSkipsWithoutSending)
 {
     m_collectors.m_stats = std::nullopt;
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
@@ -166,7 +167,7 @@ TEST_F(ReporterStreamTest, NonObjectCollectorReturnIsSkipped)
 {
     m_collectors.m_stats = R"(["not","an","object"])";
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, true);
@@ -175,7 +176,7 @@ TEST_F(ReporterStreamTest, NonObjectCollectorReturnIsSkipped)
 TEST_F(ReporterStreamTest, UnregisteredOrPausedSkipsAndKeepsDueness)
 {
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     reporter.tick(m_waiter, false); // Not registered.
@@ -187,7 +188,7 @@ TEST_F(ReporterStreamTest, UnregisteredOrPausedSkipsAndKeepsDueness)
 TEST_F(ReporterStreamTest, IntervalGovernsTheNextSend)
 {
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 200)));
 
@@ -203,7 +204,7 @@ TEST_F(ReporterStreamTest, IntervalGovernsTheNextSend)
 TEST_F(ReporterStreamTest, BackPressureDefersOnlyThatPath)
 {
     const auto config = makeConfig(true, true);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
                              m_cluster, m_collectors};
     // Both due at epoch: stats 503 (Retry-After 5), config 200.
     EXPECT_CALL(m_performer, perform(_))

@@ -37,8 +37,8 @@ class ReporterStream final
 {
     public:
         ReporterStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                       IClock& clock, IRandom& random, AuthGate& authGate, ClusterIdentity& cluster,
-                       ICollectorSource& collectors);
+                       IClock& clock, IRandom& random, AuthGate& authGate, CompressionGate& compressionGate,
+                       ClusterIdentity& cluster, ICollectorSource& collectors);
 
         /// True when at least one reporter is enabled (the facade only starts
         /// the worker then).

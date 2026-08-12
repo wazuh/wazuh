@@ -89,6 +89,9 @@ INSTANTIATE_TEST_SUITE_P(
         // 413: the /stateless split-and-resend class (#37835), distinct from
         // the generic permanent drop.
         ClassifierCase {TransportStatus::Ok, 413, OutcomeClass::PayloadTooLarge},
+        // 415: the manager rejects Content-Encoding: zstd (#38308) --
+        // RetrySender retries once, uncompressed.
+        ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
         // Permanent for this payload.
         ClassifierCase {TransportStatus::Ok, 400, OutcomeClass::Permanent},
         ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::Permanent}));
@@ -112,5 +115,6 @@ TEST(OutcomeClassifierTest, HcResultMapping)
     EXPECT_EQ(HC_RESULT_AUTH_FAIL, toHcResult(OutcomeClass::AuthFail));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::Permanent));
     EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::VersionRejected));
+    EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::CompressionRejected));
     EXPECT_EQ(HC_RESULT_ERROR, toHcResult(OutcomeClass::Interrupted));
 }

@@ -63,7 +63,8 @@ namespace
                 : m_signer("001", m_keyProvider)
                 , m_config(makeConfig())
                 , m_authGate(m_sink, [] {})
-            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate)
+            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+                       m_compressionGate)
             {
             }
 
@@ -98,6 +99,7 @@ namespace
             NiceMock<MockCallbackSink> m_sink;
             MockHttpPerformer m_performer;
             AuthGate m_authGate;
+            CompressionGate m_compressionGate;
             FakeWaiter m_waiter;
             StatelessStream m_stream;
     };
@@ -159,7 +161,7 @@ TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
     raw.verify_mode = HC_VERIFY_NONE;
     const ModuleConfig config = ModuleConfig::fromC(raw);
     StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate};
+                            m_random, m_sink,      m_authGate, m_compressionGate};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -190,7 +192,7 @@ TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
         R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
         R"("cluster":{"name":"c1","node":"n1"}})";
     StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, [&hostJson] { return hostJson; }};
+                            m_sink,    m_authGate, m_compressionGate, [&hostJson] { return hostJson; }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -229,7 +231,7 @@ TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenCollectHostIsEmpty)
     // metadata_provider has nothing yet (e.g. before the first /control
     // handshake): the H line must still be well-formed, carrying only id.
     StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, [] { return std::string(); }};
+                            m_sink,    m_authGate, m_compressionGate, [] { return std::string(); }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -255,7 +257,7 @@ TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
     // A torn shared-memory read or an unexpected shape must degrade to
     // "agent.id only", never corrupt the H line or crash the stream.
     StatelessStream stream {m_config,  m_performer, m_signer,  m_clock, m_random,
-                            m_sink,    m_authGate, [] { return std::string("not json"); }};
+                            m_sink,    m_authGate, m_compressionGate, [] { return std::string("not json"); }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -283,7 +285,7 @@ TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruc
     std::string clusterName = "";
     StatelessStream stream
     {
-        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate,
         [&clusterName]
         {
             return clusterName.empty() ? std::string() : R"({"cluster":{"name":")" + clusterName + "\"}}";
@@ -421,7 +423,7 @@ TEST_F(StatelessStreamTest, ASingleOversized413DoesNotShrinkTheBudget)
     raw.buffer_cap_multiplier = 4;
     const ModuleConfig config = ModuleConfig::fromC(raw);
     StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate};
+                            m_random, m_sink,      m_authGate, m_compressionGate};
 
     const auto push = [&stream](const std::string & frame)
     {

@@ -24,12 +24,14 @@ constexpr int kCompressionLevel = 3;
 } // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
-                         Backoff& backoff, bool compressionEnabled, AuthGate* authGate)
+                         Backoff& backoff, bool compressionEnabled, CompressionGate* compressionGate,
+                         AuthGate* authGate)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
     , m_backoff(backoff)
     , m_compressionEnabled(compressionEnabled)
+    , m_compressionGate(compressionGate)
     , m_authGate(authGate)
 {
 }
@@ -42,6 +44,7 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
 
     Result result;
     bool authRetried = false;
+    bool compressionRetried = false;
 
     for (uint32_t attempt = 1; attempt <= maxAttempts; attempt++)
     {
@@ -53,6 +56,24 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         if (result.outcome == OutcomeClass::AuthFail && !authRetried)
         {
             authRetried = true;
+            result = attemptOnce(base);
+        }
+
+        // One-shot compression retry: a 415 means the manager doesn't accept
+        // Content-Encoding: zstd. Report it to the shared gate first -- every
+        // RetrySender on this agent stops compressing from here on, for the
+        // rest of this run (#38308) -- then retry; attemptOnce() re-checks the
+        // now-disabled gate itself, so this retry is naturally uncompressed
+        // with no separate "forced uncompressed" parameter needed.
+        if (result.outcome == OutcomeClass::CompressionRejected && !compressionRetried)
+        {
+            compressionRetried = true;
+
+            if (m_compressionGate != nullptr)
+            {
+                m_compressionGate->reportRejected();
+            }
+
             result = attemptOnce(base);
         }
 
@@ -92,7 +113,8 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
     // performer; compressing it needs a different design, out of scope here).
     // Compressed before signing so the CMAC covers the wire bytes.
     std::vector<uint8_t> compressedBody;
-    if (m_compressionEnabled && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
+    const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
+    if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
     {
         compressedBody.resize(ZSTD_compressBound(attempt.bodyLength));
         const size_t written = ZSTD_compress(compressedBody.data(), compressedBody.size(), attempt.body,

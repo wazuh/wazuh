@@ -203,7 +203,7 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
 {
     ::testing::NiceMock<MockCallbackSink> sink;
     AuthGate gate {sink, [] {}};
-    RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, &gate};
+    RetrySender guarded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &gate};
 
     // First send: a 401 then a 200 on the retry -> recovered, no pause.
     EXPECT_CALL(m_performer, perform(_))
@@ -374,4 +374,83 @@ TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
 
     const auto result = compressing.send(spec, m_waiter, 4);
     EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
+}
+
+TEST_F(RetrySenderTest, CompressedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)
+{
+    CompressionGate gate;
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &gate};
+
+    const std::string plain(200, 'a'); // Long enough to actually compress.
+    HttpRequestSpec spec = makeSpec();
+    spec.body = reinterpret_cast<const uint8_t*>(plain.data());
+    spec.bodyLength = plain.size();
+
+    std::vector<std::vector<std::string>> seenHeadersPerAttempt;
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenHeadersPerAttempt.push_back(attempt.headers);
+        return response(TransportStatus::Ok, 415);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenHeadersPerAttempt.push_back(attempt.headers);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome); // The request itself still succeeded.
+    ASSERT_EQ(2u, seenHeadersPerAttempt.size());
+    EXPECT_THAT(seenHeadersPerAttempt[0], Contains("Content-Encoding: zstd"));
+    EXPECT_THAT(seenHeadersPerAttempt[1], Not(Contains("Content-Encoding: zstd")));
+    EXPECT_TRUE(gate.disabled()); // Latched for the rest of this agent's run.
+}
+
+TEST_F(RetrySenderTest, CompressionRejectionDisablesTheSharedGateForOtherSenders)
+{
+    // Two independent RetrySender instances (as two different streams would
+    // each own) sharing ONE gate: the first's 415 must stop the second from
+    // ever trying to compress, without the second seeing a 415 itself.
+    CompressionGate gate;
+    RetrySender first {m_performer, m_signer, m_clock, m_backoff, true, &gate};
+    RetrySender second {m_performer, m_signer, m_clock, m_backoff, true, &gate};
+
+    const std::string plain(200, 'a');
+    HttpRequestSpec spec = makeSpec();
+    spec.body = reinterpret_cast<const uint8_t*>(plain.data());
+    spec.bodyLength = plain.size();
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 415))) // first: rejected.
+    .WillOnce(Return(response(TransportStatus::Ok, 200))) // first's retry: uncompressed, succeeds.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        // second's only attempt: the gate is already disabled, so it never
+        // even tries to compress -- no header, no wasted round trip.
+        EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    first.send(spec, m_waiter, 1);
+    ASSERT_TRUE(gate.disabled());
+    const auto result = second.send(spec, m_waiter, 1);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+}
+
+TEST_F(RetrySenderTest, SecondCompressionRejectionTerminatesWithoutLooping)
+{
+    // No gate here: nothing disables compression between attempts, so both
+    // calls try to compress -- proving the one-shot retry is bounded per
+    // send() call regardless, not just because the gate happened to help.
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 415)));
+
+    const auto result = compressing.send(makeSpec(), m_waiter, 4); // maxAttempts=4, but never a 3rd call.
+    EXPECT_EQ(OutcomeClass::CompressionRejected, result.outcome);
 }
