@@ -415,7 +415,6 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
     std::mutex parkedMutex;
     std::condition_variable parkedCv;
     std::vector<std::shared_ptr<IHttpResponder>> parked;
-    std::atomic<int> dispatched {0};
 
     auto server = makeUdsHttpServer();
     server->addRoute(Method::Post,
@@ -425,7 +424,6 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
                          {
                              std::lock_guard<std::mutex> lock {parkedMutex};
                              parked.push_back(std::move(responder));
-                             dispatched.fetch_add(1);
                          }
                          parkedCv.notify_one();
                      });
@@ -448,9 +446,10 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
     // lands, so this no longer races against CPU availability under ASan/CI load.
     {
         std::unique_lock<std::mutex> lock {parkedMutex};
-        parkedCv.wait_for(lock, std::chrono::seconds {120}, [&] { return dispatched.load() >= CONCURRENCY; });
+        parkedCv.wait_for(lock, std::chrono::seconds {120},
+                          [&] { return parked.size() >= static_cast<size_t>(CONCURRENCY); });
+        ASSERT_EQ(static_cast<size_t>(CONCURRENCY), parked.size()) << "all requests must be in flight simultaneously";
     }
-    ASSERT_EQ(CONCURRENCY, dispatched.load()) << "all requests must be in flight simultaneously";
 
     // Now release them all.
     {
