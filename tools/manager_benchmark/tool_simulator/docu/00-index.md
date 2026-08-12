@@ -23,6 +23,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [11-go-implementation-notes.md](11-go-implementation-notes.md) | Libraries and package layout |
 | [12-acceptance-criteria.md](12-acceptance-criteria.md) | AC-A…AC-L: when the tool is done |
 | [13-engine-event-streams.md](13-engine-event-streams.md) | `POST /stateless`: the log-event batch a lane can stream, alongside inventory |
+| [14-scan-vd.md](14-scan-vd.md) | `POST /scan/vd`: the feed-update re-scan request, and how it differs from a VDFirst session's scan |
 
 Operator-facing documentation of the system under test lives in
 `docs/ref/modules/inventory-sync-server/` (architecture, API reference, schemas) and
@@ -42,6 +43,7 @@ originates.
 | **Session** | ONE `POST /stateful` request carrying one whole `Message{FullSession}`, and its response |
 | **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 10 s) |
 | **Engine stream** | A lane that ships log events to `POST /stateless` (the engine ingress) instead of inventory sessions |
+| **Re-scan request** | A `POST /scan/vd` (`kind: "scan_vd"`): asks the manager to re-scan the inventory it ALREADY holds for that agent, against a newer CVE feed — not the scan a VDFirst/VDSync session triggers over the inventory it carries |
 | **EPS** | Requests per second the sender aims for, enforced by a leaky bucket |
 | **Drain** | The bounded shutdown window: stop starting work, let in-flight responses land, then report |
 | **Artifacts** | The files a run produces: `bench.csv`, `sender_summary.json`, `server_metrics.csv`, … |

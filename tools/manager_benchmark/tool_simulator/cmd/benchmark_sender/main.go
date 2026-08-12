@@ -161,6 +161,15 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verd
 		fmt.Printf("stateless: sent=%d 202=%d 400=%d 413=%d 503=%d events=%d\n",
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)
 	}
+	if c.ScanSent > 0 {
+		// 200 is "queued": remoted admits the re-scan and its worker pool
+		// dispatches it later (docu/14-scan-vd.md), so this line says how many
+		// requests were ACCEPTED, not how many scans finished.
+		scan := s.Hists["scan"]
+		fmt.Printf("scan/vd: sent=%d 200(queued)=%d 409=%d 503=%d other=%d  admission ms: p50=%.1f p99=%.1f\n",
+			c.ScanSent, c.Scan200, c.Scan409, c.Scan503, c.ScanOther,
+			float64(scan.P50)/1000, float64(scan.P99)/1000)
+	}
 	if c.StartupOK+c.StartupErr+c.NotifyOK+c.NotifyErr+c.ShutdownOK+c.ShutdownErr > 0 {
 		fmt.Printf("control: startup=%d/%d notify=%d/%d shutdown=%d/%d\n",
 			c.StartupOK, c.StartupOK+c.StartupErr, c.NotifyOK, c.NotifyOK+c.NotifyErr, c.ShutdownOK, c.ShutdownOK+c.ShutdownErr)

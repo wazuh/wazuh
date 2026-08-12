@@ -98,6 +98,46 @@ func TestLoaderAcceptsRetryAndExpected(t *testing.T) {
 	}
 }
 
+// A scan_vd step is a request to remoted, not a session, so the loader has to
+// refuse the two ways an author can get it wrong: asking for it where the route
+// does not exist (uds), and describing a payload it will never send.
+func TestLoaderConstrainsScanVD(t *testing.T) {
+	if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "scan_vd"}`, "")); err == nil ||
+		!strings.Contains(err.Error(), "agent-mode only") {
+		t.Fatalf("scan_vd in uds mode must be refused (POST /scan/vd is a remoted route), got %v", err)
+	}
+
+	const minimalAgent = `{
+	  "name": "t", "mode": "agent",
+	  "lanes": {"main": [%s]},
+	  "fleets": [{"name": "f", "agents": 1, "first_id": 1, "lanes": ["main"]}]
+	}`
+	for _, body := range []string{
+		`{"kind": "scan_vd", "documents": {"count": 5}}`,
+		`{"kind": "scan_vd", "dump": "../whatever.json"}`,
+		`{"kind": "scan_vd", "module": "syscollector_vd"}`,
+		`{"kind": "scan_vd", "option": "VDFirst"}`,
+		`{"kind": "scan_vd", "indices": ["wazuh-states-inventory-packages"]}`,
+	} {
+		if _, err := loadFromLiteral(t, sprintf(minimalAgent, body)); err == nil {
+			t.Errorf("scan_vd carrying a payload field must be refused: %s", body)
+		}
+	}
+
+	// What it DOES take: the timing fields and a feed_offset override (the
+	// deliberate-409 contract case).
+	scn, err := loadFromLiteral(t, sprintf(minimalAgent,
+		`{"kind": "scan_vd", "initial_delay": "60s", "repeat_count": 2, "repeat_delay": "5s", "feed_offset": 1}`))
+	if err != nil {
+		t.Fatalf("a well-formed scan_vd step must load: %v", err)
+	}
+	step := scn.Lanes["main"][0]
+	if step.InitialDelay.D() != time.Minute || step.RepeatCount != 2 ||
+		step.FeedOffset == nil || *step.FeedOffset != 1 {
+		t.Fatalf("scan_vd fields not honored: %+v", step)
+	}
+}
+
 func sprintf(format string, args ...any) string {
 	out := format
 	for _, a := range args {

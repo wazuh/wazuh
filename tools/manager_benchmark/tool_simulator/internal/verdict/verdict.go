@@ -67,6 +67,18 @@ var controlCounters = map[string]func(metrics.Counters) uint64{
 	"shutdown_err": func(c metrics.Counters) uint64 { return c.ShutdownErr },
 }
 
+// scanCounters are the POST /scan/vd outcomes. "s200" asserts how many re-scan
+// requests were ACCEPTED (queued), which is the only part of the scan this side
+// of the wire can observe -- whether the scan then ran is in the manager's own
+// log/metrics, not here (docu/14-scan-vd.md).
+var scanCounters = map[string]func(metrics.Counters) uint64{
+	"sent":  func(c metrics.Counters) uint64 { return c.ScanSent },
+	"s200":  func(c metrics.Counters) uint64 { return c.Scan200 },
+	"s409":  func(c metrics.Counters) uint64 { return c.Scan409 },
+	"s503":  func(c metrics.Counters) uint64 { return c.Scan503 },
+	"other": func(c metrics.Counters) uint64 { return c.ScanOther },
+}
+
 var deleteCounters = map[string]func(metrics.Counters) uint64{
 	"ok":  func(c metrics.Counters) uint64 { return c.DeletesOK },
 	"err": func(c metrics.Counters) uint64 { return c.DeletesErr },
@@ -90,6 +102,7 @@ func Validate(exp *scenario.Expected) error {
 		{"stateless", statelessCounters, exp.Stateless},
 		{"control", controlCounters, exp.Control},
 		{"deletes", deleteCounters, exp.Deletes},
+		{"scan", scanCounters, exp.Scan},
 	}
 	for _, g := range groups {
 		for counter, assertion := range g.asserts {
@@ -125,7 +138,7 @@ func Count(exp *scenario.Expected) int {
 		return 0
 	}
 	n := len(exp.TransportErrors) + len(exp.RetriesExhausted)
-	for _, group := range []map[string]scenario.Assertion{exp.Sessions, exp.Stateless, exp.Control, exp.Deletes} {
+	for _, group := range []map[string]scenario.Assertion{exp.Sessions, exp.Stateless, exp.Control, exp.Deletes, exp.Scan} {
 		for _, a := range group {
 			n += len(a)
 		}
@@ -176,6 +189,7 @@ func Evaluate(exp *scenario.Expected, c metrics.Counters) *Result {
 		{"stateless", statelessCounters, exp.Stateless},
 		{"control", controlCounters, exp.Control},
 		{"deletes", deleteCounters, exp.Deletes},
+		{"scan", scanCounters, exp.Scan},
 	}
 	for _, g := range groups {
 		counters := make([]string, 0, len(g.asserts))

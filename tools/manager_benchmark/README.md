@@ -110,6 +110,16 @@ with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-d
 against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
 instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
 
+The same offset gates the **other** way a scan reaches the VD module: `POST /scan/vd`, the
+feed-update re-scan a real agent asks for once `/control` reports a higher `vd_feed_offset`. A
+scenario sends one with a `scan_vd` step (agent mode only), typically right after the VD inventory
+step and with an `initial_delay` so the documents it re-scans have landed first —
+`scenarios/real_vd_rescan_storm.json` does exactly that with 100 agents. It is a different manager
+path from a VDFirst session's scan (remoted's worker pool instead of the inventory pipeline's VD scan
+lane), and its `200` means **queued**, not scanned: the scans themselves show up in the manager's log
+as `reason=feed_update`. Full contract in
+[`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
+
 ## Manager preparation (agent mode)
 
 Agent-mode runs enroll a synthetic fleet against authd, so enrollment must be open and password-free.

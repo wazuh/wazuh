@@ -361,8 +361,15 @@ BENCH_METRICS = [
     ("stateless_sent",        "Engine Batches Sent (cumulative)", "Count"),
     ("events_sent",           "Engine Events Sent (cumulative)",  "Count"),
     ("control_notify_ok",     "Control Notify OK (cumulative)",   "Count"),
+    # POST /scan/vd (feed-update re-scan). scan_200 is "queued", not "scanned":
+    # the manager answers at admission and scans afterward, one agent at a time.
+    ("scan_sent",             "VD Re-scan Requests Sent (cumulative)",     "Count"),
+    ("scan_200",              "VD Re-scan Requests Queued (cumulative)",   "Count"),
+    ("scan_409",              "VD Re-scan version_mismatch (cumulative)",  "Count"),
+    ("scan_503",              "VD Re-scan scan_queue_full (cumulative)",   "Count"),
     ("session_latency_ms_p50", "Session Latency p50",             "ms"),
     ("session_latency_ms_p99", "Session Latency p99",             "ms"),
+    ("scan_latency_ms_p99",   "VD Re-scan Admission Latency p99",  "ms"),
 ]
 
 # inventory_sync_server. Counters are cumulative for the module's lifetime, so

@@ -16,6 +16,7 @@ var validKinds = map[string]bool{
 	"delta": true, "cleans": true, "checksum": true,
 	"metadata": true, "groups": true, "full_resync": true,
 	"delete_agent": true, "engine": true, "raw": true,
+	"scan_vd": true,
 }
 
 // Load reads and strictly validates a scenario file. Unknown fields and unknown
@@ -141,6 +142,23 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 	}
 	if step.Kind == "delete_agent" && s.Mode != "uds" {
 		return fmt.Errorf("%s: delete_agent is uds-mode only", where)
+	}
+	if step.Kind == "scan_vd" {
+		// The re-scan request is an authenticated route on REMOTED; the module's
+		// Unix socket has no /scan/vd at all, so a uds scenario asking for one
+		// is a scenario bug, not a run that measures less.
+		if s.Mode != "agent" {
+			return fmt.Errorf("%s: scan_vd is agent-mode only (POST /scan/vd is a remoted route)", where)
+		}
+		// A scan request carries only type and feed_offset: anything describing
+		// documents or a payload on this step means the author expected it to
+		// send inventory too.
+		if step.Documents != nil || step.Contexts != nil || step.Dump != "" ||
+			step.Module != "" || step.Option != "" || len(step.Indices) > 0 ||
+			step.Checksum != "" || step.Raw != "" || step.GlobalVer != 0 {
+			return fmt.Errorf("%s: scan_vd only takes feed_offset and the timing fields "+
+				"(it sends {\"type\":\"feed_update\",\"feed_offset\":N}, no session payload)", where)
+		}
 	}
 	if (step.Kind == "metadata" || step.Kind == "groups") && len(step.Indices) == 0 {
 		return fmt.Errorf("%s: %s needs indices", where, step.Kind)

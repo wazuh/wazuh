@@ -147,7 +147,8 @@ system under test produces incomparable numbers between runs, and consuming that
 the tool a conformance checker for a contract that is not what this benchmark measures.
 
 The exception is `notify`'s `vd_feed_offset`: it is the one piece of server state a real agent
-DOES act on (deciding when to request a VD re-scan — see
+DOES act on (deciding when to request a VD re-scan through `POST /scan/vd` — see
+[14-scan-vd.md](14-scan-vd.md) and
 [stateless-api.yaml's `/control` docs](../../../../docs/ref/modules/remoted/https-events-api.md)),
 and VD sessions' `Start.feed_offset` must match the server's current offset or they are rejected
 with `409 version_mismatch` before ever reaching the scanner (see
