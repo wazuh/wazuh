@@ -884,7 +884,7 @@ def create_group(group_id: str) -> WazuhResult:
         full_copy(agent_conf_template, path.join(tmp_path, 'agent.conf'))
 
         chown_r(tmp_path, common.wazuh_uid(), common.wazuh_gid())
-        chmod_r(tmp_path, 0o660)
+        chmod_r(tmp_path, 0o660)  # nosec B103 -- group-readable files; the enclosing dir is tightened to 0700 below
         chmod(tmp_path, 0o700)
 
         rename(tmp_path, group_path)
