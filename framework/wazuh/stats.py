@@ -247,6 +247,9 @@ def deprecated_get_daemons_stats(filename):
         some_msg='Could not read statistical information for some nodes',
         none_msg='Could not read statistical information for any node'
     )
+    # Only the known daemon stats files may be read through this callable.
+    if filename not in (common.ANALYSISD_STATS, common.REMOTED_STATS):
+        raise exception.WazuhError(1308, extra_message=filename)
     result.affected_items = get_daemons_stats_(filename)
     result.total_affected_items = len(result.affected_items)
 
