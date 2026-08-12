@@ -238,6 +238,10 @@ TEST(ControlHandlerTest, StartupInvalidVersionReturns400AndUpdatesStatusCode)
             c.find("\"status_code\":1") != std::string::npos)
         {
             sawStatusCode = true;
+            // A malformed version can't be persisted verbatim: the framework's WazuhVersion
+            // parser raises on anything outside MAJOR.MINOR.PATCH, which used to break the
+            // entire agent listing the moment one agent sent garbage. It must be sentinelized.
+            EXPECT_NE(c.find("\"version\":\"N/A\""), std::string::npos);
         }
     }
     EXPECT_TRUE(sawStatusCode);
@@ -257,6 +261,27 @@ TEST(ControlHandlerTest, StartupHigherVersionRejectedWhenAllowHigherFalse)
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.status, 400);
     EXPECT_NE(w.value.body.find("invalid_version"), std::string::npos);
+
+    // The reported version is well-formed -- just too high for this manager's policy -- so it's
+    // safe to persist as-is in wdb and worth keeping visible, unlike a truly malformed version.
+    for (int i = 0; i < 100 && h.wdbServer->requestCount() < 1; ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    ASSERT_GE(h.wdbServer->requestCount(), 1U);
+    const auto commands = wdb->commands();
+    bool sawStatusCode = false;
+    for (const auto& c : commands)
+    {
+        if (c.find("global update-status-code") != std::string::npos &&
+            c.find("\"status_code\":1") != std::string::npos)
+        {
+            sawStatusCode = true;
+            EXPECT_NE(c.find("\"version\":\"5.9.9\""), std::string::npos);
+            EXPECT_EQ(c.find("\"version\":\"N/A\""), std::string::npos);
+        }
+    }
+    EXPECT_TRUE(sawStatusCode);
 }
 
 TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
