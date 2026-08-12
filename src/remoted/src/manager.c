@@ -401,7 +401,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         *(payload++) = '\0';
 
         req_save(counter, payload, msg_length - (payload - r_msg));
-        rem_inc_recv_ctrl_request(key->id);
+        rem_inc_recv_ctrl_request();
         return 0;  // Don't queue HC_REQUEST messages
     }
 
@@ -437,24 +437,24 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                         // For version errors, we need database access, so queue the message
                         cJSON_Delete(agent_info);
                         *is_startup = 1;
-                        rem_inc_recv_ctrl_startup(key->id);
+                        rem_inc_recv_ctrl_startup();
                         return 1;
                     }
                 } else {
                     // For version errors, we need database access, so queue the message
                     cJSON_Delete(agent_info);
                     *is_startup = 1;
-                    rem_inc_recv_ctrl_startup(key->id);
+                    rem_inc_recv_ctrl_startup();
                     return 1;
                 }
                 cJSON_Delete(agent_info);
             }
             *is_startup = 1;
-            rem_inc_recv_ctrl_startup(key->id);
+            rem_inc_recv_ctrl_startup();
         } else {
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             *is_shutdown = 1;
-            rem_inc_recv_ctrl_shutdown(key->id);
+            rem_inc_recv_ctrl_shutdown();
             void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
             os_free(deleted);
 
@@ -472,7 +472,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             return -1;
         }
 
-        rem_inc_recv_ctrl_keepalive(key->id);
+        rem_inc_recv_ctrl_keepalive();
     }
 
     /* Send ACK for non-shutdown messages */
@@ -495,7 +495,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         }
 
         if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
-            rem_inc_send_ack(key->id);
+            rem_inc_send_ack();
         }
     }
 
@@ -1527,7 +1527,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
 
     snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
     if (send_msg(agent_id, msg_err, -1) >= 0) {
-        rem_inc_send_ack(agent_id);
+        rem_inc_send_ack();
     }
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
@@ -1667,7 +1667,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared(agent_id);
+        rem_inc_send_shared();
     }
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
@@ -1688,7 +1688,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
             fclose(fp);
             return OS_INVALID;
         } else {
-            rem_inc_send_shared(agent_id);
+            rem_inc_send_shared();
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_NET_PROTOCOL_UDP) {
@@ -1708,7 +1708,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         fclose(fp);
         return OS_INVALID;
     } else {
-        rem_inc_send_shared(agent_id);
+        rem_inc_send_shared();
     }
 
     fclose(fp);

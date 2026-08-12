@@ -596,7 +596,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     expect_function_call(__wrap_key_unlock);
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -705,7 +705,7 @@ void test_HandleSecureMessage_HC_req_message(void** state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -795,7 +795,7 @@ void test_HandleSecureMessage_invalid_HC_req_message(void** state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -890,7 +890,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     expect_function_call(__wrap_key_unlock);
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -2031,7 +2031,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the control message queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -2672,7 +2672,7 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_capture, NULL);
     will_return(__wrap_batch_queue_enqueue_ex, 0);
-    expect_string(__wrap_rem_inc_recv_events, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_events);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 

@@ -31,7 +31,6 @@ int worker_pool;
 int merge_shared;
 size_t ctrl_msg_queue_size;
 int keyupdate_interval;
-int state_interval;
 rlim_t nofile;
 int sender_pool;
 int rto_sec;
@@ -109,7 +108,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
-    state_interval = getDefine_Int_default("remoted", "state_interval", 0, 86400, 5);
     nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);
     request_pool = getDefine_Int_default("remoted", "request_pool", 1, 4096, 1024);
@@ -249,7 +247,6 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"worker_pool",worker_pool);
     cJSON_AddNumberToObject(remoted,"control_msg_queue_size",ctrl_msg_queue_size);
     cJSON_AddNumberToObject(remoted,"keyupdate_interval",keyupdate_interval);
-    cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
     cJSON_AddNumberToObject(remoted,"batch_events_capacity",batch_events_capacity);
     cJSON_AddNumberToObject(remoted,"batch_events_per_agent_capacity",batch_events_per_agent_capacity);
     cJSON_AddNumberToObject(remoted,"queue_max_bytes",(double)queue_max_bytes);

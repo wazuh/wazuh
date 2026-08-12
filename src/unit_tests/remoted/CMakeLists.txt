@@ -59,7 +59,6 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
-                            -Wl,--wrap,rem_inc_recv_states -Wl,--wrap,rem_inc_recv_upgrade_ack \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
@@ -96,20 +95,14 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -Wl,--wrap,rem_get_input_max_bytes \
-                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
-                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
-                            -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
-                            -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
-                            -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
-                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
-                           -Wl,--wrap,assign_group_to_agent \
-                           -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid \
+                           -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig \
+                           -Wl,--wrap,assign_group_to_agent -Wl,--wrap,getpid \
                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd \
-                           -Wl,--wrap,agent_meta_check_version ${DEBUG_OP_WRAPPERS}")
+                           ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_queue")
 list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
@@ -157,9 +150,9 @@ foreach(counter RANGE ${count})
     add_test(NAME ${remoted_test_name} COMMAND ${remoted_test_name})
 endforeach()
 
-# test_legacy_task_delivery and test_remcom both reach agent_metadata_db.c's
-# agent_meta_check_version() (directly or via legacy_task_agent_is_pre_v5()/
-# remcom_filter_pre_v5_agent_ids()) and need its own real calls to agent_meta_snapshot_str/
+# test_legacy_task_delivery reaches agent_metadata_db.c's
+# agent_meta_check_version() (directly or via legacy_task_agent_is_pre_v5())
+# and needs its own real calls to agent_meta_snapshot_str/
 # wdb_get_agent_info to go through this binary's --wrap mocks. Linking that .o only from the
 # prebuilt libremoted_lib.a archive left --wrap's substitution unreliable for intra-file calls
 # originating in an ARCHIVE member (observed empirically: the real, unwrapped functions ran

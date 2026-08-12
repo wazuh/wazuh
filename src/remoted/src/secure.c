@@ -91,7 +91,6 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
@@ -463,15 +462,6 @@ void HandleSecure()
     /* Global stats uptime */
     remoted_state.uptime = time(NULL);
 
-    /* Create OSHash for agents statistics */
-    remoted_agents_state = OSHash_Create();
-    if (!remoted_agents_state) {
-        merror_exit(HASH_ERROR);
-    }
-    if (!OSHash_setSize(remoted_agents_state, 2048)) {
-        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
-    }
-
     /* Initialize manager */
     manager_init();
 
@@ -496,9 +486,6 @@ void HandleSecure()
 
     // Create com request thread
     w_create_thread(remcom_main, NULL);
-
-    // Create State writer thread
-    w_create_thread(rem_state_main, NULL);
 
     // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
     w_create_thread(legacy_upgrade_task_delivery, NULL);
@@ -1157,7 +1144,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 _close_sock(&keys, sock_idle);
             }
 
-            rem_inc_recv_ctrl(key->id);
+            rem_inc_recv_ctrl();
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -1282,7 +1269,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         rem_inc_recv_events_failed();
         maybe_log_events_queue_drop();
     } else {
-        rem_inc_recv_events(agentid_str);
+        rem_inc_recv_events();
     }
 
     os_free(agentid_str);

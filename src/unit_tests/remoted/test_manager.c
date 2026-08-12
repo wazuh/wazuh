@@ -4037,7 +4037,7 @@ void test_validate_control_msg_hc_request_success(void** state)
     expect_value(__wrap_req_save, length, 12);
     will_return(__wrap_req_save, 0);
 
-    expect_string(__wrap_rem_inc_recv_ctrl_request, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_request);
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4091,7 +4091,7 @@ void test_validate_control_msg_shutdown_success(void** state)
     will_return(__wrap_get_ipv4_string, "192.168.1.1");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_SHUTDOWN from '192.168.1.1'");
-    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_shutdown);
 
     // Mock OSHash for agent_data_hash deletion
     will_return(__wrap_OSHash_Delete_ex, NULL);
@@ -4136,7 +4136,7 @@ void test_validate_control_msg_startup_success(void** state)
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
 
-    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4160,12 +4160,12 @@ void test_validate_control_msg_keepalive_success(void** state)
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
-    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_keepalive);
     expect_string(__wrap_send_msg_with_key_control, agent_id, "001");
     expect_string(__wrap_send_msg_with_key_control, msg, "#!-agent ack ");
     expect_value(__wrap_send_msg_with_key_control, skip_key_lock, true);
 
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_send_ack);
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4242,7 +4242,7 @@ void test_validate_control_msg_invalid_agent_version(void** state)
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
 
-    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4268,7 +4268,7 @@ void test_validate_control_msg_get_agent_version_fail(void** state)
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from ''");
-    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4327,7 +4327,7 @@ void test_save_controlmsg_agent_invalid_version(void** state)
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
 
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_send_ack);
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
@@ -4363,7 +4363,7 @@ void test_save_controlmsg_get_agent_version_fail(void** state)
     will_return(__wrap_wdb_update_agent_status_code, OS_INVALID);
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to set status code for agent: '001'");
-    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_send_ack);
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 

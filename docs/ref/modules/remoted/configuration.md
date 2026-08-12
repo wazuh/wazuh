@@ -320,14 +320,6 @@ Maximum number of open file descriptors for the remoted process.
 - **Allowed values:** Positive integer
 - **Note:** Increase for large agent counts (e.g., `131072` for >10K agents); default supports ~200K concurrent connections
 
-### remoted.state_interval
-
-Interval in seconds for writing statistics to the state file.
-
-- **Default value:** `5`
-- **Allowed values:** `0` (disabled) or positive integer
-- **Note:** Set to `0` to disable statistics; lower values provide more frequent updates
-
 ### remoted.send_chunk
 
 Maximum bytes to send in a single write operation to an agent.
@@ -1070,17 +1062,12 @@ Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_d
 
 ## Monitoring
 
-### Enable Statistics
+### View Statistics
 
-Enable statistics in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
+Query remoted's statistics on demand via the API:
 
-```conf
-remoted.state_interval=5
-```
-
-View statistics:
 ```bash
-cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
+GET /manager/daemons/stats?daemons_list=wazuh-manager-remoted
 ```
 
 ### Enable Debug Logging
