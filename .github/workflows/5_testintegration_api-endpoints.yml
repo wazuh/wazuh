@@ -29,7 +29,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -190,6 +189,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Run smoke test for API endpoints
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -242,6 +244,9 @@ jobs:
       matrix:
         test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix) }}
     name: Run integration tests for API endpoints
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout repository
