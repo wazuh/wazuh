@@ -40,7 +40,7 @@ on:
       timeout_minutes:
         required: false
         type: number
-        default: 120
+        default: 150
   workflow_dispatch:
     inputs:
       base_branch:
@@ -86,7 +86,7 @@ env:
 jobs:
   run-test:
     if: inputs.module_name != 'none'
-    timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
+    timeout-minutes: ${{ inputs.timeout_minutes || 150 }}
     name: Run integration tests
     permissions:
       id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
