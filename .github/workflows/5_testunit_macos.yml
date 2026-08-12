@@ -44,9 +44,9 @@ jobs:
           CMOCKA_URL="https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
           CMOCKA_MIRROR_URL="https://gitlab.com/cmocka/cmocka/-/archive/cmocka-1.1.7/cmocka-cmocka-1.1.7.tar.gz"
 
-          if ! curl -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_URL"; then
+          if ! curl -f -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_URL"; then
             echo "Primary CMocka download failed. Falling back to the GitLab mirror..."
-            curl -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_MIRROR_URL"
+            curl -f -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_MIRROR_URL"
           fi
 
           # tar auto-detects xz vs gzip from the archive header regardless of the source used above.
