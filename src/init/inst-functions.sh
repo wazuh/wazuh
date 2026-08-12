@@ -1470,16 +1470,6 @@ InstallLocal()
     if [ "X${update_only}" = "Xyes" ]; then
       ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
-
-    ### Install router library
-    if [ -f build/lib/librouter.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/librouter.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
-        fi
-    fi
 }
 
 TransferShared()

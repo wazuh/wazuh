@@ -77,8 +77,6 @@ if(UNIT_TEST)
   target_compile_options(remoted_lib PRIVATE -O0 -g)
 endif()
 
-# No router: the stateful-sync path is the C++ module's POST /stateful (UDS relay), and legacy
-# router-bound messages are discarded in secure.c.
 target_link_libraries(remoted_lib PUBLIC wazuhext pthread config
                                          wazuh_modulesd_lib wazuh remoted_module)
 

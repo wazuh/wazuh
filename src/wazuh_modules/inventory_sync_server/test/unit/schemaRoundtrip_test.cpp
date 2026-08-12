@@ -107,8 +107,7 @@ TEST(SchemaContractTest, SessionPayloadMembersMatchTheAgreedContract)
 
 TEST(SchemaContractTest, MessageTypeKeepsTheLegacyMembersAndAddsFullSession)
 {
-    // The legacy direct members keep their slots (router.cpp's anti-spoofing reads MessageType_Start
-    // and must keep compiling when this schema becomes the shared one); FullSession is the only
+    // The legacy direct members keep their slots; FullSession is the only
     // member this server accepts.
     EXPECT_EQ(1, static_cast<int>(fb::MessageType_DataValue));
     EXPECT_EQ(2, static_cast<int>(fb::MessageType_DataClean));
@@ -229,8 +228,7 @@ TEST(SchemaRoundtripTest, MetadataSessionWithoutPayloadRoundTrips)
 
 TEST(SchemaRoundtripTest, ALegacyDirectMemberIsStillExpressible)
 {
-    // The server rejects these with 400, but the schema must keep carrying them: the router's
-    // legacy anti-spoofing keeps reading Message{Start} until the old module retires.
+    // The server rejects these with 400, but the schema must keep carrying them.
     flatbuffers::FlatBufferBuilder builder;
 
     const auto start = makeStart(builder, fb::Mode_ModuleDelta);

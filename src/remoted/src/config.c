@@ -109,9 +109,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     pass_empty_keyfile = getDefine_Int_default("remoted", "pass_empty_keyfile", 0, 1, 1);
     ctrl_msg_queue_size = (size_t)getDefine_Int_default("remoted", "control_msg_queue_size", 4096, 0x1 << 20, 16384);
     keyupdate_interval = getDefine_Int_default("remoted", "keyupdate_interval", 1, 3600, 10);
-    // remoted.router_forwarding_disabled is OBSOLETE and deliberately not read: the router
-    // forwarding path it disabled retired with the legacy inventory_sync module (legacy
-    // stateful-sync messages are discarded, see secure.c).
     state_interval = getDefine_Int_default("remoted", "state_interval", 0, 86400, 5);
     nofile = getDefine_Int_default("remoted", "rlimit_nofile", 1024, 1048576, 458752);
     sender_pool = getDefine_Int_default("remoted", "sender_pool", 1, 64, 8);

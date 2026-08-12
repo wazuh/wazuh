@@ -22,7 +22,6 @@
 - [RBAC](rbac/index.html) - Role-based access control for the API
 - [Remoted](remoted/index.html) - Agent communication daemon
 - [Rootcheck](rootcheck/index.html) - Rootkit and anomaly detection
-- [Router](router/index.html) - Internal message routing
 - [SCA](sca/index.html) - Security Configuration Assessment for compliance evaluation
 - [Server API](server-api/index.html) - RESTful management API
 - [Syscollector](syscollector/index.html) - System inventory collection and monitoring

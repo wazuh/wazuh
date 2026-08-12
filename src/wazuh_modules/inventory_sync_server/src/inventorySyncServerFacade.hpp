@@ -120,9 +120,6 @@ namespace invsync
      * Owns the worker std::thread and implements the canonical cooperative-shutdown lifecycle
      * (atomic flag + condition_variable + join), plus the HTTP-over-UDS transport behind our own
      * IUdsHttpServer interface.
-     *
-     * Deliberately does NOT touch the router: ingress is UDS only (remoted relays the
-     * authenticated POST /stateful route to this module's socket).
      */
     class InventorySyncServerFacade final : public Singleton<InventorySyncServerFacade>
     {
