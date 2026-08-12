@@ -41,10 +41,21 @@ def restart_agentd(test_metadata):
 @pytest.fixture()
 def set_keys(test_metadata):
     """
-    Writes the keys file with the content defined in the configuration.
+    Writes the keys file with the content defined in the configuration, clearing
+    any pre-existent_keys-less case's file first.
+
+    Always clears WAZUH_CLIENT_KEYS_PATH before writing: w_agentd_keys_init()
+    (start_agent.c) skips enrollment entirely at startup once keys.keysize > 0,
+    so a case with no 'pre_existent_keys' relies on starting from an empty file
+    -- otherwise it silently inherits whatever a previous parametrized case in
+    the same module enrolled with (daemons_handler_module only restarts the
+    daemon set once per module, not per case).
+
     Args:
         test_metadata (dict): Current test case metadata.
     """
+    remove_file(WAZUH_CLIENT_KEYS_PATH)
+
     for key in test_metadata.get('pre_existent_keys', []):
         write_file(WAZUH_CLIENT_KEYS_PATH, key)
 
