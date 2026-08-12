@@ -11,7 +11,7 @@
   "lanes": {
     "syscollector": [
       { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
-        "documents": { "count": 600, "size_bytes": 256, "with_checksum": true } },
+        "documents": { "count": 600, "size_bytes": 256 } },
       { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
     ]
   },

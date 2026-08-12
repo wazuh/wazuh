@@ -16,7 +16,7 @@
     ],
     "syscollector": [
       { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
-        "documents": { "count": 200, "size_bytes": 256, "with_checksum": true } },
+        "documents": { "count": 200, "size_bytes": 256 } },
       { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct",
         "repeat_count": 10, "repeat_delay": "6s", "initial_delay": "5s" }
     ],

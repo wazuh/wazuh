@@ -232,7 +232,7 @@ func (a *agent) fillDocuments(lane string, step scenario.Step, sync *fbbuild.Syn
 	}
 	index := firstIndex(a.r.scn, step)
 	docs := source.Documents(a.r.seed, a.docKey(lane, step), source.DocSpec{
-		Count: spec.Count, SizeBytes: spec.SizeBytes, WithChecksum: spec.WithChecksum, Index: index,
+		Count: spec.Count, SizeBytes: spec.SizeBytes, Index: index,
 	})
 	total := 0
 	sync.Values = make([]fbbuild.Value, 0, len(docs))
@@ -262,7 +262,7 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 			return source.AggregateChecksum(nil)
 		}
 		docs := source.Documents(a.r.seed, a.docKey(lane, replaceKind(step, "delta")), source.DocSpec{
-			Count: spec.Count, SizeBytes: spec.SizeBytes, WithChecksum: true, Index: index,
+			Count: spec.Count, SizeBytes: spec.SizeBytes, Index: index,
 		})
 		sums := make([]string, 0, len(docs))
 		for _, d := range docs {
