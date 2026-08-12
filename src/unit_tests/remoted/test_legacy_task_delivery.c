@@ -204,8 +204,8 @@ static void test_version_gate_legacy_agent_is_eligible(void **state) {
     free(version);
 }
 
-/* Covers agent_meta_check_version()'s real logic (shared by legacy_task_agent_is_pre_v5() above
- * and remcom.c's getagentsstats filter) through the real function, all four outcomes. */
+/* Covers agent_meta_check_version()'s real logic (used by legacy_task_agent_is_pre_v5() above)
+ * through the real function, all four outcomes. */
 static void test_agent_meta_check_version_classifications(void **state) {
     (void) state;
     char *version = NULL;

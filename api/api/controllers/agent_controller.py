@@ -16,7 +16,7 @@ from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
-from wazuh import agent, stats
+from wazuh import agent
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
@@ -629,42 +629,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           broadcasting=True  # Always broadcast for HTTPS stateless architecture
                           )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_daemon_stats(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                           daemons_list: list = None) -> ConnexionResponse:
-    """Get Wazuh statistical information from the specified daemons of a specified agent.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID of the agent from which the statistics are obtained.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    daemons_list : list
-        List of the daemons to get statistical information from.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    daemons_list = daemons_list or []
-    f_kwargs = {'agent_list': [agent_id],
-                'daemons_list': daemons_list}
-
-    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'])
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)

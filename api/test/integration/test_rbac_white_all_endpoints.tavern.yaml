@@ -91,21 +91,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-  - name: Try to get daemon stats from agent 001
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
-
----
 test_name: DELETE /agents/{agent_id}/group
 
 stages:

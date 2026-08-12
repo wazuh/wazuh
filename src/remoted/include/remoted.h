@@ -256,7 +256,6 @@ extern int worker_pool;
 extern int merge_shared;
 extern size_t ctrl_msg_queue_size;
 extern int keyupdate_interval;
-extern int state_interval;
 extern int shared_reload_interval;
 extern size_t global_counter;
 extern size_t batch_events_capacity;
