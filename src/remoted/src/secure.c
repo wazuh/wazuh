@@ -442,7 +442,9 @@ void HandleSecure()
     int n_events = 0;
 
     agent_metadata_init();
-    legacy_task_delivery_init();
+    if (logr.legacy_enabled) {
+        legacy_task_delivery_init();
+    }
 
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
@@ -472,14 +474,15 @@ void HandleSecure()
     /* Initialize the agent key table mutex */
     key_lock_init();
 
-    /* Create current timestamp getter thread */
-    w_create_thread(current_timestamp, NULL);
+    if (logr.legacy_enabled) {
+        /* Create current timestamp getter thread (only used by the legacy
+         * connection-overtake logic) */
+        w_create_thread(current_timestamp, NULL);
+    }
 
-    /* Create shared file updating thread */
+    /* Create shared file updating thread. Always on: the HTTPS /download endpoint reads
+     * merged.mg/group files from disk regardless of the legacy flag. */
     w_create_thread(update_shared_files, NULL);
-
-    /* Create Active Response forwarder thread */
-    w_create_thread(AR_Forward, NULL);
 
     // Initialize request module
     req_init();
@@ -487,11 +490,12 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
-    w_create_thread(legacy_upgrade_task_delivery, NULL);
+    if (logr.legacy_enabled) {
+        // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+        w_create_thread(legacy_upgrade_task_delivery, NULL);
 
-    /* Create wait_for_msgs threads */
-    {
+        /* Create wait_for_msgs threads: legacy push-only merged.mg delivery. 5.x agents
+         * pull it themselves via POST /download. */
         mdebug2("Creating %d sender threads.", sender_pool);
 
         for (int i = 0; i < sender_pool; i++) {
@@ -520,31 +524,36 @@ void HandleSecure()
         atexit(remoted_module_stop);
     }
 
-    // Create upsert control message thread
-    w_create_thread(save_control_thread, (void *) control_msg_queue);
+    if (logr.legacy_enabled) {
+        // Create upsert control message thread: control_msg_queue is only ever fed by
+        // legacy text keepalive parsing.
+        w_create_thread(save_control_thread, (void *) control_msg_queue);
 
-    // Create dispatch events thread
-    w_create_thread(dispach_events_thread, (void *) events_queue);
+        // Create dispatch events thread: events_queue is only fed by the legacy socket
+        // path; 5.x events go straight to downstream via POST /stateless.
+        w_create_thread(dispach_events_thread, (void *) events_queue);
 
-    /* Create agent metadata cache cleanup thread (after events_queue is initialized) */
-    w_create_thread(agent_meta_cleanup_thread, events_queue);
+        /* Create agent metadata cache cleanup thread (after events_queue is initialized).
+         * Its cache's only writer is the legacy keepalive parser. */
+        w_create_thread(agent_meta_cleanup_thread, events_queue);
 
-    rem_handler_args_t *worker_args;
-    os_malloc(sizeof(*worker_args), worker_args);
-    worker_args->control_msg_queue = control_msg_queue;
-    worker_args->events_queue      = events_queue;
-    // Create message handler thread pool
-    {
-        // Initialize FD list and counter.
-        global_counter = 0;
-        rem_initList(FD_LIST_INIT_VALUE);
-        for (int i = 0; i < worker_pool; i++) {
-            w_create_thread(rem_handler_main, worker_args);
+        rem_handler_args_t *worker_args;
+        os_malloc(sizeof(*worker_args), worker_args);
+        worker_args->control_msg_queue = control_msg_queue;
+        worker_args->events_queue      = events_queue;
+        // Create message handler thread pool: processes messages read off the legacy socket.
+        {
+            // Initialize FD list and counter.
+            global_counter = 0;
+            rem_initList(FD_LIST_INIT_VALUE);
+            for (int i = 0; i < worker_pool; i++) {
+                w_create_thread(rem_handler_main, worker_args);
+            }
         }
     }
 
     /* Start up message */
-    {
+    if (logr.legacy_enabled) {
         char *_protocol = NULL;
         if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
             wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
@@ -557,6 +566,9 @@ void HandleSecure()
             logr.port,
             _protocol ? _protocol : "unknown");
         os_free(_protocol);
+    } else {
+        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+            (int)getpid());
     }
 
     /* Read authentication keys */
@@ -568,11 +580,13 @@ void HandleSecure()
 
     OS_StartCounter(&keys);
 
-    // Key reloader thread
+    // Key reloader thread: keystore is shared with the HTTPS CMAC auth middleware.
     w_create_thread(rem_keyupdate_main, NULL);
 
-    // fp closer thread
-    w_create_thread(close_fp_main, &keys);
+    if (logr.legacy_enabled) {
+        // fp closer thread: manages fds for legacy TCP connections only.
+        w_create_thread(close_fp_main, &keys);
+    }
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -581,6 +595,10 @@ void HandleSecure()
     if (notify = wnotify_init(MAX_EVENTS), !notify) {
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
+
+    /* protocol is 0 when <remote><legacy> is absent/disabled (Read_Remote() only fills in
+     * logr.proto for an enabled legacy block), so neither branch below adds a socket and
+     * the event loop just idles -- no separate legacy_enabled check needed here. */
 
     /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
     if (protocol & REMOTED_NET_PROTOCOL_TCP) {

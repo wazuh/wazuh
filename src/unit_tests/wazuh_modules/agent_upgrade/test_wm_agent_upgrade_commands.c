@@ -27,6 +27,7 @@
 int wm_agent_upgrade_analyze_agent(int agent_id, wm_agent_task *agent_task, const char *wpk_repository_config);
 int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task, const char *wpk_repository_config);
 int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade);
+int wm_agent_upgrade_validate_legacy_delivery(const char *current_version);
 wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_task *agent_task);
 
 /* remoted's <remote><https><verification_mode> is read independently off disk via
@@ -38,6 +39,7 @@ int __wrap_ReadConfig(int modules, __attribute__((unused)) const char *cfgfile, 
     if (retcode >= 0) {
         remoted *cfg = (remoted *)d1;
         cfg->https.verification_mode = mock_type(int);
+        cfg->legacy_enabled = mock_type(int);
     }
     return retcode;
 }
@@ -159,6 +161,12 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // wm_agent_upgrade_validate_wpk_version
 
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
@@ -219,10 +227,17 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // HTTPS verification_mode gate: runs unconditionally for custom WPK now, regardless of filename.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE);
+    will_return(__wrap_ReadConfig, 1);
 
     // wm_agent_upgrade_validate_wpk_custom
 
@@ -318,10 +333,17 @@ void test_wm_agent_upgrade_verification_mode_none_5x_no_force_ok(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_version, "v5.0.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // verification_mode == none: gate reads remoted's config but must not reject.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE);
+    will_return(__wrap_ReadConfig, 1);
 
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
@@ -364,9 +386,16 @@ void test_wm_agent_upgrade_verification_mode_certificate_5x_no_force_rejected(vo
     will_return(__wrap_wm_agent_upgrade_validate_version, "v5.0.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    will_return(__wrap_ReadConfig, 1);
 
     // Rejected: wm_agent_upgrade_validate_wpk_version/_wpk must NOT be reached (no mocks queued
     // for them -- an unexpected call would fail the test).
@@ -407,9 +436,16 @@ void test_wm_agent_upgrade_verification_mode_certificate_5x_force_ok(void **stat
     will_return(__wrap_wm_agent_upgrade_validate_version, "v5.0.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    will_return(__wrap_ReadConfig, 1);
 
     // force_upgrade accepts the risk: must log a warning and proceed to task creation.
     expect_any(__wrap__mtwarn, tag);
@@ -456,8 +492,15 @@ void test_wm_agent_upgrade_verification_mode_certificate_below_5x_not_gated(void
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.15.0"); // target < v5.0.0: not gated
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
-    // Target below v5.0.0: the gate must short-circuit before ever calling ReadConfig -- no
-    // ReadConfig mock is queued, so an unexpected call would fail the test.
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
+    // Target below v5.0.0: the HTTPS verification_mode gate must short-circuit before ever
+    // calling ReadConfig again -- no second ReadConfig mock is queued, so an unexpected call
+    // would fail the test.
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
     will_return(__wrap_wm_agent_upgrade_validate_wpk_version, WM_UPGRADE_SUCCESS);
     will_return(__wrap_wm_agent_upgrade_validate_wpk, WM_UPGRADE_SUCCESS);
@@ -499,11 +542,18 @@ void test_wm_agent_upgrade_verification_mode_custom_canonical_5x_unconditional_r
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // Canonical filename resolves to v5.0.0; no force_upgrade field exists on this task type at
     // all -- must be an unconditional reject (no crash probing a nonexistent member).
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    will_return(__wrap_ReadConfig, 1);
 
     // wm_agent_upgrade_validate_wpk_custom must NOT be reached.
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, NULL);
@@ -543,16 +593,89 @@ void test_wm_agent_upgrade_verification_mode_custom_noncanonical_now_gated(void 
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // The filename can't be trusted to prove the package is below v5.0.0, so the gate now runs
     // unconditionally -- even for a name with no parseable version token at all.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    will_return(__wrap_ReadConfig, 1);
 
     // wm_agent_upgrade_validate_wpk_custom must NOT be reached.
     int ret = wm_agent_upgrade_validate_agent_task(agent_task, NULL);
 
     assert_int_equal(ret, WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE);
+}
+
+/* ------------------------------------------------------------------------ */
+/* wm_agent_upgrade_validate_legacy_delivery                                */
+/* ------------------------------------------------------------------------ */
+
+void test_wm_agent_upgrade_validate_legacy_delivery_5x_agent_skips_check(void **state)
+{
+    (void) state;
+
+    // Already >= v5.0.0: delivered over the HTTPS control endpoint, not remoted's legacy
+    // poller. Must short-circuit before ever calling ReadConfig.
+    int ret = wm_agent_upgrade_validate_legacy_delivery("v5.0.0");
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_legacy_delivery_null_version_skips_check(void **state)
+{
+    (void) state;
+
+    int ret = wm_agent_upgrade_validate_legacy_delivery(NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_legacy_delivery_below_5x_enabled_ok(void **state)
+{
+    (void) state;
+
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true
+
+    int ret = wm_agent_upgrade_validate_legacy_delivery("v4.14.6");
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_legacy_delivery_below_5x_disabled_rejected(void **state)
+{
+    (void) state;
+
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 0); // legacy_enabled = false
+
+    int ret = wm_agent_upgrade_validate_legacy_delivery("v4.14.6");
+
+    assert_int_equal(ret, WM_UPGRADE_LEGACY_DELIVERY_DISABLED);
+}
+
+void test_wm_agent_upgrade_validate_legacy_delivery_readconfig_fails_open(void **state)
+{
+    (void) state;
+
+    // Can't determine legacy_enabled (e.g. a transient config-parse issue remoted will
+    // surface itself) -- fail open rather than block the upgrade on this unrelated read failing.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, -1);
+
+    int ret = wm_agent_upgrade_validate_legacy_delivery("v4.14.6");
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
 void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
@@ -742,6 +865,12 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // wm_agent_upgrade_validate_wpk_version
 
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
@@ -818,6 +947,12 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // wm_agent_upgrade_validate_wpk_version
 
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
@@ -893,6 +1028,12 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
+
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
 
     // wm_agent_upgrade_validate_wpk_version
 
@@ -1069,10 +1210,17 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // HTTPS verification_mode gate: runs unconditionally for custom WPK now, regardless of filename.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE);
+    will_return(__wrap_ReadConfig, 1);
 
     // wm_agent_upgrade_validate_wpk_custom
 
@@ -1264,6 +1412,12 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     will_return(__wrap_wm_agent_upgrade_validate_version, "v4.1.0");
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
+    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
+    expect_value(__wrap_ReadConfig, modules, CREMOTE);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
+
     // wm_agent_upgrade_validate_wpk_version
 
     expect_any(__wrap_wm_agent_upgrade_validate_wpk_version, wpk_repository_config);
@@ -1396,6 +1550,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_certificate_below_5x_not_gated, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_custom_canonical_5x_unconditional_reject, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_verification_mode_custom_noncanonical_now_gated, setup_agent_task, teardown_agent_task),
+
+        cmocka_unit_test(test_wm_agent_upgrade_validate_legacy_delivery_5x_agent_skips_check),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_legacy_delivery_null_version_skips_check),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_legacy_delivery_below_5x_enabled_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_legacy_delivery_below_5x_disabled_rejected),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_legacy_delivery_readconfig_fails_open),
+
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_version_err, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_system_err, setup_agent_task, teardown_agent_task),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_agent_task_agent_id_err, setup_agent_task, teardown_agent_task),

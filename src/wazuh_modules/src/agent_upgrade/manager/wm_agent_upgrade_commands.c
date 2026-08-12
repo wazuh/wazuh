@@ -71,6 +71,19 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
 STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_version, bool force_upgrade);
 
 /**
+ * Gate remote_upgrade task creation for an agent that is still below v5.0.0 on
+ * remoted's <remote><legacy> delivery being enabled: with legacy delivery disabled there
+ * is no way to deliver the task to that agent at all. Reads remoted's config
+ * independently off disk (ReadConfig(CREMOTE, ...), same as
+ * wm_agent_upgrade_validate_https_verification_mode() above) -- no IPC, no shared live
+ * config between the two daemons.
+ * @param current_version Agent's current wazuh_version, or NULL if unknown.
+ * @return WM_UPGRADE_SUCCESS if the task may be created.
+ * @retval WM_UPGRADE_LEGACY_DELIVERY_DISABLED if it must be rejected.
+ */
+STATIC int wm_agent_upgrade_validate_legacy_delivery(const char *current_version);
+
+/**
  * Build Task Manager JSON message for upgrade task
  * @param agent_id agent identifier
  * @param request_time timestamp for deterministic task ID
@@ -278,6 +291,14 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task,
         return validate_result;
     }
 
+    // Legacy delivery gate: an agent still below v5.0.0 can only receive this task through
+    // remoted's legacy poller. Reject at creation time instead of leaving it stranded.
+    validate_result = wm_agent_upgrade_validate_legacy_delivery(agent_task->agent_info->wazuh_version);
+
+    if (validate_result != WM_UPGRADE_SUCCESS) {
+        return validate_result;
+    }
+
     // HTTPS verification_mode / force gate: repo-based path has its target version resolved
     // through the repository itself; custom-WPK cannot trust its filename for the same purpose
     // (see the WM_UPGRADE_UPGRADE_CUSTOM branch below).
@@ -364,6 +385,38 @@ STATIC int wm_agent_upgrade_validate_https_verification_mode(const char *target_
     }
 
     return WM_UPGRADE_HTTPS_VERIFICATION_MODE_UNSAFE;
+}
+
+STATIC int wm_agent_upgrade_validate_legacy_delivery(const char *current_version) {
+    if (!current_version || compare_wazuh_versions(current_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) >= 0) {
+        // Already >= v5.0.0: delivered over the manager's HTTPS control endpoint, not
+        // remoted's legacy poller.
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    remoted tmp_remoted_cfg;
+    memset(&tmp_remoted_cfg, 0, sizeof(tmp_remoted_cfg));
+
+    if (ReadConfig(CREMOTE, WAZUHCONF, &tmp_remoted_cfg, NULL) < 0) {
+        // Can't determine legacy_enabled (e.g. a transient config-parse issue remoted will
+        // surface itself) -- fail open rather than block the upgrade on this unrelated read failing.
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    bool legacy_enabled = tmp_remoted_cfg.legacy_enabled;
+
+    os_free(tmp_remoted_cfg.lip);
+    os_free(tmp_remoted_cfg.https.bind_addr);
+    os_free(tmp_remoted_cfg.https.certificate);
+    os_free(tmp_remoted_cfg.https.key);
+    os_free(tmp_remoted_cfg.https.ca);
+    os_free(tmp_remoted_cfg.https.ciphers);
+
+    if (legacy_enabled) {
+        return WM_UPGRADE_SUCCESS;
+    }
+
+    return WM_UPGRADE_LEGACY_DELIVERY_DISABLED;
 }
 
 STATIC cJSON* wm_agent_upgrade_build_task_message(int agent_id, time_t request_time, const char *wpk_file, const char *wpk_sha1, const char *installer) {
