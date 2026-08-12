@@ -74,7 +74,6 @@ int write_state() {
     const char * status;
     char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
-    char last_ack[1024] = "";
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -112,11 +111,6 @@ int write_state() {
         strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
     }
 
-    if (agent_state.last_ack) {
-        localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
-    }
-
     fprintf(fp,
         "# State file for %s\n"
         "\n"
@@ -129,9 +123,6 @@ int write_state() {
         "# Last time a keepalive was sent\n"
         W_AGENTD_FIELD_KEEP_ALIVE "='%s'\n"
         "\n"
-        "# Last time a control message was received\n"
-        W_AGENTD_FIELD_LAST_ACK "='%s'\n"
-        "\n"
         "# Number of generated events\n"
         W_AGENTD_FIELD_MSG_COUNT "='%u'\n"
         "\n"
@@ -142,7 +133,7 @@ int write_state() {
         "# Always empty: the HTTPS accumulator reports occupancy as a ladder,\n"
         "# not as a count\n"
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
-        last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        last_keepalive, agent_state.msg_count, agent_state.msg_sent);
 
         fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
 
@@ -211,11 +202,6 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
     case UPDATE_KEEPALIVE:
         if (data != NULL) {
             agent_state.last_keepalive = *((time_t *) data);
-        }
-        break;
-    case UPDATE_ACK:
-        if (data != NULL) {
-            agent_state.last_ack = *((time_t *) data);
         }
         break;
     case INCREMENT_MSG_COUNT:

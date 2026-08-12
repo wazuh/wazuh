@@ -121,7 +121,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
 
     expected_output:
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -140,7 +140,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         wait_enrollment()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -149,8 +149,13 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        # Start rejecting Agent: a 401 on every request (regardless of what the
+        # agent actually signs) is the HTTPS equivalent of "the manager no
+        # longer accepts this credential" -- two consecutive 401s on the same
+        # request escalate to AuthGate.reportAuthFailure(), which is what
+        # actually drives re-enrollment under HTTPS (a dropped/refused
+        # connection alone does not; only a rejected credential does).
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
@@ -160,7 +165,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         remoted_server.destroy()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected

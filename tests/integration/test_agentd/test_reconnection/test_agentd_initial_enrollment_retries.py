@@ -130,7 +130,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     expected_output:
         - r'Requesting a key'
         - r'Valid key received'
-        - r'Connected to the server'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -152,7 +152,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         wait_enrollment()
 
         # Start Remoted simulador
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
