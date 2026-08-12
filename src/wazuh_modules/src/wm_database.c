@@ -15,6 +15,13 @@
 #include "wazuhdb_queries_op.h"
 #include <cJSON.h>
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -73,7 +80,7 @@ static void wm_check_agents();
  */
 static void wm_sync_agents();
 
-static int wm_sync_shared_group(const char *fname);
+STATIC int wm_sync_shared_group(const char *fname);
 static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
@@ -291,6 +298,14 @@ int wm_sync_shared_group(const char *fname) {
 
     dp = wopendir(path);
     if (!dp) {
+        int opendir_errno = errno;
+
+        if (opendir_errno == ENOENT) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Group directory '%s' no longer exists, removing group '%s' from the database.", path, fname);
+        } else {
+            mtwarn(WM_DATABASE_LOGTAG, "Couldn't open directory '%s' to check group '%s': [(%d)-(%s)]. This is not a confirmed deletion, but a 'delete-group' will be sent anyway.", path, fname, opendir_errno, strerror(opendir_errno));
+        }
+
         /* The group was deleted */
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
