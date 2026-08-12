@@ -1024,6 +1024,15 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         return;
     }
 
+    /* SHAREDCFG_FILE now holds these exact bytes, so its SHA-256 already matches
+     * the manager's config_hash -- startup_gate_check_manager_config_hash() (fired
+     * independently on every accepted Notify) would otherwise race ahead and
+     * release the gate with reason=https_hash_match before the reload this
+     * function is about to (maybe) dispatch actually completes. Mark the download
+     * pending now, before any of that can happen; only startup_gate_release_from_https_apply()
+     * (below, or via reloadAgent()'s own completion) clears it. */
+    startup_gate_mark_download_pending();
+
     char **ignore_list;
     os_calloc(2, sizeof(char *), ignore_list);
     os_strdup(SHAREDCFG_FILENAME, *ignore_list);

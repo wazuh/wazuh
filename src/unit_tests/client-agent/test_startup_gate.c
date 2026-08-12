@@ -174,6 +174,38 @@ static void test_manager_config_hash_without_local_file_keeps_gate_blocked(void 
     assert_gate_state(false, "waiting_config_hash");
 }
 
+/* bridge_on_config_downloaded() writes SHAREDCFG_FILE with the manager's exact
+ * bytes before it has dispatched (or even decided whether to dispatch) the
+ * reload that is supposed to release the gate with https_config_applied. A
+ * Notify landing in that window must not let the opportunistic hash-match
+ * path steal the release with the wrong reason -- no OS_SHA256_File mock is
+ * queued, so cmocka fails this test if the hash comparison runs at all. */
+static void test_manager_config_hash_match_suppressed_while_download_pending(void **state) {
+    (void)state;
+    startup_gate_mark_download_pending();
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(false, "waiting_config_hash");
+}
+
+/* Once the download's own reload completes, release_from_https_apply() must
+ * still be the one to open the gate -- with https_config_applied, not
+ * whatever the suppressed hash-match attempt would have set. */
+static void test_release_from_https_apply_wins_race_over_pending_hash_match(void **state) {
+    (void)state;
+    startup_gate_mark_download_pending();
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+    assert_gate_state(false, "waiting_config_hash");
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(true, "https_config_applied");
+}
+
 /* --- startup_gate_release_from_https_apply ------------------------------ */
 
 /* Blocked + remote_conf enabled: releases directly, with no hash comparison (no
@@ -232,6 +264,10 @@ int main(void) {
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_manager_config_hash_is_noop_when_released,
                                         setup_remote_conf_disabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_match_suppressed_while_download_pending,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_wins_race_over_pending_hash_match,
+                                        setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_releases_blocked_gate,
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_when_disabled,

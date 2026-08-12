@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_state_update, wait_agent_notification
+from utils import wait_keepalive, wait_state_update
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -231,12 +231,16 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
     Returns:
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
+    # The legacy "Sending agent notification" log line has no HTTPS equivalent: msg_count
+    # is incremented once per locally-queued event forwarded over /stateless
+    # (EventForward(), event-forward.c), which never logs a per-event line -- it's a state
+    # update, not a message (same rationale as wait_keepalive(), utils.py). The state file
+    # is the only source of truth left, mirroring check_last_keepalive() above.
     wait_state_update()
     current_value = get_state_callback()['msg_count']
     if expected_value == '':
         return expected_value == current_value
 
-    wait_agent_notification(current_value)
     return True
 
 

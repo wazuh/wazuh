@@ -24,6 +24,7 @@ static pthread_mutex_t startup_gate_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool startup_gate_enabled = false;
 static bool startup_gate_ready = true;
 static char startup_gate_reason[OS_SIZE_128] = "disabled";
+static bool startup_gate_download_pending = false;
 
 static void startup_gate_set_locked(bool ready, const char *reason) {
     startup_gate_ready = ready;
@@ -41,6 +42,7 @@ void startup_gate_initialize(void) {
     w_mutex_lock(&startup_gate_mutex);
 
     startup_gate_enabled = enabled;
+    startup_gate_download_pending = false;
 
     if (enabled) {
         startup_gate_set_locked(false, "waiting_config_hash");
@@ -51,12 +53,19 @@ void startup_gate_initialize(void) {
     w_mutex_unlock(&startup_gate_mutex);
 }
 
+void startup_gate_mark_download_pending(void) {
+    w_mutex_lock(&startup_gate_mutex);
+    startup_gate_download_pending = true;
+    w_mutex_unlock(&startup_gate_mutex);
+}
+
 void startup_gate_release_from_https_apply(void) {
     // /download already verified the bytes' SHA-256 against the manager's
     // config_hash before the callback fired, and bridge_on_config_downloaded()
     // has since written and applied those exact bytes. That is the invariant
     // the gate exists for, so it opens directly, with no second comparison.
     w_mutex_lock(&startup_gate_mutex);
+    startup_gate_download_pending = false;
 
     if (startup_gate_enabled && !startup_gate_ready) {
         startup_gate_set_locked(true, "https_config_applied");
@@ -73,7 +82,7 @@ void startup_gate_check_manager_config_hash(const char *manager_sha256) {
     os_sha256 local_sha256;
 
     w_mutex_lock(&startup_gate_mutex);
-    should_check = startup_gate_enabled && !startup_gate_ready;
+    should_check = startup_gate_enabled && !startup_gate_ready && !startup_gate_download_pending;
     w_mutex_unlock(&startup_gate_mutex);
 
     if (!should_check) {
