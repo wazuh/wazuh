@@ -23,28 +23,35 @@ if [ -z "${INSTALLDIR}" ]; then
     INSTALLDIR="${WAZUH_HOME}"
 fi
 
+# Write the upgrade result and 'reload' modulesd
+abort_upgrade() {
+    echo -ne "$1" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    if [ -x ./bin/wazuh-control ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Reloading the Wazuh agent to report the upgrade result." >> ./logs/upgrade.log
+        ./bin/wazuh-control reload >> ./logs/upgrade.log 2>&1
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Cannot reload the Wazuh agent, ./bin/wazuh-control not found. The result will be reported on the next agent restart." >> ./logs/upgrade.log
+    fi
+    exit 1
+}
+
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
 
 
 if [[ "$OS" == "Darwin" ]]; then
     if [ "${WAZUH_HOME}" != "/Library/Ossec" ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be /Library/Ossec), interrupting upgrade." >> ./logs/upgrade.log
-        echo -ne "2" > ./var/upgrade/upgrade_result
-        rm -f $LOCK
-        exit 1
+        abort_upgrade "2"
     fi
 elif [[ "$OS" == "Linux" ]]; then
     if [ "${WAZUH_HOME}" != "${INSTALLDIR}" ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be ${INSTALLDIR}), interrupting upgrade." >> ./logs/upgrade.log
-        echo -ne "2" > ./var/upgrade/upgrade_result
-        rm -f $LOCK
-        exit 1
+        abort_upgrade "2"
     fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
+    abort_upgrade "2"
 fi
 
 # Read <block><sub><tag> from the agent configuration, taking the last match.
@@ -100,18 +107,14 @@ fi
 
 if [ -z "${SERVER_ADDRESS}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
+    abort_upgrade "2"
 fi
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 
 if ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
+    abort_upgrade "2"
 fi
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
@@ -124,27 +127,21 @@ elif [[ "$OS" == "Linux" ]]; then
             rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
-            echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f $LOCK
-            exit 1
+            abort_upgrade "2"
         fi
     elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
         if command -v dpkg >/dev/null 2>&1; then
             dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
-            echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f $LOCK
-            exit 1
+            abort_upgrade "2"
         fi
     elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.apk" | read; then
         if command -v apk >/dev/null 2>&1; then
             apk add --allow-untrusted --force ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. APK package found but apk command not found." >> ./logs/upgrade.log
-            echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f $LOCK
-            exit 1
+            abort_upgrade "2"
         fi
     else
         if [ -e ./var/upgrade/install.sh ]; then
@@ -152,16 +149,12 @@ elif [[ "$OS" == "Linux" ]]; then
             ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No package or sources found." >> ./logs/upgrade.log
-            echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f $LOCK
-            exit 1
+            abort_upgrade "2"
         fi
     fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
+    abort_upgrade "2"
 fi
 
 
@@ -177,9 +170,7 @@ if [ -f "./bin/wazuh-control" ]; then
     ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed: wazuh-control not found." >> ./logs/upgrade.log
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
+    abort_upgrade "2"
 fi
 
 sleep 1
