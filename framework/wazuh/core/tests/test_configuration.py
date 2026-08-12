@@ -331,6 +331,24 @@ def test_get_file_conf():
             configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='noconf')
 
 
+def test_get_agent_conf_path_traversal():
+    """Check that a filename resolving outside the group directory is rejected and not read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_agent_conf(group_id='default', filename='../ossec.conf')
+            mock_load.assert_not_called()
+
+
+def test_get_file_conf_path_traversal():
+    """Check that a filename resolving outside the group directory is rejected and not read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('builtins.open') as mock_open_fn:
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
+                configuration.get_file_conf(filename='../ossec.conf', group_id='default', raw=True)
+            mock_open_fn.assert_not_called()
+
+
 def test_parse_internal_options():
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
