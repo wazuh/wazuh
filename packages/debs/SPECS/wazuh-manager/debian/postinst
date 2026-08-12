@@ -242,14 +242,6 @@ case "$1" in
         fi
     done
 
-    # Same reassignment for modulesd's own stores, which the engine's list does not
-    # cover. -P/-h so a symlink under queue/ is never followed nor its target touched.
-    for MODULESD_DATA in queue/inventory_sync queue/vd/feed queue/vd/vd_updater queue/diff queue/keystore; do
-        if [ -d "${DIR}/${MODULESD_DATA}" ]; then
-            find -P "${DIR}/${MODULESD_DATA}" -exec chown -h ${USER}:${GROUP} {} + > /dev/null 2>&1 || true
-        fi
-    done
-
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present
     if [ -f /etc/systemd/system/wazuh-manager.service ]; then
         rm -f /etc/systemd/system/wazuh-manager.service
