@@ -175,6 +175,7 @@ def render_human(summary: dict[str, Any]) -> str:
     totals = summary.get("totals", {})
     sess = totals.get("sessions", {})
     stateless = totals.get("stateless", {})
+    scan = totals.get("scan", {})
     control = totals.get("control", {})
     lat = summary.get("latency_ms", {})
     proc = summary.get("process", {})
@@ -199,6 +200,13 @@ def render_human(summary: dict[str, Any]) -> str:
         L.append(f"    batches={stateless.get('sent',0):,} 202={stateless.get('s202',0):,} "
                  f"400={stateless.get('s400',0)} 413={stateless.get('s413',0)} 503={stateless.get('s503',0)} "
                  f"events={stateless.get('events_sent',0):,}")
+    if scan.get("sent"):
+        # 200 means the re-scan was ADMITTED (queued), not that it ran: the VD
+        # module scans afterward, one agent at a time. Whether the scans
+        # happened is in modulesd's log (reason=feed_update).
+        L.append("  VD re-scan requests (/scan/vd)")
+        L.append(f"    sent={scan.get('sent',0):,} 200(queued)={scan.get('s200',0):,} "
+                 f"409={scan.get('s409',0)} 503={scan.get('s503',0)} other={scan.get('other',0)}")
     if control.get("notify_ok") or control.get("startup_ok"):
         L.append("  Control (/control)")
         L.append(f"    startup={control.get('startup_ok',0)}/{control.get('startup_ok',0)+control.get('startup_err',0)}"
@@ -207,7 +215,7 @@ def render_human(summary: dict[str, Any]) -> str:
     L.append("")
     if lat:
         L.append("  Latency (ms)")
-        for kind in ("session", "stateless", "notify", "startup"):
+        for kind in ("session", "stateless", "scan", "notify", "startup"):
             p = lat.get(kind, {})
             if p.get("count"):
                 L.append(f"    {kind:10s} count={p['count']:,} p50={p.get('p50')} p90={p.get('p90')} "

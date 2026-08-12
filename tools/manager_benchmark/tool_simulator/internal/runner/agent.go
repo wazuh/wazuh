@@ -26,11 +26,31 @@ type agent struct {
 	// Written by keepaliveLoop, read by the lane goroutines building
 	// VDFirst/VDSync sessions -- atomic because those run concurrently.
 	vdFeedOffset atomic.Uint64
+
+	// firstNotify is closed once a notify has actually reported a
+	// vd_feed_offset. The keepalive loop and the lane goroutines start
+	// together, so firing the first notify "immediately" is not enough on its
+	// own: a VD lane with no initial_delay can build its VDFirst session in the
+	// same instant and read the zero value, which the manager then rejects with
+	// 409 version_mismatch. A VD step waits on this instead of racing it.
+	firstNotify chan struct{}
+	notifyOnce  sync.Once
+	// ctx is this agent's run context, so the wait above is cancelled with the
+	// run instead of outliving it.
+	ctx context.Context
 }
+
+// vdOffsetWait bounds how long a VD step waits for the first /control notify to
+// report an offset. Generous relative to a notify round trip (milliseconds) and
+// still finite, so a control path that never answers degrades to "declare what
+// we know" rather than hanging the lane.
+const vdOffsetWait = 30 * time.Second
 
 // run drives the agent through its Active phase: startup, then the keepalive
 // loop and every lane in parallel, until ctx is done (drain).
 func (a *agent) run(ctx context.Context) {
+	a.ctx = ctx
+	a.firstNotify = make(chan struct{})
 	if a.r.mode == "agent" && a.r.controlEnabled() {
 		res, err := a.startupWhenAuthenticated(ctx)
 		a.r.reg.RecordControl(a.fleet.Name, "startup", err == nil, us(res.Latency))
@@ -138,6 +158,7 @@ func (a *agent) notify() bool {
 	}
 	if err == nil {
 		a.vdFeedOffset.Store(res.VDFeedOffset)
+		a.notifyOnce.Do(func() { close(a.firstNotify) })
 	}
 	a.r.reg.RecordControl(a.fleet.Name, "notify", err == nil, us(res.Latency))
 	return true
@@ -154,7 +175,26 @@ func (a *agent) feedOffsetFor(step scenario.Step) uint64 {
 	if v := a.r.vdFeedOffsetOverride(); v != 0 {
 		return v
 	}
+	a.awaitFirstNotify()
 	return a.vdFeedOffset.Load()
+}
+
+// awaitFirstNotify blocks until this agent's keepalive loop has learned a
+// vd_feed_offset from /control, bounded by vdOffsetWait and by the run's own
+// cancellation. A no-op outside agent mode with control enabled: there is no
+// /control to learn anything from, and waiting would just stall the lane.
+func (a *agent) awaitFirstNotify() {
+	if a.r.mode != "agent" || !a.r.controlEnabled() || a.firstNotify == nil {
+		return
+	}
+	timer := time.NewTimer(vdOffsetWait)
+	defer timer.Stop()
+	done := a.ctx.Done()
+	select {
+	case <-a.firstNotify:
+	case <-done:
+	case <-timer.C:
+	}
 }
 
 // laneLoop walks a lane's steps, honoring repeat/initial delays, until ctx is
@@ -209,6 +249,10 @@ func (a *agent) runStep(ctx context.Context, lane string, step scenario.Step) {
 	}
 	if step.Kind == "delete_agent" {
 		a.runDelete(ctx, lane)
+		return
+	}
+	if step.Kind == "scan_vd" {
+		a.runScanVD(ctx, lane, step)
 		return
 	}
 	a.runSession(ctx, lane, step)

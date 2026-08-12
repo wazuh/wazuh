@@ -189,6 +189,15 @@ func (a *agent) applyDumpMeta(start *fbbuild.Start, step scenario.Step) {
 	}
 	if step.Option == "" && scn.Defaults.Option == "" && ds.Option != "" {
 		start.Option = optionEnum(ds.Option)
+		// startFor only fills feed_offset when the SCENARIO already says the
+		// session is VD, and a dump that declares "VDFirst"/"VDSync" itself
+		// (the real_* first-connect captures do) only becomes VD here. Without
+		// re-resolving it, such a session declares option VDFirst with
+		// feed_offset 0 and the manager answers 409 version_mismatch against
+		// any node whose feed offset is not 0 -- the scan lane never runs.
+		if start.Option == fbbuild.OptionVDFirst || start.Option == fbbuild.OptionVDSync {
+			start.FeedOffset = a.feedOffsetFor(step)
+		}
 	}
 	if len(step.Indices) == 0 && len(ds.Indices) > 0 {
 		start.Indices = ds.Indices

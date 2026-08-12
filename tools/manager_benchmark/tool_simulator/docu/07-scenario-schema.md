@@ -92,6 +92,7 @@ independent.
 | `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
 | `delete_agent` | `DELETE /agents` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
+| `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
 
 Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
@@ -124,7 +125,7 @@ A lane step **MAY** carry:
 |---|---|
 | `repeat_count` | Send the step this many times (0 or absent = once). A steady delta stream is `delta` with a high `repeat_count` |
 | `repeat_delay` | Wait this long between repeats |
-| `initial_delay` | Wait this long before the step's first send — how lanes are staggered (VD starting after FIM has seeded, say) |
+| `initial_delay` | Wait this long before the step's first send — how lanes are staggered (VD starting after FIM has seeded, say), and how a `scan_vd` step waits for the inventory it re-scans to reach the indexer |
 
 Durations are Go duration strings (`"3s"`, `"5m"`).
 
@@ -137,8 +138,8 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
 | `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
 
-**What `requests_per_second` counts**: `/stateful` sessions and `DELETE /agents` requests, one token
-each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
+**What `requests_per_second` counts**: `/stateful` sessions, `DELETE /agents` and `POST /scan/vd`
+requests, one token each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
 FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
 and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees
 a session. Engine lanes have their own knob in real event units (`events_per_second`, [13](13-engine-event-streams.md)),
@@ -165,6 +166,7 @@ budget spent).
 "expected": {
   "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
   "stateless": { "s202": { "gte": 1 } },
+  "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
   "control":   { "startup_err": { "eq": 0 } },
   "deletes":   { "err": { "eq": 0 } },
   "transport_errors": { "eq": 0 },

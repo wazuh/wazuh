@@ -163,7 +163,9 @@ type Step struct {
 	Documents *DocSpec `json:"documents"`
 	Contexts  *DocSpec `json:"contexts"`
 	GlobalVer uint64   `json:"global_version"`
-	// FeedOffset overrides Start.feed_offset for a VDFirst/VDSync step. Nil
+	// FeedOffset overrides the feed offset a VD step declares: Start.feed_offset
+	// for a VDFirst/VDSync session, or the request body's feed_offset for a
+	// "scan_vd" step (the same resolution order, so one field pins both). Nil
 	// (the default) defers to -vd-feed-offset, or the value the agent's
 	// keepalive loop learned from /control's vd_feed_offset (agent mode only
 	// -- see docu/03-control-protocol.md); a pointer distinguishes "not set"
@@ -225,6 +227,7 @@ type Expected struct {
 	Stateless        map[string]Assertion `json:"stateless"`
 	Control          map[string]Assertion `json:"control"`
 	Deletes          map[string]Assertion `json:"deletes"`
+	Scan             map[string]Assertion `json:"scan"`
 	TransportErrors  Assertion            `json:"transport_errors"`
 	RetriesExhausted Assertion            `json:"retries_exhausted"`
 }
