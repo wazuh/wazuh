@@ -1071,7 +1071,7 @@ if(IS_LINUX AND NOT IS_AGENT)
 endif()
 
 # ------------------------------------------------------------------------------
-# zstd (server only)
+# zstd (manager + Linux/macOS agent; winagent cross-compile is a follow-up)
 # ------------------------------------------------------------------------------
 #
 # Upstream ships its CMake project under build/cmake (not at the repo root),
@@ -1080,7 +1080,13 @@ endif()
 # VS2010,single_file_libs} directories. The static archive lands under
 # <BINARY_DIR>/lib/libzstd.a because upstream's lib/CMakeLists.txt is pulled
 # in via add_subdirectory(lib).
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
+#
+# Was manager-only; the agent now needs it too (#38308, request-body
+# compression). IS_WINDOWS stays excluded here -- winagent's MinGW
+# cross-compile toolchain args (mirroring curl/openssl's CMAKE_ARGS
+# CC=${MINGW_CC} --host=${MINGW_HOST} pattern above) are a dedicated
+# follow-up, verified against packages/windows/Dockerfile.
+if(NOT IS_WINDOWS)
   if(EXISTS ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
     message(STATUS "Using precompiled zstd library")
     add_custom_target(zstd_external)
