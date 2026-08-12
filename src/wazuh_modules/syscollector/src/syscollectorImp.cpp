@@ -756,29 +756,27 @@ void Syscollector::quiesce()
 
 void Syscollector::releaseResources()
 {
-    // Take the flush controller out under the exclusive lock (so a concurrent "flush" query
-    // sees either the live controller or none) but destroy it outside of it: its destructor
-    // joins the flush worker, which runs executeFlushSync() -> synchronizeModule() without
-    // taking m_resourcesMutex, so joining it while holding the lock would be pointless and
-    // resetting the protocols before the join would be a use-after-free. quiesce()'s
-    // waitForFlushToFinish() is not enough on its own: it only joins the worker that exists
-    // at that instant, and flush() has no m_stopping check, so a "flush" query accepted
-    // right afterwards spawns a worker that outlives it.
-    std::unique_ptr<Utils::AsyncFlushController> flushController;
-    {
-        std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
-        flushController = std::move(m_asyncFlushController);
-    }
-    flushController.reset();
-
-    // Exclude the entry points that other threads keep driving while the module tears down.
-    // The scan and sync workers are joined before this runs (see wm_syscollector.c), but
-    // query() is not: wcom's dispatcher is detached and agent-info polls it in-process, so
-    // without this lock a get_first_sync_completed query could be inside getMetadataValue()
-    // dereferencing m_spDBSync while it is reset here, crashing the agent (issue #38203).
-    // quiesce() always runs first and stops the sync protocols, so anything holding the
-    // shared lock is already unwinding before this exclusive lock is requested.
+    // Exclude the entry points that other threads keep driving while the module tears
+    // down. The scan and sync workers are joined before this runs (see wm_syscollector.c),
+    // but query() is not: wcom's dispatcher is detached and agent-info polls it in-process,
+    // so without this lock a get_first_sync_completed query could be inside
+    // getMetadataValue() dereferencing m_spDBSync while it is reset here (issue #38203).
     std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
+    // Join any in-flight asynchronous flush before the members it uses are reset.
+    // The worker runs executeFlushSync() -> synchronizeModule() on its own thread and
+    // takes no lock, so quiesce()'s waitForFlushToFinish() misses a flush accepted
+    // afterwards (flush() has no m_stopping check). Holding the exclusive lock here also
+    // stops a new flush being accepted, because flush() is only reachable through
+    // query(), which takes the lock shared.
+    //
+    // The controller is joined, not destroyed: it is created once in the constructor of
+    // this singleton, so destroying it would leave the module permanently unable to flush
+    // for the rest of the process lifetime.
+    if (m_asyncFlushController)
+    {
+        m_asyncFlushController->waitForFlushToFinish();
+    }
 
     // Explicitly release all resources to ensure clean state between tests
     // and prevent use-after-free when Syscollector singleton destructs

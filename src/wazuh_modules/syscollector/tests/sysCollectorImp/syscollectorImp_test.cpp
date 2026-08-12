@@ -3020,6 +3020,7 @@ TEST_F(SyscollectorImpTest, releaseResourcesJoinsInFlightFlushBeforeResettingSyn
     s_workerLeftProtocol = false;
 
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
