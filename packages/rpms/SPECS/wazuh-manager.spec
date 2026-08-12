@@ -323,7 +323,11 @@ if [ "$1" -eq 1 ]; then
   . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
 
   # Generating wazuh-manager.conf file
-  %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf
+  if ! %{_localstatedir}/packages_files/manager_installation_scripts/src/init/gen_wazuh.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/wazuh-manager.conf; then
+    rm -f %{_localstatedir}/etc/wazuh-manager.conf
+    echo "ERROR: could not generate %{_localstatedir}/etc/wazuh-manager.conf." >&2
+    exit 1
+  fi
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
   chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
@@ -345,9 +349,13 @@ if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/
   %{_localstatedir}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
 fi
 
-# Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
-if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedir}/etc/https-manager.cert" ]; then
-  %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
+# Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
+# exists. Skipped when the admin supplied their own certificate/key paths through the
+# WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables.
+if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
+  if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedir}/etc/https-manager.cert" ]; then
+    %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
+  fi
 fi
 
 # Both sslmanager.cert/key and https-manager.cert/key must be owned by wazuh-manager:

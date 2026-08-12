@@ -64,7 +64,13 @@ case "$1" in
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
+        # The redirection truncates the target before the generator runs: a rejected
+        # variable would otherwise leave an empty file that a retry treats as pre-existing.
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf; then
+            rm -f ${DIR}/etc/wazuh-manager.conf
+            echo "ERROR: could not generate ${DIR}/etc/wazuh-manager.conf." >&2
+            exit 1
+        fi
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -79,9 +85,15 @@ case "$1" in
             fi
         fi
     else
-        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
-        chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
-        chmod 660 ${DIR}/etc/wazuh-manager.conf.new
+        # A reference file for the administrator, not the active configuration: a rejected
+        # variable must not abort the upgrade.
+        if ! ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new; then
+            rm -f ${DIR}/etc/wazuh-manager.conf.new
+            echo "WARNING: could not generate ${DIR}/etc/wazuh-manager.conf.new. The current configuration is unchanged." >&2
+        else
+            chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
+            chmod 660 ${DIR}/etc/wazuh-manager.conf.new
+        fi
     fi
 
     # Remove/relocate existing SQLite databases
@@ -123,9 +135,13 @@ case "$1" in
         ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
     fi
 
-    # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
-    if [ ! -f "${DIR}/etc/https-manager.key" ] && [ ! -f "${DIR}/etc/https-manager.cert" ]; then
-        ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
+    # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not
+    # exists. Skipped when the admin supplied their own certificate/key paths through the
+    # WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables.
+    if [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
+        if [ ! -f "${DIR}/etc/https-manager.key" ] && [ ! -f "${DIR}/etc/https-manager.cert" ]; then
+            ${DIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/https-manager.key -X ${DIR}/etc/https-manager.cert 2>/dev/null
+        fi
     fi
 
     # Both sslmanager.cert/key and https-manager.cert/key must be owned by ${USER}: both

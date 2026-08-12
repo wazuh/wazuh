@@ -19,7 +19,6 @@
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
-REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 
@@ -201,6 +200,13 @@ GenerateAuthCert()
 GenerateHttpsManagerCert()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
+        return
+    fi
+
+    # Custom certificate/key paths supplied through the WAZUH_REMOTE_HTTPS_*
+    # installation variables mean the admin manages these files: nothing to
+    # generate at the default location.
+    if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] || [ -n "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
         return
     fi
 
@@ -452,6 +458,258 @@ WriteAgent()
 
 
 ##########
+# Validation helpers for the WAZUH_REMOTE_* installation variables.
+# Each check is skipped when the variable is empty (the default is used).
+# On an invalid value the whole generation exits so that no configuration
+# is ever written with a bad value.
+##########
+RemoteVarError()
+{
+    echo "ERROR: Invalid value '$2' for installation variable $1: $3" >&2
+    # $NEWCONFIG is always a scratch file (./wazuh.conf.temp for the generator,
+    # ./etc/wazuh.mc for install.sh), consumed only after a complete write.
+    rm -f "$NEWCONFIG"
+    exit 1
+}
+
+CheckRemoteXmlSafe()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        *[\&\<\>\"\']*)
+            RemoteVarError "$1" "$2" "the characters & < > \" ' are not allowed";;
+    esac
+}
+
+CheckRemotePort()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        *[!0-9]*)
+            RemoteVarError "$1" "$2" "expected a port number (1-65535)";;
+    esac
+    if [ "$2" -lt 1 ] || [ "$2" -gt 65535 ]; then
+        RemoteVarError "$1" "$2" "expected a port number (1-65535)"
+    fi
+}
+
+CheckRemoteYesNo()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        yes|no) ;;
+        *) RemoteVarError "$1" "$2" "expected 'yes' or 'no'";;
+    esac
+}
+
+CheckRemoteIP()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        *:*)
+            # IPv6: hex digits and colons only.
+            case "$2" in
+                *[!0-9a-fA-F:]*) RemoteVarError "$1" "$2" "expected a valid IP address";;
+            esac
+            ;;
+        *.*.*.*)
+            OLD_IFS="$IFS"; IFS='.'
+            set -- "$1" "$2" $2
+            IFS="$OLD_IFS"
+            if [ "$#" != 6 ]; then
+                RemoteVarError "$1" "$2" "expected a valid IP address"
+            fi
+            for OCTET in "$3" "$4" "$5" "$6"; do
+                case "$OCTET" in
+                    ''|*[!0-9]*) RemoteVarError "$1" "$2" "expected a valid IP address";;
+                esac
+                if [ "$OCTET" -gt 255 ]; then
+                    RemoteVarError "$1" "$2" "expected a valid IP address"
+                fi
+            done
+            ;;
+        *) RemoteVarError "$1" "$2" "expected a valid IP address";;
+    esac
+}
+
+CheckRemoteProtocol()
+{
+    [ -z "$2" ] && return 0
+    OLD_IFS="$IFS"; IFS=','
+    for PROTO_WORD in $2; do
+        case "$PROTO_WORD" in
+            tcp|udp) ;;
+            *) IFS="$OLD_IFS"; RemoteVarError "$1" "$2" "expected 'tcp', 'udp' or a comma-separated combination";;
+        esac
+    done
+    IFS="$OLD_IFS"
+}
+
+CheckRemoteTime()
+{
+    [ -z "$2" ] && return 0
+    TIME_NUM=${2%%[!0-9]*}
+    TIME_UNIT=${2#"$TIME_NUM"}
+    if [ -z "$TIME_NUM" ] || [ "$TIME_NUM" -eq 0 ]; then
+        RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)"
+    fi
+    # Units as accepted by w_parse_time(): lowercase only, weeks included.
+    case "$TIME_UNIT" in
+        ''|[smhdw]) ;;
+        *) RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)";;
+    esac
+}
+
+CheckRemoteSize()
+{
+    [ -z "$2" ] && return 0
+    SIZE_NUM=${2%%[!0-9]*}
+    SIZE_UNIT=${2#"$SIZE_NUM"}
+    if [ -z "$SIZE_NUM" ] || [ "$SIZE_NUM" -eq 0 ]; then
+        RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, KB, MB, GB)"
+    fi
+    case "$SIZE_UNIT" in
+        ''|[KkMmGgBb]|[KkMmGg][Bb]) ;;
+        *) RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, KB, MB, GB)";;
+    esac
+}
+
+##########
+# ValidateRemoteVars()
+# Idempotent: install.sh validates up front, before any side effect, while the
+# package flows reach it through WriteRemote().
+##########
+ValidateRemoteVars()
+{
+    if [ "X${REMOTE_VARS_VALIDATED}" = "Xyes" ]; then
+        return 0
+    fi
+    REMOTE_VARS_VALIDATED="yes"
+
+    for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
+                           WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CIPHERS; do
+        eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
+        CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
+    done
+
+    CheckRemotePort "WAZUH_REMOTE_HTTPS_PORT" "${WAZUH_REMOTE_HTTPS_PORT}"
+    CheckRemoteIP "WAZUH_REMOTE_HTTPS_BIND_ADDR" "${WAZUH_REMOTE_HTTPS_BIND_ADDR}"
+    CheckRemoteSize "WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE" "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}"
+    CheckRemoteYesNo "WAZUH_REMOTE_HTTPS_DUAL_STACK" "${WAZUH_REMOTE_HTTPS_DUAL_STACK}"
+
+    case "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" in
+        ''|none|certificate|full) ;;
+        *) RemoteVarError "WAZUH_REMOTE_HTTPS_VERIFICATION_MODE" "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" "expected 'none', 'certificate' or 'full'";;
+    esac
+
+    # Either path alone disables the self-signed generation while the other keeps its
+    # default location, which nothing creates.
+    if [ -n "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ] && [ -z "${WAZUH_REMOTE_HTTPS_KEY}" ]; then
+        RemoteVarError "WAZUH_REMOTE_HTTPS_CERTIFICATE" "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" "WAZUH_REMOTE_HTTPS_KEY is required when a custom certificate is provided"
+    fi
+
+    if [ -n "${WAZUH_REMOTE_HTTPS_KEY}" ] && [ -z "${WAZUH_REMOTE_HTTPS_CERTIFICATE}" ]; then
+        RemoteVarError "WAZUH_REMOTE_HTTPS_KEY" "${WAZUH_REMOTE_HTTPS_KEY}" "WAZUH_REMOTE_HTTPS_CERTIFICATE is required when a custom private key is provided"
+    fi
+
+    case "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" in
+        certificate|full)
+            if [ -z "${WAZUH_REMOTE_HTTPS_CA}" ]; then
+                RemoteVarError "WAZUH_REMOTE_HTTPS_VERIFICATION_MODE" "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" "WAZUH_REMOTE_HTTPS_CA is required when certificate verification is enabled"
+            fi
+            ;;
+    esac
+
+    if [ -n "${WAZUH_REMOTE_HTTPS_DUAL_STACK}" ]; then
+        case "${WAZUH_REMOTE_HTTPS_BIND_ADDR}" in
+            *:*) ;;
+            *) echo "WARNING: WAZUH_REMOTE_HTTPS_DUAL_STACK only applies to an IPv6 WAZUH_REMOTE_HTTPS_BIND_ADDR; the option will be ignored at runtime." >&2;;
+        esac
+    fi
+
+    CheckRemotePort "WAZUH_REMOTE_LEGACY_PORT" "${WAZUH_REMOTE_LEGACY_PORT}"
+    CheckRemoteProtocol "WAZUH_REMOTE_LEGACY_PROTOCOL" "${WAZUH_REMOTE_LEGACY_PROTOCOL}"
+    CheckRemoteYesNo "WAZUH_REMOTE_LEGACY_IPV6" "${WAZUH_REMOTE_LEGACY_IPV6}"
+    CheckRemoteIP "WAZUH_REMOTE_LEGACY_LOCAL_IP" "${WAZUH_REMOTE_LEGACY_LOCAL_IP}"
+    CheckRemoteTime "WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME" "${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}"
+
+    case "${WAZUH_REMOTE_LEGACY_QUEUE_SIZE}" in
+        '') ;;
+        *[!0-9]*|0) RemoteVarError "WAZUH_REMOTE_LEGACY_QUEUE_SIZE" "${WAZUH_REMOTE_LEGACY_QUEUE_SIZE}" "expected a positive integer";;
+    esac
+
+    if [ -n "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" ]; then
+        case "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" in
+            *[!0-9]*) RemoteVarError "WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME" "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" "expected a number of seconds (0-3600)";;
+        esac
+        if [ "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" -gt 3600 ]; then
+            RemoteVarError "WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME" "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" "expected a number of seconds (0-3600)"
+        fi
+    fi
+
+    CheckRemoteYesNo "WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS" "${WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS}"
+}
+
+##########
+# WriteRemote()
+# Writes the <remote> block. Every value can be customized at installation
+# time through the WAZUH_REMOTE_* variables; options with no built-in
+# default are only written when their variable is set.
+##########
+WriteRemote()
+{
+    ValidateRemoteVars
+
+    echo "  <remote>" >> $NEWCONFIG
+    echo "    <https>" >> $NEWCONFIG
+    echo "      <port>${WAZUH_REMOTE_HTTPS_PORT:-1517}</port>" >> $NEWCONFIG
+    echo "      <bind_addr>${WAZUH_REMOTE_HTTPS_BIND_ADDR:-127.0.0.1}</bind_addr>" >> $NEWCONFIG
+    echo "      <certificate>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/https-manager.cert}</certificate>" >> $NEWCONFIG
+    echo "      <key>${WAZUH_REMOTE_HTTPS_KEY:-etc/https-manager.key}</key>" >> $NEWCONFIG
+    if [ -n "${WAZUH_REMOTE_HTTPS_CA}" ]; then
+        echo "      <ca>${WAZUH_REMOTE_HTTPS_CA}</ca>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}" ]; then
+        echo "      <verification_mode>${WAZUH_REMOTE_HTTPS_VERIFICATION_MODE}</verification_mode>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_HTTPS_CIPHERS}" ]; then
+        echo "      <ciphers>${WAZUH_REMOTE_HTTPS_CIPHERS}</ciphers>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}" ]; then
+        echo "      <max_body_size>${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}</max_body_size>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_HTTPS_DUAL_STACK}" ]; then
+        echo "      <dual_stack>${WAZUH_REMOTE_HTTPS_DUAL_STACK}</dual_stack>" >> $NEWCONFIG
+    fi
+    echo "    </https>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+    echo "    <legacy>" >> $NEWCONFIG
+    echo "      <port>${WAZUH_REMOTE_LEGACY_PORT:-1514}</port>" >> $NEWCONFIG
+    echo "      <protocol>${WAZUH_REMOTE_LEGACY_PROTOCOL:-tcp}</protocol>" >> $NEWCONFIG
+    if [ -n "${WAZUH_REMOTE_LEGACY_IPV6}" ]; then
+        echo "      <ipv6>${WAZUH_REMOTE_LEGACY_IPV6}</ipv6>" >> $NEWCONFIG
+    fi
+    # With an IPv6 listener and no explicit address, local_ip is left out so
+    # that remoted applies its own IPv6 default instead of 127.0.0.1.
+    if [ -n "${WAZUH_REMOTE_LEGACY_LOCAL_IP}" ] || [ "X${WAZUH_REMOTE_LEGACY_IPV6}" != "Xyes" ]; then
+        echo "      <local_ip>${WAZUH_REMOTE_LEGACY_LOCAL_IP:-127.0.0.1}</local_ip>" >> $NEWCONFIG
+    fi
+    echo "      <queue_size>${WAZUH_REMOTE_LEGACY_QUEUE_SIZE:-131072}</queue_size>" >> $NEWCONFIG
+    if [ -n "${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}" ]; then
+        echo "      <rids_closing_time>${WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME}</rids_closing_time>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}" ]; then
+        echo "      <connection_overtake_time>${WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME}</connection_overtake_time>" >> $NEWCONFIG
+    fi
+    echo "    </legacy>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+    echo "    <agents>" >> $NEWCONFIG
+    echo "      <allow_higher_versions>${WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS:-no}</allow_higher_versions>" >> $NEWCONFIG
+    echo "    </agents>" >> $NEWCONFIG
+    echo "  </remote>" >> $NEWCONFIG
+}
+
+##########
 # WriteManager() $1="no_locafiles" or empty
 ##########
 WriteManager()
@@ -473,7 +731,7 @@ WriteManager()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
+    WriteRemote
     echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
