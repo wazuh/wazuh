@@ -4,8 +4,10 @@
 
 import logging
 import operator
-from os import chmod, path, listdir
+from os import chmod, path, listdir, rename
+from shutil import rmtree
 from typing import Union
+from uuid import uuid4
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
@@ -870,17 +872,25 @@ def create_group(group_id: str) -> WazuhResult:
         else:
             raise WazuhError(1713, extra_message=group_id)
 
-    # Create group in /etc/shared
+    # Build the group in a hidden temporary directory outside SHARED_PATH (but on the same
+    # filesystem, so the final rename stays atomic), then reveal it with a single atomic
+    # rename. modulesd's inotify-driven group sync only watches SHARED_PATH itself, so a temp
+    # path inside it would still emit a spurious IN_MOVED_FROM event on rename; building the
+    # temp dir as a sibling of SHARED_PATH avoids that.
     agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
+    tmp_path = path.join(path.dirname(common.SHARED_PATH), f'.{group_id}.tmp-{uuid4().hex}')
     try:
-        mkdir_with_mode(group_path)
-        full_copy(agent_conf_template, path.join(group_path, 'agent.conf'))
+        mkdir_with_mode(tmp_path)
+        full_copy(agent_conf_template, path.join(tmp_path, 'agent.conf'))
 
-        chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
-        chmod_r(group_path, 0o660)
-        chmod(group_path, 0o700)
+        chown_r(tmp_path, common.wazuh_uid(), common.wazuh_gid())
+        chmod_r(tmp_path, 0o660)
+        chmod(tmp_path, 0o700)
+
+        rename(tmp_path, group_path)
         msg = f"Group '{group_id}' created."
     except Exception as e:
+        rmtree(tmp_path, ignore_errors=True)
         raise WazuhInternalError(1005, extra_message=str(e))
 
     return WazuhResult({'message': msg})
