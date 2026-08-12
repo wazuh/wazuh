@@ -11,7 +11,7 @@
   "lanes": {
     "sca": [
       { "kind": "full_resync", "module": "sca", "indices": ["wazuh-states-sca"],
-        "documents": { "count": 400, "size_bytes": 384, "with_checksum": true } }
+        "documents": { "count": 400, "size_bytes": 384 } }
     ]
   },
   "fleets": [

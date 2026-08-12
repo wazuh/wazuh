@@ -11,7 +11,7 @@
   "lanes": {
     "confirm": [
       { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
-        "documents": { "count": 100, "with_checksum": true } },
+        "documents": { "count": 100 } },
       { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
     ],
     "mismatch": [

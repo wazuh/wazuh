@@ -24,7 +24,7 @@ production-shaped pressure.
   "lanes": {
     "fim_windows": [
       { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
-        "documents": { "count": 500, "size_bytes": 512, "with_checksum": true } },
+        "documents": { "count": 500, "size_bytes": 512 } },
       { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
         "documents": { "count": 20 }, "repeat_count": 10, "repeat_delay": "3s", "initial_delay": "0s" }
     ],
@@ -85,7 +85,7 @@ independent.
 
 | `kind` | Session built | Notes |
 |---|---|---|
-| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count/size/`checksum.hash.sha1`; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
+| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count and size (`checksum.hash.sha1` is always present — see the conventions); `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
 | `cleans` | `ModuleDelta` + `Cleans` | `indices` overrides the defaults |
 | `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |
@@ -191,6 +191,14 @@ already invalid — judging counters produced by an unauthenticated fleet would 
 - `documents.size_bytes` is the approximate serialized size of one document; the generator pads a
   realistic shape rather than one giant string, because document count and document size stress
   different parts of the pipeline (per-document overlay vs bulk bytes).
+- **Every generated document carries `checksum.hash.sha1`, and there is no knob to omit it.** A real
+  agent has no checksum-less mode: syscollector writes `/checksum/hash/sha1` into every item it emits
+  (`syscollectorImp.cpp`), SCA computes one per check (`sca_event_handler.cpp`), FIM keeps it as a
+  column of its own, and all 32,000 documents of the captured corpus in `sample_payloads/dumps/` have
+  one. It is also what the `ModuleCheck` aggregate is computed over, so a document without it is a
+  document the integrity path could never reconcile. The former `documents.with_checksum` field was
+  **retired**, not defaulted to `true`: a scenario that still sets it is refused at load time, like
+  every other retired knob, rather than reading as a choice the sender does not have.
 - **Generated documents MUST satisfy the target index's mapping.** The real state indices are
   `dynamic: strict`, so a field that is not in the mapping makes the indexer reject the whole bulk
   with `400` and the session answer `500` — the load never reaches the pipeline being measured. The

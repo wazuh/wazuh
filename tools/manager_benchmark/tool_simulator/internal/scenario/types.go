@@ -193,10 +193,15 @@ type Step struct {
 }
 
 // DocSpec controls document (or context) generation for a step.
+//
+// There is deliberately no `with_checksum` knob: every generated document
+// carries checksum.hash.sha1, because every real one does (see
+// source.Documents). It was retired rather than defaulted to true, so a
+// scenario that still sets it fails to load instead of implying the sender
+// has a checksum-less mode.
 type DocSpec struct {
-	Count        int  `json:"count"`
-	SizeBytes    int  `json:"size_bytes"`
-	WithChecksum bool `json:"with_checksum"`
+	Count     int `json:"count"`
+	SizeBytes int `json:"size_bytes"`
 }
 
 // Pacing is the run-level load shape.

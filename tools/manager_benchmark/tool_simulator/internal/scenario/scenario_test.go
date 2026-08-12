@@ -54,6 +54,11 @@ func TestLoaderRefusesTheRetiredKnobs(t *testing.T) {
 	// instead of a silently different measurement.
 	for _, body := range []string{
 		`{"kind": "delta", "loop": true}`,
+		// with_checksum was retired, not defaulted: every generated document
+		// carries checksum.hash.sha1 because every real one does, so a file
+		// still asking for it must fail loudly rather than read as a knob.
+		`{"kind": "delta", "documents": {"count": 1, "with_checksum": true}}`,
+		`{"kind": "delta", "documents": {"count": 1, "with_checksum": false}}`,
 		`{"kind": "delta", "run_while_siblings_active": true}`,
 		`{"kind": "parallel"}`,
 	} {

@@ -11,7 +11,7 @@
   "lanes": {
     "fim": [
       { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
-        "documents": { "count": 800, "size_bytes": 512, "with_checksum": true } }
+        "documents": { "count": 800, "size_bytes": 512 } }
     ]
   },
   "fleets": [

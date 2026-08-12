@@ -14,17 +14,16 @@ import (
 
 // DocSpec controls document generation for one delta step.
 type DocSpec struct {
-	Count        int
-	SizeBytes    int  // approximate serialized size of one document
-	WithChecksum bool // include checksum.hash.sha1 (needed for ModuleCheck)
-	Index        string
+	Count     int
+	SizeBytes int // approximate serialized size of one document
+	Index     string
 }
 
-// GeneratedDoc is one document plus its stable id and checksum (when asked).
+// GeneratedDoc is one document plus its stable id and checksum.
 type GeneratedDoc struct {
 	ID       string
 	Data     []byte
-	Checksum string // sha1 of the deterministic id when WithChecksum, else ""
+	Checksum string // sha1 of (seed, id); always set -- see Documents
 }
 
 // Documents builds Count documents for one agent/lane deterministically. The
@@ -32,6 +31,14 @@ type GeneratedDoc struct {
 // makes the whole run reproducible. Each document is padded to about SizeBytes
 // with a realistic shape rather than one giant string, since document count and
 // document size stress different parts of the pipeline.
+//
+// EVERY document carries checksum.hash.sha1, unconditionally: a real agent has
+// no mode that omits it. syscollector writes /checksum/hash/sha1 into every item
+// it emits (syscollectorImp.cpp), SCA computes one per check
+// (sca_event_handler.cpp), FIM keeps it as a column of its own, and all 32,000
+// documents of the captured corpus in sample_payloads/dumps/ have it. It is also
+// what the ModuleCheck aggregate is computed over, so a document without one is
+// a document the integrity path could never reconcile.
 func Documents(seed uint64, key string, spec DocSpec) []GeneratedDoc {
 	docs := make([]GeneratedDoc, 0, spec.Count)
 	for i := 0; i < spec.Count; i++ {
@@ -49,17 +56,11 @@ func Documents(seed uint64, key string, spec DocSpec) []GeneratedDoc {
 				"version":     fmt.Sprintf("%d.%d.%d", seed%10, i%100, i%7),
 				"description": padTo(spec.SizeBytes),
 			},
-		}
-		if spec.WithChecksum {
-			doc["checksum"] = map[string]any{"hash": map[string]any{"sha1": checksum}}
+			"checksum": map[string]any{"hash": map[string]any{"sha1": checksum}},
 		}
 		data, _ := json.Marshal(doc)
 
-		g := GeneratedDoc{ID: id, Data: data}
-		if spec.WithChecksum {
-			g.Checksum = checksum
-		}
-		docs = append(docs, g)
+		docs = append(docs, GeneratedDoc{ID: id, Data: data, Checksum: checksum})
 	}
 	return docs
 }

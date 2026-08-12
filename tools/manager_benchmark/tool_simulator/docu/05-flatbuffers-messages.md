@@ -78,8 +78,9 @@ ordering guarantee (same agent → same shard → FIFO) is what is exercised.
 Each `DataValue` carries `operation` (`Upsert`/`Delete`), `id`, `index`, an optional `version`
 (> 0 selects a versioned upsert) and `data`: the document as **JSON bytes**. The sender **MUST**
 generate documents whose size is controlled by the scenario (payload-size knob) and **SHOULD** make
-them realistic in shape for the target index, including a `checksum.hash.sha1` field when the
-scenario later verifies with `ModuleCheck` — that is the field the manager aggregates.
+them realistic in shape for the target index. `checksum.hash.sha1` is **always** included (every real
+agent document has one, and it is the field the manager aggregates for `ModuleCheck`); there is no
+scenario knob to leave it out — see [07](07-scenario-schema.md#conventions).
 
 `DataContext` items are the vulnerability-detection context: they are consumed by the scan lane and
 never indexed as state documents. A VD scenario **SHOULD** include them, since they add bytes and
