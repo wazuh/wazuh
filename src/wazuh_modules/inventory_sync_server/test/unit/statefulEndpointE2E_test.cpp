@@ -313,8 +313,8 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
     EXPECT_EQ(200, invsync::test::sendRaw(m_path, aliasHead).status);
 
-    // Each deletion refreshes its scope and then deletes across it: wazuh-states-* plus the two
-    // wazuh-agent-* indices, which live outside the state family and used to outlive the agent.
+    // Each deletion deletes across its whole scope: wazuh-states-* plus the two wazuh-agent-*
+    // indices, which live outside the state family and used to outlive the agent.
     std::vector<std::string> deletedIndices;
     std::vector<std::string> deletedAgents;
     for (const auto& op : m_events->syncOps())

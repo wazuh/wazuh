@@ -49,7 +49,7 @@ The library provides two classes depending on the use case:
 Both connectors retry transient failures (HTTP 429 Too Many Requests, connection errors, and - async only - HTTP 409 document version conflicts) using an exponential backoff with jitter (`IndexerExponentialBackoff`, `src/exponentialBackoff.hpp`). Other errors are not retried:
 
 - HTTP 413 (Payload Too Large) is handled separately: the batch is split (sync) or the bulk-size threshold is halved (async) and resent immediately, with no backoff delay.
-- Sync: an HTTP 409 at the request level, or any other status code, drops the current batch and throws immediately (no retry). Delete-by-query is the exception — see [Delete-by-query and refresh](#delete-by-query-and-refresh) below.
+- Sync: an HTTP 409 at the request level, or any other status code, drops the current batch and throws immediately (no retry). Delete-by-query is the exception — see [Delete-by-query](#delete-by-query) below.
 - Async: a per-item `cluster_block_exception` inside an HTTP 200 response (cluster refusing writes) is treated as already failed permanently - those items are discarded (not retried), and the backoff is applied only to the *next* bulk send, not to the batch that already got a response. Any other per-item error, or a status code that isn't retried above, is logged and discarded.
 
 **How the delay scales:**
@@ -68,11 +68,11 @@ Example with the defaults (base = 1s, max = 15s):
 | 4th | random between 4s and 8s |
 | 5th and beyond | random between 8s and 15s (capped) |
 
-### Delete-by-query and refresh
+### Delete-by-query
 
-`IndexerConnectorSync` also exposes the two operations the manager's whole-agent deletion is built
-on. Both behave differently from the bulk paths above, because a deletion that reports success it did
-not achieve leaves documents nothing will ever overwrite:
+`IndexerConnectorSync` also exposes the operation the manager's whole-agent deletion is built on. It
+behaves differently from the bulk paths above, because a deletion that reports success it did not
+achieve leaves documents nothing will ever overwrite:
 
 - **`deleteByQuery(index, agentId, clusterName)`** stages one query per index; the following
   `flush()` sends them. Queries are sent with `conflicts: "proceed"`, so a document whose version
@@ -85,12 +85,12 @@ not achieve leaves documents nothing will ever overwrite:
 - HTTP-level `404`, `409` and `429` on a delete-by-query are tolerated (logged at debug) rather than
   raised: a missing index has nothing to delete, and the other two are retried by re-running the
   deletion.
-- **`refresh(indexPattern)`** issues an immediate `_refresh` so a following search-based operation
-  (delete-by-query, update-by-query) sees already-flushed documents instead of waiting for the
-  index's refresh interval. A `404` is a no-op; **every other failure is raised**, because a
-  swallowed failure would let the search run on a stale view. Note that `_refresh` requires
-  `indices:admin/refresh`, which is not part of the `crud`/`write` action groups — a least-privilege
-  indexer role must grant it explicitly.
+- **A delete-by-query is a SEARCH**, so it only sees documents that are already searchable. Callers
+  that need it to cover writes of the last few seconds must refresh the index themselves — the
+  connector does not do it for them, and `refresh()` requires `indices:admin/refresh`, which is not
+  part of the `crud`/`write` action groups. The manager's whole-agent deletion accepts that window
+  rather than requiring the privilege; see the
+  [inventory-sync-server deletion semantics](../inventory-sync-server/api-reference.md#whole-agent-deletion-semantics).
 
 ## Indices
 

@@ -344,28 +344,6 @@ namespace invsync::sync
     ProcessOutcome SessionProcessor::executeDeleteAgent(const std::string& agentId,
                                                         indexer::IIndexerConnectorSync& connector) const
     {
-        // Refresh BEFORE deleting, and that ordering is the whole correctness of this function.
-        // _delete_by_query runs a SEARCH, so it only ever sees refreshed segments; the state indices
-        // refresh every 2 s and this deletion arrives immediately behind the agent's last session
-        // (authd removes the key, then calls us). Without the refresh, everything written inside
-        // that window is invisible to the query, the deletion answers 200 having deleted nothing,
-        // and -- the agent being gone from client.keys -- nothing ever overwrites those documents
-        // again. A refresh of an index that does not exist is a no-op in the connector, so this
-        // stays silent on a manager whose agents never reported config or statistics.
-        //
-        // Read the flush() at the bottom of this function carefully before touching this order: it
-        // does NOT flush the agent's writes (the worker already cut the batch for us -- this is an
-        // immediate-style step), it is what SENDS the deletions. The refresh is the odd one out on
-        // this seam: it is immediate I/O, while deleteByQuery only stages. That asymmetry is what
-        // puts the _refresh on the wire ahead of every _delete_by_query, and it is the reason these
-        // two loops are not one. Make refresh staged, or fold the loops, and the refresh stops
-        // preceding the search it exists to feed -- silently, because the deletion still answers
-        // 200.
-        for (const auto& index : AGENT_DELETION_SCOPE)
-        {
-            connector.refresh(index);
-        }
-
         // The whole scope, not just the states pattern: `wazuh-agent-config` and `wazuh-agent-stats`
         // sit outside the wazuh-states-* family and used to survive the agent. This is a whole-agent
         // deletion (the agent is GONE from client.keys), so it must reach every index holding its
@@ -373,6 +351,16 @@ namespace invsync::sync
         // the durability of the 200, exactly like executeCleans() -- a 404 for a not-yet-created
         // index counts as success inside the connector, so re-running a delete is harmless (that is
         // authd's retry contract).
+        //
+        // KNOWN LIMITATION, deliberate: a _delete_by_query is a SEARCH, so it only sees refreshed
+        // segments. This deletion arrives immediately behind the agent's last session (authd removes
+        // the key, then calls us), so whatever that session wrote inside the index refresh interval
+        // is invisible to the query and survives -- and with the agent gone from client.keys nothing
+        // ever overwrites it. Refreshing each index first would close that window, but `_refresh`
+        // needs `indices:admin/refresh`, which the manager's least-privilege indexer role does not
+        // grant: every deletion then failed with 403 instead of missing a few documents. Repeating
+        // the deletion is the recovery meanwhile; see the follow-up to restore the refresh once the
+        // privilege is in place.
         std::string scope;
         for (const auto& index : AGENT_DELETION_SCOPE)
         {

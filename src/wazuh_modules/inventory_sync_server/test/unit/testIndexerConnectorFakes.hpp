@@ -61,7 +61,7 @@ namespace invsync::test
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
         /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
         /// the seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
-        /// "executeSearchQuery"/"refresh"); fields the operation lacks stay empty. Guarded by
+        /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by
         /// m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
@@ -71,7 +71,7 @@ namespace invsync::test
         /// drive the checksum pagination with a different page per call. Guarded by m_mutex.
         std::deque<nlohmann::json> m_searchResponses;
         /// Seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
-        /// "executeSearchQuery"/"refresh"/"flush") the sync fake must throw from; empty disables.
+        /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables.
         /// Guarded by m_mutex.
         std::string m_syncThrowOn;
         /// While true, the sync fake's flush() BLOCKS until openFlushGate(). Lets a test hold a
@@ -316,17 +316,6 @@ namespace invsync::test
             m_events->throwIfInjected("executeSearchQuery");
             m_events->recordSyncOp("executeSearchQuery", {}, index, searchQuery.dump(), {});
             return m_events->searchResponse();
-        }
-
-        void refresh(std::string_view indexPattern) override
-        {
-            if (m_events)
-            {
-                m_events->throwIfInjected("refresh");
-                // Only the pattern is meaningful; it rides in the index column like every other op,
-                // so a test can assert refresh-BEFORE-deleteByQuery on the single ops timeline.
-                m_events->recordSyncOp("refresh", {}, std::string {indexPattern}, {}, {});
-            }
         }
 
         void flush() override

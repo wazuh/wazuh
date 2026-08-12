@@ -87,11 +87,11 @@ namespace invsync::sync
                                         indexer::IIndexerConnectorSync& connector) const;
 
         /// @brief Deletes every document of @p agentId across AGENT_DELETION_SCOPE (wazuh-states-*,
-        ///        wazuh-agent-config, wazuh-agent-stats; this cluster's scope), refreshing first so
-        ///        the delete-by-query's search sees the agent's last session, and flushes -- the
+        ///        wazuh-agent-config, wazuh-agent-stats; this cluster's scope) and flushes -- the
         ///        whole-agent deletion behind DELETE /agents (design doc 04). Immediate-style: the
         ///        caller must have cut the batch first. An index that does not exist counts as
-        ///        success (404-as-success), same as the legacy delete.
+        ///        success (404-as-success), same as the legacy delete. Documents written inside the
+        ///        index refresh interval can survive it: see the note on the implementation.
         ProcessOutcome executeDeleteAgent(const std::string& agentId, indexer::IIndexerConnectorSync& connector) const;
 
     private:

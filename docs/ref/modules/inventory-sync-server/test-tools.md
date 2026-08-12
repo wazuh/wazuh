@@ -52,10 +52,16 @@ UDS-local (remoted has no downstream route to it), so this script is the only wa
 hand.
 
 The deletion covers the whole scope — `wazuh-states-*`, `wazuh-agent-config` and
-`wazuh-agent-stats` — refreshing each index before its delete-by-query. `--verify` counts the
-agent's documents on the indexer before and after, which is the only way to see what the `200`
-actually did: the endpoint answers the same `{"status":"ok"}` whether it deleted thousands of
-documents or none.
+`wazuh-agent-stats` — one delete-by-query per index. `--verify` counts the agent's documents on the
+indexer before and after, which is the only way to see what the `200` actually did: the endpoint
+answers the same `{"status":"ok"}` whether it deleted thousands of documents or none.
+
+`--verify` refreshes the indices itself before counting, which is what makes its numbers meaningful:
+the server does NOT refresh before its delete-by-query (see the
+[deletion semantics](api-reference.md#whole-agent-deletion-semantics)), so a document the agent's
+last session wrote inside the index refresh interval can survive a `200`. When `--verify` reports a
+non-zero count after a successful deletion, that window — not a failed request — is the usual cause,
+and re-running the deletion clears it.
 
 ```bash
 # Delete agent 900; proves the UDS hop and the status, nothing more

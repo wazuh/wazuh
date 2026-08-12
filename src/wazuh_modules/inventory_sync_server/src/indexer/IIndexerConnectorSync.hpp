@@ -69,18 +69,6 @@ namespace invsync::indexer
         virtual void
         deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) = 0;
 
-        /**
-         * @brief Immediate `_refresh` of an index or pattern: makes already-flushed documents
-         *        visible to SEARCH now, instead of at the index's next refresh interval.
-         *
-         * On the seam because delete-by-query and update-by-query are searches: they act on the
-         * search view, not on the op log. A whole-agent deletion arriving right behind the agent's
-         * last session would otherwise miss everything written inside that interval (2 s on the
-         * state indices) and answer 200 having deleted nothing -- with the agent gone from
-         * client.keys, nothing would ever overwrite those documents.
-         */
-        virtual void refresh(std::string_view indexPattern) = 0;
-
         /// @brief Immediate _update_by_query ("query" + "script") over the given indices.
         virtual void executeUpdateByQuery(const std::vector<std::string>& indices,
                                           const nlohmann::json& updateQuery) = 0;

@@ -1592,23 +1592,7 @@ public:
         };
         const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
         {
-            if (statusCode == HTTP_NOT_FOUND)
-            {
-                // A concrete index that does not exist yet. Refreshing it is meaningless, not
-                // broken: callers refresh a fixed scope (e.g. the whole-agent deletion's
-                // wazuh-agent-config / wazuh-agent-stats) whose indices are only created on the
-                // first document written to them. A WARN here would fire on every such call.
-                LOGFN_DEBUG2(m_logFn, "Index not found (404) for refresh - nothing to refresh, continuing.");
-                return;
-            }
-            // Anything else is raised, NOT swallowed. Callers refresh to make a following search
-            // (delete_by_query, update_by_query) see the writes it must act on; a swallowed failure
-            // would let that search run on a stale view and report success for documents it never
-            // saw. A 403 is the case that makes this load-bearing: `indices:admin/refresh` is not in
-            // the `crud`/`write` action groups, so a least-privilege indexer role denies it, and
-            // warning-and-continuing would silently reinstate the very bug the refresh exists to fix.
             LOGFN_WARN(m_logFn, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
-            throw IndexerConnectorException(error);
         };
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},

@@ -44,14 +44,13 @@ TEST(IndexerSyncSeamTest, EverySeamMethodIsObservableThroughTheInterface)
     seam.deleteByQuery("idx-b", "001", "cluster01");
     seam.executeUpdateByQuery({"idx-a", "idx-b"}, nlohmann::json {{"query", "q"}});
     const auto response = seam.executeSearchQuery("idx-a", nlohmann::json {{"size", 0}});
-    seam.refresh("idx-*");
     seam.flush();
 
     EXPECT_EQ(events->searchResponse(), response);
     EXPECT_EQ(1, events->m_syncFlushes.load());
 
     const auto ops = events->syncOps();
-    ASSERT_EQ(7U, ops.size());
+    ASSERT_EQ(6U, ops.size());
     EXPECT_EQ(std::make_tuple(std::string {"bulkIndex"},
                               std::string {"id-1"},
                               std::string {"idx-a"},
@@ -78,8 +77,6 @@ TEST(IndexerSyncSeamTest, EverySeamMethodIsObservableThroughTheInterface)
     EXPECT_EQ("idx-a,idx-b", std::get<2>(ops[4]));
     EXPECT_EQ("executeSearchQuery", std::get<0>(ops[5]));
     EXPECT_EQ("idx-a", std::get<2>(ops[5]));
-    EXPECT_EQ("refresh", std::get<0>(ops[6]));
-    EXPECT_EQ("idx-*", std::get<2>(ops[6]));
 }
 
 TEST(IndexerSyncSeamTest, AvailabilityFollowsTheSharedFlag)
