@@ -53,6 +53,7 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(60u, typed.statsIntervalS);
     EXPECT_FALSE(typed.configReportEnabled);
     EXPECT_EQ(3600u, typed.configReportIntervalS);
+    EXPECT_FALSE(typed.httpsCompressionEnabled);
 }
 
 TEST(ModuleConfigTest, ZeroedVerifyModeIsFullFailClosed)
