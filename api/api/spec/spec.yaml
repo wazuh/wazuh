@@ -7087,13 +7087,6 @@ paths:
                         debug: 0
                         error: 0
                         warning: 0
-                    - wazuh-manager-modulesd:router:
-                        info: 1
-                        all: 1
-                        critical: 0
-                        debug: 0
-                        error: 0
-                        warning: 0
                     - wazuh-manager-remoted:
                         info: 744
                         all: 0

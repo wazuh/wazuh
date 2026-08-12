@@ -5,7 +5,7 @@ project(remoted_module CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Colocate the .so next to the other manager shared libs (e.g. librouter.so)
+# Colocate the .so next to the other manager shared libs
 # so remoted's runtime rpath ($ORIGIN/../lib) resolves it.
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

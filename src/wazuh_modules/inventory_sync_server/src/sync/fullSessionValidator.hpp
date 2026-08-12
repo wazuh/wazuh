@@ -96,8 +96,7 @@ namespace invsync::sync
                                          std::string_view authenticatedAgentId,
                                          const std::string& managerClusterName);
 
-    /// Same predicate the router's legacy anti-spoofing uses (router.cpp:354-358): digits only,
-    /// non-empty. Shared with DELETE /agents, which validates the same header the same way.
+    /// Shared with DELETE /agents, which validates the same header the same way.
     bool isNumericAgentId(std::string_view value);
 
     /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form inherited from the

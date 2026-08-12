@@ -36,7 +36,6 @@ set(TEST_DEPS
     -Wl,--start-group
     ${WAZUHLIB}
     ${WAZUHEXT}
-    -lrouter
     -lschema_validator
     -Wl,--end-group
     -lpthread

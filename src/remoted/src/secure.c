@@ -135,8 +135,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 /**
  * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
  *        and the memory-management constants onto the C-ABI struct handed to the C++
- *        remoted_module, so this mapping is testable without the socket/router/cluster
- *        setup the rest of HandleSecure() depends on
+ *        remoted_module
  *
  * @param logr remoted configuration structure (source)
  * @param rm_config destination struct; fully zeroed and populated on return
@@ -517,9 +516,6 @@ void HandleSecure()
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
-
-    // No router provider here: the stateful-sync path is the C++ module's authenticated
-    // POST /stateful route, relayed to inventory_sync_server over UDS.
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
@@ -1295,8 +1291,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) {
 
     if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        // The 'inventory-states' router topic retired with the legacy inventory_sync module:
-        // since 5.x, stateful synchronization only enters through remoted's authenticated
+        // Since 5.x, stateful synchronization only enters through remoted's authenticated
         // POST /stateful route as a whole FullSession, so the old chunked wire protocol has
         // nowhere to go. Discarded, not an error: it is a not-yet-updated agent, not an attack.
         mdebug2("Discarding legacy stateful-sync message from agent '%s' (since 5.x the manager only accepts "

@@ -173,8 +173,6 @@
   - [Task Manager](ref/modules/task_manager/README.md)
     - [Configuration](ref/modules/task_manager/configuration.md)
   - [Keystore](ref/modules/keystore/README.md)
-  - [Router](ref/modules/router/README.md)
-    - [Architecture](ref/modules/router/architecture.md)
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)

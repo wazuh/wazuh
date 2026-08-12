@@ -2505,7 +2505,7 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     // Expect debug message about discarding DBSYNC message
     expect_string(__wrap__mdebug2, formatted_msg, "Discarding DBSYNC message from 4.x agent '001' (not supported in 5.0)");
 
-    // Message should be discarded, not forwarded to router or analysisd
+    // Message should be discarded
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2780,9 +2780,8 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     batch_queue_free(events_queue);
 }
 
-// Since the legacy inventory_sync module retired, `s:`-headed stateful-sync messages are
-// DISCARDED (the only stateful ingress is the module's POST /stateful): they must reach neither
-// the router (gone from remoted) nor analysisd (binary payloads are not events).
+// The legacy inventory_sync module retired, `s:`-headed stateful-sync messages are
+// DISCARDED (the only stateful ingress is the module's POST /stateful)
 void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
 {
     const char prefix[] = "s:fim:";
@@ -2843,8 +2842,6 @@ void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
                   formatted_msg,
                   "Discarding legacy stateful-sync message from agent '001' (since 5.x the manager only accepts "
                   "whole sessions over POST /stateful)");
-
-    // Discarded: no router call (remoted no longer links it), no analysisd enqueue.
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 

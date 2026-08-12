@@ -118,7 +118,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D10 | Whole-agent deletion becomes its own endpoint (revised by D21) |
 | D11 | The keystore socket moves to its own minimal module (`keystore_server`) |
 | D12 | The new schema lands even if it breaks the agent's build (parallel teams; `TARGET=manager` unaffected) |
-| D13 | Ingress via remoted's authenticated `POST /stateful` (AES-CMAC per agent, opaque forward) — no router, no `s:` header, no `HandleSecureMessage` |
+| D13 | Ingress via remoted's authenticated `POST /stateful` (AES-CMAC per agent, opaque forward) |
 | D14 | The server endpoint is `POST /stateful`, mirroring remoted's route name |
 | D15 | The deletion endpoint is NOT exposed through remoted: UDS-local consumers only |
 | D16 | Checksum verification is single-attempt — no retry loop (the legacy did 5×10 s) |
@@ -126,7 +126,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D18 | Statistics deferred at first, shipped later against greppable placeholder markers (now [implemented](#statistics-d18)) |
 | D19 | `Mode` has no `ModuleFull`: a full resync is composed as `Cleans` + `ModuleDelta` with the full dataset — no special case in the server. Acks/`End`/`seq`/batching were REMOVED from the schema, not merely unused |
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
-| D21 | Only authd deletes agents: the legacy `wm_database` delete path (and its router wiring) was removed, not migrated |
+| D21 | Only authd deletes agents: the legacy `wm_database` delete path was removed, not migrated |
 | D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
 
 ## Layout

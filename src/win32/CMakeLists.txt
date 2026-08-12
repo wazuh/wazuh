@@ -43,7 +43,6 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/common/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/shared_modules/sync_protocol/include/
-  ${SRC_FOLDER}/shared_modules/router/include/
   ${SRC_FOLDER}/shared_modules/content_manager/include/
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/

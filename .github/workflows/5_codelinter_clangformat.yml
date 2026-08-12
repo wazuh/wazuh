@@ -6,7 +6,6 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - .clang-format
-      - src/shared_modules/router/**
       - src/shared_modules/indexer_connector/**
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
@@ -40,17 +39,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      # Router
-      - name: Router - Coding style
-        id: router_style
-        continue-on-error: true
-        uses: ./.github/actions/clang_format
-        with:
-          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
-          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          path: src/shared_modules/router
-          id: router
 
       # Indexer Connector
       - name: Indexer connector - Coding style
@@ -111,10 +99,6 @@ jobs:
         if: always()
         run: |
           FAILED_STEPS=""
-
-          if [ "${{ steps.router_style.outcome }}" != "success" ]; then
-            FAILED_STEPS="$FAILED_STEPS Router"
-          fi
 
           if [ "${{ steps.indexer_connector_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS IndexerConnector"
