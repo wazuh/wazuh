@@ -10,6 +10,7 @@ import sys
 from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
+from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
 
@@ -61,6 +62,32 @@ def set_password(test_metadata):
 
     if 'password_file_content' in test_metadata:
         remove_file(DEFAULT_AUTHD_PASS_PATH)
+
+
+@pytest.fixture()
+def configure_remoted_listener(test_metadata):
+    """
+    For scenarios that start with a real pre-existent key, w_agentd_keys_init()
+    (start_agent.c) sees keys.keysize > 0 and skips enrollment entirely at
+    startup -- under HTTPS, sending the K:-hash enrollment message only ever
+    happens later, from bridge_reenroll_thread() once two consecutive 401s
+    escalate through AuthGate.reportAuthFailure() (ControlStateMachine treats a
+    dropped/refused connection alone as a mere TransientFailure and never
+    escalates it). Start a rejecting RemotedSimulator so that escalation
+    actually happens; cases with no pre-existent key don't need it, since their
+    enrollment runs synchronously before the HTTPS client -- and thus before
+    this simulator -- ever starts.
+    """
+    has_real_key = any(key.strip() for key in test_metadata.get('pre_existent_keys', []))
+
+    remoted_server = RemotedSimulator(mode='REJECT_AUTH') if has_real_key else None
+    if remoted_server:
+        remoted_server.start()
+
+    yield
+
+    if remoted_server:
+        remoted_server.destroy()
 
 
 @pytest.fixture()

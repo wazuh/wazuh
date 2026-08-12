@@ -1,7 +1,7 @@
   - sections:
     - section: client
       elements:
-          - manager:
+          - server:
               elements:
               - address:
                   value: SERVER_ADDRESS
