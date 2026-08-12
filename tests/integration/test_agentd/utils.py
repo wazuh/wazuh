@@ -2,13 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 import time
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import *
 from wazuh_testing.modules.agentd.utils import parse_state_file
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import callbacks
+from wazuh_testing.utils import callbacks, file
 
 
 def wait_keepalive(timeout=100, poll_interval=1):
@@ -39,15 +40,48 @@ def wait_keepalive(timeout=100, poll_interval=1):
     assert last_keepalive, f'Sending keep alive not found'
 
 
-def wait_connect():
+def _wait_for_pattern_since(pattern, timeout=150, poll_interval=0.1):
+    """Scan ossec.log for `pattern`, anchored to a byte offset captured before the wait starts.
+
+    Deliberately not FileMonitor(only_new_events=True), which seeks to whatever the file's end
+    is at the moment .start() runs: for a message that is logged exactly once and never repeats
+    (connection/enrollment acceptance), if the agent's own already-running retry loop wins the
+    race and writes that line in the gap between this function being entered and the monitor
+    seeking to EOF, only_new_events=True misses it permanently and burns the full timeout
+    waiting for a line that already came and went. Reproduced live on Windows for both
+    AGENTD_HTTPS_STARTUP_ACCEPTED and AGENTD_RECEIVED_VALID_KEY: the line landed before the
+    monitor attached, then never recurred, timing out the wait despite having already happened.
+    """
+    try:
+        start_pos = os.path.getsize(WAZUH_LOG_PATH)
+    except OSError:
+        start_pos = 0
+
+    callback = callbacks.generate_callback(pattern)
+    encoding = file.get_file_encoding(WAZUH_LOG_PATH)
+    deadline = time.time() + timeout
+
+    with open(WAZUH_LOG_PATH, encoding=encoding, errors='ignore') as f:
+        f.seek(start_pos)
+        while time.time() < deadline:
+            line = f.readline()
+            if not line:
+                time.sleep(poll_interval)
+                continue
+            if callback(line):
+                return True
+
+    return False
+
+
+def wait_connect(timeout=150, poll_interval=0.1):
     """
         Watch ossec.log until the HTTPS startup is accepted (the legacy "Connected to the
         server" line has no equivalent under the /control path; see
         AGENTD_HTTPS_STARTUP_ACCEPTED's own comment, agentd/patterns.py).
     """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_HTTPS_STARTUP_ACCEPTED), timeout = 150)
-    assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+    matched = _wait_for_pattern_since(AGENTD_HTTPS_STARTUP_ACCEPTED, timeout, poll_interval)
+    assert matched, f'Connected to the server message not found'
 
 
 def wait_state_update():
@@ -59,13 +93,12 @@ def wait_state_update():
     assert (wazuh_log_monitor.callback_result != None), f'State file update not found'
 
 
-def wait_enrollment():
+def wait_enrollment(timeout=150, poll_interval=0.1):
     """
         Watch ossec.log until "Valid key received" message is found
     """
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY), timeout = 150)
-    assert (wazuh_log_monitor.callback_result != None), 'Agent never enrolled'
+    matched = _wait_for_pattern_since(AGENTD_RECEIVED_VALID_KEY, timeout, poll_interval)
+    assert matched, 'Agent never enrolled'
 
 
 def wait_enrollment_try():
