@@ -471,4 +471,3 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
 }
-
