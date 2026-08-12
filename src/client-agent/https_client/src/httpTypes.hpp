@@ -48,7 +48,7 @@ enum class OutcomeClass
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
-    ///< RetrySender retries once, uncompressed (#38308).
+    ///< RetrySender retries once, uncompressed.
     Interrupted      ///< Aborted by shutdown: never a silent success.
 };
 

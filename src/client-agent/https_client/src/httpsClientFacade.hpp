@@ -103,7 +103,7 @@ class HttpsClientFacade final
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
-        // Shared across every stream's RetrySender (#38308): one 415 disables
+        // Shared across every stream's RetrySender: one 415 disables
         // compression agent-wide for the rest of this run.
         CompressionGate m_compressionGate;
 

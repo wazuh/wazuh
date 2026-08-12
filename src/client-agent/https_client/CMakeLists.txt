@@ -32,7 +32,7 @@ target_include_directories(
           ${SRC_FOLDER}/external/openssl/include)
 
 # wazuhext carries the vendored libcurl + OpenSSL symbols for agent targets.
-# ext_zstd: request-body compression (#38308), same target remoted_module
+# ext_zstd: request-body compression, same target remoted_module
 # already links for the manager-side decode (#38129).
 target_link_libraries(https_client PRIVATE wazuhext pthread ext_zstd)
 

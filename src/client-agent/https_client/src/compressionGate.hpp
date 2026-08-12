@@ -15,7 +15,7 @@
 #include <atomic>
 
 /**
- * @brief The zstd-rejected latch (#38308). Whether the manager accepts
+ * @brief The zstd-rejected latch. Whether the manager accepts
  *        Content-Encoding: zstd is a property of the manager/connection, not
  *        of which endpoint asked -- so every RetrySender on this agent shares
  *        one gate: the first 415 disables compression for all six send

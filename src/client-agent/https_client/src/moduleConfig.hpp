@@ -74,7 +74,7 @@ struct ModuleConfig
         uint32_t configReportIntervalS {3600};
         std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
-        // #38308: zstd-compress in-memory request bodies before signing/sending.
+        // zstd-compress in-memory request bodies before signing/sending.
         // internal_options.conf (agent.https_compression_enabled), off by default.
         bool httpsCompressionEnabled {false};
 

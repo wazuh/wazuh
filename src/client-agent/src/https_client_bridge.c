@@ -1633,10 +1633,10 @@ static bool bridge_build_config(hc_config_t *config)
     config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
     config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
 
-    /* internal_options.conf toggle (#38308), not a <client> XML setting --
-     * request-body compression is an opt-in tuning knob, not user-facing
-     * config. getDefine_Int_default (not getDefine_Int) so a missing key
-     * defaults to off instead of aborting the agent. */
+    /* internal_options.conf toggle, not a <client> XML setting -- request-
+     * body compression is an opt-in tuning knob, not user-facing config.
+     * getDefine_Int_default (not getDefine_Int) so a missing key defaults to
+     * off instead of aborting the agent. */
     config->https_compression_enabled = (bool)getDefine_Int_default("agent", "https_compression_enabled", 0, 1, 0);
 
     /* Bug found during real-package validation: this used to be

@@ -42,7 +42,7 @@ class RetrySender final
         };
 
         /// compressionEnabled: zstd-compress in-memory bodies (Content-Encoding:
-        /// zstd) before signing, so the CMAC covers the wire bytes (#38308).
+        /// zstd) before signing, so the CMAC covers the wire bytes.
         /// File-backed bodies (/stateful) are untouched -- out of scope here.
         /// compressionGate (optional, shared across every RetrySender on this
         /// agent): a 415 reports here and disables compression for all six

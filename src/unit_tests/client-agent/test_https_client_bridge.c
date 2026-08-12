@@ -177,7 +177,7 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return 0;
 }
 
-/* bridge_build_config() also reads the compression toggle (#38308) via
+/* bridge_build_config() also reads the compression toggle via
  * getDefine_Int_default(), which -- unlike getDefine_Int() above -- returns
  * default_val instead of merror_exit()ing when the key is missing. No case
  * here exercises it either, so answer with the shipped default. */
