@@ -7,7 +7,7 @@
 import argparse
 import warnings
 from asyncio import run
-from os.path import dirname
+from os.path import abspath, basename, dirname, isfile, join
 from signal import signal, SIGINT
 from sys import exit, path, argv
 from time import sleep, time
@@ -61,7 +61,11 @@ def get_script_arguments() -> argparse.Namespace:
                         help="Forces the agents to upgrade, ignoring version validations.")
     parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
+    parser.add_argument("-f", "--file", type=str,
+                        help="Custom WPK file. The file must already be placed in '{0}' (remoted "
+                             "delivers custom WPKs from that directory by filename). A bare "
+                             "filename or a path inside that directory are accepted.".format(
+                                 join(common.WAZUH_PATH, 'var', 'upgrade')))
     parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     parser.add_argument("-x", "--execute", type=str,
                         help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
@@ -130,6 +134,39 @@ async def get_agent_version(agent_id: str) -> str:
     return result.affected_items[0]['version']
 
 
+def resolve_wpk_file(file_arg: str) -> str:
+    """Resolve and validate a custom WPK path before creating any task.
+
+    Remoted delivers custom WPKs by reading '<WAZUH_PATH>/var/upgrade/<basename>' regardless
+    of the path used at validation time, so the file must already live in that directory.
+    Failing here avoids creating a task whose delivery step can only fail later.
+
+    Parameters
+    ----------
+    file_arg : str
+        Value of the -f/--file argument: a bare filename or a path inside var/upgrade.
+
+    Returns
+    -------
+    str
+        Absolute path of the WPK inside the upgrade directory.
+    """
+    upgrade_dir = join(common.WAZUH_PATH, 'var', 'upgrade')
+    resolved = join(upgrade_dir, basename(file_arg))
+
+    if dirname(file_arg) and abspath(dirname(file_arg)) != upgrade_dir:
+        print("Error: custom WPK files are delivered from '{0}'. Move the file there and pass "
+              "its filename (got: '{1}').".format(upgrade_dir, file_arg))
+        exit(1)
+
+    if not isfile(resolved):
+        print("Error: WPK file not found: '{0}'. Place the file in '{1}' before launching the "
+              "upgrade.".format(resolved, upgrade_dir))
+        exit(1)
+
+    return resolved
+
+
 def create_command() -> dict:
     """Create a custom command based on the CLI arguments.
 
@@ -147,7 +184,8 @@ def create_command() -> dict:
                     'request_time': request_time}
     else:
         # Upgrade custom
-        f_kwargs = {'agent_list': args.agents, 'installer': args.execute, 'file_path': args.file,
+        f_kwargs = {'agent_list': args.agents, 'installer': args.execute,
+                    'file_path': resolve_wpk_file(args.file) if args.file else args.file,
                     'request_time': request_time}
 
     return f_kwargs
