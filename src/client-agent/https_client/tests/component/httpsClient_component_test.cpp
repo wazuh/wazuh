@@ -234,7 +234,7 @@ TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
     SystemClock clock;
     Mt19937Random random;
     Backoff backoff {10, 50, random};
-    RetrySender sender {m_performer, m_signer, clock, backoff};
+    RetrySender sender {m_performer, m_signer, clock, backoff, false};
     Waiter waiter;
 
     const std::string body = "H {}\nE 1:l:bp\n";
