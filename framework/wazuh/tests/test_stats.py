@@ -145,6 +145,41 @@ def test_get_daemons_stats_agents_mixed_versions(mock_wazuh_db_query_cls, mock_g
     assert errors_and_items == {'1701': {'999'}, '1762': {'010'}}
 
 
+@pytest.mark.parametrize('daemons_list, expected_daemons_list', [
+    (['wazuh-manager-remoted'], ['wazuh-manager-remoted']),
+])
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats)
+@patch('wazuh.stats.get_agents_info', return_value={'001', '003'})
+@patch('wazuh.stats.WazuhDBQueryAgents')
+def test_get_daemons_stats_agents_na_version_does_not_raise(mock_wazuh_db_query_cls, mock_get_agents_info,
+                                                              mock_get_daemons_stats_socket, daemons_list,
+                                                              expected_daemons_list):
+    """An agent with the literal 'N/A' sentinel (written by remoted for a rejected startup version,
+    see controlHandler.cpp) must land in failed_items with 1762 -- not raise an uncaught ValueError
+    from WazuhVersion('N/A'). The eligibility gate's 'not version' check doesn't catch it since
+    'N/A' is a non-empty, truthy string.
+    """
+    mock_db_query = MagicMock()
+    mock_db_query.run.return_value = {
+        'items': [{'id': '001', 'version': 'Wazuh v4.14.6'}, {'id': '003', 'version': 'N/A'}]
+    }
+    mock_wazuh_db_query_cls.return_value.__enter__.return_value = mock_db_query
+
+    agents_list = ['001', '003']
+    result = stats.get_daemons_stats_agents(daemons_list, agents_list)
+
+    # Only the legacy agent (001) reaches the socket call; the 'N/A' agent is rejected up front.
+    actual_calls = mock_get_daemons_stats_socket.call_args_list
+    assert len(actual_calls) == 1
+    assert set(actual_calls[0][1]['agents_list']) == {1}
+
+    error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
+    failed_items = list(result.failed_items.values())
+    errors_and_items = {str(error): failed_items[i] for i, error in enumerate(error_codes_in_failed_items)}
+    assert errors_and_items == {'1762': {'003'}}
+
+
 def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
     # side_effect used to return a response with 10 items and 'due' the first time that get_daemons_stats_socket is
     # called, and a response with 10 items and 'ok' the second time

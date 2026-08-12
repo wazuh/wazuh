@@ -226,7 +226,7 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 continue
 
             version = all_agents[agent_id]
-            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+            if not version or version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
@@ -338,7 +338,7 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 continue
 
             version = all_agents[agent_id]
-            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+            if not version or version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
