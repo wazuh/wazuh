@@ -72,7 +72,6 @@ static int setup_test(void **state) {
     memset(&keys, 0, sizeof(keys));
 
     agent_cluster_name[0] = '\0';
-    agent_cluster_node[0] = '\0';
     agent_agent_groups[0] = '\0';
 
     return 0;
@@ -109,7 +108,6 @@ static void test_populate_metadata_publishes_identity(void **state) {
     (void)state;
 
     snprintf(agent_cluster_name, sizeof(agent_cluster_name), "%s", "wazuh-cluster");
-    snprintf(agent_cluster_node, sizeof(agent_cluster_node), "%s", "node01");
     snprintf(agent_agent_groups, sizeof(agent_agent_groups), "%s", "default,linux");
 
 #ifdef TEST_WINAGENT

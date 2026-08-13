@@ -17,7 +17,7 @@
 #include <utility>
 
 /**
- * @brief The manager-authoritative cluster name/node (#37733, 2026-07-21).
+ * @brief The manager-authoritative cluster name (#37733, 2026-07-21).
  *
  * Overwritten from every /control startup response (including with an
  * empty/unknown value, so a stale local value never lingers). Read by the
@@ -31,14 +31,12 @@ class ClusterIdentity final
         struct Snapshot
         {
             std::string name;
-            std::string node;
         };
 
-        void set(std::string name, std::string node)
+        void set(std::string name)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_value.name = std::move(name);
-            m_value.node = std::move(node);
         }
 
         Snapshot get() const

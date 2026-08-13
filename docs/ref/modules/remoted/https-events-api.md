@@ -435,7 +435,7 @@ error handling follow the same AES-CMAC mechanism as `/stateless` (see
 
 Sent by the agent on initial connection. The manager marks the agent as connected in global.db,
 records the connection time, and returns limits (FIM, Syscollector, SCA quotas), cluster
-information (name and node), and the agent's assigned groups. The agent stores this data locally.
+information (name), and the agent's assigned groups. The agent stores this data locally.
 No hashes are included in the startup response.
 
 **Request:**
@@ -455,8 +455,7 @@ No hashes are included in the startup response.
     "sca": {"checks": 10000}
   },
   "cluster": {
-    "name": "wazuh-cluster",
-    "node": "node01"
+    "name": "wazuh-cluster"
   },
   "agent": {
     "groups": ["default", "web-servers"]

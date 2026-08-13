@@ -110,7 +110,6 @@ namespace
             cfg.wdbSocketPath = wdbPath;
             cfg.taskSocketPath = taskPath;
             cfg.clusterName = "wazuh";
-            cfg.nodeName = "master";
             cfg.managerVersion = "5.0.0";
             cfg.limits = nlohmann::json::object();
             cfg.wdbRequestConnections = 1;

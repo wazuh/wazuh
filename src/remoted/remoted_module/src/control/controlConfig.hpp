@@ -39,7 +39,6 @@ namespace remoted::control
 
     struct Config
     {
-        std::string nodeName;
         std::string clusterName;
         bool isWorkerNode;
         std::string managerVersion;

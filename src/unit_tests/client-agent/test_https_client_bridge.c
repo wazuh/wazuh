@@ -332,7 +332,6 @@ static int setup_test(void **state)
      * config.c): reset every test so none leaks state into the next one. */
     memset(&agent_module_limits, 0, sizeof(agent_module_limits));
     agent_cluster_name[0] = '\0';
-    agent_cluster_node[0] = '\0';
     agent_agent_groups[0] = '\0';
 
     return 0;
@@ -1299,7 +1298,7 @@ static void test_config_downloaded_null_file_path_is_a_noop(void **state)
     "\"network_iface\":8,\"network_protocol\":9,\"network_address\":10,\"hardware\":11," \
     "\"os_info\":12,\"users\":13,\"groups\":14,\"services\":15,\"browser_extensions\":16}," \
     "\"sca\":{\"checks\":17}}," \
-    "\"cluster\":{\"name\":\"demo-cluster\",\"node\":\"node01\"}," \
+    "\"cluster\":{\"name\":\"demo-cluster\"}," \
     "\"agent\":{\"groups\":[\"default\",\"linux\"]}}"
 
 static void test_startup_result_rejected_does_not_touch_globals(void **state)
@@ -1351,7 +1350,7 @@ static void test_startup_result_first_time_applies_without_reload(void **state)
     expect_any(__wrap__mdebug1, formatted_msg); /* "https_client startup accepted: <json>" */
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     /* limits_received was false (fresh global): no changed-check, no reload. */
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
 
     g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
@@ -1359,7 +1358,6 @@ static void test_startup_result_first_time_applies_without_reload(void **state)
     assert_true(agent_module_limits.limits_received);
     assert_int_equal(agent_module_limits.fim.file, 100);
     assert_string_equal(agent_cluster_name, "demo-cluster");
-    assert_string_equal(agent_cluster_node, "node01");
     assert_string_equal(agent_agent_groups, "default,linux");
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
@@ -1378,7 +1376,7 @@ static void test_startup_result_limits_changed_reloads_under_auto_restart(void *
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
     g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data); /* Establishes previous_limits. */
 
@@ -1386,7 +1384,7 @@ static void test_startup_result_limits_changed_reloads_under_auto_restart(void *
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__minfo, formatted_msg, "Agent is reloading due to module limits changes.");
     will_return(__wrap_reloadAgent, true);
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
 
     g_captured_callbacks.on_startup_result(true, body_v2, g_captured_callbacks.user_data);
@@ -1409,7 +1407,7 @@ static void test_startup_result_limits_changed_no_reload_without_auto_restart(vo
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
     g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data);
 
@@ -1417,7 +1415,7 @@ static void test_startup_result_limits_changed_no_reload_without_auto_restart(vo
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     expect_string(__wrap__mdebug1, formatted_msg, "Module limits have been updated.");
     /* No reloadAgent expectation: must not be reached. */
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
 
     g_captured_callbacks.on_startup_result(true, body_v2, g_captured_callbacks.user_data);
@@ -1436,7 +1434,7 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
 
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
     g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
 
@@ -1444,7 +1442,7 @@ static void test_startup_result_limits_unchanged_no_reload(void **state)
     expect_any(__wrap__mdebug1, formatted_msg);
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
     /* No reload/"updated" log: unchanged skips the whole changed-branch. */
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
 
     g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
@@ -1519,7 +1517,7 @@ static void test_startup_result_missing_limits_object_leaves_limits_unchanged(vo
     expect_string(__wrap__mdebug2, formatted_msg,
                   "https_client: no valid 'limits' object in the startup response; "
                   "module limits are unchanged.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster'.");
     expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default.");
 
     g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
@@ -1536,7 +1534,6 @@ static void test_startup_result_cluster_and_groups_cleared_when_absent(void **st
 {
     (void)state;
     strcpy(agent_cluster_name, "stale-cluster");
-    strcpy(agent_cluster_node, "stale-node");
     strcpy(agent_agent_groups, "stale,groups");
     start_client_successfully();
 
@@ -1546,14 +1543,13 @@ static void test_startup_result_cluster_and_groups_cleared_when_absent(void **st
     expect_string(__wrap__mdebug2, formatted_msg,
                   "https_client: no valid 'limits' object in the startup response; "
                   "module limits are unchanged.");
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='', node=''.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name=''.");
     /* No "agent groups ->" log: bridge_apply_agent_groups only logs when
      * the resulting CSV is non-empty. */
 
     g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
 
     assert_string_equal(agent_cluster_name, "");
-    assert_string_equal(agent_cluster_node, "");
     assert_string_equal(agent_agent_groups, "");
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);

@@ -276,36 +276,28 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
     return true;
 }
 
-/* Cluster-name authority: unlike start_agent.c's parse_cluster_name()/
- * parse_cluster_node() -- which are flat top-level fields and REFUSE an empty
- * value -- the HTTPS contract nests them under "cluster":{"name","node"}, and
- * explicitly wants an unconditional overwrite, even to
- * empty/unknown, so a manager that stops reporting identity doesn't leave a
- * stale value behind. Mirrors ControlStream::applyClusterIdentity() (the
- * module's own internal, HTTPS-side copy of this same rule) so the C side's
- * globals (which agent-info/agcom and the shutdown message already read)
- * agree with what the module itself believes. */
+/* Cluster-name authority: the HTTPS contract nests it under "cluster":{"name"},
+ * and explicitly wants an unconditional overwrite, even to empty/unknown, so a
+ * manager that stops reporting identity doesn't leave a stale value behind.
+ * Mirrors ControlStream::applyClusterIdentity() (the module's own internal,
+ * HTTPS-side copy of this same rule) so the C side's global (which
+ * agent-info/agcom and the shutdown message already read) agrees with what
+ * the module itself believes. */
 static void bridge_apply_cluster_identity(const cJSON *root)
 {
     const cJSON *cluster = cJSON_GetObjectItem(root, "cluster");
     const char *name = NULL;
-    const char *node = NULL;
 
     if (cluster && cJSON_IsObject(cluster)) {
         cJSON *name_field = cJSON_GetObjectItem(cluster, "name");
-        cJSON *node_field = cJSON_GetObjectItem(cluster, "node");
 
         if (name_field && cJSON_IsString(name_field) && name_field->valuestring) {
             name = name_field->valuestring;
         }
-        if (node_field && cJSON_IsString(node_field) && node_field->valuestring) {
-            node = node_field->valuestring;
-        }
     }
 
     snprintf(agent_cluster_name, sizeof(agent_cluster_name), "%s", name ? name : "");
-    snprintf(agent_cluster_node, sizeof(agent_cluster_node), "%s", node ? node : "");
-    mdebug1("https_client: cluster identity -> name='%s', node='%s'.", agent_cluster_name, agent_cluster_node);
+    mdebug1("https_client: cluster identity -> name='%s'.", agent_cluster_name);
 }
 
 /* agent_groups: HTTPS nests the array under "agent":{"groups":[...]} (see
@@ -1410,13 +1402,13 @@ static void bridge_on_collect_host(char *json_out, size_t cap, void *user_data)
  * Notify's already-shipped contract.
  *
  * Shape (agent.name/version/groups/host.{architecture,hostname,os.*},
- * cluster.{name,node}) mirrors EXACTLY what the legacy manager's own
+ * cluster.{name}) mirrors EXACTLY what the legacy manager's own
  * append_header() (remoted/src/secure.c) already builds and indexes today --
  * not a new design. The indexer's wazuh.* mapping is strict_allow_templates
  * (unmapped paths are rejected, not ignored), so groups/host/os MUST nest
  * under agent as shown here, not as siblings of it: that shape is what the
- * mapping is actually built for. cluster.name/node here are the exact same
- * metadata.cluster_name/cluster_node that feed the Start table's cluster_name
+ * mapping is actually built for. cluster.name here is the exact same
+ * metadata.cluster_name that feeds the Start table's cluster_name
  * on /stateful, so the two transports can never disagree on cluster identity.
  * Writes an empty string when metadata is not yet available, so the module
  * falls back to an H line carrying only agent.id. Runs on the module's
@@ -1494,9 +1486,6 @@ static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *u
     cJSON *cluster = cJSON_CreateObject();
     if (metadata.cluster_name[0]) {
         cJSON_AddStringToObject(cluster, "name", metadata.cluster_name);
-    }
-    if (metadata.cluster_node[0]) {
-        cJSON_AddStringToObject(cluster, "node", metadata.cluster_node);
     }
     cJSON_AddItemToObject(root, "cluster", cluster);
 

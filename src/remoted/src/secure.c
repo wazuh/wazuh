@@ -516,12 +516,6 @@ void HandleSecure()
             os_free(rm_cluster_name);
         }
 
-        char *rm_node_name = get_node_name();
-        if (rm_node_name) {
-            snprintf(rm_config.node_name, sizeof(rm_config.node_name), "%s", rm_node_name);
-            os_free(rm_node_name);
-        }
-
         remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
         atexit(remoted_module_stop);
     }
@@ -1462,10 +1456,7 @@ static int append_header(dispatch_ctx_t *ctx) {
             has_cluster_info = true;
         }
 
-        if (have_meta && snap.cluster_node && snap.cluster_node[0]) {
-            cJSON_AddStringToObject(cluster, "node", snap.cluster_node);
-            has_cluster_info = true;
-        } else if (node_name && strcmp(node_name, "undefined") != 0) {
+        if (node_name && strcmp(node_name, "undefined") != 0) {
             cJSON_AddStringToObject(cluster, "node", node_name);
             has_cluster_info = true;
         }

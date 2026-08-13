@@ -32,7 +32,6 @@ table Start {
     groups: [string];
     global_version: ulong;
     cluster_name: string;
-    cluster_node: string;
 }
 
 table DataValue {

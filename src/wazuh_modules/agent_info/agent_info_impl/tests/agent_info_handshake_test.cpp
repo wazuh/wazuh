@@ -17,7 +17,7 @@
 /**
  * @brief Tests for the live handshake re-query mechanism (#37543).
  *
- * agent-info previously read cluster_name/cluster_node/agent_groups from a cache
+ * agent-info previously read cluster_name/agent_groups from a cache
  * populated once at module startup, so a manager-side cluster_name change was never
  * picked up until the whole agent process restarted. These tests verify that
  * populateAgentMetadata() now re-queries a fresh handshake on every cycle via the
@@ -131,12 +131,11 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQuery_PicksUpClusterNameChange)
     // simulating the manager renaming its cluster and the agent reconnecting in between.
     int callCount = 0;
     handshake_query_callback_t handshakeFunc =
-        [&callCount](char* clusterName, size_t clusterNameSize, char* clusterNode, size_t clusterNodeSize,
+        [&callCount](char* clusterName, size_t clusterNameSize,
                      char* agentGroups, size_t agentGroupsSize) -> bool
     {
         ++callCount;
         writeField(clusterName, clusterNameSize, callCount == 1 ? "initial_cluster" : "renamed_cluster");
-        writeField(clusterNode, clusterNodeSize, "node01");
         writeField(agentGroups, agentGroupsSize, "");
         return true;
     };
@@ -184,7 +183,7 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
     // (e.g. agentd transiently unreachable) — cluster_name must not blank out.
     int callCount = 0;
     handshake_query_callback_t handshakeFunc =
-        [&callCount](char* clusterName, size_t clusterNameSize, char* clusterNode, size_t clusterNodeSize,
+        [&callCount](char* clusterName, size_t clusterNameSize,
                      char* agentGroups, size_t agentGroupsSize) -> bool
     {
         ++callCount;
@@ -192,7 +191,6 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
         if (callCount == 1)
         {
             writeField(clusterName, clusterNameSize, "stable_cluster");
-            writeField(clusterNode, clusterNodeSize, "node01");
             writeField(agentGroups, agentGroupsSize, "");
             return true;
         }
@@ -215,7 +213,7 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
     runSingleIteration();
     m_logOutput.clear();
 
-    // Live query fails on the second cycle: no cluster_name/cluster_node change should
+    // Live query fails on the second cycle: no cluster_name change should
     // be detected (falls back to the cached getter, which the mock keeps at defaults).
     runSingleIteration();
 
@@ -228,7 +226,7 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
 TEST_F(AgentInfoHandshakeTest, LiveClusterNameChange_DoesNotFreezeGroupsFromHandshake)
 {
     // Regression guard for a review finding on #37543: the live re-query is scoped to
-    // cluster_name/cluster_node only. agent_groups must keep tracking merged.mg on every
+    // cluster_name only. agent_groups must keep tracking merged.mg on every
     // cycle exactly as before - it must NOT get "frozen" at whatever agent_groups value
     // the live handshake callback happens to report, even though that callback succeeds
     // (and reports a non-empty, changing agent_groups string) on every cycle here.
@@ -276,11 +274,10 @@ TEST_F(AgentInfoHandshakeTest, LiveClusterNameChange_DoesNotFreezeGroupsFromHand
     // agent_groups string each time - if that value leaked into group selection, groups
     // would stay stuck at "handshake-group-1" forever instead of tracking merged.mg.
     handshake_query_callback_t handshakeFunc =
-        [](char* clusterName, size_t clusterNameSize, char* clusterNode, size_t clusterNodeSize,
+        [](char* clusterName, size_t clusterNameSize,
            char* agentGroups, size_t agentGroupsSize) -> bool
     {
         writeField(clusterName, clusterNameSize, "wazuh");
-        writeField(clusterNode, clusterNodeSize, "node01");
         writeField(agentGroups, agentGroupsSize, "handshake-group-1,handshake-group-2");
         return true;
     };

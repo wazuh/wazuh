@@ -151,7 +151,7 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
 
     const auto cluster = m_cluster.get();
     document["agent_id"] = m_config.agentId;
-    document["cluster"] = {{"name", cluster.name}, {"node", cluster.node}};
+    document["cluster"] = {{"name", cluster.name}};
     return document.dump();
 }
 

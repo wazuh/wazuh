@@ -70,7 +70,6 @@ TEST(ControlConfigTest, DefaultsWhenZeroed)
 TEST(ControlConfigTest, StringFieldsAreCopiedFromCAbi)
 {
     auto raw = zeroedConfig();
-    std::strncpy(raw.node_name, "worker-01", sizeof(raw.node_name) - 1);
     std::strncpy(raw.cluster_name, "wazuh-prod", sizeof(raw.cluster_name) - 1);
     std::strncpy(raw.manager_version, "5.0.0-alpha0", sizeof(raw.manager_version) - 1);
     raw.worker_node = true;
@@ -78,7 +77,6 @@ TEST(ControlConfigTest, StringFieldsAreCopiedFromCAbi)
 
     const auto cfg = buildControlConfig(raw);
 
-    EXPECT_EQ(cfg.nodeName, "worker-01");
     EXPECT_EQ(cfg.clusterName, "wazuh-prod");
     EXPECT_EQ(cfg.managerVersion, "5.0.0-alpha0");
     EXPECT_TRUE(cfg.isWorkerNode);

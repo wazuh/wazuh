@@ -18,7 +18,6 @@ namespace remoted::control
     {
         Config cfg;
 
-        cfg.nodeName = c.node_name;
         cfg.clusterName = c.cluster_name;
         cfg.isWorkerNode = c.worker_node;
         cfg.managerVersion = c.manager_version;
