@@ -33,7 +33,7 @@ function get-version {
             Write-Output "$(Get-Date -format u) - Extracted version from $JsonFile : $version." >> .\upgrade\upgrade.log
         } else {
             Write-Output "$(Get-Date -format u) - Failed to extract version from JSON file $JsonFile." >> .\upgrade\upgrade.log
-            exit 1
+            return $null
         }
     }
     # fallback to the plain text VERSION file
@@ -43,7 +43,7 @@ function get-version {
         Write-Output "$(Get-Date -format u) - Extracted version from $TextFile : $version." >> .\upgrade\upgrade.log
     } else {
         Write-Output "$(Get-Date -format u) - Error: No version file found (expected $JsonFile or $TextFile)." >> .\upgrade\upgrade.log
-        exit 1
+        return $null
     }
 
     return $version
@@ -54,6 +54,15 @@ function remove_upgrade_files {
     Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
     Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
     Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+}
+
+
+# Write the upgrade result, remove upgrade files and restart the service
+function abort_upgrade($code) {
+    write-output "$code" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
 }
 
 
@@ -109,11 +118,14 @@ function check-process {
 function check-installation {
     $actual_version = get-version
     $counter = 5
-    while($actual_version -eq $current_version -And $counter -gt 0) {
+    while(($null -eq $actual_version -Or $actual_version -eq $current_version) -And $counter -gt 0) {
         write-output "$(Get-Date -format u) - Waiting for the Wazuh-Agent installation to end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 2
         $actual_version = get-version
+    }
+    if ($null -eq $actual_version) {
+        write-output "$(Get-Date -format u) - Could not read the installed version after the installation." >> .\upgrade\upgrade.log
     }
     write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
     Start-Service -Name "Wazuh"
@@ -239,14 +251,15 @@ $currentDir = (Get-Location).Path.TrimEnd('\')
 
 if ($normalizedWazuhDir -ne $currentDir) {
     Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
-    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    remove_upgrade_files
-    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-    exit 1
+    abort_upgrade "2"
 }
 
 # Get current version
 $current_version = get-version
+if ($null -eq $current_version) {
+    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get new msi version
@@ -265,17 +278,11 @@ if ($msi_new_version -ne $null) {
         $current_ver = [Version]($current_version -replace '^v', '')
         if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
             write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
-            write-output "1" | out-file ".\upgrade\upgrade_result" -encoding ascii
-            remove_upgrade_files
-            Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-            exit 1
+            abort_upgrade "1"
         }
     } catch {
         write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-        remove_upgrade_files
-        Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-        exit 1
+        abort_upgrade "2"
     }
 }
 
@@ -345,20 +352,14 @@ if ([string]::IsNullOrEmpty($server_port)) {
 
 if ([string]::IsNullOrEmpty($server_address)) {
     write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
-    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    remove_upgrade_files
-    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-    exit 1
+    abort_upgrade "2"
 }
 
 write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 
 if (-Not (probe_server $server_address $server_port)) {
     write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
-    write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    remove_upgrade_files
-    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-    exit 1
+    abort_upgrade "2"
 }
 
 write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
