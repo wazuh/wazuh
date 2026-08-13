@@ -147,6 +147,11 @@ struct HttpRequestSpec
     size_t bodyLength {0};
     std::string bodyFilePath;          ///< When non-empty: stream the body from this file.
     uint64_t bodyFileSize {0};
+    std::string precompressedBodyFilePath; ///< Optional zstd-compressed sibling of
+    ///< bodyFilePath, precomputed once by the caller (only /stateful today).
+    ///< attemptOnce() swaps it in when compression is enabled/allowed; empty
+    ///< means no such sibling exists, so bodyFilePath is sent as-is.
+    uint64_t precompressedBodyFileSize {0};
     std::string responseFilePath;      ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.

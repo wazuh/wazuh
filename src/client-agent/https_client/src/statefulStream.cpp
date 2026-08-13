@@ -22,12 +22,15 @@ namespace
 StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& performer,
                                const ISigner& signer, IClock& clock, IRandom& random,
                                ISpoolFileFactory& spoolFactory, ICallbackSink& sink,
-                               AuthGate& authGate, CompressionGate& compressionGate)
+                               AuthGate& authGate, CompressionGate& compressionGate,
+                               IFileCompressor& fileCompressor)
     : m_config(config)
     , m_authGate(authGate)
+    , m_compressionGate(compressionGate)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
     , m_spoolFactory(spoolFactory)
+    , m_fileCompressor(fileCompressor)
     , m_sink(sink)
     , m_maxQueue(STATEFUL_MAX_QUEUE)
 {
@@ -144,6 +147,31 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     spec.bodyFileSize = session.size;
     spec.timeoutMs = m_config.statefulTimeoutMs;
     spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries (LRU dedup).
+
+    // Compress once, up front -- not per retry attempt like the in-memory send
+    // paths, since this body can be multi-MB and STATEFUL_MAX_ATTEMPTS allows
+    // up to 5 attempts per session. RetrySender::attemptOnce() swaps the
+    // precompressed sibling in per attempt (HttpRequestSpec::
+    // precompressedBodyFilePath) whenever the shared gate still allows it,
+    // falling back to spec.bodyFilePath (untouched here) on its own if a 415
+    // disables the gate mid-session. Kept alive until send() returns, below.
+    std::unique_ptr<SpoolFile> compressedSpool;
+
+    if (m_config.httpsCompressionEnabled && !m_compressionGate.disabled() && session.size > 0)
+    {
+        auto compressed = m_fileCompressor.compress(spec.bodyFilePath, spec.bodyFileSize,
+                                                     m_config.spoolDir, waiter.stopFlag());
+
+        if (compressed)
+        {
+            compressedSpool = std::move(compressed->first);
+            spec.precompressedBodyFilePath = compressedSpool->path();
+            spec.precompressedBodyFileSize = compressed->second;
+        }
+        // else: compression failed (disk full, aborted, etc.) -- fall through
+        // and send the original file uncompressed; never lose the session
+        // over a compression failure.
+    }
 
     // Operational visibility (send-time debug log, mirroring statelessStream.cpp's own
     // "Sending /stateless batch" one): logged before the request so the size is on record

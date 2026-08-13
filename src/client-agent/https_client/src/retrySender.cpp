@@ -120,10 +120,9 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
 
-    // In-memory bodies only -- /stateful's file-backed path is untouched (its
-    // spool file is read twice, independently, by signFile() and the
-    // performer; compressing it needs a different design, out of scope here).
-    // Compressed before signing so the CMAC covers the wire bytes.
+    // In-memory bodies: compressed here, per attempt (cheap for the small
+    // buffers every other send path uses). Compressed before signing so the
+    // CMAC covers the wire bytes.
     std::vector<uint8_t> compressedBody;
     const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
     if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
@@ -142,6 +141,20 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
         // else: fall through and send the original, uncompressed body -- a
         // one-shot ZSTD_compress() into a ZSTD_compressBound()-sized buffer
         // should never actually fail, but never lose the request over it.
+    }
+    else if (m_compressionEnabled && gateAllowsCompression && !attempt.bodyFilePath.empty()
+             && !attempt.precompressedBodyFilePath.empty())
+    {
+        // File-backed bodies (/stateful): compressing a potentially multi-MB
+        // spool file per attempt would be wasteful under retries, so the
+        // caller (StatefulStream) compresses once, up front, and hands us the
+        // compressed sibling's path/size here. Swapped in fresh on every call,
+        // exactly like the in-memory branch above -- a 415 disables the gate,
+        // and the next attemptOnce() naturally falls through to this `else`
+        // and sends the original, uncompressed file with no header.
+        attempt.bodyFilePath = attempt.precompressedBodyFilePath;
+        attempt.bodyFileSize = attempt.precompressedBodyFileSize;
+        attempt.headers.push_back("Content-Encoding: zstd");
     }
 
     const auto timestamp = m_clock.wallSeconds();

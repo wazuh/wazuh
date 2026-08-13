@@ -69,7 +69,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate,
                   m_compressionGate, makeStatelessHostCollector(callbacks))
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
-                 m_authGate, m_compressionGate)
+                 m_authGate, m_compressionGate, m_fileCompressor)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
                 m_configHash, m_cluster, m_authGate, m_compressionGate, m_taskStore, m_vdOffsetStore,
                 makeHostCollector(callbacks))
