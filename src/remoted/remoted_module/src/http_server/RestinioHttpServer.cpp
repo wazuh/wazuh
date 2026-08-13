@@ -38,6 +38,7 @@
 #include <variant>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -492,6 +493,26 @@ namespace
         {
             context.load_verify_file(config.caPath);
             context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
+
+            // Mandatory once client certificates are requested. OpenSSL refuses to resume a
+            // session whose peer presented a certificate unless the server has declared a session
+            // id context, and it refuses it FATALLY: the resumed handshake is aborted with an
+            // 'internal error' alert instead of falling back to a full handshake.
+            //
+            // That is not an edge case behind a load balancer -- proxies resume by default
+            // (NGINX's proxy_ssl_session_reuse, HAProxy unless told otherwise), so without this
+            // every connection the proxy opens after the first one fails, and the agents behind
+            // it see intermittent 502s that come and go with the proxy's connection pool.
+            //
+            // The value only has to be stable and unique to this listener; it is never sent on
+            // the wire, it is compared against the one stored with the cached session.
+            static constexpr std::string_view SESSION_ID_CONTEXT {"wazuh-remoted-https"};
+            if (SSL_CTX_set_session_id_context(context.native_handle(),
+                                               reinterpret_cast<const unsigned char*>(SESSION_ID_CONTEXT.data()),
+                                               static_cast<unsigned int>(SESSION_ID_CONTEXT.size())) != 1)
+            {
+                throw std::runtime_error("Unable to configure the TLS session id context");
+            }
         }
 
         return context;
