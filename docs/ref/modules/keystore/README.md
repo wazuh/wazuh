@@ -41,7 +41,7 @@ The keystore has undergone one version upgrade:
 
 | Version | Encryption | Notes |
 |---------|-----------|-------|
-| v1 | RSA (via `etc/sslmanager.key`) | Legacy format |
+| v1 | RSA (via `etc/certs/authd-key.pem`) | Legacy format |
 | v2 | AES-256-CBC (EVP) | Current format, no key file dependency |
 
 On first access after an upgrade, the daemon automatically migrates v1 entries to v2.

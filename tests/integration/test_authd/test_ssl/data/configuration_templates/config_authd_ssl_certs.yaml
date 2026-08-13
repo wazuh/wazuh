@@ -28,8 +28,8 @@
     - ssl_verify_host:
         value: SSL_VERIFY_HOST
     - ssl_manager_cert:
-        value: '/var/wazuh-manager/etc/sslmanager.cert'
+        value: '/var/wazuh-manager/etc/certs/authd.pem'
     - ssl_manager_key:
-        value: '/var/wazuh-manager/etc/sslmanager.key'
+        value: '/var/wazuh-manager/etc/certs/authd-key.pem'
     - ssl_agent_ca:
         value: '/var/wazuh-manager/etc/test_rootCA.pem'

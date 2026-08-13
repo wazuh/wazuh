@@ -38,9 +38,9 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
 done
 
 # API SSL sync (only when cluster + shared ssl volume)
-SSL_DIR="/var/wazuh-manager/api/configuration/ssl"
-SSL_KEY="${SSL_DIR}/manager.key"
-SSL_CRT="${SSL_DIR}/manager.crt"
+SSL_DIR="/var/wazuh-manager/etc/certs"
+SSL_KEY="${SSL_DIR}/apid-key.pem"
+SSL_CRT="${SSL_DIR}/apid.pem"
 
 if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
   echo "[entrypoint] Worker waiting for shared API SSL files..."

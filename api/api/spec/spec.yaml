@@ -6460,10 +6460,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6498,10 +6498,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6535,10 +6535,10 @@ paths:
                           request_timeout: 10
                         https:
                           enabled: true
-                          key: "/var/wazuh-manager/api/configuration/ssl/manager.key"
-                          cert: "/var/wazuh-manager/api/configuration/ssl/manager.crt"
+                          key: "/var/wazuh-manager/etc/certs/apid-key.pem"
+                          cert: "/var/wazuh-manager/etc/certs/apid.pem"
                           use_ca: false
-                          ca: "/var/wazuh-manager/api/configuration/ssl/ca.crt"
+                          ca: "/var/wazuh-manager/etc/certs/root-ca.pem"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -6790,9 +6790,9 @@ paths:
                             ca:
                               - /var/wazuh-manager/etc/certs/root-ca.pem
                           certificate:
-                            - /var/wazuh-manager/etc/certs/manager.pem
+                            - /var/wazuh-manager/etc/certs/indexer-connector.pem
                           key:
-                            - /var/wazuh-manager/etc/certs/manager-key.pem
+                            - /var/wazuh-manager/etc/certs/indexer-connector-key.pem
                       command:
                         - name: disable-account
                           executable: disable-account
@@ -6822,8 +6822,8 @@ paths:
                         use_password: "no"
                         ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/sslmanager.cert"
-                        ssl_manager_key: "etc/sslmanager.key"
+                        ssl_manager_cert: "etc/certs/authd.pem"
+                        ssl_manager_key: "etc/certs/authd-key.pem"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"

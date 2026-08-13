@@ -201,8 +201,8 @@ The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum 
 ```xml
 <auth>
   ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
@@ -289,8 +289,8 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -398,14 +398,15 @@ Apply your 4.x customizations to the 5.0 default file using the changes describe
 
 ### SSL certificate names
 
-The default certificate file names have changed to reflect the renamed system user.
+The API certificates moved to the unified `etc/certs` directory and were renamed after the daemon (`apid`). The default file names are resolved relative to `etc/certs`.
 
 | Option | 4.x default | 5.0 default |
 |--------|------------|------------|
-| `https.key` | `server.key` | `manager.key` |
-| `https.cert` | `server.crt` | `manager.crt` |
+| `https.key` | `server.key` | `apid-key.pem` |
+| `https.cert` | `server.crt` | `apid.pem` |
+| `https.ca` | `ca.crt` | `root-ca.pem` |
 
-If you use custom certificate file names, no change is needed. If you rely on the defaults, rename your certificate files or update the configuration.
+The 5.0 defaults resolve to `etc/certs/apid.pem`, `etc/certs/apid-key.pem` and `etc/certs/root-ca.pem`. If you use custom certificate file names, no change is needed. If you rely on the defaults, move and rename your certificate files or update the configuration.
 
 **4.x:**
 ```yaml
@@ -423,10 +424,10 @@ If you use custom certificate file names, no change is needed. If you rely on th
 ```yaml
 # https:
 #  enabled: yes
-#  key: "manager.key"
-#  cert: "manager.crt"
+#  key: "apid-key.pem"
+#  cert: "apid.pem"
 #  use_ca: False
-#  ca: "ca.crt"
+#  ca: "root-ca.pem"
 #  ssl_ciphers: ""
 ```
 

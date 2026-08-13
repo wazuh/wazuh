@@ -109,8 +109,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
 
-    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/sslmanager.cert");
-    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/sslmanager.key");
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/authd.pem");
+    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/authd-key.pem");
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */

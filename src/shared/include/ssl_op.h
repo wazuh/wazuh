@@ -30,8 +30,8 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#define KEYFILE             "etc/sslmanager.key"
-#define CERTFILE            "etc/sslmanager.cert"
+#define KEYFILE             "etc/certs/authd-key.pem"
+#define CERTFILE            "etc/certs/authd.pem"
 /* TLS 1.3 ciphersuite names (SSL_CTX_set_ciphersuites), not a legacy OpenSSL cipher list */
 #define DEFAULT_CIPHERS     "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #define MAX_SSL_PACKET_SIZE 16384

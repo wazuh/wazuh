@@ -135,12 +135,21 @@ namespace
     // RemotedModuleFacade::start(). The tests below that need a module which actually starts must
     // therefore hand it a real, readable self-signed certificate/key pair; there is no built-in
     // fallback that works outside of remoted's own chroot (the module default,
-    // "etc/https-manager.cert", only resolves once Privsep_Chroot() has chdir()'d to "/").
+    // "etc/certs/remoted.pem", only resolves once Privsep_Chroot() has chdir()'d to "/").
     void writeSelfSignedTls(const std::string& certificatePath, const std::string& privateKeyPath)
     {
         using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
         using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
         using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+
+        for (const auto& path : {certificatePath, privateKeyPath})
+        {
+            const auto parent = std::filesystem::path(path).parent_path();
+            if (!parent.empty())
+            {
+                std::filesystem::create_directories(parent);
+            }
+        }
 
         EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
         if (!pkey)
@@ -232,7 +241,7 @@ namespace
     };
 
     /// RAII throwaway TLS identity at the module's own built-in default path
-    /// ("etc/https-manager.cert"/"etc/https-manager.key", relative to the test process's cwd) --
+    /// ("etc/certs/remoted.pem"/"etc/certs/remoted-key.pem", relative to the test process's cwd) --
     /// only for the one test that exercises the nullptr-configuration default-path fallback itself.
     class DefaultPathTlsFiles
     {
@@ -240,18 +249,18 @@ namespace
         DefaultPathTlsFiles()
             : m_createdEtcDir(!std::filesystem::exists("etc"))
         {
-            std::filesystem::create_directories("etc");
-            writeSelfSignedTls("etc/https-manager.cert", "etc/https-manager.key");
+            writeSelfSignedTls("etc/certs/remoted.pem", "etc/certs/remoted-key.pem");
         }
 
         ~DefaultPathTlsFiles()
         {
             std::error_code ec;
-            std::filesystem::remove("etc/https-manager.cert", ec);
-            std::filesystem::remove("etc/https-manager.key", ec);
+            std::filesystem::remove("etc/certs/remoted.pem", ec);
+            std::filesystem::remove("etc/certs/remoted-key.pem", ec);
+            std::filesystem::remove("etc/certs", ec); // no-op if anything else landed in it meanwhile
             if (m_createdEtcDir)
             {
-                std::filesystem::remove("etc", ec); // no-op if anything else landed in it meanwhile
+                std::filesystem::remove("etc", ec);
             }
         }
 

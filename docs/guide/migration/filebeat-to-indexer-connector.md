@@ -49,13 +49,21 @@ sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ \
   ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
 
 sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem \
-        /var/wazuh-manager/etc/certs/manager.pem
+        /var/wazuh-manager/etc/certs/indexer-connector.pem
 sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem \
-        /var/wazuh-manager/etc/certs/manager-key.pem
+        /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 
-sudo chmod 500 /var/wazuh-manager/etc/certs
-sudo chmod 400 /var/wazuh-manager/etc/certs/*
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+# The indexer certificates are owned by root:wazuh-manager with mode 0640 so the
+# manager reads them after dropping privileges but cannot replace its trust anchor.
+# The etc/certs directory keeps the root:wazuh-manager 1770 layout set by the installer.
+sudo chown root:wazuh-manager \
+  /var/wazuh-manager/etc/certs/root-ca.pem \
+  /var/wazuh-manager/etc/certs/indexer-connector.pem \
+  /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo chmod 640 \
+  /var/wazuh-manager/etc/certs/root-ca.pem \
+  /var/wazuh-manager/etc/certs/indexer-connector.pem \
+  /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 ### 3. Store the credentials in the keystore
@@ -78,8 +86,8 @@ Add the block to `/var/wazuh-manager/etc/wazuh-manager.conf` using your hosts an
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
