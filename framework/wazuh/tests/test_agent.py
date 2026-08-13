@@ -1276,6 +1276,36 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             assert expected_errors_and_items == errors_and_items
 
 
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_upgrade_agents_skips_agent_not_in_local_db(mock_socket, mock_wdb, mock_client_keys):
+    """Test `upgrade_agents` silently skips an agent this node has no info for (error 1816).
+
+    Regression test: when a request is broadcast to a node that doesn't have this agent's info
+    (e.g. because agents connect over stateless, load-balanced HTTPS with no fixed owning node),
+    the upgrade socket returns error 1816 (WM_UPGRADE_GLOBAL_DB_FAILURE). That must not raise and
+    kill the whole request -- it should be skipped so the node that actually has the agent's info
+    can report the real outcome.
+    """
+    result_from_socket = {
+        'error': 0,
+        'data': [
+            {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
+            {'error': 6, 'message': 'Agent information not found in database', 'agent': 2},
+        ],
+        'message': 'Success'
+    }
+    with patch('wazuh.core.agent.core_upgrade_agents', return_value=result_from_socket):
+        result = upgrade_agents(agent_list=['001', '002'])
+
+    assert result.affected_items == ['001']
+    assert result.total_affected_items == 1
+    assert not result.failed_items
+    assert result.total_failed_items == 0
+
+
 @pytest.mark.parametrize('filename, group_list', [
     ('agent.conf', ['default'])
 ])

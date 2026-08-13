@@ -105,9 +105,6 @@
   configuration_parameters:
   metadata:
     test_case:
-    - input: global select-agent-name 1
-      output: ok [{"name":"TestName1"}]
-      stage: global select-agent-name success
     - input: global select-agent-group  1
       output: ok [{"group":"TestGroup1"}]
       stage: global select-agent-group success

@@ -59,4 +59,6 @@ int __wrap_wdb_insert_agent(int id,
 
 int __wrap_wdb_remove_agent(int id, __attribute__((unused)) int* sock);
 
+int __wrap_wdb_remove_group_db(const char* name, __attribute__((unused)) int* sock);
+
 #endif
