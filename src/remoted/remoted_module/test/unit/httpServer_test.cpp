@@ -654,6 +654,120 @@ namespace
         }
     }
 
+    // Two sequential requests on two connections, where the second RESUMES the first's TLS
+    // session -- which is what a reverse proxy does by default. Returns each connection's status
+    // (0 when the exchange could not be completed), plus whether the second one actually resumed:
+    // if no session ticket ever arrived there is nothing to resume, and the pair of 200s would
+    // prove nothing.
+    struct ResumedExchange
+    {
+        int first {0};
+        int second {0};
+        bool resumed {false};
+    };
+
+    // In TLS 1.3 the session ticket is a post-handshake message, and OpenSSL's documented way to
+    // get hold of a RESUMABLE session is this callback: SSL_get1_session() called after the
+    // handshake hands back a session that predates the ticket and resumes nothing, which looks
+    // exactly like a server that refuses to resume. Returning 1 takes ownership of the session.
+    SSL_SESSION* g_capturedSession {nullptr};
+
+    extern "C" int captureNewSession(SSL*, SSL_SESSION* session)
+    {
+        if (g_capturedSession != nullptr)
+        {
+            SSL_SESSION_free(g_capturedSession);
+        }
+        g_capturedSession = session;
+        return 1;
+    }
+
+    ResumedExchange getStatusResumingSession(std::uint16_t port,
+                                             const std::string& clientCert,
+                                             const std::string& clientKey,
+                                             const std::string& caCert)
+    {
+        ResumedExchange result;
+        std::unique_ptr<SSL_SESSION, decltype(&SSL_SESSION_free)> session {nullptr, &SSL_SESSION_free};
+
+        asio::ssl::context sslContext {asio::ssl::context::tls_client};
+        sslContext.set_verify_mode(asio::ssl::verify_none);
+        sslContext.use_certificate_file(clientCert, asio::ssl::context::pem);
+        sslContext.use_private_key_file(clientKey, asio::ssl::context::pem);
+        sslContext.load_verify_file(caCert);
+        SSL_CTX_set_session_cache_mode(sslContext.native_handle(),
+                                       SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+        SSL_CTX_sess_set_new_cb(sslContext.native_handle(), captureNewSession);
+        if (g_capturedSession != nullptr)
+        {
+            SSL_SESSION_free(g_capturedSession);
+            g_capturedSession = nullptr;
+        }
+
+        const auto exchange = [&](bool resume) -> int
+        {
+            try
+            {
+                asio::io_context ioc;
+                asio::ssl::stream<asio::ip::tcp::socket> stream {ioc, sslContext};
+                asio::ip::tcp::resolver resolver {ioc};
+                asio::connect(stream.next_layer(), resolver.resolve("127.0.0.1", std::to_string(port)));
+
+                if (resume && session)
+                {
+                    SSL_set_session(stream.native_handle(), session.get());
+                }
+
+                stream.handshake(asio::ssl::stream_base::client);
+
+                if (resume)
+                {
+                    result.resumed = SSL_session_reused(stream.native_handle()) == 1;
+                }
+
+                // Keep-alive on purpose, where the other helpers in this file ask for
+                // 'Connection: close'. Two reasons, both of which silently produce a session that
+                // resumes nothing: in TLS 1.3 the ticket is a POST-handshake message that only
+                // arrives once the server writes, and OpenSSL marks a session unresumable when
+                // the connection ends without a clean shutdown -- which is exactly what asking
+                // the server to close gets you here.
+                const std::string request = "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+                asio::write(stream, asio::buffer(request));
+
+                asio::streambuf response;
+                asio::error_code ec;
+                asio::read_until(stream, response, "\r\n\r\n", ec);
+
+                // Closed cleanly (close_notify) rather than just dropped: OpenSSL flags a session
+                // as not-resumable when its connection ends without one, and it flags the very
+                // object captured above, so an abrupt close here would quietly turn the session
+                // collected a moment ago into one that cannot resume anything.
+                asio::error_code shutdownError;
+                stream.shutdown(shutdownError);
+
+                if (!resume)
+                {
+                    session.reset(g_capturedSession);
+                    g_capturedSession = nullptr;
+                }
+
+                std::istream stream_in {&response};
+                std::string version;
+                int status {0};
+                stream_in >> version >> status;
+                return status;
+            }
+            catch (const std::exception&)
+            {
+                return 0;
+            }
+        };
+
+        result.first = exchange(/*resume=*/false);
+        result.second = exchange(/*resume=*/true);
+        return result;
+    }
+
     HttpServerConfig fullModeConfig(const FullModePki& pki, std::uint16_t port)
     {
         HttpServerConfig config;
@@ -719,6 +833,63 @@ TEST(FullModeTest, CertificateListingAnotherAddressIsRefusedOnEveryRoute)
            "connects from 127.0.0.1: Full mode must refuse it";
 
     server->stop();
+}
+
+// ---------------------------------------------------------------------------
+// TLS session resumption while client certificates are required
+//
+// OpenSSL refuses to resume a session whose peer presented a certificate unless the server has
+// declared a session id context, and it refuses FATALLY: the resumed handshake is aborted with an
+// 'internal error' alert rather than falling back to a full one. Reverse proxies resume by
+// default, so without that context every connection a proxy opens after the first one fails and
+// the agents behind it see intermittent 502s.
+//
+// Covered for BOTH modes that request certificates: the defect belonged to the TLS context, not
+// to the peer-address check, so Certificate was affected exactly as much as Full.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    void expectResumptionIsServed(ClientVerificationMode mode, std::uint16_t port)
+    {
+        if (std::system("openssl version >/dev/null 2>&1") != 0)
+        {
+            GTEST_SKIP() << "openssl not available to generate the test PKI";
+        }
+
+        FullModePki pki;
+        auto server = makeHttpServer();
+
+        server->addRoute(Method::Get,
+                         "/",
+                         [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                         { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+                         /*countAgainstBudget=*/false);
+
+        auto config = fullModeConfig(pki, port);
+        config.verificationMode = mode;
+        ASSERT_NO_THROW(server->start(config));
+
+        const auto exchange = getStatusResumingSession(port, pki.cert("matching"), pki.key("matching"), pki.cert("ca"));
+
+        EXPECT_EQ(exchange.first, 200) << "the first connection is an ordinary full handshake";
+        EXPECT_TRUE(exchange.resumed) << "the second connection did not resume the first one's session, so this "
+                                         "test would pass without measuring anything";
+        EXPECT_EQ(exchange.second, 200) << "a resumed session must be served: without a session id context OpenSSL "
+                                           "aborts this handshake with an 'internal error' alert";
+
+        server->stop();
+    }
+} // namespace
+
+TEST(TlsSessionResumptionTest, ResumedSessionIsServedWithCertificateMode)
+{
+    expectResumptionIsServed(ClientVerificationMode::Certificate, 34519);
+}
+
+TEST(TlsSessionResumptionTest, ResumedSessionIsServedWithFullMode)
+{
+    expectResumptionIsServed(ClientVerificationMode::Full, 34520);
 }
 
 // ---------------------------------------------------------------------------
