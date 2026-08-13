@@ -1048,10 +1048,10 @@ void test_process_upgrade_ack_missing_parameters_object_ignored(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg,
         "legacy_task_delivery: agent '005' sent an upgrade acknowledgment with a missing or "
-        "invalid 'parameters.error', ignoring");
+        "invalid 'parameters', ignoring");
 
-    // No "parameters" object at all: same guard as a missing "error" field (the scan-build
-    // NULL-deref regression path).
+    // No "parameters" object at all: caught by the standalone 'parameters' guard, before
+    // the 'parameters.error' check is ever reached.
     bool result = legacy_task_process_upgrade_ack("005",
         "{\"command\":\"upgrade_update_status\"}");
 
