@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
+from os.path import join
 from unittest.mock import call, ANY, patch, MagicMock
 
 import pytest
@@ -39,7 +40,11 @@ def test_get_script_arguments(mock_ArgumentParser):
         call('-F', '--force', action='store_true', help='Forces the agents to upgrade, ignoring version validations.'),
         call('-s', '--silent', action='store_true', help='Do not show output.'),
         call('-l', '--list_outdated', action='store_true', help='Generates a list with all outdated agents.'),
-        call('-f', '--file', type=str, help='Custom WPK filename.'),
+        call('-f', '--file', type=str,
+             help="Custom WPK file. The file must already be placed in '{0}' (remoted "
+                  "delivers custom WPKs from that directory by filename). A bare "
+                  "filename or a path inside that directory are accepted.".format(
+                      join(agent_upgrade.common.WAZUH_PATH, 'var', 'upgrade'))),
         call('-d', '--debug', action='store_true', help='Debug mode.'),
         call('-x', '--execute', type=str, help='Executable filename in the WPK custom file. [Default: upgrade.sh]'),
         call('--http', action='store_true', help='Uses http protocol instead of https.')
@@ -106,14 +111,43 @@ async def test_get_agent_version():
 
 def test_create_command():
     """Check that expected result is returned in create_command function"""
+    upgrade_dir = join(agent_upgrade.common.WAZUH_PATH, 'var', 'upgrade')
+
     agent_upgrade.args = MagicMock()
-    result = agent_upgrade.create_command()
+    agent_upgrade.args.file = 'test.wpk'
+    with patch('scripts.agent_upgrade.isfile', return_value=True):
+        result = agent_upgrade.create_command()
     assert result == {'agent_list': ANY, 'installer': ANY, 'file_path': ANY, 'request_time': ANY}
+    assert result['file_path'] == join(upgrade_dir, 'test.wpk')
 
     agent_upgrade.args.file = ''
     agent_upgrade.args.execute = ''
     result = agent_upgrade.create_command()
     assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY, 'package_type': ANY, 'request_time': ANY}
+
+
+def test_resolve_wpk_file():
+    """Check that WPK paths are resolved into the upgrade directory."""
+    upgrade_dir = join(agent_upgrade.common.WAZUH_PATH, 'var', 'upgrade')
+
+    with patch('scripts.agent_upgrade.isfile', return_value=True):
+        # Bare filename and a path already inside the upgrade directory are both accepted
+        assert agent_upgrade.resolve_wpk_file('test.wpk') == join(upgrade_dir, 'test.wpk')
+        assert agent_upgrade.resolve_wpk_file(join(upgrade_dir, 'test.wpk')) == join(upgrade_dir, 'test.wpk')
+
+
+@pytest.mark.parametrize('file_arg, isfile_result', [
+    ('/tmp/elsewhere/test.wpk', True),  # path outside the upgrade directory
+    ('test.wpk', False)  # file not present in the upgrade directory
+])
+def test_resolve_wpk_file_ko(capfd, file_arg, isfile_result):
+    """Check that invalid WPK locations abort before any task is created."""
+    with patch('scripts.agent_upgrade.isfile', return_value=isfile_result):
+        with pytest.raises(SystemExit) as exc_info:
+            agent_upgrade.resolve_wpk_file(file_arg)
+    assert exc_info.value.code == 1
+    out, err = capfd.readouterr()
+    assert 'Error' in out
 
 
 @pytest.mark.asyncio
@@ -127,6 +161,8 @@ async def test_main(mock_list_outdated, mock_exit, mock_signal, capfd):
     agent_upgrade.args.list_outdated = ['001']
     agent_upgrade.args.agents = []
     agent_upgrade.args.silent = False
+    agent_upgrade.args.file = ''
+    agent_upgrade.args.execute = ''
     task_results = MagicMock()
     task_results.failed_items = {'1000': ['001', '002']}
     task_results.total_affected_items = 1
@@ -164,6 +200,8 @@ async def test_main_internal_error_ko(capfd):
     """Check that the main function exits successfully when there's an internal error."""
     agent_upgrade.args = MagicMock()
     agent_upgrade.args.list_outdated = []
+    agent_upgrade.args.file = ''
+    agent_upgrade.args.execute = ''
     exc = WazuhInternalError(1816, 'Agent information not found in database')
 
     with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=exc):

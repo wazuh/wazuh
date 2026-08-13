@@ -74,7 +74,6 @@ typedef enum crypto_type {
 #include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"
-#include "wm_router.h"
 #include "wm_content_manager.h"
 #include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"

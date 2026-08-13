@@ -665,6 +665,9 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
 
     cJSON *error_obj = cJSON_GetObjectItem(parameters_obj, "error");
 
+    // The explicit NULL check is redundant with cJSON_IsNumber(NULL) == false, but scan-build
+    // cannot see across translation units, so without it the error_obj->valueint read below is
+    // reported as a possible NULL dereference.
     if (error_obj == NULL || !cJSON_IsNumber(error_obj)) {
         mdebug1("legacy_task_delivery: agent '%s' sent an upgrade acknowledgment with a missing or "
                 "invalid 'parameters.error', ignoring", agent_id);
