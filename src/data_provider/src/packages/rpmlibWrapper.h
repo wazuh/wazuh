@@ -15,6 +15,7 @@
 #include <rpm/header.h>
 #include <rpm/rpmdb.h>
 #include <rpm/rpmlib.h>
+#include <rpm/rpmmacro.h>
 #include <rpm/rpmts.h>
 
 class IRpmLibWrapper
@@ -25,6 +26,7 @@ class IRpmLibWrapper
         // LCOV_EXCL_STOP
         virtual int rpmReadConfigFiles(const char* file, const char* target) = 0;
         virtual void rpmFreeRpmrc() = 0;
+        virtual void rpmFreeMacros() = 0;
         virtual rpmtd rpmtdNew() = 0;
         virtual void rpmtdFree(rpmtd td) = 0;
         virtual rpmts rpmtsCreate() = 0;
