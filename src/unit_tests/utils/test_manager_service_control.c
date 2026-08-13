@@ -18,7 +18,7 @@
 
 #undef fail
 #define main wazuh_manager_service_control_main
-#include "../../shared/manager_service_control/main.c"
+#include "../../utils/manager_service_control/main.c"
 #undef main
 
 static void test_help_option_succeeds(void **state)
