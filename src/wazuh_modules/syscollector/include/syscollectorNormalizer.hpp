@@ -65,9 +65,9 @@ class SysNormalizer
                                                                    const std::string& target,
                                                                    const std::string& type);
         static std::map<std::string, std::vector<ExclusionRule>> compileExclusions(
-            const std::map<std::string, nlohmann::json>& rawExclusions);
+                                                                  const std::map<std::string, nlohmann::json>& rawExclusions);
         static std::map<std::string, std::vector<DictionaryRule>> compileDictionary(
-            const std::map<std::string, nlohmann::json>& rawDictionary);
+                                                                   const std::map<std::string, nlohmann::json>& rawDictionary);
 
         const std::map<std::string, std::vector<ExclusionRule>> m_typeExclusions;
         const std::map<std::string, std::vector<DictionaryRule>> m_typeDictionary;
