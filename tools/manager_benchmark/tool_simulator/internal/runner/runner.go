@@ -35,7 +35,6 @@ type Config struct {
 	Timeout      time.Duration
 	EnrollSettle time.Duration
 	Cluster      string // overrides the scenario's cluster name (environment config)
-	ClusterNode  string
 	// Compression overrides the scenario's defaults.compression: "zstd" forces
 	// it on, "none" forces it off, "" keeps the scenario's value. A CLI knob
 	// (like Cluster) because it belongs to the pair under test, and it is what
@@ -358,10 +357,6 @@ func (r *Runner) Meta() metrics.Meta {
 // under test rather than to the scenario, so a CLI override wins over the file.
 func (r *Runner) clusterName() string {
 	return firstNonEmpty(r.cfg.Cluster, clusterNameFromScenario(r.scn))
-}
-
-func (r *Runner) clusterNode() string {
-	return firstNonEmpty(r.cfg.ClusterNode, r.scn.Defaults.ClusterNode, "node01")
 }
 
 // vdFeedOffsetOverride is the CLI-level VD feed offset, or 0 for "no override"

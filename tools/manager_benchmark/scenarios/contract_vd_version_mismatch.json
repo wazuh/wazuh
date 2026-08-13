@@ -6,7 +6,6 @@
     "module": "syscollector",
     "option": "VDFirst",
     "cluster_name": "cluster01",
-    "cluster_node": "node01",
     "retry": { "enabled": false }
   },
   "lanes": {

@@ -209,8 +209,11 @@ already invalid — judging counters produced by an unauthenticated fleet would 
   captured payloads, which is mapping-valid by construction.
 - **The cluster name is environment config, not scenario content.** The server answers `403` to a
   session whose `cluster_name` is not its own, so the value in the file is only a default:
-  `--cluster` / `--cluster-node` override it per run, which is what makes one scenario library usable
-  against any manager.
+  `--cluster` overrides it per run, which is what makes one scenario library usable against any
+  manager. There is **no cluster node**: `defaults.cluster_node` was retired (a file that still
+  declares it is refused at load time) and no session sets `Start.cluster_node`, because the manager
+  never validated it and the tool was only echoing back a value it had read from the manager's own
+  configuration — see [05](05-flatbuffers-messages.md).
 - Document generation is deterministic from a seed recorded in the run metadata: two runs of one
   scenario send byte-identical payloads, or the comparison is not one.
 - **There is no pass/fail gate unless the scenario opts in.** A scenario declares *what to send*;

@@ -6,7 +6,6 @@
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",
-    "cluster_node": "node01",
     "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true }
   },
   "lanes": {

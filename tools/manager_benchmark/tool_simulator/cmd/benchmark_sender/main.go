@@ -43,7 +43,6 @@ func run() int {
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
 			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
 		cluster     = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
-		clusterNode = flag.String("cluster-node", "", "cluster node name (overrides the scenario)")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
 		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
@@ -108,7 +107,7 @@ func run() int {
 	rn := runner.New(runner.Config{
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
-		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster, ClusterNode: *clusterNode,
+		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
 	})
 

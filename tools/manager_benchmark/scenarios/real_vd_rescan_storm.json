@@ -4,7 +4,6 @@
   "mode": "agent",
   "defaults": {
     "cluster_name": "cluster01",
-    "cluster_node": "node01",
     "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" },
     "retry": { "enabled": true, "interval": "500ms", "max_attempts": 120 }
   },

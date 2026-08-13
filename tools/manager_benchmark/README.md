@@ -33,9 +33,11 @@ sudo ./prepare_manager.sh                                    # one-time: open, p
 **The cluster name is read from the manager's own config.** The server answers `403` to any session
 whose `cluster_name` is not its own, and the scenarios only ship a placeholder, so getting this wrong
 means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
-`run_benchmark.sh` reads `<cluster><name>` (and `<node_name>`) from
+`run_benchmark.sh` reads `<cluster><name>` from
 `/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
-used. `--cluster` / `--cluster-node` override it.
+used. `--cluster` overrides it. The cluster **node** is not sent at all: sessions declare no
+`cluster_node` (the manager never validated it and is dropping its last consumer), so there is no
+`--cluster-node` and nothing to detect.
 
 A **remote** `--manager` is deliberately never auto-detected: the local config would then describe a
 different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass

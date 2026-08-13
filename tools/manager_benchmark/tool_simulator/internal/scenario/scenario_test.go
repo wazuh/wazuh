@@ -70,6 +70,13 @@ func TestLoaderRefusesTheRetiredKnobs(t *testing.T) {
 		`{"name":"t","mode":"uds","defaults":{"max_eps":75},"lanes":{"main":[{"kind":"delta"}]},"fleets":[{"name":"f","agents":1,"lanes":["main"]}]}`); err == nil {
 		t.Fatal("defaults.max_eps was retired and must be refused")
 	}
+	// cluster_node too: the manager never validated it and is dropping its last
+	// consumer, and the value the tool used to send was read out of the manager's
+	// own config -- a scenario declaring it must fail, not silently be ignored.
+	if _, err := loadFromLiteral(t,
+		`{"name":"t","mode":"uds","defaults":{"cluster_name":"c","cluster_node":"node01"},"lanes":{"main":[{"kind":"delta"}]},"fleets":[{"name":"f","agents":1,"lanes":["main"]}]}`); err == nil {
+		t.Fatal("defaults.cluster_node was retired and must be refused")
+	}
 }
 
 func TestLoaderConstrainsTheEventFieldsToEngineSteps(t *testing.T) {
