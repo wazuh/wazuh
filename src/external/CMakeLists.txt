@@ -1071,49 +1071,85 @@ if(IS_LINUX AND NOT IS_AGENT)
 endif()
 
 # ------------------------------------------------------------------------------
-# zstd (manager + Linux/macOS agent; winagent cross-compile is a follow-up)
+# zstd (manager + agent, all platforms incl. winagent)
 # ------------------------------------------------------------------------------
 #
 # Upstream ships its CMake project under build/cmake (not at the repo root),
 # so SOURCE_DIR points there. BINARY_DIR is kept out of that tree (as
-# build/cmake-build) to avoid colliding with the vendored build/{cmake,meson,
-# VS2010,single_file_libs} directories. The static archive lands under
-# <BINARY_DIR>/lib/libzstd.a because upstream's lib/CMakeLists.txt is pulled
-# in via add_subdirectory(lib).
+# build/cmake-build, or build/cmake-build-win when cross-compiling for
+# Windows) to avoid colliding with the vendored build/{cmake,meson,VS2010,
+# single_file_libs} directories. The Windows BINARY_DIR is intentionally
+# distinct from the non-Windows one -- a Linux/macOS libzstd.a already built
+# on disk must never satisfy the Windows precompiled-artifact fast path
+# below (or vice versa); each platform gets its own EXISTS check. The static
+# archive lands under <BINARY_DIR>/lib/libzstd.a because upstream's
+# lib/CMakeLists.txt is pulled in via add_subdirectory(lib).
 #
-# Was manager-only; the agent now needs it too, for request-body
-# compression. IS_WINDOWS stays excluded here -- winagent's MinGW
-# cross-compile toolchain args (mirroring curl/openssl's CMAKE_ARGS
-# CC=${MINGW_CC} --host=${MINGW_HOST} pattern above) are a dedicated
-# follow-up, verified against packages/windows/Dockerfile.
-if(NOT IS_WINDOWS)
-  if(EXISTS ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
-    message(STATUS "Using precompiled zstd library")
-    add_custom_target(zstd_external)
-  else()
-    ExternalProject_Add(
-      zstd_external
-      SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
-      BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
-                 -DBUILD_SHARED_LIBS=OFF
-                 -DZSTD_BUILD_STATIC=ON
-                 -DZSTD_BUILD_SHARED=OFF
-                 -DZSTD_BUILD_PROGRAMS=OFF
-                 -DZSTD_BUILD_TESTS=OFF
-                 -DZSTD_LEGACY_SUPPORT=OFF
-                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
-  endif()
-
-  add_library(ext_zstd STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_zstd PROPERTIES IMPORTED_LOCATION
-                        ${EXTERNAL_DIR}/zstd/build/cmake-build/lib/libzstd.a)
-  add_dependencies(ext_zstd zstd_external)
-  target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
+# Windows (winagent) cross-compiles via a nested ExternalProject_Add whose
+# own CMAKE_ARGS re-declare CMAKE_SYSTEM_NAME=Windows and forward the
+# already-cross-compiling top-level CMAKE_C_COMPILER/CMAKE_CXX_COMPILER/
+# CMAKE_AR/CMAKE_RANLIB (mirrors the GoogleTest Windows block below) instead
+# of re-deriving a MinGW prefix independently -- this file's own
+# MINGW_PREFIX is a second, non-synchronized source of truth vs.
+# src/Makefile's MING_BASE, so forwarding what the top-level configure
+# already resolved avoids adding to that split.
+#
+# CMAKE_CXX_COMPILER is required even though zstd's own library is C-only:
+# CMake's project() call, with no explicit LANGUAGES restriction, enables
+# CXX by default, so the nested configure's own compiler sanity-check tries
+# to find a C++ compiler regardless. Without forwarding it, that check falls
+# back to the HOST's /usr/bin/c++ (not the MinGW cross compiler), which
+# fails immediately on a MinGW-only linker flag -- confirmed empirically,
+# not just theorized.
+if(IS_WINDOWS)
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build-win)
+  find_program(FULL_RANLIB ${CMAKE_RANLIB} REQUIRED)
+  set(ZSTD_CMAKE_ARGS
+      -DCMAKE_SYSTEM_NAME=Windows
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DCMAKE_AR=${CMAKE_AR}
+      -DCMAKE_RANLIB=${FULL_RANLIB}
+      -DZSTD_MULTITHREAD_SUPPORT=OFF)
+else()
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build)
+  set(ZSTD_CMAKE_ARGS "")
 endif()
+
+if(EXISTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+  message(STATUS "Using precompiled zstd library")
+  add_custom_target(zstd_external)
+else()
+  ExternalProject_Add(
+    zstd_external
+    SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
+    BINARY_DIR ${ZSTD_BINARY_DIR}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+               -DBUILD_SHARED_LIBS=OFF
+               -DZSTD_BUILD_STATIC=ON
+               -DZSTD_BUILD_SHARED=OFF
+               -DZSTD_BUILD_PROGRAMS=OFF
+               -DZSTD_BUILD_TESTS=OFF
+               -DZSTD_LEGACY_SUPPORT=OFF
+               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+               ${ZSTD_CMAKE_ARGS}
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+
+  if(IS_WINDOWS)
+    ExternalProject_Add_Step(
+      zstd_external ranlib_libs
+      COMMAND ${FULL_RANLIB} ${ZSTD_BINARY_DIR}/lib/libzstd.a
+      DEPENDEES build
+      COMMENT "Running ranlib on zstd library")
+  endif()
+endif()
+
+add_library(ext_zstd STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ext_zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+add_dependencies(ext_zstd zstd_external)
+target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
 
 # ------------------------------------------------------------------------------
 # popt (Linux agent only)
