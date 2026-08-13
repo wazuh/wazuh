@@ -155,7 +155,7 @@ std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::st
 }
 
 std::map<std::string, std::vector<SysNormalizer::ExclusionRule>> SysNormalizer::compileExclusions(
-    const std::map<std::string, nlohmann::json>& rawExclusions)
+                                                                  const std::map<std::string, nlohmann::json>& rawExclusions)
 {
     std::map<std::string, std::vector<ExclusionRule>> ret;
 
@@ -180,7 +180,7 @@ std::map<std::string, std::vector<SysNormalizer::ExclusionRule>> SysNormalizer::
 }
 
 std::map<std::string, std::vector<SysNormalizer::DictionaryRule>> SysNormalizer::compileDictionary(
-    const std::map<std::string, nlohmann::json>& rawDictionary)
+                                                                   const std::map<std::string, nlohmann::json>& rawDictionary)
 {
     std::map<std::string, std::vector<DictionaryRule>> ret;
 
