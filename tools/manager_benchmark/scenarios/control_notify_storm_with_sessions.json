@@ -4,7 +4,6 @@
   "mode": "agent",
   "defaults": {
     "cluster_name": "cluster01",
-    "cluster_node": "node01",
     "control": {
       "enabled": true,
       "keepalive_interval": "2s",

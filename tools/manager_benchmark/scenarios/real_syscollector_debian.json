@@ -3,8 +3,7 @@
   "description": "Syscollector first scan + delta stream replaying a real captured Debian session that spans seven inventory indices (packages, ports, networks, groups, ...). The full_resync cleans exactly the dump's indices and then upserts the recorded documents; the delta replays a real inventory delta repeatedly.",
   "mode": "uds",
   "defaults": {
-    "cluster_name": "cluster01",
-    "cluster_node": "node01"
+    "cluster_name": "cluster01"
   },
   "lanes": {
     "syscollector": [

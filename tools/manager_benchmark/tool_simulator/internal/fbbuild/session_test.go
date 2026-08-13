@@ -63,6 +63,15 @@ func TestBuildSessionRoundTrip(t *testing.T) {
 	if startTbl.FeedOffset() != 987654321 {
 		t.Fatalf("feed_offset = %d, want 987654321", startTbl.FeedOffset())
 	}
+	if got := string(startTbl.ClusterName()); got != "cluster01" {
+		t.Fatalf("cluster_name = %q, want cluster01: an empty one is answered 400", got)
+	}
+	// cluster_node is a field of the schema the sender must NOT set: the manager
+	// never validated it and is dropping its last consumer, so leaving it unset is
+	// what makes the manager use its own configured node name (docu/05).
+	if got := startTbl.ClusterNode(); got != nil {
+		t.Errorf("cluster_node = %q, want absent from the buffer", string(got))
+	}
 
 	if session.PayloadType() != fb.SessionPayloadSyncData {
 		t.Fatalf("payload type = %d, want SyncData", session.PayloadType())

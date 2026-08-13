@@ -47,9 +47,13 @@ type Start struct {
 	AgentID       string
 	Groups        []string
 	GlobalVersion uint64
-	ClusterName   string
-	ClusterNode   string
-	FeedOffset    uint64
+	// ClusterName is required by the server (empty -> 400, foreign -> 403). There
+	// is deliberately no ClusterNode: the schema still carries the field, but the
+	// manager never validated it and is dropping its last consumer, and a real
+	// agent only ever echoed back what the manager itself told it during the
+	// /control handshake. The sender leaves it unset -- see docu/05.
+	ClusterName string
+	FeedOffset  uint64
 }
 
 // Value is one DataValue: a document upsert or delete.
@@ -145,7 +149,6 @@ func buildStart(b *flatbuffers.Builder, s Start) flatbuffers.UOffsetT {
 	agentname := str(s.AgentName)
 	agentid := str(s.AgentID)
 	clusterName := str(s.ClusterName)
-	clusterNode := str(s.ClusterNode)
 	indices := buildStringVector(b, s.Indices, fb.StartStartIndexVector)
 	groups := buildStringVector(b, s.Groups, fb.StartStartGroupsVector)
 
@@ -177,7 +180,6 @@ func buildStart(b *flatbuffers.Builder, s Start) flatbuffers.UOffsetT {
 		fb.StartAddGlobalVersion(b, s.GlobalVersion)
 	}
 	addIf(fb.StartAddClusterName, clusterName)
-	addIf(fb.StartAddClusterNode, clusterNode)
 	if s.FeedOffset != 0 {
 		fb.StartAddFeedOffset(b, s.FeedOffset)
 	}

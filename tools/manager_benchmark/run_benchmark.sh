@@ -16,9 +16,9 @@ set -euo pipefail
 #   ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode uds
 #   ./run_benchmark.sh --scenario scenarios/real_syscollector_debian.json --mode agent
 #
-# The cluster the sessions declare is read from the manager's config (the server
+# The cluster NAME the sessions declare is read from the manager's config (the server
 # answers 403 to a foreign cluster); --cluster overrides it, and a remote --manager
-# must pass it explicitly.
+# must pass it explicitly. There is no node knob: a session declares no cluster node.
 #
 # Agent mode needs the manager configured for open enrollment first:
 #   sudo ./prepare_manager.sh
@@ -45,7 +45,6 @@ PORT=1517
 REG_PORT=1515
 SEED=""
 CLUSTER=""
-CLUSTER_NODE=""
 MANAGER_CONF="/var/wazuh-manager/etc/wazuh-manager.conf"
 ENROLL_SETTLE=""
 DO_METRICS=true
@@ -65,15 +64,14 @@ fi
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
 
-# Read <cluster><name> / <node_name> out of the manager's config. Scoped to the
-# <cluster> block so a <name> elsewhere in the file cannot be picked up by mistake.
-# Prints nothing when the file is missing or unreadable, which the caller treats as
-# "not detected" rather than as an error.
-cluster_field_from_conf() {  # <tag>
-    local tag="$1"
+# Read <cluster><name> out of the manager's config. Scoped to the <cluster> block so
+# a <name> elsewhere in the file cannot be picked up by mistake. Prints nothing when
+# the file is missing or unreadable, which the caller treats as "not detected" rather
+# than as an error.
+cluster_name_from_conf() {
     [[ -r "$MANAGER_CONF" ]] || return 0
     sed -n '/<cluster>/,/<\/cluster>/p' "$MANAGER_CONF" 2>/dev/null \
-        | sed -n "s:.*<${tag}>\(.*\)</${tag}>.*:\1:p" | head -1
+        | sed -n "s:.*<name>\(.*\)</name>.*:\1:p" | head -1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -87,7 +85,6 @@ while [[ $# -gt 0 ]]; do
         --reg-port)     REG_PORT="$2"; shift 2 ;;
         --seed)         SEED="$2"; shift 2 ;;
         --cluster)      CLUSTER="$2"; shift 2 ;;
-        --cluster-node) CLUSTER_NODE="$2"; shift 2 ;;
         --conf)         MANAGER_CONF="$2"; shift 2 ;;
         --enroll-settle) ENROLL_SETTLE="$2"; shift 2 ;;
         --metrics-interval) METRICS_INTERVAL="$2"; shift 2 ;;
@@ -130,13 +127,9 @@ IS_LOCAL_MANAGER=false
 [[ "$MANAGER" == "127.0.0.1" || "$MANAGER" == "localhost" || "$MANAGER" == "::1" ]] && IS_LOCAL_MANAGER=true
 
 if [[ -z "$CLUSTER" ]] && $IS_LOCAL_MANAGER; then
-    CLUSTER="$(cluster_field_from_conf name)"
+    CLUSTER="$(cluster_name_from_conf)"
     [[ -n "$CLUSTER" ]] && echo "Cluster name not given; using '$CLUSTER' from $MANAGER_CONF"
 fi
-if [[ -z "$CLUSTER_NODE" ]] && $IS_LOCAL_MANAGER; then
-    CLUSTER_NODE="$(cluster_field_from_conf node_name)"
-fi
-
 if [[ -z "$CLUSTER" ]]; then
     echo "Error: could not determine the cluster name." >&2
     if $IS_LOCAL_MANAGER; then
@@ -185,7 +178,6 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "port": $PORT,
     "socket": "$SOCKET",
     "cluster": "$CLUSTER",
-    "cluster_node": "$CLUSTER_NODE",
     "seed": "$SEED",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
@@ -259,7 +251,6 @@ GO_ARGS=(
 )
 [[ -n "$SEED" ]] && GO_ARGS+=( --seed "$SEED" )
 [[ -n "$CLUSTER" ]] && GO_ARGS+=( --cluster "$CLUSTER" )
-[[ -n "$CLUSTER_NODE" ]] && GO_ARGS+=( --cluster-node "$CLUSTER_NODE" )
 [[ -n "$ENROLL_SETTLE" ]] && GO_ARGS+=( --enroll-settle "$ENROLL_SETTLE" )
 SENDER_RC=0
 "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?

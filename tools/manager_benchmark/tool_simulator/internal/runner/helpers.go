@@ -63,7 +63,6 @@ func (a *agent) startFor(lane string, step scenario.Step) fbbuild.Start {
 		Groups:        []string{"default"},
 		GlobalVersion: step.GlobalVer,
 		ClusterName:   a.r.clusterName(),
-		ClusterNode:   a.r.clusterNode(),
 	}
 	// feed_offset only means anything to a VD-flagged session -- see
 	// agent.feedOffsetFor for the resolution order.

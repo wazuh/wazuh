@@ -5,8 +5,7 @@
   "defaults": {
     "module": "fim",
     "option": "Sync",
-    "cluster_name": "cluster01",
-    "cluster_node": "node01"
+    "cluster_name": "cluster01"
   },
   "lanes": {
     "fim": [

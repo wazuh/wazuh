@@ -52,6 +52,12 @@ against its own version unless `allow_higher_versions` is set) and answers:
 Errors: `400 {"error":"invalid_version"}` when the version is malformed or too new,
 `500 {"error":"database_error"}` when wazuh-db is unreachable.
 
+`cluster` is where a REAL agent learns the values it later echoes in `Start` (it stores them as
+`agent_metadata_t.cluster_name`/`cluster_node`, "received during handshake"). The sender discards
+both, like every other field of this reply: `cluster_name` comes from the run configuration because a
+mismatch is answered `403` and the value belongs to the environment, and `cluster_node` is not sent at
+all — see [05-flatbuffers-messages.md](05-flatbuffers-messages.md).
+
 The sender **MUST** send a version the manager accepts (configurable, defaulting to the manager's
 own) so that `startup` failures are never mistaken for load effects.
 

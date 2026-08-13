@@ -32,11 +32,20 @@ Built once per session from the scenario's agent identity plus its `start` block
 | Field | Value |
 |---|---|
 | `agentid` | The agent's id. In `agent` mode it **MUST** equal the authenticated identity, or the answer is `403` |
-| `cluster_name` | The manager's cluster name, from the run configuration (mismatch → `403`) |
+| `cluster_name` | The manager's cluster name, from the run configuration (empty → `400`, mismatch → `403`) |
 | `mode` | The scenario's mode (see the matrix below) |
 | `option` | `Sync`, `VDFirst` or `VDSync` — this is what routes a data session to the scan lane |
 | `index` | The indices the session targets. Required for the metadata/group modes, which have no payload |
 | `module` | e.g. `syscollector`, `fim`, `sca` — recorded, and part of what the scenario describes |
+
+The schema also has a `cluster_node`, and the sender **MUST NOT** set it. The manager never validated
+it, its last consumer is being removed, and the only value that was ever correct for it is the
+manager's own configured node name — which is precisely what the tool used to read out of the
+manager's config and hand straight back. A real agent does not know it either: its `cluster_node` is
+whatever the manager told it during the `/control` handshake
+(`agent_metadata_t.cluster_node`, "received during handshake"). With stateless HTTPS the node that
+processes a session need not even be the one that answered that handshake, so an agent-declared node
+is at best redundant and at worst stale.
 
 Fields that are metadata stamped onto documents (`agentname`, `agentversion`, `architecture`,
 `hostname`, `osname`, `osplatform`, `ostype`, `osversion`, `groups`) **SHOULD** be filled with
