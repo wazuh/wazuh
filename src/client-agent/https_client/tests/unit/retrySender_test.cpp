@@ -25,6 +25,8 @@
 
 #include <zstd.h>
 
+#include <fstream>
+
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::Invoke;
@@ -40,6 +42,15 @@ namespace
         value.httpCode = code;
         value.retryAfterSeconds = retryAfter;
         return value;
+    }
+
+    std::string writeTempFile(const std::string& name, const std::string& contents)
+    {
+        const std::string path = ::testing::TempDir() + name;
+        std::ofstream file {path, std::ios::binary};
+        file << contents;
+        file.close();
+        return path;
     }
 
     class RetrySenderTest : public ::testing::Test
@@ -365,7 +376,9 @@ TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
 TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
 {
     // Same fixture as FileBackedSpecsAreSignedThroughSignFile above, but with
-    // compression on: /stateful's file-backed path must stay untouched.
+    // compression on: without a precompressedBodyFilePath set (the caller's
+    // job -- see CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds
+    // below), a file-backed body is still sent exactly as-is.
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
     HttpRequestSpec spec;
     spec.target = "/stateful";
@@ -479,4 +492,146 @@ TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRe
 
     EXPECT_EQ(OutcomeClass::Ok, result.outcome);
     EXPECT_FALSE(authGate.paused()); // Recovered by its own grace retry: never escalated.
+}
+
+TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
+{
+    // /stateful's own caller (StatefulStream) compresses once, up front, and
+    // hands the sibling's path/size here -- attemptOnce() must swap it in and
+    // sign over ITS bytes, not the original file's.
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
+
+    const std::string originalPath = writeTempFile("hc_rs_original.bin", "the original body");
+    const std::string compressedPath = writeTempFile("hc_rs_precompressed.bin", "zstd-ish bytes");
+
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = originalPath;
+    spec.bodyFileSize = 17;
+    spec.precompressedBodyFilePath = compressedPath;
+    spec.precompressedBodyFileSize = 14;
+
+    std::string seenBodyFilePath;
+    uint64_t seenBodyFileSize = 0;
+    std::vector<std::string> seenHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        seenBodyFilePath = attempt.bodyFilePath;
+        seenBodyFileSize = attempt.bodyFileSize;
+        seenHeaders = attempt.headers;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(compressedPath, seenBodyFilePath);
+    EXPECT_EQ(14u, seenBodyFileSize);
+    EXPECT_THAT(seenHeaders, Contains("Content-Encoding: zstd"));
+
+    // The CMAC must cover the compressed file's bytes, not the original's.
+    const auto expected = m_signer.signFile("POST", spec.target, compressedPath, m_clock.wallSeconds());
+    ASSERT_TRUE(expected.has_value());
+    EXPECT_THAT(seenHeaders, Contains(expected->authorization));
+}
+
+TEST_F(RetrySenderTest, CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)
+{
+    CompressionGate gate;
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &gate};
+
+    const std::string originalPath = writeTempFile("hc_rs_415_original.bin", "the original body");
+    const std::string compressedPath = writeTempFile("hc_rs_415_precompressed.bin", "zstd-ish bytes");
+
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = originalPath;
+    spec.bodyFileSize = 17;
+    spec.precompressedBodyFilePath = compressedPath;
+    spec.precompressedBodyFileSize = 14;
+
+    std::vector<std::string> firstBodyFilePathAndHeaders;
+    std::vector<std::string> secondBodyFilePathAndHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        firstBodyFilePathAndHeaders = attempt.headers;
+        firstBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
+        return response(TransportStatus::Ok, 415);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        secondBodyFilePathAndHeaders = attempt.headers;
+        secondBodyFilePathAndHeaders.push_back(attempt.bodyFilePath);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_THAT(firstBodyFilePathAndHeaders, Contains("Content-Encoding: zstd"));
+    EXPECT_THAT(firstBodyFilePathAndHeaders, Contains(compressedPath));
+    EXPECT_THAT(secondBodyFilePathAndHeaders, Not(Contains("Content-Encoding: zstd")));
+    EXPECT_THAT(secondBodyFilePathAndHeaders, Contains(originalPath));
+    EXPECT_TRUE(gate.disabled());
+}
+
+TEST_F(RetrySenderTest, SecondFileBackedCompressionRejectionTerminatesWithoutLooping)
+{
+    // No gate here: nothing disables compression between attempts, so both
+    // calls keep trying the precompressed sibling -- proving the one-shot
+    // retry is bounded per send() call for file bodies too, not just because
+    // the gate happened to help.
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
+
+    const std::string originalPath = writeTempFile("hc_rs_loop_original.bin", "the original body");
+    const std::string compressedPath = writeTempFile("hc_rs_loop_precompressed.bin", "zstd-ish bytes");
+
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = originalPath;
+    spec.bodyFileSize = 17;
+    spec.precompressedBodyFilePath = compressedPath;
+    spec.precompressedBodyFileSize = 14;
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 415)));
+
+    const auto result = compressing.send(spec, m_waiter, 4); // maxAttempts=4, but never a 3rd call.
+    EXPECT_EQ(OutcomeClass::CompressionRejected, result.outcome);
+}
+
+TEST_F(RetrySenderTest, FileBackedSenderSkipsCompressionOnceTheSharedGateIsAlreadyDisabled)
+{
+    // The gate is shared across every stream regardless of body shape: an
+    // in-memory sender's earlier 415 must stop a file-backed sender from ever
+    // trying to compress, without it seeing a 415 itself.
+    CompressionGate gate;
+    gate.reportRejected();
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &gate};
+
+    const std::string originalPath = writeTempFile("hc_rs_gate_original.bin", "the original body");
+
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = originalPath;
+    spec.bodyFileSize = 17;
+    spec.precompressedBodyFilePath = writeTempFile("hc_rs_gate_precompressed.bin", "zstd-ish bytes");
+    spec.precompressedBodyFileSize = 14;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & attempt)
+    {
+        EXPECT_THAT(attempt.headers, Not(Contains("Content-Encoding: zstd")));
+        EXPECT_EQ(originalPath, attempt.bodyFilePath);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
 }

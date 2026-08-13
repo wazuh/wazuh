@@ -11,6 +11,7 @@
 
 #include "fakeSysSeams.hpp"
 #include "mockCallbackSink.hpp"
+#include "mockFileCompressor.hpp"
 #include "mockHttpPerformer.hpp"
 #include "mockSpoolFactory.hpp"
 #include "shared_modules/sync_protocol/include/sync_session_wire.hpp"
@@ -24,8 +25,10 @@
 
 using ::testing::_;
 using ::testing::ByMove;
+using ::testing::Contains;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Not;
 using ::testing::Return;
 
 namespace
@@ -60,7 +63,7 @@ namespace
                 , m_config(makeConfig())
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink,
-                       m_authGate, m_compressionGate)
+                       m_authGate, m_compressionGate, m_fileCompressor)
             {
                 // By default the spool factory writes the bytes to a unique temp
                 // file (submit spools now, so every submit needs a real file).
@@ -97,6 +100,7 @@ namespace
             MockHttpPerformer m_performer;
             AuthGate m_authGate;
             CompressionGate m_compressionGate;
+            NiceMock<MockFileCompressor> m_fileCompressor;
             FakeWaiter m_waiter;
             StatefulStream m_stream;
             int m_spoolCounter {0};
@@ -313,4 +317,111 @@ TEST_F(StatefulStreamTest, AdoptedSessionFilesAreIdCheckedToo)
     EXPECT_FALSE(m_stream.submitFile("sess\r\nX-Injected: 1", "/tmp/hc_never_read", 4));
     EXPECT_FALSE(m_stream.hasPending());
     EXPECT_TRUE(m_stream.submitFile("adopted-1", "/tmp/hc_never_read", 4));
+}
+
+namespace
+{
+    ModuleConfig makeCompressingConfig()
+    {
+        hc_config_t config {};
+        std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+        std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+        config.verify_mode = HC_VERIFY_NONE;
+        config.https_compression_enabled = 1;
+        return ModuleConfig::fromC(config);
+    }
+} // namespace
+
+TEST_F(StatefulStreamTest, CompressionEnabledCompressesOnceAndCleansUpTheTempFile)
+{
+    // compressionEnabled is captured by RetrySender at construction time, so
+    // this needs its own StatefulStream (the fixture's m_stream was built from
+    // makeConfig()'s default-off config) -- same reason retrySender_test.cpp
+    // constructs a separate RetrySender per compression test rather than
+    // mutating the fixture's config after the fact.
+    ModuleConfig compressingConfig = makeCompressingConfig();
+    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
+                                m_clock,            m_random,           m_spoolFactory,
+                                m_sink,             m_authGate,         m_compressionGate,
+                                m_fileCompressor};
+
+    const std::string originalPath = ::testing::TempDir() + "hc_stateful_compress_src.tmp";
+    EXPECT_CALL(m_spoolFactory, spool(_, 4u))
+    .WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
+
+    const std::string compressedPath = ::testing::TempDir() + "hc_stateful_compress_out.tmp";
+    {
+        std::ofstream out {compressedPath, std::ios::binary};
+        out << "Z"; // Placeholder compressed bytes; only the path/size matter to this test.
+    }
+    EXPECT_CALL(m_fileCompressor, compress(originalPath, 4u, _, _))
+    .WillOnce(Return(ByMove(std::make_optional(
+                                std::make_pair(std::make_unique<SpoolFile>(compressedPath), uint64_t {1})))));
+
+    std::string seenBodyFilePath;
+    std::vector<std::string> seenHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenBodyFilePath = spec.bodyFilePath;
+        seenHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
+    EXPECT_TRUE(compressing.step(m_waiter));
+
+    EXPECT_EQ(compressedPath, seenBodyFilePath); // Sent the compressed sibling, not the original.
+    EXPECT_THAT(seenHeaders, Contains("Content-Encoding: zstd"));
+    EXPECT_FALSE(fileExists(compressedPath)); // Cleaned up once sendSession() returned.
+    EXPECT_FALSE(fileExists(originalPath));   // The session's own spool file too (normal cleanup).
+}
+
+TEST_F(StatefulStreamTest, CompressionFailureFallsBackToTheOriginalFileUncompressed)
+{
+    ModuleConfig compressingConfig = makeCompressingConfig();
+    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
+                                m_clock,            m_random,           m_spoolFactory,
+                                m_sink,             m_authGate,         m_compressionGate,
+                                m_fileCompressor};
+
+    const std::string originalPath = ::testing::TempDir() + "hc_stateful_compress_fail.tmp";
+    EXPECT_CALL(m_spoolFactory, spool(_, 4u))
+    .WillOnce(Return(ByMove(makeSpoolAt(originalPath, "body"))));
+    EXPECT_CALL(m_fileCompressor, compress(_, _, _, _)).WillOnce(Return(ByMove(std::nullopt)));
+
+    std::string seenBodyFilePath;
+    std::vector<std::string> seenHeaders;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenBodyFilePath = spec.bodyFilePath;
+        seenHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
+    EXPECT_TRUE(compressing.step(m_waiter));
+
+    EXPECT_EQ(originalPath, seenBodyFilePath);
+    EXPECT_THAT(seenHeaders, Not(Contains("Content-Encoding: zstd")));
+}
+
+TEST_F(StatefulStreamTest, GateAlreadyDisabledSkipsCompressionEntirely)
+{
+    m_compressionGate.reportRejected(); // E.g. another stream already saw a 415.
+
+    ModuleConfig compressingConfig = makeCompressingConfig();
+    StatefulStream compressing {compressingConfig,  m_performer,        m_signer,
+                                m_clock,            m_random,           m_spoolFactory,
+                                m_sink,             m_authGate,         m_compressionGate,
+                                m_fileCompressor};
+
+    EXPECT_CALL(m_fileCompressor, compress(_, _, _, _)).Times(0);
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
+    EXPECT_TRUE(compressing.step(m_waiter));
 }

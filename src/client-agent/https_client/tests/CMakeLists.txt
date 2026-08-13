@@ -70,6 +70,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gtest
     optimized gmock
     https_client
+    ext_zstd
     ${SRC_FOLDER}/external/openssl/libssl.a
     ${SRC_FOLDER}/external/openssl/libcrypto.a
     pthread)
