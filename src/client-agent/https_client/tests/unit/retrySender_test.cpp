@@ -454,3 +454,29 @@ TEST_F(RetrySenderTest, SecondCompressionRejectionTerminatesWithoutLooping)
     const auto result = compressing.send(makeSpec(), m_waiter, 4); // maxAttempts=4, but never a 3rd call.
     EXPECT_EQ(OutcomeClass::CompressionRejected, result.outcome);
 }
+
+TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRetry)
+{
+    // The 415's one-shot uncompressed retry can itself land a transient 401.
+    // That 401 must get its own fresh-timestamp grace retry -- not skip
+    // straight past it just because the compression retry already ran.
+    ::testing::NiceMock<MockCallbackSink> sink;
+    AuthGate authGate {sink, [] {}};
+    CompressionGate compressionGate;
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &compressionGate, &authGate};
+
+    const std::string plain(200, 'a'); // Long enough to actually compress.
+    HttpRequestSpec spec = makeSpec();
+    spec.body = reinterpret_cast<const uint8_t*>(plain.data());
+    spec.bodyLength = plain.size();
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 415))) // Rejected: retry uncompressed.
+    .WillOnce(Return(response(TransportStatus::Ok, 401))) // Uncompressed retry: transient 401.
+    .WillOnce(Return(response(TransportStatus::Ok, 200))); // Auth grace retry: recovers.
+
+    const auto result = compressing.send(spec, m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_FALSE(authGate.paused()); // Recovered by its own grace retry: never escalated.
+}

@@ -50,31 +50,43 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     {
         result = attemptOnce(base);
 
-        // One-shot 401 retry: a 401 can be a just-expired/edge timestamp as
-        // easily as a dead key. Resign with a fresh timestamp (attemptOnce
-        // re-signs) and try once more; only a second 401 escalates below.
-        if (result.outcome == OutcomeClass::AuthFail && !authRetried)
+        // Both one-shot retries below can fire in either order within the same
+        // outer attempt (a 415's uncompressed retry can itself land a 401, and
+        // vice versa), so loop until neither applies rather than checking each
+        // only once -- otherwise a 401 produced by the compression retry would
+        // skip its own auth grace-retry and escalate straight to reportAuthFailure().
+        for (;;)
         {
-            authRetried = true;
-            result = attemptOnce(base);
-        }
-
-        // One-shot compression retry: a 415 means the manager doesn't accept
-        // Content-Encoding: zstd. Report it to the shared gate first -- every
-        // RetrySender on this agent stops compressing from here on, for the
-        // rest of this run -- then retry; attemptOnce() re-checks the
-        // now-disabled gate itself, so this retry is naturally uncompressed
-        // with no separate "forced uncompressed" parameter needed.
-        if (result.outcome == OutcomeClass::CompressionRejected && !compressionRetried)
-        {
-            compressionRetried = true;
-
-            if (m_compressionGate != nullptr)
+            // One-shot 401 retry: a 401 can be a just-expired/edge timestamp as
+            // easily as a dead key. Resign with a fresh timestamp (attemptOnce
+            // re-signs) and try once more; only a second 401 escalates below.
+            if (result.outcome == OutcomeClass::AuthFail && !authRetried)
             {
-                m_compressionGate->reportRejected();
+                authRetried = true;
+                result = attemptOnce(base);
+                continue;
             }
 
-            result = attemptOnce(base);
+            // One-shot compression retry: a 415 means the manager doesn't accept
+            // Content-Encoding: zstd. Report it to the shared gate first -- every
+            // RetrySender on this agent stops compressing from here on, for the
+            // rest of this run -- then retry; attemptOnce() re-checks the
+            // now-disabled gate itself, so this retry is naturally uncompressed
+            // with no separate "forced uncompressed" parameter needed.
+            if (result.outcome == OutcomeClass::CompressionRejected && !compressionRetried)
+            {
+                compressionRetried = true;
+
+                if (m_compressionGate != nullptr)
+                {
+                    m_compressionGate->reportRejected();
+                }
+
+                result = attemptOnce(base);
+                continue;
+            }
+
+            break;
         }
 
         if (!isRetryable(result.outcome) || attempt == maxAttempts)
