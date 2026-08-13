@@ -39,8 +39,29 @@ jobs:
       - name: Install cmocka 1.1.7 and lcov
         run: |
           brew install lcov
-          curl -LO https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
-          tar -xf cmocka-1.1.7.tar.xz
+
+          CMOCKA_TARBALL="cmocka-1.1.7.tar.xz"
+          CMOCKA_URL="https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
+          CMOCKA_MIRROR_URL="https://gitlab.com/cmocka/cmocka/-/archive/cmocka-1.1.7/cmocka-cmocka-1.1.7.tar.gz"
+
+          if ! curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 300 -o "$CMOCKA_TARBALL" "$CMOCKA_URL" \
+             || ! tar -tf "$CMOCKA_TARBALL" >/dev/null 2>&1; then
+            echo "Primary CMocka download failed or returned an invalid archive. Falling back to the GitLab mirror (same upstream tag, cmocka 1.1.7)..."
+            CMOCKA_TARBALL="cmocka-1.1.7.tar.gz"
+            if ! curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 300 -o "$CMOCKA_TARBALL" "$CMOCKA_MIRROR_URL"; then
+              echo "Error during download. Exiting..."
+              exit 1
+            fi
+          fi
+
+          tar -xf "$CMOCKA_TARBALL"
+          # The GitLab mirror's archive extracts to cmocka-cmocka-1.1.7/ rather than cmocka-1.1.7/;
+          # normalize it so the rest of this step doesn't care which source was actually used.
+          extracted_dir="$(tar -tf "$CMOCKA_TARBALL" | head -1 | cut -d/ -f1)"
+          if [ "$extracted_dir" != "cmocka-1.1.7" ]; then
+            mv "$extracted_dir" cmocka-1.1.7
+          fi
+
           cd cmocka-1.1.7
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
