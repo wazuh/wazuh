@@ -131,9 +131,9 @@ class MacOsParser
     public:
         MacOsParser() = default;
         ~MacOsParser() = default;
-        bool parseSwVersion(const std::string& in, nlohmann::json& output);
-        bool parseSystemProfiler(const std::string& in, nlohmann::json& output);
-        bool parseUname(const std::string& in, nlohmann::json& output);
+        static bool parseSwVersion(const std::string& in, nlohmann::json& output);
+        static bool parseSystemProfiler(const std::string& in, nlohmann::json& output);
+        static bool parseUname(const std::string& in, nlohmann::json& output);
 };
 
 class FactorySysOsParser final

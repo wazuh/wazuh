@@ -16,8 +16,8 @@
 
 SysNormalizer::SysNormalizer(const std::string& configFile,
                              const std::string& target)
-    : m_typeExclusions{getTypeValues(configFile, target, "exclusions")}
-    , m_typeDictionary{getTypeValues(configFile, target, "dictionary")}
+    : m_typeExclusions{compileExclusions(getTypeValues(configFile, target, "exclusions"))}
+    , m_typeDictionary{compileDictionary(getTypeValues(configFile, target, "dictionary"))}
 {
 }
 
@@ -32,16 +32,13 @@ void SysNormalizer::removeExcluded(const std::string& type,
         {
             try
             {
-                std::regex pattern{exclusionItem["pattern"].get_ref<const std::string&>()};
-                const auto& fieldName{exclusionItem["field_name"].get_ref<const std::string&>()};
-
                 if (data.is_array())
                 {
                     for (auto item{data.begin()}; item != data.end(); ++item)
                     {
-                        const auto fieldIt{item->find(fieldName)};
+                        const auto fieldIt{item->find(exclusionItem.fieldName)};
 
-                        if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                        if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), exclusionItem.pattern))
                         {
                             data.erase(item);
                         }
@@ -49,9 +46,9 @@ void SysNormalizer::removeExcluded(const std::string& type,
                 }
                 else
                 {
-                    const auto fieldIt{data.find(fieldName)};
+                    const auto fieldIt{data.find(exclusionItem.fieldName)};
 
-                    if (fieldIt != data.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    if (fieldIt != data.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), exclusionItem.pattern))
                     {
                         data.clear();
                     }
@@ -67,53 +64,36 @@ void SysNormalizer::removeExcluded(const std::string& type,
 }
 
 
-static void normalizeItem(const nlohmann::json& dictionary,
+static void normalizeItem(const std::vector<SysNormalizer::DictionaryRule>& dictionary,
                           nlohmann::json& item)
 {
     for (const auto& dictItem : dictionary)
     {
-        const auto itFindPattern{dictItem.find("find_pattern")};
-        const auto itFindField{dictItem.find("find_field")};
-
-        if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
+        if (dictItem.find)
         {
-            const auto fieldIt{item.find(itFindField->get_ref<const std::string&>())};
-            std::regex pattern{itFindPattern->get_ref<const std::string&>()};
+            const auto fieldIt{item.find(dictItem.find->fieldName)};
 
             if (fieldIt == item.end() ||
-                    !std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    !std::regex_match(fieldIt->get_ref<const std::string&>(), dictItem.find->pattern))
             {
                 //no field in the item or no matching, we continue
                 continue;
             }
         }
-        else if (itFindPattern != dictItem.end() || itFindField != dictItem.end())
-        {
-            //we won't evaluate an incomplete item.
-            continue;
-        }
 
-        const auto itReplacePattern{dictItem.find("replace_pattern")};
-        const auto itReplaceField{dictItem.find("replace_field")};
-        const auto itReplaceValue{dictItem.find("replace_value")};
-
-        if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
+        if (dictItem.replace)
         {
-            std::regex pattern{itReplacePattern->get_ref<const std::string&>()};
-            const auto fieldIt{item.find(itReplaceField->get_ref<const std::string&>())};
+            const auto fieldIt{item.find(dictItem.replace->fieldName)};
 
             if (fieldIt != item.end())
             {
-                *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), pattern, itReplaceValue->get_ref<const std::string&>());
+                *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), dictItem.replace->pattern, dictItem.replace->value);
             }
         }
 
-        const auto itAddField{dictItem.find("add_field")};
-        const auto itAddValue{dictItem.find("add_value")};
-
-        if (itAddField != dictItem.end() && itAddValue != dictItem.end())
+        if (dictItem.add)
         {
-            item[itAddField->get_ref<const std::string&>()] = itAddValue->get_ref<const std::string&>();
+            item[dictItem.add->fieldName] = dictItem.add->value;
         }
     }
 }
@@ -169,6 +149,82 @@ std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::st
     }
     catch (...)
     {
+    }
+
+    return ret;
+}
+
+std::map<std::string, std::vector<SysNormalizer::ExclusionRule>> SysNormalizer::compileExclusions(
+    const std::map<std::string, nlohmann::json>& rawExclusions)
+{
+    std::map<std::string, std::vector<ExclusionRule>> ret;
+
+    for (const auto& [type, items] : rawExclusions)
+    {
+        for (const auto& exclusionItem : items)
+        {
+            try
+            {
+                ret[type].push_back({std::regex{exclusionItem["pattern"].get_ref<const std::string&>()},
+                                     exclusionItem["field_name"].get_ref<const std::string&>()});
+            }
+            // LCOV_EXCL_START
+            catch (...)
+            {}
+
+            // LCOV_EXCL_STOP
+        }
+    }
+
+    return ret;
+}
+
+std::map<std::string, std::vector<SysNormalizer::DictionaryRule>> SysNormalizer::compileDictionary(
+    const std::map<std::string, nlohmann::json>& rawDictionary)
+{
+    std::map<std::string, std::vector<DictionaryRule>> ret;
+
+    for (const auto& [type, items] : rawDictionary)
+    {
+        for (const auto& dictItem : items)
+        {
+            DictionaryRule rule;
+            const auto itFindPattern{dictItem.find("find_pattern")};
+            const auto itFindField{dictItem.find("find_field")};
+
+            if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
+            {
+                rule.find = FindRule{std::regex{itFindPattern->get_ref<const std::string&>()},
+                                     itFindField->get_ref<const std::string&>()};
+            }
+            else if (itFindPattern != dictItem.end() || itFindField != dictItem.end())
+            {
+                //incomplete find rule, this entry never matches: skip it entirely
+                continue;
+            }
+
+            const auto itReplacePattern{dictItem.find("replace_pattern")};
+            const auto itReplaceField{dictItem.find("replace_field")};
+            const auto itReplaceValue{dictItem.find("replace_value")};
+
+            if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
+            {
+                rule.replace = ReplaceRule{std::regex{itReplacePattern->get_ref<const std::string&>()},
+                                           itReplaceField->get_ref<const std::string&>(),
+                                           itReplaceValue->get_ref<const std::string&>()};
+            }
+
+            const auto itAddField{dictItem.find("add_field")};
+            const auto itAddValue{dictItem.find("add_value")};
+
+            if (itAddField != dictItem.end() && itAddValue != dictItem.end())
+            {
+                rule.add = AddRule{itAddField->get_ref<const std::string&>(),
+                                   itAddValue->get_ref<const std::string&>()};
+            }
+
+            ret[type].push_back(std::move(rule));
+        }
     }
 
     return ret;

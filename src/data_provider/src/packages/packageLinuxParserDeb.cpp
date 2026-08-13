@@ -9,16 +9,23 @@
  * Foundation.
  */
 
+#include "json.hpp"
 #include "sharedDefs.h"
 #include "packageLinuxParserHelper.h"
+#include <array>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <regex>
+#include <string>
 #include <unordered_set>
 
 #include <filesystem_wrapper.hpp>
 #include <filesystem>
+#include <utility>
+#include <vector>
 
-void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
+void getDpkgInfo(const std::string& fileName, const std::function<void(nlohmann::json&)>& callback)
 {
     std::fstream file{fileName, std::ios_base::in};
 
@@ -56,9 +63,9 @@ void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&
 
 void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
 {
-    std::regex listPattern(R"(^python.*\.list$)");
-    const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
-                                               std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
+    static const std::regex listPattern(R"(^python.*\.list$)");
+    static const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
+                                                      std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
     const file_system::FileSystemWrapper fileSystemWrapper;
 
     try
