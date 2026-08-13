@@ -23,11 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-// zstd isn't vendored for winagent (see src/Makefile / src/external/CMakeLists.txt);
-// only the two tests below that actually round-trip real compressed bytes need it.
-#ifndef WIN32
 #include <zstd.h>
-#endif
 
 using ::testing::_;
 using ::testing::Contains;
@@ -322,10 +318,6 @@ TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
     EXPECT_TRUE(std::equal(receivedBody.begin(), receivedBody.end(), spec.body));
 }
 
-// Compression is compiled out of retrySender.cpp on winagent (#ifndef WIN32
-// there); this test asserts real compression happened, so it's excluded here
-// too rather than failing on a platform that never compresses.
-#ifndef WIN32
 TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
 {
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
@@ -369,7 +361,6 @@ TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
     ASSERT_TRUE(expected.has_value());
     EXPECT_THAT(receivedHeaders, Contains(expected->authorization));
 }
-#endif // WIN32
 
 TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
 {
@@ -385,9 +376,6 @@ TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
     EXPECT_EQ(OutcomeClass::Permanent, result.outcome);
 }
 
-// Same exclusion reason as above: asserts the first attempt was actually
-// compressed, which never happens on winagent.
-#ifndef WIN32
 TEST_F(RetrySenderTest, CompressedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)
 {
     CompressionGate gate;
@@ -422,7 +410,6 @@ TEST_F(RetrySenderTest, CompressedAttemptRejectedWith415RetriesOnceUncompressedA
     EXPECT_THAT(seenHeadersPerAttempt[1], Not(Contains("Content-Encoding: zstd")));
     EXPECT_TRUE(gate.disabled()); // Latched for the rest of this agent's run.
 }
-#endif // WIN32
 
 TEST_F(RetrySenderTest, CompressionRejectionDisablesTheSharedGateForOtherSenders)
 {

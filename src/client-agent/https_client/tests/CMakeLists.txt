@@ -24,14 +24,8 @@ target_link_libraries(
   optimized gtest
   optimized gmock
   https_client
+  ext_zstd
   pthread)
-
-# Not built for winagent -- see https_client/CMakeLists.txt's matching guard.
-# Plain (non-keyword) signature, matching the target_link_libraries() call
-# above -- CMake forbids mixing plain and keyword signatures on one target.
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(https_client_unit_test ext_zstd)
-endif()
 
 target_include_directories(
   https_client_unit_test
