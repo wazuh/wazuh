@@ -237,9 +237,9 @@ std::filesystem::path getWazuhHome()
     if (base::libwazuhshared::getLibPtr())
     {
         // Force if we want to avoid the /proc lookup
-        if (std::getenv("WAZUH_ENGINE_FORCE_HOME"))
+        if (std::getenv("WAZUH_MANAGER_FORCE_HOME"))
         {
-            return std::filesystem::path(std::getenv("WAZUH_ENGINE_FORCE_HOME"));
+            return std::filesystem::path(std::getenv("WAZUH_MANAGER_FORCE_HOME"));
         }
 
         using WHDir = char* (*)(const char*);
