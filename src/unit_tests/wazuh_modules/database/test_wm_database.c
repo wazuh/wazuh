@@ -14,6 +14,7 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <shared.h>
 #include "wmodules_def.h"
@@ -27,10 +28,14 @@
 #include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_global_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/libc/string_wrappers.h"
 #include "../../wrappers/posix/dirent_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
+
+/* Function under test is not declared in a header (internal to wm_database.c) */
+int wm_sync_shared_group(const char *fname);
 
 /* setup/teardown */
 
@@ -235,6 +240,50 @@ void test_sync_keys_with_wdb_null(void **state) {
     sync_keys_with_wdb(&keys);
 }
 
+/* Tests wm_sync_shared_group */
+
+void test_wm_sync_shared_group_opendir_enoent(void **state) {
+    errno = ENOENT;
+    will_return(__wrap_opendir, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Group directory 'etc/shared/test_group' no longer exists, removing group 'test_group' from the database.");
+
+    expect_string(__wrap_wdb_remove_group_db, name, "test_group");
+    will_return(__wrap_wdb_remove_group_db, 0);
+
+    /* wm_sync_shared_group() also emits a final timing mtdebug2 line */
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
+    assert_int_equal(wm_sync_shared_group("test_group"), OS_SUCCESS);
+}
+
+void test_wm_sync_shared_group_opendir_eacces(void **state) {
+    char expected_msg[OS_MAXSTR];
+
+    errno = EACCES;
+    will_return(__wrap_opendir, NULL);
+
+    will_return(__wrap_strerror, "Permission denied");
+
+    snprintf(expected_msg, OS_MAXSTR,
+        "Couldn't open directory 'etc/shared/test_group' to check group 'test_group': [(%d)-(Permission denied)]. "
+        "This is not a confirmed deletion, but a 'delete-group' will be sent anyway.", EACCES);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:database");
+    expect_string(__wrap__mtwarn, formatted_msg, expected_msg);
+
+    expect_string(__wrap_wdb_remove_group_db, name, "test_group");
+    will_return(__wrap_wdb_remove_group_db, 0);
+
+    /* wm_sync_shared_group() also emits a final timing mtdebug2 line */
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
+    assert_int_equal(wm_sync_shared_group("test_group"), OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -243,6 +292,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),
+        // wm_sync_shared_group
+        cmocka_unit_test(test_wm_sync_shared_group_opendir_enoent),
+        cmocka_unit_test(test_wm_sync_shared_group_opendir_eacces),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

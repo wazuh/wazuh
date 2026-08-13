@@ -15,6 +15,13 @@
 #include "wazuhdb_queries_op.h"
 #include <cJSON.h>
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -34,9 +41,6 @@ int wd_shared_groups = -2;
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
-
-/* Set current inotify queued events limit */
-static int set_max_queued_events(int size);
 
 // Setup inotify reader
 static void wm_inotify_setup(wm_database * data);
@@ -76,7 +80,7 @@ static void wm_check_agents();
  */
 static void wm_sync_agents();
 
-static int wm_sync_shared_group(const char *fname);
+STATIC int wm_sync_shared_group(const char *fname);
 static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
@@ -294,6 +298,14 @@ int wm_sync_shared_group(const char *fname) {
 
     dp = wopendir(path);
     if (!dp) {
+        int opendir_errno = errno;
+
+        if (opendir_errno == ENOENT) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Group directory '%s' no longer exists, removing group '%s' from the database.", path, fname);
+        } else {
+            mtwarn(WM_DATABASE_LOGTAG, "Couldn't open directory '%s' to check group '%s': [(%d)-(%s)]. This is not a confirmed deletion, but a 'delete-group' will be sent anyway.", path, fname, opendir_errno, strerror(opendir_errno));
+        }
+
         /* The group was deleted */
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
@@ -412,24 +424,8 @@ int get_max_queued_events() {
     }
 }
 
-/* Set current inotify queued events limit */
-int set_max_queued_events(int size) {
-    FILE *fp;
-
-    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
-        return -1;
-    }
-
-    fprintf(fp, "%d\n", size);
-    fclose(fp);
-    return 0;
-}
-
 // Setup inotify reader
 void wm_inotify_setup(wm_database * data) {
-    int old_max_queued_events = -1;
-
     if (ptable = OSHash_Create(), !ptable) {
         merror_exit("At wm_inotify_setup(): OSHash_Create()");
     }
@@ -439,15 +435,15 @@ void wm_inotify_setup(wm_database * data) {
     }
 
     if (data->max_queued_events) {
-        old_max_queued_events = get_max_queued_events();
+        const int current_max_queued_events = get_max_queued_events();
 
-        if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-            mtdebug1(WM_DATABASE_LOGTAG, "Setting inotify queued events limit to '%d'", data->max_queued_events);
-
-            if (set_max_queued_events(data->max_queued_events) < 0) {
-                // Error: do not reset then
-                old_max_queued_events = -1;
-            }
+        if (current_max_queued_events >= 0 && current_max_queued_events < data->max_queued_events) {
+            mtwarn(WM_DATABASE_LOGTAG,
+                   "The system inotify queued events limit is '%d', below the configured value '%d'. "
+                   "Update '%s' through the operating system.",
+                   current_max_queued_events,
+                   data->max_queued_events,
+                   MAX_QUEUED_EVENTS_PATH);
         }
     }
 
@@ -456,16 +452,10 @@ void wm_inotify_setup(wm_database * data) {
         mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
     }
 
-    // Reset inotify queued events limit
-    if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-        mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
-        set_max_queued_events(old_max_queued_events);
-    }
-
     // Run thread
     w_create_thread(wm_inotify_start, NULL);
 
-    // First synchronization and add watch for client.keys, Syscheck and Rootcheck directories
+    // Add watches for client.keys and shared group changes
     char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 

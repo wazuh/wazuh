@@ -16,6 +16,51 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <grp.h>
+#include <pwd.h>
+#include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
+
+namespace
+{
+constexpr auto RUNTIME_USER = "wazuh-manager";
+constexpr auto RUNTIME_GROUP = "wazuh-manager";
+
+void dropPrivilegesIfAvailable()
+{
+    if (geteuid() != 0)
+    {
+        return;
+    }
+
+    const auto* user = getpwnam(RUNTIME_USER);
+    if (user == nullptr)
+    {
+        // Standalone build-tree QA environments do not install runtime accounts.
+        return;
+    }
+    const uid_t uid = user->pw_uid;
+
+    const auto* group = getgrnam(RUNTIME_GROUP);
+    if (group == nullptr)
+    {
+        return;
+    }
+    const gid_t gid = group->gr_gid;
+    if (initgroups(RUNTIME_USER, gid) != 0 || setgid(gid) != 0 || setuid(uid) != 0)
+    {
+        throw std::runtime_error {"Cannot drop privileges to wazuh-manager."};
+    }
+
+    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
+    {
+        throw std::runtime_error {"Cannot verify wazuh-manager identity."};
+    }
+
+    umask(0007);
+}
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -55,23 +100,19 @@ int main(int argc, char* argv[])
         value = args.getValue();
         valuePath = args.getValuePath();
 
+        std::string secret;
         if (value.empty() && valuePath.empty())
         {
-            std::string valueFromStdin;
-            std::getline(std::cin, valueFromStdin);
+            std::getline(std::cin, secret);
 
-            if (!valueFromStdin.empty())
-            {
-                Keystore::put(family, key, valueFromStdin);
-            }
-            else
+            if (secret.empty())
             {
                 throw CmdLineArgsException("Error reading from stdin.");
             }
         }
         else if (!value.empty() && valuePath.empty())
         {
-            Keystore::put(family, key, value);
+            secret = value;
         }
         else if (!valuePath.empty() && value.empty())
         {
@@ -81,12 +122,7 @@ int main(int argc, char* argv[])
                 throw CmdLineArgsException("Error opening file.");
             }
 
-            std::string content;
-            if (std::getline(file, content))
-            {
-                Keystore::put(family, key, content);
-            }
-            else
+            if (!std::getline(file, secret))
             {
                 throw CmdLineArgsException("Error reading file.");
             }
@@ -95,6 +131,9 @@ int main(int argc, char* argv[])
         {
             throw CmdLineArgsException("Invalid arguments.");
         }
+
+        dropPrivilegesIfAvailable();
+        Keystore::put(family, key, secret);
     }
     catch (const CmdLineArgsException& e)
     {

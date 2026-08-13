@@ -5,6 +5,7 @@
 
 import os
 import shutil
+import stat
 import sys
 import pytest
 
@@ -772,6 +773,126 @@ def test_create_group_exceptions(group_id, exception, exception_code):
     finally:
         # Remove the new group file to avoid affecting the next tests
         shutil.rmtree(os.path.join(test_shared_path, 'delete-me'), ignore_errors=True)
+
+
+def _remove_group_and_tmp_dirs(group_id):
+    """Remove a test group directory plus any leftover `create_group` temporary build directories.
+
+    Parameters
+    ----------
+    group_id : str
+        Group ID whose final and temporary directories should be removed.
+    """
+    shutil.rmtree(os.path.join(test_shared_path, group_id), ignore_errors=True)
+    tmp_parent = os.path.dirname(test_shared_path)
+    for entry in os.listdir(tmp_parent):
+        if entry.startswith(f'.{group_id}.tmp-'):
+            shutil.rmtree(os.path.join(tmp_parent, entry), ignore_errors=True)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.wazuh_gid', return_value=1234)
+@patch('wazuh.core.common.wazuh_uid', return_value=1000)
+@patch('wazuh.agent.chown_r')
+def test_create_group_final_ownership_and_mode(chown_mock, uid_mock, gid_mock):
+    """Test that `create_group` chowns the directory before it is exposed at its final path, and
+    leaves the final directory at mode 0700 with its files at 0660.
+    """
+    group_id = 'mode-check-group'
+    path_to_group = os.path.join(test_shared_path, group_id)
+    try:
+        create_group(group_id)
+
+        # `chown_r` must run on the hidden build directory, not on the final group path: it has
+        # not been renamed into place yet at that point.
+        chown_mock.assert_called_once()
+        chowned_path, chowned_uid, chowned_gid = chown_mock.call_args[0]
+        assert chowned_path != path_to_group
+        assert chowned_path.startswith(os.path.join(os.path.dirname(test_shared_path), f'.{group_id}.tmp-'))
+        assert chowned_uid == 1000
+        assert chowned_gid == 1234
+
+        assert os.path.exists(path_to_group), 'The group path should exist once `create_group` returns.'
+        dir_mode = stat.S_IMODE(os.stat(path_to_group).st_mode)
+        file_mode = stat.S_IMODE(os.stat(os.path.join(path_to_group, 'agent.conf')).st_mode)
+        assert dir_mode == 0o700, f'Expected group directory mode 0o700, got {oct(dir_mode)}.'
+        assert file_mode == 0o660, f'Expected group file mode 0o660, got {oct(file_mode)}.'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.agent.full_copy', side_effect=OSError('disk full'))
+def test_create_group_cleans_up_tmp_dir_when_full_copy_fails(full_copy_mock):
+    """Test that `create_group` removes its temporary build directory and never creates the final
+    group path if `full_copy` fails partway through the build.
+    """
+    group_id = 'failed-copy-group'
+    path_to_group = os.path.join(test_shared_path, group_id)
+    try:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            create_group(group_id)
+        assert exc_info.value.code == 1005
+        assert not os.path.exists(path_to_group), \
+            f'"{path_to_group}" should not exist after a failed `create_group` call.'
+        leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
+                             if entry.startswith(f'.{group_id}.tmp-')]
+        assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.agent.chown_r', side_effect=PermissionError('Operation not permitted'))
+def test_create_group_cleans_up_tmp_dir_when_chown_fails(chown_mock):
+    """Test that `create_group` removes its temporary build directory and never creates the final
+    group path if `chown_r` fails, e.g. when the process lacks permission to change ownership.
+    """
+    group_id = 'failed-chown-group'
+    path_to_group = os.path.join(test_shared_path, group_id)
+    try:
+        with pytest.raises(WazuhInternalError) as exc_info:
+            create_group(group_id)
+        assert exc_info.value.code == 1005
+        assert not os.path.exists(path_to_group), \
+            f'"{path_to_group}" should not exist after a failed `create_group` call.'
+        leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
+                             if entry.startswith(f'.{group_id}.tmp-')]
+        assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.wazuh_gid', return_value=1234)
+@patch('wazuh.core.common.wazuh_uid', return_value=1000)
+def test_create_group_final_path_not_visible_until_build_completes(uid_mock, gid_mock):
+    """Test that the final group path never appears until the build is done: it must not exist
+    while `full_copy`/`chown_r`/`chmod_r` run, only after the atomic rename that follows them.
+
+    This is the regression this fix targets: a process watching `common.SHARED_PATH` (e.g.
+    manager-modulesd's inotify-driven group sync) must never observe a partially-built or
+    wrong-owned directory at the final group path.
+    """
+    group_id = 'visibility-check-group'
+    path_to_group = os.path.join(test_shared_path, group_id)
+
+    def assert_not_yet_visible(*args, **kwargs):
+        assert not os.path.exists(path_to_group), \
+            'The final group path must not exist before the build completes and is renamed into place.'
+
+    try:
+        with patch('wazuh.agent.full_copy', side_effect=assert_not_yet_visible) as full_copy_mock, \
+             patch('wazuh.agent.chown_r', side_effect=assert_not_yet_visible) as chown_mock, \
+             patch('wazuh.agent.chmod_r', side_effect=assert_not_yet_visible) as chmod_r_mock:
+            create_group(group_id)
+
+        full_copy_mock.assert_called_once()
+        chown_mock.assert_called_once()
+        chmod_r_mock.assert_called_once()
+        assert os.path.exists(path_to_group), 'The group path should exist once `create_group` returns.'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
 
 
 @pytest.mark.parametrize('group_list', [

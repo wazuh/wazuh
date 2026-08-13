@@ -15,6 +15,7 @@
 #include "external/nlohmann/json.hpp"
 #include "sharedDefs.hpp"
 #include <filesystem>
+#include <sys/stat.h>
 #include <utility>
 
 /**
@@ -72,10 +73,20 @@ void OnDemandManager::startServer()
             std::filesystem::path path {ONDEMAND_SOCK};
             std::filesystem::create_directories(path.parent_path());
 
-            // Set umask to create socket with 0660 permissions
-            mode_t oldMask = umask(0117); // umask 0117 creates files with 0660
-            m_runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
-            umask(oldMask); // Restore original umask
+            if (!m_server.bind_to_port(ONDEMAND_SOCK, true))
+            {
+                m_runningTrigger = false;
+                return;
+            }
+
+            if (chmod(ONDEMAND_SOCK, 0660) != 0)
+            {
+                std::filesystem::remove(ONDEMAND_SOCK);
+                m_runningTrigger = false;
+                return;
+            }
+
+            m_runningTrigger = m_server.listen_after_bind();
         });
 
     // Spin lock until server is ready

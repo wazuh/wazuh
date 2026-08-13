@@ -171,11 +171,15 @@ case "$1" in
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
-        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-db \
+        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \
         wazuh-manager-keystore wazuh-manager-modulesd \
         wazuh-manager-monitord wazuh-manager-remoted; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             case "${BIN}" in
+                wazuh-manager-service-control)
+                    chown root:${GROUP} "${DIR}/bin/${BIN}"
+                    chmod 4750 "${DIR}/bin/${BIN}"
+                    ;;
                 agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd)
                     chown root:${GROUP} "${DIR}/bin/${BIN}"
                     ;;

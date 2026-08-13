@@ -21,6 +21,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/bin/wazuh-manager-authd,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-clusterd,root,wazuh-manager,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-control,root,root,750,file,-rwxr-x---,,
+/var/wazuh-manager/bin/wazuh-manager-service-control,root,wazuh-manager,4750,file,-rwsr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-db,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-keystore,root,root,750,file,-rwxr-x---,,
 /var/wazuh-manager/bin/wazuh-manager-modulesd,root,root,750,file,-rwxr-x---,,

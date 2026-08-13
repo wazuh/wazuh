@@ -565,6 +565,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-apid
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-clusterd
+%attr(4750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-service-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-db
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
