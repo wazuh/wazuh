@@ -45,17 +45,9 @@ func Documents(seed uint64, key string, spec DocSpec) []GeneratedDoc {
 		id := fmt.Sprintf("%s-%d", key, i)
 		checksum := sha1Hex(fmt.Sprintf("%d:%s", seed, id))
 
-		// Every field here MUST exist in the target index's mapping: the real
-		// state indices are `dynamic: strict`, so an invented field (a "pad" of
-		// our own, say) makes the indexer reject the whole bulk with 400 and the
-		// session answer 500. The size filler therefore rides in `description`,
-		// a real keyword field, instead of a synthetic one.
+		field, value := domainObject(spec.Index, seed, key, i, spec.SizeBytes)
 		doc := map[string]any{
-			"package": map[string]any{
-				"name":        fmt.Sprintf("pkg-%s-%d", key, i),
-				"version":     fmt.Sprintf("%d.%d.%d", seed%10, i%100, i%7),
-				"description": padTo(spec.SizeBytes),
-			},
+			field:      value,
 			"checksum": map[string]any{"hash": map[string]any{"sha1": checksum}},
 		}
 		data, _ := json.Marshal(doc)
@@ -63,6 +55,43 @@ func Documents(seed uint64, key string, spec DocSpec) []GeneratedDoc {
 		docs = append(docs, GeneratedDoc{ID: id, Data: data, Checksum: checksum})
 	}
 	return docs
+}
+
+// domainObject returns the one index-specific field every state document
+// carries besides checksum, shaped to match that index's mapping. Every
+// field here MUST exist in the target index's mapping: the real state
+// indices are `dynamic: strict`, so an invented field (a "pad" of our own,
+// say) makes the indexer reject the whole bulk with 400 and the session
+// answer 500. The size filler therefore rides in a real keyword field
+// (`description` or `path`), not a synthetic one.
+//
+// The object's own key changes per index -- `file` for FIM, `check` for SCA,
+// `package` for inventory/VD -- so this switches on spec.Index rather than
+// hardcoding one shape for every lane.
+func domainObject(index string, seed uint64, key string, i int, sizeBytes int) (string, map[string]any) {
+	switch index {
+	case "wazuh-states-fim-files":
+		return "file", map[string]any{
+			"path":  fmt.Sprintf("/opt/%s-%d/%s", key, i, padTo(sizeBytes)),
+			"owner": "root",
+			"group": "root",
+			"size":  int64(i),
+			"hash":  map[string]any{"sha1": sha1Hex(fmt.Sprintf("%d:%s:content", seed, key))},
+		}
+	case "wazuh-states-sca":
+		return "check", map[string]any{
+			"id":          fmt.Sprintf("check-%s-%d", key, i),
+			"name":        fmt.Sprintf("sca-check-%d", i),
+			"result":      "passed",
+			"description": padTo(sizeBytes),
+		}
+	default: // wazuh-states-inventory-packages, and any lane sharing it (VD)
+		return "package", map[string]any{
+			"name":        fmt.Sprintf("pkg-%s-%d", key, i),
+			"version":     fmt.Sprintf("%d.%d.%d", seed%10, i%100, i%7),
+			"description": padTo(sizeBytes),
+		}
+	}
 }
 
 // AggregateChecksum reproduces the server's ModuleCheck aggregate for a set of
