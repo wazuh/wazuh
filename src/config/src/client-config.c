@@ -123,7 +123,9 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
         } else if (strcmp(node[i]->element, xml_agent_stats_report) == 0) {
             /* <stats_report>/<config_report>: the two independent periodic
-             * pushes to /stats and /config (#37843). Both off by default. */
+             * pushes to /stats and /config (#37843). <stats_report> stays off by
+             * default; <config_report> ships on -- ClientConf() sets that default
+             * before this parser runs, so it is invisible here. */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Agent_Report(chld_node, &logr->stats_report) < 0) {
                     OS_ClearNode(chld_node);

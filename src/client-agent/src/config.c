@@ -58,6 +58,21 @@ int ClientConf(const char *cfgfile)
      * those agents refuse to start on a missing CA, so it has to be set by hand. */
     agt->ssl.verification_mode = AGENT_VERIFY_NONE;
 
+    /* <config_report> ships enabled: the manager needs the periodic /config snapshot
+     * even on a config nobody touched. It is not the struct's zero value, so it has
+     * to be set by hand -- an explicit <enabled>no</enabled> still overrides this,
+     * since Read_Agent_Report() only writes the field when the tag is present. */
+    agt->config_report.enabled = 1;
+
+    /* <stats_report>/<config_report><interval>: the effective default, set here
+     * instead of left at zero, so anything reading agt directly (e.g. the /config
+     * JSON dump) shows the real value instead of "0" -- Read_Agent_Report() rejects
+     * an explicit <interval>0</interval> outright, so zero can never be a legitimate
+     * value it wrote, and the transport module's own zero-means-unset fallback
+     * (moduleConfig.cpp) never actually sees a zero from here as a result. */
+    agt->stats_report.interval = 60;
+    agt->config_report.interval = 3600;
+
 #ifndef WIN32
     atc->package_uninstallation = false;
 #endif
