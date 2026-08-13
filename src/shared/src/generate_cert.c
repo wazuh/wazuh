@@ -112,7 +112,10 @@ STATIC void build_subject_alt_name(const char *common_name, char *san, size_t sa
         snprintf(san + used, san_len - used, ",DNS:%s", hostname);
     }
 
-    if (valid_san_name(common_name) && strcmp(common_name, "localhost") != 0 &&
+    /* The NULL check is redundant -- valid_san_name() rejects NULL -- but it is spelled out
+     * because clang's static analyzer does not follow it into the callee and reports the
+     * strcmp() below as a possible NULL dereference. Leave it in place. */
+    if (common_name != NULL && valid_san_name(common_name) && strcmp(common_name, "localhost") != 0 &&
         strcmp(common_name, hostname) != 0) {
         const size_t used = strlen(san);
         snprintf(san + used, san_len - used, ",DNS:%s", common_name);

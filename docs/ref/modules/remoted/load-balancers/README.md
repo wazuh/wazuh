@@ -229,7 +229,8 @@ flowchart LR
 ## 6. `verification_mode`: read this before enabling it
 
 `<remote><https><verification_mode>` controls whether remoted requires a **client certificate**. It
-has two values: `none` (default) and `certificate`.
+has three values: `none` (default), `certificate` and `full`. All three are meant for a manager that
+agents reach **directly**; this section is about what changes once a balancer sits in between.
 
 The key to understanding it: **remoted demands the certificate from whoever opens the connection.**
 
@@ -262,6 +263,50 @@ network. Combine it with a firewall rule; it is defence in depth, not a replacem
 To require certificates *from agents* behind a terminating proxy, configure that on the **proxy**
 (the agent-facing side), not on remoted.
 
+### `full`: also checks the address
+
+`full` does everything `certificate` does and adds one requirement: the certificate must carry the
+address the connection **came from**, as a `subjectAltName`. If it does not, remoted answers `403` —
+on every route, the health check included.
+
+On a manager agents reach directly this is a genuinely useful mode: it binds each agent's
+certificate to the address that agent connects from, so a stolen certificate is not enough on its
+own. **Behind a balancer it is a different question**, because the address remoted sees is not the
+agent's:
+
+```mermaid
+flowchart LR
+    subgraph D["Direct: the address checked is the AGENT's"]
+      A1["agent 10.0.0.50<br/>cert SAN: IP:10.0.0.50"] ==> R1["remoted compares<br/>10.0.0.50 vs the SAN ✅"]
+    end
+    subgraph T["Termination: the address checked is the BALANCER's"]
+      A2["agent 10.0.0.50"] ==> B["balancer 10.0.0.9<br/>opens its own connection"]
+      B ==> R2["remoted compares<br/>10.0.0.9 vs the SAN<br/>of the BALANCER's cert"]
+    end
+```
+
+| Deployment | Address remoted requires in the certificate |
+|---|---|
+| Direct | the agent's |
+| Passthrough | the agent's |
+| **Termination** | **the balancer's** |
+
+So under termination `full` is not a stricter check on agents — it is a stricter check on your
+balancer. To use it there, the balancer's client certificate must list the balancer's own address as
+an **`IP:` SAN**, and every address it can egress from must appear (each node of an HA pair, every
+member of an autoscaling group, the NAT address if there is one). Miss one and that node starts
+getting `403`.
+
+Two consequences worth stating plainly:
+
+* **A managed balancer whose certificate you do not control cannot satisfy it.** With an AWS ALB you
+  do not choose what the backend connection presents, so `full` is not usable there.
+* **`X-Forwarded-For` does not help.** The check reads the transport address of the connection, not a
+  header — which is the point, since a header is exactly what an attacker would forge.
+
+Under **passthrough** none of this applies: the agent's own connection reaches remoted, so `full`
+behaves as it does on a direct manager.
+
 ## 7. In a cluster
 
 Under termination each request is routed independently, so **any manager can receive any request
@@ -289,5 +334,7 @@ from any agent at any time**. Two things must therefore hold across all managers
 - [ ] Agent keys synchronised and NTP running on every manager
 - [ ] If `verification_mode` is `certificate` under termination, you know it authenticates the
       balancer
+- [ ] If it is `full`, the balancer's certificate lists every address it egresses from as an `IP:`
+      SAN — or the mode is left off, which is the usual choice behind a balancer
 
 Then pick your proxy: **[NGINX](nginx.md)** or **[HAProxy](haproxy.md)**.

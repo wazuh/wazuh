@@ -18,6 +18,11 @@ set -euo pipefail
 NODE1=/var/wazuh-manager
 NODE2=/var/wazuh-manager-2
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# Node 2 writes its own configuration, so it could name its certificates anything; it mirrors
+# node 1's layout on purpose, so that every troubleshooting command in the README works verbatim
+# against either node.
+MANAGER_HOME="$NODE1"
+source "$HERE/lib_manager_paths.sh"
 PORT=1518
 LEGACY_PORT=1519
 
@@ -33,10 +38,13 @@ mkdir -p "$NODE2"/queue/{sockets,db,diff,rids,cluster,agents-timestamp,tasks}
 echo "==> hard linking the remoted binary (0 extra bytes)"
 ln -f "$NODE1/bin/wazuh-manager-remoted" "$NODE2/bin/wazuh-manager-remoted"
 
-echo "==> certificates: manager_node2"
-cp "$HERE/certs/manager_node2.crt" "$NODE2/etc/https-manager.cert"
-cp "$HERE/certs/manager_node2.key" "$NODE2/etc/https-manager.key"
-cp "$HERE/certs/ca.crt"            "$NODE2/etc/https-manager-ca.pem"
+echo "==> certificates: manager_node2 (into $MANAGER_CERT_REL, same layout as node 1)"
+for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL"; do
+    mkdir -p "$(dirname "$NODE2/$rel")"
+done
+cp "$HERE/certs/manager_node2.crt" "$NODE2/$MANAGER_CERT_REL"
+cp "$HERE/certs/manager_node2.key" "$NODE2/$MANAGER_KEY_REL"
+cp "$HERE/certs/ca.crt"            "$NODE2/$LAB_CA_REL"
 
 echo "==> client.keys IDENTICAL to node 1 (this is what a cluster synchronises)"
 cp "$NODE1/etc/client.keys" "$NODE2/etc/client.keys"
@@ -55,9 +63,9 @@ cat > "$NODE2/etc/wazuh-manager.conf" <<CONFIG
     <https>
       <port>${PORT}</port>
       <bind_addr>0.0.0.0</bind_addr>
-      <certificate>etc/https-manager.cert</certificate>
-      <key>etc/https-manager.key</key>
-      <ca>etc/https-manager-ca.pem</ca>
+      <certificate>${MANAGER_CERT_REL}</certificate>
+      <key>${MANAGER_KEY_REL}</key>
+      <ca>${LAB_CA_REL}</ca>
       <verification_mode>none</verification_mode>
     </https>
 
@@ -81,8 +89,8 @@ done < "$NODE2/etc/client.keys"
 echo "==> ownership and permissions"
 chown -R wazuh-manager:wazuh-manager "$NODE2"
 chmod 750 "$NODE2"
-chmod 640 "$NODE2"/etc/https-manager.cert "$NODE2"/etc/https-manager.key \
-          "$NODE2"/etc/https-manager-ca.pem "$NODE2"/etc/client.keys
+chmod 640 "$NODE2/$MANAGER_CERT_REL" "$NODE2/$MANAGER_KEY_REL" \
+          "$NODE2/$LAB_CA_REL" "$NODE2"/etc/client.keys
 chmod 770 "$NODE2"/queue/sockets "$NODE2"/logs "$NODE2"/var/run "$NODE2"/queue/rids
 
 echo "==> starting node 2 (takes ~15 s: it retries wazuh-db before opening the listener)"

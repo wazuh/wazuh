@@ -1,12 +1,16 @@
 #!/bin/bash
 # Switches <remote><https><verification_mode> on manager node 1 and restarts remoted.
 #
-# Usage: ./set_manager_verification_mode.sh none|certificate|<any other value>
+# Usage: ./set_manager_verification_mode.sh none|certificate|full|<any other value>
 #
 #   none         remoted does not ask the client for a certificate (the default)
 #   certificate  remoted asks for one and checks it against <ca>
+#   full         same, plus the certificate must carry the address the connection came from,
+#                as a subjectAltName. Behind a proxy that address is the PROXY's, so the
+#                certificate the manager sees must be the proxy's own -- see the README section
+#                on TLS termination before using this one.
 #
-# Those are the only two modes remoted supports. Any other value is accepted by this script on
+# Those are the three modes remoted supports. Any other value is accepted by this script on
 # purpose -- writing one in is how the suite checks that an unsupported value is ignored with a
 # warning instead of taking the listener down.
 #
@@ -19,10 +23,14 @@
 # path, since both nodes share the binary name.
 set -euo pipefail
 
-MODE="${1:?usage: $0 none|certificate|<any other value, to test rejection>}"
+MODE="${1:?usage: $0 none|certificate|full|<any other value, to test rejection>}"
 
-CONFIG=/var/wazuh-manager/etc/wazuh-manager.conf
-CA_LINE='      <ca>etc/https-manager-ca.pem</ca>'
+HERE="$(cd "$(dirname "$0")" && pwd)"
+MANAGER_HOME=/var/wazuh-manager
+source "$HERE/lib_manager_paths.sh"
+
+CONFIG="$MANAGER_HOME/etc/wazuh-manager.conf"
+CA_LINE="      <ca>${LAB_CA_REL}</ca>"
 MODE_LINE="      <verification_mode>${MODE}</verification_mode>"
 
 python3 - "$CONFIG" "$CA_LINE" "$MODE_LINE" <<'PYTHON'

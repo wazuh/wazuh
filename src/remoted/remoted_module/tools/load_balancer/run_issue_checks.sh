@@ -258,10 +258,70 @@ check "termination, proxy presents none: with cert" "502" "$(status --url "$TERM
 note "Either way the agent's certificate makes no difference. That is the finding."
 use_config both_topologies
 
-# remoted supports exactly two modes: none and certificate. Anything else is not a mode -- it is
+# ============================================================ issue: verification_mode=full
+# 'full' adds one requirement to 'certificate': the client certificate must carry the address
+# the connection CAME FROM, as a subjectAltName. The certificates come from
+# generate_test_certificates.sh: agent.crt has IP:127.0.0.1, agent_wrong_ip.crt is identical
+# except its SAN says 10.99.99.99. Everything in this lab connects from 127.0.0.1, so that
+# second certificate is what makes a passing check mean anything.
+group "verification_mode=full, direct connection (issue: verification modes)"
+use_mode full
+check "cert carrying the peer address"              "202" "$(status --url "$NODE1" --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+check "cert carrying a different address"           "403" "$(status --url "$NODE1" --client-cert "$CERTS/agent_wrong_ip.crt" --client-key "$CERTS/agent_wrong_ip.key")"
+check "no client certificate at all"          "TLS_ERROR" "$(status --url "$NODE1")"
+# The health route is unauthenticated, which is exactly why it has to be covered: a check that
+# only guarded the signed routes would leave the one route anybody can reach wide open.
+check "health route, cert carrying the address"     "200" "$(status --url "$NODE1" --target / --method GET --no-auth --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+check "health route, cert with another address"     "403" "$(status --url "$NODE1" --target / --method GET --no-auth --client-cert "$CERTS/agent_wrong_ip.crt" --client-key "$CERTS/agent_wrong_ip.key")"
+note "403 on every route, health check included -- the rejection is per CONNECTION, not per route."
+
+group "verification_mode=full behind each topology"
+check "passthrough, agent cert with the address"    "202" "$(status --url "$PASS_URL" --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+check "passthrough, agent cert with another one"    "403" "$(status --url "$PASS_URL" --client-cert "$CERTS/agent_wrong_ip.crt" --client-key "$CERTS/agent_wrong_ip.key")"
+note "Passthrough: the agent's own connection reaches remoted, so 'full' judges THE AGENT."
+check "termination, agent cert with the address"    "202" "$(status --url "$TERM" --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+check "termination, agent cert with another one"    "202" "$(status --url "$TERM" --client-cert "$CERTS/agent_wrong_ip.crt" --client-key "$CERTS/agent_wrong_ip.key")"
+check "termination, agent with NO certificate"      "202" "$(status --url "$TERM")"
+note "FINDING: under termination all three are 202, including an agent with no certificate."
+note "remoted judged the PROXY's certificate (SAN IP:127.0.0.1, which is where NGINX connects"
+note "from). 'full' constrains the balancer there, not the agents."
+
+# The other half: the proxy's certificate no longer carries the address it connects from, which
+# is what a real deployment hits when the balancer's egress address changes (a second node, an
+# autoscaling group, a NAT address).
+use_config breaks_full_mode_proxy_cert_ip
+check "proxy cert missing its own address"          "403" "$(status --url "$TERM" --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+note "403 for a flawless agent certificate: the certificate remoted judged was never the agent's."
+use_config both_topologies
+use_mode none
+
+# ============================================================ issue: TLS session resumption
+# Found while measuring the group above, and it was NOT specific to 'full': whenever remoted
+# requested a client certificate, a connection RESUMING a previous TLS session failed the
+# handshake with 'internal error' (alert 80), while verification_mode=none resumed fine.
+#
+# It matters here because proxies resume by default (nginx's proxy_ssl_session_reuse), so a
+# terminating proxy with mTLS to the backend got intermittent 502s -- intermittent because a
+# pooled keep-alive connection needs no new handshake, and only the connections opened
+# afterwards hit it.
+#
+# Cause: OpenSSL refuses to resume a session on a server that requests client certificates unless
+# SSL_CTX_set_session_id_context() has been called. createTlsContext() in RestinioHttpServer.cpp
+# now calls it; these checks are what keeps it called.
+group "TLS session resumption with mTLS (found by this lab)"
+use_mode none
+check "verification_mode=none, 3 resumed connections" "202,202,202" "$(status --url "$NODE1" --repeat 3 --resume-session)"
+use_mode certificate
+check "verification_mode=certificate, resumed"      "202,202,202" "$(status --url "$NODE1" --repeat 3 --resume-session --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+use_mode full
+check "verification_mode=full, resumed"             "202,202,202" "$(status --url "$NODE1" --repeat 3 --resume-session --client-cert "$CERTS/agent.crt" --client-key "$CERTS/agent.key")"
+note "Both modes were affected identically before the fix: the defect was in the TLS context,"
+note "not in the peer-address check that 'full' adds."
+use_mode none
+
+# remoted supports three modes: none, certificate and full. Anything else is not a mode -- it is
 # an invalid value, ignored with a warning, leaving verification_mode unset. This group checks
-# that an unsupported value cannot take the listener down, which is what a third mode used to do
-# here: it rejected every client certificate and no agent could connect at all.
+# that an unsupported value cannot take the listener down.
 group "an unsupported verification_mode is ignored, not fatal"
 use_mode unsupported_value
 # set_manager_verification_mode.sh also writes <ca>, and remoted's documented special case is that

@@ -397,6 +397,12 @@ endif()
 list(APPEND shared_tests_names "test_hash_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+# Not built for winagent. generate_cert() is reachable only from the manager binaries -- remoted
+# and authd call it, nothing on an agent does -- and its hostname lookup cannot be intercepted
+# there: on Windows gethostname() is a dllimport from ws2_32, so the call goes through the import
+# thunk and -Wl,--wrap,gethostname never sees it. The mock is then left unconsumed ("remaining
+# non-returned values") and the runner's real hostname lands in the SAN the assertions compare.
+if(NOT ${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_generate_cert")
 list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
                                 -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
@@ -405,6 +411,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_w
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
                                 -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown")
+endif()
 
 list(APPEND shared_tests_names "test_module_report")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
