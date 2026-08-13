@@ -306,7 +306,7 @@ typedef struct hc_callbacks_t
     /// functions. Return either NULL (skip this cycle) or a NUL-terminated
     /// JSON OBJECT allocated with malloc() from the module's C runtime; the
     /// module takes ownership and frees it. Before sending, the module stamps
-    /// "agent_id" and the manager-authoritative "cluster" {"name","node"} into
+    /// "agent_id" and the manager-authoritative "cluster" {"name"} into
     /// the object (overwriting same-named members). A non-object return is
     /// logged and the cycle skipped.
     char* (*collect_stats)(void* user_data);
@@ -323,14 +323,14 @@ typedef struct hc_callbacks_t
     /// Fills json_out (capacity cap, NUL-terminated) with the host metadata JSON
     /// object for the /stateless H line: {"agent":{"name":..,"version":..,
     /// "groups":[..],"host":{"hostname":..,"architecture":..,"os":{"name":..,
-    /// "version":..,"platform":..,"type":..}}},"cluster":{"name":..,"node":..}}.
+    /// "version":..,"platform":..,"type":..}}},"cluster":{"name":..}}.
     /// This exact nesting -- groups/host/os under agent, cluster as agent's
     /// sibling -- is not arbitrary: it mirrors what the legacy manager's own
     /// append_header() (remoted/src/secure.c) already builds and indexes
     /// today, and the indexer's wazuh.* mapping is strict_allow_templates
     /// (an unmapped path is rejected, not ignored), so this is the only shape
-    /// that will actually index. cluster.name/node come from the same
-    /// agent_metadata_t cluster_name/cluster_node that /stateful's Start table
+    /// that will actually index. cluster.name comes from the same
+    /// agent_metadata_t cluster_name that /stateful's Start table
     /// uses, so the two transports never disagree on cluster identity. A
     /// separate callback from on_collect_host (not reused) so the /stateless
     /// and /control host blocks can carry different fields without either

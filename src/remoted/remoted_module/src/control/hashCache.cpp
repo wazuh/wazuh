@@ -173,7 +173,6 @@ namespace remoted::control
             nlohmann::json envelope;
             envelope["limits"] = m_config.limits;
             envelope["cluster"]["name"] = m_config.clusterName;
-            envelope["cluster"]["node"] = m_config.nodeName;
 
             std::string hash = sha256Hex(envelope.dump());
             // Do not cache a failed hash: an OpenSSL transient error would

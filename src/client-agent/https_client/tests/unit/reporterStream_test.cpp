@@ -108,7 +108,7 @@ TEST_F(ReporterStreamTest, DisabledReportersNeverCollectOrSend)
 
 TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
 {
-    m_cluster.set("prod", "node01");
+    m_cluster.set("prod");
     const auto config = makeConfig(true, false);
     ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,
                              m_cluster, m_collectors};
@@ -125,13 +125,13 @@ TEST_F(ReporterStreamTest, StampsAgentIdAndClusterAndPostsToStats)
 
     reporter.tick(m_waiter, true); // Due immediately at epoch.
     EXPECT_NE(std::string::npos, body.find(R"("agent_id":"001")"));
-    EXPECT_NE(std::string::npos, body.find(R"("cluster":{"name":"prod","node":"node01"})"));
+    EXPECT_NE(std::string::npos, body.find(R"("cluster":{"name":"prod"})"));
     EXPECT_NE(std::string::npos, body.find(R"("uptime":10)"));
 }
 
 TEST_F(ReporterStreamTest, StampOverwritesCollectorSuppliedIdentityFields)
 {
-    m_cluster.set("authoritative", "n1");
+    m_cluster.set("authoritative");
     m_collectors.m_stats = R"({"agent_id":"WRONG","cluster":"WRONG","x":1})";
     const auto config = makeConfig(true, false);
     ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate,

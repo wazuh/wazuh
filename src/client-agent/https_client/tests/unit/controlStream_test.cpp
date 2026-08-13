@@ -177,27 +177,25 @@ TEST_F(ControlStreamTest, StartupStoresManagerAuthoritativeClusterIdentity)
 {
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200,
-                              R"({"cluster":{"name":"prod","node":"node07"}})")));
+                              R"({"cluster":{"name":"prod"}})")));
     m_stream.step(m_waiter);
     EXPECT_EQ("prod", m_cluster.get().name);
-    EXPECT_EQ("node07", m_cluster.get().node);
 }
 
 TEST_F(ControlStreamTest, StartupWithoutClusterOverwritesToEmpty)
 {
     // A prior identity must not linger when the manager reports none.
-    m_cluster.set("stale", "stale-node");
+    m_cluster.set("stale");
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})")));
     m_stream.step(m_waiter);
     EXPECT_TRUE(m_cluster.get().name.empty());
-    EXPECT_TRUE(m_cluster.get().node.empty());
 }
 
 TEST_F(ControlStreamTest, SettingsRefreshStartupAlsoOverwritesCluster)
 {
-    const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"c1","node":"n1"}})";
-    const std::string startupV2 = R"({"limits":{"eps":9},"cluster":{"name":"c2","node":"n2"}})";
+    const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"c1"}})";
+    const std::string startupV2 = R"({"limits":{"eps":9},"cluster":{"name":"c2"}})";
     const std::string notifyV2 =
         R"({"settings_hash":")" + managerSettingsHash(startupV2) + R"("})";
 
@@ -222,7 +220,6 @@ TEST_F(ControlStreamTest, SettingsRefreshStartupAlsoOverwritesCluster)
     m_stream.step(m_waiter); // Notify: settings mismatch -> arm refresh.
     m_stream.step(m_waiter); // Refresh startup v2.
     EXPECT_EQ("c2", m_cluster.get().name);
-    EXPECT_EQ("n2", m_cluster.get().node);
 }
 
 TEST_F(ControlStreamTest, StartupAcceptedRegistersAndDeliversHandshake)

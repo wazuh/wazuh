@@ -184,7 +184,7 @@ bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t max
     std::string headerLine;
     {
         std::lock_guard<std::mutex> lock(m_stateMutex);
-        // Refreshed here, not per event: cluster name/node and groups can only
+        // Refreshed here, not per event: cluster name and groups can only
         // arrive after the first /control handshake, which may postdate this
         // stream's construction. Once per flush is enough to pick that up
         // without paying a metadata_provider read on every submit().

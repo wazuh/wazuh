@@ -419,7 +419,6 @@ void ControlStream::applyClusterIdentity(const std::string& startupBody)
     // manager actually recognizes.
     const auto parsed = nlohmann::json::parse(startupBody, nullptr, false);
     std::string name;
-    std::string node;
 
     if (!parsed.is_discarded() && parsed.is_object())
     {
@@ -428,11 +427,10 @@ void ControlStream::applyClusterIdentity(const std::string& startupBody)
         if (cluster != parsed.end() && cluster->is_object())
         {
             name = jsonField(*cluster, "name");
-            node = jsonField(*cluster, "node");
         }
     }
 
-    m_cluster.set(std::move(name), std::move(node));
+    m_cluster.set(std::move(name));
 }
 
 void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)

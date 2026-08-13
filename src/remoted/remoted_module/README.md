@@ -339,7 +339,7 @@ sequenceDiagram
          "syscollector": {"packages": 50000, "processes": 50000, ...},
          "sca": {"checks": 10000}
        },
-       "cluster": {"name": "wazuh-cluster", "node": "node01"},
+       "cluster": {"name": "wazuh-cluster"},
        "agent": {"groups": ["default", "web-servers"]}
      }
      ```
@@ -485,7 +485,6 @@ Via `ControlConfig` (`controlConfig.hpp/.cpp`), populated from C-ABI struct fiel
 `remoted_module_config_t` (see `secure.c`):
 - `managerVersion` — manager's semantic version (for version comparison)
 - `allowHigherVersions` — whether to accept agents with version > manager
-- `nodeName` — worker node name (for cluster sync_status)
 - `isWorkerNode` — true on worker nodes (affects sync_status values)
 - `agentRegistryTtlSec` — how long to keep idle agents in the registry (default 3600s)
 - `agentRegistryEvictionIntervalSec` — how often to run eviction (default 300s)

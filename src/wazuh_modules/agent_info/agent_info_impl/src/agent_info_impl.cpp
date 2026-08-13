@@ -26,7 +26,6 @@
 extern "C"
 {
     const char* agent_info_get_cluster_name(void);
-    const char* agent_info_get_cluster_node(void);
     const char* agent_info_get_agent_groups(void);
     void agent_info_clear_agent_groups(void);
 }
@@ -94,7 +93,7 @@ static const std::map<std::string, std::vector<std::string>> MODULE_INDICES_MAP
         }
     }};
 
-// Indices tagged with agent metadata (cluster_name, cluster_node, groups) that are not owned by
+// Indices tagged with agent metadata (cluster_name, groups) that are not owned by
 // any single coordinatable module -- wazuh-agent-config/wazuh-agent-stats are written by the
 // manager's /config and /stats endpoints (inventory_sync_server's configEndpoint/statsEndpoint)
 // from the periodic push in https_client's reporterStream, not by a wodle this module ever pauses.
@@ -116,8 +115,7 @@ const char* AGENT_METADATA_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS agent_met
                                            "host_os_type      TEXT,"
                                            "host_os_platform  TEXT,"
                                            "host_os_version   TEXT,"
-                                           "cluster_name      TEXT,"
-                                           "cluster_node      TEXT);";
+                                           "cluster_name      TEXT);";
 
 const char* AGENT_GROUPS_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_groups ("
@@ -490,25 +488,21 @@ void AgentInfoImpl::populateAgentMetadata()
     // by agentd on reconnect, but was never re-read here, so it stayed stale until the
     // agent process restarted.
     //
-    // Scoped to cluster_name/cluster_node only. agent_groups is intentionally NOT taken
+    // Scoped to cluster_name only. agent_groups is intentionally NOT taken
     // from this live query (see the groups block below for why) - the callback still
-    // reports it, since agentd's gethandshake returns all three fields together, but the
+    // reports it, since agentd's gethandshake returns both fields together, but the
     // value is discarded here rather than tracked across cycles.
     if (m_handshakeQueryFunction)
     {
         char clusterNameBuf[256] = {0};
-        char clusterNodeBuf[256] = {0};
         char agentGroupsBuf[65536] = {0};
 
         if (m_handshakeQueryFunction(clusterNameBuf,
                                      sizeof(clusterNameBuf),
-                                     clusterNodeBuf,
-                                     sizeof(clusterNodeBuf),
                                      agentGroupsBuf,
                                      sizeof(agentGroupsBuf)))
         {
             m_lastLiveClusterName = clusterNameBuf;
-            m_lastLiveClusterNode = clusterNodeBuf;
             m_hasLiveHandshakeSucceededOnce = true;
         }
         else
@@ -525,23 +519,20 @@ void AgentInfoImpl::populateAgentMetadata()
     // e.g. in unit tests) do we fall back to the C-side cache seeded once at module startup.
     std::string cluster_name =
         m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
-    std::string cluster_node =
-        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterNode : agent_info_get_cluster_node();
 
     agentMetadata["cluster_name"] = cluster_name;
-    agentMetadata["cluster_node"] = cluster_node;
 
     // Get agent groups (only for agents)
     // Priority: 1) Groups from handshake, 2) Groups from merged.mg
     //
-    // Deliberately out of scope for #37543 (which is about cluster_name/cluster_node
+    // Deliberately out of scope for #37543 (which is about cluster_name
     // staying live): group reassignments are pushed by remoted via merged.mg without
     // necessarily forcing a reconnect, whereas agentd's handshake-sourced group list is
     // only refreshed on (re)connect. Preferring the live handshake groups on every cycle
-    // (as cluster_name/cluster_node now do) would freeze group membership at the last
+    // (as cluster_name now does) would freeze group membership at the last
     // handshake value and ignore merged.mg-driven changes until the next reconnect - a
     // regression from the pre-existing behavior below. So groups keep the original
-    // one-shot-at-startup consumption, independent of the live cluster_name/cluster_node
+    // one-shot-at-startup consumption, independent of the live cluster_name
     // re-query above.
     std::vector<std::string> groups;
 
@@ -630,7 +621,6 @@ void AgentInfoImpl::populateAgentMetadata()
 
     // Route sync flags based on what changed:
     // - cluster_name change alone → groups sync path (GROUP_DELTA, version=max)
-    // - cluster_node change → no sync flag (suppressed)
     // - other metadata changes → metadata sync path (METADATA_DELTA, version=max+1)
     // - cluster_name + other metadata → metadata sync path only (metadata subsumes cluster_name)
     if (metadataChanged)
@@ -668,7 +658,6 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_platform, sizeof(metadata.os_platform), agentMetadata, "host_os_platform");
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
-    copyField(metadata.cluster_node, sizeof(metadata.cluster_node), agentMetadata, "cluster_node");
 
     if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
     {
@@ -1058,10 +1047,6 @@ bool AgentInfoImpl::categorizeMetadataChanges(ReturnTypeCallback result, const n
                 if (key == "cluster_name")
                 {
                     m_clusterNameChanged = true;
-                }
-                else if (key == "cluster_node")
-                {
-                    // No sync flag for cluster_node changes
                 }
                 else
                 {

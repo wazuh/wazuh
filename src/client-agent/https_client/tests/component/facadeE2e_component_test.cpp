@@ -904,7 +904,7 @@ TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
     // The manager sees the module's own snapshot, stamped with identity.
     EXPECT_NE(std::string::npos, stats.find(R"("uptime":123)"));
     EXPECT_NE(std::string::npos, stats.find(R"("agent_id":"001")"));
-    EXPECT_NE(std::string::npos, stats.find(R"("cluster":{"name":"fake","node":"node01"})"));
+    EXPECT_NE(std::string::npos, stats.find(R"("cluster":{"name":"fake"})"));
     EXPECT_NE(std::string::npos, cfg.find(R"("notify_time":10)"));
     EXPECT_NE(std::string::npos, cfg.find(R"("agent_id":"001")"));
 }

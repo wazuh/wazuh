@@ -276,7 +276,6 @@ namespace remoted::control
                                             nlohmann::json response;
                                             response["limits"] = m_config.limits;
                                             response["cluster"]["name"] = m_config.clusterName;
-                                            response["cluster"]["node"] = m_config.nodeName;
                                             response["agent"]["groups"] = groups;
 
                                             HttpResponse httpResp;

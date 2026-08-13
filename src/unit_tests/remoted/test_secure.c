@@ -3411,9 +3411,8 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
-    // cluster_name/node_name are populated by HandleSecure() itself, not this helper.
+    // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
-    assert_string_equal(rm_config.node_name, "");
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)

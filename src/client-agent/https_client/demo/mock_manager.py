@@ -100,7 +100,7 @@ class Handler(BaseHTTPRequestHandler):
                                      "groups": 10000, "services": 10000,
                                      "browser_extensions": 10000},
                     "sca": {"checks": 10000}},
-         "cluster": {"name": "demo", "node": "node01"},
+         "cluster": {"name": "demo"},
          "agent": {"groups": ["default"]}}).encode()
     STARTUP_V2 = json.dumps(
         {"limits": {"fim": {"file": 200000, "registry_key": 100000,
@@ -113,7 +113,7 @@ class Handler(BaseHTTPRequestHandler):
                                      "groups": 10000, "services": 10000,
                                      "browser_extensions": 10000},
                     "sca": {"checks": 20000}},
-         "cluster": {"name": "demo", "node": "node01"},
+         "cluster": {"name": "demo"},
          "agent": {"groups": ["default"]}}).encode()
 
     # merged.mg v1 is empty: its SHA-256 (e3b0c442...) equals the hash the
@@ -330,7 +330,7 @@ class Handler(BaseHTTPRequestHandler):
         self._reply(200, {})
         cluster = doc.get("cluster", {})
         log(f"     {target:<11} -> 200  stored: agent_id={doc.get('agent_id')} "
-            f"cluster={cluster.get('name')}/{cluster.get('node')} keys={sorted(doc.keys())}")
+            f"cluster={cluster.get('name')} keys={sorted(doc.keys())}")
         # The whole document, for the field-contract comparison against the
         # manager side (#38136). The preview in do_POST() truncates at 70 bytes,
         # which is not enough to see the per-module bodies.

@@ -112,10 +112,9 @@ public:
         m_config = configuration;
 
         LOGFN_INFO(moduleLogFn(),
-                   "Starting remoted module (port=%d, cluster='%s', node='%s', workerNode=%s).",
+                   "Starting remoted module (port=%d, cluster='%s', workerNode=%s).",
                    m_config.port,
                    m_config.cluster_name,
-                   m_config.node_name,
                    m_config.worker_node ? "true" : "false");
 
         // Logged here and rethrown, NOT swallowed into a retry: a failure to start (e.g.
