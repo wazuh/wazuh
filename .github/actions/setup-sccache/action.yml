@@ -55,10 +55,14 @@ runs:
         base=""
         case "$raw" in */*) base="${raw#*/}" ;; esac
         prefix="${base:+${base%/}/}${{ inputs.key-prefix }}"
+        # State travels between steps in a file, never through GITHUB_ENV:
+        # job-level env is echoed into the env block of any later step that
+        # declares env:, which would print the bucket name in a public log.
+        envfile="${RUNNER_TEMP}/sccache.env"
         {
-          echo "SCCACHE_BUCKET_NAME=$bucket_name"
-          echo "SCCACHE_EFFECTIVE_PREFIX=$prefix"
-        } >> "$GITHUB_ENV"
+          echo "SCCACHE_BUCKET_NAME='$bucket_name'"
+          echo "SCCACHE_EFFECTIVE_PREFIX='$prefix'"
+        } > "$envfile"
         # The bucket may live in a different region than the CI default; the
         # AWS CLI follows the S3 301 redirect transparently but sccache's S3
         # client does not, so resolve the real region from the unauthenticated
@@ -66,28 +70,23 @@ runs:
         detected=$(curl -sI --max-time 10 "https://${bucket_name}.s3.amazonaws.com/" \
           | tr -d '\r' | awk -F': ' 'tolower($1)=="x-amz-bucket-region"{print $2}')
         region="${detected:-${{ inputs.region }}}"
-        echo "SCCACHE_RESOLVED_REGION=$region" >> "$GITHUB_ENV"
+        echo "SCCACHE_RESOLVED_REGION='$region'" >> "$envfile"
         echo "bucket region resolved: $region"
         probe="s3://${bucket_name}/${prefix}/.probe-${GITHUB_RUN_ID}"
         if echo ok | aws s3 cp - "$probe" --region "$region" >/dev/null 2>&1; then
           aws s3 rm "$probe" --region "$region" >/dev/null 2>&1 || true
-          echo "SCCACHE_PROBE_OK=1" >> "$GITHUB_ENV"
+          echo "SCCACHE_PROBE_OK=1" >> "$envfile"
           echo "probe OK: read/write available on the cache prefix"
         else
-          echo "SCCACHE_PROBE_OK=0" >> "$GITHUB_ENV"
+          echo "SCCACHE_PROBE_OK=0" >> "$envfile"
           echo "::warning title=sccache disabled::the CI role cannot write to the cache prefix; building uncached"
         fi
 
     - name: Configure environment and wrap compilers
       shell: bash
       run: |
+        . "${RUNNER_TEMP}/sccache.env"
         [ "$SCCACHE_PROBE_OK" = "1" ] || exit 0
-        {
-          echo "SCCACHE_BUCKET=$SCCACHE_BUCKET_NAME"
-          echo "SCCACHE_REGION=$SCCACHE_RESOLVED_REGION"
-          echo "SCCACHE_S3_KEY_PREFIX=$SCCACHE_EFFECTIVE_PREFIX"
-          echo "SCCACHE_IDLE_TIMEOUT=0"
-        } >> "$GITHUB_ENV"
 
         # PATH masquerade instead of CC/CXX overrides: src/Makefile hardcodes
         # CC=gcc, cmake discovers compilers from PATH, and the winagent target
@@ -113,6 +112,7 @@ runs:
     - name: Start sccache server
       shell: bash
       run: |
+        . "${RUNNER_TEMP}/sccache.env"
         [ "$SCCACHE_PROBE_OK" = "1" ] || exit 0
         # A cache problem must never fail the job: on any startup error,
         # sanitize the output (it can carry the unmasked bucket name),
@@ -135,7 +135,6 @@ runs:
           fi
           echo "::warning title=sccache disabled::server failed to start (rc=$rc); building uncached"
           rm -rf "${RUNNER_TEMP}/sccache-wrappers"
-          echo "SCCACHE_PROBE_OK=0" >> "$GITHUB_ENV"
           exit 0
         fi
         sccache --zero-stats >/dev/null 2>&1 || true

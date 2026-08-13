@@ -39,8 +39,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
       # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -56,6 +54,8 @@ jobs:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           region: ${{ secrets.CI_AWS_REGION }}
           key-prefix: sccache/5.0.0
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
       - name: Inventory sync - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
@@ -92,8 +92,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
       # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
       - name: "Configure AWS credentials for the compilation cache"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -109,6 +107,8 @@ jobs:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           region: ${{ secrets.CI_AWS_REGION }}
           key-prefix: sccache/5.0.0
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
       - name: Inventory sync - Build tests
         uses: ./.github/actions/build_target_cpp
         with:
