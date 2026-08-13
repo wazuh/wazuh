@@ -22,6 +22,7 @@
 #include "controlStream.hpp"
 #include "reporterStream.hpp"
 #include "curlPerformer.hpp"
+#include "fileCompressor.hpp"
 #include "https_client.h"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
@@ -93,6 +94,7 @@ class HttpsClientFacade final
         ConfigKeyProvider m_keyProvider;
         CmacSigner m_signer;
         TempSpoolFactory m_spoolFactory;
+        ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;

@@ -13,6 +13,7 @@
 #define _HC_STATEFUL_STREAM_HPP
 
 #include "callbackSink.hpp"
+#include "fileCompressor.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -34,14 +35,19 @@
  *        file (adopted from the intake, which streamed it off the local
  *        socket) — the latter keeps the whole path off-heap. Retries reuse the
  *        same X-Session-Id so the manager LRU dedups; the outcome is delivered
- *        through the sink.
+ *        through the sink. When compression is enabled and not yet rejected,
+ *        sendSession() compresses the spooled file once, up front (not per
+ *        retry attempt -- unlike the in-memory send paths, this body can be
+ *        multi-MB), handing RetrySender a precompressed sibling file it swaps
+ *        in per attempt; a 415 falls back to the original file automatically.
  */
 class StatefulStream final
 {
     public:
         StatefulStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                        IClock& clock, IRandom& random, ISpoolFileFactory& spoolFactory,
-                       ICallbackSink& sink, AuthGate& authGate, CompressionGate& compressionGate);
+                       ICallbackSink& sink, AuthGate& authGate, CompressionGate& compressionGate,
+                       IFileCompressor& fileCompressor);
 
         /// Intake: spool the buffer to a temp file and enqueue it. Returns false
         /// when the queue is full or the spool fails.
@@ -84,9 +90,11 @@ class StatefulStream final
 
         const ModuleConfig& m_config;
         AuthGate& m_authGate;
+        CompressionGate& m_compressionGate;
         Backoff m_backoff;
         RetrySender m_sender;
         ISpoolFileFactory& m_spoolFactory;
+        IFileCompressor& m_fileCompressor;
         ICallbackSink& m_sink;
 
         mutable std::mutex m_mutex;
