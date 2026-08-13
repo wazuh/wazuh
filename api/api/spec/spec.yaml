@@ -2106,9 +2106,6 @@ components:
                                 select-agent-group:
                                   type: integer
                                   format: int32
-                                select-agent-name:
-                                  type: integer
-                                  format: int32
                                 set-agent-groups:
                                   type: integer
                                   format: int32
@@ -2261,9 +2258,6 @@ components:
                                   type: integer
                                   format: int32
                                 select-agent-group:
-                                  type: integer
-                                  format: int32
-                                select-agent-name:
                                   type: integer
                                   format: int32
                                 set-agent-groups:

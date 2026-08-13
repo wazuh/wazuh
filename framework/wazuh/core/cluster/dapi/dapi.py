@@ -23,6 +23,7 @@ import wazuh.core.results as wresults
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
+from wazuh.core.cluster.control import get_nodes
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
@@ -455,27 +456,25 @@ class DistributedAPI:
             Parameters
             ----------
             node_name : tuple
-                Node to forward a request to.
+                Node and its already-resolved f_kwargs to forward a request with.
 
             Returns
             -------
             wresults.AbstractWazuhResult or exception.WazuhException
             """
-            node_name, agent_list = node_name
+            node_name, node_f_kwargs = node_name
             if node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
-                if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
-                    self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
+                self.f_kwargs = node_f_kwargs
                 result = await self.distribute_function()
             else:
-                if 'tmp_file' in self.f_kwargs:
+                if 'tmp_file' in node_f_kwargs:
                     await self.send_tmp_file(node_name)
                 client = self.get_client()
                 try:
                     kcopy = deepcopy(self.to_dict())
-                    if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
-                        kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
+                    kcopy['f_kwargs'] = node_f_kwargs
 
                     result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
@@ -562,15 +561,36 @@ class DistributedAPI:
             else:
                 # No specific agent/node grouping to route by: broadcast the request, unmodified,
                 # to every cluster node (None leaves the original agent_id/agent_list untouched).
-                broadcasted_nodes = await get_nodes_info(self.get_client())
-                valid_nodes = [(n['name'], None) for n in broadcasted_nodes.affected_items]
+                # Uses the low-level get_nodes() (not the RBAC-decorated get_nodes_info()) since this
+                # is purely internal request-routing, not a user-facing node listing: get_nodes_info()'s
+                # own 'cluster:read'/'node:id:*' check expands the wildcard from common.cluster_nodes,
+                # which is only populated from self.nodes -- empty here, since agent-targeted requests
+                # (restart/reload/upgrade, etc.) never populate it, making that check circular and always
+                # deny everything.
+                broadcasted_nodes = await get_nodes(self.get_client())
+                valid_nodes = [(n['name'], None) for n in broadcasted_nodes['items']]
             allowed_nodes = wresults.AffectedItemsWazuhResult()
-            allowed_nodes.affected_items = list(nodes)
+            allowed_nodes.affected_items = [node_name for node_name, _ in valid_nodes]
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
 
         cleaned_valid_nodes = await clean_valid_nodes(valid_nodes)
 
-        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in cleaned_valid_nodes]))
+        # Resolve each node's f_kwargs into its own independent dict synchronously, before any
+        # concurrent execution starts. `execute_local_request()` mutates `self.f_kwargs` in place
+        # (e.g. it clears a wildcard '*' agent list), and the local and remote forwards below all run
+        # concurrently via asyncio.gather. Building each node's payload lazily from the shared
+        # `self.f_kwargs` at call time let the local branch's in-flight mutation race ahead of a
+        # remote branch's snapshot of that same dict -- e.g. clearing '*' right before a worker's copy
+        # was taken, making that worker treat the request as unfiltered instead of using the real
+        # agent list. Resolving every node's kwargs up front removes the shared mutable state.
+        resolved_nodes = []
+        for node_name, agent_list in cleaned_valid_nodes:
+            node_f_kwargs = deepcopy(self.f_kwargs)
+            if agent_list is not None and set(node_f_kwargs) & {'agent_id', 'agent_list'}:
+                node_f_kwargs['agent_id' if 'agent_id' in node_f_kwargs else 'agent_list'] = agent_list
+            resolved_nodes.append((node_name, node_f_kwargs))
+
+        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in resolved_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)

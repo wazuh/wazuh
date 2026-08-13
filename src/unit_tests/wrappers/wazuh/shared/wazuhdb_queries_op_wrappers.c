@@ -148,3 +148,9 @@ int __wrap_wdb_remove_agent(int id, __attribute__((unused)) int* sock)
     check_expected(id);
     return mock();
 }
+
+int __wrap_wdb_remove_group_db(const char* name, __attribute__((unused)) int* sock)
+{
+    check_expected(name);
+    return mock();
+}

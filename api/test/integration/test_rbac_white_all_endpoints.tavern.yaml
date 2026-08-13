@@ -857,7 +857,6 @@ stages:
     response:
       json:
         data:
-          nodes: []
           groups: []
           agent_os: []
           agent_status:

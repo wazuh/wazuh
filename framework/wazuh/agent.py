@@ -41,6 +41,12 @@ ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822, 1823]
 # 1824 -> Upgrading an agent to a version higher than the manager requires the force flag
 ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1824]
 
+# 1816 -> Agent information not found in this node's database. Agents have no fixed owning node
+# (5.x agents connect over stateless, load-balanced HTTPS), so a request can be broadcast to a
+# node that simply doesn't have this agent's info yet/at all. Skip it silently here instead of
+# failing the whole request: whichever node actually has the agent will report the real outcome.
+ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB = 1816
+
 STATUS = 'status'
 COUNT = 'count'
 
@@ -1277,6 +1283,10 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 # Upgrade error for all agents, bad request
                 elif error_code in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
                     raise WazuhError(error_code, cmd_error=True, extra_message=agent_result['message'])
+
+                # This node has no info for this agent: not this node's to report on, skip it
+                elif error_code == ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB:
+                    continue
 
                 # Upgrade error for all agents, internal server error
                 else:
