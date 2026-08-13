@@ -400,7 +400,7 @@ namespace
     }
 } // namespace
 
-TEST(SyncPipelineTest, ADeleteAgentItemDeletesTheStatePatternAndFlushes)
+TEST(SyncPipelineTest, ADeleteAgentItemWipesTheWholeScopeAndFlushes)
 {
     PipelineUnderTest fixture;
     auto responder = std::make_shared<FutureResponder>();
@@ -411,13 +411,23 @@ TEST(SyncPipelineTest, ADeleteAgentItemDeletesTheStatePatternAndFlushes)
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
+    // One delete-by-query per index of the scope, and nothing else: the deletion does NOT refresh
+    // first (that needs a privilege the manager's indexer role lacks), which is why a document
+    // written inside the index refresh interval can survive it.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(1U, ops.size());
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
-    EXPECT_EQ("005", std::get<1>(ops[0]));
-    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0])) << "one pattern query, not the per-index Cleans loop";
-    EXPECT_EQ(CLUSTER, std::get<3>(ops[0])) << "scoped to this cluster";
-    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means the delete was FLUSHED";
+    ASSERT_EQ(3U, ops.size());
+
+    const std::vector<std::string> scope {"wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats"};
+    for (std::size_t i = 0; i < scope.size(); ++i)
+    {
+        const auto& deletion = ops[i];
+        EXPECT_EQ("deleteByQuery", std::get<0>(deletion));
+        EXPECT_EQ("005", std::get<1>(deletion));
+        EXPECT_EQ(scope[i], std::get<2>(deletion)) << "the config and stats indices live outside wazuh-states-*";
+        EXPECT_EQ(CLUSTER, std::get<3>(deletion)) << "scoped to this cluster";
+    }
+
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "the 200 means every delete was FLUSHED, in one go";
 }
 
 TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
@@ -434,10 +444,14 @@ TEST(SyncPipelineTest, ADeletionOrdersAfterAnEarlierSessionOfTheSameAgent)
     EXPECT_EQ(200, delta->get().status);
     EXPECT_EQ(200, deletion->get().status);
 
+    // Exact, not just non-empty: the assertions below index ops[1], so a regression that collapsed
+    // the deletion to a single op would read out of bounds instead of failing. One bulkIndex for the
+    // delta, then one delete-by-query per index of the deletion scope.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(2U, ops.size());
-    EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[1]));
+    ASSERT_EQ(4U, ops.size());
+    EXPECT_EQ("bulkIndex", std::get<0>(ops[0])) << "the delta's write reaches the indexer first";
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops[1])) << "and the deletion follows it, never the other way round";
+    EXPECT_EQ("deleteByQuery", std::get<0>(ops.back()));
 }
 
 TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)

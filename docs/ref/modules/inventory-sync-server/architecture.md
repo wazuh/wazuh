@@ -37,7 +37,7 @@ flowchart TB
     REME -.->|the agent's own HTTP response| CLI
     PIPE -->|bulk / deleteByQuery / updateByQuery / search| IDX[(wazuh-indexer)]
     LANE -->|"inventory bulk (only if the scan succeeded)"| IDX
-    DELR -->|"deleteByQuery wazuh-states-*"| IDX
+    DELR -->|"deleteByQuery\nwazuh-states-*, wazuh-agent-config, wazuh-agent-stats"| IDX
     ORCH -->|its own connector| IDX
 ```
 
@@ -189,17 +189,39 @@ production adapter is confined to a single translation unit (`src/vd/vdScannerAd
 ## Agent deletion
 
 `DELETE /agents` (and its `POST /agents/delete` alias, for C callers whose HTTP helper only
-speaks POST) deletes every state document of one agent: one `deleteByQuery` over
-`wazuh-states-*`, scoped to this cluster, followed by a flush. The production caller is
-`wazuh-manager-authd`, right after it removes the agent from `client.keys` and Wazuh DB.
+speaks POST) deletes every document of one agent across the whole deletion scope —
+`wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` — scoped to this cluster: a
+`deleteByQuery` on each, then one flush. The two `wazuh-agent-*` indices are named explicitly
+because they sit outside the state family. The production caller is `wazuh-manager-authd`, right
+after it removes the agent from `client.keys` and Wazuh DB.
 
 The deletion is not executed inline: it is enqueued on the TARGET agent's pipeline shard as a
 special item kind, so it orders FIFO against any in-flight session of that same agent — a
 delete-then-reenroll can never resurrect state, and a scan in flight for that agent is respected
-through the same registry. The HTTP status makes the outcome visible: `200` means the
-delete-by-query was flushed (an index that does not exist counts as success, so repeating a
-deletion is harmless); `503`/`500` tell the caller to retry. authd retries once after a short
-pause and logs a warning with the status code on final failure.
+through the same registry. The HTTP status makes the outcome visible: `200` means every
+delete-by-query in the scope was flushed (an index that does not exist counts as success, so
+repeating a deletion is harmless); `503`/`500` tell the caller to retry. A `200` also means no
+delete-by-query left documents behind: a per-shard failure or a skipped document (a version
+conflict, which `conflicts: "proceed"` counts separately) fails the deletion instead of passing as
+success, because with the agent gone nothing would ever overwrite what was missed.
+
+authd retries up to three times with a widening pause (0 s, 1 s, 3 s), logging each pause at info
+level because its writer thread is blocked meanwhile, and, when it gives up, logs a `WARNING` naming
+the agent — separately for a request that never completed (no HTTP status: modulesd down or the
+transfer timed out) and for one the server refused with a status. A warning, not an error: the agent
+is already gone and cannot reconnect, so what is left behind is orphaned documents. It abandons the
+retries if the daemon is shutting down, and the operator's recovery is to repeat the deletion.
+
+Two windows this does NOT cover, both of which leave a document behind while still answering `200`,
+and both cleared by repeating the deletion:
+
+- The **index refresh interval**: a delete-by-query is a search, so documents the agent's last session
+  wrote before the index refreshed are invisible to it. Refreshing each index first closed this, but
+  `_refresh` needs the `indices:admin/refresh` privilege that the manager's least-privilege indexer
+  role does not grant — every deletion failed with `403` — so it was removed pending that privilege.
+- The **asynchronous write queue**: `POST /config` and `POST /stats` are written through the
+  asynchronous connector, whose queue the deletion cannot drain, so a report still queued when the
+  deletion runs lands after it and recreates that agent's document.
 
 ## The transport
 

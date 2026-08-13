@@ -61,7 +61,8 @@ namespace invsync::test
         std::vector<std::tuple<std::string, std::string, std::string>> m_writes;
         /// Operations seen by the sync fake, in call order: (op, id, index, data, version). `op` is
         /// the seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
-        /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by m_mutex.
+        /// "executeSearchQuery"); fields the operation lacks stay empty. Guarded by
+        /// m_mutex.
         std::vector<std::tuple<std::string, std::string, std::string, std::string, std::string>> m_syncOps;
         std::atomic<int> m_syncFlushes {0}; ///< Times the sync fake's flush() ran.
         /// Canned body the sync fake returns from executeSearchQuery(). Guarded by m_mutex.
@@ -70,8 +71,8 @@ namespace invsync::test
         /// drive the checksum pagination with a different page per call. Guarded by m_mutex.
         std::deque<nlohmann::json> m_searchResponses;
         /// Seam method name ("bulkIndex"/"bulkDelete"/"deleteByQuery"/"executeUpdateByQuery"/
-        /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables. Guarded by
-        /// m_mutex.
+        /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables.
+        /// Guarded by m_mutex.
         std::string m_syncThrowOn;
         /// While true, the sync fake's flush() BLOCKS until openFlushGate(). Lets a test hold a
         /// worker inside its batch flush deterministically (group-commit accumulation).

@@ -168,11 +168,22 @@ TEST(DeleteAgentEndpoint, DeletionRunsOnThePipelineWithThePaddedAgentId)
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
+    // The full scope is pinned by the pipeline suite; what this one owns is the id the endpoint
+    // hands over -- every deletion must carry the SAME padded form the documents were written with.
     const auto ops = fixture.events->syncOps();
-    ASSERT_EQ(1U, ops.size());
-    EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
-    EXPECT_EQ("007", std::get<1>(ops[0])) << "padded to the historical 3-character form";
-    EXPECT_EQ("wazuh-states-*", std::get<2>(ops[0]));
-    EXPECT_EQ(CLUSTER, std::get<3>(ops[0]));
+    ASSERT_EQ(3U, ops.size());
+    std::size_t deletes = 0;
+    for (const auto& op : ops)
+    {
+        if (std::get<0>(op) == "deleteByQuery")
+        {
+            ++deletes;
+            EXPECT_EQ("007", std::get<1>(op)) << "padded to the historical 3-character form";
+            EXPECT_EQ(CLUSTER, std::get<3>(op));
+        }
+    }
+    // Counted, not just inspected: without this, three ops of any other kind would satisfy the size
+    // assertion above while the per-delete expectations never ran at all.
+    EXPECT_EQ(3U, deletes) << "one deleteByQuery per index of the deletion scope";
     EXPECT_GE(fixture.events->m_syncFlushes.load(), 1);
 }

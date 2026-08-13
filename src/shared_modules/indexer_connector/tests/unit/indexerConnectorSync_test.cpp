@@ -1291,6 +1291,69 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryGenericErrorThrows)
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
 }
 
+/// A _delete_by_query answers 200 even when it deleted nothing it was asked to. These pin the two
+/// ways that happens, because reporting either as success is how documents outlive a deletion
+/// everyone upstream believes worked -- and for a whole-agent deletion nothing ever overwrites them.
+class IndexerConnectorSyncDeleteByQueryOutcomeTest
+    : public IndexerConnectorSyncTest
+    , public ::testing::WithParamInterface<std::pair<std::string, bool>>
+{
+};
+
+TEST_P(IndexerConnectorSyncDeleteByQueryOutcomeTest, ADeleteByQueryReportsWhatItLeftBehind)
+{
+    const auto& [responseBody, shouldThrow] = GetParam();
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [body = responseBody](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.deleteByQuery("wazuh-states-inventory-packages", "007", "cluster01");
+
+    if (shouldThrow)
+    {
+        EXPECT_THROW(connector.flush(), IndexerConnectorException) << "response: " << responseBody;
+    }
+    else
+    {
+        EXPECT_NO_THROW(connector.flush()) << "response: " << responseBody;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DeleteByQueryOutcomes,
+    IndexerConnectorSyncDeleteByQueryOutcomeTest,
+    ::testing::Values(
+        // Everything the query matched was deleted: the only response that may pass silently.
+        std::make_pair(std::string(R"({"took":5,"deleted":10,"version_conflicts":0,"failures":[]})"), false),
+        // A response that predates these fields must still pass (the connector serves other callers).
+        std::make_pair(std::string(R"({"took":5,"deleted":10})"), false),
+        // Per-shard error inside a 200.
+        std::make_pair(std::string(R"({"took":5,"deleted":4,"failures":[{"index":"wazuh-states-inventory-packages",)"
+                                   R"("shard":0,"status":500,"reason":{"type":"i_o_exception"}}]})"),
+                       true),
+        // `conflicts: "proceed"` tallies skipped documents HERE, not in `failures` -- the path the
+        // shard-failure check alone misses.
+        std::make_pair(std::string(R"({"took":5,"deleted":9,"version_conflicts":3,"failures":[]})"), true),
+        // Both at once.
+        std::make_pair(std::string(R"({"took":5,"deleted":1,"version_conflicts":2,)"
+                                   R"("failures":[{"shard":1,"status":503}]})"),
+                       true)));
+
 TEST_F(IndexerConnectorSyncTest, DeleteByQueryWithoutBulkDataTriggersNotify)
 {
     // This test verifies the fix for DataClean: when there's only deleteByQuery (no bulk data),

@@ -47,7 +47,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
 | RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
-| RF-10 | Whole-agent deletion sweeping `wazuh-states-*`, retriable | kept (`DELETE /agents`; authd is the only producer — D21) |
+| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`DELETE /agents`; authd is the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
@@ -163,7 +163,9 @@ inventory_sync_server/
 ├── testtool/                          # inventory_sync_server_testtool (VD integration driver
 │                                      #   + the QA suite's --serve/--no-vd server harness)
 ├── qa/                                # integration QA: pytest over the real socket + OpenSearch
-└── tools/send_sync.py                 # stdlib-only UDS smoke sender
+└── tools/                             # stdlib-only UDS drivers
+    ├── send_sync.py                   #   smoke sender: health probe, every transport rejection
+    └── send_delete_agent.py           #   DELETE /agents, with optional indexer before/after
 ```
 
 Two style rules keep the layout navigable: every submodule is included by prefix
@@ -262,7 +264,7 @@ sequenceDiagram
     participant IDX as indexer (worker's connector)
     participant VQ as VD scan lane
     R->>S: POST /stateful + X-Wazuh-Agent-Id
-    Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503; declares > TOTAL budget → 413
+    Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503 declares > TOTAL budget → 413
     Note over S: validateFullSession(): verifier → FullSession →<br/>shape → identity (403) → mode×payload → per-payload
     alt invalid
         S-->>R: 400 / 403
@@ -338,8 +340,11 @@ The per-document authorization layer: agent sessions may only touch
 `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca`(`-*`), and — clean-only —
 `wazuh-states-vulnerabilities` (its documents are produced exclusively by the scanner). Documents
 outside it are skipped with a WARN; a session whose every document was skipped answers a no-op
-`200`. Whole-agent deletions use the `wazuh-states-*` pattern instead: they are manager-initiated
-(authd), not agent sessions, and must reach indices no current session writes.
+`200`. Whole-agent deletions use `AGENT_DELETION_SCOPE` instead — `wazuh-states-*` plus
+`wazuh-agent-config` and `wazuh-agent-stats`: they are manager-initiated (authd), not agent
+sessions, and must reach every index holding the agent's documents, including ones no session
+writes to. The two endpoints that WRITE those indices take their names from that same constant, so
+the deletion scope cannot drift away from what is being written.
 
 ## The VD scan lane (`src/vd/`)
 
@@ -409,10 +414,30 @@ The handler validates the `X-Wazuh-Agent-Id` header (missing/non-numeric → `40
 indexer availability (→ `503`; the caller retries rather than losing the deletion), and enqueues
 a `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET agent's shard — the deletion orders
 FIFO against that agent's in-flight sessions, and respects a scan in flight through the same
-registry. The worker treats it like an immediate: batch cut, then
-`deleteByQuery("wazuh-states-*", agent, cluster)` + `flush()` → `200 {"status":"ok"}`. A missing
-index counts as success inside the connector, so repeating a deletion is harmless — which is the
-callers' whole retry contract.
+registry. The worker treats it like an immediate: batch cut, then one
+`deleteByQuery(index, agent, cluster)` for every index in `AGENT_DELETION_SCOPE`
+(`wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats`), and one `flush()` →
+`200 {"status":"ok"}`. A missing index counts as success inside the connector, so repeating a
+deletion is harmless and stays quiet, which is the callers' whole retry contract.
+
+**Two windows where a document can outlive the deletion.** Both are known, both are recorded by a
+skipped test in `qa/test_delete_agent.py`, and repeating the deletion clears either one (it is
+idempotent). Neither makes the deletion report failure — that is what makes them worth knowing:
+
+- **The index refresh interval.** A `_delete_by_query` runs a SEARCH, so it only sees refreshed
+  segments, and authd deletes immediately after removing the agent from `client.keys`. Whatever the
+  agent's last session wrote inside that interval is invisible to the query, and with the agent gone
+  nothing ever overwrites it. Refreshing each index first closed this, and was implemented — but
+  `_refresh` needs `indices:admin/refresh`, which is outside the `crud`/`write` action groups, so the
+  manager's least-privilege indexer role denies it and EVERY deletion failed with `403`. The refresh
+  was removed until the privilege is granted; restoring it is a follow-up.
+- **The async connector's queue.** `POST /config` and `POST /stats` are written through the
+  ASYNCHRONOUS connector, whose queue drains on its own timer
+  (`inventory_sync_server_indexer_async_flush_interval_seconds`, 20 s by default). The deletion runs
+  on the sync connector and cannot drain that queue, so a report still queued when the deletion runs
+  lands after the delete-by-query and recreates that agent's document. Closing it properly means
+  ordering those two endpoints against the deletion the way `DELETE /agents` already is — as pipeline
+  items on the agent's shard — which is the other follow-up.
 
 ## Transport (`src/http_server/`)
 
@@ -543,6 +568,10 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `tools/send_sync.py` — stdlib-only smoke sender for a live socket (health probe, every
   transport rejection on demand). See
   [test-tools.md](../../../docs/ref/modules/inventory-sync-server/test-tools.md).
+- `tools/send_delete_agent.py` — stdlib-only driver for `DELETE /agents`, speaking authd's bytes.
+  `--verify` counts the agent's documents across the whole deletion scope before and after, which
+  is the only way to see what the `200` did; `--witness` proves the deletion is per agent. Refuses
+  an agent enrolled in `client.keys` unless `--force`.
 - `testtool/` — `inventory_sync_server_testtool`, the vulnerability-detection integration driver:
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by

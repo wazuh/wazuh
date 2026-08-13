@@ -1,8 +1,9 @@
 # Inventory Sync Server Test Tools
 
-Three things live with the module's sources: a raw HTTP sender for the transport and routes, a
-full integration driver that exercises the pipeline together with the real vulnerability scanner
-(doubling as the QA suite's server harness), and the integration QA suite itself.
+Four things live with the module's sources: a raw HTTP sender for the transport and routes, a
+driver for the whole-agent deletion, a full integration driver that exercises the pipeline together
+with the real vulnerability scanner (doubling as the QA suite's server harness), and the
+integration QA suite itself.
 
 ## `tools/send_sync.py` — UDS smoke sender
 
@@ -42,6 +43,58 @@ response was a 2xx, so it can anchor a shell check.
 
 Sending a VALID session requires a FlatBuffers `FullSession` body, which this script deliberately
 does not build — that is the integration driver's job below.
+
+## `tools/send_delete_agent.py` — whole-agent deletion driver
+
+Same standard-library-only approach, aimed at `DELETE /agents`: it speaks the bytes **authd** puts
+on the wire, so it exercises the real deletion rather than an approximation. The endpoint is
+UDS-local (remoted has no downstream route to it), so this script is the only way to drive it by
+hand.
+
+The deletion covers the whole scope — `wazuh-states-*`, `wazuh-agent-config` and
+`wazuh-agent-stats` — one delete-by-query per index. `--verify` counts the agent's documents on the
+indexer before and after, which is the only way to see what the `200` actually did: the endpoint
+answers the same `{"status":"ok"}` whether it deleted thousands of documents or none.
+
+`--verify` refreshes the indices itself before counting, which is what makes its numbers meaningful:
+the server does NOT refresh before its delete-by-query (see the
+[deletion semantics](api-reference.md#whole-agent-deletion-semantics)), so a document the agent's
+last session wrote inside the index refresh interval can survive a `200`. When `--verify` reports a
+non-zero count after a successful deletion, that window — not a failed request — is the usual cause,
+and re-running the deletion clears it.
+
+```bash
+# Delete agent 900; proves the UDS hop and the status, nothing more
+./send_delete_agent.py --agent-id 900
+
+# Count the agent's documents before and after (needs indexer certificates)
+sudo ./send_delete_agent.py --agent-id 900 --verify
+
+# Prove the deletion is per agent: 900 goes, 901 is untouched
+sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
+
+# The POST alias authd uses, because its HTTP helper only speaks POST
+./send_delete_agent.py --agent-id 900 --alias
+
+# Contract checks: missing and non-numeric ids (both expect 400)
+./send_delete_agent.py --agent-id ''
+./send_delete_agent.py --agent-id not-numeric
+```
+
+Options: `--socket`, `--agent-id`, `--alias`, `--timeout` (default 60 s — the deletion does indexer
+I/O), `--verify`, `--witness`, `--indexer`, `--cert`, `--key`, `--client-keys`, `--force`.
+
+Three guards worth knowing, all of them there because their absence produces a *reassuring* wrong
+answer:
+
+- **It refuses an agent that is enrolled in `client.keys`**, unless `--force`. Deleting a live
+  agent's documents destroys inventory that only a full agent resync restores.
+- **With `--verify`, it aborts when the indexer cannot be read** (bad certificates, indexer down)
+  instead of reporting every count as zero.
+- **It warns when the agent has no documents to begin with.** A deletion that answers `200` having
+  found nothing proves nothing; seed first with `POST /config` and `POST /stats` (see
+  `remoted_module/tools/send_agent_json.py`), and remember both write through the ASYNC connector,
+  so wait for the documents to appear before deleting.
 
 ## `inventory_sync_server_testtool` — integration driver
 

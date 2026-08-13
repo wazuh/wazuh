@@ -14,7 +14,7 @@ the request. Requests are HTTP/1.1, `Content-Length` delimited, one request per 
 | `GET` | `/` | `200` | Liveness probe, answers `{"status":"ok","module":"inventory_sync_server"}`. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading. |
-| `DELETE` | `/agents` | `200` | Deletes every state document of the agent named by `X-Wazuh-Agent-Id` (`wazuh-states-*`, this cluster's scope). Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means the delete-by-query was flushed. UDS-local only: the production caller is authd. |
+| `DELETE` | `/agents` | `200` | Deletes every document of the agent named by `X-Wazuh-Agent-Id` across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` (this cluster's scope), one delete-by-query per index. Deferred to the agent's worker shard, so it orders after that agent's in-flight sessions; `200` means every delete-by-query was flushed. Two documented windows can still leave a document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). UDS-local only: the production caller is authd. |
 | `POST` | `/agents/delete` | `200` | Alias of `DELETE /agents` with the same handler, for C callers whose HTTP helper only speaks POST. |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`. |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`. |
@@ -130,6 +130,31 @@ manager's own configuration read once at registration time.
 A `POST /config` that fails indexer-availability validation (see status codes below) never reaches the
 write path; a request that passes validation but whose serialization later fails (e.g. an agent id
 header that is not valid UTF-8) is answered `400` rather than crashing the handler.
+
+## Whole-agent deletion semantics
+
+`DELETE /agents` (and its `POST /agents/delete` alias) removes every document of one agent across the
+deletion scope: `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats`, one delete-by-query per
+index.
+
+What a `200` guarantees: every delete-by-query in the scope was flushed, AND none of them reported
+per-shard failures or skipped documents. An index that does not exist counts as success, so repeating
+a deletion is harmless — that is the caller's retry contract, and authd relies on it.
+
+Two windows can still leave a single document behind, and neither turns the `200` into a failure.
+Repeating the deletion clears either one:
+
+- **The index refresh interval.** A delete-by-query is a SEARCH, so it only sees refreshed segments,
+  and authd deletes immediately after removing the agent from `client.keys`. Documents the agent's
+  last session wrote inside that interval are invisible to the query, and with the agent gone nothing
+  overwrites them. Refreshing each index first would close this, but `_refresh` requires the
+  `indices:admin/refresh` privilege, which the manager's least-privilege indexer role does not grant —
+  granting it and restoring the refresh is tracked as a follow-up.
+- **The asynchronous write queue.** `POST /config` and `POST /stats` are written through the module's
+  asynchronous connector, whose queue the deletion cannot drain. A report still queued when the
+  deletion runs lands after it and recreates that document. Ordering those two routes against the
+  deletion (as `/stateful` sessions already are, through the agent's worker shard) is the other
+  follow-up.
 
 ## The `/stateful` session semantics
 

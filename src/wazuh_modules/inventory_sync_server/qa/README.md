@@ -23,6 +23,14 @@ from the indexer.
   (`opensearch-test`, security disabled) is started via docker. A minimal
   index template is installed so the fields the server's own queries sort and
   filter on (`checksum.hash.sha1`, `wazuh.agent.id`, ...) are `keyword`.
+  Note that the container runs with the security plugin DISABLED, so nothing
+  here exercises indexer permissions — a role whose write/delete privileges do
+  not cover the `wazuh-agent-config` / `wazuh-agent-stats` patterns would pass
+  this suite and fail in production.
+- `config.json` sets `flush_interval_seconds: 1` on purpose. It reaches the
+  ASYNCHRONOUS connector (the one `POST /config` and `POST /stats` write
+  through), whose default 20 s timer would otherwise make every test that reads
+  those two indices wait for it.
 
 ## Running locally
 
@@ -47,7 +55,7 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 | `test_cleans_and_resync.py` | Cleans single/multi-index (agent-scoped, deduplicated), forbidden-index noop, and the composed full resync (D19: Cleans + ModuleDelta) |
 | `test_checksum.py` | **ModuleCheck for real** (the legacy suite's hole): match, mismatch→409, agent scoping, `search_after` pagination past 1000 documents, empty-set aggregate |
 | `test_metadata_groups.py` | MetadataDelta/GroupDelta across declared indices, the `global_version` stale-writer guard, MetadataCheck repair-if-needed, forbidden-indices noop |
-| `test_delete_agent.py` | `DELETE /agents` + POST alias: agent-scoped wipe, 404-as-success retries, 400s, FIFO vs the agent's own sessions |
+| `test_delete_agent.py` | `DELETE /agents` + POST alias: agent-scoped wipe across the whole deletion scope (`wazuh-states-*` **plus** `wazuh-agent-config` and `wazuh-agent-stats`), 404-as-success retries, 400s, FIFO vs the agent's own sessions. The tests refresh the indices before deleting, because the server does not. Carries two **skipped** tests recording the two known limitations: a document written inside the index refresh interval, and a `/config` or `/stats` report still queued in the asynchronous connector when the deletion runs, both survive it |
 | `test_vd_lane.py` | VD-flagged sessions under `--no-vd`: the legitimate-skip row indexes + 200, VD Cleans take the normal pipeline, and `GET /metrics` reflects the lane traffic |
 
 Deliberately NOT here: capacity/budget rejections (413/503) and scan-failure

@@ -142,7 +142,11 @@ def server(indexer, tmp_path_factory):
     workdir = tmp_path_factory.mktemp("server")
 
     config = dict(CONFIG)
-    config["indexer"] = {"hosts": [os.environ.get("INDEXER_URL", CONFIG["indexer"]["hosts"][0])]}
+    # Override only the host, keeping whatever else config.json declares -- `flush_interval_seconds`
+    # in particular, without which the ASYNC connector (POST /config, POST /stats) holds a write for
+    # its 20 s default and every test that reads one back has to outwait it.
+    config["indexer"] = {**CONFIG["indexer"],
+                         "hosts": [os.environ.get("INDEXER_URL", CONFIG["indexer"]["hosts"][0])]}
     config_path = workdir / "config.json"
     config_path.write_text(json.dumps(config))
 

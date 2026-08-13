@@ -140,6 +140,12 @@ set(INDEXED_QUEUE_OP_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_u
 list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS}")
 endif()
 
+# http_op.c is server-only (shared/CMakeLists.txt drops it for Windows), so is its test.
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_http_op")
+list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_agent_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid \
