@@ -756,8 +756,10 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
 
     ASSERT_EQ(1u, decompressedBodies.size());
     size_t eventCount = 0;
+
     for (size_t pos = 0; (pos = decompressedBodies[0].find("E aaaa\n", pos)) != std::string::npos;
-         pos += 7, eventCount++) {}
+            pos += 7, eventCount++) {}
+
     EXPECT_EQ(2u, eventCount); // Only two events fit the uncompressed budget.
 
     // The third event is still pending, not dropped: a further tick sends it.
