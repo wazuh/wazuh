@@ -163,6 +163,25 @@ TEST_F(ReporterStreamTest, NullCollectorReturnSkipsWithoutSending)
     EXPECT_EQ(1, m_collectors.m_statsCalls); // Collected, then skipped.
 }
 
+TEST_F(ReporterStreamTest, NullCollectorReturnRetriesSoonNotAfterFullInterval)
+{
+    // Models the startup race: the reporter's gate opens on registration, but the
+    // local modules (logcollector/syscheck/...) have not unlocked yet, so the
+    // collector comes back empty on the first attempt. It must retry on the same
+    // short backoff as a send failure, not wait out the full (60 s here) interval.
+    m_collectors.m_stats = std::nullopt;
+    const auto config = makeConfig(true, false);
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_cluster, m_collectors};
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+
+    reporter.tick(m_waiter, true); // First attempt: nothing collected yet.
+    EXPECT_EQ(1, m_collectors.m_statsCalls);
+
+    m_clock.advance(std::chrono::milliseconds {1}); // Far short of the 60 s interval.
+    reporter.tick(m_waiter, true);
+    EXPECT_EQ(2, m_collectors.m_statsCalls); // Retried already, not stuck for an hour/interval.
+}
+
 TEST_F(ReporterStreamTest, NonObjectCollectorReturnIsSkipped)
 {
     m_collectors.m_stats = R"(["not","an","object"])";

@@ -16,8 +16,8 @@
 
 #include <cJSON.h>
 
-#include "agentd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "agentd.h"
 #ifndef TEST_WINAGENT
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #endif
@@ -40,6 +40,19 @@ static const answer_t* g_answers = NULL;
 static size_t g_answer_count = 0;
 static const char* g_connected_target = NULL;
 static int g_connect_calls = 0;
+
+/* report_query() gates every component query on this (#37843 follow-up). Wrapped
+ * (not touched via extern) because agent_report.c/startup_gate.c are each compiled
+ * twice for TARGET=winagent -- once into agentd_lib, once into wazuh-agentd (see
+ * client-agent/CMakeLists.txt) -- so a global this test pokes directly is not
+ * guaranteed to be the same one the linked report_query() actually reads (that bit
+ * every test in this file that expected a component to answer, on CI's winagent
+ * run, twice). --wrap redirects the *call*, so it does not matter which of the two
+ * compiled copies of report_query() ends up in the final binary. */
+bool __wrap_startup_gate_is_settled(__attribute__((unused)) unsigned int margin_seconds)
+{
+    return true;
+}
 
 /* --- Stub implementations --- */
 static const answer_t* answer_for(const char* target)

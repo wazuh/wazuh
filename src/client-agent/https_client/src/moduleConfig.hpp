@@ -67,7 +67,9 @@ struct ModuleConfig
 
         std::string spoolDir;
 
-        // #37843 periodic reporters (both off by default).
+        // #37843 periodic reporters. Struct defaults only; fromC() always overrides
+        // both from the agent config, where <config_report> ships on and
+        // <stats_report> stays off (see ClientConf() in client-agent/src/config.c).
         bool statsEnabled {false};
         uint32_t statsIntervalS {60};
         bool configReportEnabled {false};

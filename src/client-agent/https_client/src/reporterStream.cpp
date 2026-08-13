@@ -92,7 +92,11 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter,
 
     if (!document)
     {
-        path.nextDue = now + path.interval; // Nothing to send this cycle.
+        // Nothing to send this cycle -- typically the collector racing the startup
+        // gate right after registration, before the local modules unlock. Retry on
+        // the same short backoff as a send failure rather than the full interval, so
+        // a clean start still gets its first snapshot within seconds, not an hour.
+        path.nextDue = now + backoff.next();
         return;
     }
 
@@ -102,10 +106,16 @@ void ReporterStream::runPath(Path& path, Backoff& backoff, Waiter& waiter,
     spec.bodyLength = document->size();
     spec.timeoutMs = m_config.requestTimeoutMs;
 
+    // Operational visibility (send-time debug log, mirroring statelessStream.cpp's
+    // flushOnce() and controlStream.cpp's sendNotify()): confirms a /stats or
+    // /config push was actually attempted and with what payload size.
+    LOGFN_DEBUG2(m_logFn, "Sending %s snapshot (%zu bytes).", path.target.c_str(), document->size());
+
     const auto result = m_sender.send(spec, waiter, REPORTER_MAX_ATTEMPTS);
 
     if (result.outcome == OutcomeClass::Ok)
     {
+        LOGFN_DEBUG2(m_logFn, "%s snapshot delivered to the manager.", path.target.c_str());
         backoff.reset();
         path.nextDue = now + path.interval;
     }

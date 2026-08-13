@@ -26,8 +26,16 @@ static bool startup_gate_ready = true;
 static char startup_gate_reason[OS_SIZE_128] = "disabled";
 static bool startup_gate_download_pending = false;
 
+/* When this process's own gate opened. The other daemons each poll it (via
+ * startup_gate_wait_for_ready()) on their own STARTUP_GATE_POLL_INTERVAL and
+ * then still need a moment to open their own command socket, so "the gate is
+ * open" is not the same instant as "every daemon is answering" -- see
+ * startup_gate_is_settled(). */
+static time_t startup_gate_ready_since = 0;
+
 static void startup_gate_set_locked(bool ready, const char *reason) {
     startup_gate_ready = ready;
+    startup_gate_ready_since = ready ? time(NULL) : 0;
 
     if (reason && reason[0]) {
         snprintf(startup_gate_reason, sizeof(startup_gate_reason), "%s", reason);
@@ -135,4 +143,23 @@ bool startup_gate_is_ready(void) {
 
     startup_gate_get_status(&ready, NULL, 0);
     return ready;
+}
+
+/* Stricter than startup_gate_is_ready(): also demands margin_seconds have
+ * elapsed since it opened, so the other daemons (each polling the same gate
+ * on their own STARTUP_GATE_POLL_INTERVAL and then still opening their own
+ * command socket) have very likely caught up too. Only report_query() should
+ * use this -- everyone else that means "may I start now?" wants the gate the
+ * instant it opens, not delayed by someone else's margin. */
+bool startup_gate_is_settled(unsigned int margin_seconds)
+{
+    bool ready = false;
+    time_t ready_since = 0;
+
+    w_mutex_lock(&startup_gate_mutex);
+    ready = startup_gate_ready;
+    ready_since = startup_gate_ready_since;
+    w_mutex_unlock(&startup_gate_mutex);
+
+    return ready && ready_since != 0 && (time(NULL) - ready_since) >= (time_t)margin_seconds;
 }

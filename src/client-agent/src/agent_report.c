@@ -44,6 +44,12 @@ static const report_source_t STATS_SOURCES[] = {
     {"logcollector", "getallstats"},
 };
 
+/* REPORT_STARTUP_SETTLE_SECONDS (agentd.h): the other daemons each poll the
+ * same startup gate on their own 1 s interval (STARTUP_GATE_POLL_INTERVAL)
+ * and then still need a moment to open their own command socket, so the gate
+ * opening is not the same instant as every daemon answering. See
+ * startup_gate_is_settled(). */
+
 #ifdef WIN32
 
 /**
@@ -79,16 +85,18 @@ static char *report_query(const char *target, const char *command) {
     char request[OS_SIZE_128] = {0};
     char *response = NULL;
 
-    /* On POSIX, a component that has not finished starting up simply is not
-     * listening on its socket yet, so report_query() below fails the connect
-     * and skips it cleanly. In-process there is no socket to refuse the call:
-     * dispatching straight into e.g. syscheckd before its own thread has run
-     * past the startup gate touches state it has not initialized yet (its
-     * directories_lock is a prime example) instead of getting turned away.
-     * The startup gate is the only cross-module readiness signal this process
-     * has, so until it opens, every target is treated the same way a POSIX
-     * daemon that is not answering yet would be. */
-    if (!startup_gate_is_ready()) {
+    /* In-process there is no socket to refuse the call the way the POSIX
+     * report_query() below gets refused: dispatching straight into e.g.
+     * syscheckd before its own thread has run past the startup gate touches
+     * state it has not initialized yet (its directories_lock is a prime
+     * example) instead of getting turned away. The startup gate is the only
+     * cross-module readiness signal this process has, so until it (plus the
+     * settle margin) has elapsed, every target is treated the same way a
+     * component that is not answering yet would be -- see the POSIX
+     * report_query() below for the other half of why this also guards
+     * against a pre-reload config. */
+    if (!startup_gate_is_settled(REPORT_STARTUP_SETTLE_SECONDS))
+    {
         mdebug1("Component '%s' is not answering, leaving it out of the report.", target);
         return NULL;
     }
@@ -151,6 +159,22 @@ static char *report_exchange(int sock, const char *command) {
 static char *report_query(const char *target, const char *command) {
     char sockname[PATH_MAX + 1] = {0};
     int sock;
+
+    /* Same reasoning as the Windows report_query() above: until the startup
+     * gate opens (plus REPORT_STARTUP_SETTLE_SECONDS, for the other daemons
+     * to have very likely opened their own sockets too), a component that
+     * has not started yet is indistinguishable from one that is disabled,
+     * and a component that HAS opened its socket may still be running on the
+     * pre-reload configuration if a fresher one is about to be downloaded
+     * from the manager. Skipping every source until then keeps the first
+     * /config (and /stats) push from racing that decision -- report_collect()
+     * then sees nothing answered and the caller retries on its short backoff
+     * instead of settling for whatever happened to be up first. */
+    if (!startup_gate_is_settled(REPORT_STARTUP_SETTLE_SECONDS))
+    {
+        mdebug1("Component '%s' is not answering, leaving it out of the report.", target);
+        return NULL;
+    }
 
     snprintf(sockname, sizeof(sockname), "queue/sockets/%s", target);
 
