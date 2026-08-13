@@ -1440,80 +1440,6 @@ void test_wdb_update_agent_status_code_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_get_agent_name */
-
-void test_wdb_get_agent_name_error_no_json_response(void **state) {
-    int id = 1;
-    char *name = NULL;
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent's 1 name.");
-
-    name = wdb_get_agent_name(id, NULL);
-
-    assert_null(name);
-}
-
-void test_wdb_get_agent_name_success(void **state) {
-    cJSON *root = NULL;
-    cJSON *row = NULL;
-    cJSON *str = NULL;
-    int id = 1;
-    char *name = NULL;
-
-    root = __real_cJSON_CreateArray();
-    row = __real_cJSON_CreateObject();
-    str = __real_cJSON_CreateString("agent1");
-    __real_cJSON_AddItemToObject(row, "name", str);
-    __real_cJSON_AddItemToArray(root, row);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, str);
-
-    expect_function_call(__wrap_cJSON_Delete);
-
-    name = wdb_get_agent_name(id, NULL);
-
-    assert_string_equal("agent1", name);
-
-    __real_cJSON_Delete(root);
-    os_free(name);
-}
-
-void test_wdb_get_agent_name_not_found(void **state) {
-    cJSON *root = NULL;
-    cJSON *row = NULL;
-    cJSON *str = NULL;
-    int id = 1;
-    char *name = NULL;
-
-    root = __real_cJSON_CreateArray();
-    __real_cJSON_AddItemToArray(root, row);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, str);
-
-    expect_function_call(__wrap_cJSON_Delete);
-
-    name = wdb_get_agent_name(id, NULL);
-
-    assert_string_equal("", name);
-
-    __real_cJSON_Delete(root);
-    os_free(name);
-}
-
 /* Tests wdb_remove_agent */
 
 void test_wdb_remove_agent_remove_db_error(void **state)
@@ -3598,10 +3524,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_agent_status_code_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_get_agent_name */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_not_found, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_agent */
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_remove_db_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),

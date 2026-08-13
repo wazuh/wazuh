@@ -270,18 +270,13 @@ void sync_keys_with_wdb(keystore *keys) {
         int agent_id = atoi(ids[i]);
 
         if (agent_id && (OS_IsAllowedID(keys, ids[i]) == -1)) {
-            char *agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
-
             if (wdb_remove_agent(agent_id, &wdb_wmdb_sock) < 0) {
                 mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent '%s' from the database.", ids[i]);
-                os_free(agent_name);
                 continue;
             }
 
-            delete_diff(agent_name);
             OS_RemoveCounter(ids[i]);
             OS_RemoveAgentTimestamp(ids[i]);
-            os_free(agent_name);
         }
     }
 

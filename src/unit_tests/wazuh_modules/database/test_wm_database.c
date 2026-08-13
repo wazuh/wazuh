@@ -145,8 +145,6 @@ void test_sync_keys_with_wdb_delete(void **state) {
     char **ids = NULL;
     ids = os_AddStrArray("001", ids);
 
-    char *test_name = strdup("TESTNAME");
-
     will_return(__wrap_wdb_get_all_agents_rbtree, tree);
 
     expect_value(__wrap_rbtree_get, tree, tree);
@@ -157,9 +155,6 @@ void test_sync_keys_with_wdb_delete(void **state) {
 
     expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
     will_return(__wrap_OS_IsAllowedID, -1);
-
-    expect_value(__wrap_wdb_get_agent_name, id, 1);
-    will_return(__wrap_wdb_get_agent_name, test_name);
 
     expect_value(__wrap_wdb_remove_agent, id, 1);
     will_return(__wrap_wdb_remove_agent, -1);
@@ -178,7 +173,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     os_calloc(1, sizeof(rb_tree), tree);
 
     char *test_ip = "1.1.1.1";
-    char *test_name = strdup("TESTNAME");
 
     char **ids = NULL;
     ids = os_AddStrArray("001", ids);
@@ -209,14 +203,8 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
     will_return(__wrap_OS_IsAllowedID, -1);
 
-    expect_value(__wrap_wdb_get_agent_name, id, 1);
-    will_return(__wrap_wdb_get_agent_name, test_name);
-
     expect_value(__wrap_wdb_remove_agent, id, 1);
     will_return(__wrap_wdb_remove_agent, 0);
-
-    expect_string(__wrap_rmdir_ex, name, "queue/diff/TESTNAME");
-    will_return(__wrap_rmdir_ex, 0);
 
     expect_string(__wrap_unlink, file, "queue/rids/001");
     will_return(__wrap_unlink, 0);

@@ -25,7 +25,6 @@ static const char *global_db_commands[] = {
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
-    [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
@@ -499,37 +498,6 @@ cJSON* wdb_get_agent_info(int id, int *sock) {
     }
 
     return root;
-}
-
-char* wdb_get_agent_name(int id, int *sock) {
-    char *output = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *root = NULL;
-    cJSON *json_name = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_AGENT_NAME], id);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the agent's %d name.", id);
-        return NULL;
-    }
-
-    json_name = cJSON_GetObjectItem(root->child,"name");
-    if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
-        os_strdup(json_name->valuestring, output);
-    } else {
-        os_strdup("", output);
-    }
-
-    cJSON_Delete(root);
-    return output;
 }
 
 char* wdb_get_agent_group(int id, int *sock) {

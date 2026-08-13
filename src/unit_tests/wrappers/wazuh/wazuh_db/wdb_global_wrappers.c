@@ -112,12 +112,6 @@ char * __wrap_wdb_global_validate_sync_status(__attribute__((unused)) wdb_t *wdb
     return str;
 }
 
-cJSON* __wrap_wdb_global_select_agent_name(__attribute__((unused)) wdb_t *wdb,
-                                           int id) {
-    check_expected(id);
-    return mock_ptr_type(cJSON*);
-}
-
 cJSON* __wrap_wdb_global_select_agent_group(__attribute__((unused)) wdb_t *wdb,
                                             int id) {
     check_expected(id);

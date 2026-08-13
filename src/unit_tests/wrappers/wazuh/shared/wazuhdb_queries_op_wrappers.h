@@ -46,8 +46,6 @@ int __wrap_wdb_set_agent_groups(int id,
 
 char* __wrap_wdb_get_agent_group(int id, int* wdb_sock);
 
-char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int* wdb_sock);
-
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int* sock);
 
 int __wrap_wdb_insert_agent(int id,

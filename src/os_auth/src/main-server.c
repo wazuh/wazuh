@@ -1385,11 +1385,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
 
             gettime(&t0);
-            delete_diff(cur->name);
-            gettime(&t1);
-            mdebug2("[Writer] delete_diff(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            gettime(&t0);
             OS_RemoveCounter(cur->id);
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));

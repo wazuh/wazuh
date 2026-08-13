@@ -1223,101 +1223,6 @@ void test_wdb_parse_global_delete_agent_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_select_agent_name */
-
-void test_wdb_parse_global_select_agent_name_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-name";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for select-agent-name.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: select-agent-name");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_name);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'select-agent-name'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_name_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-name 1";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name 1");
-    expect_value(__wrap_wdb_global_select_agent_name, id, 1);
-    will_return(__wrap_wdb_global_select_agent_name, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting agent name from global.db.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_name);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_name_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting agent name from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_select_agent_name_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global select-agent-name 1";
-    cJSON *j_object = NULL;
-
-    j_object = cJSON_CreateObject();
-    cJSON_AddStringToObject(j_object, "name", "test_name");
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: select-agent-name 1");
-    expect_value(__wrap_wdb_global_select_agent_name, id, 1);
-    will_return(__wrap_wdb_global_select_agent_name, j_object);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_name);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_select_agent_name_time);
-
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_select_agent_group */
 
 void test_wdb_parse_global_select_agent_group_syntax_error(void **state)
@@ -4767,10 +4672,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_select_agent_name */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_name_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_select_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_query_error, test_setup, test_teardown),
