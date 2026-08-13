@@ -27,6 +27,47 @@
 namespace
 {
     using FilePtr = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
+
+    /// Names the options applyTls() sets, so a rejected one is nameable in the
+    /// log instead of surfacing as a bare handshake failure.
+    const char* optionName(CurlOption option)
+    {
+        switch (option)
+        {
+            case CurlOption::VerifyPeer:
+                return "SSL_VERIFYPEER";
+
+            case CurlOption::VerifyHost:
+                return "SSL_VERIFYHOST";
+
+            case CurlOption::CaInfo:
+                return "CAINFO";
+
+            case CurlOption::SslCert:
+                return "SSLCERT";
+
+            case CurlOption::SslKey:
+                return "SSLKEY";
+
+            case CurlOption::SslVersion:
+                return "SSLVERSION";
+
+            case CurlOption::SslCiphers:
+                return "TLS13_CIPHERS";
+
+            case CurlOption::SslOptions:
+                return "SSL_OPTIONS";
+
+            case CurlOption::FollowLocation:
+                return "FOLLOWLOCATION";
+
+            case CurlOption::NoSignal:
+                return "NOSIGNAL";
+
+            default:
+                return "unknown"; // LCOV_EXCL_LINE: applyTls sets none of the rest.
+        }
+    }
 }
 
 CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory)
@@ -66,7 +107,12 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     const FilePtr responseGuard {responseFile, std::fclose};
 
     configureRequest(*handle, spec, response);
-    applyTls(*handle);
+
+    if (!applyTls(*handle))
+    {
+        response.status = TransportStatus::TlsFail;
+        return response;
+    }
 
     response.status = handle->perform();
     response.httpCode = handle->responseCode();
@@ -197,35 +243,82 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     }
 }
 
-void CurlPerformer::applyTls(ICurlHandle& handle) const
+bool CurlPerformer::applyTls(ICurlHandle& handle) const
 {
     const bool verifyPeer = m_config.verifyMode != HC_VERIFY_NONE;
     const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL;
-    handle.setOptionLong(CurlOption::VerifyPeer, verifyPeer ? 1L : 0L);
-    handle.setOptionLong(CurlOption::VerifyHost, verifyHost ? 2L : 0L);
 
     // The manager's HTTPS listener sets a TLS 1.3 floor of its own
     // (SSL_CTX_set_min_proto_version in RestinioHttpServer), so match it instead
     // of leaving libcurl's default, which still permits 1.0. Unconditional: this
     // is the protocol's floor, not something <ssl> is allowed to lower.
-    handle.setOptionLong(CurlOption::SslVersion, TLS_MIN_VERSION_1_3);
+    return setMandatoryOption(handle, CurlOption::VerifyPeer, verifyPeer ? 1L : 0L)
+           && setMandatoryOption(handle, CurlOption::VerifyHost, verifyHost ? 2L : 0L)
+           && setMandatoryOption(handle, CurlOption::SslVersion, TLS_MIN_VERSION_1_3)
+           && applyTrustAnchors(handle)
+           && applyClientCertificate(handle)
+           && applyCiphers(handle)
+           && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
+           && setMandatoryOption(handle, CurlOption::NoSignal, 1L);      // H6.
+}
 
+bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
+{
     if (!m_config.caPath.empty())
     {
-        handle.setOptionString(CurlOption::CaInfo, m_config.caPath);
+        // An explicit <ca> is the whole trust set; adding the machine's stores
+        // on top of it would widen what the agent accepts.
+        return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
     }
 
-    if (!m_config.clientCert.empty())
+#ifdef WIN32
+    // Windows curl is built against our OpenSSL (src/external/CMakeLists.txt),
+    // which carries no CA bundle there, so without this nothing is trusted at
+    // all. Schannel used to consult the Windows stores implicitly; this asks
+    // OpenSSL for the same ROOT+CA stores through the Win32 crypto API.
+    return setMandatoryOption(handle, CurlOption::SslOptions, TLS_NATIVE_CA_STORE);
+#else
+    // Elsewhere libcurl already defaults to the system bundle it was built with.
+    return true;
+#endif
+}
+
+bool CurlPerformer::applyClientCertificate(ICurlHandle& handle) const
+{
+    if (m_config.clientCert.empty())
     {
-        handle.setOptionString(CurlOption::SslCert, m_config.clientCert);
-        handle.setOptionString(CurlOption::SslKey, m_config.clientKey);
+        return true;
     }
 
-    if (!m_config.ciphers.empty())
+    return setMandatoryOption(handle, CurlOption::SslCert, m_config.clientCert)
+           && setMandatoryOption(handle, CurlOption::SslKey, m_config.clientKey);
+}
+
+bool CurlPerformer::applyCiphers(ICurlHandle& handle) const
+{
+    return m_config.ciphers.empty()
+           || setMandatoryOption(handle, CurlOption::SslCiphers, m_config.ciphers);
+}
+
+bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option, long value) const
+{
+    if (handle.setOptionLong(option, value))
     {
-        handle.setOptionString(CurlOption::SslCiphers, m_config.ciphers);
+        return true;
     }
 
-    handle.setOptionLong(CurlOption::FollowLocation, 0L); // H4: no redirects.
-    handle.setOptionLong(CurlOption::NoSignal, 1L);       // H6.
+    LOGFN_ERROR(m_logFn, "libcurl rejected %s; refusing to connect without it.", optionName(option));
+    return false;
+}
+
+bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option,
+                                       const std::string& value) const
+{
+    if (handle.setOptionString(option, value))
+    {
+        return true;
+    }
+
+    LOGFN_ERROR(m_logFn, "libcurl rejected %s; refusing to connect without it.", optionName(option));
+    return false;
 }

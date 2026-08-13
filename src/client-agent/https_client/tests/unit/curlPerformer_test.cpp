@@ -233,6 +233,71 @@ TEST(CurlPerformerTest, ClientCertAndCiphersApplied)
     performer.perform(HttpRequestSpec {});
 }
 
+TEST(CurlPerformerTest, RejectedTlsOptionAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    // What a backend that does not implement the option answers.
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslVersion, _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
+TEST(CurlPerformerTest, RejectedCipherListAbortsBeforePerforming)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_FULL);
+    config.ciphers = "TLS_AES_128_GCM_SHA256";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::SslCiphers, _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(config, std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+}
+
+TEST(CurlPerformerTest, ConfiguredCaIsTheWholeTrustSet)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_FULL);
+    config.caPath = "/etc/ca.pem";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ca.pem"));
+    // The machine's own stores are never added on top of it.
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+
+    auto performer = makePerformer(config, std::move(mock));
+    performer.perform(HttpRequestSpec {});
+}
+
+TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
+#ifdef WIN32
+    // Our OpenSSL-backed Windows curl has no bundle of its own to fall back on.
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
+#else
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+#endif
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    performer.perform(HttpRequestSpec {});
+}
+
 TEST(CurlPerformerTest, FileBodyStreamsInsteadOfPostFields)
 {
     const std::string path = ::testing::TempDir() + "hc_curl_performer_body.tmp";

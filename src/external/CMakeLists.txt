@@ -251,6 +251,16 @@ add_dependencies(ext_libyaml libyaml_external)
 # ------------------------------------------------------------------------------
 
 if(IS_WINDOWS)
+  # OpenSSL, not Schannel. Schannel cannot negotiate TLS 1.3 before Windows 11
+  # / Server 2022, and it does not advertise SSLSUPP_TLS13_CIPHERSUITES, so
+  # CURLOPT_TLS13_CIPHERS comes back CURLE_NOT_BUILT_IN. The manager's HTTPS
+  # listener pins a hardcoded TLS 1.3 floor, so a Schannel agent cannot reach
+  # it at all on those Windows versions. The rest of the agent (ssl_op.c,
+  # enrollment, authd) already links the mingw OpenSSL built above, so pointing
+  # curl at the same tree costs no extra dependency. Callers must set
+  # CURLSSLOPT_NATIVE_CA to keep validating against the Windows certificate
+  # store, which Schannel used to give us for free.
+  #
   # _WIN32_WINNT=0x0600 (Vista) is the rest of the project's target — see
   # src/syscheckd/CMakeLists.txt, src/wazuh_modules/CMakeLists.txt, etc.
   # Curl ≥ 8.x's configure refuses to build for anything older. MinGW 12+
@@ -258,18 +268,27 @@ if(IS_WINDOWS)
   # implicitly, but the compile_windows_agent image (ubuntu:22.04) ships
   # MinGW 10, which still defaults to 0x0501 (XP). Set it explicitly so the
   # build is portable across MinGW versions.
+  #
+  # --with-openssl=DIR searches DIR/lib, but our OpenSSL builds in-source, so
+  # the archives sit at DIR/ — hence the explicit -L, same as the Linux and
+  # Darwin arms. LIBS is what configure's own OpenSSL probe needs to link:
+  # libcrypto's Windows engine calls into the certificate store (crypt32) and
+  # its socket BIO into winsock (ws2_32), and without both, `HMAC_Update in
+  # -lcrypto` fails and configure aborts with "OpenSSL could not be detected".
   set(CURL_CONFIGURE_CMD
       ${CMAKE_COMMAND}
       -E
       env
       "CFLAGS=-fPIC -D_WIN32_WINNT=0x0600"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "LIBS=-lcrypt32 -lws2_32"
       CC=${MINGW_CC}
       ${EXTERNAL_DIR}/curl/configure
       --host=${MINGW_HOST}
       PREFIX=${MINGW_PREFIX}
       --enable-static=yes
       --disable-shared
-      --with-schannel
+      --with-openssl=${EXTERNAL_DIR}/openssl
       --disable-ldap
       --without-libidn2
       --without-libpsl
