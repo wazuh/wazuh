@@ -3200,6 +3200,7 @@ static void test_fim_directory_opendir_error(void **state) {
     expect_string(wrap_FindFirstFile, lpFileName, L"test\\*");
     will_return(wrap_FindFirstFile, NULL);
     will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(__wrap_win_strerror, "Permission denied");
 #else
     will_return(__wrap_opendir, 0);
 #endif
