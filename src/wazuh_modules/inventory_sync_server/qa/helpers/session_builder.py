@@ -71,7 +71,7 @@ def _build_start(builder, start):
     """Start table from a dict; only what the dict names is set (plus defaults)."""
     strings = {}
     for key in ("module", "architecture", "hostname", "osname", "osplatform", "ostype",
-                "osversion", "agentversion", "agentname", "agentid", "cluster_name", "cluster_node"):
+                "osversion", "agentversion", "agentname", "agentid", "cluster_name"):
         if start.get(key) is not None:
             strings[key] = builder.CreateString(str(start[key]))
 
@@ -104,8 +104,7 @@ def _build_start(builder, start):
                      ("osname", Start.StartAddOsname), ("osplatform", Start.StartAddOsplatform),
                      ("ostype", Start.StartAddOstype), ("osversion", Start.StartAddOsversion),
                      ("agentversion", Start.StartAddAgentversion), ("agentname", Start.StartAddAgentname),
-                     ("agentid", Start.StartAddAgentid), ("cluster_name", Start.StartAddClusterName),
-                     ("cluster_node", Start.StartAddClusterNode)):
+                     ("agentid", Start.StartAddAgentid), ("cluster_name", Start.StartAddClusterName)):
         if key in strings:
             add(builder, strings[key])
     if groups is not None:
@@ -265,7 +264,6 @@ def default_start(agent_id, cluster_name, **overrides):
         "agentid": agent_id,
         "groups": ["default"],
         "cluster_name": cluster_name,
-        "cluster_node": "node01",
     }
     start.update(overrides)
     return start

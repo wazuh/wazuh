@@ -57,8 +57,7 @@ namespace
                                      "001",
                                      nullptr, // groups
                                      3,       // global_version
-                                     "cluster01",
-                                     "node01");
+                                     "cluster01");
     }
 
     /// Finishes the buffer and returns the verified root, failing the test on a verifier rejection.
@@ -149,7 +148,6 @@ TEST(SchemaRoundtripTest, FullSessionWithSyncDataRoundTrips)
     EXPECT_EQ("001", start->agentid()->str());
     EXPECT_EQ(3U, start->global_version());
     EXPECT_EQ("cluster01", start->cluster_name()->str());
-    EXPECT_EQ("node01", start->cluster_node()->str());
     ASSERT_EQ(1U, start->index()->size());
     EXPECT_EQ("wazuh-states-inventory-packages", start->index()->Get(0)->str());
 

@@ -65,7 +65,6 @@ namespace invsync::sync
         /// EFFECTIVE cluster name: the session's when non-empty (it was validated against the
         /// manager's), the manager's otherwise -- the same fallback the legacy `_id` builder used.
         std::string clusterName;
-        std::string clusterNode; ///< Verbatim from Start; consumed by the vulnerability scanner.
     };
 
     /// A request-level rejection: 400 (protocol) or 403 (identity). The reason lands verbatim in

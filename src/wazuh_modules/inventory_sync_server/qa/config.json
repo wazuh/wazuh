@@ -5,6 +5,5 @@
         ],
         "flush_interval_seconds": 1
     },
-    "clusterName": "cluster01",
-    "clusterNodeName": "node01"
+    "clusterName": "cluster01"
 }

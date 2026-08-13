@@ -45,7 +45,6 @@ namespace invsync::test
         std::vector<std::string> indices {"wazuh-states-inventory-packages"};
         std::uint64_t globalVersion {3};
         std::string clusterName {"test-cluster"};
-        std::string clusterNode {"test-node"};
         /// Start.feed_offset. Only meaningful for VD sessions (option VDFirst/VDSync); see
         /// fullSessionValidator.hpp's ValidatedSession::feedOffset.
         std::uint64_t feedOffset {0};
@@ -103,7 +102,6 @@ namespace invsync::test
                                      groupVector.empty() ? nullptr : &groupVector,
                                      spec.globalVersion,
                                      spec.clusterName.empty() ? nullptr : spec.clusterName.c_str(),
-                                     spec.clusterNode.c_str(),
                                      spec.feedOffset);
     }
 

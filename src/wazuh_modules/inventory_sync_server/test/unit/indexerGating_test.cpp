@@ -42,7 +42,6 @@ namespace
     {
         inventory_sync_server_config_t config {};
         std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "test-cluster");
-        std::snprintf(config.node_name, sizeof(config.node_name), "%s", "test-node");
         std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", socketPath.c_str());
         config.io_threads = 1;
         config.drain_timeout = 1;

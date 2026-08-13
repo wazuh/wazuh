@@ -20,27 +20,26 @@ namespace invsync::common
 {
 
     /**
-     * @brief This manager's cluster name and node name, copied out of the C-ABI config.
+     * @brief This manager's cluster name, copied out of the C-ABI config.
      *
      * `std::string`, not a reference into `inventory_sync_server_config_t`: the endpoints capture
      * this by value into handlers that are registered once and live for the process's lifetime, well
-     * past the single start() call that owns the C-ABI struct's fixed buffers. Two small strings are
+     * past the single start() call that owns the C-ABI struct's fixed buffer. A small string is
      * cheap to copy once per attempt and cannot dangle.
      */
     struct ClusterIdentity
     {
         std::string clusterName;
-        std::string nodeName;
-        /// True when a name contained bytes that are not valid UTF-8 and were replaced. The facade logs
-        /// it once at startup; keeping the reporting out of here avoids pulling the logger into headers
-        /// the endpoint tests include.
+        /// True when the name contained bytes that are not valid UTF-8 and were replaced. The facade
+        /// logs it once at startup; keeping the reporting out of here avoids pulling the logger into
+        /// headers the endpoint tests include.
         bool sanitized {false};
     };
 
     /**
      * @brief Replaces any byte that is not part of well-formed UTF-8 with '?'.
      *
-     * The reason this exists at all: these two names come from the MANAGER's own configuration and are
+     * The reason this exists at all: this name comes from the MANAGER's own configuration and is
      * stamped into every enriched document, and nlohmann validates UTF-8 at dump() time rather than on
      * assignment. A single stray latin-1 byte in `<cluster><name>` -- a mis-encoded accent is enough --
      * therefore made the serialization of EVERY request throw, and the endpoints answered 400 "Body
@@ -102,20 +101,19 @@ namespace invsync::common
     }
 
     /**
-     * @brief Reads the two fixed-size buffers out of the module's config.
+     * @brief Reads the fixed-size buffer out of the module's config.
      *
      * Same "C-ABI struct -> typed value" shape as buildServerConfig() (http_server/) and
      * buildSyncConnectorConfig()/buildAsyncConnectorConfig() (indexer/): a free function next to the
      * type it builds, independently testable, no facade state involved.
      *
      * An empty buffer stays an empty string -- inventory_sync_server_config_t documents empty as
-     * "no opinion", and stamping "" is what an operator sees if cluster/node were never configured.
+     * "no opinion", and stamping "" is what an operator sees if the cluster name was never configured.
      */
     inline ClusterIdentity buildClusterIdentity(const inventory_sync_server_config_t& config)
     {
         ClusterIdentity identity;
         identity.clusterName = sanitizeUtf8(config.cluster_name, identity.sanitized);
-        identity.nodeName = sanitizeUtf8(config.node_name, identity.sanitized);
         return identity;
     }
 

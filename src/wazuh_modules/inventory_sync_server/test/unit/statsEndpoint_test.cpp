@@ -122,7 +122,7 @@ namespace
     /// different one (and the empty-identity test needs the zeroed default).
     invsync::common::ClusterIdentity testClusterIdentity()
     {
-        return {"test-cluster", "test-node-01"};
+        return {"test-cluster"};
     }
 
     /// Sends one request through a fresh handler and returns what came back. The connector is available
@@ -294,7 +294,6 @@ TEST(StatsEndpointTest, NothingTheAgentClaimsAboutItsIdentityIsIndexed)
     EXPECT_FALSE(document.contains("cluster")) << "the reporter's root cluster object must not survive";
     EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>()) << "claimed 999";
     EXPECT_EQ("test-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("test-node-01", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
     EXPECT_EQ("1", document["/wazuh/schema/version"_json_pointer].get<std::string>()) << "claimed 999";
     EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>()) << "claimed 999";
 }
@@ -505,25 +504,23 @@ TEST(StatsEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
  * read from anything the caller sends -- unlike the agent id, there is no per-request source for it.
  * The report used here claims its own, which must not survive.
  */
-TEST(StatsEndpointTest, StampsTheInjectedClusterNameAndNode)
+TEST(StatsEndpointTest, StampsTheInjectedClusterName)
 {
-    const auto document = indexedDocument(kAgentReport, "001", {"prod-cluster", "node-03"});
+    const auto document = indexedDocument(kAgentReport, "001", {"prod-cluster"});
 
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("node-03", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
 
 /**
- * inventory_sync_server_config_t documents an empty cluster_name/node_name buffer as "no opinion",
- * not as "omit the field" -- so an unconfigured identity is stamped as an explicit empty string,
- * exactly like buildClusterIdentity() reads it. Silently dropping the field on empty would leave an
+ * inventory_sync_server_config_t documents an empty cluster_name buffer as "no opinion", not as
+ * "omit the field" -- so an unconfigured identity is stamped as an explicit empty string, exactly
+ * like buildClusterIdentity() reads it. Silently dropping the field on empty would leave an
  * unclustered manager's documents impossible to tell apart from a stamping bug.
  */
-TEST(StatsEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted)
+TEST(StatsEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringNotOmitted)
 {
     const auto document = indexedDocument(kAgentReport, "001", invsync::common::ClusterIdentity {});
 
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }

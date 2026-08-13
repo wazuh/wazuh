@@ -274,10 +274,8 @@ namespace
     /// (vdScanLane.cpp) entirely, so the caller passes the scanner's actual current offset here;
     /// hardcoding fixtures to a fixed value would silently drift the moment vd_reduced_feed.json's
     /// offsets change.
-    std::vector<uint8_t> buildFullSession(const AgentTestData& testData,
-                                          const std::string& clusterName,
-                                          const std::string& nodeName,
-                                          uint64_t defaultFeedOffset)
+    std::vector<uint8_t>
+    buildFullSession(const AgentTestData& testData, const std::string& clusterName, uint64_t defaultFeedOffset)
     {
         flatbuffers::FlatBufferBuilder builder;
         const auto& startJson = testData.start;
@@ -382,10 +380,9 @@ namespace
         const auto osplatform = builder.CreateString(startJson.value("osplatform", std::string("ubuntu")));
         const auto ostype = builder.CreateString(startJson.value("ostype", std::string("linux")));
         const auto osversion = builder.CreateString(startJson.value("osversion", std::string("22.04")));
-        // The server enforces Start.cluster_name == its own (403 on mismatch), so both come from
+        // The server enforces Start.cluster_name == its own (403 on mismatch), so this comes from
         // the SAME config value the server was started with.
         const auto clusterNameOffset = builder.CreateString(clusterName);
-        const auto clusterNodeOffset = builder.CreateString(nodeName);
         const auto feedOffset = startJson.value("feed_offset", defaultFeedOffset);
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
@@ -405,7 +402,6 @@ namespace
         startBuilder.add_agentid(agentIdOffset);
         startBuilder.add_groups(groupsOffset);
         startBuilder.add_cluster_name(clusterNameOffset);
-        startBuilder.add_cluster_node(clusterNodeOffset);
         const auto startOffset = startBuilder.Finish();
 
         const auto fullSession = Wazuh::SyncSchema::CreateFullSession(
@@ -548,7 +544,6 @@ int main(int argc, char* argv[])
             moduleConfig = nlohmann::json::parse(std::ifstream(config.configFile));
         }
         const auto clusterName = moduleConfig.value("clusterName", std::string("cluster01"));
-        const auto nodeName = moduleConfig.value("clusterNodeName", std::string("node01"));
 
         std::filesystem::create_directories("queue/sockets");
 
@@ -568,7 +563,6 @@ int main(int argc, char* argv[])
         std::cout << "[INFO] Starting inventory sync server..." << std::endl;
         inventory_sync_server_config_t serverConfig {};
         std::snprintf(serverConfig.cluster_name, sizeof(serverConfig.cluster_name), "%s", clusterName.c_str());
-        std::snprintf(serverConfig.node_name, sizeof(serverConfig.node_name), "%s", nodeName.c_str());
         cJSON* indexerJson = nullptr;
         if (moduleConfig.contains("indexer"))
         {
@@ -644,8 +638,7 @@ int main(int argc, char* argv[])
             HttpResult result;
             while (true)
             {
-                const auto session =
-                    buildFullSession(testData, clusterName, nodeName, vulnerabilityScanner.currentFeedOffset());
+                const auto session = buildFullSession(testData, clusterName, vulnerabilityScanner.currentFeedOffset());
                 result = postSession(DEFAULT_SOCKET_PATH, agentId, session);
                 if (result.status != 503 || result.retryAfter.empty() || std::chrono::steady_clock::now() >= deadline)
                 {

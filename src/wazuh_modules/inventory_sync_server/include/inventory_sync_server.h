@@ -63,7 +63,6 @@ extern "C"
     {
         /* ---- Cluster identity ---- */
         char cluster_name[256]; ///< Cluster name (empty -> "").
-        char node_name[256];    ///< Cluster node name (empty -> "").
 
         /* ---- Transport: the listening socket ---- */
         /**

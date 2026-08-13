@@ -40,14 +40,13 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 {
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "socket_path='%s', io_threads=%d, max_body_size=%d, max_parallel_connections=%d, "
-             "max_inflight_bytes=%lld, cluster='%s', node='%s'",
+             "max_inflight_bytes=%lld, cluster='%s'",
              config->socket_path,
              config->io_threads,
              config->max_body_size,
              config->max_parallel_connections,
              config->max_inflight_bytes,
-             config->cluster_name,
-             config->node_name);
+             config->cluster_name);
 
     /* The rest of the transport, so every tunable is observable here at debug level; the module's
      * own startup INFO carries the effective values. None of them is a secret. */
@@ -301,13 +300,6 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
             {
                 snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", cluster_name);
                 os_free(cluster_name);
-            }
-
-            char* manager_node_name = get_node_name();
-            if (manager_node_name)
-            {
-                snprintf(config.node_name, sizeof(config.node_name), "%s", manager_node_name);
-                os_free(manager_node_name);
             }
 
             /* Borrowed for the call only: the module deep-copies what it needs, and

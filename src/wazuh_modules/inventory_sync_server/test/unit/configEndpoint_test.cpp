@@ -110,7 +110,7 @@ namespace
     /// different one (and the empty-identity test needs the zeroed default).
     invsync::common::ClusterIdentity testClusterIdentity()
     {
-        return {"test-cluster", "test-node-01"};
+        return {"test-cluster"};
     }
 
     /// Sends one request through a fresh handler and returns what came back. The connector is available
@@ -526,25 +526,24 @@ TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
  * read from anything the caller sends -- there is no per-request source for it in the new array body
  * shape either.
  */
-TEST(ConfigEndpointTest, StampsTheInjectedClusterNameAndNode)
+TEST(ConfigEndpointTest, StampsTheInjectedClusterName)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
-    invsync::common::ClusterIdentity cluster {"prod-cluster", "node-03"};
+    invsync::common::ClusterIdentity cluster {"prod-cluster"};
 
     ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, cluster).status);
 
     const auto document = soleIndexedDocument(*connector);
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("node-03", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
 
 /**
- * inventory_sync_server_config_t documents an empty cluster_name/node_name buffer as "no opinion",
- * not as "omit the field" -- so an unconfigured identity is stamped as an explicit empty string,
- * exactly like buildClusterIdentity() reads it. Silently dropping the field on empty would leave an
+ * inventory_sync_server_config_t documents an empty cluster_name buffer as "no opinion", not as
+ * "omit the field" -- so an unconfigured identity is stamped as an explicit empty string, exactly
+ * like buildClusterIdentity() reads it. Silently dropping the field on empty would leave an
  * unclustered manager's documents impossible to tell apart from a stamping bug.
  */
-TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted)
+TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringNotOmitted)
 {
     auto connector = std::make_shared<FakeAsyncConnector>();
 
@@ -555,5 +554,4 @@ TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringsNotOmitted
     const auto document = soleIndexedDocument(*connector);
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("", document["/wazuh/cluster/node"_json_pointer].get<std::string>());
 }
