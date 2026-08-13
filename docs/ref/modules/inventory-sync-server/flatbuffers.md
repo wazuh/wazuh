@@ -75,7 +75,6 @@ table Start {
     groups: [string];
     global_version: ulong;     // guards metadata/group updates against stale writers
     cluster_name: string;      // MUST match the manager's cluster (403 otherwise)
-    cluster_node: string;
     feed_offset: ulong;        // agent-reported feed position; carried in the schema, not read by this module's pipeline
 }
 ```

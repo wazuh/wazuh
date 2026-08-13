@@ -171,10 +171,7 @@ namespace invsync
             m_lastIndexerAvailable.reset();
             ++m_startGeneration;
 
-            LOGFN_INFO(moduleLogFn(),
-                       "Starting inventory sync server (cluster='%s', node='%s').",
-                       m_config.cluster_name,
-                       m_config.node_name);
+            LOGFN_INFO(moduleLogFn(), "Starting inventory sync server (cluster='%s').", m_config.cluster_name);
 
             // The UDS server itself is started from run() (see tryStartHttpServer()), which keeps
             // start() fast and gives the retry loop for free. m_running is set only AFTER the
@@ -374,8 +371,7 @@ namespace invsync
                 invsync::http::Method::Get,
                 "/",
                 [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<invsync::http::IHttpResponder> responder) {
                     responder->send(
                         invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
@@ -386,19 +382,19 @@ namespace invsync
             // to read the members here: buildAndPublish() publishes each slot as soon as it
             // succeeds, and this runs afterwards, in the same attempt.
             //
-            // They also take this manager's cluster identity, built fresh (two cheap string copies)
+            // It also takes this manager's cluster identity, built fresh (a cheap string copy)
             // rather than cached across retries -- m_config does not change within a start()/stop()
             // cycle, so there is nothing stale to worry about, and this keeps startHttpServer() the
             // only place that reads m_config for the routes it registers.
             const auto clusterIdentity = invsync::common::buildClusterIdentity(m_config);
             if (clusterIdentity.sanitized)
             {
-                // Once, here, instead of once per request: these names are stamped onto every
-                // enriched document, so invalid UTF-8 in them is the manager's fault, not the agent's.
+                // Once, here, instead of once per request: this name is stamped onto every
+                // enriched document, so invalid UTF-8 in it is the manager's fault, not the agent's.
                 LOGFN_WARN(moduleLogFn(),
-                           "The configured cluster name or node name contains bytes that are not valid UTF-8; they "
-                           "have been replaced with '?' so documents can still be serialized. Fix <cluster><name> "
-                           "and <cluster><node_name> in the manager configuration.");
+                           "The configured cluster name contains bytes that are not valid UTF-8; they have been "
+                           "replaced with '?' so documents can still be serialized. Fix <cluster><name> in the "
+                           "manager configuration.");
             }
 
             // The ingestion route: everything past the strand-side validation runs on the
@@ -818,8 +814,7 @@ namespace invsync
                 !buildAndPublish(m_indexerSession,
                                  FailureStage::IndexerSession,
                                  generation,
-                                 [&]
-                                 {
+                                 [&] {
                                      return sessionFactory(
                                          rawIndexerConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
@@ -1189,7 +1184,9 @@ namespace invsync
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
+            {
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
 
         /*
          * The production connector factories are the only place that knows the seam it is handed wraps
@@ -1206,7 +1203,10 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[]()
+                                             {
+                                                 return invsync::vd::makeProductionVdScanner();
+                                             }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

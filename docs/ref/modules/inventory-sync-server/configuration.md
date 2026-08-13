@@ -9,7 +9,7 @@ tuned through internal options.
 | Source | What it provides |
 |---|---|
 | `<indexer>` in the manager configuration | Indexer hosts and TLS material |
-| `<cluster>` in the manager configuration | The cluster name and node name stamped onto every document |
+| `<cluster>` in the manager configuration | The cluster name stamped onto every document |
 | Internal options | Every transport and connector tunable listed below |
 
 Two values are deliberately NOT configurable:

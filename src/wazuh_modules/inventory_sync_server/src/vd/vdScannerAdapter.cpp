@@ -73,7 +73,6 @@ namespace invsync::vd
             info.ostype = session.ostype;
             info.osversion = session.osversion;
             info.clusterName = session.clusterName;
-            info.clusterNode = session.clusterNode;
             info.groups = session.groups;
             info.indices = session.indices;
 

@@ -112,13 +112,8 @@ namespace
                     std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
                 registry,
                 CLUSTER);
-            handler = invsync::endpoints::sync::makeHandler(
-                invsync::endpoints::sync::Dependencies {pipeline,
-                                                        admission,
-                                                        invsync::common::ClusterIdentity {CLUSTER, "test-node", false},
-                                                        retryAfter,
-                                                        lane,
-                                                        scanner});
+            handler = invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, false}, retryAfter, lane, scanner});
         }
     };
 
@@ -361,7 +356,7 @@ TEST(SyncEndpointTest, ASessionAfterTheAdmissionConnectorIsGoneIs503)
     std::shared_ptr<invsync::indexer::IIndexerConnectorSync> admission {
         std::make_shared<FakeIndexerConnectorSync>(events, "admission")};
     auto handler = invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-        pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, "test-node", false}, 60, lane, scanner});
+        pipeline, admission, invsync::common::ClusterIdentity {CLUSTER, false}, 60, lane, scanner});
     admission.reset(); // stop() clearing the connector
 
     auto responder = std::make_shared<CapturingResponder>();
@@ -391,7 +386,7 @@ TEST(SyncEndpointTest, AnExpiredPipelineIs503)
     auto events = std::make_shared<ConnectorEvents>();
     auto connector = std::make_shared<FakeIndexerConnectorSync>(events, "sync");
     deps.indexer = connector;
-    deps.cluster = invsync::common::ClusterIdentity {CLUSTER, "test-node", false};
+    deps.cluster = invsync::common::ClusterIdentity {CLUSTER, false};
     auto handler = invsync::endpoints::sync::makeHandler(deps); // pipeline weak_ptr left empty
 
     auto responder = std::make_shared<CapturingResponder>();
