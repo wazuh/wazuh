@@ -13,8 +13,12 @@
 #include <atomic>
 #include <chrono>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
@@ -120,10 +124,48 @@ namespace
         LogRecorder::lines().push_back({level, tag != nullptr ? tag : "", buffer});
     }
 
+    // A port the OS says is free, asked for right before the module binds it.
+    //
+    // This used to be hardcoded, which made every test in this file fail with
+    // "bind: Address already in use" whenever anything else on the machine already held that
+    // port -- a locally running manager, or another test binding the same number in a parallel
+    // ctest run. Nothing here asserts on the port; it only has to be free.
+    //
+    // NOTE: cfg.port = 0 would NOT work. buildHttpServerConfig() reads a non-positive port as
+    // "not configured" and substitutes the module's own default, so the module would go back to
+    // binding a fixed, possibly-taken port.
+    std::uint16_t findFreePort()
+    {
+        const int probe = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (probe < 0)
+        {
+            return 0;
+        }
+
+        sockaddr_in address {};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        address.sin_port = 0; // let the kernel pick
+
+        std::uint16_t port = 0;
+        if (::bind(probe, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
+        {
+            socklen_t length = sizeof(address);
+            if (::getsockname(probe, reinterpret_cast<sockaddr*>(&address), &length) == 0)
+            {
+                port = ntohs(address.sin_port);
+            }
+        }
+
+        ::close(probe);
+        return port;
+    }
+
     remoted_module_config_t makeConfig()
     {
         remoted_module_config_t cfg {};
-        cfg.port = 1514;
+        cfg.port = findFreePort();
+        EXPECT_NE(cfg.port, 0) << "could not obtain a free port to bind the module to";
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.node_name, sizeof(cfg.node_name), "%s", "test-node");
@@ -318,7 +360,23 @@ TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
 TEST_F(RemotedModuleTest, StartWithNullConfig)
 {
     DefaultPathTlsFiles defaultTls;
-    remoted_module_start(testLogCallback, nullptr);
+
+    // The one test here that cannot be pointed at a free port: a null config means "use the
+    // module's own defaults", and the default port is part of what is being exercised. If that
+    // port happens to be taken on this machine -- a running manager, a parallel test run -- then
+    // start() throws while binding, which says nothing about the null-config path under test, so
+    // it is tolerated. What must hold either way is that the callback was reached: a null config
+    // is accepted and reported instead of crashing. stop() after a failed start is a documented
+    // no-op (see MissingCertificateIsReportedAsAnErrorNamingTheFile below).
+    try
+    {
+        remoted_module_start(testLogCallback, nullptr);
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_LOG_(INFO) << "start() with the built-in defaults did not bind: " << e.what();
+    }
+
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
 }

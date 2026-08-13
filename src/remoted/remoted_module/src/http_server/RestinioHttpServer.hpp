@@ -23,16 +23,15 @@
 namespace remoted::http
 {
     /**
-     * @brief Checks whether a peer IP address is listed in a certificate's subjectAltName.
+     * @brief Whether a peer address is listed among a certificate's subjectAltName IP entries.
      *
-     * Split out of the TLS verify callback (RestinioHttpServer.cpp's ClientVerificationMode::Full
-     * handling) so the actual IP-vs-certificate comparison is unit-testable without a live
-     * socket or TLS handshake: it takes a plain X509* and a string, with no dependency on
-     * asio/restinio.
+     * Split out of ClientVerificationMode::Full's handling so the comparison itself is
+     * unit-testable from a plain X509* and a string, with no socket, TLS handshake or on-disk
+     * fixture involved.
      *
-     * @param certificate Peer (leaf) certificate. Must not be null.
-     * @param peerIp Textual IPv4 or IPv6 address to look up in the certificate's SAN.
-     * @return true if certificate is non-null and peerIp matches an IP entry in its SAN.
+     * @param certificate Peer (leaf) certificate. A null pointer never matches.
+     * @param peerIp Textual IPv4 or IPv6 address, as reported by the connection's remote endpoint.
+     * @return true when the certificate is non-null and lists that address.
      */
     bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp);
 

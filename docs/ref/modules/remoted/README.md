@@ -17,6 +17,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
 - [HTTPS Events API](https-events-api.md) - TLS endpoint + AES-CMAC agent authentication (experimental)
+- [Load balancers](load-balancers/README.md) - Deploying the HTTPS events API behind a load balancer or reverse proxy ([NGINX](load-balancers/nginx.md), [HAProxy](load-balancers/haproxy.md))
 - [Configuration](configuration.md) - Configuration options and tuning parameters
 
 ## Overview

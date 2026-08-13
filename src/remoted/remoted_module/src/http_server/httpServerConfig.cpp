@@ -90,12 +90,19 @@ namespace
     // silently override an explicit <verification_mode>none</verification_mode>.
     remoted::http::ClientVerificationMode resolveVerificationMode(const int configValue)
     {
-        if (configValue != REMOTED_MODULE_HTTPS_VERIFY_UNSET)
+        switch (configValue)
         {
-            return static_cast<remoted::http::ClientVerificationMode>(configValue);
+            case REMOTED_MODULE_HTTPS_VERIFY_UNSET:
+            case REMOTED_MODULE_HTTPS_VERIFY_NONE: return remoted::http::ClientVerificationMode::None;
+            case REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE: return remoted::http::ClientVerificationMode::Certificate;
+            case REMOTED_MODULE_HTTPS_VERIFY_FULL: return remoted::http::ClientVerificationMode::Full;
+            default:
+                // A value this build does not recognise, which can only come from a config
+                // library built against a different revision of the C-ABI. It must NOT silently
+                // downgrade to no verification at all, so it keeps requiring a client
+                // certificate -- the strictest mode that needs no extra configuration.
+                return remoted::http::ClientVerificationMode::Certificate;
         }
-
-        return remoted::http::ClientVerificationMode::None;
     }
 
     // Unlike verification_mode above, dual_stack has no sentinel distinct from its own
@@ -109,11 +116,10 @@ namespace
 
 namespace remoted::http
 {
-    // ClientVerificationMode is produced from the C-ABI int via a bare static_cast<> in
-    // resolveVerificationMode() above, so its enumerator order must stay pinned to
-    // REMOTED_MODULE_HTTPS_VERIFY_* (remoted_module.h) -- a silent reorder of either
-    // enum would misconfigure TLS client-certificate verification without any build
-    // failure to catch it.
+    // ClientVerificationMode is mapped from the C-ABI int in resolveVerificationMode() above,
+    // so its enumerator values must stay pinned to REMOTED_MODULE_HTTPS_VERIFY_*
+    // (remoted_module.h) -- a silent renumbering of either enum would misconfigure TLS
+    // client-certificate verification without any build failure to catch it.
     static_assert(static_cast<int>(ClientVerificationMode::None) == REMOTED_MODULE_HTTPS_VERIFY_NONE,
                   "ClientVerificationMode::None must match REMOTED_MODULE_HTTPS_VERIFY_NONE");
     static_assert(static_cast<int>(ClientVerificationMode::Certificate) == REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE,

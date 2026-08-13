@@ -3365,7 +3365,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.key = "/etc/remoted-https/server.key";
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
     test_logr.https.ciphers = "HIGH:!ADH";
-    test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
+    test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
     test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
 
@@ -3406,7 +3406,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
 
     assert_int_equal(rm_config.port, 9443);
     assert_true(rm_config.worker_node);
-    assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+    assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
     assert_int_equal(rm_config.http_max_body_size, 12345);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
     assert_string_equal(rm_config.bind_address, "0.0.0.0");
