@@ -37,8 +37,8 @@ namespace
 } // namespace
 
 std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
-ZstdFileCompressor::compress(const std::string& sourcePath, uint64_t sourceSize,
-                             const std::string& spoolDir, const std::atomic<bool>* abortFlag)
+                                                            ZstdFileCompressor::compress(const std::string& sourcePath, uint64_t sourceSize,
+                                                                                         const std::string& spoolDir, const std::atomic<bool>* abortFlag)
 {
     const FilePtr source {std::fopen(sourcePath.c_str(), "rb"), std::fclose};
 
@@ -89,7 +89,7 @@ ZstdFileCompressor::compress(const std::string& sourcePath, uint64_t sourceSize,
     std::array<uint8_t, FILE_CHUNK> outChunk {};
     uint64_t compressedSize = 0;
 
-    auto flushOutput = [&](const ZSTD_outBuffer& output)
+    auto flushOutput = [&](const ZSTD_outBuffer & output)
     {
         if (output.pos == 0)
         {

@@ -160,7 +160,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     if (m_config.httpsCompressionEnabled && !m_compressionGate.disabled() && session.size > 0)
     {
         auto compressed = m_fileCompressor.compress(spec.bodyFilePath, spec.bodyFileSize,
-                                                     m_config.spoolDir, waiter.stopFlag());
+                                                    m_config.spoolDir, waiter.stopFlag());
 
         if (compressed)
         {
@@ -168,6 +168,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
             spec.precompressedBodyFilePath = compressedSpool->path();
             spec.precompressedBodyFileSize = compressed->second;
         }
+
         // else: compression failed (disk full, aborted, etc.) -- fall through
         // and send the original file uncompressed; never lose the session
         // over a compression failure.
