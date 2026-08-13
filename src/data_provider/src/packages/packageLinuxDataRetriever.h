@@ -36,7 +36,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages);
  * @param libPath  Path to dpkg's database directory
  * @param callback Callback to be called for every single element being found
  */
-void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
+void getDpkgInfo(const std::string& libPath, const std::function<void(nlohmann::json&)>& callback);
 
 /**
  * @brief Get all python packages installed by dpkg
