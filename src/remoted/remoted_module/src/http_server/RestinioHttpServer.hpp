@@ -14,12 +14,27 @@
 
 #include "IHttpServer.hpp"
 
+#include <openssl/x509.h>
+
 #include <memory>
 #include <optional>
 #include <string>
 
 namespace remoted::http
 {
+    /**
+     * @brief Whether a peer address is listed among a certificate's subjectAltName IP entries.
+     *
+     * Split out of ClientVerificationMode::Full's handling so the comparison itself is
+     * unit-testable from a plain X509* and a string, with no socket, TLS handshake or on-disk
+     * fixture involved.
+     *
+     * @param certificate Peer (leaf) certificate. A null pointer never matches.
+     * @param peerIp Textual IPv4 or IPv6 address, as reported by the connection's remote endpoint.
+     * @return true when the certificate is non-null and lists that address.
+     */
+    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp);
+
     /**
      * @brief RESTinio + OpenSSL implementation of IHttpServer.
      *

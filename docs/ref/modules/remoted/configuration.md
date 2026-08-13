@@ -154,13 +154,22 @@ Client-certificate verification strictness.
 - **Allowed values:**
   - `none` — the client certificate is not verified.
   - `certificate` — the client certificate chain is validated against `ca`.
-- **What `certificate` authenticates:** whoever **opens the connection**. On a direct
+  - `full` — same as `certificate`, plus the address the peer connects from must appear as an
+    IP entry in that certificate's Subject Alternative Name. A connection whose certificate is
+    valid but lists a different address is answered `403` on every route, including the
+    unauthenticated health probe, and a throttled warning naming the address is logged.
+- **What these modes authenticate:** whoever **opens the connection**. On a direct
   agent-to-manager connection that is the agent. Behind a TLS-terminating reverse proxy or
   load balancer it is the **proxy**, because the agent's TLS session ends there and a new one
   is opened towards the manager — the agent's certificate cannot cross that boundary. In that
   topology `certificate` is still valuable (only your proxy can reach the listener), but it
   does **not** authenticate agents: an agent presenting no certificate at all is still
   accepted. Requiring certificates from agents behind a proxy is configured on the proxy.
+- **Before choosing `full`:** for the same reason, the address it checks is the **proxy's**
+  whenever one terminates TLS, so behind a proxy the mode constrains where your proxy may
+  connect from, not where agents may. It fits a direct deployment, or one where the balancer
+  preserves the client address at network level. It also requires every agent certificate to
+  carry the agent's address in its SAN, which has to be reissued whenever that address changes.
 - **Note:** any other value is ignored with a warning, leaving `verification_mode` as if it had
   not been configured.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.

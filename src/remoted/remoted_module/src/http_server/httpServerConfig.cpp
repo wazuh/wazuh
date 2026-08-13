@@ -94,11 +94,13 @@ namespace
         {
             case REMOTED_MODULE_HTTPS_VERIFY_UNSET:
             case REMOTED_MODULE_HTTPS_VERIFY_NONE: return remoted::http::ClientVerificationMode::None;
+            case REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE: return remoted::http::ClientVerificationMode::Certificate;
+            case REMOTED_MODULE_HTTPS_VERIFY_FULL: return remoted::http::ClientVerificationMode::Full;
             default:
-                // Certificate, and also any value this build does not recognise -- which can
-                // only come from a config library built against a different revision of the
-                // C-ABI. Such a value must NOT silently downgrade to no verification at all,
-                // so it keeps requiring a client certificate.
+                // A value this build does not recognise, which can only come from a config
+                // library built against a different revision of the C-ABI. It must NOT silently
+                // downgrade to no verification at all, so it keeps requiring a client
+                // certificate -- the strictest mode that needs no extra configuration.
                 return remoted::http::ClientVerificationMode::Certificate;
         }
     }
@@ -122,6 +124,8 @@ namespace remoted::http
                   "ClientVerificationMode::None must match REMOTED_MODULE_HTTPS_VERIFY_NONE");
     static_assert(static_cast<int>(ClientVerificationMode::Certificate) == REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE,
                   "ClientVerificationMode::Certificate must match REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE");
+    static_assert(static_cast<int>(ClientVerificationMode::Full) == REMOTED_MODULE_HTTPS_VERIFY_FULL,
+                  "ClientVerificationMode::Full must match REMOTED_MODULE_HTTPS_VERIFY_FULL");
 
     // Same reasoning as above: DualStackMode is produced from the C-ABI int via a bare
     // static_cast<> in resolveDualStackMode(), so its enumerator order must stay pinned

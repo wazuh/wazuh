@@ -303,6 +303,8 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
             } else if (strcasecmp(node[i]->content, "certificate") == 0) {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+            } else if (strcasecmp(node[i]->content, "full") == 0) {
+                logr->https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
             } else {
                 mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_verification_mode);
             }

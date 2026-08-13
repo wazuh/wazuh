@@ -20,8 +20,22 @@
 
 #include <gtest/gtest.h>
 
+#include <asio/connect.hpp>
+#include <asio/io_context.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/read_until.hpp>
+#include <asio/ssl.hpp>
+#include <asio/streambuf.hpp>
+#include <asio/write.hpp>
+
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
+
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <istream>
 #include <cstring>
 #include <algorithm>
 #include <atomic>
@@ -64,6 +78,60 @@ namespace
         std::memset(&config, 0, sizeof(config));
         config.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_UNSET;
         return config;
+    }
+
+    using EvpPkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+    using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+
+    // Builds a minimal self-signed certificate with the given comma-separated subjectAltName value
+    // (e.g. "IP:203.0.113.5" or "IP:203.0.113.5,IP:2001:db8::1"), so certificateMatchesPeerIp() can
+    // be exercised with just an X509* and a string -- no live socket, TLS handshake, or on-disk
+    // fixture required. The end-to-end behaviour of ClientVerificationMode::Full is covered
+    // separately, over a real connection, by FullModeTest below.
+    X509Ptr makeSelfSignedCertificate(const char* subjectAltName)
+    {
+        EvpPkeyPtr pkey {EVP_PKEY_Q_keygen(nullptr, nullptr, "EC", "prime256v1"), &EVP_PKEY_free};
+        if (!pkey)
+        {
+            throw std::runtime_error("Failed to generate test EC key pair");
+        }
+
+        X509Ptr certificate {X509_new(), &X509_free};
+        if (!certificate)
+        {
+            throw std::runtime_error("Failed to allocate test X509 certificate");
+        }
+
+        X509_set_version(certificate.get(), 2); // X509v3
+        ASN1_INTEGER_set(X509_get_serialNumber(certificate.get()), 1);
+        X509_gmtime_adj(X509_get_notBefore(certificate.get()), 0);
+        X509_gmtime_adj(X509_get_notAfter(certificate.get()), 60L * 60L);
+
+        X509_NAME* name = X509_get_subject_name(certificate.get());
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("remoted-test"), -1, -1, 0);
+        X509_set_issuer_name(certificate.get(), name);
+
+        X509_set_pubkey(certificate.get(), pkey.get());
+
+        X509V3_CTX ctx;
+        X509V3_set_ctx_nodb(&ctx);
+        X509V3_set_ctx(&ctx, certificate.get(), certificate.get(), nullptr, nullptr, 0);
+
+        X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_subject_alt_name, subjectAltName);
+        if (extension == nullptr)
+        {
+            throw std::runtime_error("Failed to build test subjectAltName extension");
+        }
+        X509_add_ext(certificate.get(), extension, -1);
+        X509_EXTENSION_free(extension);
+
+        if (X509_sign(certificate.get(), pkey.get(), EVP_sha256()) == 0)
+        {
+            throw std::runtime_error("Failed to sign test certificate");
+        }
+
+        return certificate;
     }
 
     // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
@@ -237,14 +305,21 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(config.maxUrlSize, 2048U);
 }
 
-// Only None and Certificate exist. An unrecognised value can therefore only reach us from a
-// config library built against a different revision of the C-ABI, and the one thing it must NOT
-// do is resolve to None: that would turn a stale build into a silent downgrade to no
-// client-certificate verification at all. Anything unrecognised keeps requiring a certificate.
+TEST(HttpServerConfigTest, VerificationModeFullFromStruct)
+{
+    auto raw = zeroedConfig();
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_FULL;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Full);
+}
+
+// A value outside the three known ones can only reach us from a config library built against a
+// different revision of the C-ABI, and the one thing it must NOT do is resolve to None: that would
+// turn a stale build into a silent downgrade to no client-certificate verification at all.
 TEST(HttpServerConfigTest, UnknownVerificationModeFailsClosed)
 {
     auto raw = zeroedConfig();
-    raw.verification_mode = 2;
+    raw.verification_mode = 99;
 
     EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Certificate);
 }
@@ -398,6 +473,252 @@ TEST(HttpServerTest, StartWithMissingCertificateAndVerificationModeStillThrows)
 
     EXPECT_THROW(server->start(config), std::exception);
     EXPECT_NO_THROW(server->stop());
+}
+
+// ---------------------------------------------------------------------------
+// certificateMatchesPeerIp(): the comparison behind ClientVerificationMode::Full
+//
+// These cover the comparison in isolation. They are deliberately NOT the only coverage of the
+// Full mode: an earlier implementation passed tests just like these while rejecting every real
+// connection, because it read the peer address through SSL_get_fd(), which returns -1 under asio.
+// FullModeTest below is what closes that gap, over a real TLS connection.
+// ---------------------------------------------------------------------------
+
+TEST(CertificateVerificationTest, MatchingIpv4AddressReturnsTrue)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+}
+
+TEST(CertificateVerificationTest, NonMatchingIpv4AddressReturnsFalse)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5");
+
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.6"));
+}
+
+TEST(CertificateVerificationTest, MatchingIpv6AddressReturnsTrue)
+{
+    auto certificate = makeSelfSignedCertificate("IP:2001:db8::1");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
+}
+
+TEST(CertificateVerificationTest, MultipleSanEntriesMatchesAnyOfThem)
+{
+    auto certificate = makeSelfSignedCertificate("IP:203.0.113.5,IP:2001:db8::1");
+
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+    EXPECT_TRUE(certificateMatchesPeerIp(certificate.get(), "2001:db8::1"));
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.9"));
+}
+
+// A DNS-only SAN must not satisfy an address check: the two are different name types, and
+// accepting one for the other is exactly the kind of near-miss that looks like it works.
+TEST(CertificateVerificationTest, DnsSanDoesNotSatisfyAnAddressCheck)
+{
+    auto certificate = makeSelfSignedCertificate("DNS:agent-1001.example");
+
+    EXPECT_FALSE(certificateMatchesPeerIp(certificate.get(), "203.0.113.5"));
+}
+
+TEST(CertificateVerificationTest, NullCertificateReturnsFalse)
+{
+    EXPECT_FALSE(certificateMatchesPeerIp(nullptr, "203.0.113.5"));
+}
+
+// ---------------------------------------------------------------------------
+// ClientVerificationMode::Full, over a REAL connection
+//
+// This is the coverage the previous implementation lacked. It read the peer address with
+// SSL_get_fd(), which returns -1 because asio wires the SSL object onto a BIO pair, so the check
+// bailed out and rejected every certificate -- while unit tests that called the comparison
+// directly with a synthetic certificate kept passing. Only a real handshake, from a real socket,
+// distinguishes the two.
+//
+// Both cases below present a VALID certificate signed by the configured CA, so the chain check
+// passes and what is being measured is purely the address requirement:
+//   * a certificate listing 127.0.0.1 (where the client actually comes from) must be served
+//   * a certificate listing some other address must be refused, on every route
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // A CA, a server certificate and two client certificates: one whose SAN carries the loopback
+    // address the test client connects from, one whose SAN carries a different address. Built with
+    // the `openssl` CLI, as TempCert above already does.
+    class FullModePki
+    {
+    public:
+        FullModePki()
+        {
+            char dirTemplate[] = "/tmp/httpServerFullModeXXXXXX";
+            m_dir = mkdtemp(dirTemplate);
+
+            run("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test-ca -keyout " + key("ca") +
+                " -out " + cert("ca"));
+
+            issue("server", "test-server", "IP:127.0.0.1,DNS:localhost");
+            issue("matching", "agent-matching", "IP:127.0.0.1");
+            issue("mismatched", "agent-mismatched", "IP:203.0.113.5");
+        }
+
+        ~FullModePki()
+        {
+            for (const auto* name : {"ca", "server", "matching", "mismatched"})
+            {
+                std::remove(cert(name).c_str());
+                std::remove(key(name).c_str());
+            }
+            std::remove((m_dir + "/openssl.cnf").c_str());
+            rmdir(m_dir.c_str());
+        }
+
+        std::string cert(const std::string& name) const { return m_dir + "/" + name + ".crt"; }
+        std::string key(const std::string& name) const { return m_dir + "/" + name + ".key"; }
+
+    private:
+        void issue(const std::string& name, const std::string& commonName, const std::string& san)
+        {
+            // Written from C++ rather than through run(): that helper appends its own
+            // ">/dev/null", which would be a SECOND stdout redirection and would silently leave
+            // this file empty -- producing certificates with no SAN at all, and a test that fails
+            // for a reason that has nothing to do with what it measures.
+            const std::string extFile = m_dir + "/openssl.cnf";
+            {
+                std::ofstream extensions {extFile};
+                extensions << "subjectAltName=" << san << "\nbasicConstraints=CA:FALSE\n";
+                if (!extensions)
+                {
+                    ADD_FAILURE() << "could not write the OpenSSL extension file " << extFile;
+                }
+            }
+
+            run("openssl req -newkey rsa:2048 -nodes -subj /CN=" + commonName + " -keyout " + key(name) + " -out " +
+                m_dir + "/" + name + ".csr");
+            run("openssl x509 -req -in " + m_dir + "/" + name + ".csr -days 1 -CA " + cert("ca") + " -CAkey " +
+                key("ca") + " -CAcreateserial -extfile " + extFile + " -out " + cert(name));
+            std::remove((m_dir + "/" + name + ".csr").c_str());
+        }
+
+        static void run(const std::string& command)
+        {
+            if (std::system((command + " >/dev/null 2>&1").c_str()) != 0)
+            {
+                ADD_FAILURE() << "PKI setup command failed: " << command;
+            }
+        }
+
+        std::string m_dir;
+    };
+
+    // Sends `GET /` -- the unauthenticated liveness probe, chosen on purpose: if a rejected
+    // connection were served anywhere, it would be here. Returns the HTTP status code, or 0 when
+    // the exchange could not be completed at all.
+    int getStatusWithClientCertificate(std::uint16_t port,
+                                       const std::string& clientCert,
+                                       const std::string& clientKey,
+                                       const std::string& caCert)
+    {
+        try
+        {
+            asio::io_context ioc;
+            asio::ssl::context sslContext {asio::ssl::context::tls_client};
+            sslContext.set_verify_mode(asio::ssl::verify_none); // the server's identity is not what we measure
+            sslContext.use_certificate_file(clientCert, asio::ssl::context::pem);
+            sslContext.use_private_key_file(clientKey, asio::ssl::context::pem);
+            sslContext.load_verify_file(caCert);
+
+            asio::ssl::stream<asio::ip::tcp::socket> stream {ioc, sslContext};
+            asio::ip::tcp::resolver resolver {ioc};
+            asio::connect(stream.next_layer(), resolver.resolve("127.0.0.1", std::to_string(port)));
+            stream.handshake(asio::ssl::stream_base::client);
+
+            const std::string request = "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+            asio::write(stream, asio::buffer(request));
+
+            asio::streambuf response;
+            asio::error_code ec;
+            asio::read_until(stream, response, "\r\n", ec);
+
+            std::istream stream_in {&response};
+            std::string version;
+            int status {0};
+            stream_in >> version >> status;
+            return status;
+        }
+        catch (const std::exception&)
+        {
+            return 0;
+        }
+    }
+
+    HttpServerConfig fullModeConfig(const FullModePki& pki, std::uint16_t port)
+    {
+        HttpServerConfig config;
+        config.bindAddress = "127.0.0.1";
+        config.port = port;
+        config.certificatePath = pki.cert("server");
+        config.privateKeyPath = pki.key("server");
+        config.caPath = pki.cert("ca");
+        config.verificationMode = ClientVerificationMode::Full;
+        return config;
+    }
+} // namespace
+
+TEST(FullModeTest, CertificateListingThePeerAddressIsServed)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    FullModePki pki;
+    auto server = makeHttpServer();
+    const auto port = static_cast<std::uint16_t>(34517);
+
+    server->addRoute(Method::Get,
+                     "/",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+                     /*countAgainstBudget=*/false);
+
+    ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
+
+    EXPECT_EQ(getStatusWithClientCertificate(port, pki.cert("matching"), pki.key("matching"), pki.cert("ca")), 200)
+        << "a client certificate listing the address the client connects from must be accepted; "
+           "before this was fixed, the peer address could not be read at all and every certificate "
+           "was rejected";
+
+    server->stop();
+}
+
+TEST(FullModeTest, CertificateListingAnotherAddressIsRefusedOnEveryRoute)
+{
+    if (std::system("openssl version >/dev/null 2>&1") != 0)
+    {
+        GTEST_SKIP() << "openssl not available to generate the test PKI";
+    }
+
+    FullModePki pki;
+    auto server = makeHttpServer();
+    const auto port = static_cast<std::uint16_t>(34518);
+
+    // The unauthenticated liveness probe: the route most likely to leak a rejected connection.
+    server->addRoute(Method::Get,
+                     "/",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+                     /*countAgainstBudget=*/false);
+
+    ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
+
+    EXPECT_EQ(getStatusWithClientCertificate(port, pki.cert("mismatched"), pki.key("mismatched"), pki.cert("ca")), 403)
+        << "the certificate is valid and signed by the CA, but lists 203.0.113.5 while the client "
+           "connects from 127.0.0.1: Full mode must refuse it";
+
+    server->stop();
 }
 
 // ---------------------------------------------------------------------------

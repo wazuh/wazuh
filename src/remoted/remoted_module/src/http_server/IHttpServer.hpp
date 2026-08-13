@@ -206,7 +206,8 @@ namespace remoted::http
     enum class ClientVerificationMode
     {
         None,        ///< No client certificate is requested/verified.
-        Certificate  ///< Client certificate chain is verified against the configured CA.
+        Certificate, ///< Client certificate chain is verified against the configured CA.
+        Full         ///< Certificate chain verified, plus the peer's address must appear in its SAN.
     };
 
     /**
