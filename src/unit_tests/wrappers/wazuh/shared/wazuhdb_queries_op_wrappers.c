@@ -117,12 +117,6 @@ char* __wrap_wdb_get_agent_group(int id, __attribute__((unused)) int* wdb_sock)
     return mock_type(char*);
 }
 
-char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int* wdb_sock)
-{
-    check_expected(id);
-    return mock_type(char*);
-}
-
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int* sock)
 {
     return mock_ptr_type(cJSON*);

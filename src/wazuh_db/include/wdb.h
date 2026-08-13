@@ -73,7 +73,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
-    WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
@@ -527,17 +526,6 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the select agent name request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the select agent group request.
  *
  * @param [in] wdb The global struct database.
@@ -978,15 +966,6 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_delete_agent(wdb_t *wdb, int id);
-
-/**
- * @brief Function to get the name of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent name on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 /**
  * @brief Function to get the group of a particular agent.

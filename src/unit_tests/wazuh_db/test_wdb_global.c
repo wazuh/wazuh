@@ -3945,92 +3945,6 @@ void test_wdb_global_delete_agent_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
-/* Tests wdb_global_select_agent_name */
-
-void test_wdb_global_select_agent_name_transaction_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, OS_INVALID);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
-
-    result = wdb_global_select_agent_name(data->wdb, 1);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_name_cache_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, OS_SUCCESS);
-    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
-    result = wdb_global_select_agent_name(data->wdb, 1);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_name_bind_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, OS_SUCCESS);
-    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_name(data->wdb, 1);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_name_exec_fail(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, OS_SUCCESS);
-    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
-
-    result = wdb_global_select_agent_name(data->wdb, 1);
-
-    assert_null(result);
-}
-
-void test_wdb_global_select_agent_name_success(void **state)
-{
-    cJSON *result = NULL;
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_begin2, OS_SUCCESS);
-    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
-
-    expect_value(__wrap_sqlite3_bind_int, index, 1);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_exec_stmt, (cJSON*) 1);
-
-    result = wdb_global_select_agent_name(data->wdb, 1);
-
-    assert_ptr_equal(result, (cJSON*) 1);
-}
-
 /* Tests wdb_global_select_agent_group */
 
 void test_wdb_global_select_agent_group_transaction_fail(void **state)
@@ -8626,12 +8540,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_delete_agent_success, test_setup, test_teardown),
-        /* Tests wdb_global_select_agent_name */
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_name_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_name_cache_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_name_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_name_exec_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_name_success, test_setup, test_teardown),
         /* Tests wdb_global_select_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_group_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_select_agent_group_cache_fail, test_setup, test_teardown),

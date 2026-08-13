@@ -72,10 +72,6 @@ void __wrap_w_inc_global_agent_delete_agent();
 
 void __wrap_w_inc_global_agent_delete_agent_time(__attribute__((unused)) struct timeval diff);
 
-void __wrap_w_inc_global_agent_select_agent_name();
-
-void __wrap_w_inc_global_agent_select_agent_name_time(__attribute__((unused)) struct timeval diff);
-
 void __wrap_w_inc_global_agent_select_agent_group();
 
 void __wrap_w_inc_global_agent_select_agent_group_time(__attribute__((unused)) struct timeval diff);
