@@ -825,9 +825,6 @@ static void fim_process_dir_entry(const char *dir,
 
     snprintf(s_name, PATH_MAX + 2 - path_size, "%s", name);
 
-#ifdef WIN32
-    str_lowercase(f_name);
-#endif
     // Process the event related to f_name
     fim_checker(f_name, evt_data, configuration, dbsync_txn, ctx);
 }
@@ -866,16 +863,27 @@ int fim_directory(const char *dir,
 
     WIN32_FIND_DATAW fd;
     HANDLE hFind = wpattern ? FindFirstFileW(wpattern, &fd) : INVALID_HANDLE_VALUE;
+    // FindFirstFileW reports failure through GetLastError(), not errno.
+    DWORD last_error = GetLastError();
     os_free(wpattern);
 
     if (hFind == INVALID_HANDLE_VALUE) {
-        mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
+        mwarn(FIM_PATH_NOT_OPEN, dir, win_strerror(last_error));
         os_free(f_name);
         return OS_INVALID;
     }
 
     do {
-        char *name = wide_to_utf8(fd.cFileName);
+        // Lowercase the wide name (Windows/NTFS is case-insensitive) using the
+        // invariant locale before converting; byte-wise str_lowercase would skip
+        // multi-byte UTF-8 characters and invoke tolower() on negative bytes.
+        wchar_t w_lower[MAX_PATH];
+        if (LCMapStringW(LOCALE_INVARIANT, LCMAP_LOWERCASE, fd.cFileName, -1, w_lower, MAX_PATH) == 0) {
+            wcsncpy(w_lower, fd.cFileName, MAX_PATH - 1);
+            w_lower[MAX_PATH - 1] = L'\0';
+        }
+
+        char *name = wide_to_utf8(w_lower);
 
         if (name != NULL) {
             fim_process_dir_entry(dir, name, f_name, evt_data, configuration, dbsync_txn, ctx);
