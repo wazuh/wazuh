@@ -18,9 +18,9 @@
 
 namespace
 {
-// Matches the level the manager's own test-only compressor
-// (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
-constexpr int kCompressionLevel = 3;
+    // Matches the level the manager's own test-only compressor
+    // (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
+    constexpr int kCompressionLevel = 3;
 } // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
@@ -125,6 +125,7 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
     // CMAC covers the wire bytes.
     std::vector<uint8_t> compressedBody;
     const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
+
     if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
     {
         compressedBody.resize(ZSTD_compressBound(attempt.bodyLength));
@@ -138,6 +139,7 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
             attempt.bodyLength = compressedBody.size();
             attempt.headers.push_back("Content-Encoding: zstd");
         }
+
         // else: fall through and send the original, uncompressed body -- a
         // one-shot ZSTD_compress() into a ZSTD_compressBound()-sized buffer
         // should never actually fail, but never lose the request over it.

@@ -313,7 +313,8 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
     spec.bodyFilePath = compressedSpool->path();
     spec.bodyFileSize = compressedSize;
     spec.timeoutMs = 3000;
-    spec.headers = {
+    spec.headers =
+    {
         "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion,
         headers->authorization
     };
@@ -333,7 +334,7 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
                                        std::istreambuf_iterator<char> {}};
     std::vector<char> decompressed(payload.size());
     const size_t decompressedSize = ZSTD_decompress(decompressed.data(), decompressed.size(),
-                                                     compressedBytes.data(), compressedBytes.size());
+                                                    compressedBytes.data(), compressedBytes.size());
     ASSERT_FALSE(ZSTD_isError(decompressedSize));
     ASSERT_EQ(payload.size(), decompressedSize);
     EXPECT_EQ(payload, std::string(decompressed.begin(), decompressed.end()));

@@ -41,8 +41,8 @@ class IFileCompressor
         /// nullopt on any failure (unreadable source, disk full, zstd error,
         /// abort) -- callers fall back to sending the uncompressed original.
         virtual std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
-        compress(const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir,
-                 const std::atomic<bool>* abortFlag) = 0;
+                                                                            compress(const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir,
+                                                                                     const std::atomic<bool>* abortFlag) = 0;
 };
 
 /// Real implementation: ZSTD_compressStream2 at the same level RetrySender
@@ -52,8 +52,8 @@ class ZstdFileCompressor final : public IFileCompressor
 {
     public:
         std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
-        compress(const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir,
-                 const std::atomic<bool>* abortFlag) override;
+                                                                    compress(const std::string& sourcePath, uint64_t sourceSize, const std::string& spoolDir,
+                                                                             const std::atomic<bool>* abortFlag) override;
 };
 
 #endif // _HC_FILE_COMPRESSOR_HPP
