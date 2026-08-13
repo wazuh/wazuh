@@ -34,6 +34,8 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <unordered_set>
+#include <variant>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -177,9 +179,173 @@ namespace
 
     // Enable RESTinio's connection-count limiter so max_parallel_connections() is honored
     // (the default noop limiter turns that setter into a compile-time error).
+    /**
+     * @brief The set of connections rejected by ClientVerificationMode::Full.
+     *
+     * WHY THIS EXISTS INSTEAD OF A TLS VERIFY CALLBACK. The address to compare against the
+     * certificate is a property of the SOCKET, and inside OpenSSL's verify callback the socket is
+     * not reachable: asio wires the SSL object onto a BIO pair and never calls SSL_set_fd, so
+     * SSL_get_fd() returns -1 and getpeername() can never be reached. An earlier implementation
+     * did exactly that and therefore rejected every certificate, in every topology -- the option
+     * was unusable. Nothing about that is fixable from within the callback.
+     *
+     * What IS reachable is RESTinio's connection-state listener, which fires once per accepted
+     * connection carrying BOTH the peer endpoint (from asio, the same source HttpRequest::remoteIp
+     * uses) and the connection's SSL object (via tls_accessor_t). The comparison is done there and
+     * the verdict recorded here, keyed by connection id; the request path then refuses every
+     * request arriving on a rejected connection.
+     *
+     * Only FAILURES are stored, so in a healthy deployment this stays empty: entries appear only
+     * for connections that are about to be refused anyway, and are erased when they close.
+     *
+     * NO RACE WITH THE FIRST REQUEST, and this is load-bearing: RESTinio notifies the listener and
+     * only then calls wait_for_http_message() -- both in the same handshake-success callback (see
+     * connection_t::init() in restinio/impl/connection.hpp). The verdict is therefore recorded
+     * before any byte of a request can be read from that connection.
+     *
+     * Keys are RESTinio connection ids: a monotonically increasing std::uint64_t, so an id is
+     * never reused and a stale entry can never refuse a different connection.
+     */
+    class RejectedConnections
+    {
+    public:
+        void reject(restinio::connection_id_t id)
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            m_ids.insert(id);
+        }
+
+        void forget(restinio::connection_id_t id)
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            m_ids.erase(id);
+        }
+
+        bool contains(restinio::connection_id_t id) const
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            return m_ids.count(id) != 0;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::unordered_set<restinio::connection_id_t> m_ids;
+    };
+
+    /**
+     * @brief Applies ClientVerificationMode::Full's address check once per accepted connection.
+     *
+     * The chain of trust has already been validated by OpenSSL at this point (verify_peer plus
+     * verify_fail_if_no_peer_cert), so a connection that gets here presented a certificate signed
+     * by the configured CA. What this adds is the extra requirement of the Full mode: the address
+     * the peer actually connected from must appear among the certificate's subjectAltName entries.
+     *
+     * NOTE ON WHAT THIS AUTHENTICATES: the peer is whoever OPENED the connection. On a direct
+     * agent-to-manager connection that is the agent. Behind a TLS-terminating reverse proxy or
+     * load balancer it is the proxy, because the agent's TLS session ends there -- so in that
+     * topology this check validates the proxy's address, not any agent's.
+     */
+    class FullModeListener
+    {
+    public:
+        /**
+         * @param rejected Where failing connections are recorded. A NULL pointer disables the
+         *                 whole check, which is how the other two verification modes behave:
+         *                 RESTinio needs an instance whenever the traits name a listener type
+         *                 (it throws otherwise), so the listener is always installed and this is
+         *                 what makes it inert.
+         */
+        explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr)
+            : m_rejected {std::move(rejected)}
+        {
+        }
+
+        void state_changed(const restinio::connection_state::notice_t& notice) noexcept
+        {
+            if (!m_rejected)
+            {
+                return;
+            }
+
+            try
+            {
+                std::visit(Visitor {*this, notice}, notice.cause());
+            }
+            catch (...) // NOLINT(bugprone-empty-catch) -- state_changed is noexcept by contract
+            {
+            }
+        }
+
+    private:
+        struct Visitor
+        {
+            FullModeListener& listener;
+            const restinio::connection_state::notice_t& notice;
+
+            void operator()(const restinio::connection_state::accepted_t& cause) const
+            {
+                cause.try_inspect_tls([this](const restinio::connection_state::tls_accessor_t& tls)
+                                      { listener.checkPeerAddress(notice, tls); });
+            }
+
+            void operator()(const restinio::connection_state::closed_t&) const
+            {
+                listener.m_rejected->forget(notice.connection_id());
+            }
+
+            void operator()(const restinio::connection_state::upgraded_to_websocket_t&) const {}
+        };
+
+        void checkPeerAddress(const restinio::connection_state::notice_t& notice,
+                              const restinio::connection_state::tls_accessor_t& tls)
+        {
+            const auto peerIp = notice.remote_endpoint().address().to_string();
+
+            // Owning handle: SSL_get1_peer_certificate() bumps the reference count.
+            std::unique_ptr<X509, decltype(&X509_free)> peerCertificate {SSL_get1_peer_certificate(tls.native_handle()),
+                                                                        &X509_free};
+
+            if (remoted::http::certificateMatchesPeerIp(peerCertificate.get(), peerIp))
+            {
+                return;
+            }
+
+            m_rejected->reject(notice.connection_id());
+
+            // Throttled: a misconfigured fleet would otherwise log once per connection attempt.
+            if (const auto rejected = rejectThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "verification_mode=full rejected %llu connection(s) in the last %d s: the client "
+                           "certificate does not list the address the peer connected from (last one: %s). "
+                           "Behind a TLS-terminating proxy the peer is the proxy, not the agent.",
+                           static_cast<unsigned long long>(rejected.total),
+                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           peerIp.c_str());
+            }
+        }
+
+        // Function-local rather than a member: RESTinio copies the listener around, and the point
+        // of throttling is one line per window for the whole server, not per copy.
+        static remoted::common::LogThrottle& rejectThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
+        std::shared_ptr<RejectedConnections> m_rejected;
+    };
+
     struct ServerTraits : public restinio::tls_traits_t<restinio::asio_timer_manager_t, WazuhRestinioLogger, Router>
     {
         static constexpr bool use_connection_count_limiter = true;
+
+        // Fires once per accepted connection with the peer endpoint AND the connection's SSL
+        // object, which is the only place both are available together -- see FullModeListener.
+        // Declared unconditionally (the type is part of the traits, so it cannot depend on
+        // runtime configuration); the listener itself is only installed when the configured mode
+        // is Full, and RESTinio skips the notification entirely when none is set.
+        using connection_state_listener_t = FullModeListener;
     };
 
     using ServerHandle = restinio::running_server_handle_t<ServerTraits>;
@@ -316,6 +482,12 @@ namespace
         // Client-certificate verification (mTLS): the presented client certificate is
         // validated against the configured CA. Note this authenticates whoever OPENS the
         // connection -- which behind a terminating proxy is the proxy, not the agent.
+        // Both Certificate and Full validate the presented client certificate against the CA.
+        // Full adds the peer-address check, which cannot live in a verify callback (the socket is
+        // not reachable from there) and is applied per connection by FullModeListener instead.
+        //
+        // NOTE ON WHAT THIS AUTHENTICATES: whoever OPENS the connection. Behind a TLS-terminating
+        // proxy that is the proxy, never the agent, whichever of the two modes is configured.
         if (config.verificationMode != remoted::http::ClientVerificationMode::None)
         {
             context.load_verify_file(config.caPath);
@@ -649,6 +821,14 @@ namespace
 
 namespace remoted::http
 {
+    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
+    {
+        // X509_check_ip_asc() parses the textual address itself and compares it against the
+        // certificate's iPAddress SAN entries, so IPv4 and IPv6 (including an IPv4-mapped IPv6
+        // peer written in its normalised form) are handled without any parsing here.
+        return certificate != nullptr && X509_check_ip_asc(certificate, peerIp.c_str(), 0) == 1;
+    }
+
     struct RestinioHttpServer::Impl
     {
         std::mutex m_mutex;
@@ -663,6 +843,11 @@ namespace remoted::http
         /// a real burst means thousands per second. One line per window, carrying the count.
         remoted::common::LogThrottle m_budgetRejectThrottle;
 
+        /// Connections whose client certificate does not list the address they came from, as judged
+        /// once per connection by FullModeListener. Only allocated for ClientVerificationMode::Full;
+        /// null in the other modes, which is what keeps the listener inert.
+        std::shared_ptr<RejectedConnections> m_rejectedConnections;
+
         std::unique_ptr<Router> buildRouter()
         {
             auto requestRouter = std::make_unique<Router>();
@@ -671,6 +856,7 @@ namespace remoted::http
             {
                 auto* pool = m_workerPool.get();
                 auto* budget = m_budget.get();
+                auto rejectedConnections = m_rejectedConnections;
                 auto* budgetThrottle = &m_budgetRejectThrottle;
                 auto handler = route.handler;
                 const auto method = route.method;
@@ -681,8 +867,15 @@ namespace remoted::http
                 requestRouter->add_handler(
                     toRestinioMethod(method),
                     route.path,
-                    [pool, budget, budgetThrottle, handler, method, countAgainstBudget, responseMode, streamChunkSize](
-                        auto request, auto) -> restinio::request_handling_status_t
+                    [pool,
+                     budget,
+                     budgetThrottle,
+                     handler,
+                     method,
+                     countAgainstBudget,
+                     responseMode,
+                     streamChunkSize,
+                     rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
                         // once (including the liveness probe, whose handler is a bare lambda).
@@ -693,6 +886,21 @@ namespace remoted::http
                         std::shared_ptr<remoted::http::IHttpResponder> responder;
                         try
                         {
+                            // ClientVerificationMode::Full: the connection's client certificate did
+                            // not list the address it came from, so nothing on it may be served.
+                            // Checked here rather than per route so it also covers the
+                            // unauthenticated liveness probe -- there must be no route through
+                            // which a rejected connection is answered. The verdict was computed
+                            // once, when the connection was accepted; this is only the lookup.
+                            if (rejectedConnections && rejectedConnections->contains(request->connection_id()))
+                            {
+                                return request->create_response(restinio::status_forbidden())
+                                    .append_header(restinio::http_field::content_type, "application/json")
+                                    .set_body(R"({"error":"Client certificate does not match the peer address","code":403})")
+                                    .connection_close()
+                                    .done();
+                            }
+
                             // Reserve the request's payload against the global in-flight budget
                             // before doing anything else. If it's exhausted, shed load with a plain
                             // 503 (the agent runs its own retry/backoff) instead of letting the
@@ -883,6 +1091,12 @@ namespace remoted::http
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
 
+        // Only Full needs somewhere to record rejected connections. Left null otherwise, which is
+        // what makes the connection-state listener a no-op in the other two modes.
+        m_impl->m_rejectedConnections = config.verificationMode == ClientVerificationMode::Full
+                                            ? std::make_shared<RejectedConnections>()
+                                            : nullptr;
+
         // In-flight byte budget. Clamp it to at least one max-size request (+overhead) so a
         // misconfigured tiny value can't reject every request; 0 leaves the limit disabled.
         std::size_t maxInFlight = config.maxInFlightBytes;
@@ -908,6 +1122,11 @@ namespace remoted::http
         }
 
         restinio::server_settings_t<ServerTraits> settings;
+
+        // Always provided, even when it has nothing to do: RESTinio throws
+        // ("connection state listener is not specified") if the traits name a listener type and no
+        // instance is set. A null registry inside makes it inert for None/Certificate.
+        settings.connection_state_listener(std::make_shared<FullModeListener>(m_impl->m_rejectedConnections));
 
         settings.address(config.bindAddress)
             .port(config.port)

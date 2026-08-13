@@ -651,6 +651,21 @@ static void test_w_remoted_parse_https_verification_mode_without_ca(void **state
     free_node_array(nodes);
 }
 
+static void test_w_remoted_parse_https_verification_mode_full(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("verification_mode", "full")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+
+    free_node_array(nodes);
+}
+
 static void test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate(void **state) {
     test_state *ts = *state;
 
@@ -969,6 +984,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_without_ca, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_full, setup, teardown),
         cmocka_unit_test_setup_teardown(
             test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate, setup, teardown),
         cmocka_unit_test_setup_teardown(

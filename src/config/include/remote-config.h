@@ -41,6 +41,7 @@
 #define REMOTED_HTTPS_VERIFY_UNSET       (-1)
 #define REMOTED_HTTPS_VERIFY_NONE        0
 #define REMOTED_HTTPS_VERIFY_CERTIFICATE 1
+#define REMOTED_HTTPS_VERIFY_FULL        2
 #define REMOTED_HTTPS_VERIFY_DEFAULT     REMOTED_HTTPS_VERIFY_NONE
 
 /* <remote><https><dual_stack> values. Only meaningful when bind_addr resolves to
