@@ -206,6 +206,7 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -232,7 +233,8 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
         'items': [
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'}
+            {'id': '010', 'version': 'v5.0.0'},
+            {'id': '003', 'version': 'N/A'}
         ]
     }
     enter_mock.return_value = mock_query
@@ -253,6 +255,7 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -279,7 +282,8 @@ async def test_agent_restart_agents_by_node(exit_mock, enter_mock, init_mock, ru
         'items': [
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'}
+            {'id': '010', 'version': 'v5.0.0'},
+            {'id': '003', 'version': 'N/A'}
         ]
     }
     enter_mock.return_value = mock_query
@@ -300,6 +304,7 @@ async def test_agent_restart_agents_by_node(exit_mock, enter_mock, init_mock, ru
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -326,7 +331,8 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
         'items': [
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'}
+            {'id': '010', 'version': 'v5.0.0'},
+            {'id': '003', 'version': 'N/A'}
         ]
     }
     enter_mock.return_value = mock_query
@@ -347,6 +353,7 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -373,7 +380,8 @@ async def test_agent_reload_agents_by_node(exit_mock, enter_mock, init_mock, run
         'items': [
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'}
+            {'id': '010', 'version': 'v5.0.0'},
+            {'id': '003', 'version': 'N/A'}
         ]
     }
     enter_mock.return_value = mock_query

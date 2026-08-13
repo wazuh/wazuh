@@ -150,8 +150,6 @@ MAX_GROUPS_PER_MULTIGROUP = 128
 # ============================================= Wazuh constants - Version ==============================================
 # Agent upgrading variables.
 WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
-# Version variables (legacy, required, etc).
-ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
 # ================================================ Wazuh path - Config =================================================

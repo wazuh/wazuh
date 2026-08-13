@@ -39,9 +39,20 @@ jobs:
       - name: Install cmocka 1.1.7 and lcov
         run: |
           brew install lcov
-          curl -LO https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
-          tar -xf cmocka-1.1.7.tar.xz
-          cd cmocka-1.1.7
+
+          CMOCKA_TARBALL="cmocka-1.1.7.tar"
+          CMOCKA_URL="https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
+          CMOCKA_MIRROR_URL="https://gitlab.com/cmocka/cmocka/-/archive/cmocka-1.1.7/cmocka-cmocka-1.1.7.tar.gz"
+
+          if ! curl -f -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_URL"; then
+            echo "Primary CMocka download failed. Falling back to the GitLab mirror..."
+            curl -f -L --retry 3 --retry-delay 2 --connect-timeout 15 -o "$CMOCKA_TARBALL" "$CMOCKA_MIRROR_URL"
+          fi
+
+          # tar auto-detects xz vs gzip from the archive header regardless of the source used above.
+          tar -xf "$CMOCKA_TARBALL"
+          extracted_dir="$(tar -tf "$CMOCKA_TARBALL" | head -1 | cut -d/ -f1)"
+          cd "$extracted_dir"
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
           make -j$(sysctl -n hw.ncpu)

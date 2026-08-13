@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -412,8 +413,8 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
     config.drainTimeoutSec = 5;
 
     std::mutex parkedMutex;
+    std::condition_variable parkedCv;
     std::vector<std::shared_ptr<IHttpResponder>> parked;
-    std::atomic<int> dispatched {0};
 
     auto server = makeUdsHttpServer();
     server->addRoute(Method::Post,
@@ -424,7 +425,7 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
                              std::lock_guard<std::mutex> lock {parkedMutex};
                              parked.push_back(std::move(responder));
                          }
-                         dispatched.fetch_add(1);
+                         parkedCv.notify_one();
                      });
     server->start(config);
 
@@ -440,13 +441,15 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
             { return sendRaw(path, peerRequest("POST", "/inventory/sync", "payload"), std::chrono::seconds {60}); }));
     }
 
-    // Wait for all of them to be sitting in the parked list at the same time.
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
-    while (dispatched.load() < CONCURRENCY && std::chrono::steady_clock::now() < deadline)
+    // Wait for all of them to be sitting in the parked list at the same time. The 120s cap is a
+    // deadlock guard only; the condition variable resolves the wait as soon as the last request
+    // lands, so this no longer races against CPU availability under ASan/CI load.
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(
+            lock, std::chrono::seconds {120}, [&] { return parked.size() >= static_cast<size_t>(CONCURRENCY); });
+        ASSERT_EQ(static_cast<size_t>(CONCURRENCY), parked.size()) << "all requests must be in flight simultaneously";
     }
-    ASSERT_EQ(CONCURRENCY, dispatched.load()) << "all requests must be in flight simultaneously";
 
     // Now release them all.
     {
@@ -485,6 +488,7 @@ TEST(UdsHttpServerTest, DroppingTheRequestReleasesItsBudgetBeforeTheReplyIsSent)
     // is answered 503 by the abandonment backstop -- which would make this test pass for the wrong
     // reason.
     std::mutex parkedMutex;
+    std::condition_variable parkedCv;
     std::vector<std::shared_ptr<IHttpResponder>> parked;
     std::atomic<int> dropped {0};
 
@@ -498,7 +502,11 @@ TEST(UdsHttpServerTest, DroppingTheRequestReleasesItsBudgetBeforeTheReplyIsSent)
                              parked.push_back(std::move(responder));
                          }
                          request.reset(); // release the payload and its reservation now
-                         dropped.fetch_add(1);
+                         {
+                             std::lock_guard<std::mutex> lock {parkedMutex};
+                             dropped.fetch_add(1);
+                         }
+                         parkedCv.notify_one();
                      });
     server->start(config);
 
@@ -510,10 +518,9 @@ TEST(UdsHttpServerTest, DroppingTheRequestReleasesItsBudgetBeforeTheReplyIsSent)
                                                std::chrono::seconds {30});
                             });
 
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (dropped.load() < 1 && std::chrono::steady_clock::now() < deadline)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(lock, std::chrono::seconds {10}, [&] { return dropped.load() >= 1; });
     }
     ASSERT_EQ(1, dropped.load());
 
@@ -527,10 +534,9 @@ TEST(UdsHttpServerTest, DroppingTheRequestReleasesItsBudgetBeforeTheReplyIsSent)
                                                 std::chrono::seconds {30});
                              });
 
-    deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (dropped.load() < 2 && std::chrono::steady_clock::now() < deadline)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(lock, std::chrono::seconds {10}, [&] { return dropped.load() >= 2; });
     }
     EXPECT_EQ(2, dropped.load()) << "the second request must reach the handler, not be shed with 503";
 
@@ -557,6 +563,8 @@ TEST(UdsHttpServerTest, ConnectionCapAnswersAnExplicit503)
     config.maxConnections = 1;
     config.responseTimeoutSec = 20;
 
+    std::mutex parkedMutex;
+    std::condition_variable parkedCv;
     std::shared_ptr<IHttpResponder> parked;
     std::atomic_bool parkedReady {false};
 
@@ -565,8 +573,12 @@ TEST(UdsHttpServerTest, ConnectionCapAnswersAnExplicit503)
                      "/inventory/sync",
                      [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
                      {
-                         parked = std::move(responder);
-                         parkedReady.store(true);
+                         {
+                             std::lock_guard<std::mutex> lock {parkedMutex};
+                             parked = std::move(responder);
+                             parkedReady.store(true);
+                         }
+                         parkedCv.notify_one();
                      });
     server->start(config);
 
@@ -574,19 +586,21 @@ TEST(UdsHttpServerTest, ConnectionCapAnswersAnExplicit503)
         std::launch::async,
         [&path] { return sendRaw(path, peerRequest("POST", "/inventory/sync", "held"), std::chrono::seconds {30}); });
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (!parkedReady.load() && std::chrono::steady_clock::now() < deadline)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(lock, std::chrono::seconds {10}, [&] { return parkedReady.load(); });
     }
     ASSERT_TRUE(parkedReady.load());
 
     const auto refused = sendRaw(path, peerRequest("POST", "/inventory/sync", "refused"));
     EXPECT_EQ(503, refused.status);
 
-    if (parked)
     {
-        parked->send(HttpResponse::json(202, "{}"));
+        std::lock_guard<std::mutex> lock {parkedMutex};
+        if (parked)
+        {
+            parked->send(HttpResponse::json(202, "{}"));
+        }
     }
     held.get();
 }
@@ -733,6 +747,8 @@ TEST(UdsHttpServerTest, ASlowHandlerOnOneConnectionDoesNotStallAnother)
     config.ioThreads = 2;
     config.responseTimeoutSec = 30;
 
+    std::mutex slowMutex;
+    std::condition_variable slowCv;
     std::atomic_bool insideSlowHandler {false};
 
     auto server = makeUdsHttpServer();
@@ -740,7 +756,11 @@ TEST(UdsHttpServerTest, ASlowHandlerOnOneConnectionDoesNotStallAnother)
                      "/slow",
                      [&](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
                      {
-                         insideSlowHandler.store(true);
+                         {
+                             std::lock_guard<std::mutex> lock {slowMutex};
+                             insideSlowHandler.store(true);
+                         }
+                         slowCv.notify_one();
                          // Blocks the I/O thread on purpose, exactly like a lock held elsewhere.
                          std::this_thread::sleep_for(SLOW_HANDLER_BLOCK);
                          responder->send(HttpResponse::json(200, R"({"slow":true})"));
@@ -753,10 +773,9 @@ TEST(UdsHttpServerTest, ASlowHandlerOnOneConnectionDoesNotStallAnother)
                    [&path] { return sendRaw(path, peerRequest("POST", "/slow", "x"), std::chrono::seconds {30}); });
 
     // Only measure once the slow handler is genuinely occupying an I/O thread.
-    const auto entered = std::chrono::steady_clock::now() + std::chrono::seconds {5};
-    while (!insideSlowHandler.load() && std::chrono::steady_clock::now() < entered)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
+        std::unique_lock<std::mutex> lock {slowMutex};
+        slowCv.wait_for(lock, std::chrono::seconds {5}, [&] { return insideSlowHandler.load(); });
     }
     ASSERT_TRUE(insideSlowHandler.load()) << "the slow handler never ran";
 
@@ -994,6 +1013,7 @@ TEST(UdsHttpServerTest, ASecondRequestIsShedWith503WhileTheBudgetIsHeldByADeferr
     config.responseTimeoutSec = 30;
 
     std::mutex parkedMutex;
+    std::condition_variable parkedCv;
     std::vector<std::shared_ptr<IHttpResponder>> parked;
     std::vector<std::shared_ptr<const HttpRequest>> held;
     std::atomic<int> dispatched {0};
@@ -1008,8 +1028,9 @@ TEST(UdsHttpServerTest, ASecondRequestIsShedWith503WhileTheBudgetIsHeldByADeferr
                              parked.push_back(std::move(responder));
                              // Holding the request is what keeps its reservation outstanding.
                              held.push_back(std::move(request));
+                             dispatched.fetch_add(1);
                          }
-                         dispatched.fetch_add(1);
+                         parkedCv.notify_one();
                      });
     server->start(config);
 
@@ -1019,10 +1040,9 @@ TEST(UdsHttpServerTest, ASecondRequestIsShedWith503WhileTheBudgetIsHeldByADeferr
                    [&path, &body]
                    { return sendRaw(path, peerRequest("POST", "/inventory/sync", body), std::chrono::seconds {30}); });
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (dispatched.load() < 1 && std::chrono::steady_clock::now() < deadline)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+        std::unique_lock<std::mutex> lock {parkedMutex};
+        parkedCv.wait_for(lock, std::chrono::seconds {10}, [&] { return dispatched.load() >= 1; });
     }
     ASSERT_EQ(1, dispatched.load()) << "the first request never reached the handler";
 

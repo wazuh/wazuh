@@ -30,6 +30,13 @@ namespace remoted::control
     {
         constexpr auto CONTROL_HANDLER_LOGTAG {"wazuh-manager-remoted:control-handler"};
 
+        // Placeholder written to wdb's agent.version column instead of a rejected startup version:
+        // the framework's WazuhVersion parser requires a strict MAJOR.MINOR.PATCH shape (or this
+        // exact sentinel) and raises on anything else, which used to take down every agent-listing
+        // API call the moment one agent ever sent a malformed version. The rejection itself (and
+        // the raw string the agent sent) is still visible in the throttled warning log below.
+        constexpr auto UNKNOWN_VERSION_PLACEHOLDER {"N/A"};
+
         // One shared LogFn instance to avoid heap allocations per log call.
         // Kept in .cpp to avoid pulling loggerHelper.h into header.
         const LogFn& logFn()
@@ -173,11 +180,12 @@ namespace remoted::control
         {
             incStartup(m_metrics);
 
-            const bool versionInvalid =
-                !isValidVersion(data.version) ||
-                (!m_config.allowHigherVersions && compareVersions(m_config.managerVersion, data.version) < 0);
+            const bool versionMalformed = !isValidVersion(data.version);
+            const bool versionTooHigh =
+                !versionMalformed && !m_config.allowHigherVersions &&
+                compareVersions(m_config.managerVersion, data.version) < 0;
 
-            if (versionInvalid)
+            if (versionMalformed || versionTooHigh)
             {
                 // Throttle version rejections: bursts of incompatible-version agents shouldn't flood logs
                 if (const auto throttle = versionRejectionThrottle().record())
@@ -194,8 +202,13 @@ namespace remoted::control
                 }
 
                 const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
+                // Only malformed versions get the sentinel: they can't be safely stored (the
+                // framework's WazuhVersion parser raises on anything outside MAJOR.MINOR.PATCH
+                // or this exact placeholder). A well-formed version that's merely too high for
+                // this manager's policy is safe to persist as-is and worth keeping visible.
+                const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, data.version, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, versionToStore, syncStatus, [](SocketError) {});
 
                 HttpResponse response;
                 response.status = 400;
