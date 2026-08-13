@@ -799,7 +799,9 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
         int i;
         for (i=0;data->policies[i];i++) {
             if(data->policies[i]->enabled == 1){
-                cJSON_AddStringToObject(policies, "policy", data->policies[i]->policy_path);
+                cJSON *policy_entry = cJSON_CreateObject();
+                cJSON_AddStringToObject(policy_entry, "policy", data->policies[i]->policy_path);
+                cJSON_AddItemToArray(policies, policy_entry);
             }
         }
         cJSON_AddItemToObject(wm_wd,"policies", policies);
