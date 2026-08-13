@@ -209,7 +209,7 @@ cJSON *getAntiTamperingConfig(void) {
     }
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *package_uninstallation = cJSON_CreateArray();
+    cJSON *package_uninstallation = cJSON_CreateObject();
 
     if (atc->package_uninstallation) cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","yes"); else cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","no");
 
