@@ -182,9 +182,11 @@ type Step struct {
 	// Engine-stream fields (kind "engine").
 	Engine   string `json:"engine"`   // path to a sample log file
 	Location string `json:"location"` // source path stamped on events
-	// EventsPerSecond caps the lane's REAL event rate, aggregated across every
-	// agent running the lane (0 = unlimited). The limiter charges one token per
-	// event, so the cap does not depend on how events are grouped into requests.
+	// EventsPerSecond caps EACH agent's own REAL event rate independently (0 =
+	// unlimited): every agent running the lane paces itself against its own
+	// budget, so N agents deliver up to N*EventsPerSecond to the manager in
+	// aggregate. The limiter charges one token per event, so the cap does not
+	// depend on how events are grouped into requests.
 	EventsPerSecond float64 `json:"events_per_second"`
 	// EventsPerBatch is how many events ride one /stateless request. 0 sends
 	// the whole sample file as a single batch. One runStep pass always ships the

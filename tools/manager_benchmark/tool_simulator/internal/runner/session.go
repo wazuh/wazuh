@@ -277,11 +277,13 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 }
 
 // runEngine ships the step's sample file to /stateless in batches of
-// events_per_batch H/E events (0 = the whole file at once). The lane's
+// events_per_batch H/E events (0 = the whole file at once). This agent's own
 // events_per_second limiter charges each batch its REAL cost in events
-// (WaitN), so the configured rate holds no matter how the events are grouped.
-// One call always covers the entire file; a 503'd batch is counted and
-// dropped, never retried -- an agent's events are lost the same way.
+// (WaitN), so the configured rate holds no matter how the events are grouped;
+// each agent paces itself independently, so the manager-side total scales
+// with how many agents run the lane. One call always covers the entire file;
+// a 503'd batch is counted and dropped, never retried -- an agent's events
+// are lost the same way.
 func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) {
 	lines := a.r.engineLines(step.Engine)
 	if len(lines) == 0 {
@@ -291,7 +293,7 @@ func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) 
 	if batch <= 0 || batch > len(lines) {
 		batch = len(lines)
 	}
-	limiter := a.r.engineLimiter(lane, step.EventsPerSecond, batch)
+	limiter := a.r.engineLimiter(a.id, lane, step.EventsPerSecond, batch)
 
 	for off := 0; off < len(lines); off += batch {
 		end := off + batch

@@ -68,7 +68,7 @@ type Runner struct {
 
 	engineMu    sync.Mutex
 	engineFiles map[string][]string            // cached sample log lines by path
-	engineLim   map[string]*pacing.Limiter     // per-lane engine limiter, keyed by lane|eps
+	engineLim   map[string]*pacing.Limiter     // per-agent engine limiter, keyed by agentID|lane|eps
 	dumps       map[string]*source.DumpSession // cached captured-session dumps by path
 
 	failOnce sync.Once
@@ -268,13 +268,13 @@ func (r *Runner) fatalf(format string, args ...any) {
 	})
 }
 
-// engineLimiter returns (and caches) a per-lane event limiter. The rate is in
-// EVENTS per second and is the lane's AGGREGATE across every agent of every
-// fleet running it -- the knob shapes what the manager receives in total, not
-// what one agent produces. The burst is raised to the largest batch seen so a
-// whole batch can be charged atomically (WaitN).
-func (r *Runner) engineLimiter(lane string, eps float64, batch int) *pacing.Limiter {
-	key := fmt.Sprintf("%s|%.3f", lane, eps)
+// engineLimiter returns (and caches) a per-agent event limiter. The rate is in
+// EVENTS per second and is EACH agent's own independent budget -- the knob
+// shapes what one agent produces, so N agents running the lane in parallel
+// deliver up to N*eps to the manager in aggregate. The burst is raised to the
+// largest batch seen so a whole batch can be charged atomically (WaitN).
+func (r *Runner) engineLimiter(agentID, lane string, eps float64, batch int) *pacing.Limiter {
+	key := fmt.Sprintf("%s|%s|%.3f", agentID, lane, eps)
 	r.engineMu.Lock()
 	l, ok := r.engineLim[key]
 	if !ok {
