@@ -26,13 +26,13 @@ fi
 # Write the upgrade result and 'reload' modulesd
 abort_upgrade() {
     echo -ne "$1" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
     if [ -x ./bin/wazuh-control ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Reloading the Wazuh agent to report the upgrade result." >> ./logs/upgrade.log
         ./bin/wazuh-control reload >> ./logs/upgrade.log 2>&1
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Cannot reload the Wazuh agent, ./bin/wazuh-control not found. The result will be reported on the next agent restart." >> ./logs/upgrade.log
     fi
+    rm -f $LOCK
     exit 1
 }
 
