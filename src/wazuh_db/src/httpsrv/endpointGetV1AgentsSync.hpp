@@ -37,7 +37,6 @@ class TEndpointGetV1AgentsSync final
         std::string osPlatform;
         std::string osArch;
         std::string version;
-        std::string nodeName;
         int64_t lastKeepalive = DEFAULT_INT_VALUE;
         std::string connectionStatus;
         int64_t disconnectionTime = DEFAULT_INT_VALUE;
@@ -54,7 +53,6 @@ class TEndpointGetV1AgentsSync final
                     MAKE_FIELD("os_platform", &SyncReq::osPlatform),
                     MAKE_FIELD("os_arch", &SyncReq::osArch),
                     MAKE_FIELD("version", &SyncReq::version),
-                    MAKE_FIELD("node_name", &SyncReq::nodeName),
                     MAKE_FIELD("last_keepalive", &SyncReq::lastKeepalive),
                     MAKE_FIELD("connection_status", &SyncReq::connectionStatus),
                     MAKE_FIELD("disconnection_time", &SyncReq::disconnectionTime),
@@ -98,7 +96,7 @@ public:
             DBStatement stmtSyncReq( // LCOV_EXCL_LINE
                 db,
                 "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, "
-                "version, node_name, last_keepalive, connection_status, disconnection_time, "
+                "version, last_keepalive, connection_status, disconnection_time, "
                 "status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';");
 
             while (stmtSyncReq.step() == SQLITE_ROW)
@@ -116,11 +114,10 @@ public:
                                                 .osPlatform = stmtSyncReq.template value<std::string>(8),
                                                 .osArch = stmtSyncReq.template value<std::string>(9),
                                                 .version = stmtSyncReq.template value<std::string>(10),
-                                                .nodeName = stmtSyncReq.template value<std::string>(11),
-                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(12),
-                                                .connectionStatus = stmtSyncReq.template value<std::string>(13),
-                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(14),
-                                                .statusCode = stmtSyncReq.template value<int64_t>(15)});
+                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(11),
+                                                .connectionStatus = stmtSyncReq.template value<std::string>(12),
+                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(13),
+                                                .statusCode = stmtSyncReq.template value<int64_t>(14)});
             }
         }
 

@@ -45,13 +45,12 @@ It **must not** contain business logic.
 | Module | Responsibility | Main Endpoints |
 |--------|----------------|----------------|
 | `agent.py` | Agent lifecycle and queries | `/agents` |
-| `manager.py` | Manager status and configuration | `/manager` |
+| `manager.py` | Manager status and configuration | used by `cluster_controller.py` (no dedicated route) |
 | `cluster.py` | Cluster operations | `/cluster` |
 | `security.py` | Authentication and users | `/security` |
 | `rbac/` | Authorization logic | `/security/*` |
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |
-| `stats.py` | Manager statistics | `/manager/stats` |
-| `task.py` | Async task handling | `/tasks` |
+| `stats.py` | Manager statistics | used by `cluster_controller.py` (no dedicated route) |
 
 ---
 
@@ -110,9 +109,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `agent_controller.py` | Agent CRUD and lifecycle |
 | `cluster_controller.py` | Cluster node operations |
 | `security_controller.py` | Users, roles, policies, RBAC |
-| `active_response_controller.py` | Trigger active response commands |
 | `mitre_controller.py` | MITRE ATT&CK mappings |
-| `task_controller.py` | Async task queries |
 | `overview_controller.py` | Agent overview/summary |
 | `default_controller.py` | Basic API info (version, hostname, timestamp) |
 
@@ -146,7 +143,6 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `control.py` | Cluster control operations |
 | `cluster.py` | Core cluster logic |
 | `common.py` | Cluster-specific shared utilities |
-| `config.py` | Cluster configuration schema |
 | `utils.py` | Cluster utilities (`get_cluster_items`, etc.) |
 
 ---
@@ -159,7 +155,10 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `indexer.py` | Main Wazuh Indexer client |
 | `credential_manager.py` | Indexer credential management |
 | `disconnected_agents.py` | Handling disconnected agents in the indexer |
-| `max_version_components.py` | Version component handling |
+| `active_response.py` | Active response document indexing |
+| `metrics.py` | Indexer metrics collection |
+| `metrics_snapshot.py` | Cluster-wide metrics snapshot aggregation |
+| `states_components.py` | Component state indexing |
 
 ---
 

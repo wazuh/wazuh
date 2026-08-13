@@ -454,13 +454,29 @@ def test_DistributedAPI_tmp_file_cluster_error():
                 raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
 
+@pytest.mark.parametrize('f_kwargs, expected', [
+    ({'agent_list': ['001', '002']}, {}),
+    ({'agent_list': '*'}, {}),
+    ({'group_id': 'default'}, {}),
+    ({'node_id': 'worker1'}, {'worker1': []}),
+    ({'node_list': ['worker1', 'worker2']}, {'worker1': [], 'worker2': []}),
+    ({'node_list': '*'}, {}),
+])
+def test_DistributedAPI_get_solver_node(f_kwargs, expected):
+    """Test `get_solver_node` returns node routing only for node-targeted requests, broadcasting otherwise.
+
+    Agents have no fixed owning node under the stateless HTTPS architecture, so agent-targeted
+    requests must resolve to an empty dict (broadcast to every node by `forward_request`), while
+    requests explicitly targeting node(s) must resolve to those exact nodes.
+    """
+    dapi = DistributedAPI(f=manager.status, logger=logger, request_type='distributed_master', f_kwargs=f_kwargs)
+    assert loop.run_until_complete(dapi.get_solver_node()) == expected
+
+
 @patch('wazuh.core.cluster.local_client.LocalClient.execute',
        new=AsyncMock(return_value='{"items": [{"name": "master"}], "totalItems": 1}'))
-@patch('wazuh.agent.Agent.get_agents_overview', return_value={'items': [{'id': '001', 'node_name': 'master'},
-                                                                        {'id': '002', 'node_name': 'master'},
-                                                                        {'id': '003', 'node_name': 'unknown'}]})
-def test_DistributedAPI_get_solver_node(mock_agents_overview):
-    """Test `get_solver_node` function."""
+def test_DistributedAPI_forward_request_broadcasts_agent_targeted_requests():
+    """Test `forward_request` broadcasts agent-targeted requests to every cluster node unmodified."""
     nodes_info_result = AffectedItemsWazuhResult()
     nodes_info_result.affected_items.append({'name': 'master'})
     common.cluster_nodes.set(['master'])
@@ -469,10 +485,6 @@ def test_DistributedAPI_get_solver_node(mock_agents_overview):
         with patch('wazuh.core.cluster.dapi.dapi.node_info', {'type': 'master', 'node': 'unknown'}):
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'agent_list': ['001', '002']}, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
-
-            dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                           'f_kwargs': {'agent_list': ['003', '004']}, 'nodes': ['master']}
             raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
@@ -488,7 +500,7 @@ def test_DistributedAPI_get_solver_node(mock_agents_overview):
             raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             expected = AffectedItemsWazuhResult()
-            expected.affected_items = [{'id': '001', 'node_name': 'master'}]
+            expected.affected_items = [{'id': '001'}]
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'default'}, 'nodes': ['master']}

@@ -70,7 +70,7 @@ public:
             if (jsonBody.contains("syncreq"))
             {
                 DBStatement stmt(db, // LCOV_EXCL_LINE
-                                 "UPDATE agent SET ip = ?, name = ?, node_name = ?, "
+                                 "UPDATE agent SET ip = ?, name = ?, "
                                  "os_arch = ?, os_major = ?, os_minor = ?, os_name = ?, os_type = ?, "
                                  "os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
                                  "connection_status = ?, disconnection_time = ?, status_code= ?, "
@@ -82,20 +82,19 @@ public:
                     const auto idAgent = id<int64_t>(agent, "id");
                     stmt.bind(1, value<std::string_view>(agent, "ip"));
                     stmt.bind(2, value<std::string_view>(agent, "name"));
-                    stmt.bind(3, value<std::string_view>(agent, "node_name"));
-                    stmt.bind(4, value<std::string_view>(agent, "os_arch"));
-                    stmt.bind(5, value<std::string_view>(agent, "os_major"));
-                    stmt.bind(6, value<std::string_view>(agent, "os_minor"));
-                    stmt.bind(7, value<std::string_view>(agent, "os_name"));
-                    stmt.bind(8, value<std::string_view>(agent, "os_type"));
-                    stmt.bind(9, value<std::string_view>(agent, "os_platform"));
-                    stmt.bind(10, value<std::string_view>(agent, "os_version"));
-                    stmt.bind(11, value<std::string_view>(agent, "version"));
-                    stmt.bind(12, value<int64_t>(agent, "last_keepalive"));
-                    stmt.bind(13, value<std::string_view>(agent, "connection_status"));
-                    stmt.bind(14, value<int64_t>(agent, "disconnection_time"));
-                    stmt.bind(15, value<int64_t>(agent, "status_code"));
-                    stmt.bind(16, idAgent);
+                    stmt.bind(3, value<std::string_view>(agent, "os_arch"));
+                    stmt.bind(4, value<std::string_view>(agent, "os_major"));
+                    stmt.bind(5, value<std::string_view>(agent, "os_minor"));
+                    stmt.bind(6, value<std::string_view>(agent, "os_name"));
+                    stmt.bind(7, value<std::string_view>(agent, "os_type"));
+                    stmt.bind(8, value<std::string_view>(agent, "os_platform"));
+                    stmt.bind(9, value<std::string_view>(agent, "os_version"));
+                    stmt.bind(10, value<std::string_view>(agent, "version"));
+                    stmt.bind(11, value<int64_t>(agent, "last_keepalive"));
+                    stmt.bind(12, value<std::string_view>(agent, "connection_status"));
+                    stmt.bind(13, value<int64_t>(agent, "disconnection_time"));
+                    stmt.bind(14, value<int64_t>(agent, "status_code"));
+                    stmt.bind(15, idAgent);
                     stmt.step();
                     stmt.reset();
                 }

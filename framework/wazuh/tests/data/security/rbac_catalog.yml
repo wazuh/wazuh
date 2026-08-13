@@ -151,7 +151,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/{agent_id}/restart
           - PUT /agents/group/{group_id}/restart
-          - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:reload:
         description: Reload agents
@@ -168,7 +167,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/{agent_id}/reload
           - PUT /agents/group/{group_id}/reload
-          - PUT /agents/node/{node_id}/reload
           - PUT /agents/reload
       agent:uninstall:
         description: Check user's permission to uninstall agents
@@ -262,8 +260,6 @@ get_rbac_actions:
             - node:id:worker3
           effect: deny
         related_endpoints:
-          - PUT /agents/node/{node_id}/restart
-          - PUT /agents/node/{node_id}/reload
           - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes

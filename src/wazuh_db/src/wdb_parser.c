@@ -929,7 +929,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_os_platform = NULL;
     cJSON *j_os_arch = NULL;
     cJSON *j_version = NULL;
-    cJSON *j_node_name = NULL;
     cJSON *j_agent_ip = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
@@ -950,7 +949,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_os_platform = cJSON_GetObjectItem(agent_data, "os_platform");
         j_os_arch = cJSON_GetObjectItem(agent_data, "os_arch");
         j_version = cJSON_GetObjectItem(agent_data, "version");
-        j_node_name = cJSON_GetObjectItem(agent_data, "node_name");
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
@@ -966,7 +964,6 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *os_platform = cJSON_IsString(j_os_platform) ? j_os_platform->valuestring : NULL;
             char *os_arch = cJSON_IsString(j_os_arch) ? j_os_arch->valuestring : NULL;
             char *version = cJSON_IsString(j_version) ? j_version->valuestring : NULL;
-            char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
             char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
@@ -975,7 +972,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor,
                                                               os_type, os_platform, os_arch, version,
-                                                              node_name, agent_ip, connection_status,
+                                                              agent_ip, connection_status,
                                                               validated_sync_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
@@ -1661,9 +1658,7 @@ int wdb_parse_global_get_agent_info(wdb_t* wdb, char* input, char* output) {
 
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output) {
     int last_id = 0;
-    int limit = 0;
     char *connection_status = NULL;
-    char *node_name = NULL;
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
@@ -1685,24 +1680,9 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     }
     connection_status = next;
 
-    /* Get node name */
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next != NULL) {
-        node_name = next;
-
-        /* Get limit */
-        next = strtok_r(NULL, delim, &savedptr);
-        if (next == NULL) {
-            mdebug1("Invalid arguments 'limit' not found.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'limit' not found");
-            return OS_INVALID;
-        }
-        limit = atoi(next);
-    }
-
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, node_name, limit, &status);
+    cJSON* result = wdb_global_get_agents_by_connection_status(wdb, last_id, connection_status, &status);
     if (!result) {
         mdebug1("Error getting agents by connection status from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents by connection status from global.db.");

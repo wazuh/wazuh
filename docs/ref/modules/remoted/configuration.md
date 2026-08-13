@@ -1067,7 +1067,7 @@ Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_d
 Query remoted's statistics on demand via the API:
 
 ```bash
-GET /manager/daemons/stats?daemons_list=wazuh-manager-remoted
+GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
 ```
 
 ### Enable Debug Logging

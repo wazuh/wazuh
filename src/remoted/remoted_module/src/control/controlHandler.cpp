@@ -461,7 +461,7 @@ namespace remoted::control
                     LOGFN_DEBUG2(logFn(), "Agent %u: writing full agent data to wdb.", id);
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq" : "synced";
                     m_wdbClient->updateAgentData(
-                        id, data.version, m_config.nodeName, "active", syncStatus, &(*data.host), [](SocketError) {});
+                        id, data.version, "active", syncStatus, &(*data.host), [](SocketError) {});
                 }
                 else
                 {

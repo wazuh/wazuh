@@ -49,7 +49,6 @@ typedef struct agent_info_data
     os_data* osd;
     char* version;
     char* merged_sum;
-    char* node_name;
     char* agent_ip;
     char* connection_status;
     char* sync_status;

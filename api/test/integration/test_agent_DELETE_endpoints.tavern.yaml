@@ -718,27 +718,6 @@ stages:
           total_failed_items: 0
 
   # DELETE /agents
-  - name: Delete agents node_name=unknown
-    request:
-      verify: False
-      <<: *delete_agents
-      params:
-        older_than: '0s'
-        agents_list: 'all'
-        status: 'all'
-        node_name: 'unknown'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - "012"
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  # DELETE /agents
   - name: Delete agents group=default and q=id<4
     request:
       verify: False

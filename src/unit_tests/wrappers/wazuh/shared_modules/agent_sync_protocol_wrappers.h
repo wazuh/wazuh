@@ -19,8 +19,6 @@
 
 AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger);
 
-void __wrap_asp_destroy(AgentSyncProtocolHandle* handle);
-
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
                              int operation,
@@ -36,9 +34,6 @@ bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* checksum);
 
 bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
-
-SyncModuleResult_t __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                                      int mode);
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   const char** indices,

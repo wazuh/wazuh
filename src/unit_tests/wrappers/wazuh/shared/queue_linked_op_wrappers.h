@@ -14,6 +14,4 @@
 #include "shared.h"
 
 w_linked_queue_node_t* __wrap_linked_queue_push_ex(w_linked_queue_t* queue, void* data);
-
-void* __wrap_linked_queue_pop_ex(w_linked_queue_t* queue);
 #endif

@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS agent (
     os_platform TEXT,
     os_arch TEXT,
     version TEXT,
-    node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     status TEXT NOT NULL CHECK (status IN ('empty', 'pending', 'updated')) DEFAULT 'empty',
@@ -50,17 +49,17 @@ CREATE TABLE IF NOT EXISTS belongs
 
 
 -- Connected agent with IP and Registered IP filled
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (1, 'agent-1', '172.17.0.202', 'any',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (1, 'agent-1', '172.17.0.202', 'any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f',  'Ubuntu', '16.06.1 LTS', '16', '06', 'linux', 'ubuntu', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-4 days'),
+                   strftime('%s','now','-4 days'),
                     strftime('%s','now','-5 seconds'), 'updated', 'active',  'default,group-0');
 
 -- Connected agent with just Registered IP filled
-INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (2, 'agent-2', '172.17.0.201',
+INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (2, 'agent-2', '172.17.0.201',
                    'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f',  'Ubuntu', '16.04.1 LTS', '16', '04', 'linux', 'ubuntu', 'x86_64',
                    'Wazuh v4.2.0',
-                   'node01', strftime('%s','now','-3 days'),
+                   strftime('%s','now','-3 days'),
                     strftime('%s','now','-10 minutes'), 'updated', 'active',  'default,group-0');
 
 -- Never connected agent
@@ -74,49 +73,49 @@ INSERT INTO agent (id, name, register_ip, internal_key, date_add, last_keepalive
 
 
 -- Disconnected agent
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, disconnection_time) VALUES (5, 'agent-5', '172.17.0.300', '172.17.0.300',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, disconnection_time) VALUES (5, 'agent-5', '172.17.0.300', '172.17.0.300',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a42ba2455d53a90927747f', 'Ubuntu', '18.08.1 LTS', '18', '08', 'linux', 'ubuntu', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-5 days'),
+                   strftime('%s','now','-5 days'),
                     strftime('%s','now','-2 hour'), 'updated', 'disconnected',  strftime('%s','now','-2 hour'));
 
 
 -- Connected agent in group-1
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (6, 'agent-6', '172.17.0.401', 'any',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (6, 'agent-6', '172.17.0.401', 'any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f',  'Xubuntu', '21.04.1 LTS', '21', '04', 'linux', 'xubuntu', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-4 days'),
+                   strftime('%s','now','-4 days'),
                     strftime('%s','now','-7 seconds'), 'updated', 'active', 'group-1');
 
 
 -- Connected agent in group-2
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (7, 'agent-7', '172.17.0.501', 'any',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (7, 'agent-7', '172.17.0.501', 'any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f',  'Ubuntu', '18.04.1 LTS', '18', '04', 'linux', 'ubuntu', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-4 days'),
+                   strftime('%s','now','-4 days'),
                     strftime('%s','now','-4 seconds'), 'updated', 'active', 'group-2');
 
 
 -- Connected agent in group-2
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (8, 'agent-8', '172.17.0.502', 'any',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (8, 'agent-8', '172.17.0.502', 'any',
                    'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f',  'Xubuntu', '18.04.1 LTS', '18', '04', 'linux', 'xubuntu', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-4 days'),
+                   strftime('%s','now','-4 days'),
                     strftime('%s','now','-12 seconds'), 'updated', 'active', 'group-2,group-1');
 
 
 -- Connected agent with a different OS
-INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (9, 'agent-9', '172.17.0.503', 'any',
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (9, 'agent-9', '172.17.0.503', 'any',
                    'b3650e11eba2f27er4d160c69de533ee7ffd601636a85ba2455d53a90927747f',  'Windows', '10.0.0 XP', '10', '00', 'windows', 'windows', 'x86_64',
                    'Wazuh v4.0.0',
-                   'node01', strftime('%s','now','-4 days'),
+                   strftime('%s','now','-4 days'),
                     strftime('%s','now','-5 seconds'), 'updated', 'active', 'default');
 
 -- Connected agent with a new version format
-INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES (10, 'agent-10', '172.17.0.901',
+INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, date_add, last_keepalive, status, connection_status, `group`) VALUES (10, 'agent-10', '172.17.0.901',
                    'b7efaafcde1bb0f3d3cbbf5b32e6335878305f4e6a19bec2d065f5e53e134e65',  'Ubuntu', '24.04.3 LTS', '24', '04', 'linux', 'ubuntu', 'x86_64',
                    'v5.0.0',
-                   'node01', strftime('%s','now','-3 days'),
+                   strftime('%s','now','-3 days'),
                     strftime('%s','now','-10 minutes'), 'updated', 'active',  'default');
 
 

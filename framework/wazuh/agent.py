@@ -17,7 +17,6 @@ from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agen
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.agent_tasks import create_restart_tasks, create_reload_tasks, TASK_CHUNK_SIZE
 from wazuh.core.wdb_http import get_wdb_http_client
-from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
@@ -25,8 +24,6 @@ from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_wit
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 logger = logging.getLogger('wazuh')
-
-node_id = get_node().get('node')
 
 UPGRADE_CHUNK_SIZE = 500
 
@@ -257,25 +254,6 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
-                  post_proc_func=async_list_handler)
-async def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Restart all agents belonging to a node.
-
-    Parameters
-    ----------
-    agent_list : list, optional
-        List of agents. Default `None`
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    return await restart_agents(agent_list=agent_list)
-
-
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
@@ -367,25 +345,6 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         result.affected_items.sort(key=int)
 
     return result
-
-
-@expose_resources(actions=['cluster:read', 'agent:reload'], resources=[f'node:id:{node_id}', 'agent:id:{agent_list}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
-                  post_proc_func=async_list_handler)
-async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Reload all agents belonging to a node.
-
-    Parameters
-    ----------
-    agent_list : list, optional
-        List of agents. Default `None`
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    return await reload_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
@@ -1421,7 +1380,6 @@ def get_full_overview() -> WazuhResult:
     """
     q = ''
     # Get information from different methods of Agent class
-    stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
                                                     'os.platform', 'os.type', 'os.version'], q=q).affected_items
@@ -1435,7 +1393,7 @@ def get_full_overview() -> WazuhResult:
     except IndexError:  # an IndexError could happen if there are not registered agents
         last_registered_agent = []
     # combine results in an unique dictionary
-    result = {'nodes': stats_distinct_node, 'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
+    result = {'groups': groups, 'agent_os': stats_distinct_os, 'agent_status': summary,
               'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
     return WazuhResult({'data': result})

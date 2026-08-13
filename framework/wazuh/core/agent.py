@@ -618,7 +618,6 @@ class Agent:
         "os.major": "os_major",
         "os.minor": "os_minor",
         "os.arch": "os_arch",
-        "node_name": "node_name",
         "lastKeepAlive": "last_keepalive",
         "internal_key": "internal_key",
         "registerIP": "register_ip",
@@ -668,7 +667,6 @@ class Agent:
         self.key = None
         self.mergedSum = None
         self.group = None
-        self.node_name = None
         self.registerIP = ip
         self.disconnection_time = None
         self.status_code = None
@@ -695,7 +693,6 @@ class Agent:
             "key": self.key,
             "mergedSum": self.mergedSum,
             "group": self.group,
-            "node_name": self.node_name,
             "disconnection_time": self.disconnection_time,
             "status_code": self.status_code,
         }
