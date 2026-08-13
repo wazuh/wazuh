@@ -190,11 +190,23 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version, directories_list);
         }
 #ifdef WIN32
-        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-            stateful_event = buildRegistryKeyStatefulEvent(path, item_copy, checksum, document_version, arch);
-        }
-        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-            stateful_event = buildRegistryValueStatefulEvent(path, value, item_copy, checksum, document_version, arch);
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
+                 strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            // Same reasoning as the file_entry branch above, resolved against syscheck.registry:
+            // a shared-config push can replace the <syscheck> registry entries, leaving rows whose
+            // path no longer matches any configured entry for this architecture.
+            if (fim_registry_configuration(path, arch) == NULL) {
+                mdebug2("Skipping recovery of orphaned path (no active configuration): %s", path);
+                cJSON_Delete(item_copy);
+                os_free(id_str);
+                continue;
+            }
+
+            if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+                stateful_event = buildRegistryKeyStatefulEvent(path, item_copy, checksum, document_version, arch);
+            } else {
+                stateful_event = buildRegistryValueStatefulEvent(path, value, item_copy, checksum, document_version, arch);
+            }
         }
 #endif // WIN32
         if (stateful_event) {

@@ -386,6 +386,55 @@ static void test_fim_registry_configuration_null_key(void **state) {
     assert_null(configuration);
 }
 
+// An unparseable ossec.conf leaves syscheck.registry NULL: the REGISTRY_EMPTY fallback in
+// Read_Syscheck_Config sits after its OS_INVALID returns, Start_win32_Syscheck's
+// dump_syscheck_registry() recovery only runs on the "disabled" branch, and fim_initialize()
+// runs unconditionally. The lookup must tolerate it instead of dereferencing a NULL array.
+static void test_fim_registry_configuration_null_registry_array(void **state) {
+    registry_t *saved = syscheck.registry;
+    registry_t *configuration;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    syscheck.registry = NULL;
+    configuration = fim_registry_configuration("HKEY_LOCAL_MACHINE\\Security", ARCH_64BIT);
+    syscheck.registry = saved;
+
+    assert_null(configuration);
+}
+
+/* The stateful-event builders must refuse a path that no longer resolves to a
+ * configured registry entry instead of handing a NULL configuration to the attribute helpers.
+ * This is the path taken when rows persisted under an older <syscheck> config are replayed from
+ * the local DB (startup promotion in fim_initialize, recovery resync). */
+
+static void test_build_stateful_event_registry_key_no_configuration(void **state) {
+    (void) state;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to get configuration for registry path: HKEY_LOCAL_MACHINE\\Security");
+
+    cJSON *event = build_stateful_event_registry_key("HKEY_LOCAL_MACHINE\\Security", "1234567890ABCDEF1234567890ABCDEF12345678",
+                                                     1, ARCH_64BIT, NULL, NULL);
+
+    assert_null(event);
+}
+
+static void test_build_stateful_event_registry_value_no_configuration(void **state) {
+    (void) state;
+
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to get configuration for registry path: HKEY_LOCAL_MACHINE\\Security");
+
+    cJSON *event = build_stateful_event_registry_value("HKEY_LOCAL_MACHINE\\Security", "TestValue",
+                                                       "1234567890ABCDEF1234567890ABCDEF12345678",
+                                                       1, ARCH_64BIT, NULL, NULL);
+
+    assert_null(event);
+}
+
 static void test_fim_registry_validate_recursion_level_null_configuration(void **state) {
     char *path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\something";
     int ret;
@@ -1983,6 +2032,11 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_configuration_registry_not_found_arch_does_not_match),
         cmocka_unit_test(test_fim_registry_configuration_registry_not_found_path_does_not_match),
         cmocka_unit_test(test_fim_registry_configuration_null_key),
+        cmocka_unit_test(test_fim_registry_configuration_null_registry_array),
+
+        /* build_stateful_event_registry_* tests */
+        cmocka_unit_test(test_build_stateful_event_registry_key_no_configuration),
+        cmocka_unit_test(test_build_stateful_event_registry_value_no_configuration),
 
         /* fim_registry_validate_recursion_level tests */
         cmocka_unit_test(test_fim_registry_validate_recursion_level_null_configuration),

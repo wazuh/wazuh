@@ -501,6 +501,7 @@ target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
 if(${TARGET} STREQUAL "winagent")
   target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap,fim_registry_configuration \
                                 -Wl,--wrap=fim_db_teardown" fimdb)
 else()
   target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}")
@@ -529,6 +530,7 @@ target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})
 if(${TARGET} STREQUAL "winagent")
   target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap=is_fim_shutdown \
                                        -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
+                                       -Wl,--wrap,fim_registry_configuration \
                                        -Wl,--wrap=syscom_dispatch" fimdb)
 else()
   target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap,time")

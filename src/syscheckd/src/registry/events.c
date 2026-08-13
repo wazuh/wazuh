@@ -192,6 +192,13 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
 
     cJSON *attributes = cJSON_CreateObject();
 
+    // Every branch below reads configuration->opts to know which checks are enabled, so a NULL
+    // configuration leaves nothing to translate. Callers are expected to reject it beforehand
+    // (see build_stateful_event_registry_value); this keeps the public helper from faulting.
+    if (configuration == NULL) {
+        return attributes;
+    }
+
     if (data) {
         if (configuration->opts & CHECK_SIZE) {
             cJSON_AddNumberToObject(attributes, "size", data->size);
@@ -311,6 +318,12 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
  */
 cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key *data, const registry_t *configuration) {
     cJSON *attributes = cJSON_CreateObject();
+
+    // See fim_registry_value_attributes_json: configuration->opts drives every branch below, and the
+    // optimizer hoists that read above the `if (data)` test, so a NULL configuration faults either way.
+    if (configuration == NULL) {
+        return attributes;
+    }
 
     if (data) {
         if (configuration->opts & CHECK_PERM) {
