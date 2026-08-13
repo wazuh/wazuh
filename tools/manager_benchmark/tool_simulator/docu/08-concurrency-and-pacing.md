@@ -24,7 +24,7 @@ flowchart TD
 
     L1 -->|session bucket| RL[(shared EPS limiter)]
     L2 -->|session bucket| RL
-    L3 -->|lane events_per_second| LE[(per-lane limiter)]
+    L3 -->|events_per_second (own budget)| LE[(per-agent limiter)]
 ```
 
 Per run: one `runner`, one `metrics writer`, one `signal watcher`, and per active agent one
@@ -51,8 +51,9 @@ Load shape comes from independent knobs, and confusing them is the classic bench
   syslog engine lane at 250 events/s can run beside paced inventory lanes without either starving
   the other. The unit is real events: the limiter charges each `/stateless` batch its size in
   events (`events_per_batch` groups them), so the cap holds however events are grouped into
-  requests. The rate is the lane's AGGREGATE across every agent of every fleet running it — the
-  knob shapes what the manager receives in total, not what one agent produces.
+  requests. The rate is EACH AGENT'S OWN independent budget, not a shared aggregate — the knob
+  shapes what one agent produces, so N agents running the lane in parallel deliver up to
+  N × `events_per_second` to the manager in total.
 
 A run **MUST** report the target and the *achieved* rate: below target, the manager is the limit and
 the number is a result; at target, the sender was the limit and the run measured its own ceiling.

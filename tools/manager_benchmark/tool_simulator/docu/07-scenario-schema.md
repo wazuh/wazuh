@@ -143,7 +143,8 @@ requests, one token each. A session's document count does NOT weigh against it â
 FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
 and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees
 a session. Engine lanes have their own knob in real event units (`events_per_second`, [13](13-engine-event-streams.md)),
-aggregated across every agent running the lane. Both targets are recorded with the artifacts.
+applied per agent â€” the manager-side total scales with how many agents run the lane. Both targets
+are recorded with the artifacts.
 
 ## Retry (defaults.retry)
 
