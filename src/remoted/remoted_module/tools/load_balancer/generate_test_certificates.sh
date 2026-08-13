@@ -7,7 +7,7 @@
 # verification. Anything that verifies the hostname -- an agent doing the right thing, or NGINX
 # with proxy_ssl_verify on -- cannot use it. Verify for yourself:
 #
-#     openssl x509 -in /var/wazuh-manager/etc/https-manager.cert -noout -ext subjectAltName
+#     openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -ext subjectAltName
 #         -> "No extensions in certificate"
 #
 # Produces, under ./certs:
@@ -63,10 +63,25 @@ generate_certificate manager_node2 "manager_node2" "DNS:manager_node2,DNS:localh
 # addresses with this certificate is exactly the case that mode is supposed to accept.
 generate_certificate agent "agent-1001" "IP:127.0.0.1,DNS:agent-1001" clientAuth
 
+# The same agent, with a valid certificate signed by the same CA, whose SAN carries an address it
+# is NOT connecting from. It is the control for the check above: verification_mode=certificate
+# accepts it (the chain is good), verification_mode=full rejects it (the address is not there).
+# Without this certificate a passing 'full' check proves nothing -- everything in this lab
+# connects from 127.0.0.1, so a mode that accepted every certificate would look identical.
+generate_certificate agent_wrong_ip "agent-1001" "IP:10.99.99.99,DNS:agent-1001" clientAuth
+
 
 # The client certificate the proxy presents to remoted when remoted requires mTLS. Note this is
 # the PROXY's identity, not any agent's -- which is the point of one of the findings.
 generate_certificate proxy_client "lb-proxy" "DNS:lb-proxy,DNS:nginx-proxy,IP:127.0.0.1" clientAuth
+
+# The proxy's certificate again, with an address the proxy does not connect from. Under
+# verification_mode=full remoted compares the SAN against the address the CONNECTION came from,
+# which under termination is the proxy's own -- so this is what a real deployment hits the moment
+# the balancer's egress address is not the one in its certificate: a second balancer node, a new
+# member of an autoscaling group, traffic leaving through a NAT address. Every agent then gets
+# 403, however correct the agent's own certificate is.
+generate_certificate proxy_client_wrong_ip "lb-proxy" "DNS:lb-proxy,IP:10.99.99.99" clientAuth
 
 chmod 644 ./*.crt
 chmod 640 ./*.key

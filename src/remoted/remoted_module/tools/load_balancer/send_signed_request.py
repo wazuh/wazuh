@@ -153,6 +153,51 @@ def send_on_one_connection(host: str, port: int, method: str, target: str, heade
     return results
 
 
+def send_resuming_session(host: str, port: int, method: str, target: str, headers: dict,
+                          body: bytes, timeout: float, count: int,
+                          client_cert: str = None, client_key: str = None):
+    """N requests on N SEPARATE connections, where each one RESUMES the TLS session of the
+    previous. That is what a proxy does by default -- nginx has proxy_ssl_session_reuse on, and
+    HAProxy reuses sessions unless told otherwise -- so it is the ordinary case, not an exotic
+    one. Sending it from a single-shot client is the only way to observe it deliberately, since
+    every other path here builds a fresh context and therefore never resumes anything.
+
+    Returns (status, reason, body) per request; a failed handshake shows up as status None, the
+    same as any other TLS-level failure."""
+    context = build_tls_context(client_cert, client_key)
+    results = []
+    session = None
+    for _ in range(count):
+        try:
+            tls = context.wrap_socket(socket.create_connection((host, port), timeout=timeout),
+                                      server_hostname=host, session=session)
+        except (ssl.SSLError, socket.error, OSError) as exc:
+            results.append((None, f"{type(exc).__name__}: {exc}", ""))
+            break
+        # http.client writes the request for us, over the socket we already handshook, so the
+        # target still goes on the wire verbatim.
+        connection = http.client.HTTPConnection(host, port, timeout=timeout)
+        connection.sock = tls
+        try:
+            connection.putrequest(method, target, skip_host=True, skip_accept_encoding=True)
+            connection.putheader("Host", f"{host}:{port}")
+            connection.putheader("Content-Length", str(len(body)))
+            for name, value in headers.items():
+                connection.putheader(name, value)
+            connection.endheaders()
+            connection.send(body)
+            response = connection.getresponse()
+            results.append((response.status, response.reason,
+                            response.read(400).decode("utf-8", "replace")))
+            session = tls.session
+        except (http.client.HTTPException, ssl.SSLError, socket.error, OSError) as exc:
+            results.append((None, f"{type(exc).__name__}: {exc}", ""))
+            break
+        finally:
+            connection.close()
+    return results
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -173,6 +218,9 @@ def parse_arguments():
                         help="seconds to wait between resends")
     parser.add_argument("--keepalive", action="store_true",
                         help="reuse ONE connection for all resends")
+    parser.add_argument("--resume-session", action="store_true",
+                        help="one connection per resend, each RESUMING the previous TLS "
+                             "session (what a proxy does by default)")
     parser.add_argument("--timestamp", type=int,
                         help="absolute timestamp to sign. Pinning it makes two invocations "
                              "produce byte-identical requests, for replay across nodes")
@@ -254,11 +302,17 @@ def main() -> int:
         print(f"--> {label}  ({args.url}, agent {args.agent_id}, ts {timestamp}, "
               f"{len(body)} byte body)")
         if args.repeat > 1:
-            connection_note = "one shared connection" if args.keepalive else "a new connection each"
+            connection_note = ("one shared connection" if args.keepalive
+                               else "a new connection each, resuming the TLS session"
+                               if args.resume_session else "a new connection each")
             print(f"    signed ONCE, resent {args.repeat} times over {connection_note} "
                   f"-- MAC {mac[:16]}...")
 
-    if args.keepalive:
+    if args.resume_session:
+        results = send_resuming_session(host, port, args.method, args.target, headers, body,
+                                        args.timeout, args.repeat,
+                                        args.client_cert, args.client_key)
+    elif args.keepalive:
         results = send_on_one_connection(host, port, args.method, args.target, headers, body,
                                         args.timeout, args.repeat, args.interval,
                                         args.client_cert, args.client_key)

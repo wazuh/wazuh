@@ -25,6 +25,10 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MANAGER=/var/wazuh-manager
+# Resolves MANAGER_CERT_REL / MANAGER_KEY_REL / LAB_CA_REL from the manager's own configuration
+# instead of hardcoding names that have already been renamed once. See the file for the details.
+MANAGER_HOME="$MANAGER"
+source "$HERE/lib_manager_paths.sh"
 REGENERATE=no
 [[ "${1:-}" == "--regenerate" ]] && REGENERATE=yes
 
@@ -38,28 +42,32 @@ fi
 
 echo "=== 2. backup of the manager files this lab modifies ==="
 mkdir -p "$HERE/backup"
-# https-manager-ca.pem is included because a previous setup (manual or an older lab) may have
-# left one that the config references: without a backup, cleanup.sh cannot know whether the CA
-# was the lab's own or pre-existing, and restoring a config whose <ca> file is gone leaves
-# remoted unable to start (load_verify_file).
-for name in https-manager.cert https-manager.key https-manager-ca.pem wazuh-manager.conf; do
-    if [[ ! -f "$HERE/backup/$name" && -f "$MANAGER/etc/$name" ]]; then
-        cp -a "$MANAGER/etc/$name" "$HERE/backup/$name"
-        echo "    saved etc/$name"
+# The CA is included because a previous setup (manual or an older lab) may have left one that the
+# config references: without a backup, cleanup.sh cannot know whether the CA was the lab's own or
+# pre-existing, and restoring a config whose <ca> file is gone leaves remoted unable to start
+# (load_verify_file). Backups are keyed by basename, so they follow whatever the config names.
+for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL" etc/wazuh-manager.conf; do
+    name="$(basename "$rel")"
+    if [[ ! -f "$HERE/backup/$name" && -f "$MANAGER/$rel" ]]; then
+        cp -a "$MANAGER/$rel" "$HERE/backup/$name"
+        echo "    saved $rel"
     fi
 done
 [[ -z "$(ls -A "$HERE/backup" 2>/dev/null)" ]] || echo "    backup/ already populated, left untouched"
 
 echo "=== 3. installing the node-1 certificate into the manager ==="
+echo "    into $MANAGER_CERT_REL (as the manager's configuration names it)"
 # Always reinstalled, so the manager can never be left on a stale CA.
-cp "$HERE/certs/manager_node1.crt" "$MANAGER/etc/https-manager.cert"
-cp "$HERE/certs/manager_node1.key" "$MANAGER/etc/https-manager.key"
-cp "$HERE/certs/ca.crt"            "$MANAGER/etc/https-manager-ca.pem"
-chown wazuh-manager:wazuh-manager "$MANAGER"/etc/https-manager.cert \
-      "$MANAGER"/etc/https-manager.key "$MANAGER"/etc/https-manager-ca.pem
-chmod 640 "$MANAGER"/etc/https-manager.cert "$MANAGER"/etc/https-manager.key \
-      "$MANAGER"/etc/https-manager-ca.pem
-echo "    $(openssl x509 -in "$MANAGER/etc/https-manager.cert" -noout -subject | sed 's/.*CN *= *//') installed"
+for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL"; do
+    ensure_parent_dir "$MANAGER/$rel"
+done
+cp "$HERE/certs/manager_node1.crt" "$MANAGER/$MANAGER_CERT_REL"
+cp "$HERE/certs/manager_node1.key" "$MANAGER/$MANAGER_KEY_REL"
+cp "$HERE/certs/ca.crt"            "$MANAGER/$LAB_CA_REL"
+chown wazuh-manager:wazuh-manager "$MANAGER/$MANAGER_CERT_REL" \
+      "$MANAGER/$MANAGER_KEY_REL" "$MANAGER/$LAB_CA_REL"
+chmod 640 "$MANAGER/$MANAGER_CERT_REL" "$MANAGER/$MANAGER_KEY_REL" "$MANAGER/$LAB_CA_REL"
+echo "    $(openssl x509 -in "$MANAGER/$MANAGER_CERT_REL" -noout -subject | sed 's/.*CN *= *//') installed"
 
 echo "=== 4. test agent in client.keys ==="
 if [[ ! -s "$MANAGER/etc/client.keys" ]]; then

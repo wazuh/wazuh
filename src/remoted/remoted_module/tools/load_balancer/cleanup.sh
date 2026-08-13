@@ -12,6 +12,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BACKUP="$HERE/backup"
 NODE1=/var/wazuh-manager
 NODE2=/var/wazuh-manager-2
+# Same resolution setup_lab.sh used, so the restore targets the paths the lab actually wrote to.
+# Read before anything is restored: the configuration is one of the files being restored.
+MANAGER_HOME="$NODE1"
+source "$HERE/lib_manager_paths.sh"
 
 echo "==> stopping the lab's NGINX"
 docker rm -f remoted-lb >/dev/null 2>&1 && echo "    container removed" || echo "    not running"
@@ -29,31 +33,32 @@ fi
 
 echo "==> restoring node 1 files from backup/"
 if [[ -d "$BACKUP" ]]; then
-    for name in https-manager.cert https-manager.key https-manager-ca.pem wazuh-manager.conf; do
+    for rel in "$MANAGER_CERT_REL" "$MANAGER_KEY_REL" "$LAB_CA_REL" etc/wazuh-manager.conf; do
+        name="$(basename "$rel")"
         if [[ -f "$BACKUP/$name" ]]; then
-            cp -a "$BACKUP/$name" "$NODE1/etc/$name" && echo "    restored etc/$name"
+            cp -a "$BACKUP/$name" "$NODE1/$rel" && echo "    restored $rel"
         fi
     done
 else
     echo "    no backup/ directory -- nothing to restore."
     echo "    (Back up before starting: mkdir -p backup && cp -a \\"
-    echo "       $NODE1/etc/{https-manager.cert,https-manager.key,wazuh-manager.conf} backup/)"
+    echo "       $NODE1/{$MANAGER_CERT_REL,$MANAGER_KEY_REL,etc/wazuh-manager.conf} backup/)"
 fi
 
 echo "==> removing the CA the lab added"
-if [[ -f "$BACKUP/https-manager-ca.pem" ]]; then
-    echo "    kept: etc/https-manager-ca.pem existed before the lab (restored above)"
+if [[ -f "$BACKUP/$(basename "$LAB_CA_REL")" ]]; then
+    echo "    kept: $LAB_CA_REL existed before the lab (restored above)"
 else
-    rm -f "$NODE1/etc/https-manager-ca.pem" && echo "    etc/https-manager-ca.pem removed"
+    rm -f "$NODE1/$LAB_CA_REL" && echo "    $LAB_CA_REL removed"
 fi
 
 # The one restore combination that leaves remoted unable to start: a restored config that
 # references a CA file which no longer exists (load_verify_file -> startup failure). Happens
 # when the backup predates this script backing up the CA. Warn with the fix instead of letting
 # the operator discover it from a dead process.
-if grep -q "<ca>etc/https-manager-ca.pem</ca>" "$NODE1/etc/wazuh-manager.conf" 2>/dev/null \
-        && [[ ! -f "$NODE1/etc/https-manager-ca.pem" ]]; then
-    echo "    !! the restored config references etc/https-manager-ca.pem, which does not exist:"
+if grep -q "<ca>$LAB_CA_REL</ca>" "$NODE1/etc/wazuh-manager.conf" 2>/dev/null \
+        && [[ ! -f "$NODE1/$LAB_CA_REL" ]]; then
+    echo "    !! the restored config references $LAB_CA_REL, which does not exist:"
     echo "    !! remoted will FAIL to start (load_verify_file). Remove the <ca> line or set"
     echo "    !! <verification_mode>none</verification_mode> in $NODE1/etc/wazuh-manager.conf"
 fi

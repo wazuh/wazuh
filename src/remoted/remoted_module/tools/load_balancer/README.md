@@ -208,9 +208,10 @@ Run `./run_issue_checks.sh` to reproduce every row.
 | **Modes** — where validation happens, which identity | `openssl s_client` against each port | passthrough presents **remoted's** certificate (identical to direct); termination presents the **balancer's** |
 | **Modes** — `none` | all topologies | works everywhere |
 | **Modes** — `certificate` | all three paths, with and without a client certificate | passthrough works properly (no cert → TLS alert, cert → `202`). **Termination returns `202` even with NO client certificate** — remoted verified the proxy, not the agent |
-| **Modes** — the third mode that existed during the spike | direct, with a certificate whose SAN holds the peer IP | 🔴 rejected **every** certificate, in every topology, including direct (`SSL_get_fd()` returns −1 because asio wires the SSL object onto memory BIOs). And even repaired it could not have identified agents: the peer it compared is whoever opens the connection, which behind a proxy is the proxy. ✅ **Removed as a result.** The suite now only checks that an unsupported value is ignored, not fatal |
+| **Modes** — `full` | every topology, with `agent.crt` (SAN carries the address it connects from) and `agent_wrong_ip.crt` (same certificate, SAN says `10.99.99.99`) | direct and passthrough judge **the agent**: `202` when the SAN carries the peer address, `403` when it does not — on every route, the unauthenticated health check included. Under termination **every** agent gets `202`, including one presenting no certificate at all, because the certificate judged is the proxy's. `breaks_full_mode_proxy_cert_ip.conf` is the other half: a proxy certificate that does not carry its own address answers `403` to a flawless agent. The first implementation rejected *everything* in every topology (`SSL_get_fd()` returns −1 because asio wires the SSL object onto memory BIOs); the address now comes from the connection-state listener |
+| **TLS session resumption under mTLS** | `--resume-session` against `:1517` in all three modes | 🔴 **found by this lab, ✅ fixed.** With `certificate` or `full`, a connection resuming a previous TLS session **failed the handshake** (`internal error`, alert 80); with `none` the same resumption succeeded. Proxies resume by default (NGINX's `proxy_ssl_session_reuse`), so mTLS to the backend produced **intermittent 502s** — intermittent because a pooled keep-alive connection needs no handshake, and only connections opened afterwards hit it. Cause: OpenSSL refuses to resume on a server that requests client certificates unless `SSL_CTX_set_session_id_context()` has been called, and `createTlsContext()` never called it. It was **pre-existing and not specific to `full`** — `certificate` failed identically and is the older mode — so the fix is in the TLS context and both modes now serve resumed sessions |
 | **Modes** — unsafe combinations | above | `certificate` under termination gives a false sense of security: it authenticates the balancer |
-| **Modes** — which certificates go where | `generate_test_certificates.sh` is the inventory: `load_balancer` (validated by the agent under termination), `manager_node1/2` (validated under passthrough), `agent` (client, mTLS), `proxy_client` (what NGINX presents to remoted) | — |
+| **Modes** — which certificates go where | `generate_test_certificates.sh` is the inventory: `load_balancer` (validated by the agent under termination), `manager_node1/2` (validated under passthrough), `agent` (client, mTLS), `proxy_client` (what NGINX presents to remoted), and the two controls for `full`: `agent_wrong_ip` and `proxy_client_wrong_ip`, identical to their counterparts except that their SAN holds an address the peer does not connect from | — |
 | **Proxy** — HTTP method | signed; NGINX does not rewrite methods | no impact |
 | **Proxy** — raw request target | `breaks_signature_path_rewrite.conf` | 🔴 rewriting the path → `401` on every request. **remoted cannot be published under a path prefix.** The rule is `proxy_pass https://backend;` with no URI component |
 | **Proxy** — query string | `--target '/stateless?foo=bar&x=1'` | preserved verbatim → `202` |
@@ -244,8 +245,9 @@ which is commented line by line and is where the deployment rules actually live.
 | `start_load_balancer.sh` | Starts or restarts **NGINX** with the chosen `nginx/*.conf` scenario. |
 | `start_haproxy.sh` | Starts or restarts **HAProxy** with the chosen `haproxy/*.cfg` scenario, on the same ports. Validates the config before starting. |
 | `add_second_manager.sh` | Builds node 2 on `:1518` (remoted only, ~3 MB, hard-linked binary). |
-| `set_manager_verification_mode.sh` | Switches `<verification_mode>` and restarts remoted. |
+| `set_manager_verification_mode.sh` | Switches `<verification_mode>` (`none`, `certificate`, `full`, or an invalid value on purpose) and restarts remoted. |
 | `cleanup.sh` | Undoes everything the lab touched outside this directory. |
+| `lib_manager_paths.sh` | Sourced by the scripts above, not run. Works out which files in the manager hold remoted's certificate and key, by reading its configuration instead of hardcoding names. |
 | `package_lab.sh` | **Use this to hand the lab over.** Zips it while excluding `certs/` and `backup/` — the lab's CA key and a copy of the manager's real private key — and then verifies the archive instead of trusting the exclusion. Never `zip -r` this directory by hand. |
 
 ### NGINX scenarios
@@ -260,6 +262,7 @@ which is commented line by line and is where the deployment rules actually live.
 | `breaks_handshake_proxy_protocol.conf` | **Meant to fail.** Passthrough with `proxy_protocol on;` — proves why it must never be enabled. |
 | `safe_merge_slashes_on.conf` | Proves `merge_slashes on` does *not* break the signature. |
 | `termination_without_client_cert.conf` | Termination where NGINX presents no client certificate of its own. |
+| `breaks_full_mode_proxy_cert_ip.conf` | **Meant to fail.** Termination where the proxy's certificate does not carry the address the proxy connects from — every agent gets `403` under `verification_mode=full`. |
 | `termination_http2.conf` | Termination speaking HTTP/2 to the agent and HTTP/1.1 to remoted — what an AWS ALB does. |
 | `termination_idle_timeout.conf` | Termination with a 3 s idle timeout — the ALB's 60 s idle timeout, scaled down to be testable. |
 
@@ -338,9 +341,18 @@ empties the test `client.keys`. It does **not** stop node 1's daemons.
   state.
 - `backup/` captures whatever is installed the **first** time `setup_lab.sh` runs. If an earlier
   manual session had already swapped the manager's certificate or config, *that* is what
-  `cleanup.sh` restores — not the installer's originals. Both scripts now back up and restore
-  `https-manager-ca.pem` too, and cleanup warns if the restored config references a CA file that
-  no longer exists (which would leave remoted unable to start).
+  `cleanup.sh` restores — not the installer's originals. Both scripts also back up and restore the
+  CA, and cleanup warns if the restored config references a CA file that no longer exists (which
+  would leave remoted unable to start).
+- **The scripts never hardcode the certificate paths.** `lib_manager_paths.sh` reads
+  `<certificate>` and `<key>` out of the manager's own configuration and falls back to today's
+  defaults (`etc/certs/remoted.pem`, `etc/certs/remoted-key.pem`) only when they are unset. Those
+  names have already been renamed once, and getting them wrong is a nasty failure: the
+  certificates land where remoted does not read them, the listener comes up with the installer's
+  self-signed one instead, and the symptoms appear one hop away (502 at the proxy, TLS alert at
+  the backend). The CA the lab installs is deliberately its own file, `etc/certs/lab-ca.pem`, and
+  never `etc/certs/root-ca.pem`: that name is also the indexer connector's CA in the shipped
+  configuration templates, and overwriting it would break the manager's link to the indexer.
 - **Both proxies serve the same `:8443`/`:8444` on purpose**, so only one can run at a time. Each
   start script stops the other's container, and — after this bit me — also verifies that *its own*
   container is running, not merely that the port answers: the port answering while the other proxy
