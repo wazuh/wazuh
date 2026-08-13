@@ -19,7 +19,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+// zstd isn't vendored for winagent (see src/Makefile / src/external/CMakeLists.txt);
+// only the two tests below that actually round-trip real compressed bytes need it.
+#ifndef WIN32
 #include <zstd.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -683,6 +687,10 @@ TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
     EXPECT_EQ(dropped, m_stream.droppedEvents());
 }
 
+// Compression is compiled out of retrySender.cpp on winagent (#ifndef WIN32
+// there); these two tests assert real compression happened, so they're
+// excluded here too rather than failing on a platform that never compresses.
+#ifndef WIN32
 TEST_F(StatelessStreamTest, CompressionRejectionRecoversAndDeliversEventExactlyOnce)
 {
     // End-to-end proof that the RetrySender-level 415 recovery is
@@ -766,3 +774,4 @@ TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
     EXPECT_NE(std::string::npos, decompressedBodies[1].find("E aaaa\n"));
     EXPECT_EQ(0u, stream.droppedEvents());
 }
+#endif // WIN32

@@ -14,13 +14,17 @@
 #include <algorithm>
 #include <vector>
 
+#ifndef WIN32
 #include <zstd.h>
+#endif
 
 namespace
 {
+#ifndef WIN32
 // Matches the level the manager's own test-only compressor
 // (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
 constexpr int kCompressionLevel = 3;
+#endif
 } // namespace
 
 RetrySender::RetrySender(IHttpPerformer& performer, const ISigner& signer, IClock& clock,
@@ -108,10 +112,16 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
 
+#ifndef WIN32
     // In-memory bodies only -- /stateful's file-backed path is untouched (its
     // spool file is read twice, independently, by signFile() and the
     // performer; compressing it needs a different design, out of scope here).
     // Compressed before signing so the CMAC covers the wire bytes.
+    // zstd isn't vendored for winagent yet (deliberately out of scope --
+    // see src/Makefile/src/external/CMakeLists.txt), so this whole block is
+    // compiled out there; m_compressionEnabled/m_compressionGate stay real
+    // members either way so the constructor and call sites don't need their
+    // own #ifdef.
     std::vector<uint8_t> compressedBody;
     const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
     if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
@@ -131,6 +141,7 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
         // one-shot ZSTD_compress() into a ZSTD_compressBound()-sized buffer
         // should never actually fail, but never lose the request over it.
     }
+#endif
 
     const auto timestamp = m_clock.wallSeconds();
     const auto headers =
