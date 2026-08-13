@@ -61,20 +61,17 @@ def __print_table(data: map, headers: dict, show_header: bool = False):
     print(table_str)
 
 
-async def print_agents(filter_status: list, filter_node: list):
+async def print_agents(filter_status: list):
     """Print table with the agents information.
 
     Parameters
     ----------
-    filter_node : list
-        Nodes to return.
     filter_status : list
         Agent connection statuses to filter by.
     """
     lc = local_client.LocalClient()
-    result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
-    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
-               'node_name': 'Node name'}
+    result = await control.get_agents(lc, filter_status=filter_status)
+    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version'}
     data = map(operator.itemgetter(*headers.keys()), result['items'])
     __print_table(data, list(headers.values()), True)
 
@@ -146,7 +143,6 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
         msg2 += f"\n    {node} ({node_info['info']['ip']})\n"
         msg2 += f"        Version: {node_info['info']['version']}\n"
         msg2 += f"        Type: {node_info['info']['type']}\n"
-        msg2 += f"        Active agents: {node_info['info']['n_active_agents']}\n"
 
         if node_info['info']['type'] != "master":
             if not more:
@@ -230,9 +226,7 @@ def usage():
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
-    \t-a -fn <node_name>                    # Check which agents are reporting to certain nodes
     \t-a -fs <agent_status>                 # List agents with certain status
-    \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
 
@@ -273,7 +267,7 @@ def main():
             usage()
             sys.exit(1)
         elif args.list_agents:
-            my_function, my_args = print_agents, (args.filter_status, args.filter_node,)
+            my_function, my_args = print_agents, (args.filter_status,)
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)
         elif args.health:

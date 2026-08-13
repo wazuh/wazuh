@@ -53,14 +53,12 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: !anystr
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 2
@@ -84,20 +82,17 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
             - info:
                 name: 'worker1'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: 'worker2'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 3

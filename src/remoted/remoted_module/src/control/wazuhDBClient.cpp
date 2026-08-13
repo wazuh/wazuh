@@ -429,7 +429,6 @@ namespace remoted::control
 
     void WazuhDBClient::updateAgentData(AgentId id,
                                         const std::string& version,
-                                        const std::string& nodeName,
                                         const std::string& connectionStatus,
                                         const std::string& syncStatus,
                                         const HostInfo* host,
@@ -438,7 +437,6 @@ namespace remoted::control
         nlohmann::json params;
         params["id"] = id;
         params["version"] = version;
-        params["node_name"] = nodeName;
         params["connection_status"] = connectionStatus;
         params["sync_status"] = syncStatus;
 

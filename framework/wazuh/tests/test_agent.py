@@ -31,8 +31,8 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
-            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, \
-            reload_agents, reload_agents_by_node, \
+            restart_agents, upgrade_agents, upload_group_file, \
+            reload_agents, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -74,10 +74,6 @@ def send_msg_to_wdb(msg, raw=False):
              {'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': '16', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': 'N/A', 'platform': 'N/A'}}]
-    ),
-    (
-            ['node_name'],
-            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 4}]
     ),
     (
             ['os.name', 'os.platform', 'os.version'],
@@ -258,55 +254,6 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
     (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
 ])
-@patch('wazuh.agent.create_restart_tasks')
-@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.agent.WazuhDBQueryAgents.run')
-@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
-@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
-@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
-async def test_agent_restart_agents_by_node(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_restart_mock, agent_list,
-                                      expected_items, error_code):
-    """Test `restart_agents_by_node` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'restart_agents'.
-    error_code : int
-        The expected error code.
-    """
-    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
-    mock_query = MagicMock()
-    mock_query.run.return_value = {
-        'items': [
-            {'id': '001', 'version': 'v4.2.0'},
-            {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
-        ]
-    }
-    enter_mock.return_value = mock_query
-
-    # Mock task creation response
-    create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
-
-    result = await restart_agents_by_node(agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-    if result.failed_items:
-        code = next(iter(result.failed_items.keys())).code
-        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
-
-
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['010'],        ['010'], None),   # v5.0.0 - succeeds
-    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
-    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
-    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
-    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
-])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.agent.WazuhDBQueryAgents.run')
@@ -342,55 +289,6 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
     create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
 
     result = await reload_agents(agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-    if result.failed_items:
-        code = next(iter(result.failed_items.keys())).code
-        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
-
-
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['010'],        ['010'], None),   # v5.0.0 - succeeds
-    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
-    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
-    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
-    (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
-])
-@patch('wazuh.agent.create_reload_tasks')
-@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.agent.WazuhDBQueryAgents.run')
-@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
-@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
-@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
-async def test_agent_reload_agents_by_node(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_reload_mock,
-                                           agent_list, expected_items, error_code):
-    """Test `reload_agents_by_node` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'reload_agents_by_node'.
-    error_code : int
-        The expected error code.
-    """
-    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
-    mock_query = MagicMock()
-    mock_query.run.return_value = {
-        'items': [
-            {'id': '001', 'version': 'v4.2.0'},
-            {'id': '002', 'version': 'v4.0.0'},
-            {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
-        ]
-    }
-    enter_mock.return_value = mock_query
-
-    # Mock task creation response
-    create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
-
-    result = await reload_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
@@ -524,13 +422,11 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
      ['001', '003', '004', '006', '007', '008', '009']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, ['001']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
-    (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v4.2.0'}, None, 1731, ['002']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
      ['001', '002', '005', '007', '010']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.version': '16.04.1 LTS'}, None, 1731, ['002']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.platform': 'centos'}, None, 1731, []),
-    (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
     (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
     (['001', '002'], {'status': 'all', 'older_than': '1s'}, None, WazuhError(1726), None),
 ])
@@ -1470,7 +1366,7 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
     last_agent : str
         ID of the last registered agent.
     """
-    expected_fields = ['nodes', 'groups', 'agent_os', 'agent_status', 'agent_version', 'last_registered_agent']
+    expected_fields = ['groups', 'agent_os', 'agent_status', 'agent_version', 'last_registered_agent']
 
     def mocked_get_distinct_agents(fields, q):
         return get_distinct_agents(agent_list=agent_list, fields=fields, q=q)

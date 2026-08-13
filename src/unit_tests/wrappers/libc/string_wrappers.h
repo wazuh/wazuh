@@ -15,5 +15,4 @@
 
 char *__wrap_strerror (int __errnum);
 
-size_t __wrap_strlen(const char *s);
 #endif

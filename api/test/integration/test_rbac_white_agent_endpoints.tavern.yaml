@@ -1601,21 +1601,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-
-  - name: Restart all agents belonging to master-node (Deny node_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/uninstall
 
 stages:

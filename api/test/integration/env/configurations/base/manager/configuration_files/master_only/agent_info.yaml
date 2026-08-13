@@ -9,7 +9,6 @@
     os_type: linux
     os_platform: ubuntu
     version: Wazuh v4.9.2
-    node_name: master-node
     connection_status: disconnected
     date_add: 1625356800  # Sun, 04 Jul 2021 00:00:00 GMT
   extra_params:
@@ -27,7 +26,6 @@
     os_type: linux
     os_platform: ubuntu
     version: Wazuh v4.9.2
-    node_name: master-node
     connection_status: disconnected
     date_add: 1625529600  # Tue, 06 Jul 2021 00:00:00 GMT
   extra_params:

@@ -76,11 +76,6 @@ int __wrap_OS_ExpandIPv6(char *ip_address, size_t size) {
     return mock();
 }
 
-int __wrap_OS_IPFoundList(const char *ip_address, __attribute__((unused)) os_ip **list_of_ips) {
-    check_expected(ip_address);
-    return mock();
-}
-
 int __wrap_OS_CIDRtoStr(const os_ip *ip, char *string, size_t size) {
     check_expected(ip);
     check_expected(size);

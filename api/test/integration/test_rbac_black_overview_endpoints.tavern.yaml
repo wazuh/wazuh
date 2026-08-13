@@ -17,9 +17,6 @@ stages:
            agent_version:
              version: str
              count: int
-           nodes:
-             node: str
-             count: int
      status_code: 200
      json:
        error: 0
@@ -68,7 +65,6 @@ stages:
              ip: !anystr
              lastKeepAlive: !anystr
              name: !anystr
-             node_name: !anystr
              os:
                arch: !anystr
                major: !anystr
@@ -79,4 +75,3 @@ stages:
              registerIP: any
              status: disconnected
              version: !anystr
-         nodes: !anything

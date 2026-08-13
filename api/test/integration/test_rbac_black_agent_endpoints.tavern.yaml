@@ -1369,50 +1369,6 @@ stages:
             error: !anystr
 
 ---
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-
-  - name: Restart all agents belonging to master-node (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
-
-  - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
-
-  - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker2/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
-
----
 test_name: GET /agents/uninstall
 
 stages:

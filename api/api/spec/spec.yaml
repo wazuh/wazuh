@@ -805,9 +805,6 @@ components:
         registerIP:
           type: string
           description: "IP used at agent the registration process"
-        node_name:
-          type: string
-          description: "ID of the node the agent is reporting to"
         dateAdd:
           type: string
           description: "Date when the agent was registered"
@@ -1129,15 +1126,7 @@ components:
                 name:
                   $ref: '#/components/schemas/ClusterNodeName'
                 info:
-                  allOf:
-                    - $ref: '#/components/schemas/ClusterNodeBasic'
-                    - type: object
-                      properties:
-                        totalActiveAgents:
-                          type: integer
-                          format: int32
-                          minimum: 0
-                          description: "Number of agents currently reporting to that node"
+                  $ref: '#/components/schemas/ClusterNodeBasic'
             status:
               type: object
               properties:
@@ -1199,12 +1188,6 @@ components:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
-
-    DaemonStatus:
-      type: string
-      enum:
-      - stopped
-      - running
 
     ClusterLocalInfo:
       type: object
@@ -2374,149 +2357,6 @@ components:
                                   type: integer
                                   format: int32
 
-    NodeDaemonStatus:
-      type: object
-      description: "Per-daemon readiness status reported by a cluster node."
-      properties:
-        ready:
-          type: boolean
-          description: "Whether the daemon is ready to handle requests."
-        running:
-          type: boolean
-          description: "Whether the daemon process is currently running."
-
-    AnalysisdStatus:
-      allOf:
-        - $ref: '#/components/schemas/NodeDaemonStatus'
-        - type: object
-          description: "Extended status for wazuh-manager-analysisd including engine resource states."
-          properties:
-            spaces:
-              type: object
-              description: "Status of content spaces (e.g. standard, custom)."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  enabled:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-            ioc:
-              type: object
-              description: "Status of IOC resource types."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-            geo:
-              type: object
-              description: "Status of GeoIP databases."
-              additionalProperties:
-                type: object
-                properties:
-                  available:
-                    type: boolean
-                  status:
-                    type: string
-                    enum: [ready, updating, failed]
-                  hash:
-                    type: string
-                  last_successful_update:
-                    type: integer
-                    format: int64
-
-    VulnerabilityDetectorStatus:
-      type: object
-      description: "Status of the vulnerability-detector module as reported by the modulesd socket."
-      properties:
-        available:
-          type: boolean
-          description: "Whether the CVE feed has been loaded at least once and is usable for scanning."
-        status:
-          type: string
-          enum: [updating, ready, failed]
-          description: "Current feed lifecycle state."
-        enabled:
-          type: boolean
-          description: "Whether vulnerability detection is enabled in the configuration."
-        offset:
-          type: integer
-          format: int64
-          description: "Feed cursor (content manager offset) of the last completed download cycle."
-        last_successful_update:
-          type: integer
-          format: int64
-          description: "Unix timestamp of the last successful feed completion, or 0 if none."
-
-    ModulesdStatus:
-      allOf:
-        - $ref: '#/components/schemas/NodeDaemonStatus'
-        - type: object
-          description: "Extended status for wazuh-manager-modulesd including sub-module states."
-          properties:
-            modules:
-              type: object
-              description: "Status of manager-exclusive modulesd sub-modules."
-              properties:
-                vulnerability-detector:
-                  $ref: '#/components/schemas/VulnerabilityDetectorStatus'
-                inventory-sync:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-                content-manager:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-                task-manager:
-                  type: object
-                  properties:
-                    available:
-                      type: boolean
-
-    WazuhDaemonsStatus:
-      type: object
-      description: "Readiness and running status of all Wazuh manager daemons on a cluster node."
-      properties:
-        ready:
-          type: boolean
-          description: "True only when every daemon on the node is ready."
-        wazuh-manager-analysisd:
-          $ref: '#/components/schemas/AnalysisdStatus'
-        wazuh-manager-authd:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-monitord:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-remoted:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-apid:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-clusterd:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-db:
-          $ref: '#/components/schemas/NodeDaemonStatus'
-        wazuh-manager-modulesd:
-          $ref: '#/components/schemas/ModulesdStatus'
-
     WazuhInfo:
       type: object
       properties:
@@ -2702,20 +2542,7 @@ components:
         - agent_version
         - groups
         - last_registered_agent
-        - nodes
       properties:
-        nodes:
-          type: array
-          description: "Active nodes in the cluster"
-          items:
-            type: object
-            properties:
-              count:
-                type: integer
-                format: int32
-              node_name:
-                type: string
-                format: alphanumeric_symbols
         groups:
           type: array
           description: "Recount of the number of Wazuh agents group by Wazuh groups"
@@ -2793,13 +2620,6 @@ components:
         type: string
         format: names
         maxLength: 128
-    command:
-      in: query
-      name: command
-      description: "Filter by command"
-      schema:
-        type: string
-        format: symbols_alphanumeric_param
     manager_component:
       in: path
       name: component
@@ -3006,13 +2826,6 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupIDListAll'
-    node:
-      in: query
-      name: node
-      description: "Show results filtered by node"
-      schema:
-        type: string
-        format: alphanumeric
     nodes_list:
       in: query
       name: nodes_list
@@ -3021,13 +2834,6 @@ components:
         type: array
         items:
           type: string
-    module:
-      in: query
-      name: module
-      description: "Show results filtered by module"
-      schema:
-        type: string
-        format: alphanumeric
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'
@@ -3108,14 +2914,6 @@ components:
       schema:
         type: boolean
         default: false
-    policy_id:
-      in: path
-      name: policy_id
-      description: "Filter by policy id"
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
     policy_id_rbac:
       in: path
       name: policy_id
@@ -3279,13 +3077,6 @@ components:
       schema:
         type: string
         format: sort
-    status:
-      in: query
-      name: status
-      description: "Filter by status"
-      schema:
-        type: string
-        format: alphanumeric
     statusAgentParam:
       in: query
       name: status
@@ -3316,34 +3107,6 @@ components:
             - never_connected
             - disconnected
         minItems: 1
-    status_resource:
-      in: query
-      name: status
-      description: "Filter by resource status"
-      required: false
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-    statusRLDParam:
-      in: query
-      name: status
-      description: "Filter by list status. Use commas to enter multiple statuses"
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
-        minItems: 1
-    title:
-      in: query
-      name: title
-      description: "Filter by title"
-      schema:
-        type: string
-        format: alphanumeric_symbols
     type_agents:
       in: query
       name: type
@@ -3417,13 +3180,6 @@ components:
       schema:
         type: string
         format: names
-    node_name:
-      in: query
-      name: node_name
-      description: "Filter by node name"
-      schema:
-        type: string
-        format: names
     section:
       in: query
       name: section
@@ -3454,13 +3210,6 @@ components:
       schema:
         type: string
         format: names
-    date:
-      in: query
-      name: date
-      description: "Date to obtain statistical information from. Format YYYY-MM-DD"
-      schema:
-        type: string
-        format: date
     tag:
       in: query
       name: tag
@@ -3724,7 +3473,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -3791,7 +3539,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -3828,7 +3575,6 @@ paths:
                       name: ac7cb188d538
                       status: active
                       version: v4.3.0
-                      node_name: worker2
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -3847,7 +3593,6 @@ paths:
                       name: 91642a418627
                       status: active
                       version: v4.3.0
-                      node_name: worker2
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -3866,7 +3611,6 @@ paths:
                       name: a442e15bc84e
                       status: active
                       version: v4.3.0
-                      node_name: worker1
                       status_code: 0
                   total_affected_items: 3
                   total_failed_items: 0
@@ -4231,7 +3975,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -4288,7 +4031,6 @@ paths:
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
@@ -4698,24 +4440,21 @@ paths:
               example:
                 data:
                   affected_items:
-                    - node_name: unknown
-                      ip: 172.16.16.16
+                    - ip: 172.16.16.16
                       id: 009
                       name: test_agent_wazuh
                       status: never_connected
                       dateAdd: 2021-05-27T10:06:13Z
                       registerIP: 172.16.16.16
                       status_code: 0
-                    - node_name: unknown
-                      ip: 172.16.16.17
+                    - ip: 172.16.16.17
                       id: 010
                       name: test_agent_wazuh2
                       status: never_connected
                       dateAdd: 2021-05-27T10:06:27Z
                       registerIP: 172.16.16.17
                       status_code: 0
-                    - node_name: unknown
-                      ip: any
+                    - ip: any
                       id: 011
                       name: test_wazuh_quick
                       status: never_connected
@@ -4726,102 +4465,6 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected agents information was returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/node/{node_id}/restart:
-    put:
-      tags:
-        - Agents
-      summary: "Restart agents in node"
-      description: "Restart all agents which belong to a specific given node"
-      operationId: api.controllers.agent_controller.restart_agents_by_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/agent:restart'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Agents restarted'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - "002"
-                    - "006"
-                    - "008"
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Restart command was sent to all agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/node/{node_id}/reload:
-    put:
-      tags:
-        - Agents
-      summary: "Reload agents in node"
-      description: "Reload all agents which belong to a specific given node"
-      operationId: api.controllers.agent_controller.reload_agents_by_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/agent:reload'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-      responses:
-        '200':
-          description: 'Agents reloaded'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-              example:
-                data:
-                  affected_items:
-                    - "002"
-                    - "006"
-                    - "008"
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Reload command was sent to all agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -4884,7 +4527,6 @@ paths:
                       name: ac7cb188d538
                       status: active
                       version: v4.3.0
-                      node_name: worker2
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -4903,7 +4545,6 @@ paths:
                       name: 91642a418627
                       status: active
                       version: v4.3.0
-                      node_name: worker2
                       status_code: 0
                   total_affected_items: 2
                   total_failed_items: 0
@@ -5425,7 +5066,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      node_name: worker1
                       ip: 172.20.0.7
                       id: 004
                       group:
@@ -5446,7 +5086,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      node_name: worker1
                       ip: 172.20.0.9
                       id: 005
                       group:
@@ -5467,7 +5106,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: 20.04.2 LTS
-                      node_name: worker2
                       ip: 172.20.0.10
                       id: 006
                       group:
@@ -5913,7 +5551,7 @@ paths:
         - Cluster
       summary: "Get nodes healthcheck"
       description: "Return cluster healthcheck information for all nodes or a list of them. Such information includes
-      last keep alive, last synchronization time and number of agents reporting on each node"
+      last keep alive and last synchronization time"
       operationId: api.controllers.cluster_controller.get_healthcheck
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -5941,13 +5579,11 @@ paths:
                         type: master
                         version: 4.4.0
                         ip: wazuh-master
-                        n_active_agents: 5
                     - info:
                         name: worker1
                         type: worker
                         version: 4.4.0
                         ip: 172.21.0.7
-                        n_active_agents: 3
                       status:
                         sync_integrity_free: true
                         last_check_integrity:
@@ -5982,7 +5618,6 @@ paths:
                         type: worker
                         version: 4.4.0
                         ip: 172.21.0.6
-                        n_active_agents: 1
                       status:
                         sync_integrity_free: true
                         last_check_integrity:
@@ -6609,7 +6244,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
 
   /cluster/{node_id}/logs:
     get:
@@ -9222,13 +8856,6 @@ paths:
                         $ref: '#/components/schemas/OverviewAgents'
               example:
                 data:
-                  nodes:
-                    - node_name: "worker1"
-                      count: 1
-                    - node_name: "worker2"
-                      count: 1
-                    - node_name: "master-node"
-                      count: 1
                   groups:
                     - name: "default"
                       count: 6
@@ -9258,7 +8885,6 @@ paths:
                         platform: ubuntu
                         type: linux
                         version: "20.04.02 LTS"
-                      node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
                       status: active
                       ip: "172.18.0.7"

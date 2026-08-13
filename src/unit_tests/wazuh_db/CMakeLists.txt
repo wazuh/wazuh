@@ -8,7 +8,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,wdb_leave -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_open_global \
                         -Wl,--wrap,wdb_global_agent_exists -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,close -Wl,--wrap,getpid \
                         -Wl,--wrap,sqlite3_reset -Wl,--wrap,sqlite3_prepare_v2 \
-                        -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,sqlite3_column_text \
+                        -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_column_text \
                         -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_column_double -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_bind_int64\
                         -Wl,--wrap,sqlite3_bind_double \
                         -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config -Wl,--wrap,wdb_finalize_all_statements \

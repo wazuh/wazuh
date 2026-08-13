@@ -478,14 +478,14 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
     "Global query: update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
@@ -501,7 +501,6 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, os_platform, "test_platform");
     expect_string(__wrap_wdb_global_update_agent_version, os_arch, "test_arch");
     expect_string(__wrap_wdb_global_update_agent_version, version, "test_version");
-    expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
     expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
@@ -537,14 +536,14 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global update-agent-data {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
     "Global query: update-agent-data {\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent version.");
@@ -575,14 +574,14 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
     "Global query: update-agent-data {\"id\":1,\"os_name\":\"test_name\",\"os_version\":\"test_version\",\
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_type\":\"test_type\",\"os_platform\":\"test_platform\",\
-    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\"node_name\":\"test_node\",\
+    \"os_arch\":\"test_arch\",\"version\":\"test_version\",\
     \"agent_ip\":\"test_ip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
 
     expect_value(__wrap_wdb_global_validate_sync_status, id, 1);
@@ -598,7 +597,6 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, os_platform, "test_platform");
     expect_string(__wrap_wdb_global_update_agent_version, os_arch, "test_arch");
     expect_string(__wrap_wdb_global_update_agent_version, version, "test_version");
-    expect_string(__wrap_wdb_global_update_agent_version, node_name, "test_node");
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
     expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
@@ -3868,74 +3866,6 @@ void test_wdb_parse_global_get_agents_by_connection_status_last_id_error(void **
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_parse_global_get_agents_by_connection_status_limit_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active node01";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active node01");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'limit' not found.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid arguments 'limit' not found");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_get_agents_by_connection_status_limit_succes(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-agents-by-connection-status 0 active node01 -1";
-    cJSON* root = cJSON_CreateArray();
-    cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
-    cJSON_AddItemToArray(root, json_agent);
-
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-agents-by-connection-status 0 active node01 -1");
-    expect_value(__wrap_wdb_global_get_agents_by_connection_status, last_agent_id, 0);
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, connection_status, "active");
-    expect_string(__wrap_wdb_global_get_agents_by_connection_status, node_name, "node01");
-    expect_value(__wrap_wdb_global_get_agents_by_connection_status, limit, -1);
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, WDBC_OK);
-    will_return(__wrap_wdb_global_get_agents_by_connection_status, root);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_open_time);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
-    expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
-
-    expect_function_call(__wrap_wdb_pool_leave);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok [{\"id\":10}]");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **state)
 {
     int ret = 0;
@@ -4939,8 +4869,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_status_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_last_id_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_limit_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_limit_succes, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_agents_by_connection_status_query_fail, test_setup, test_teardown),
         /* Tests wdb_parse_global_get_backup */

@@ -19,10 +19,6 @@ AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_pa
     return mock_ptr_type(AgentSyncProtocolHandle*);
 }
 
-void __wrap_asp_destroy(AgentSyncProtocolHandle* handle) {
-    check_expected_ptr(handle);
-}
-
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
                              const char* id,
                              int operation,
@@ -61,15 +57,6 @@ bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uin
     check_expected_ptr(data);
     check_expected(length);
     return mock_type(bool);
-}
-
-SyncModuleResult_t __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                                      int mode) {
-    check_expected_ptr(handle);
-    check_expected(mode);
-    SyncModuleResult_t result = {0};
-    result.success = mock_type(bool);
-    return result;
 }
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,

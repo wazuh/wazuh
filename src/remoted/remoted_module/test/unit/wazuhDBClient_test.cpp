@@ -253,7 +253,7 @@ TEST(WazuhDBClientTest, UpdateAgentDataIncludesHostInfoFields)
     host.osType = "Linux";
 
     Waiter<SocketError> w;
-    client.updateAgentData(9, "v4.8.0", "master", "active", "synced", &host, [&](SocketError e) { w.complete(e); });
+    client.updateAgentData(9, "v4.8.0", "active", "synced", &host, [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::None);
 
@@ -265,7 +265,6 @@ TEST(WazuhDBClientTest, UpdateAgentDataIncludesHostInfoFields)
     EXPECT_NE(got.find("global update-agent-data "), std::string::npos);
     EXPECT_NE(got.find("\"id\":9"), std::string::npos);
     EXPECT_NE(got.find("\"version\":\"v4.8.0\""), std::string::npos);
-    EXPECT_NE(got.find("\"node_name\":\"master\""), std::string::npos);
     EXPECT_NE(got.find("\"os_name\":\"Ubuntu\""), std::string::npos);
     EXPECT_NE(got.find("\"os_arch\":\"x86_64\""), std::string::npos);
     EXPECT_NE(got.find("\"os_type\":\"Linux\""), std::string::npos);
@@ -297,7 +296,7 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
     host1.ip = "10.0.0.1";
 
     Waiter<SocketError> w1;
-    client.updateAgentData(1, "v5.0.0", "node", "active", "synced", &host1, [&](SocketError e) { w1.complete(e); });
+    client.updateAgentData(1, "v5.0.0", "active", "synced", &host1, [&](SocketError e) { w1.complete(e); });
     ASSERT_TRUE(w1.wait(3000ms));
 
     std::string got1;
@@ -317,7 +316,7 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
     host2.ip = "10.0.0.2";
 
     Waiter<SocketError> w2;
-    client.updateAgentData(2, "v5.0.0", "node", "active", "synced", &host2, [&](SocketError e) { w2.complete(e); });
+    client.updateAgentData(2, "v5.0.0", "active", "synced", &host2, [&](SocketError e) { w2.complete(e); });
     ASSERT_TRUE(w2.wait(3000ms));
 
     std::string got2;
@@ -337,7 +336,7 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
     host3.ip = "10.0.0.3";
 
     Waiter<SocketError> w3;
-    client.updateAgentData(3, "v5.0.0", "node", "active", "synced", &host3, [&](SocketError e) { w3.complete(e); });
+    client.updateAgentData(3, "v5.0.0", "active", "synced", &host3, [&](SocketError e) { w3.complete(e); });
     ASSERT_TRUE(w3.wait(3000ms));
 
     std::string got3;
@@ -367,7 +366,7 @@ TEST(WazuhDBClientTest, UpdateAgentDataOmitsOsTypeWhenEmpty)
 
     HostInfo host; // all empty strings, including osType.
     Waiter<SocketError> w;
-    client.updateAgentData(1, "v4", "n", "active", "synced", &host, [&](SocketError e) { w.complete(e); });
+    client.updateAgentData(1, "v4", "active", "synced", &host, [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
 
     std::string got;

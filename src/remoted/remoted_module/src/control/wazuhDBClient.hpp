@@ -38,7 +38,6 @@ namespace remoted::control
 
         void updateAgentData(AgentId id,
                              const std::string& version,
-                             const std::string& nodeName,
                              const std::string& connectionStatus,
                              const std::string& syncStatus,
                              const HostInfo* host,

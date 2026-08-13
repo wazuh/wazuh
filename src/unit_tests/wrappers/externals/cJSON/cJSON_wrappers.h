@@ -61,10 +61,6 @@ extern cJSON *__real_cJSON_CreateObject(void);
 cJSON *__wrap_cJSON_CreateObject(void);
 #endif
 
-cJSON *__wrap_cJSON_CreateNumber(double num);
-
-extern cJSON *__real_cJSON_CreateNumber(double num);
-
 cJSON *__wrap_cJSON_CreateString(const char *string);
 
 extern cJSON *__real_cJSON_CreateString(const char *string);
@@ -78,10 +74,6 @@ cJSON *WSTD_CALL __wrap_cJSON_GetObjectItem(const cJSON *const object, const cha
 extern cJSON *__real_cJSON_GetObjectItem(const cJSON *const object, const char *const string);
 
 char *WSTD_CALL __wrap_cJSON_GetStringValue(cJSON *item);
-
-cJSON_bool __wrap_cJSON_IsNumber(cJSON *item);
-
-cJSON_bool __wrap_cJSON_IsObject(cJSON *item);
 
 cJSON *__wrap_cJSON_Parse(const char *value);
 

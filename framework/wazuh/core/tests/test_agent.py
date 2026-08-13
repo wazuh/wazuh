@@ -58,7 +58,7 @@ class InitAgent:
         with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
-        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
+        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'dateAdd', 'id',
                                        'status_code'}
         self.pending_fields = self.never_connected_fields | {'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
@@ -340,7 +340,6 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
     (['os.major'], [{'os': {'major': '18'}, 'count': 2}, {'os': {'major': '16'}, 'count': 1},
                     {'os': {'major': 'N/A'}, 'count': 2}, {'os': {'major': '5'}, 'count': 2},
                     {'os': {'major': '7'}, 'count': 1}]),
-    (['node_name'], [{'count': 6, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
     (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': 'N/A'}, 'count': 1, 'status': 'never_connected'},
@@ -447,7 +446,7 @@ def test_agent_load_info_from_db_ko(socket_mock, send_mock):
 @pytest.mark.parametrize('id, select', [
     (3, None),
     (5, {'id', 'ip', 'version'}),
-    (2, {'status', 'node_name', 'dateAdd', 'lastKeepAlive'})
+    (2, {'status', 'dateAdd', 'lastKeepAlive'})
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')

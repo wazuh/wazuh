@@ -39,7 +39,6 @@ class TEndpointGetV1AgentsAll final
         std::string os_major;
         std::string os_minor;
         std::string os_arch;
-        std::string node_name;
         std::string last_keepalive;
         std::string register_ip;
         std::string disconnection_time;
@@ -58,7 +57,6 @@ class TEndpointGetV1AgentsAll final
                     MAKE_FIELD("os.major", &AgentData::os_major),
                     MAKE_FIELD("os.minor", &AgentData::os_minor),
                     MAKE_FIELD("os.arch", &AgentData::os_arch),
-                    MAKE_FIELD("node_name", &AgentData::node_name),
                     MAKE_FIELD("lastKeepAlive", &AgentData::last_keepalive),
                     MAKE_FIELD("registerIP", &AgentData::register_ip),
                     MAKE_FIELD("disconnection_time", &AgentData::disconnection_time),
@@ -83,7 +81,7 @@ public:
         constexpr std::string_view query =
             "SELECT id, name, coalesce(ip, register_ip) as ip, connection_status as status, "
             "os_name, os_version, os_type, os_platform, version, date_add, "
-            "os_major, os_minor, os_arch, node_name, last_keepalive, register_ip, "
+            "os_major, os_minor, os_arch, last_keepalive, register_ip, "
             "disconnection_time, status_code "
             "FROM agent WHERE id > 0 ORDER BY id ASC;";
 
@@ -107,11 +105,10 @@ public:
             agent.os_major = stmt.template value<std::string>(10);
             agent.os_minor = stmt.template value<std::string>(11);
             agent.os_arch = stmt.template value<std::string>(12);
-            agent.node_name = stmt.template value<std::string>(13);
-            agent.last_keepalive = stmt.template value<std::string>(14);
-            agent.register_ip = stmt.template value<std::string>(15);
-            agent.disconnection_time = stmt.template value<std::string>(16);
-            agent.status_code = stmt.template value<std::int64_t>(17);
+            agent.last_keepalive = stmt.template value<std::string>(13);
+            agent.register_ip = stmt.template value<std::string>(14);
+            agent.disconnection_time = stmt.template value<std::string>(15);
+            agent.status_code = stmt.template value<std::int64_t>(16);
 
             agents.push_back(std::move(agent));
         }

@@ -109,7 +109,7 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `status`, `os.platform`, `os.name`, `os.version`, `manager`, `version`, `group`, `node_name`, `name`, `ip`, `older_than`.
+Key filters: `status`, `os.platform`, `os.name`, `os.version`, `manager`, `version`, `group`, `name`, `ip`, `older_than`.
 
 #### Add agent
 
@@ -170,15 +170,6 @@ curl -k -X PUT "https://localhost:55000/agents/reload?agents_list=001,002&pretty
 
 ```bash
 curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-#### Reload agents in node
-
-**`PUT /agents/node/{node_id}/reload`** — Reload configuration on all agents connected to a cluster node. Requires agent v5.0.0+.
-
-```bash
-curl -k -X PUT "https://localhost:55000/agents/node/worker-01/reload?pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -352,8 +343,6 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | DELETE | `/agents/group` | Bulk remove from group |
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
 | PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
-| PUT | `/agents/node/{node_id}/restart` | Restart by node (v5.0.0+) |
-| PUT | `/agents/node/{node_id}/reload` | Reload node agents config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
