@@ -61,11 +61,19 @@ namespace invsync::sync
      */
     class SessionProcessor final
     {
+        /// Indexer search page size while draining a session.
+        static constexpr std::size_t DEFAULT_QUERY_BATCH_SIZE {1000};
+
     public:
         /// @param metrics OPTIONAL registry for the document counters (D18); null counts nothing.
+        /// queryBatchSize follows the module's <=0 -> default convention, so modulesd can pass the
+        /// internal option through unconditionally.
         explicit SessionProcessor(std::string managerClusterName,
-                                  const std::shared_ptr<wazuh::metrics::IManager>& metrics = nullptr)
+                                  const std::shared_ptr<wazuh::metrics::IManager>& metrics = nullptr,
+                                  int queryBatchSize = 0)
             : m_managerClusterName {std::move(managerClusterName)}
+            , m_queryBatchSize {queryBatchSize > 0 ? static_cast<std::size_t>(queryBatchSize)
+                                                   : DEFAULT_QUERY_BATCH_SIZE}
         {
             if (metrics)
             {
@@ -102,6 +110,8 @@ namespace invsync::sync
                                                indexer::IIndexerConnectorSync& connector) const;
 
         std::string m_managerClusterName;
+
+        std::size_t m_queryBatchSize {DEFAULT_QUERY_BATCH_SIZE};
         // D18 counters, resolved once at construction (null when metrics are off, e.g. most tests).
         std::shared_ptr<wazuh::metrics::ICounter> m_docsIndexed;
         std::shared_ptr<wazuh::metrics::ICounter> m_docsSkipped;

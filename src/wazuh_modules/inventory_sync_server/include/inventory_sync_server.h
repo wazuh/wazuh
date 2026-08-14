@@ -248,6 +248,11 @@ extern "C"
          */
         long long indexer_async_max_queue_bytes;
 
+        /// Indexer search page size while draining a session. Larger pages mean fewer round trips
+        /// per session at a proportionally larger response to hold in memory, so the right value
+        /// follows the indexer's sizing rather than this module's. <=0 -> 1000.
+        int session_query_batch_size;
+
         /* ---- Nested, opaque ---- */
         /**
          * @brief The <indexer> configuration block, verbatim, as nested cJSON.
