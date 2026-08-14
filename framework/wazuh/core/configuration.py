@@ -582,6 +582,11 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
         raise WazuhResourceNotFound(1710, group_id)
     agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
 
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '')
+    if os_path.commonpath([os_path.realpath(agent_conf), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+        raise WazuhError(1006, agent_conf)
+
     if not os_path.exists(agent_conf):
         raise WazuhError(1006, agent_conf)
 
@@ -635,6 +640,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
         raise WazuhResourceNotFound(1710, group_id)
 
     file_path = os_path.join(common.SHARED_PATH, group_id, filename)
+
+    # Ensure the resolved path stays inside the group directory.
+    base_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '')
+    if os_path.commonpath([os_path.realpath(file_path), os_path.realpath(base_path)]) != os_path.realpath(base_path):
+        raise WazuhError(1006, file_path)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)

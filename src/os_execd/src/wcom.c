@@ -153,9 +153,16 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (ftarget = wfopen(final_target, "wb"), !ftarget) {
+    // Not wfopen(): a symlink left under the incoming directory would be followed and its target
+    // overwritten with the decompressed archive contents.
+    if (ftarget = w_fopen_nofollow(INCOMING_DIR, target, "wb"), !ftarget) {
+        const int open_errno = errno;
         gzclose(fsource);
-        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        if (open_errno == ELOOP) {
+            merror("At WCOM uncompress: Refused to open '%s': the path is a symbolic link.", final_target);
+        } else {
+            merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        }
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
