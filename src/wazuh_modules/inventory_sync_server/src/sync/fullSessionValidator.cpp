@@ -87,8 +87,7 @@ namespace invsync::sync
             return badRequest("Body is not a valid inventory sync message");
         }
 
-        // 2. This server accepts exactly one message type. The legacy direct members stay in the
-        // union for the router's sake, but here they are a contract violation.
+        // 2. This server accepts exactly one message type.
         const auto* message = fb::GetMessage(body.data());
         if (message->content_type() != fb::MessageType_FullSession)
         {
@@ -107,9 +106,8 @@ namespace invsync::sync
             return badRequest("Start is missing the module name");
         }
 
-        // 4. Identity (the anti-spoofing relocated from the router, design doc 03 §4). The header
-        // carries the id remoted AUTHENTICATED via AES-CMAC; the session claims one. Compared as
-        // integers so leading zeros cannot defeat the check.
+        // 4. Identity. The header carries the id remoted AUTHENTICATED via AES-CMAC; the session
+        // claims one. Compared as integers so leading zeros cannot defeat the check.
         const auto claimedAgentId = viewOf(start->agentid());
         if (!isNumericAgentId(claimedAgentId) || !isNumericAgentId(authenticatedAgentId))
         {
@@ -200,7 +198,6 @@ namespace invsync::sync
         // Effective cluster: the session's (already validated equal to the manager's) with the
         // manager's as fallback -- same expression the legacy `_id` builder used.
         validated.clusterName = claimedCluster.empty() ? managerClusterName : std::string {claimedCluster};
-        validated.clusterNode = std::string {viewOf(start->cluster_node())};
 
         if (start->groups() != nullptr)
         {

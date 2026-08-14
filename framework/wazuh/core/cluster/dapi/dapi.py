@@ -4,13 +4,10 @@
 
 import asyncio
 import contextlib
-import itertools
 import json
 import logging
-import operator
 import os
 import time
-from collections import defaultdict
 from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
@@ -23,10 +20,10 @@ import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.manager
 import wazuh.core.results as wresults
-from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
+from wazuh.core.cluster.control import get_nodes
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
@@ -459,27 +456,25 @@ class DistributedAPI:
             Parameters
             ----------
             node_name : tuple
-                Node to forward a request to.
+                Node and its already-resolved f_kwargs to forward a request with.
 
             Returns
             -------
             wresults.AbstractWazuhResult or exception.WazuhException
             """
-            node_name, agent_list = node_name
+            node_name, node_f_kwargs = node_name
             if node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
-                if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
-                    self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
+                self.f_kwargs = node_f_kwargs
                 result = await self.distribute_function()
             else:
-                if 'tmp_file' in self.f_kwargs:
+                if 'tmp_file' in node_f_kwargs:
                     await self.send_tmp_file(node_name)
                 client = self.get_client()
                 try:
                     kcopy = deepcopy(self.to_dict())
-                    if agent_list is not None and set(self.f_kwargs) & {'agent_id', 'agent_list'}:
-                        kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
+                    kcopy['f_kwargs'] = node_f_kwargs
 
                     result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
@@ -564,15 +559,38 @@ class DistributedAPI:
             if nodes:
                 valid_nodes = list(nodes.items())
             else:
-                broadcasted_nodes = await get_nodes_info(self.get_client())
-                valid_nodes = [(n['name'], []) for n in broadcasted_nodes.affected_items]
+                # No specific agent/node grouping to route by: broadcast the request, unmodified,
+                # to every cluster node (None leaves the original agent_id/agent_list untouched).
+                # Uses the low-level get_nodes() (not the RBAC-decorated get_nodes_info()) since this
+                # is purely internal request-routing, not a user-facing node listing: get_nodes_info()'s
+                # own 'cluster:read'/'node:id:*' check expands the wildcard from common.cluster_nodes,
+                # which is only populated from self.nodes -- empty here, since agent-targeted requests
+                # (restart/reload/upgrade, etc.) never populate it, making that check circular and always
+                # deny everything.
+                broadcasted_nodes = await get_nodes(self.get_client())
+                valid_nodes = [(n['name'], None) for n in broadcasted_nodes['items']]
             allowed_nodes = wresults.AffectedItemsWazuhResult()
-            allowed_nodes.affected_items = list(nodes)
+            allowed_nodes.affected_items = [node_name for node_name, _ in valid_nodes]
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
 
         cleaned_valid_nodes = await clean_valid_nodes(valid_nodes)
 
-        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in cleaned_valid_nodes]))
+        # Resolve each node's f_kwargs into its own independent dict synchronously, before any
+        # concurrent execution starts. `execute_local_request()` mutates `self.f_kwargs` in place
+        # (e.g. it clears a wildcard '*' agent list), and the local and remote forwards below all run
+        # concurrently via asyncio.gather. Building each node's payload lazily from the shared
+        # `self.f_kwargs` at call time let the local branch's in-flight mutation race ahead of a
+        # remote branch's snapshot of that same dict -- e.g. clearing '*' right before a worker's copy
+        # was taken, making that worker treat the request as unfiltered instead of using the real
+        # agent list. Resolving every node's kwargs up front removes the shared mutable state.
+        resolved_nodes = []
+        for node_name, agent_list in cleaned_valid_nodes:
+            node_f_kwargs = deepcopy(self.f_kwargs)
+            if agent_list is not None and set(node_f_kwargs) & {'agent_id', 'agent_list'}:
+                node_f_kwargs['agent_id' if 'agent_id' in node_f_kwargs else 'agent_list'] = agent_list
+            resolved_nodes.append((node_name, node_f_kwargs))
+
+        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in resolved_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
@@ -603,61 +621,21 @@ class DistributedAPI:
         Get the node(s) that have all the necessary information to answer the request. Only called when the request type
         is 'master_distributed' and the node_type is master.
 
+        Agents have no fixed owning node (5.x agents connect over a stateless, load-balanced HTTPS
+        session, so there is no single node to route to), so any request targeting specific agents
+        is broadcast to every cluster node instead. Requests that explicitly target node(s) (not
+        agents) are still routed to those exact nodes.
+
         Returns
         -------
         dict
             Dict with node names with agents.
         """
-        select_node = ['node_name']
-        if 'agent_id' in self.f_kwargs or 'agent_list' in self.f_kwargs:
-            # Group requested agents by node_name
-            requested_agents = self.f_kwargs.get('agent_list', None) or [self.f_kwargs['agent_id']]
-            # Filter by node_name if we receive a node_id
-            if 'node_id' in self.f_kwargs:
-                requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
-                filters = {'node_name': requested_nodes}
-            elif requested_agents != '*':
-                filters = {'id': requested_agents}
-            else:
-                filters = None
-
-            system_agents = agent.Agent.get_agents_overview(select=select_node,
-                                                            limit=None,
-                                                            filters=filters)['items']
-            node_name = defaultdict(list)
-            for element in system_agents:
-                node_name[element.get('node_name', '')].append(element['id'])
-
-            # Update node_name in case it is empty or a node has no agents
-            if 'node_id' in self.f_kwargs:
-                if self.f_kwargs['node_id'] not in node_name:
-                    node_name.update({self.f_kwargs['node_id']: []})
-
-            if requested_agents != '*':  # When all agents are requested cannot be non existent ids
-                # Add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(requested_agents) - set(map(operator.itemgetter('id'), system_agents)))
-                if non_existent_ids:
-                    if self.node_info['node'] in node_name:
-                        node_name[self.node_info['node']].extend(non_existent_ids)
-                    else:
-                        node_name[self.node_info['node']] = non_existent_ids
-
-            return node_name
-
-        elif 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
+        if 'node_id' in self.f_kwargs or ('node_list' in self.f_kwargs and self.f_kwargs['node_list'] != '*'):
             requested_nodes = self.f_kwargs.get('node_list', None) or [self.f_kwargs['node_id']]
             return {node_id: [] for node_id in requested_nodes}
 
-        else:
-            if self.broadcasting:
-                node_name = {}
-            else:
-                # agents, syscheck and syscollector
-                # API calls that affect all agents. For example, PUT/agents/restart, etc...
-                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
-                node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
-            return node_name
+        return {}
 
 
 class WazuhRequestQueue:

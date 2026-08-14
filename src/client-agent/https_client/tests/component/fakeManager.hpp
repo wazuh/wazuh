@@ -434,10 +434,10 @@ class FakeManager final
                 // and the settings_hash of the CURRENT startup body; response
                 // answers a plain ok.
                 static const std::string startupV1 =
-                    R"({"limits":{"eps":0},"cluster":{"name":"fake","node":"node01"},)"
+                    R"({"limits":{"eps":0},"cluster":{"name":"fake"},)"
                     R"("agent":{"groups":["default"]}})";
                 static const std::string startupV2 =
-                    R"({"limits":{"eps":100},"cluster":{"name":"fake","node":"node01"},)"
+                    R"({"limits":{"eps":100},"cluster":{"name":"fake"},)"
                     R"("agent":{"groups":["default"]}})";
                 const bool flipped = settingsFlipAfter > 0 &&
                                      notifyCount->load() >= settingsFlipAfter;

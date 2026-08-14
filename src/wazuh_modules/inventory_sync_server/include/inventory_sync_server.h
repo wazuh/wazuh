@@ -19,11 +19,6 @@
  * modulesd resolves the two entry points below with dlopen/dlsym
  * (so_get_module_handle/so_get_function_sym, see src/shared/include/sym_load.h),
  * so the function-pointer typedefs at the bottom are load-bearing, not optional.
- *
- * TRANSITIONAL MODULE: this exists alongside inventory_sync while the router-based
- * ingress is replaced by an HTTP/1.1-over-Unix-domain-socket one. When the migration
- * completes, inventory_sync is removed and this becomes the only inventory sync module.
- * See the module README for the resources the two must not share.
  */
 
 // Define EXPORTED for any platform
@@ -68,7 +63,6 @@ extern "C"
     {
         /* ---- Cluster identity ---- */
         char cluster_name[256]; ///< Cluster name (empty -> "").
-        char node_name[256];    ///< Cluster node name (empty -> "").
 
         /* ---- Transport: the listening socket ---- */
         /**

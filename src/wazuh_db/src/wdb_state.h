@@ -30,7 +30,6 @@ typedef struct _global_agent_t {
     uint64_t insert_agent_queries;
     uint64_t reset_agents_connection_queries;
     uint64_t select_agent_group_queries;
-    uint64_t select_agent_name_queries;
     uint64_t set_agent_groups_queries;
     uint64_t sync_agent_groups_get_queries;
     uint64_t sync_agent_info_get_queries;
@@ -51,7 +50,6 @@ typedef struct _global_agent_t {
     struct timeval insert_agent_time;
     struct timeval reset_agents_connection_time;
     struct timeval select_agent_group_time;
-    struct timeval select_agent_name_time;
     struct timeval set_agent_groups_time;
     struct timeval sync_agent_groups_get_time;
     struct timeval sync_agent_info_get_time;
@@ -273,19 +271,6 @@ void w_inc_global_agent_delete_agent();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_delete_agent_time(struct timeval time);
-
-/**
- * @brief Increment select-agent-name global agent queries counter
- *
- */
-void w_inc_global_agent_select_agent_name();
-
-/**
- * @brief Increment select-agent-name global agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_agent_select_agent_name_time(struct timeval time);
 
 /**
  * @brief Increment select-agent-group global agent queries counter

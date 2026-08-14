@@ -117,9 +117,6 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.cluster_node, metadata->cluster_node, sizeof(m_shm->base_metadata.cluster_node) - 1);
-                m_shm->base_metadata.cluster_node[sizeof(m_shm->base_metadata.cluster_node) - 1] = '\0';
-
                 m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
 
                 // Copy groups
@@ -191,9 +188,6 @@ namespace
 
                 std::strncpy(out_metadata->cluster_name, m_shm->base_metadata.cluster_name, sizeof(out_metadata->cluster_name) - 1);
                 out_metadata->cluster_name[sizeof(out_metadata->cluster_name) - 1] = '\0';
-
-                std::strncpy(out_metadata->cluster_node, m_shm->base_metadata.cluster_node, sizeof(out_metadata->cluster_node) - 1);
-                out_metadata->cluster_node[sizeof(out_metadata->cluster_node) - 1] = '\0';
 
                 out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
 
@@ -307,7 +301,7 @@ namespace
 
                 struct stat st;
 
-                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size < static_cast<off_t>(sizeof(SharedMetadata)));
+                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size != static_cast<off_t>(sizeof(SharedMetadata)));
 
                 // Always set correct size (only if we have write access)
                 if (!m_read_only && ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)

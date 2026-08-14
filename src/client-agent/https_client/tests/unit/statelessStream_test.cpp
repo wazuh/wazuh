@@ -195,7 +195,7 @@ TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
     const std::string hostJson =
         R"({"agent":{"name":"myagent","version":"5.0.0","groups":["g1","g2"],)"
         R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
-        R"("cluster":{"name":"c1","node":"n1"}})";
+        R"("cluster":{"name":"c1"}})";
     StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
                             m_sink,    m_authGate, m_compressionGate, [&hostJson] { return hostJson; }};
 
@@ -227,7 +227,6 @@ TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
     // both read the same agent_metadata_t.cluster_name. cluster is agent's
     // sibling under wazuh, not nested under agent.
     EXPECT_EQ("c1", wazuh.at("cluster").at("name").get<std::string>());
-    EXPECT_EQ("n1", wazuh.at("cluster").at("node").get<std::string>());
 }
 
 TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenCollectHostIsEmpty)

@@ -27,11 +27,10 @@
 using module_query_callback_t = std::function<int(const std::string& module_name, const std::string& query, char** response)>;
 
 // Type definition for the handshake query callback function.
-// Queries agentd for fresh cluster_name/cluster_node/agent_groups into the given buffers.
+// Queries agentd for fresh cluster_name/agent_groups into the given buffers.
 // Returns true if the query succeeded (buffers may still be empty if legitimately unset).
 using handshake_query_callback_t =
     std::function<bool(char* cluster_name, size_t cluster_name_size,
-                       char* cluster_node, size_t cluster_node_size,
                        char* agent_groups, size_t agent_groups_size)>;
 
 class AgentInfoImpl
@@ -381,9 +380,9 @@ class AgentInfoImpl
         /// @brief Function to query other modules
         module_query_callback_t m_queryModuleFunction;
 
-        /// @brief Function to query agentd for fresh handshake data (cluster_name, cluster_node,
+        /// @brief Function to query agentd for fresh handshake data (cluster_name,
         /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy.
-        /// Only cluster_name/cluster_node are tracked from it - see populateAgentMetadata() for why
+        /// Only cluster_name is tracked from it - see populateAgentMetadata() for why
         /// agent_groups deliberately keeps its own, separate one-shot-at-startup handling.
         handshake_query_callback_t m_handshakeQueryFunction;
 
@@ -393,9 +392,8 @@ class AgentInfoImpl
         /// of reverting all the way back to the (possibly long-stale) startup cache.
         bool m_hasLiveHandshakeSucceededOnce = false;
 
-        /// @brief Last successfully live-queried cluster_name/cluster_node
+        /// @brief Last successfully live-queried cluster_name
         std::string m_lastLiveClusterName;
-        std::string m_lastLiveClusterNode;
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;

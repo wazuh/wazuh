@@ -71,7 +71,6 @@ namespace
         c.sharedGroupsRoot = dirs.shared();
         c.multiGroupsRoot = dirs.multi();
         c.clusterName = "wazuh";
-        c.nodeName = "master";
         c.limits = nlohmann::json::object();
         return c;
     }
@@ -269,7 +268,7 @@ TEST(HashCacheTest, InvalidateConfigHashOnEmptyPathIsNoOp)
 }
 
 // -----------------------------------------------------------------------------
-// getSettingsHash: stable per process, depends on cluster/limits/node.
+// getSettingsHash: stable per process, depends on cluster/limits.
 // -----------------------------------------------------------------------------
 
 TEST(HashCacheTest, GetSettingsHashIsStable)
@@ -285,14 +284,14 @@ TEST(HashCacheTest, GetSettingsHashIsStable)
     EXPECT_EQ(h1.size(), 64U);
 }
 
-TEST(HashCacheTest, GetSettingsHashDiffersOnDifferentClusterMembers)
+TEST(HashCacheTest, GetSettingsHashDiffersOnDifferentClusterName)
 {
     TempDirs dirs;
     auto c1 = makeConfig(dirs);
     HashCache cache1(c1);
 
     auto c2 = makeConfig(dirs);
-    c2.nodeName = "worker-01"; // different node name -> different envelope
+    c2.clusterName = "worker-cluster"; // different cluster name -> different envelope
     HashCache cache2(c2);
 
     EXPECT_NE(cache1.getSettingsHash(), cache2.getSettingsHash());

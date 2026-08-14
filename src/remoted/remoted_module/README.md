@@ -2,8 +2,8 @@
 
 A self-contained C++17 module that `remoted` launches in its own thread, receiving a
 configuration struct to initialize itself. It mirrors the pattern `modulesd` uses for
-`inventory_sync_server` / `vulnerability_scanner`, but integrates via **direct link** (like
-`router`) instead of `dlopen`, and passes configuration as a **typed C struct** instead of
+`inventory_sync_server` / `vulnerability_scanner`, but integrates via **direct link**
+instead of `dlopen`, and passes configuration as a **typed C struct** instead of
 a serialized `cJSON`.
 
 This is the isolation boundary between remoted's C code and C++: everything under this
@@ -339,7 +339,7 @@ sequenceDiagram
          "syscollector": {"packages": 50000, "processes": 50000, ...},
          "sca": {"checks": 10000}
        },
-       "cluster": {"name": "wazuh-cluster", "node": "node01"},
+       "cluster": {"name": "wazuh-cluster"},
        "agent": {"groups": ["default", "web-servers"]}
      }
      ```
@@ -485,7 +485,6 @@ Via `ControlConfig` (`controlConfig.hpp/.cpp`), populated from C-ABI struct fiel
 `remoted_module_config_t` (see `secure.c`):
 - `managerVersion` — manager's semantic version (for version comparison)
 - `allowHigherVersions` — whether to accept agents with version > manager
-- `nodeName` — worker node name (for cluster sync_status)
 - `isWorkerNode` — true on worker nodes (affects sync_status values)
 - `agentRegistryTtlSec` — how long to keep idle agents in the registry (default 3600s)
 - `agentRegistryEvictionIntervalSec` — how often to run eviction (default 300s)

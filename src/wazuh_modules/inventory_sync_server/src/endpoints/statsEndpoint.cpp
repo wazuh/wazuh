@@ -187,7 +187,6 @@ namespace invsync::endpoints::stats
                 document["/wazuh/schema/version"_json_pointer] = STATS_SCHEMA_VERSION;
                 document["/wazuh/agent/id"_json_pointer] = agentIdIt->second;
                 document["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
-                document["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
                 // Moved, not copied: the payload is dead once the response is sent, and a copy would
                 // be one allocation per node of every module's subtree, per agent report.
                 document["/wazuh/agent/statistics"_json_pointer] = std::move(*modules);

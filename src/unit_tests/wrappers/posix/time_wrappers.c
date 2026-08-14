@@ -19,14 +19,6 @@ time_t __wrap_time(__attribute__ ((unused)) time_t *t) {
     return mock_type(time_t);
 }
 
-char *__wrap_ctime_r(const time_t *timep, char *buf) {
-    check_expected(timep);
-
-    strncpy(buf, mock_type(const char *), 26);
-
-    return buf;
-}
-
 void __wrap_gettimeofday(struct timeval *__restrict __tv, __attribute__((unused)) void *__restrict __tz) {
         struct timeval *mocked_time = mock_ptr_type(struct timeval *);
         if (mocked_time && __tv) {

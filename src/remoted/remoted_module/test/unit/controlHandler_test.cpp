@@ -79,7 +79,6 @@ namespace
         c.wdbSocketPath = env.wdbPath;
         c.taskSocketPath = env.taskPath;
         c.clusterName = "wazuh";
-        c.nodeName = "master";
         c.managerVersion = "5.0.0";
         c.isWorkerNode = false;
         c.allowHigherVersions = false;
@@ -299,7 +298,6 @@ TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
     EXPECT_EQ(w.value.status, 200);
     auto j = nlohmann::json::parse(w.value.body);
     EXPECT_EQ(j["cluster"]["name"], "wazuh");
-    EXPECT_EQ(j["cluster"]["node"], "master");
     ASSERT_TRUE(j["agent"]["groups"].is_array());
     ASSERT_EQ(j["agent"]["groups"].size(), 2U);
     EXPECT_EQ(j["agent"]["groups"][0], "default");

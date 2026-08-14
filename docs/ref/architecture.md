@@ -121,7 +121,6 @@ clients -->|1,5,6,7,8,10| api
 | --------------------- | ---------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Indexer Connector** | `shared_modules/indexer_connector` | Engine, Vulnerability Scanner, Inventory Sync Server, Content Manager | Client library for pushing data to the Wazuh Indexer                              |
 | **Content Manager**   | `shared_modules/content_manager`   | Vulnerability Scanner, Modulesd                                | Plugin framework for downloading and managing content (feeds, rulesets)           |
-| **Router**            | `shared_modules/router`            | Remoted, Wazuh DB, Auth                                        | Pub/sub IPC messaging between daemons via per-topic sockets under `queue/router/` |
 | **Keystore**          | `shared_modules/keystore`          | Indexer Connector; served over `queue/sockets/keystore` by the `keystore_server` module for the API framework | AES-256 encrypted credential store (RocksDB)                                      |
 
 ### CLI Tools
@@ -145,7 +144,7 @@ clients -->|1,5,6,7,8,10| api
 5. **Agent Upgrade** — Client sends an upgrade request via **API** → **Agent Upgrade** (`queue/tasks/upgrade`) module. AU validates the request, downloads and verifies the WPK on the manager filesystem, and hands the upgrade off to **Task Manager** (`queue/tasks/task`) as a `remote_upgrade` task. Task Manager persists it in **Wazuh DB** (`queue/db/wdb`) and serves it to the agent on its next poll via **Remoted**'s own task-polling thread, which pushes the WPK to the agent over the existing agent-manager channel. Task delivery is fire-and-forget from the manager's perspective.
 6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/analysis`), **Wazuh DB** (`queue/db/wdb`), **Remoted** (`queue/sockets/remote`), **Monitord** (`queue/sockets/monitor`), or **Auth** (`queue/sockets/auth`) depending on the endpoint. The **DAPI** layer transparently routes requests across cluster nodes.
 7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control`), which signals the appropriate daemons.
-8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/router/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics. The API forwards cluster queries to Clusterd (`queue/cluster/c-internal.sock`).
+8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/sockets/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics. The API forwards cluster queries to Clusterd (`queue/cluster/c-internal.sock`).
 9. **Agent Monitoring** — **Remoted** updates agent connection state (keep-alive, disconnection) in **Wazuh DB** (`queue/db/wdb`). **Monitord** handles log rotation and periodic state checks via **Wazuh DB** (`queue/db/wdb`).
 10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth`). Auth removes the agent from **Wazuh DB** (`queue/db/wdb`) and calls **Inventory Sync Server**'s delete endpoint over UDS (`queue/sockets/inventory-sync.sock`) to delete every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`); the HTTP status tells Auth whether the deletion was applied, and Auth retries before logging an error that names the agent.
 
@@ -168,5 +167,4 @@ All inter-process communication uses Unix domain sockets under `queue/sockets/`:
 | `queue/tasks/upgrade`           | Upgrade task queue                               |
 | `queue/db/wdb`                  | wazuh-manager-db                                 |
 | `queue/cluster/c-internal.sock` | wazuh-manager-clusterd internal IPC              |
-| `queue/router/wdb-http.sock`    | wazuh-manager-db HTTP API (used by cluster, API) |
-| `queue/router/*`                | Router pub/sub per-topic sockets                 |
+| `queue/sockets/wdb-http.sock`   | wazuh-manager-db HTTP API (used by cluster, API) |

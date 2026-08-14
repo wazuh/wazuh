@@ -38,9 +38,4 @@ void __wrap_cleanup_failed_registry_keys(OSList* failed_keys);
 
 void __wrap_cleanup_failed_registry_values(OSList* failed_values);
 
-void __wrap_fim_sync_check_eps();
-
-// Send a state synchronization message
-void __wrap_fim_send_sync_state(const char* location, const char* msg);
-
 #endif

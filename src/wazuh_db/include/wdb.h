@@ -19,7 +19,6 @@
 #include "syscheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"
-#include "router.h"
 #include "global-config.h"
 
 #define WDB_MAX_COMMAND_SIZE    512
@@ -74,7 +73,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
-    WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
     WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
@@ -108,7 +106,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP,
     WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
-    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
@@ -267,13 +264,6 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
-
-/**
- * @brief Rollback transaction
- * @param[in] wdb Database to query for the table existence.
- * @return 0 when succeed, !=0 otherwise.
-*/
-int wdb_rollback(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -534,17 +524,6 @@ int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select agent name request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the select agent group request.
@@ -927,7 +906,6 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
  * @param [in] os_platform The agent's operating system platform.
  * @param [in] os_arch The agent's operating system architecture.
  * @param [in] version The agent's version.
- * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
@@ -943,7 +921,6 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
                                     const char *sync_status);
@@ -989,15 +966,6 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_delete_agent(wdb_t *wdb, int id);
-
-/**
- * @brief Function to get the name of a particular agent.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id Agent id.
- * @return JSON with the agent name on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id);
 
 /**
  * @brief Function to get the group of a particular agent.
@@ -1405,13 +1373,11 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @param [in] wdb The Global struct database.
  * @param [in] last_agent_id ID where to start querying.
  * @param [in] connection_status Connection status of the agents requested.
- * @param [in] node_name Cluster node name
- * @param [in] limit Limits the number of rows returned by the query.
  * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.
@@ -1543,15 +1509,6 @@ int wdb_task_delete_old(wdb_t* wdb, time_t timestamp);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
-
-/**
- * Get cache stmt cached for specific query.
- * @param wdb The task struct database
- * @param query is the query to be executed.
- * @return Pointer to the statement already cached. NULL On error.
- * */
-
-sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 /**
  * @brief Method to read the internal wazuh-db configuration.

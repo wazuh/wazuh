@@ -91,7 +91,6 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
@@ -135,8 +134,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 /**
  * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
  *        and the memory-management constants onto the C-ABI struct handed to the C++
- *        remoted_module, so this mapping is testable without the socket/router/cluster
- *        setup the rest of HandleSecure() depends on
+ *        remoted_module
  *
  * @param logr remoted configuration structure (source)
  * @param rm_config destination struct; fully zeroed and populated on return
@@ -464,15 +462,6 @@ void HandleSecure()
     /* Global stats uptime */
     remoted_state.uptime = time(NULL);
 
-    /* Create OSHash for agents statistics */
-    remoted_agents_state = OSHash_Create();
-    if (!remoted_agents_state) {
-        merror_exit(HASH_ERROR);
-    }
-    if (!OSHash_setSize(remoted_agents_state, 2048)) {
-        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
-    }
-
     /* Initialize manager */
     manager_init();
 
@@ -498,9 +487,6 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Create State writer thread
-    w_create_thread(rem_state_main, NULL);
-
     // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
     w_create_thread(legacy_upgrade_task_delivery, NULL);
 
@@ -518,9 +504,6 @@ void HandleSecure()
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
-    // No router provider here: the stateful-sync path is the C++ module's authenticated
-    // POST /stateful route, relayed to inventory_sync_server over UDS.
-
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
         remoted_module_config_t rm_config;
@@ -531,12 +514,6 @@ void HandleSecure()
         if (rm_cluster_name) {
             snprintf(rm_config.cluster_name, sizeof(rm_config.cluster_name), "%s", rm_cluster_name);
             os_free(rm_cluster_name);
-        }
-
-        char *rm_node_name = get_node_name();
-        if (rm_node_name) {
-            snprintf(rm_config.node_name, sizeof(rm_config.node_name), "%s", rm_node_name);
-            os_free(rm_node_name);
         }
 
         remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
@@ -1161,7 +1138,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 _close_sock(&keys, sock_idle);
             }
 
-            rem_inc_recv_ctrl(key->id);
+            rem_inc_recv_ctrl();
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -1286,7 +1263,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         rem_inc_recv_events_failed();
         maybe_log_events_queue_drop();
     } else {
-        rem_inc_recv_events(agentid_str);
+        rem_inc_recv_events();
     }
 
     os_free(agentid_str);
@@ -1295,8 +1272,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) {
 
     if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        // The 'inventory-states' router topic retired with the legacy inventory_sync module:
-        // since 5.x, stateful synchronization only enters through remoted's authenticated
+        // Since 5.x, stateful synchronization only enters through remoted's authenticated
         // POST /stateful route as a whole FullSession, so the old chunked wire protocol has
         // nowhere to go. Discarded, not an error: it is a not-yet-updated agent, not an attack.
         mdebug2("Discarding legacy stateful-sync message from agent '%s' (since 5.x the manager only accepts "
@@ -1480,10 +1456,7 @@ static int append_header(dispatch_ctx_t *ctx) {
             has_cluster_info = true;
         }
 
-        if (have_meta && snap.cluster_node && snap.cluster_node[0]) {
-            cJSON_AddStringToObject(cluster, "node", snap.cluster_node);
-            has_cluster_info = true;
-        } else if (node_name && strcmp(node_name, "undefined") != 0) {
+        if (node_name && strcmp(node_name, "undefined") != 0) {
             cJSON_AddStringToObject(cluster, "node", node_name);
             has_cluster_info = true;
         }

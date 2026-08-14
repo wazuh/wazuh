@@ -27,7 +27,6 @@ typedef struct agent_meta
     char* arch;
     char* hostname;
     char* cluster_name;
-    char* cluster_node;
     char** groups;
     size_t groups_count;
     time_t lastmsg;  // Last time a keepalive was received
@@ -48,9 +47,7 @@ int agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh);
 int agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out);
 
 /* Result of comparing a connected agent's self-reported version against a threshold, via
- * agent_meta_check_version(). Shared by legacy_task_delivery.c's version-gate poller and
- * remcom.c's bulk getagentsstats "all" filter, so both callers apply identical cache/fallback/
- * comparison logic (only their own logging differs). */
+ * agent_meta_check_version(). */
 typedef enum {
     AGENT_VERSION_CHECK_UNKNOWN,     /* No version known at all (cache miss + wazuh-db miss). */
     AGENT_VERSION_CHECK_UNPARSEABLE, /* A version string was found but has no 'v' token. */

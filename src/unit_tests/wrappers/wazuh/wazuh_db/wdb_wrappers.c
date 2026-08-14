@@ -21,10 +21,6 @@ int __wrap_wdb_begin2(__attribute__((unused)) wdb_t* aux) {
     return mock();
 }
 
-int __wrap_wdb_finalize() {
-    return mock();
-}
-
 int __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
@@ -75,14 +71,6 @@ int __wrap_wdbc_query_ex(int *sock, const char *query, char *response, const int
 
     snprintf(response, len, "%s", mock_ptr_type(char*));
 
-    return mock();
-}
-
-int __wrap_wdbc_connect_with_attempts(__attribute__((unused)) int max_attempts) {
-
-    if (max_attempts <= 0) {
-        fail_msg("Attempts must be greater than 0.");
-    }
     return mock();
 }
 
@@ -144,11 +132,6 @@ int __wrap_wdb_sql_exec(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
-wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {
-    check_expected(id);
-    return mock_ptr_type(wdb_t*);
-}
-
 int __wrap_wdb_close(__attribute__((unused)) wdb_t * wdb, __attribute__((unused))bool commit) {
     int free_db = mock_type(int);
 
@@ -159,11 +142,6 @@ int __wrap_wdb_close(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)
     return mock();
 }
 
-int __wrap_wdb_create_global(const char *path) {
-    check_expected(path);
-    return mock();
-}
-
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb, wdb_stmt statement_index){
     check_expected(statement_index);
     return mock_ptr_type(sqlite3_stmt*);
@@ -171,15 +149,6 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb,
 
 int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
     return mock();
-}
-
-int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
-    check_expected(peer);
-    return mock();
-}
-
-sqlite3_stmt * __wrap_wdb_get_cache_stmt(__attribute__((unused)) wdb_t * wdb, __attribute__((unused)) char const *query) {
-    return mock_ptr_type(sqlite3_stmt*);
 }
 
 cJSON *__wrap_wdb_get_internal_config() {

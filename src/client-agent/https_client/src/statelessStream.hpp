@@ -46,7 +46,7 @@ class StatelessStream final
         };
 
         /// @param collectHost Pull-source for the H line's host block (agent name/version,
-        ///        hostname, architecture, os.*, cluster name/node, groups -- see
+        ///        hostname, architecture, os.*, cluster name, groups -- see
         ///        bridge_on_collect_stateless_host()). Optional: unset (the default) means the H
         ///        line carries only wazuh.agent.id, as before this field existed.
         StatelessStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
@@ -93,7 +93,7 @@ class StatelessStream final
         const std::function<std::string()> m_collectHost;
         /// H line prefixed to every batch. Refreshed under m_stateMutex at the start of each flush
         /// (not per event) so metadata that only becomes available after construction -- cluster
-        /// name/node arrive from the manager's own /control handshake, which can land after this
+        /// name arrives from the manager's own /control handshake, which can land after this
         /// stream starts sending -- is picked up without restarting the stream. A one-flush-old
         /// value is used for the budget check in between flushes; harmless, since the accumulator
         /// self-corrects at the very next flush either way.

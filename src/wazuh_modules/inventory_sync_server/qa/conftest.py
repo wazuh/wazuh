@@ -75,7 +75,7 @@ STATE_TEMPLATE = {
                                 "groups": {"type": "keyword"},
                             }
                         },
-                        "cluster": {"properties": {"name": {"type": "keyword"}, "node": {"type": "keyword"}}},
+                        "cluster": {"properties": {"name": {"type": "keyword"}}},
                     }
                 },
             },
@@ -177,7 +177,7 @@ def server(indexer, tmp_path_factory):
         process.kill()
         raise RuntimeError(f"the server socket never appeared; log tail:\n{log_path.read_text()[-4000:]}")
 
-    yield {"socket": str(socket_path), "cluster": config["clusterName"], "node": config["clusterNodeName"]}
+    yield {"socket": str(socket_path), "cluster": config["clusterName"]}
 
     process.send_signal(signal.SIGTERM)
     try:

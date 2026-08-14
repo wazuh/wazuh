@@ -478,6 +478,35 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                                       types=self.sort_casting)
         result.total_affected_items = result.total_affected_items + other.total_affected_items
 
+        # Reconcile conflicting per-item verdicts from different sources -- e.g. a request
+        # broadcast to every cluster node, where one node's live state confirms success for an
+        # item while another node's lagging local view reports that same item as failed. A
+        # success is authoritative: drop the item from every failed_items entry and de-duplicate
+        # it out of affected_items.
+        seen = set()
+        deduped_affected = []
+        duplicates = 0
+        for item in result.affected_items:
+            try:
+                if item in seen:
+                    duplicates += 1
+                    continue
+                seen.add(item)
+            except TypeError:
+                pass  # Unhashable item (e.g. a dict); keep it, no reconciliation for it.
+            deduped_affected.append(item)
+
+        if seen:
+            for error in list(result._failed_items):
+                result._failed_items[error] -= seen
+                if not result._failed_items[error]:
+                    del result._failed_items[error]
+            result._recalculate_failed_items()
+
+        if duplicates:
+            result.affected_items = deduped_affected
+            result.total_affected_items -= duplicates
+
         return result
 
     def to_dict(self) -> dict:

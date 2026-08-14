@@ -120,9 +120,6 @@ namespace invsync
      * Owns the worker std::thread and implements the canonical cooperative-shutdown lifecycle
      * (atomic flag + condition_variable + join), plus the HTTP-over-UDS transport behind our own
      * IUdsHttpServer interface.
-     *
-     * Deliberately does NOT touch the router: ingress is UDS only (remoted relays the
-     * authenticated POST /stateful route to this module's socket).
      */
     class InventorySyncServerFacade final : public Singleton<InventorySyncServerFacade>
     {
@@ -174,10 +171,7 @@ namespace invsync
             m_lastIndexerAvailable.reset();
             ++m_startGeneration;
 
-            LOGFN_INFO(moduleLogFn(),
-                       "Starting inventory sync server (cluster='%s', node='%s').",
-                       m_config.cluster_name,
-                       m_config.node_name);
+            LOGFN_INFO(moduleLogFn(), "Starting inventory sync server (cluster='%s').", m_config.cluster_name);
 
             // The UDS server itself is started from run() (see tryStartHttpServer()), which keeps
             // start() fast and gives the retry loop for free. m_running is set only AFTER the
@@ -389,19 +383,19 @@ namespace invsync
             // to read the members here: buildAndPublish() publishes each slot as soon as it
             // succeeds, and this runs afterwards, in the same attempt.
             //
-            // They also take this manager's cluster identity, built fresh (two cheap string copies)
+            // It also takes this manager's cluster identity, built fresh (a cheap string copy)
             // rather than cached across retries -- m_config does not change within a start()/stop()
             // cycle, so there is nothing stale to worry about, and this keeps startHttpServer() the
             // only place that reads m_config for the routes it registers.
             const auto clusterIdentity = invsync::common::buildClusterIdentity(m_config);
             if (clusterIdentity.sanitized)
             {
-                // Once, here, instead of once per request: these names are stamped onto every
-                // enriched document, so invalid UTF-8 in them is the manager's fault, not the agent's.
+                // Once, here, instead of once per request: this name is stamped onto every
+                // enriched document, so invalid UTF-8 in it is the manager's fault, not the agent's.
                 LOGFN_WARN(moduleLogFn(),
-                           "The configured cluster name or node name contains bytes that are not valid UTF-8; they "
-                           "have been replaced with '?' so documents can still be serialized. Fix <cluster><name> "
-                           "and <cluster><node_name> in the manager configuration.");
+                           "The configured cluster name contains bytes that are not valid UTF-8; they have been "
+                           "replaced with '?' so documents can still be serialized. Fix <cluster><name> in the "
+                           "manager configuration.");
             }
 
             // The ingestion route: everything past the strand-side validation runs on the

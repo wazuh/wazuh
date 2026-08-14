@@ -110,11 +110,10 @@ For reload operations with systemd, the module:
 ### API Usage
 
 The Wazuh RESTful API uses the control channel for:
-- `PUT /manager/restart` — Manager restart
+- `PUT /cluster/restart` — Manager restart
 - `PUT /agents/restart` / `PUT /agents/{agent_id}/restart` — Agent restart (requires agent v5.0.0+)
 - `PUT /agents/reload` / `PUT /agents/{agent_id}/reload` — Agent reload (requires agent v5.0.0+)
 - `PUT /agents/group/{group_id}/reload` — Reload agents in a group
-- `PUT /agents/node/{node_id}/reload` — Reload agents on a cluster node
 
 **Framework Code**:
 - Manager: `framework/wazuh/core/cluster/utils.py::manager_restart()`

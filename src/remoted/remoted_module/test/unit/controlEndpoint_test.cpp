@@ -138,7 +138,6 @@ namespace
             cfg.wdbSocketPath = wdbPath;
             cfg.taskSocketPath = taskPath;
             cfg.clusterName = "wazuh";
-            cfg.nodeName = "master";
             cfg.managerVersion = "5.0.0";
             cfg.limits = nlohmann::json::object();
             cfg.wdbRequestConnections = 1;
@@ -341,7 +340,6 @@ TEST(ControlEndpointTest, StartupDispatchesToHandlerAndReturnsClusterEnvelope)
     EXPECT_EQ(resp->captured().status, 200);
     auto j = nlohmann::json::parse(resp->captured().body);
     EXPECT_EQ(j["cluster"]["name"], "wazuh");
-    EXPECT_EQ(j["cluster"]["node"], "master");
     ASSERT_TRUE(j["agent"]["groups"].is_array());
     EXPECT_EQ(j["agent"]["groups"][0], "default");
     EXPECT_GE(f.metrics.startupCount.load(), 1U);

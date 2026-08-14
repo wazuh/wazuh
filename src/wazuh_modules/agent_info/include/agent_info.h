@@ -79,24 +79,6 @@ EXPORTED void agent_info_set_cluster_name(const char* cluster_name);
 EXPORTED const char* agent_info_get_cluster_name(void);
 
 /**
- * @brief Set the cluster node received from the manager during handshake
- *
- * This function stores the cluster node (manager node name) that will be used when populating
- * agent metadata. Should be called from start_agent.c after parsing the
- * handshake response.
- *
- * @param cluster_node The cluster node string (will be copied internally)
- */
-EXPORTED void agent_info_set_cluster_node(const char* cluster_node);
-
-/**
- * @brief Get the cluster node received from the manager during handshake
- *
- * @return The cluster node string (empty string if not set)
- */
-EXPORTED const char* agent_info_get_cluster_node(void);
-
-/**
  * @brief Set the agent groups received from the manager during handshake
  *
  * This function stores the agent groups (as CSV) that will be used when populating
@@ -125,7 +107,7 @@ EXPORTED void agent_info_clear_agent_groups(void);
 
 /**
  * @brief Callback type used to query agentd for fresh handshake data (cluster_name,
- * cluster_node, agent_groups) on demand, instead of relying on a one-time cached copy.
+ * agent_groups) on demand, instead of relying on a one-time cached copy.
  *
  * Matches the signature of wm_agent_info_query_agentd_handshake() in wm_agent_info.c,
  * so it can be registered directly with no adapter function.
@@ -135,8 +117,6 @@ EXPORTED void agent_info_clear_agent_groups(void);
  */
 typedef bool (*query_handshake_callback_t)(char* cluster_name,
                                            size_t cluster_name_size,
-                                           char* cluster_node,
-                                           size_t cluster_node_size,
                                            char* agent_groups,
                                            size_t agent_groups_size);
 
@@ -261,8 +241,6 @@ typedef void (*agent_info_set_query_module_function_func)(query_module_callback_
 typedef void (*agent_info_set_is_shutting_down_function_func)(is_shutting_down_callback_t is_shutting_down_callback);
 typedef void (*agent_info_set_cluster_name_func)(const char* cluster_name);
 typedef const char* (*agent_info_get_cluster_name_func)(void);
-typedef void (*agent_info_set_cluster_node_func)(const char* cluster_node);
-typedef const char* (*agent_info_get_cluster_node_func)(void);
 typedef void (*agent_info_set_agent_groups_func)(const char* agent_groups);
 typedef const char* (*agent_info_get_agent_groups_func)(void);
 typedef void (*agent_info_clear_agent_groups_func)(void);

@@ -29,7 +29,7 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     import wazuh.agent
-    from wazuh.agent import upgrade_agents, get_agents
+    from wazuh.agent import upgrade_agents
     from wazuh.core import common
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
@@ -85,53 +85,6 @@ def list_outdated():
         for agent in agents.affected_items:
             print("%-6s%-35s %-25s" % (agent['id'], agent['name'], agent['version']))
         print("\nTotal outdated agents: {0}".format(agents.total_affected_items))
-
-
-async def get_agents_versions(agents: list) -> dict:
-    """Get the current versions of the specified agents.
-
-    Parameters
-    ----------
-    agents : list
-        List of agent's IDs.
-
-    Returns
-    -------
-    dict
-        Dictionary with the current version (prev_version).
-    """
-    f_kwargs = {
-        "agent_list": agents,
-        "select": ["version"],
-        "limit": len(agents)
-    }
-    agent_versions = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
-    cluster_utils.raise_if_exc(agent_versions)
-    return {agent['id']: {"prev_version": agent['version'], "new_version": None}
-            for agent in agent_versions.affected_items}
-
-
-async def get_agent_version(agent_id: str) -> str:
-    """Get the given agent's current version.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID.
-
-    Returns
-    -------
-    str
-        Agent version.
-    """
-    f_kwargs = {
-        "agent_list": [agent_id],
-        "select": ["version"],
-        "limit": 1
-    }
-    result = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
-    cluster_utils.raise_if_exc(result)
-    return result.affected_items[0]['version']
 
 
 def resolve_wpk_file(file_arg: str) -> str:

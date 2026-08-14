@@ -596,7 +596,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     expect_function_call(__wrap_key_unlock);
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -705,7 +705,7 @@ void test_HandleSecureMessage_HC_req_message(void** state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -795,7 +795,7 @@ void test_HandleSecureMessage_invalid_HC_req_message(void** state)
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -890,7 +890,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     expect_function_call(__wrap_key_unlock);
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -2031,7 +2031,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
 
-    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_ctrl);
 
     // Should be added to the control message queue
     expect_value(__wrap_validate_control_msg, key, key);
@@ -2505,7 +2505,7 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     // Expect debug message about discarding DBSYNC message
     expect_string(__wrap__mdebug2, formatted_msg, "Discarding DBSYNC message from 4.x agent '001' (not supported in 5.0)");
 
-    // Message should be discarded, not forwarded to router or analysisd
+    // Message should be discarded
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2672,7 +2672,7 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_capture, NULL);
     will_return(__wrap_batch_queue_enqueue_ex, 0);
-    expect_string(__wrap_rem_inc_recv_events, agent_id, "001");
+    expect_function_call(__wrap_rem_inc_recv_events);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2780,9 +2780,8 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     batch_queue_free(events_queue);
 }
 
-// Since the legacy inventory_sync module retired, `s:`-headed stateful-sync messages are
-// DISCARDED (the only stateful ingress is the module's POST /stateful): they must reach neither
-// the router (gone from remoted) nor analysisd (binary payloads are not events).
+// The legacy inventory_sync module retired, `s:`-headed stateful-sync messages are
+// DISCARDED (the only stateful ingress is the module's POST /stateful)
 void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
 {
     const char prefix[] = "s:fim:";
@@ -2843,8 +2842,6 @@ void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
                   formatted_msg,
                   "Discarding legacy stateful-sync message from agent '001' (since 5.x the manager only accepts "
                   "whole sessions over POST /stateful)");
-
-    // Discarded: no router call (remoted no longer links it), no analysisd enqueue.
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -3414,9 +3411,8 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
-    // cluster_name/node_name are populated by HandleSecure() itself, not this helper.
+    // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
-    assert_string_equal(rm_config.node_name, "");
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)

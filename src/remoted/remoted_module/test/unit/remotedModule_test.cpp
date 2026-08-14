@@ -168,7 +168,6 @@ namespace
         EXPECT_NE(cfg.port, 0) << "could not obtain a free port to bind the module to";
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
-        std::snprintf(cfg.node_name, sizeof(cfg.node_name), "%s", "test-node");
         return cfg;
     }
 

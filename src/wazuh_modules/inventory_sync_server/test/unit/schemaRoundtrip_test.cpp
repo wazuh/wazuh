@@ -57,8 +57,7 @@ namespace
                                      "001",
                                      nullptr, // groups
                                      3,       // global_version
-                                     "cluster01",
-                                     "node01");
+                                     "cluster01");
     }
 
     /// Finishes the buffer and returns the verified root, failing the test on a verifier rejection.
@@ -107,8 +106,7 @@ TEST(SchemaContractTest, SessionPayloadMembersMatchTheAgreedContract)
 
 TEST(SchemaContractTest, MessageTypeKeepsTheLegacyMembersAndAddsFullSession)
 {
-    // The legacy direct members keep their slots (router.cpp's anti-spoofing reads MessageType_Start
-    // and must keep compiling when this schema becomes the shared one); FullSession is the only
+    // The legacy direct members keep their slots; FullSession is the only
     // member this server accepts.
     EXPECT_EQ(1, static_cast<int>(fb::MessageType_DataValue));
     EXPECT_EQ(2, static_cast<int>(fb::MessageType_DataClean));
@@ -150,7 +148,6 @@ TEST(SchemaRoundtripTest, FullSessionWithSyncDataRoundTrips)
     EXPECT_EQ("001", start->agentid()->str());
     EXPECT_EQ(3U, start->global_version());
     EXPECT_EQ("cluster01", start->cluster_name()->str());
-    EXPECT_EQ("node01", start->cluster_node()->str());
     ASSERT_EQ(1U, start->index()->size());
     EXPECT_EQ("wazuh-states-inventory-packages", start->index()->Get(0)->str());
 
@@ -229,8 +226,7 @@ TEST(SchemaRoundtripTest, MetadataSessionWithoutPayloadRoundTrips)
 
 TEST(SchemaRoundtripTest, ALegacyDirectMemberIsStillExpressible)
 {
-    // The server rejects these with 400, but the schema must keep carrying them: the router's
-    // legacy anti-spoofing keeps reading Message{Start} until the old module retires.
+    // The server rejects these with 400, but the schema must keep carrying them.
     flatbuffers::FlatBufferBuilder builder;
 
     const auto start = makeStart(builder, fb::Mode_ModuleDelta);

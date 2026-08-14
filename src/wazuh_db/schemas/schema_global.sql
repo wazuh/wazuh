@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS agent (
     os_platform TEXT,
     os_arch TEXT,
     version TEXT,
-    node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',

@@ -29,37 +29,23 @@ namespace
     }
 } // namespace
 
-TEST(ClusterIdentityTest, ReadsBothFixedBuffers)
+TEST(ClusterIdentityTest, ReadsClusterName)
 {
     auto config = zeroedConfig();
     std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "prod-cluster");
-    std::snprintf(config.node_name, sizeof(config.node_name), "%s", "node-07");
 
     const auto identity = invsync::common::buildClusterIdentity(config);
 
     EXPECT_EQ("prod-cluster", identity.clusterName);
-    EXPECT_EQ("node-07", identity.nodeName);
 }
 
 /// inventory_sync_server_config_t documents an empty buffer as "no opinion" -- confirmed here rather
 /// than assumed, since the endpoints stamp whatever this returns without a further empty-check.
-TEST(ClusterIdentityTest, EmptyBuffersBuildEmptyStrings)
+TEST(ClusterIdentityTest, EmptyBufferBuildsEmptyString)
 {
     const auto identity = invsync::common::buildClusterIdentity(zeroedConfig());
 
     EXPECT_EQ("", identity.clusterName);
-    EXPECT_EQ("", identity.nodeName);
-}
-
-TEST(ClusterIdentityTest, OneFieldSetDoesNotLeakIntoTheOther)
-{
-    auto config = zeroedConfig();
-    std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "only-cluster-set");
-
-    const auto identity = invsync::common::buildClusterIdentity(config);
-
-    EXPECT_EQ("only-cluster-set", identity.clusterName);
-    EXPECT_EQ("", identity.nodeName);
 }
 
 /**
@@ -75,13 +61,11 @@ TEST(ClusterIdentityTest, InvalidUtf8IsReplacedAndReported)
     auto config = zeroedConfig();
     // 0xFF is never valid UTF-8 anywhere.
     std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "prod-\xff-cluster");
-    std::snprintf(config.node_name, sizeof(config.node_name), "%s", "node-01");
 
     const auto identity = invsync::common::buildClusterIdentity(config);
 
     EXPECT_TRUE(identity.sanitized) << "the caller has to be able to warn about it";
     EXPECT_EQ("prod-?-cluster", identity.clusterName);
-    EXPECT_EQ("node-01", identity.nodeName);
 
     // The point of the exercise: what comes out can be serialized.
     nlohmann::json document = nlohmann::json::object();
@@ -94,13 +78,11 @@ TEST(ClusterIdentityTest, ValidMultiByteUtf8IsPreserved)
 {
     auto config = zeroedConfig();
     std::snprintf(config.cluster_name, sizeof(config.cluster_name), "%s", "cl\xc3\xbaster-\xe2\x9c\x93");
-    std::snprintf(config.node_name, sizeof(config.node_name), "%s", "nodo-\xc3\xb1");
 
     const auto identity = invsync::common::buildClusterIdentity(config);
 
     EXPECT_FALSE(identity.sanitized);
     EXPECT_EQ("cl\xc3\xbaster-\xe2\x9c\x93", identity.clusterName);
-    EXPECT_EQ("nodo-\xc3\xb1", identity.nodeName);
 }
 
 /// A truncated multi-byte sequence at the very end is the other way this arises: a name that was cut

@@ -37,7 +37,7 @@ namespace invsync::endpoints::config
      *     "agent": { "id": "<authenticated id>",
      *                "configuration": { "modules": ["fim", "logcollector", ...],
      *                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
-     *     "cluster": { "name": "...", "node": "..." }
+     *     "cluster": { "name": "..." }
      *   }
      * }
      * @endcode
@@ -66,12 +66,12 @@ namespace invsync::endpoints::config
      * different id cannot override it. A request without that header is a remoted/modulesd contract
      * violation rather than agent input, and is answered 400.
      *
-     * ## Where the cluster name and node name come from
+     * ## Where the cluster name comes from
      *
-     * From this module's own configuration (`inventory_sync_server_config_t::cluster_name` /
-     * `node_name`), injected once at registration time via `makeHandler()`'s `cluster` parameter --
-     * NOT read per-request from anything the caller sends. There is no per-request source for them,
-     * unlike the agent id: this manager's identity does not change between requests.
+     * From this module's own configuration (`inventory_sync_server_config_t::cluster_name`),
+     * injected once at registration time via `makeHandler()`'s `cluster` parameter -- NOT read
+     * per-request from anything the caller sends. There is no per-request source for it, unlike
+     * the agent id: this manager's identity does not change between requests.
      */
 
     /// @brief The verb this endpoint answers.
@@ -114,9 +114,9 @@ namespace invsync::endpoints::config
      * Weak keeps both properties: correct after deferral lands, and the facade's documented phase
      * ordering stays true. The cost is one lock() per request and an explicit "it is gone" branch.
      *
-     * @param cluster This manager's cluster name/node name, taken BY VALUE (two small strings, copied
-     *                once per registration) rather than by weak_ptr: unlike the connector, there is no
-     *                background object with a teardown ordering to protect -- just two strings whose
+     * @param cluster This manager's cluster name, taken BY VALUE (a small string, copied once per
+     *                registration) rather than by weak_ptr: unlike the connector, there is no
+     *                background object with a teardown ordering to protect -- just a string whose
      *                lifetime the closure can own outright.
      */
     http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,

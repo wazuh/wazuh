@@ -185,7 +185,6 @@ void w_agentd_populate_metadata(void)
 
     /* Cluster info from handshake */
     strncpy(metadata.cluster_name, agent_cluster_name, sizeof(metadata.cluster_name) - 1);
-    strncpy(metadata.cluster_node, agent_cluster_node, sizeof(metadata.cluster_node) - 1);
 
     /* Groups from handshake */
     if (agent_agent_groups[0] != '\0') {

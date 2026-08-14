@@ -19,13 +19,6 @@
 #include "os_net.h"
 #include "remoted.h"
 #include "state.h"
-#include "agent_metadata_db.h"
-
-/* Agents on/above this version are excluded from the bulk getagentsstats "all" response:
- * matches legacy_task_delivery.c's own version threshold, kept as a separate named constant since
- * the two callers are conceptually independent even though they share the underlying check
- * (agent_metadata_db.h's agent_meta_check_version()). */
-#define REMCOM_STATS_MIN_V5_VERSION "v5.0.0"
 
 typedef enum _error_codes {
     ERROR_OK = 0,
@@ -36,10 +29,6 @@ typedef enum _error_codes {
     ERROR_EMPTY_PARAMATERS,
     ERROR_EMPTY_SECTION,
     ERROR_UNRECOGNIZED_SECTION,
-    ERROR_INVALID_AGENTS,
-    ERROR_EMPTY_AGENTS,
-    ERROR_EMPTY_LASTID,
-    ERROR_TOO_MANY_AGENTS,
     ERROR_EMPTY_AGENT_OR_MD5
 } error_codes;
 
@@ -52,10 +41,6 @@ const char * error_messages[] = {
     [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
     [ERROR_EMPTY_SECTION] = "Empty section",
     [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section",
-    [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
-    [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
-    [ERROR_EMPTY_LASTID] = "Empty last id",
-    [ERROR_TOO_MANY_AGENTS] = "Too many agents",
     [ERROR_EMPTY_AGENT_OR_MD5] = "Invalid agent or md5 parameter"
 };
 
@@ -83,18 +68,6 @@ STATIC size_t remcom_dispatch(char* request, char** output);
  */
 STATIC cJSON* remcom_getconfig(const char* section);
 
-/**
- * @brief Filter a -1-terminated agent-ID array down to agents confirmed below v5.0.0: getstats
- * "all" must not report on agents that have their own 5.x /stats path.
- * Frees `agents_ids` itself; the caller must os_free the returned array instead.
- * @param agents_ids -1-terminated array of agent IDs (as returned by
- * wdb_get_agents_ids_of_current_node()); may be NULL.
- * @return Newly allocated, -1-terminated, filtered array (caller must os_free), or NULL if
- * `agents_ids` was NULL.
- */
-STATIC int* remcom_filter_pre_v5_agent_ids(int* agents_ids);
-
-
 STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* data_json) {
     cJSON* root = cJSON_CreateObject();
 
@@ -108,52 +81,15 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
     return msg_string;
 }
 
-STATIC int* remcom_filter_pre_v5_agent_ids(int* agents_ids) {
-    if (!agents_ids) {
-        return NULL;
-    }
-
-    int total = 0;
-    for (; agents_ids[total] != -1; total++);
-
-    int *filtered;
-    os_calloc(total + 1, sizeof(int), filtered);
-    int kept = 0;
-
-    for (int i = 0; i < total; i++) {
-        char agent_id_str[OS_SIZE_16] = {0};
-        snprintf(agent_id_str, OS_SIZE_16, "%.3d", agents_ids[i]);
-
-        agent_version_check_t result = agent_meta_check_version(agent_id_str, REMCOM_STATS_MIN_V5_VERSION, NULL);
-
-        if (result == AGENT_VERSION_CHECK_LT_MIN) {
-            filtered[kept++] = agents_ids[i];
-        } else {
-            mdebug2("remcom: excluding agent '%s' from bulk getagentsstats response (>= %s or unknown version)",
-                    agent_id_str, REMCOM_STATS_MIN_V5_VERSION);
-        }
-    }
-
-    filtered[kept] = -1;
-    os_free(agents_ids);
-
-    return filtered;
-}
-
 STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *request_json = NULL;
     cJSON *command_json = NULL;
     cJSON *parameters_json = NULL;
     cJSON *section_json = NULL;
     cJSON *config_json = NULL;
-    cJSON *agents_json = NULL;
-    cJSON *last_id_json = NULL;
     cJSON *agent_json = NULL;
     cJSON *md5_json = NULL;
     const char *json_err;
-    int *agents_ids;
-    int count;
-    int sock = -1;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
         *output = remcom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
@@ -163,58 +99,6 @@ STATIC size_t remcom_dispatch(char* request, char** output) {
     if (command_json = cJSON_GetObjectItem(request_json, "command"), cJSON_IsString(command_json)) {
         if (strcmp(command_json->valuestring, "getstats") == 0) {
             *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_state_json());
-        } else if (strcmp(command_json->valuestring, "getagentsstats") == 0) {
-            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
-                agents_json = cJSON_GetObjectItem(parameters_json, "agents");
-                if (cJSON_IsArray(agents_json)) {
-                    if (cJSON_GetArraySize(agents_json) <  REM_MAX_NUM_AGENTS_STATS) {
-                        agents_ids = json_parse_agents(agents_json);
-                        if (agents_ids != NULL) {
-                            *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], rem_create_agents_state_json(agents_ids));
-                            os_free(agents_ids);
-                        } else {
-                            *output = remcom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
-                        }
-                    } else {
-                        *output = remcom_output_builder(ERROR_TOO_MANY_AGENTS, error_messages[ERROR_TOO_MANY_AGENTS], NULL);
-                    }
-                } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
-                    last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
-                    if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
-                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, REM_MAX_NUM_AGENTS_STATS);
-                        if (agents_ids != NULL) {
-                            // ERROR_DUE must reflect the raw page size from wdb, before filtering
-                            // -- otherwise a full page could look short and pagination would stop early.
-                            for (count = 0; agents_ids[count] != -1; count++);
-                            bool due = (count >= REM_MAX_NUM_AGENTS_STATS);
-
-                            // Captured before the filter frees/overwrites agents_ids: the version
-                            // filter can drop every agent in the page, and the caller still needs
-                            // the raw page boundary to resume pagination from.
-                            int raw_last_id = due ? agents_ids[count - 1] : 0;
-
-                            agents_ids = remcom_filter_pre_v5_agent_ids(agents_ids);
-
-                            cJSON *agents_state_json = rem_create_agents_state_json(agents_ids);
-                            if (due) {
-                                cJSON_AddNumberToObject(agents_state_json, "last_id", raw_last_id);
-                                *output = remcom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], agents_state_json);
-                            } else {
-                                *output = remcom_output_builder(ERROR_OK, error_messages[ERROR_OK], agents_state_json);
-                            }
-                            os_free(agents_ids);
-                        } else {
-                            *output = remcom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
-                        }
-                    } else {
-                        *output = remcom_output_builder(ERROR_EMPTY_LASTID, error_messages[ERROR_EMPTY_LASTID], NULL);
-                    }
-                } else {
-                    *output = remcom_output_builder(ERROR_INVALID_AGENTS, error_messages[ERROR_INVALID_AGENTS], NULL);
-                }
-            } else {
-                *output = remcom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
-            }
         } else if (strcmp(command_json->valuestring, "getconfig") == 0) {
             if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
                 if (section_json = cJSON_GetObjectItem(parameters_json, "section"), cJSON_IsString(section_json)) {

@@ -159,45 +159,6 @@ stages:
          total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}/daemons/stats
-
-stages:
-
-  - name: Get daemons stats from agent 005 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - timestamp: !anystr
-              name: wazuh-manager-remoted
-              agents:
-                - id: 5
-                  uptime: !anystr
-                  metrics: !anything
-          failed_items:
-            - id: [ wazuh-manager-analysisd ]
-          total_affected_items: 1
-          total_failed_items: 1
-
-  - name: Try to get daemon stats from agent 002 (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/daemons/stats"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /groups
 
 stages:
@@ -1406,50 +1367,6 @@ stages:
         dapi_errors:
           master-node: # We have permission to see node name
             error: !anystr
-
----
-test_name: PUT /agents/node/{node_id}/restart
-
-stages:
-
-  - name: Restart all agents belonging to master-node (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
-
-  - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
-
-  - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker2/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code:
-        - 200
-        - 403
-      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
 
 ---
 test_name: GET /agents/uninstall

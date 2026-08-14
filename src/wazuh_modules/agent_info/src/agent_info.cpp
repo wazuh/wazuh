@@ -60,9 +60,6 @@ static const char* g_module_name = nullptr;
 // Global cluster name storage (set from handshake, used by agent_info_impl)
 static char g_cluster_name[256] = {0};
 
-// Global cluster node storage (set from handshake, used by agent_info_impl)
-static char g_cluster_node[256] = {0};
-
 // Global agent groups storage (set from handshake, used by agent_info_impl)
 // Uses OS_SIZE_65536 to accommodate multiple groups
 static char g_agent_groups[65536] = {0};
@@ -75,7 +72,7 @@ static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const modules_log_level_t, const std::string&)> g_log_function_wrapper;
 static std::function<int(const std::string&, const std::string&, char**)> g_query_module_function_wrapper;
 static std::function<bool()> g_is_shutting_down_wrapper;
-static std::function<bool(char*, size_t, char*, size_t, char*, size_t)> g_query_handshake_function_wrapper;
+static std::function<bool(char*, size_t, char*, size_t)> g_query_handshake_function_wrapper;
 
 void agent_info_set_log_function(log_callback_t log_callback)
 {
@@ -169,29 +166,6 @@ const char* agent_info_get_cluster_name()
     return g_cluster_name;
 }
 
-void agent_info_set_cluster_node(const char* cluster_node)
-{
-    if (cluster_node)
-    {
-        strncpy(g_cluster_node, cluster_node, sizeof(g_cluster_node) - 1);
-        g_cluster_node[sizeof(g_cluster_node) - 1] = '\0';
-
-        if (g_log_callback)
-        {
-            g_log_callback(LOG_DEBUG, "Cluster node set", "agent-info");
-        }
-    }
-    else
-    {
-        g_cluster_node[0] = '\0';
-    }
-}
-
-const char* agent_info_get_cluster_node()
-{
-    return g_cluster_node;
-}
-
 void agent_info_set_agent_groups(const char* agent_groups)
 {
     if (agent_groups)
@@ -233,15 +207,13 @@ void agent_info_set_query_handshake_function(query_handshake_callback_t callback
     {
         g_query_handshake_function_wrapper = [](char* cluster_name,
                                                 size_t cluster_name_size,
-                                                char* cluster_node,
-                                                size_t cluster_node_size,
                                                 char* agent_groups,
                                                 size_t agent_groups_size)
         {
             if (g_query_handshake_callback)
             {
                 return g_query_handshake_callback(
-                           cluster_name, cluster_name_size, cluster_node, cluster_node_size, agent_groups, agent_groups_size);
+                           cluster_name, cluster_name_size, agent_groups, agent_groups_size);
             }
 
             return false;

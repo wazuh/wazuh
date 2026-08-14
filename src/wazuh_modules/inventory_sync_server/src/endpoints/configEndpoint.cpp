@@ -225,7 +225,6 @@ namespace invsync::endpoints::config
                 indexedDocument["/wazuh/agent/configuration/modules"_json_pointer] = modules;
                 indexedDocument["/wazuh/agent/configuration/content"_json_pointer] = *sanitizedContent;
                 indexedDocument["/wazuh/cluster/name"_json_pointer] = cluster.clusterName;
-                indexedDocument["/wazuh/cluster/node"_json_pointer] = cluster.nodeName;
                 indexedDocument["/state/modified_at"_json_pointer] = Utils::getCurrentISO8601();
                 indexedDocument["/state/document_version"_json_pointer] = AGENT_CONFIG_DOCUMENT_VERSION;
 

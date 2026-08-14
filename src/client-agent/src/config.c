@@ -29,10 +29,9 @@ int agent_debug_level;
 /* Agent's handshake globals */
 module_limits_t agent_module_limits;
 char agent_cluster_name[256] = {0};
-char agent_cluster_node[256] = {0};
 char agent_agent_groups[OS_SIZE_65536] = {0};
 
-/* Guards agent_cluster_name/agent_cluster_node/agent_agent_groups: written by the
+/* Guards agent_cluster_name/agent_agent_groups: written by the
  * connection thread on every (re)connect handshake, read by the agcom "gethandshake"
  * responder, which agent-info now polls periodically instead of only once at startup. */
 pthread_mutex_t agent_handshake_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -47,7 +47,7 @@ agent's previous report:
   "state": {"modified_at": "2026-08-02T10:07:12.431Z", "document_version": 1},
   "wazuh": {
     "schema": {"version": "1"},
-    "cluster": {"name": "wazuh", "node": "node01"},
+    "cluster": {"name": "wazuh"},
     "agent": {"id": "001", "statistics": {"agent": {…}, "logcollector": {…}}}
   }
 }
@@ -85,7 +85,6 @@ authoritative and replaces whatever the agent sent:
 |---|---|---|
 | `/wazuh/agent/id` | both | The authenticated `X-Wazuh-Agent-Id` header |
 | `/wazuh/cluster/name` | both | `<cluster><name>` in the manager configuration |
-| `/wazuh/cluster/node` | both | `<cluster><node_name>` |
 | `/state/modified_at` | `/stats` | The manager's clock, ISO 8601 with milliseconds, UTC |
 | `/state/document_version` | `/stats` | Constant. Versions the stored layout, not the report |
 | `/wazuh/schema/version` | `/stats` | Constant, and a **string**: `wazuh-metrics-agents` declares it `keyword`, so this index follows |
@@ -94,8 +93,8 @@ authoritative and replaces whatever the agent sent:
 `/stats` writes `state.modified_at` rather than `@timestamp` because its index follows the schema's
 stateful convention: a stable document id, replaced in place, with no time series behind it.
 
-A cluster name or node name containing bytes that are not valid UTF-8 is sanitized once at startup, with
-a warning, rather than being allowed to break the serialization of every request.
+A cluster name containing bytes that are not valid UTF-8 is sanitized once at startup, with a warning,
+rather than being allowed to break the serialization of every request.
 
 ## Indexing `/config`
 
@@ -117,7 +116,7 @@ previous one for that agent in full, there is no delete step:
     "agent": { "id": "<authenticated X-Wazuh-Agent-Id>",
                "configuration": { "modules": ["fim", "logcollector", ...],
                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
-    "cluster": { "name": "<cluster><name>", "node": "<cluster><node_name>" }
+    "cluster": { "name": "<cluster><name>" }
   }
 }
 ```

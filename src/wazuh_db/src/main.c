@@ -11,6 +11,7 @@
 
 #include "wazuhdb_op.h"
 #include "wdb_state.h"
+#include "httpsrv/wdb_http.h"
 #include "os_net.h"
 #include "config.h"
 #include "wazuh_db-config.h"
@@ -210,13 +211,7 @@ int main(int argc, char ** argv)
 
     os_calloc(wconfig.worker_pool_size, sizeof(pthread_t), worker_pool);
 
-    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/:agent_id/groups", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/all", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-    router_register_api_endpoint("wazuh-manager-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
-
-    router_start_api("wdb-http.sock");
+    wdb_http_start(mtLoggingFunctionsWrapper, "queue/sockets/wdb-http.sock");
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
@@ -245,7 +240,7 @@ int main(int argc, char ** argv)
         pthread_join(worker_pool[i], NULL);
     }
 
-    router_stop_api("wdb-http.sock");
+    wdb_http_stop();
 
     wnotify_close(notify_queue);
     free(worker_pool);

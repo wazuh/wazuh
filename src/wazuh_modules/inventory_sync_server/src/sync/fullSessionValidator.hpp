@@ -65,7 +65,6 @@ namespace invsync::sync
         /// EFFECTIVE cluster name: the session's when non-empty (it was validated against the
         /// manager's), the manager's otherwise -- the same fallback the legacy `_id` builder used.
         std::string clusterName;
-        std::string clusterNode; ///< Verbatim from Start; consumed by the vulnerability scanner.
     };
 
     /// A request-level rejection: 400 (protocol) or 403 (identity). The reason lands verbatim in
@@ -96,8 +95,7 @@ namespace invsync::sync
                                          std::string_view authenticatedAgentId,
                                          const std::string& managerClusterName);
 
-    /// Same predicate the router's legacy anti-spoofing uses (router.cpp:354-358): digits only,
-    /// non-empty. Shared with DELETE /agents, which validates the same header the same way.
+    /// Shared with DELETE /agents, which validates the same header the same way.
     bool isNumericAgentId(std::string_view value);
 
     /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form inherited from the
