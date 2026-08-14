@@ -109,11 +109,12 @@ static bool bridge_stopping(void)
     return stopping;
 }
 
-/* Mirrors the incremental back-off already used for the initial-enrollment
- * loop (start_agent.c's w_agentd_keys_init: 5s steps up to a 60s cap). Not
- * reused directly because those constants are file-local to start_agent.c. */
-#define BRIDGE_REENROLL_RETRY_DELTA_S 5
-#define BRIDGE_REENROLL_RETRY_MAX_S 60
+/* Same incremental back-off as the initial-enrollment loop (start_agent.c's
+ * w_agentd_keys_init). Both read the same two internal options, so the two
+ * loops can no longer drift apart -- which is what the duplicated file-local
+ * constants used to risk. */
+#define BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT 5
+#define BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT 60
 
 /* Runs off the dispatcher thread (spawned by bridge_on_reenroll_required):
  * the module's callback contract forbids blocking it, and enrollment can
@@ -151,8 +152,12 @@ void *bridge_reenroll_thread(void *arg)
         }
 
         if (enroll_result != 0) {
-            if (delay_sleep < BRIDGE_REENROLL_RETRY_MAX_S) {
-                delay_sleep += BRIDGE_REENROLL_RETRY_DELTA_S;
+            const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
+                                                       BRIDGE_REENROLL_RETRY_MAX_S_DEFAULT);
+            const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
+                                                         BRIDGE_REENROLL_RETRY_DELTA_S_DEFAULT);
+            if (delay_sleep < retry_max) {
+                delay_sleep += retry_delta;
             }
             mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
             sleep((unsigned int)delay_sleep);
@@ -1618,6 +1623,37 @@ static bool bridge_build_config(hc_config_t *config)
     config->stats_interval_s = (uint32_t)agt->stats_report.interval;
     config->config_report_enabled = agt->config_report.enabled;
     config->config_report_interval_s = (uint32_t)agt->config_report.interval;
+
+    /* Connection timing contract (#38284). Every value below used to be a
+     * compile-time constant the bridge never populated, so the agreed
+     * agent<->manager defaults could only be changed by rebuilding. They are
+     * internal options now; getDefine_Int_default() keeps the module's own
+     * fallback reachable, so a stripped internal_options.conf cannot stop the
+     * agent from starting (getDefine_Int would merror_exit instead).
+     *
+     * The module reads 0 as "use my default", and the defaults below are the
+     * same numbers, so an unset option and an explicit default agree. */
+    config->request_timeout_ms =
+        (uint32_t)getDefine_Int_default("agent", "https_request_timeout", 1000, 600000, 10000);
+    config->stateful_timeout_ms =
+        (uint32_t)getDefine_Int_default("agent", "https_stateful_timeout", 1000, 3600000, 90000);
+    config->backoff_base_ms = (uint32_t)getDefine_Int_default("agent", "https_backoff_base", 100, 60000, 1000);
+    config->backoff_cap_ms = (uint32_t)getDefine_Int_default("agent", "https_backoff_cap", 1000, 3600000, 60000);
+    config->rejected_retry_interval_s =
+        (uint32_t)getDefine_Int_default("agent", "https_rejected_retry_interval", 1, 86400, 60);
+    config->wpk_max_download_bytes =
+        (uint64_t)getDefine_Int_default("agent", "https_wpk_max_download_bytes", 1048576, 2147483647, 209715200);
+
+    /* Per-stream retry budgets: TOTAL tries, so 1 means "never retry". A step's
+     * worst case is roughly attempts x its timeout plus the jittered backoff
+     * between them, which is what has to stay inside the manager's own
+     * deadlines -- raise these together with the timeouts above, not alone. */
+    config->control_max_attempts = (uint32_t)getDefine_Int_default("agent", "https_control_attempts", 1, 64, 4);
+    config->stateless_max_attempts = (uint32_t)getDefine_Int_default("agent", "https_stateless_attempts", 1, 64, 5);
+    config->stateful_max_attempts = (uint32_t)getDefine_Int_default("agent", "https_stateful_attempts", 1, 64, 5);
+    config->download_max_attempts = (uint32_t)getDefine_Int_default("agent", "https_download_attempts", 1, 64, 2);
+    config->producer_pause_threshold =
+        (uint32_t)getDefine_Int_default("agent", "https_producer_pause_threshold", 1, 1000, 2);
 
     /* Occupancy ladder: the same internal options the legacy client buffer
      * read, so tuned thresholds keep working. */
