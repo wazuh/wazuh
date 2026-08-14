@@ -47,7 +47,7 @@ How often a backup is created.
 Maximum number of backup files to keep. Older backups are removed when this limit is exceeded.
 
 - **Default value:** `3`
-- **Allowed values:** Positive integer (1-999)
+- **Allowed values:** Positive integer (no enforced upper bound)
 - **Note:** Adjust based on available disk space and backup frequency. Total space = database size × max_files
 
 ---
@@ -163,7 +163,9 @@ Wazuh DB stores its databases in:
 
 **Global database:** `/var/wazuh-manager/queue/db/global.db`
 
-**Agent databases:** `/var/wazuh-manager/queue/db/agents/<agent-id>.db`
+**Agent databases (4.x legacy):** `/var/wazuh-manager/queue/db/{id}.db`
+
+> In Wazuh 4.x, each agent had a dedicated SQLite database at `queue/db/{agent_id}.db` storing per-agent inventory data (FIM events, packages, processes, network interfaces). In Wazuh 5.0 this data is shipped directly to OpenSearch indices via the Indexer Connector instead. The per-agent SQLite databases are **no longer created or used**; existing files from a 4.x installation can be removed after migration. See the [Wazuh DB Module](index.html) overview for details.
 
 **Backup location:** `/var/wazuh-manager/backup/db/`
 

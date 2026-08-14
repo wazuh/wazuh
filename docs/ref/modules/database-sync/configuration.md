@@ -4,9 +4,9 @@ Complete configuration reference for the Database Sync module.
 
 The Database Sync module handles agent status, groups, and connection state synchronization between manager and the global database. It is configured exclusively through internal options, with no XML or YAML configuration sections.
 
-- **Module:** Manager-only (part of wazuh-db)
+- **Module:** Manager-only (part of `wazuh-manager-modulesd`)
 - **Configuration method:** Internal options only
-- **Daemon:** `wazuh-db`
+- **Daemon:** `wazuh-manager-modulesd`
 
 For module overview, see [Database Sync Module](index.html).
 
@@ -185,7 +185,7 @@ echo 'global sql SELECT id,name,connection_status,sync_status FROM agent' | \
 
 ### View Queue Statistics
 
-Monitor wazuh-db logs for queue warnings:
+Monitor `wazuh-manager-modulesd` logs for queue warnings (this module logs under the `database` tag):
 
 ```bash
 grep "queued_events" /var/wazuh-manager/logs/wazuh-manager.log
@@ -196,7 +196,7 @@ grep "queued_events" /var/wazuh-manager/logs/wazuh-manager.log
 Check database writes:
 
 ```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-db"
+tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-manager-modulesd:database"
 ```
 
 ---
@@ -209,7 +209,7 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-db"
 
 **Solution:**
 1. Verify `wazuh_database.sync_agents=1`
-2. Check wazuh-db is running: `ps aux | grep wazuh-db`
+2. Check wazuh-manager-modulesd is running: `ps aux | grep wazuh-manager-modulesd`
 3. Review logs for database errors
 
 ### High Database CPU Usage

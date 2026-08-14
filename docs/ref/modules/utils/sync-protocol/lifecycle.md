@@ -1,6 +1,6 @@
 # Protocol Lifecycle
 
-The Agent Sync Protocol sends a whole synchronization session as **one** FlatBuffer message (`FullSession`) and gets back **one** answer (`EndAck`). There is no `StartAck` round-trip, no per-item message exchange, and no retransmission-of-missing-ranges (`ReqRet`) — those existed only because the transport used to be a DGRAM socket bounded by `OS_MAXSTR` (65536 bytes), which forced a session to be split into many small messages. Over the agent's local `queue-sync` STREAM socket that bound is gone, so the session crosses whole.
+The Agent Sync Protocol sends a whole synchronization session as **one** FlatBuffer message (`FullSession`) and gets back **one** terminal answer — not as a FlatBuffer response message, but as the HTTP result of the `/stateful` request that carried the session, delivered to the module as an `HCRESULT:<session>:<code>:<body>` string. There is no `StartAck` round-trip, no per-item message exchange, and no retransmission-of-missing-ranges (`ReqRet`) — those existed only because the transport used to be a DGRAM socket bounded by `OS_MAXSTR` (65536 bytes), which forced a session to be split into many small messages. Over the agent's local `queue-sync` STREAM socket that bound is gone, so the session crosses whole.
 
 ## Synchronization Phases
 
@@ -17,7 +17,6 @@ There is no intermediate "waiting for StartAck" phase and no "processing, wait a
 table Start {
     module: string;
     mode: Mode;
-    size: ulong;
     index: [string];
     option: Option;
     architecture: string;
@@ -32,10 +31,10 @@ table Start {
     groups: [string];
     global_version: ulong;
     cluster_name: string;
+    feed_offset: ulong;
 }
 
 table DataValue {
-    seq: ulong;
     operation: Operation;
     id: string;
     index: string;
@@ -44,14 +43,12 @@ table DataValue {
 }
 
 table DataContext {
-    seq: ulong;
     id: string;
     index: string;
     data: [byte];
 }
 
 table DataClean {
-    seq: ulong;
     index: string;
 }
 
@@ -75,15 +72,13 @@ union SessionPayload {
     ChecksumModule
 }
 
-table End {
-}
-
 table FullSession {
     start: Start;
     payload: SessionPayload;
-    end: End;
 }
 ```
+
+There is no `End` table and no `end` field: the session's boundary is the `FullSession` message itself, not a trailing sentinel. `feed_offset` is populated only for the uncapped VD sync options (`Option::VDFirst`/`Option::VDSync`); the flatbuffers scalar default of 0 would otherwise be indistinguishable from "absent" for other flows, which is why it is gated on `option` rather than on the value being non-zero.
 
 None of these tables carry a `session` field. The session id is chosen by the **agent** (`AgentSyncProtocol::nextSessionId()`) and is not part of any FlatBuffer table at all — it travels as a parameter of the transport call (`ISyncSessionTransport::sendSession(uint64_t session, ...)`), so a retried session keeps the same id and the manager can dedupe on it independently of the message body.
 
@@ -92,35 +87,38 @@ None of these tables carry a `session` field. The session id is chosen by the **
 - **`SyncData`** — a module/metadata sync. `values` (`DataValue`, from `persistDifference(..., isDataContext=false)`) and `contexts` (`DataContext`, from `persistDifference(..., isDataContext=true)`) can both be populated in the same session: they are pulled from the same producer queue and travel together.
 - **`Cleans`** — one `DataClean` per index, from `notifyDataClean()`. This is a real array: a session can clean several indices at once (e.g. FIM clearing files, registry keys, and registry values together).
 - **`ChecksumModule`** — from `requiresFullSync()`. Referenced directly rather than wrapped in an array table, since an integrity check always covers exactly one index/module.
-- **absent** — `synchronizeMetadataOrGroups()` sends `Start` and `End` with no payload at all.
+- **absent** — `synchronizeMetadataOrGroups()` sends only `Start`, with no payload set at all.
 
 A session is always exactly one of these — never a combination — which is why they are a `union` rather than four independent optional fields.
 
-## The Response: `EndAck`
+## The Response: the `/stateful` HTTP Result
 
-```flatbuffers
-enum Status: byte {
-    Ok,
-    Error,
-    Offline,
-    ChecksumMismatch,
-    Processing
-}
+There is no FlatBuffer response message. The manager answers the `POST /stateful` request that carried the `FullSession` with a plain HTTP status code (and an optional JSON body), and that HTTP result *is* the session's outcome — there is no separate acknowledgement message to wait for on top of it.
 
-table EndAck {
-    status: Status;
-}
+That result crosses into the module through a string, not a FlatBuffer buffer. The HTTPS client fires its result callback for every outcome (success, HTTP error, timeout, transport abort) from within `wazuh-agentd`; the callback's result is bridged across a module-local socket to this library as:
+
+```
+HCRESULT:<session>:<http_code>:<body>
 ```
 
-`parseResponseBuffer()` only recognizes one message type: `Message` wrapping an `EndAck`. Handling (see `AgentSyncProtocol::parseResponseBuffer()`):
+`AgentSyncProtocol::parseResponseBuffer(data, length)` is the entry point that receives this string. It verifies the `HCRESULT:` prefix, then splits on the first two colons to recover the session id, the HTTP status code, and the raw body (the body may itself contain colons, so only the first two are treated as delimiters). It then calls:
 
-- **`Ok`**: success. `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `false` (integrity valid).
-- **`Error`**: generic protocol failure (`SyncResult::PROTOCOL_ERROR`). Items are reset to `PENDING` for the next cycle.
-- **`Offline`**: the manager cannot serve this agent right now (`SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result). Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
-- **`ChecksumMismatch`**: only meaningful as the answer to a `ChecksumModule` session — `requiresFullSync()` returns `true` (full sync needed).
-- **`Processing`**: defined in the schema's `Status` enum but not currently handled as an intermediate/"keep waiting" state by `AgentSyncProtocol` — there is no longer a separate `End` message to withhold, since `end` is part of the same `FullSession` the manager already received in full.
+```cpp
+bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession = 0);
+```
 
-`parseResponseBuffer()` is one of two ways a result reaches the protocol. The other is `applyHttpResultCode(int resultCode, uint64_t expectedSession)`, used by the HTTPS transport path: it accepts a `"HCRESULT:<session>:<code>"` string (or the legacy `"HCRESULT:<code>"`, which skips session correlation) carrying the HTTP status code directly, without a FlatBuffer body at all. Either path ends in the same terminal `SyncResult`.
+`applyHttpResult()` (see `agent_sync_protocol.cpp`) is where the outcome is decided, entirely from `httpCode`; `body` is used only for logging:
+
+- **Wrong phase, or `expectedSession` doesn't match the in-flight session**: the result is stale (a previous, already-timed-out session, or nothing in flight) — discarded, logged at DEBUG, returns `true` without touching state. A zero `expectedSession` skips this correlation check (the legacy `HCRESULT:<code>` form with no session number).
+- **Any `2xx`**: success (`SyncResult::SUCCESS`). `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `false` (integrity valid). Any 2xx counts, not just 200, since the `/stateful` contract already reserves 202 for a future queued-processing response.
+- **`409`**: checksum mismatch (`SyncResult::CHECKSUM_ERROR`) — meaningful only as the answer to a `ChecksumModule` session; `requiresFullSync()` returns `true` (full sync needed).
+- **`503`**: the manager cannot serve this agent right now (indexer down, at capacity, shutting down, or a VD feed still downloading) — `SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result. Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
+- **`415`**: the manager rejected the compressed encoding — treated the same as `503` (`COMMUNICATION_ERROR`, `managerNotReady = true`), since the agent's own `RetrySender` already retries once uncompressed within the same send.
+- **`0`** (no HTTP response at all — timeout, connect failure, TLS failure, abort): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
+- **`413`**: session rejected as larger than the manager's in-flight budget (`SyncResult::PAYLOAD_TOO_LARGE`) — the caller must split it.
+- **everything else** (`400`, `403`, `500`, ...): generic protocol failure (`SyncResult::PROTOCOL_ERROR`). Items are reset to `PENDING` for the next cycle.
+
+Because the whole exchange is one request/response instead of a message plus a separate ack, there is no intermediate "processing, keep waiting" state to model: the HTTP response is terminal the moment it arrives.
 
 ## State Machine
 
@@ -129,8 +127,8 @@ stateDiagram-v2
     [*] --> Idle
 
     Idle --> WaitingResponse: Send FullSession
-    WaitingResponse --> Idle: Receive EndAck (Ok/Error/Offline/ChecksumMismatch)
-    WaitingResponse --> Idle: HCRESULT result code
+    WaitingResponse --> Idle: HCRESULT result (applyHttpResult)
+    WaitingResponse --> Idle: SESSION_RESPONSE_TIMEOUT safety net (15 min)
     WaitingResponse --> Idle: stop() requested
 ```
 
@@ -144,13 +142,11 @@ Agent                                   Manager
   |------------- FullSession ------------> |
   |   Start(mode=ModuleCheck)               |
   |   payload = ChecksumModule{index, sum}  |
-  |   End                                  |
   |                                        |
-  |<-------------- EndAck ----------------- |
-  |     status: Ok | ChecksumMismatch       |
+  |<--- HCRESULT:<session>:200|409:<body> - |
 ```
 
-Returns `true` (full sync required) on `ChecksumMismatch`, `false` (integrity valid) on `Ok`.
+Returns `true` (full sync required) on HTTP `409` (`SyncResult::CHECKSUM_ERROR`), `false` (integrity valid) on any `2xx`.
 
 ### Metadata/Groups Sync (`synchronizeMetadataOrGroups`)
 
@@ -162,10 +158,8 @@ Agent                                   Manager
   |         MetadataCheck/GroupDelta/      |
   |         GroupCheck, global_version)    |
   |   (no payload)                         |
-  |   End                                  |
   |                                        |
-  |<-------------- EndAck ----------------- |
-  |              status: Ok                |
+  |<---- HCRESULT:<session>:200:<body> --- |
 ```
 
 ### Data Clean Notification (`notifyDataClean`)
@@ -178,10 +172,8 @@ Agent                                   Manager
   |   payload = Cleans{                    |
   |     DataClean(index="fim_files"),      |
   |     DataClean(index="fim_registry")}   |
-  |   End                                  |
   |                                        |
-  |<-------------- EndAck ----------------- |
-  |              status: Ok                |
+  |<---- HCRESULT:<session>:200:<body> --- |
   |                                        |
   | clearItemsByIndex() for each index     |
   | (local database cleanup)               |
@@ -208,30 +200,30 @@ Agent (recovery)                        Manager
   |------------- FullSession ------------> |
   |   Start(mode=ModuleDelta, index=[idx]) |
   |   payload = Cleans{DataClean(index)}   |
-  |   End                                  |
   |                                        |
-  |<-------------- EndAck ----------------- |
-  |              status: Ok                |
+  |<---- HCRESULT:<session>:200:<body> --- |
   |                                        |
   | persistDifference() x N                |
   | (fresh snapshot, persistent queue)     |
   |                                        |
   |------------- FullSession ------------> |
-  |   Start(mode=ModuleDelta, size=N)      |
+  |   Start(mode=ModuleDelta)              |
   |   payload = SyncData{values: [...]}    |
-  |   End                                  |
   |                                        |
-  |<-------------- EndAck ----------------- |
-  |              status: Ok                |
+  |<---- HCRESULT:<session>:200:<body> --- |
 ```
 
 ### Delta Sync Split Into Multiple Sessions
 
-`Mode::DELTA` reads from the persistent queue in blocks (`AgentSyncProtocol::synchronizeDeltaByBlocks()`), sending one `FullSession` per block until the queue is drained or `FULLSESSION_MAX_BLOCKS_PER_SYNC` is reached, each block capped at `FULLSESSION_MAX_BYTES` (`Option::VDFIRST`/`Option::VDSYNC` are exempt from the cap). Each block is its own independent `FullSession`/`EndAck` exchange with its own session id — a failure in one block does not roll back the others.
+`Mode::DELTA` reads from the persistent queue in blocks (`AgentSyncProtocol::synchronizeDeltaByBlocks()`), sending one `FullSession` per block until the queue is drained or `FULLSESSION_MAX_BLOCKS_PER_SYNC` is reached, each block capped at `FULLSESSION_MAX_BYTES` (`Option::VDFIRST`/`Option::VDSYNC` are exempt from the cap). Each block is its own independent `FullSession`/HTTP-result exchange with its own session id — a failure in one block does not roll back the others.
 
 ## Transport-Level Timeout and Retry
 
-The sync protocol module does **not** impose a module-level response-wait timeout. Once a session is successfully submitted to the HTTPS transport's intake socket, the module waits indefinitely for the transport callback. The transport layer owns:
+The sync protocol module does **not** impose an aggressive, normal-path response-wait timeout: once a session is successfully submitted to the HTTPS transport's intake socket, `runSession()` blocks on a condition variable that is meant to be woken by the manager's answer arriving as an `HCRESULT` (via `parseResponseBuffer()`/`applyHttpResult()`), not by a clock.
+
+It does define an explicit upper bound as a safety net, though: `SESSION_RESPONSE_TIMEOUT` (15 minutes, `agent_sync_protocol.hpp`) unblocks that wait if no result ever arrives. The code's own comment is explicit that this is "a safety net, not a normal-path timeout": the HTTPS client fires its result callback for every outcome (200, error, timeout, abort) from within `wazuh-agentd`, but that result still has to cross the C bridge (`https_client_bridge.c`) and a module-local socket to reach this wait — a hop that can silently drop it (no route for the session, a full module socket, a `send()` failure). The 15-minute value is set well above `https_client`'s own worst case for one `/stateful` session (5 attempts × 120 s `statefulTimeoutMs` + backoff, ~14 minutes), so it is only expected to fire on an actual delivery failure, never on a slow-but-alive manager. When it does fire, `SyncResult::END_TIMEOUT_ERROR` is recorded and `lastSyncManagerNotReady` is set.
+
+Below that safety net, the transport layer owns its own bounds:
 
 - **Per-request timeout** — `statefulTimeoutMs` (default 120 s per attempt, configurable via the HTTPS client configuration).
 - **HTTP-level retries** — `STATEFUL_MAX_ATTEMPTS` (default 5 attempts with backoff).
@@ -244,6 +236,6 @@ When all transport attempts are exhausted, the callback fires with a non-OK resu
 
 ### Protocol Errors
 
-1. **Stale response**: `parseResponseBuffer()`/`applyHttpResultCode()` discard any response that arrives while the protocol is not in `WaitingResponse` phase, or (for `applyHttpResultCode`) whose session id does not match the in-flight one — logged at DEBUG, does not affect the current synchronization.
-2. **Unknown message type**: logged at DEBUG, `parseResponseBuffer()` returns `false`.
-3. **Malformed messages**: FlatBuffer verification failure or parse exception — logged as an error, message ignored.
+1. **Stale response**: `applyHttpResult()` discards any response that arrives while the protocol is not in `WaitingResponse` phase, or whose session id does not match the in-flight one (`expectedSession != currentSession`) — logged at DEBUG, returns `true` without affecting the current synchronization.
+2. **Non-HCRESULT payload**: `parseResponseBuffer()` returns `false` and logs an error if the buffer does not start with the `HCRESULT:` prefix, or if the `<session>:<code>` fields cannot be located (fewer than two colons after the prefix).
+3. **Malformed payload**: an exception while decoding the session id or HTTP code (e.g. a non-numeric field) is caught, logged as an error, and the response is ignored.

@@ -32,6 +32,7 @@ TCP port on which the enrollment service listens.
 
 - **Default value:** `1515`
 - **Allowed values:** Integer from `1` to `65535`
+- **Note:** Only `0` is rejected by the code; there is no upper-bound check, so values above `65535` are silently truncated rather than validated. Operators should keep the configured value within the valid port range themselves.
 
 ### ipv6
 
@@ -50,7 +51,14 @@ Register agents using their source IP address instead of `any`.
 
 ### purge
 
-Remove all previous keys for an agent when it re-enrolls with the same name.
+Controls whether a deleted or replaced agent's old entry is kept as an audit trail. When an agent
+is removed — including the implicit removal that happens when another agent re-enrolls and forces
+it out (see [Force re-enrollment](index.html#force-re-enrollment)) — the active `client.keys` entry
+is always deleted regardless of this setting. What `purge` decides is whether that deleted entry is
+also retained as a `!`-prefixed placeholder line in `client.keys` (e.g. `001 !oldname 1.2.3.4
+<key>`), which keeps a record of the old ID/name/IP so it is not reused. By default the placeholder
+line is kept; setting `purge` to `yes` suppresses it, so the entry is removed with no trace left
+behind.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`

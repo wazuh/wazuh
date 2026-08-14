@@ -318,7 +318,7 @@ Maximum number of open file descriptors for the remoted process.
 
 - **Default value:** `458752`
 - **Allowed values:** Positive integer
-- **Note:** Increase for large agent counts (e.g., `131072` for >10K agents); default supports ~200K concurrent connections
+- **Note:** The default already supports ~200K concurrent connections. Only increase above the default (up to the allowed maximum of `1048576`) if you observe file-descriptor exhaustion under very large agent counts — do not set below the default of `458752`.
 
 ### remoted.send_chunk
 
@@ -803,8 +803,11 @@ Internal options (`/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`):
 ```conf
 remoted.control_msg_queue_size=32768
 remoted.keyupdate_interval=30
-remoted.rlimit_nofile=131072
+remoted.rlimit_nofile=524288
 ```
+
+Only raise `rlimit_nofile` above its default (`458752`) if you observe file-descriptor exhaustion
+under very large fleets; do not set it lower than the default for a scale-up scenario.
 
 ### High Throughput (>50K events/sec)
 

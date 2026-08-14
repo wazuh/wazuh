@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS agent_metadata (
     host_os_name      TEXT,
     host_os_type      TEXT,
     host_os_platform  TEXT,
-    host_os_version   TEXT
+    host_os_version   TEXT,
+    cluster_name      TEXT
 );
 ```
 
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS agent_metadata (
 |           | `host_os_type`      | TEXT      | The type of the operating system (e.g., Linux).       | `host.os.type`          |
 |           | `host_os_platform`  | TEXT      | The OS platform identifier (e.g., ubuntu).            | `host.os.platform`      |
 |           | `host_os_version`   | TEXT      | The version of the operating system (e.g., 22.04).    | `host.os.version`       |
+|           | `cluster_name`      | TEXT      | The name of the manager cluster node the agent is currently connected to. Changes to this value are compared each cycle and used to trigger a group-sync. | -                       |
 
 ---
 
@@ -83,3 +85,45 @@ CREATE TABLE IF NOT EXISTS db_metadata (
 | `last_groups_integrity`   | INTEGER   | A Unix timestamp of the last successful integrity check for the `agent_groups` table.          |
 | `is_first_run`            | INTEGER   | A boolean flag that is true if the module is running for the first time with a new database.   |
 | `is_first_groups_run`     | INTEGER   | A boolean flag that is true if agent groups are being populated for the first time.            |
+
+---
+
+### `tasks`
+
+This table acts as a durable deduplication guard for `/control` task IDs, preventing the same task from being processed more than once.
+
+```sql
+CREATE TABLE IF NOT EXISTS tasks (
+    task_id       TEXT NOT NULL PRIMARY KEY,
+    recorded_at   INTEGER NOT NULL
+);
+```
+
+| Mandatory | Column        | Data Type | Description                                                     |
+| :-------: | ------------- | --------- | ----------------------------------------------------------------|
+|     ✔️    | `task_id`     | TEXT      | The unique ID of a `/control` task that has already been seen.  |
+|     ✔️    | `recorded_at` | INTEGER   | A Unix timestamp of when the task ID was recorded.               |
+
+---
+
+### `vd_feed_state`
+
+This internal table persists the vulnerability detection (VD) feed offset and any pending-rescan state, so the agent can resume from the correct offset after a restart. It contains only a single row with `id = 1`.
+
+```sql
+CREATE TABLE IF NOT EXISTS vd_feed_state (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    has_offset      INTEGER NOT NULL DEFAULT 0,
+    last_offset     INTEGER NOT NULL DEFAULT 0,
+    pending         INTEGER NOT NULL DEFAULT 0,
+    pending_offset  INTEGER NOT NULL DEFAULT 0
+);
+```
+
+| Column           | Data Type | Description                                                                                                          |
+| ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------|
+| `id`             | INTEGER   | Primary key, always `1`.                                                                                             |
+| `has_offset`     | INTEGER   | A boolean flag (`0` or `1`) distinguishing "an offset has never been observed" from "an offset of `0` was observed" (a manager may legitimately report offset `0` when VD is not enabled on that node). |
+| `last_offset`    | INTEGER   | The last VD feed offset observed.                                                                                    |
+| `pending`        | INTEGER   | A boolean flag (`0` or `1`) indicating whether a rescan is pending.                                                  |
+| `pending_offset` | INTEGER   | The VD feed offset associated with the pending rescan.                                                               |
