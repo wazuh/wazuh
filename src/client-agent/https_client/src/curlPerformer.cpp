@@ -106,7 +106,10 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     // complete file.
     const FilePtr responseGuard {responseFile, std::fclose};
 
-    configureRequest(*handle, spec, response);
+    if (!configureRequest(*handle, spec, response))
+    {
+        return response;
+    }
 
     if (!applyTls(*handle))
     {
@@ -141,7 +144,15 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
         return false;
     }
 
-    handle.streamBodyFromFile(file, spec.bodyFileSize); // Streamed POST (sets the method itself).
+    // Streamed POST (sets the method itself). Close the file ourselves on
+    // rejection: *fileOut is only set -- and so only owned by the caller's
+    // FilePtr guard -- once this call is known to have succeeded.
+    if (!handle.streamBodyFromFile(file, spec.bodyFileSize))
+    {
+        std::fclose(file);
+        return false;
+    }
+
     *fileOut = file;
     return true;
 }
@@ -153,8 +164,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
 
     if (spec.responseFilePath.empty())
     {
-        handle.captureResponseBody(&response.body);
-        return true;
+        return handle.captureResponseBody(&response.body);
     }
 
     // Open the response target WITHOUT following a symlink and owner-only: if
@@ -213,12 +223,19 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
         return false;
     }
 
-    handle.captureResponseToFile(file, spec.maxResponseBytes);
+    // Same ownership rule as configureBody()'s streamBodyFromFile: only own
+    // *fileOut once the handle has actually accepted the sink.
+    if (!handle.captureResponseToFile(file, spec.maxResponseBytes))
+    {
+        std::fclose(file);
+        return false;
+    }
+
     *fileOut = file;
     return true;
 }
 
-void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
+bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
                                      HttpResponse& response) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
@@ -234,13 +251,20 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     }
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
-    handle.captureRetryAfter(&response.retryAfterSeconds);
+
+    if (!handle.captureRetryAfter(&response.retryAfterSeconds))
+    {
+        return false;
+    }
+
     handle.setOptionLong(CurlOption::TimeoutMs, static_cast<long>(spec.timeoutMs));
 
-    if (spec.abortFlag != nullptr)
+    if (spec.abortFlag != nullptr && !handle.wireAbort(spec.abortFlag))
     {
-        handle.wireAbort(spec.abortFlag);
+        return false;
     }
+
+    return true;
 }
 
 bool CurlPerformer::applyTls(ICurlHandle& handle) const

@@ -222,51 +222,52 @@ namespace
                 m_headers = curl_slist_append(m_headers, header.c_str());
             }
 
-            void captureResponseBody(std::string* output) override
+            bool captureResponseBody(std::string* output) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output);
+                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output) == CURLE_OK;
             }
 
-            void captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
+            bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
             {
                 // Chunked transfer decoding is native curl; the trampoline
                 // receives decoded bytes and enforces maxBytes.
                 m_fileSink = FileSink {file, 0, maxBytes};
-                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink);
+                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
-            void captureRetryAfter(long* output) override
+            bool captureRetryAfter(long* output) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output);
+                return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output) == CURLE_OK;
             }
 
-            void streamBodyFromFile(std::FILE* file, uint64_t size) override
+            bool streamBodyFromFile(std::FILE* file, uint64_t size) override
             {
                 // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
                 // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
                 // it a POST.
-                curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L);
-                curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST");
-                curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_READDATA, file);
-                curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size));
+                return curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST") == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_READDATA, file) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size)) == CURLE_OK;
             }
 
-            void wireAbort(const std::atomic<bool>* abortFlag) override
+            bool wireAbort(const std::atomic<bool>* abortFlag) override
             {
-                curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag);
-                curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L);
+                return curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag) == CURLE_OK &&
+                       curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L) == CURLE_OK;
             }
 
             TransportStatus perform() override
             {
-                if (m_headers != nullptr)
+                if (m_headers != nullptr &&
+                        curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers) != CURLE_OK)
                 {
-                    curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers);
+                    return TransportStatus::OtherError;
                 }
 
                 return statusFromCurlCode(curl_easy_perform(m_handle));
