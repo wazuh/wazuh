@@ -508,6 +508,7 @@
 #define WM_UPGRADE_UNSIGN_FILE_ERROR                "(8139): At %s: Could not unsign package file '%s'"
 #define WM_UPGRADE_FILE_OPEN_ERROR                  "(8140): At %s: Unable to open '%s'"
 #define WM_UPGRADE_CANNOT_READ                      "(8141): At %s: Unable to read '%s'"
+#define WM_UPGRADE_SYMLINK_REJECTED                 "(8142): At %s: Refused to open '%s': the path is a symbolic link."
 
 #define MOD_TASK_CHECK_DB_ERROR                     "(8250): DB integrity is invalid. Exiting..."
 #define MOD_TASK_CREATE_SOCK_ERROR                  "(8251): Queue '%s' not accessible: '%s'. Exiting..."

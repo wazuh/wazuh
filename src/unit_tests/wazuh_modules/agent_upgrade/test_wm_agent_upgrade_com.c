@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "shared.h"
 #include "wm_task_general.h"
@@ -549,9 +550,10 @@ void test_wm_agent_upgrade_com_open_invalid_open(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 0);
+    expect_any(__wrap_w_fopen_nofollow, basedir);
+    expect_any(__wrap_w_fopen_nofollow, filename);
+    expect_string(__wrap_w_fopen_nofollow, mode, "w");
+    will_return(__wrap_w_fopen_nofollow, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg,   "(1103): Could not open file 'test_file' due to [(2)-(No such file or directory)].");
@@ -571,13 +573,44 @@ void test_wm_agent_upgrade_com_open_success(void **state) {
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
     will_return(__wrap_w_ref_parent_folder, 0);
 
-    expect_any(__wrap_wfopen, path);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, 4);
+    expect_any(__wrap_w_fopen_nofollow, basedir);
+    expect_any(__wrap_w_fopen_nofollow, filename);
+    expect_string(__wrap_w_fopen_nofollow, mode, "w");
+    will_return(__wrap_w_fopen_nofollow, 4);
 
     char *response = wm_agent_upgrade_com_open(command);
     cJSON *response_object = cJSON_Parse(response);
     assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring, "ok");
+    cJSON_Delete(response_object);
+    os_free(response);
+}
+
+void test_wm_agent_upgrade_com_open_symlink_rejected(void **state) {
+    cJSON * command = *state;
+
+    // A prior open_success test can leave file.path set; clear it so the handler does not take the
+    // "close previously opened file" branch (which would emit an unexpected mtwarn).
+    *file.path = '\0';
+
+    expect_string(__wrap_w_ref_parent_folder, path, "test_file");
+    will_return(__wrap_w_ref_parent_folder, 0);
+
+    expect_any(__wrap_w_fopen_nofollow, basedir);
+    expect_any(__wrap_w_fopen_nofollow, filename);
+    expect_string(__wrap_w_fopen_nofollow, mode, "w");
+    will_return(__wrap_w_fopen_nofollow, 0);
+
+    // The dedicated symlink message, not the strerror-based FOPEN_ERROR one.
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg,
+                  "(8142): At open: Refused to open 'test_file': the path is a symbolic link.");
+
+    errno = ELOOP;
+
+    char *response = wm_agent_upgrade_com_open(command);
+    cJSON *response_object = cJSON_Parse(response);
+    assert_string_equal(cJSON_GetObjectItem(response_object, task_manager_json_keys[WM_TASK_ERROR_MESSAGE])->valuestring,
+                        "File Open Error: the path is a symbolic link");
     cJSON_Delete(response_object);
     os_free(response);
 }
@@ -1636,9 +1669,10 @@ void test_wm_agent_upgrade_process_open_command(void **state) {
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
         will_return(__wrap_w_ref_parent_folder, 0);
 
-        expect_any(__wrap_wfopen, path);
-        expect_string(__wrap_wfopen, mode, "w");
-        will_return(__wrap_wfopen, 4);
+        expect_any(__wrap_w_fopen_nofollow, basedir);
+        expect_any(__wrap_w_fopen_nofollow, filename);
+        expect_string(__wrap_w_fopen_nofollow, mode, "w");
+        will_return(__wrap_w_fopen_nofollow, 4);
     }
 
     size_t length = wm_agent_upgrade_process_command(buffer, &output);
@@ -1880,6 +1914,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_file_name, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_invalid_open, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_success, setup_open2, teardown_commands),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_open_symlink_rejected, setup_open2, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_file_closed, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_invalid_file_name, setup_write, teardown_commands),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_com_write_different_file_name, setup_write, teardown_commands),
