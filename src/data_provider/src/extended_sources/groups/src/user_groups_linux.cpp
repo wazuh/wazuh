@@ -12,6 +12,9 @@
 #include "passwd_wrapper.hpp"
 #include "system_wrapper.hpp"
 #include <iostream>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 // Reasonable upper bound for getpw_r buffer
 constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
@@ -84,19 +87,53 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
         bufSize = MAX_GETPW_R_BUF_SIZE;
     }
 
+    // Resolve each distinct gid once for the whole call instead of once per user that
+    // belongs to it. Group membership overlaps heavily, so the previous behaviour cost
+    // one lookup per (user, group) pair. On a host where the group database is served by
+    // a network directory, every one of those lookups is a round trip.
+    // Unresolvable gids are memoised too, otherwise they keep costing a lookup per user.
+    std::unordered_map<gid_t, std::string> gidToName;
+    std::unordered_set<gid_t> unresolvableGids;
+
+    const auto resolveGidName = [&](gid_t gid, std::string & name) -> bool
+    {
+        if (const auto cached = gidToName.find(gid); cached != gidToName.end())
+        {
+            name = cached->second;
+            return true;
+        }
+
+        if (unresolvableGids.count(gid) > 0)
+        {
+            return false;
+        }
+
+        struct group grp {};
+        struct group* grpResult = nullptr;
+        auto groupBuf = std::make_unique<char[]>(bufSize);
+
+        if (m_groupWrapper->getgrgid_r(gid, &grp, groupBuf.get(), bufSize, &grpResult) == 0 && grpResult != nullptr)
+        {
+            name = grpResult->gr_name;
+            gidToName.emplace(gid, name);
+            return true;
+        }
+
+        unresolvableGids.insert(gid);
+        return false;
+    };
+
     for (const auto& [uid, groups] : usersGroups)
     {
         nlohmann::json groupNames = nlohmann::json::array();
 
         for (const auto& gid : groups)
         {
-            struct group grp {};
-            struct group* grpResult = nullptr;
-            auto groupBuf = std::make_unique<char[]>(bufSize);
+            std::string groupName;
 
-            if (m_groupWrapper->getgrgid_r(gid, &grp, groupBuf.get(), bufSize, &grpResult) == 0 && grpResult != nullptr)
+            if (resolveGidName(gid, groupName))
             {
-                groupNames.push_back(grpResult->gr_name);
+                groupNames.push_back(groupName);
             }
         }
 

@@ -689,6 +689,23 @@ nlohmann::json SysInfo::getUsers() const
 
     UserGroupsProvider userGroupsProvider;
 
+    // Resolve group membership for every user in a single call. Asking per user repeated
+    // the underlying passwd and group lookups once per user and left no opportunity to
+    // share work between them, which on a host whose accounts come from a network
+    // directory meant one round trip per (user, group) pair.
+    std::set<uid_t> allUids;
+
+    for (const auto& user : collectedUsers)
+    {
+        allUids.insert(static_cast<uid_t>(user["uid"].get<int>()));
+    }
+
+    // An empty set means "every uid" to getGroupNamesByUid(), so only ask when there is
+    // actually something to ask about.
+    const auto groupsByUid = allUids.empty()
+                             ? nlohmann::json::object()
+                             : userGroupsProvider.getGroupNamesByUid(allUids);
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -705,8 +722,24 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_group_id_signed"] = user["gid_signed"];
         userItem["user_group_id"] = user["gid"];
 
-        std::set<uid_t> uid {static_cast<uid_t>(user["uid"].get<int>())};
-        auto collectedUsersGroups = userGroupsProvider.getGroupNamesByUid(uid);
+        // getGroupNamesByUid() returns a bare array when asked about a single uid and an
+        // object keyed by uid otherwise, so both shapes have to be handled: a host with
+        // exactly one user yields the array form.
+        nlohmann::json collectedUsersGroups = nlohmann::json::array();
+
+        if (groupsByUid.is_object())
+        {
+            const auto entry = groupsByUid.find(std::to_string(user["uid"].get<int>()));
+
+            if (entry != groupsByUid.end())
+            {
+                collectedUsersGroups = *entry;
+            }
+        }
+        else if (groupsByUid.is_array())
+        {
+            collectedUsersGroups = groupsByUid;
+        }
 
         if (collectedUsersGroups.empty())
         {
