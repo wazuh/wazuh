@@ -36,6 +36,7 @@ SyncIntake::~SyncIntake()
 
 #include <poll.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -110,6 +111,13 @@ namespace
         {
             return {};
         }
+
+        // mkstemp() already creates this file with mode 0600 (POSIX-mandated,
+        // and not widened by umask -- umask can only clear bits from the
+        // requested mode, never set them), so this is redundant. It's cheap,
+        // harmless, and makes the intended permissions explicit rather than
+        // implicit in mkstemp()'s contract. (CID 562610)
+        (void)fchmod(fd, S_IRUSR | S_IWUSR);
 
         std::FILE* out = fdopen(fd, "wb");
 
