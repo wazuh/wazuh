@@ -1253,7 +1253,7 @@ class TestCollectAndIndex:
 
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_comms_index(self):
-        """bulk_index is called with 'wazuh-metrics-comms' and the normalized comms docs."""
+        """bulk_index is called with 'wazuh-metrics-comms-v4' and the normalized comms docs."""
         comms_docs = [{"events": {"total": 1000}}]
 
         mock_indexer = AsyncMock()
@@ -1264,7 +1264,7 @@ class TestCollectAndIndex:
             await tasks._collect_and_index()
 
         mock_indexer.metrics.bulk_index.assert_any_await(
-            "wazuh-metrics-comms", comms_docs, tasks.bulk_size
+            "wazuh-metrics-comms-v4", comms_docs, tasks.bulk_size
         )
 
     @pytest.mark.asyncio
@@ -1740,7 +1740,7 @@ class TestCollectAndIndexWithValidation:
                     await tasks._collect_and_index()
 
         mock_validate.assert_called_once_with(
-            comms_docs, fake_schema, "wazuh-metrics-comms"
+            comms_docs, fake_schema, "wazuh-metrics-comms-v4"
         )
 
     @pytest.mark.asyncio
