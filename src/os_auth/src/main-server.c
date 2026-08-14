@@ -33,7 +33,7 @@
 #include "os_err.h"
 #include "generate_cert.h"
 #include <sys/epoll.h>
-#include "router.h"
+#include "http_op.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -79,22 +79,22 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphers] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
+    print_out("  %s: -[VhdtfPL] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
+    print_out("    -u <user>   User to run as. Default: %s.", USER);
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Force shared-password enrollment on (already enabled by default); password read from %s or generated.", AUTHD_PASS);
-    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -c          TLS 1.3 cipher suite list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
-    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -166,7 +166,9 @@ int main(int argc, char **argv)
     int test_config = 0;
     int status;
     int run_foreground = 0;
+    uid_t uid;
     gid_t gid;
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
 
     pthread_t thread_local_server = 0;
@@ -194,7 +196,6 @@ int main(int argc, char **argv)
     {
         int c;
         int use_pass = 0;
-        int auto_method = 0;
         int validate_host = 0;
         const char *ciphers = NULL;
         const char *ca_cert = NULL;
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PaL:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfu:g:D:p:c:v:sx:k:PL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -223,6 +224,13 @@ int main(int argc, char **argv)
                 case 'd':
                     debug_level = 1;
                     nowDebug();
+                    break;
+
+                case 'u':
+                    if (!optarg) {
+                        merror_exit("-u needs an argument");
+                    }
+                    user = optarg;
                     break;
 
                 case 'g':
@@ -266,8 +274,8 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     else {
-                        if (w_str_is_number(optarg)) {
-                            merror_exit("-%c needs a valid list of SSL ciphers", c);
+                        if (w_authd_validate_ciphers(optarg) == OS_INVALID) {
+                            merror_exit("-%c needs a valid list of TLS 1.3 cipher suites", c);
                         }
                         ciphers = optarg;
                     }
@@ -296,10 +304,6 @@ int main(int argc, char **argv)
                         merror_exit("-%c needs an argument", c);
                     }
                     server_key = optarg;
-                    break;
-
-                case 'a':
-                    auto_method = 1;
                     break;
 
                 case 'C':
@@ -432,10 +436,6 @@ int main(int argc, char **argv)
             config.flags.use_password = 1;
         }
 
-        if (auto_method) {
-            config.flags.auto_negotiate = 1;
-        }
-
         if (validate_host) {
             config.flags.verify_host = 1;
         }
@@ -495,9 +495,10 @@ int main(int argc, char **argv)
     }
 
     /* Check if the user/group given are valid */
+    uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     if (!run_foreground) {
@@ -508,6 +509,10 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    }
+
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -568,8 +573,8 @@ int main(int argc, char **argv)
         }
 
         /* Start SSL */
-        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
-            merror("SSL error. Exiting.");
+        if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
+            merror("SSL context setup failed. Exiting.");
             exit(1);
         }
 
@@ -640,8 +645,13 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
-    /* Initialize router module for inventory-sync communication */
-    router_initialize(taggedLogFunction, ARGV0);
+    /* Initialize libcurl once per process: the writer thread notifies agent deletions to the
+     * inventory sync server over its UDS HTTP endpoint (uhttp_*). Not fatal on failure -- authd's
+     * job is enrollment; a deletion that cannot be notified is logged by the writer and is safe to
+     * repeat by hand (the server's delete-by-query treats a missing index as success). */
+    if (uhttp_global_init() != 0) {
+        mwarn("Could not initialize the HTTP client; agent deletions will not reach the inventory sync server.");
+    }
 
     /* Start working threads */
 
@@ -1124,50 +1134,151 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
+/* Deletion request budget. The per-request timeout is generous ON PURPOSE: a deletion refreshes
+ * and then delete-by-queries the agent's whole scope, so on a loaded indexer it legitimately takes
+ * seconds, and the old 5 s ceiling turned "slow" into "lost". It does not become a 3 x 30 s stall
+ * when the indexer is simply DOWN: the server's admission gate answers 503 immediately, and a
+ * modulesd that is not listening fails at connect_timeout_ms. The long wait only happens while the
+ * server is actually working the deletion -- which is exactly when waiting is the right answer. */
+#define INV_SYNC_DELETE_TIMEOUT_MS      30000
+#define INV_SYNC_DELETE_CONNECT_TIMEOUT_MS 2000
+#define INV_SYNC_DELETE_ATTEMPTS        3
+
 /**
- * @brief Send agent deletion message to inventory-sync via router
+ * @brief Ask the inventory sync server to delete an agent's documents from the indexer.
+ *
+ * POST /agents/delete over the server's UDS socket (the POST alias of DELETE /agents: uhttp_*
+ * only speaks POST), the target agent in the X-Wazuh-Agent-Id header, empty body. Unlike the old
+ * fire-and-forget router publish, the HTTP status IS the outcome: 200 means the deletion was
+ * flushed to the indexer.
+ *
+ * Failure is never silent. Every attempt that does not end in 200 is logged, and giving up is an
+ * ERROR naming the agent, because at that point documents of a deleted agent are left in the
+ * indexer with nothing to ever overwrite them -- the operator has to repeat the deletion, which is
+ * safe (the server treats a missing index as success). The transport result and the HTTP status
+ * are reported separately: a curl-level failure carries no status, and printing "status 0" for it
+ * is what made a modulesd that was not listening look like a server that refused.
+ *
+ * Called only from the writer thread; the client handle is per-thread by uhttp's contract, and
+ * the lazy static is what keeps the connection alive (keepalive) across a batch of deletions.
  *
  * @param agent_id The ID of the agent to delete
  */
 static void send_agent_delete_to_inventory_sync(const char *agent_id) {
-    static ROUTER_PROVIDER_HANDLE router_inventory_handle = NULL;
+    static uhttp_client_t *client = NULL;
 
-    // Try to create router handle if not already created
-    if (!router_inventory_handle) {
-        router_inventory_handle = router_provider_create("inventory-states", false);
-        if (!router_inventory_handle) {
-            mdebug2("Router not available for inventory-states topic, skipping agent deletion notification");
+    if (!client) {
+        uhttp_options_t opts = {
+            .unix_socket_path = INV_SYNC_SOCK,
+            .url = "http://localhost/agents/delete",
+            .timeout_ms = INV_SYNC_DELETE_TIMEOUT_MS,
+            .connect_timeout_ms = INV_SYNC_DELETE_CONNECT_TIMEOUT_MS,
+            .keepalive = true
+        };
+        client = uhttp_client_new(&opts);
+        if (!client) {
+            mwarn("Could not create the HTTP client for agent deletions; the documents of agent '%s' remain in the indexer.", agent_id);
             return;
         }
     }
 
-    // Build JSON message: {"command": "delete_agent", "agent_id": "001"}
-    cJSON *json_msg = cJSON_CreateObject();
-    if (!json_msg) {
-        merror("Failed to create JSON message for agent deletion");
+    // The header changes per call; reset-then-add keeps the client reusable. Reset rather than clear:
+    // clearing drops the headers the constructor installed (Content-Type, the Expect: suppression and
+    // the keep-alive this client asked for) and never rebuilds them.
+    char header[64];
+    snprintf(header, sizeof(header), "X-Wazuh-Agent-Id: %s", agent_id);
+    if (uhttp_client_reset_headers(client) != 0) {
+        mwarn("Could not prepare the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
+        return;
+    }
+    if (uhttp_client_add_header(client, header) != 0) {
+        merror("Could not build the deletion request for agent '%s'; its documents remain in the indexer.", agent_id);
         return;
     }
 
-    cJSON_AddStringToObject(json_msg, "command", "delete_agent");
-    cJSON_AddStringToObject(json_msg, "agent_id", agent_id);
+    // Retries with a widening pause (0 s, 1 s, 3 s). A 503 is the server telling us to come back:
+    // it answers that while no indexer host is healthy, and an overloaded indexer flaps in and out
+    // of healthy in bursts of a few seconds. A single fixed 2 s retry could land both attempts
+    // inside the same burst; spreading them over ~4 s rides one out without designing a persistent
+    // queue for a rare, hand-recoverable event (design doc 04 §2).
+    static const unsigned int backoff_seconds[INV_SYNC_DELETE_ATTEMPTS] = {0, 1, 3};
 
-    char *json_str = cJSON_PrintUnformatted(json_msg);
-    cJSON_Delete(json_msg);
+    for (int attempt = 0; attempt < INV_SYNC_DELETE_ATTEMPTS; attempt++) {
+        // Signals are blocked in this thread (authd_sigblock()), so nothing interrupts a sleep() or
+        // a request in flight: without these checks a shutdown asked for while the writer is working
+        // its removal queue waits out the whole budget (up to ~94 s) for EVERY queued agent before
+        // the daemon can exit. Giving up on shutdown is safe -- the deletion is idempotent and the
+        // warning below tells the operator to repeat it.
+        if (!running) {
+            mdebug1("Shutting down; abandoning the deletion of agent '%s' after %d attempt(s). "
+                    "Its documents remain in the indexer; repeat the deletion after the restart.",
+                    agent_id, attempt);
+            return;
+        }
 
-    if (!json_str) {
-        merror("Failed to serialize JSON message for agent deletion");
-        return;
+        if (backoff_seconds[attempt] > 0) {
+            // Announced rather than silent: this is the WRITER thread, and it is the only one that
+            // persists client.keys. While it waits here nothing else it owns moves -- no key write,
+            // no other queued agent's deletion, no shutdown -- so a fleet-wide removal against an
+            // unhealthy indexer makes authd look stalled with nothing in the log to explain it.
+            minfo("Retrying the deletion of agent '%s' in %u s (attempt %d/%d); the writer thread stays "
+                  "blocked meanwhile, delaying client.keys writes and any other pending deletion.",
+                  agent_id, backoff_seconds[attempt], attempt + 1, INV_SYNC_DELETE_ATTEMPTS);
+        }
+
+        for (unsigned int slept = 0; slept < backoff_seconds[attempt] && running; slept++) {
+            sleep(1);
+        }
+
+        uhttp_result_t result = {0};
+        const int posted = uhttp_post(client, NULL, 0, &result);
+
+        if (posted == 0 && result.http_status == 200) {
+            minfo("Deleted the documents of agent '%s' from the indexer.", agent_id);
+            return;
+        }
+
+        const int last_attempt = (attempt == INV_SYNC_DELETE_ATTEMPTS - 1);
+
+        // Three outcomes hide behind a non-zero return, and naming the right one is what makes this
+        // log actionable. uhttp_post() returns the HTTP status itself for a non-2xx, so `posted`
+        // alone cannot classify anything -- the fields in `result` do:
+        //   - nothing set at all  -> the request was refused by the client and NEVER SENT. The
+        //     socket and the server are not the suspects; saying "could not reach the server" here
+        //     sends the operator to test an endpoint that was working all along.
+        //   - curl_code set       -> it was sent and failed in transport.
+        //   - http_status set     -> it was answered, with a status we did not want.
+        if (result.http_status != 0) {
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' answered HTTP %ld.",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.http_status);
+
+            if (last_attempt) {
+                mwarn("The inventory sync server did not accept the deletion of agent '%s' after %d attempt(s) "
+                      "(HTTP status %ld). Its documents remain in the indexer; repeat the deletion once the indexer "
+                      "is healthy.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.http_status);
+            }
+        } else if (result.curl_code != 0) {
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' did not complete (curl code %d).",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id, result.curl_code);
+
+            if (last_attempt) {
+                mwarn("Could not reach the inventory sync server to delete agent '%s' after %d attempt(s) (curl code %d). "
+                      "Its documents remain in the indexer; repeat the deletion once the server is reachable.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS, result.curl_code);
+            }
+        } else {
+            mdebug1("Attempt %d/%d to delete the documents of agent '%s' was not sent (client-side error).",
+                    attempt + 1, INV_SYNC_DELETE_ATTEMPTS, agent_id);
+
+            if (last_attempt) {
+                mwarn("Could not build the deletion request for agent '%s' after %d attempt(s): it was never sent, "
+                      "so this is a manager-side fault, not an unreachable server. Its documents remain in the "
+                      "indexer; report this and repeat the deletion once fixed.",
+                      agent_id, INV_SYNC_DELETE_ATTEMPTS);
+            }
+        }
     }
-
-    // Send message to router
-    int result = router_provider_send(router_inventory_handle, json_str, strlen(json_str) + 1);
-    if (result != 0) {
-        mdebug1("Failed to send agent deletion message for agent '%s' to inventory-sync", agent_id);
-    } else {
-        minfo("Sent agent deletion request for agent '%s' to inventory-sync", agent_id);
-    }
-
-    cJSON_free(json_str);
 }
 
 /* Thread for writing keystore onto disk */
@@ -1246,15 +1357,13 @@ void* run_writer(__attribute__((unused)) void *arg) {
             mdebug2("[Writer] wdb_insert_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
-            if (cur->group) {
-                if (wdb_set_agent_groups_csv(atoi(cur->id),
-                                             cur->group,
-                                             WDB_GROUP_MODE_OVERRIDE,
-                                             w_is_single_node(NULL) ? "synced" : "syncreq",
-                                             &wdb_sock)) {
-                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
-                }
-
+            char *groups_to_set = cur->group ? cur->group : "default";
+            if (wdb_set_agent_groups_csv(atoi(cur->id),
+                                         groups_to_set,
+                                         WDB_GROUP_MODE_OVERRIDE,
+                                         w_is_single_node(NULL) ? "synced" : "syncreq",
+                                         &wdb_sock)) {
+                merror("Unable to set agent centralized group: %s (internal error)", groups_to_set);
             }
 
             gettime(&t1);
@@ -1274,11 +1383,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             next = cur->next;
 
             mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
-
-            gettime(&t0);
-            delete_diff(cur->name);
-            gettime(&t1);
-            mdebug2("[Writer] delete_diff(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             OS_RemoveCounter(cur->id);

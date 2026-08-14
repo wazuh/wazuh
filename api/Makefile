@@ -29,7 +29,6 @@ install:
     # Copy files and create folders
 	$(INSTALL_DIR) $(INSTALLDIR)/api
 	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration
-	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration/ssl
 	$(INSTALL_RW_DIR) $(INSTALLDIR)/api/configuration/security
 
 	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${INSTALLDIR}/api/configuration

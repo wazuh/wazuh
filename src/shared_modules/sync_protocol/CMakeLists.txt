@@ -80,7 +80,7 @@ add_library(
   src/persistent_queue_storage.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
-  src/mqueue_transport.cpp
+  src/sync_socket_transport.cpp
   ${RESOURCE_OBJ_DLL})
 
 add_dependencies(agent_sync_protocol generate_flatbuffers)
@@ -134,6 +134,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(agent_sync_protocol)
+  target_compile_definitions(agent_sync_protocol PRIVATE WAZUH_UNIT_TESTING)
   add_subdirectory(tests)
 endif()
 

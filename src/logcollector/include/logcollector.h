@@ -203,6 +203,22 @@ void* lccom_main(void* arg);
 #endif
 size_t lccom_dispatch(char* command, char** output);
 size_t lccom_getconfig(const char* section, char** output);
+
+/**
+ * @brief Build this daemon's entry for the agent's /config document.
+ *
+ * @param output Receives the allocated "ok <json>" reply.
+ * @return Length of *output.
+ */
+size_t lccom_getallconfig(char** output);
+
+/**
+ * @brief Build this daemon's entry for the agent's /stats document.
+ *
+ * @param output Receives the allocated "ok <json>" reply.
+ * @return Length of *output.
+ */
+size_t lccom_getallstats(char** output);
 size_t lccom_getstate(char** output, bool getNextPage);
 
 /*** Global variables ***/

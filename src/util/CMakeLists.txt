@@ -66,3 +66,18 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
   wazuh_set_runtime_rpath(verify-agent-conf)
 endif()
+
+# Restricted manager service control. Linux-only standalone executable; this
+# directory is only built for the manager (see the NOT IS_AGENT block in
+# src/CMakeLists.txt). Skipped under unit tests: the test target builds this
+# same source itself (see src/unit_tests/util/CMakeLists.txt).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(wazuh-manager-service-control
+                 "${CMAKE_CURRENT_SOURCE_DIR}/manager_service_control/main.c")
+  target_compile_definitions(
+    wazuh-manager-service-control PRIVATE WAZUH_RUNTIME_USER="wazuh-manager")
+  set_target_properties(
+    wazuh-manager-service-control
+    PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
+                                 ${SRC_FOLDER}/build/bin)
+endif()

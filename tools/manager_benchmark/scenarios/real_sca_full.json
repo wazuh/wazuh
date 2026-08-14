@@ -1,0 +1,34 @@
+{
+  "name": "real_sca_full",
+  "description": "SCA full sync replaying real captured SCA sessions for three platforms at once (Ubuntu, CentOS, Windows), each on its own lane and fleet, followed by a real SCA delta. The recorded check documents are large, so this exercises the bulk-bytes path with production shapes.",
+  "mode": "uds",
+  "defaults": {
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "sca_ubuntu": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_full_ubuntu.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_delta_ubuntu.json",
+        "repeat_count": 10, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "sca_centos": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_full_centos.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_delta_centos.json",
+        "repeat_count": 10, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "sca_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_full_windows.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_delta_windows.json",
+        "repeat_count": 10, "repeat_delay": "5s", "initial_delay": "10s" }
+    ]
+  },
+  "fleets": [
+    { "name": "ubuntu", "agents": 4, "first_id": 43000, "lanes": ["sca_ubuntu"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04" } },
+    { "name": "centos", "agents": 4, "first_id": 43100, "lanes": ["sca_centos"],
+      "start": { "osname": "CentOS Linux", "osplatform": "centos", "ostype": "linux", "osversion": "8" } },
+    { "name": "windows", "agents": 4, "first_id": 43200, "lanes": ["sca_windows"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

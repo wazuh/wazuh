@@ -65,7 +65,7 @@ def insert_pre_existent_agents(test_metadata, stop_authd):
 
             mocking.create_mocked_agent(id=id, name=name, ip=ip, date_add=registration_time,
                                         connection_status=connection_status, disconnection_time=disconnection_time,
-                                        client_key_secret=key)
+                                        client_key_secret=key, group='default')
 
     yield
 

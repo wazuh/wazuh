@@ -320,20 +320,30 @@ static bool wm_control_wait_for_service_active(const char *service) {
    └─► socket.close()
 ```
 
-### Remote Agent Restart/Reload Request Flow (Unix)
+### Remote Agent Restart/Reload Request Flow (v5.0+ Task-Based)
 
 ```
 1. API/Framework
-   └─► WazuhSocket(REMOTED_SOCKET).send("{agent_id} control restart")
+   └─► core_restart_agents(agent_ids, request_time)
+       └─► For each agent_id:
+           ├─► Create task message: {"action": "create_task", "agent_id": "001",
+           │                         "task_type": "agent_restart", "create_time": 1234567890,
+           │                         "payload": {}}
+           ├─► WazuhSocket(TASKS_SOCKET).send(task_message)
+           └─► Receive response: {"error": 0, "message": "Task created"}
 
-2. wazuh-manager-remoted
-   └─► Forwards message to target agent
+2. Task Manager (wm_task_manager)
+   └─► Stores task in database with STATUS='pending'
 
-3. wazuh-agentd (request.c, agent side)
-   └─► Receives "control" target
-       └─► Forwards to CONTROL_SOCK Unix socket
+3. Agent (HTTPS polling)
+   └─► GET /control endpoint
+       └─► Task Manager returns pending tasks
 
-4. wm_control thread (CLIENT build, in wazuh-modulesd)
+4. wazuh-agentd (request.c, agent side)
+   └─► Receives task
+       └─► Forwards "restart" command to CONTROL_SOCK Unix socket
+
+5. wm_control thread (CLIENT build, in wazuh-modulesd)
    └─► process_control() receives command
        └─► wm_control_dispatch("restart", &output)
            └─► wm_control_execute_action("restart", "wazuh-agent", &output)
@@ -342,34 +352,46 @@ static bool wm_control_wait_for_service_active(const char *service) {
                │   └─► Child: execv("systemctl restart wazuh-agent")
                └─► Parent: return "ok "
 
-5. Response propagated back to API/Framework
+6. Task Manager
+   └─► Marks task as 'delivered' (fire-and-forget, no status tracking)
 ```
 
-### Remote Agent Restart/Reload Request Flow (Windows)
+### Remote Agent Restart/Reload Request Flow (Windows - v5.0+ Task-Based)
 
 ```
 1. API/Framework
-   └─► WazuhSocket(REMOTED_SOCKET).send("{agent_id} control restart")
+   └─► core_restart_agents(agent_ids, request_time)
+       └─► For each agent_id:
+           ├─► Create task message: {"action": "create_task", "agent_id": "001",
+           │                         "task_type": "agent_restart", "create_time": 1234567890,
+           │                         "payload": {}}
+           ├─► WazuhSocket(TASKS_SOCKET).send(task_message)
+           └─► Receive response: {"error": 0, "message": "Task created"}
 
-2. wazuh-manager-remoted
-   └─► Forwards message to target agent
+2. Task Manager (wm_task_manager)
+   └─► Stores task in database with STATUS='pending'
 
-3. wazuh-agentd (request.c, Windows)
-   └─► Receives "control" target
+3. Agent (HTTPS polling)
+   └─► GET /control endpoint
+       └─► Task Manager returns pending tasks
+
+4. wazuh-agentd (request.c, Windows)
+   └─► Receives task
        └─► Calls control_dispatch("restart", &output) in-process
            └─► control_run_detached("restart", &output)
                ├─► GetModuleFileNameA() — resolves wazuh-agent.exe path
                ├─► CreateProcessA("wazuh-agent.exe service-restart",
                │       DETACHED_PROCESS | CREATE_NO_WINDOW)
                │   └─► Detached child:
-               │         sleep(1s)              ← waits for "ok" to reach remoted
+               │         sleep(1s)              ← ensures agent acks task before stopping
                │         os_stop_service()      ← stops WazuhSvc
                │         os_start_service()     ← starts WazuhSvc
                │         exit(0)
                ├─► CloseHandle() — parent releases child handles
                └─► return "ok " immediately
 
-4. Response propagated back to API/Framework (before WazuhSvc stops)
+5. Task Manager
+   └─► Marks task as 'delivered' (fire-and-forget, no status tracking)
 ```
 
 ## Thread Model

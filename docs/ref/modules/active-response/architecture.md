@@ -6,7 +6,7 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
 
 ## Component Architecture
 
-### Manager Side
+### Manager Side (v5.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -23,17 +23,24 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
                                  │ {"command": "enable", ...}
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     wazuh-manager-remoted                           │
+│                     Task Manager (wm_task_manager)                  │
 │                                                                     │
-│  Forwards AR commands to target agents                             │
+│  Creates AR task with full event as payload                        │
+│  Task type: "active_response"                                      │
+│  Stores task in database (STATUS='pending')                        │
 └────────────────────────────────┬────────────────────────────────────┘
                                  │
-                                 │ Encrypted TCP
+                                 │ Agent polls via HTTPS
                                  ▼
                           ┌──────────────┐
-                          │ Agent Network│
+                          │ Agent (v5.0+)│
+                          │ HTTPS Client │
                           └──────────────┘
 ```
+
+**v5.0+ Agents**: Active Response commands are delivered via Task Manager polling.
+Agents retrieve AR tasks from `/control` HTTPS endpoint, which returns pending tasks
+including the full AR event JSON as the payload.
 
 ### Agent Side
 
@@ -83,19 +90,26 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
 
 ## Message Flow
 
-### Enable (Block) Command Flow
+### Enable (Block) Command Flow (v5.0+ Task-Based)
 
 1. **Rule Match**: Manager's `engine` detects an event matching an Active Response rule
 2. **Command Generation**: `engine` builds a JSON message with `"command": "enable"`
-3. **Manager Distribution**: Command sent to `wazuh-remoted` for agent delivery
-4. **Agent Reception**: Agent's `wazuh-agentd` receives and decrypts the message
-5. **Execd Processing**: `wazuh-execd` validates and queues the command
-6. **Deduplication Check**: Executes key verification to prevent duplicates
-7. **Script Execution**: Forks and executes the AR script (e.g., `block-ip`)
-8. **Script Input**: Script receives JSON via stdin
-9. **Script Parsing**: Script extracts `source.ip` from JSON
-10. **Firewall Action**: Script executes firewall commands to block the IP
-11. **Timeout Registration**: If stateful, execd registers the timeout for automatic reversion
+3. **Task Creation**: Task Manager creates AR task:
+   - Task type: `active_response`
+   - Payload: Full AR event JSON
+   - Status: `pending`
+   - Stored in Task Manager database
+4. **Agent Polling**: Agent polls `/control` HTTPS endpoint for pending tasks
+5. **Task Retrieval**: Task Manager returns AR task to agent
+6. **Agent Reception**: Agent's `wazuh-agentd` receives the AR task
+7. **Execd Processing**: `wazuh-execd` validates and queues the command
+8. **Deduplication Check**: Executes key verification to prevent duplicates
+9. **Script Execution**: Forks and executes the AR script (e.g., `block-ip`)
+10. **Script Input**: Script receives JSON via stdin
+11. **Script Parsing**: Script extracts `source.ip` from JSON
+12. **Firewall Action**: Script executes firewall commands to block the IP
+13. **Timeout Registration**: If stateful, execd registers the timeout for automatic reversion
+14. **Task Acknowledgment**: Task marked as `delivered` in Task Manager (fire-and-forget)
 
 ### Disable (Unblock) Command Flow
 

@@ -5,7 +5,9 @@
     body: >
       <wazuh_config>
         <remote>
-          <port>1514</port>
+          <legacy>
+            <port>1514</port>
+          </legacy>
         </remote>
       </wazuh_config>
     expected_code: 200
@@ -17,13 +19,17 @@
     body: >
       <wazuh_config>
         <remote>
-          <port>1514</port>
+          <legacy>
+            <port>1514</port>
+          </legacy>
         </remote>
       </wazuh_config>
 
       <wazuh_config>
         <remote>
-          <port>514</port>
+          <legacy>
+            <port>514</port>
+          </legacy>
         </remote>
       </wazuh_config>
     expected_code: 200

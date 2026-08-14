@@ -7,10 +7,10 @@
 
 # https:
 #  enabled: yes
-#  key: "manager.key"
-#  cert: "manager.crt"
+#  key: "apid-key.pem"
+#  cert: "apid.pem"
 #  use_ca: False
-#  ca: "ca.crt"
+#  ca: "root-ca.pem"
 #  ssl_ciphers: ""
 
 # Modify API's intervals (time in seconds)

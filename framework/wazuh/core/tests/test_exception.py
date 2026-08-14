@@ -20,8 +20,14 @@ import pytest
         # code found in ERRORS - extra_message parameter of string type
         (4018, "extra message", None, None, None, None, None, "Error 4018 - Level cannot be a negative number: extra message"),
         # code found in ERRORS - extra_message parameter of dictionary type
-        (1017, {'node_name': 'Node Name', 'not_ready_daemons': 'not ready daemons'}, None, None, None, None, None, 
-            'Error 1017 - Some Wazuh daemons are not ready yet in node "Node Name" (not ready daemons)'),        
+        (1017, {'node_name': 'Node Name', 'not_ready_daemons': 'not ready daemons'}, None, None, None, None, None,
+            'Error 1017 - Some Wazuh daemons are not ready yet in node "Node Name" (not ready daemons)'),
+        # 1762: getstats rejection for agents on v5.0.0 or higher
+        (1762, None, None, None, None, None, None,
+            'Error 1762 - Could not get statistics from the agent. '
+            'This daemon statistics query is only available for agents running a '
+            'version lower than 5.0; agents on 5.0 or higher report their own '
+            'statistics over HTTPS instead.'),
     ])
 def test_wazuh_exception_to_string(code, extra_message, extra_remediation, cmd_error, dapi_errors, title , type, exc_string):
     """Check object constructor """

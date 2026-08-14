@@ -40,6 +40,21 @@ def get_real_configuration(test_configuration):
         for key in I:
             real_config[key] = I[key]
 
+    # Since 5.0 the classic <remote> listener options are nested under <legacy>, and the
+    # configuration API returns them as a single object instead of as sibling keys. Collapse
+    # the template's 'legacy' children into the {'value': ...} shape compare_config_api_response
+    # expects, so the whole block is compared against the API's 'legacy' object at once.
+    if "legacy" in real_config:
+        legacy_config = dict()
+        for element in real_config["legacy"].get("elements", []):
+            for key in element:
+                legacy_config[key] = element[key]["value"]
+
+        if legacy_config.get("protocol"):
+            legacy_config["protocol"] = legacy_config["protocol"].split(",")
+
+        real_config["legacy"] = {"value": legacy_config}
+
     if real_config.get("protocol"):
         real_config["protocol"]["value"] = real_config["protocol"]["value"].split(",")
 

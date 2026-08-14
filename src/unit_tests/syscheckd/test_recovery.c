@@ -179,8 +179,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_clear_in_memory_data call
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphan guard: path must still resolve to a config
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/test.txt");
@@ -196,16 +199,17 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     // Schema validator is not initialized (no validation)
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    // Expect asp_persist_diff_in_memory call - validate all parameters
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    // Expect asp_persist_diff call - validate all parameters
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     // Expect asp_sync_module call - return success
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     // Call the function
@@ -240,8 +244,11 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_clear_in_memory_data call
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphan guard: path must still resolve to a config
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/test2.txt");
@@ -257,16 +264,17 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     // Schema validator is not initialized (no validation)
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    // Expect asp_persist_diff_in_memory call - validate all parameters
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    // Expect asp_persist_diff call - validate all parameters
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     // Expect asp_sync_module call - return failure
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, false);
 
     // Call the function
@@ -416,12 +424,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphaned path: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
-    // No build_stateful_event_file / asp_persist_diff_in_memory expectations for the orphan row.
+    // No build_stateful_event_file / asp_persist_diff expectations for the orphan row.
 
     // Live path: config lookup returns non-NULL -> normal pipeline.
     expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
@@ -434,14 +445,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
 
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -555,13 +567,17 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphaned key: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
     expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
     will_return(__wrap_fim_registry_configuration, NULL);
-    // No build_stateful_event_registry_key / asp_persist_diff_in_memory expectations for it.
+    // No build_stateful_event_registry_key / asp_persist_diff expectations for it.
 
     // Live key: config lookup returns non-NULL -> normal pipeline.
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
@@ -575,14 +591,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
 
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);

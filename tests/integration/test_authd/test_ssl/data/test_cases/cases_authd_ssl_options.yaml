@@ -1,116 +1,75 @@
 - name: SSL - Default
-  description: Default ssl configuration
+  description: Default TLS 1.3 configuration, agent connects with an unrestricted client (negotiates the highest mutually supported version, TLS 1.3)
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
+    CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-    protocol: ssl_tlsv1_2
-    error:
+    ciphers: null
+    protocol: ssl_tls
+    error: null
 
-- name: SSL - Wrong ciphers
-  description: Send a message with low encryption cypher suites
+- name: SSL - TLS 1.2 rejected
+  description: wazuh-manager-authd enforces TLS 1.3 as the minimum protocol version; a client offering only TLS 1.2 must be rejected
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
+    CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: open_error
-    input: "OSSEC A:'user1'\n"
-    output:
-    ciphers: CAMELLIA
+    input: null
+    output: null
+    ciphers: null
     protocol: ssl_tlsv1_2
-    error: handshake failure
+    error: alert protocol version
 
-- name: SSL - Incompatible ciphers from Agent
-  description: Send a message with low encryption cypher suites
+- name: SSL - TLS 1.1 rejected
+  description: wazuh-manager-authd enforces TLS 1.3 as the minimum protocol version; a client offering only TLS 1.1 must be rejected
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
+    CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: open_error
-    input:
-    output:
-    ciphers: CAMELLIA
-    protocol: ssl_tlsv1_2
-    error: handshake failure
-
-- name: SSL - Incompatible ciphers from Manager
-  description: Send a message with low encryption cypher suites
-  configuration_parameters:
-    CIPHERS: CAMELLIA
-    SSL_AUTO_NEGOTIATE: 'no'
-  metadata:
-    expect: open_error
-    input:
-    output:
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-    protocol: ssl_tlsv1_2
-    error: handshake failure
-
-- name: SSL - Compatible ciphers from Agent
-  description: Send a message with a compatible yet not default cypher
-  configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
-  metadata:
-    expect: output
-    input: "OSSEC A:'user1'\n"
-    output: OSSEC K:'
-    ciphers: SHA256
-    protocol: ssl_tlsv1_2
-    error:
-
-- name: SSL - Wrong TLS version (TLSV1_1)
-  description: Send a message with a different TLS version with Auto negotiate disabled
-  configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
-  metadata:
-    expect: open_error
-    input:
-    output:
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+    input: null
+    output: null
+    ciphers: null
     protocol: ssl_tlsv1_1
     error: alert protocol version
 
-- name: SSL - Auto Negotiate TLS version (TLSV1_1)
-  description: Send a message with a different TLS version with Auto negotiate enabled
+- name: SSL - Compatible TLS 1.3 ciphersuite from Manager
+  description: Manager configured with a single, non-default TLS 1.3 ciphersuite; agent still connects successfully
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'yes'
+    CIPHERS: "TLS_CHACHA20_POLY1305_SHA256"
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-    protocol: ssl_tlsv1_1
-    error:
+    ciphers: null
+    protocol: ssl_tls
+    error: null
 
-- name: SSL - Compatible ciphers from Manager
-  description: Send a message with a compatible yet not default cypher
+- name: SSL - Incompatible ciphersuite from Manager (CCM)
+  description: >
+    Manager configured to accept only a CCM ciphersuite, which is not part of the default
+    TLS 1.3 offer set of the unrestricted test client (OpenSSL/Python default TLS 1.3
+    ciphersuites are AES-GCM/CHACHA20 only, no CCM). No shared ciphersuite exists, so the
+    handshake must fail even though both sides are TLS 1.3 and the client cert is valid.
   configuration_parameters:
-    CIPHERS: SHA256
-    SSL_AUTO_NEGOTIATE: 'no'
+    CIPHERS: "TLS_AES_128_CCM_SHA256"
   metadata:
-    expect: output
-    input: "OSSEC A:'user1'\n"
-    output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-    protocol: ssl_tlsv1_2
-    error:
+    expect: open_error
+    input: null
+    output: null
+    ciphers: null
+    protocol: ssl_tls
+    error: alert handshake failure
 
 - name: Valid Certificates - Manager verification without host
-  description: Enables CA Certificate and validates that conneciton is acepted when valid certs are provided
+  description: Enables CA Certificate and validates that connection is accepted when valid certs are provided
   configuration_parameters:
-    CIPHERS: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-    SSL_AUTO_NEGOTIATE: 'no'
+    CIPHERS: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
   metadata:
     expect: output
     input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
-    ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
-    protocol: ssl_tlsv1_2
-    error:
+    ciphers: null
+    protocol: ssl_tls
+    error: null

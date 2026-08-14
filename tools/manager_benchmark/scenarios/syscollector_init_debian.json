@@ -1,0 +1,22 @@
+{
+  "name": "syscollector_init_debian",
+  "description": "Linux (Debian) fleet running a syscollector full_resync (initial inventory scan) followed by a checksum reconcile step, to measure the first-scan-plus-verify path.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 600, "size_bytes": 256 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 16000, "lanes": ["syscollector"],
+      "start": { "osname": "Debian GNU/Linux", "osplatform": "debian", "ostype": "linux", "osversion": "12", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

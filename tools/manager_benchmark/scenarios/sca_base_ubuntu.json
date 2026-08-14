@@ -1,0 +1,21 @@
+{
+  "name": "sca_base_ubuntu",
+  "description": "Single Linux (Ubuntu) fleet running a single SCA full_resync (baseline policy scan) with checksums, no follow-up delta.",
+  "mode": "uds",
+  "defaults": {
+    "module": "sca",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "sca": [
+      { "kind": "full_resync", "module": "sca", "indices": ["wazuh-states-sca"],
+        "documents": { "count": 400, "size_bytes": 384 } }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 13000, "lanes": ["sca"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

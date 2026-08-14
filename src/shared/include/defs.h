@@ -88,7 +88,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Notify the manager */
-#define NOTIFY_TIME    20 // ... every 20 seconds
+#define NOTIFY_TIME    10 // ... every 10 seconds
 #define RECONNECT_TIME 60 // Time to reconnect
 
 /* User Configuration */
@@ -120,6 +120,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
 
+/* Stateful sync-session intake (HTTPS agent): a STREAM socket separate from
+ * the DGRAM DEFAULTQUEUE, so whole sync sessions bypass the 64 KB cap. */
+#define SYNCQUEUE "queue/sockets/queue-sync"
+
 // Authd local socket
 #define AUTH_LOCAL_SOCK "queue/sockets/auth"
 
@@ -132,6 +136,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
 #define ANLSYS_ENRICH_SOCK "queue/sockets/queue-http.sock"
+#define INV_SYNC_SOCK      "queue/sockets/inventory-sync.sock"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK       "queue/sockets/control"
@@ -337,6 +342,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default ports */
 #ifndef DEFAULT_REMOTE_PORT
 #define DEFAULT_REMOTE_PORT 1514 /* Default encrypted */
+#endif
+
+#ifndef DEFAULT_HTTPS_REMOTE_PORT
+#define DEFAULT_HTTPS_REMOTE_PORT 1517 /* Default agent HTTPS control port */
 #endif
 
 #ifndef O_CLOEXEC

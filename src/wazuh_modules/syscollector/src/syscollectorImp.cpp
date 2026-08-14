@@ -2288,16 +2288,14 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 }
 
 // Sync protocol methods implementation
-void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                    std::chrono::seconds timeout,
-                                    unsigned int retries,
-                                    size_t maxEps, uint32_t integrityInterval)
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
+                                    uint32_t integrityInterval)
 {
     // Publish the protocols under the exclusive lock so a concurrent reader taking the
     // shared lock sees either a fully constructed protocol or none, never a half-assigned one.
     std::unique_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
 
-    m_dataCleanRetries = retries;  // Same as sync retries for data clean notifications
+    m_dataCleanRetries = 3;  // Fixed default; the transport handles HTTP-level retries.
     m_integrityIntervalValue = integrityInterval;
 
     auto logger_func = [this](modules_log_level_t level, const std::string & msg)
@@ -2313,12 +2311,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     try
     {
         // Initialize regular sync protocol
-        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize VD sync protocol with different module name to avoid routing conflicts
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
@@ -2392,6 +2390,12 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Report it as an expected event, not a WARNING.
                 m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
             }
+            else if (result.awaitingPrerequisite)
+            {
+                // Not a real failure either: the manager hasn't synchronized this agent's groups
+                // yet, most commonly right after enrollment/restart. Expected to clear on its own.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason);
+            }
             else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
                 // The manager is not ready for this agent yet, mostly right after a restart, and the
@@ -2455,6 +2459,14 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             {
                 // Not a real failure: the VD sync was aborted because the module is stopping
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else if (vdResult.awaitingPrerequisite)
+            {
+                // Not a real failure either: no VD feed offset has been received from the manager
+                // yet (via /control), most commonly during the first cycle(s) after an agent
+                // restart, before the first notify round trip completes. Expected to clear on its
+                // own within the next cycle or two.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
             }
             else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {
@@ -4808,7 +4820,16 @@ void Syscollector::runRecoveryProcess()
                     return;
                 }
 
-                m_spSyncProtocol->clearInMemoryData();
+                // Clear the manager's index before resending: a full-replace sync is now a
+                // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL
+                // (which used to make the manager unconditionally deleteByQuery over a
+                // byte-capped/truncated payload and could permanently drop whatever didn't
+                // fit in that one session).
+                if (!m_spSyncProtocol->notifyDataClean({index}))
+                {
+                    m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+                    return;
+                }
 
                 for (const auto& item : items)
                 {
@@ -4831,7 +4852,7 @@ void Syscollector::runRecoveryProcess()
 
                     if (shouldPersist)
                     {
-                        m_spSyncProtocol->persistDifferenceInMemory(
+                        m_spSyncProtocol->persistDifference(
                             calculateHashId(item, tableName),
                             Operation::CREATE,
                             index,
@@ -4841,9 +4862,9 @@ void Syscollector::runRecoveryProcess()
                     }
                 }
 
-                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
+                m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool recoverySucceeded = syncModule(Mode::FULL).success;
+                bool recoverySucceeded = syncModule(Mode::DELTA).success;
 
                 if (recoverySucceeded)
                 {

@@ -18,7 +18,6 @@ typedef enum global_db_access
 {
     WDB_INSERT_AGENT,
     WDB_INSERT_AGENT_GROUP,
-    WDB_UPDATE_AGENT_NAME,
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
@@ -26,7 +25,6 @@ typedef enum global_db_access
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
-    WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
@@ -35,7 +33,6 @@ typedef enum global_db_access
     WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
-    WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_DISCONNECT_AGENTS,
     WDB_GET_DISTINCT_AGENT_GROUP
 } global_db_access;
@@ -71,16 +68,6 @@ int wdb_insert_agent(int id,
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_insert_group(const char* name, int* sock);
-
-/**
- * @brief Update agent name in global.db.
- *
- * @param[in] id The agent ID.
- * @param[in] name The agent name.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_update_agent_name(int id, const char* name, int* sock);
 
 /**
  * @brief Update agent data in global.db.
@@ -158,17 +145,6 @@ int wdb_find_agent(const char* name, const char* ip, int* sock);
  * @return JSON* with the information on success or NULL on failure.
  */
 cJSON* wdb_get_agent_info(int id, int* sock);
-
-/**
- * @brief Get name from agent table in global.db by using its ID.
- *
- * @param[in] id Id of the agent that the name must be selected.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return A string with the agent name on success.
- * @retval "" when the agent is not found.
- * @retval NULL on database failure.
- */
-char* wdb_get_agent_name(int id, int* sock);
 
 /**
  * @brief Get group from agent table in global.db by using its ID.
@@ -286,18 +262,6 @@ int* wdb_disconnect_agents(int keepalive, const char* sync_status, int* sock);
  * @return Returns the agent first registration date.
  */
 time_t get_agent_date_added(int agent_id);
-
-/**
- * @brief Returns an array containing the ID of every agent of the current node (excluding the manager) that matches
- *        the specified connection status, last_id and limit, ended with -1.
- *
- * @param[in] connection_status Filter the query by agent connection status.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @param[in] last_id Filter the query with ids higer than this value.
- * @param[in] limit Limit number of rows returned.
- * @return Returns pointer to the array of agents ids, on success. NULL on errors.
- */
-int* wdb_get_agents_ids_of_current_node(const char* connection_status, int* sock, int last_id, int limit);
 
 /**
  * @brief Returns a JSON array containing the group and group_hash assigned to all agents,

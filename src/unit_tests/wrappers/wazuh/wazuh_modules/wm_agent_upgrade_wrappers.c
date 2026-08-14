@@ -30,10 +30,6 @@ int teardown_hash_table() {
     return 0;
 }
 
-int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_configs* agent_config) {
-    return mock();
-}
-
 void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
     check_expected(manager_configs);
     check_expected(enabled);
@@ -63,98 +59,8 @@ char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_id
     return mock_type(char *);
 }
 
-char* __wrap_wm_agent_upgrade_process_agent_result_command(const int* agent_ids, wm_upgrade_agent_status_task* task) {
-    check_expected_ptr(agent_ids);
-    check_expected_ptr(task);
-
-    return mock_type(char *);
-}
-
-char* __wrap_wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) {
-    check_expected_ptr(agent_ids);
-
-    return mock_type(char *);
-}
-
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
-    check_expected(command);
-
-    cJSON *ret = mock_type(cJSON *);
-    cJSON_AddItemToObject(cJSON_GetObjectItem(ret, task_manager_json_keys[WM_TASK_PARAMETERS]), task_manager_json_keys[WM_TASK_AGENTS], agents_array);
-
-    if (status) check_expected(status);
-    if (error) check_expected(error);
-
-    return ret;
-}
-
-int __wrap_wm_agent_upgrade_task_module_callback(cJSON *json_response, const cJSON* task_module_request) {
-    check_expected(task_module_request);
-
-    cJSON *data = mock_type(cJSON *);
-    if (data) {
-        cJSON_AddItemToArray(json_response, data);
-    }
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_parse_agent_response(const char* agent_response, char **data) {
-    check_expected(agent_response);
-
-    if (data && strchr(agent_response, ' ')) {
-        os_strdup(strchr(agent_response, ' ') + 1, *data);
-    }
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_parse_agent_upgrade_command_response(const char* agent_response, char **data) {
-    check_expected(agent_response);
-
-    if (data) {
-        os_strdup(mock_type(char *), *data);
-    }
-
-    return mock();
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Begin(hash_table, index);
-    }
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Next(hash_table, index, current);
-    }
-}
-
-cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
-    return mock_type(cJSON*);
-}
-
-bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
-    check_expected(input_json);
-    if (status) os_strdup(mock_type(char *), *status);
-    if (agent_id) *agent_id = mock();
-
-    return mock();
-}
-
 int __wrap_wm_agent_upgrade_validate_id(int agent_id) {
     check_expected(agent_id);
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_validate_status(const char* connection_status) {
-    check_expected(connection_status);
 
     return mock();
 }
@@ -183,8 +89,17 @@ int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, const ch
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, __attribute__((unused)) wm_upgrade_task *task, const char *wpk_repository_config) {
+int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) {
     check_expected(wpk_repository_config);
+
+    if (task) {
+        if (!task->wpk_file) {
+            os_strdup("wazuh_agent.wpk", task->wpk_file);
+        }
+        if (!task->wpk_sha1) {
+            os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", task->wpk_sha1);
+        }
+    }
 
     return mock();
 }
@@ -193,24 +108,10 @@ int __wrap_wm_agent_upgrade_validate_wpk(__attribute__((unused)) const wm_upgrad
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_wpk_custom(__attribute__((unused)) const wm_upgrade_custom_task *task) {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task) {
-    check_expected(agent_id);
-
-    char key[128];
-    sprintf(key, "%d", agent_id);
-    OSHash_Add_ex(hash_table, key, ag_task);
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free) {
-    check_expected(agent_id);
-    check_expected(free);
-
+int __wrap_wm_agent_upgrade_validate_wpk_custom(wm_upgrade_custom_task *task) {
+    if (task && !task->wpk_sha1) {
+        os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", task->wpk_sha1);
+    }
     return mock();
 }
 
@@ -231,42 +132,23 @@ cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     check_expected(error_id);
 
     cJSON *ret = mock_type(cJSON*);
-    if (data && (data->type == cJSON_Array)) {
-        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data);
-    } else {
-        cJSON *data_array = cJSON_CreateArray();
-        cJSON_AddItemToArray(data_array, data);
-        cJSON_AddItemToObject(ret, task_manager_json_keys[WM_TASK_DATA], data_array);
+    // Note: The data is typically already embedded in the returned mock JSON
+    // If the mock JSON doesn't have it, we should add it to a "data" field
+    if (ret && data && !cJSON_GetObjectItem(ret, "data")) {
+        if (data->type == cJSON_Array) {
+            cJSON_AddItemToObject(ret, "data", data);
+        } else {
+            cJSON *data_array = cJSON_CreateArray();
+            cJSON_AddItemToArray(data_array, data);
+            cJSON_AddItemToObject(ret, "data", data_array);
+        }
     }
 
     return ret;
-}
-
-bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused__)) const cJSON *input_json, int *agent_id, int *task_id, char** data) {
-    if (agent_id) *agent_id = mock();
-    if (task_id) *task_id = mock();
-    if (data) os_strdup(mock_type(char *), *data);
-
-    return mock();
-}
-
-char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
-    check_expected(command);
-    check_expected(command_size);
-
-    return mock_type(char *);
 }
 
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     check_expected(message_object);
 
     return mock_type(cJSON *);
-}
-
-int __wrap_wm_agent_upgrade_prepare_upgrades() {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_cancel_pending_upgrades() {
-    return mock();
 }

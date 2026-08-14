@@ -295,6 +295,7 @@
 #define AG_TOKEN_FAIL   "(4115): Error trying to get API token with login: %s"
 #define AG_API_ERROR_CODE  "(4116): Unexpected status code in Wazuh agent package uninstallation request: %ld\n"
 #define AG_REQUEST_FAIL    "(4117): Failed validation request to uninstall Wazuh agent package."
+#define AG_INV_SSL_CA      "(4118): <ssl><verification_mode> is not 'none' but <certificate_authorities> is missing or unreadable: '%s'."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -542,8 +543,8 @@
 /* Wait operations */
 #define WAITING_MSG     "Process locked due to agent is offline. Waiting for connection..."
 #define WAITING_FREE    "Agent is now online. Process unlocked, continuing..."
-#define SERVER_UNAV     "Server unavailable. Setting lock."
-#define SERVER_UP       "Server responded. Releasing lock."
+#define SERVER_UNAV     "Manager unreachable. Pausing module event production."
+#define SERVER_UP       "Manager reachable again. Resuming module event production."
 #define LOCK_RES        "Agent auto-restart locked for %ld seconds."
 
 /* Buffer alerts */

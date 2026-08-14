@@ -24,18 +24,6 @@ int __wrap_auth_connect() {
     return mock();
 }
 
-int __wrap_w_request_agent_add_clustered(__attribute__((unused)) char *err_response,
-                                         __attribute__((unused)) const char *name,
-                                         __attribute__((unused)) const char *ip,
-                                         __attribute__((unused)) const char *groups,
-                                         __attribute__((unused)) const char *key_hash,
-                                         __attribute__((unused)) char **id,
-                                         __attribute__((unused)) char **key,
-                                         __attribute__((unused)) const int force,
-                                         __attribute__((unused)) const char *agent_id) {
-    return mock();
-}
-
 char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
     return mock_type(char*);
 }
@@ -63,15 +51,6 @@ int __wrap_w_send_clustered_message(const char* command, const char* payload, ch
     return mock();
 }
 
-int __wrap_getsockname(int fd, struct sockaddr* addr, __attribute__((unused)) socklen_t* len) {
-    int ret = -1;
-    if(fd) {
-        ret = mock();
-        addr->sa_family = mock();
-    }
-    return ret;
-}
-
 bool __wrap_w_query_agentd(const char *module, const char *query, char *output, size_t output_size) {
     check_expected(module);
     check_expected(query);
@@ -82,9 +61,5 @@ bool __wrap_w_query_agentd(const char *module, const char *query, char *output, 
         output[output_size - 1] = '\0';
     }
 
-    return mock_type(bool);
-}
-
-bool __wrap_fetch_document_limits_from_agentd() {
     return mock_type(bool);
 }

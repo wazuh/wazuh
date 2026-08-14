@@ -5,5 +5,7 @@
   sections:
     - section: remote
       elements:
-        - port:
-            value: 1514
+        - legacy:
+            elements:
+              - port:
+                  value: 1514

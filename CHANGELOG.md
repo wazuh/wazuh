@@ -6,6 +6,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38260](https://github.com/wazuh/wazuh/issues/38260) | Added HTTPS communication between Wazuh agents and the manager: a new HTTPS transport, protocol, and control plane (connection, configuration, statistics, task dispatch, remote upgrade, and event ingestion) replacing the legacy MQ/DGRAM-based agent-manager protocol end to end. |
 | [#31295](https://github.com/wazuh/wazuh/issues/31295) | Added cluster-by-default deployment model: all Wazuh Server installations now run as a cluster node, removing the distinction between clustered and non-clustered deployments. The `cluster.disabled` configuration option has been removed. |
 | [#33269](https://github.com/wazuh/wazuh/issues/33269) | Added stateless metadata enrichment in `remoted`, centralizing event metadata handling for stateless messages and removing the dependency on `wazuh-db` for that ingestion path. |
 | [#33493](https://github.com/wazuh/wazuh/issues/33493) | Added Engine enrichment support: IOC matching, GeoIP lookup, and event filters. |
@@ -16,6 +17,10 @@
 | [#35579](https://github.com/wazuh/wazuh/issues/35579) | Added manager watermarks. |
 | [#37052](https://github.com/wazuh/wazuh/issues/37052) | Added byte-based capacity limits to wazuh-manager-remoted. |
 | [#37706](https://github.com/wazuh/wazuh/issues/37706) | Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. |
+| [#38023](https://github.com/wazuh/wazuh/issues/38023) | Added the `POST /config` HTTPS endpoint, which receives an agent's reported configuration and indexes it into `wazuh-agent-config`. |
+| [#38024](https://github.com/wazuh/wazuh/issues/38024) | Added the `POST /stats` HTTPS endpoint, which persists the statistics an agent reports as one document per agent in the `wazuh-agent-stats` index, replacing the previous report on every push. |
+| [#38007](https://github.com/wazuh/wazuh/issues/38007) | Added legacy `remote_upgrade` task delivery in `remoted`: a polling thread pushes pending Task Manager tasks to connected agents older than v5.0.0 over their existing session using the legacy six-step WPK push, gated on `remoted`'s HTTPS `verification_mode`. |
+| [#38157](https://github.com/wazuh/wazuh/issues/38157) | Added installation-time variables to customize the default `<remote>` configuration on source, DEB, and RPM manager installations. |
 
 #### Changed
 
@@ -35,6 +40,7 @@
 | [#36805](https://github.com/wazuh/wazuh/issues/36805) | Randomized the cluster key generated during manager installation instead of using a hardcoded default. |
 | [#36311](https://github.com/wazuh/wazuh/issues/36311) | Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. |
 | [#36705](https://github.com/wazuh/wazuh/issues/36705) | Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. |
+| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
 
@@ -49,6 +55,7 @@
 | [#31299](https://github.com/wazuh/wazuh/issues/31299) | Removed inventory-related API endpoints. |
 | [#28425](https://github.com/wazuh/wazuh/issues/28425) | Removed legacy API security configuration endpoints. |
 | [#35908](https://github.com/wazuh/wazuh/issues/35908) | Removed SELinux integration from the manager. |
+| [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
 
 #### Fixed
 
@@ -68,11 +75,14 @@
 | Issue | Comment |
 |-------|---------|
 | [#29533](https://github.com/wazuh/wazuh/issues/29533) [#31838](https://github.com/wazuh/wazuh/issues/31838) | Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. |
+| [#37828](https://github.com/wazuh/wazuh/issues/37828) [#37830](https://github.com/wazuh/wazuh/issues/37830) [#37832](https://github.com/wazuh/wazuh/issues/37832) [#37833](https://github.com/wazuh/wazuh/issues/37833) [#37834](https://github.com/wazuh/wazuh/issues/37834) [#37835](https://github.com/wazuh/wazuh/issues/37835) [#37836](https://github.com/wazuh/wazuh/issues/37836) | Added an agent HTTPS client covering the `/control` lifecycle, the `/stateless` and `/stateful` data planes, `/download` for centralized configuration and WPK packages, task dispatch with durable deduplication, and remote upgrade, with AES-CMAC request signing and fail-closed TLS validation. |
+| [#37843](https://github.com/wazuh/wazuh/issues/37843) | Added periodic `/stats` and `/config` push, reporting every module's statistics and configuration in a single aggregated document per endpoint, behind two `ossec.conf` toggles that are off by default. |
 
 #### Changed
 
 | Issue | Comment |
 |-------|---------|
+| [#37831](https://github.com/wazuh/wazuh/issues/37831) | Changed the agent transport to HTTPS for all server communication, removing the legacy TCP data path and its internal-option fallback. |
 | [#33378](https://github.com/wazuh/wazuh/issues/33378) | Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. |
 | [#34849](https://github.com/wazuh/wazuh/issues/34849) | Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. |
 | [#33199](https://github.com/wazuh/wazuh/issues/33199) | Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. |
@@ -89,6 +99,7 @@
 |-------|---------|
 | [#30435](https://github.com/wazuh/wazuh/issues/30435) | Removed deprecated agent binaries and legacy modules as part of the Wazuh 5.0 agent cleanup. |
 | [#31582](https://github.com/wazuh/wazuh/issues/31582) | Removed NSIS-based Windows agent installer; Windows agent now ships exclusively as an MSI package. |
+| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Removed the `<enrollment><auto_method>` option; enrollment now always requires TLS 1.3, so there is nothing left for it to negotiate down to. The `ssl_cipher` option now expects a TLS 1.3 ciphersuite list instead of an OpenSSL cipher-list string. |
 
 #### Fixed
 
@@ -121,4 +132,5 @@
 | [#37543](https://github.com/wazuh/wazuh/issues/37543) | Fixed agent-info module caching cluster_name, cluster_node, and agent_groups from a one-time handshake at startup, causing stale values in `agent_metadata` until the agent process restarted. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failure on shutdown, which logged "Invalid handle value", crashed the process and left a stale PID file. |
+| [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
 

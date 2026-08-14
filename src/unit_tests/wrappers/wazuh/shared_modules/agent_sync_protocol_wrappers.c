@@ -12,20 +12,11 @@
 __attribute__((weak)) void __wrap_asp_sync_module_hook(void) {
 }
 
-AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger, unsigned int sync_end_delay, unsigned int timeout, unsigned int retries, size_t max_eps) {
+AgentSyncProtocolHandle* __wrap_asp_create(const char* module, const char* db_path, asp_logger_t logger) {
     check_expected_ptr(module);
-    (void)mq_funcs;
     (void)db_path;
     (void)logger;
-    check_expected(sync_end_delay);
-    check_expected(timeout);
-    check_expected(retries);
-    check_expected(max_eps);
     return mock_ptr_type(AgentSyncProtocolHandle*);
-}
-
-void __wrap_asp_destroy(AgentSyncProtocolHandle* handle) {
-    check_expected_ptr(handle);
 }
 
 void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
@@ -52,18 +43,6 @@ SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return result;
 }
 
-void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
-                                       const char* id,
-                                       int operation,
-                                       const char* index,
-                                       const char* data) {
-    check_expected_ptr(handle);
-    check_expected_ptr(id);
-    check_expected(operation);
-    check_expected_ptr(index);
-    check_expected_ptr(data);
-}
-
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
                                    const char* checksum) {
@@ -78,19 +57,6 @@ bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uin
     check_expected_ptr(data);
     check_expected(length);
     return mock_type(bool);
-}
-
-void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle) {
-    check_expected_ptr(handle);
-}
-
-SyncModuleResult_t __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                                      int mode) {
-    check_expected_ptr(handle);
-    check_expected(mode);
-    SyncModuleResult_t result = {0};
-    result.success = mock_type(bool);
-    return result;
 }
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,

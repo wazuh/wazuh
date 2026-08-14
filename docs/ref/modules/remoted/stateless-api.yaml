@@ -1,0 +1,259 @@
+openapi: 3.0.3
+
+info:
+  title: Wazuh Manager Stateless Events API (remoted HTTPS)
+  version: 0.1.0-experimental
+  description: |
+    HTTPS endpoint exposed by `wazuh-manager-remoted` for agent-authenticated event ingestion.
+
+    **Experimental / work in progress.** On a valid request the endpoint forwards the H/E batch to
+    the engine's event ingress over a Unix-domain socket and answers from the downstream result
+    (`202` accepted / `400` bad batch / `413` / `503`). The listener also only runs when a TLS
+    certificate and key are present on disk.
+
+    All requests MUST use HTTP/1.1 over TLS (>= 1.2). Requests are authenticated with AES-CMAC and
+    the agent's pre-shared AES key; the key is never transmitted. The MAC covers the protocol
+    version, HTTP method, request target, agent id, timestamp and the exact request body.
+
+servers:
+  - url: https://127.0.0.1:1517
+    description: Default local bind (configurable via <remote><https>)
+
+tags:
+  - name: Events
+    description: Event ingestion endpoints
+  - name: Health
+    description: Liveness probe
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      operationId: healthProbe
+      summary: Health probe (unauthenticated)
+      description: Returns a small JSON object indicating the module is up. No authentication.
+      responses:
+        "200":
+          description: The module is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  module: { type: string, example: remoted }
+
+  /stateless:
+    post:
+      tags: [Events]
+      operationId: ingestStatelessEvents
+      summary: Ingest stateless events (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
+      description: |
+        Accepts a batch of events using the Wazuh H/E wire protocol.
+
+        The request MUST include:
+
+        ```text
+        protocol-version: 1
+        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        ```
+
+        `mac` is the complete AES-CMAC (16 bytes, 32 lowercase hex chars) computed over the
+        following byte sequence (each line break is a single LF, `0x0A`):
+
+        ```text
+        WAZUH-REQUEST\n
+        <protocol-version>\n
+        <uppercase-method>\n
+        <request-target>\n
+        <agent-id>\n
+        <timestamp>\n
+        <request-body>
+        ```
+
+        The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
+        reordering, no normalization). The body is authenticated using its exact bytes -- the exact
+        bytes as sent on the wire, i.e. the **compressed** bytes if `Content-Encoding: zstd` is set.
+        The timestamp must be within 300 s in the past and 30 s in the future.
+
+        The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
+        only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
+        decompressing anything. Both the decoder's own buffers (sized from the frame header, so each
+        frame accounts for exactly what it needs) and the decompressed output (tracked incrementally
+        as it is produced) are charged against the server's live in-flight memory capacity -- so a
+        `413` here means the frame didn't fit in the capacity free at that moment, and a
+        highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
+        value other than `zstd` is rejected with `415`; a missing header is treated as an
+        uncompressed body, unchanged from today.
+
+        Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
+        (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
+        `agent-id`; a missing/malformed H line, a non-numeric `wazuh.agent.id`, or a mismatch is
+        rejected with `400 Invalid event batch` (`PayloadAgentMismatch`) and the batch is never
+        forwarded. Once that check passes, the module forwards the exact request body to the
+        engine's event ingress over a Unix-domain socket; the engine validates the H/E batch and a
+        bad batch surfaces as the same `400 Invalid event batch`.
+      requestBody:
+        required: true
+        content:
+          "*/*":
+            schema:
+              type: string
+              minLength: 1
+              description: |
+                Request payload. Authentication is independent of Content-Type; the exact wire bytes
+                (compressed, if `Content-Encoding: zstd` is set) are included in the AES-CMAC
+                calculation. The decompressed H/E batch is forwarded verbatim to the engine.
+            examples:
+              singleLineEvents:
+                summary: H/E batch (two events)
+                value: |-
+                  H {"wazuh":{"agent":{"id":"001","name":"srv1"}}}
+                  E 1:/var/log/syslog:May 07 10:00:00 srv1 sshd: Accepted publickey
+                  E 2:/var/log/auth.log:session opened for user root
+      responses:
+        "202":
+          description: |
+            Request authenticated and forwarded to the engine's event ingress, which accepted and
+            enqueued the batch. The response body is empty. Acceptance means the events were enqueued
+            for processing, NOT that they were fully processed.
+        "400":
+          description: |
+            Either the `protocol-version` header is missing/unsupported, the payload's
+            `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
+            missing/malformed/non-numeric), `Content-Encoding: zstd` is set but the body isn't a
+            valid/complete zstd frame, or the downstream engine rejected the forwarded H/E batch as
+            invalid. The middle two share the same `Invalid event batch` message by design.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                missingProtocolVersion:
+                  value: { error: "Missing required header: protocol-version", code: 400 }
+                unsupportedProtocolVersion:
+                  value: { error: "Unsupported protocol-version", code: 400 }
+                invalidEventBatch:
+                  summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
+                  value: { error: "Invalid event batch", code: 400 }
+                malformedContentEncoding:
+                  summary: "Content-Encoding: zstd set, but the body isn't a valid zstd frame"
+                  value: { error: "Malformed compressed body", code: 400 }
+        "401":
+          description: |
+            Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
+            header, an unknown agent, an unusable key, an out-of-window timestamp and an invalid MAC
+            all return the same response so the specific reason is not exposed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidAuthentication:
+                  value: { error: "Invalid client authentication", code: 401 }
+        "413":
+          description: |
+            The request body exceeds the configured auth body limit (10 MiB). For
+            `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
+            in-flight memory capacity -- either the decoder's buffers (refused up front, from the
+            frame header) or the decompressed output as it was produced. Retryable: the same request
+            may succeed once the server is less loaded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                payloadTooLarge:
+                  value: { error: "Request payload is too large", code: 413 }
+        "415":
+          description: |
+            `Content-Encoding` is present but not (case-insensitively) `zstd`. `gzip` is not
+            supported.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                unsupportedContentEncoding:
+                  value: { error: "Unsupported Content-Encoding", code: 415 }
+        "503":
+          description: |
+            The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
+            many requests are already parked awaiting the downstream service), or the downstream engine
+            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
+            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
+        "500":
+          description: Unexpected internal error while handling the request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                internalError:
+                  value: { error: "Internal server error", code: 500 }
+
+components:
+  securitySchemes:
+    WazuhAuthentication:
+      type: http
+      scheme: Wazuh
+      description: |
+        AES-CMAC authentication with a pre-shared per-agent AES key.
+
+        ```text
+        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        ```
+
+        - `agent-id`: `A-Z a-z 0-9 . _ -`
+        - `timestamp`: UNIX seconds (window: -300 s .. +30 s)
+        - `mac`: 16-byte AES-CMAC, 32 lowercase hex characters
+
+        The key is selected by `agent-id` from `client.keys` and is never sent in the request.
+
+  parameters:
+    ProtocolVersion:
+      name: protocol-version
+      in: header
+      required: true
+      description: Version of the Wazuh request authentication protocol. Only `1` is supported.
+      schema:
+        type: string
+        enum: ["1"]
+      example: "1"
+
+    ContentEncoding:
+      name: Content-Encoding
+      in: header
+      required: false
+      description: |
+        Optional compression applied to the request body. Only `zstd` is supported (case-insensitive);
+        any other value is rejected with `415`. Omit the header to send an uncompressed body.
+      schema:
+        type: string
+        enum: ["zstd"]
+      example: "zstd"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          minLength: 1
+          description: Human-readable error message.
+          example: "Invalid client authentication"
+        code:
+          type: integer
+          format: int32
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+          example: 401

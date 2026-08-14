@@ -324,7 +324,10 @@ int OS_MoveFile(const char *src, const char *dst);
  *
  * @param src Source path.
  * @param dst Destination path.
- * @param mode Mode: `a` to append, `w` to write.
+ * @param mode Mode: `a` to append (text), `w` to write (text), `b` to write in
+ * binary mode (exact byte copy -- required on Windows whenever the copied
+ * content's exact bytes matter downstream, e.g. a hash computed over it;
+ * text mode there silently rewrites `\n` as `\r\n`).
  * @param message Write message to the destination file.
  * @param silent Do not show errors.
  * @return 0 on success and -1 on error.

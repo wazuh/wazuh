@@ -26,13 +26,22 @@ int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
 }
 
 int __wrap_getDefine_Int_default(__attribute__((unused)) const char *high_name,
-                                 __attribute__((unused)) const char *low_name,
-                                 __attribute__((unused)) int min,
-                                 __attribute__((unused)) int max,
-                                 __attribute__((unused)) int default_val) {
+                                 const char *low_name,
+                                 int min,
+                                 int max,
+                                 int default_val) {
     // For SCA
     if (!strcmp(low_name, "commands_timeout")) {
         return 300;
+    }
+
+    // Some options need tests to assert the exact min/max/default arguments
+    // passed in, since clamp/reject behavior lives in the real (unmocked)
+    // getDefine_Int_default, not in this wrapper.
+    if (!strcmp(low_name, "legacy_task_polling_interval")) {
+        check_expected(min);
+        check_expected(max);
+        check_expected(default_val);
     }
 
     return mock();
@@ -64,11 +73,6 @@ int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size) {
 int __wrap_OS_ExpandIPv6(char *ip_address, size_t size) {
     check_expected(ip_address);
     check_expected(size);
-    return mock();
-}
-
-int __wrap_OS_IPFoundList(const char *ip_address, __attribute__((unused)) os_ip **list_of_ips) {
-    check_expected(ip_address);
     return mock();
 }
 

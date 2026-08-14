@@ -1,0 +1,25 @@
+{
+  "name": "contract_delete_under_load",
+  "description": "Contract test for agent deletion mid-session: one lane runs a sustained syscollector delta load while a second lane deletes the agent 10s in, exercising delete-while-syncing on the uds path.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 30 }, "repeat_count": 30, "repeat_delay": "1s" }
+    ],
+    "delete": [
+      { "kind": "delete_agent", "initial_delay": "10s" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 4, "first_id": 29000, "lanes": ["syscollector", "delete"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" },
+  "expected": { "sessions": { "ok": { "eq": 120 } }, "deletes": { "ok": { "eq": 4 }, "err": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}

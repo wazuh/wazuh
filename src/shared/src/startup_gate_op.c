@@ -131,9 +131,13 @@ void startup_gate_wait_for_ready(const char *module_name) {
 
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
         if (got_status && ready) {
-            if (waiting_logged) {
-                mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
-            }
+            /* Log unconditionally, not just when a prior "blocking" line was
+             * logged: a hash-match release can beat this module's very first
+             * poll, in which case waiting_logged is still false here even
+             * though the module was genuinely gated an instant earlier -- the
+             * gate release itself is real either way, only the audit trail
+             * for it was missing. */
+            mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
             return;
         }
 

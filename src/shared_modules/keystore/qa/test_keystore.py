@@ -6,15 +6,11 @@ from subprocess import Popen, PIPE
 import logging
 import os
 import pytest
-import trustme
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 KEYSTORE_BINARY = "./wazuh-manager-keystore"
 KEYSTORE_TESTTOOL_BINARY = "./wazuh-keystore-testtool"
-CERTS_PATH = 'etc/'
-PRIVATE_KEY_FILE = "etc/sslmanager.key"
-CERTIFICATE_FILE ="etc/sslmanager.cert"
 KEYSTORE_DB_PATH = "queue/keystore"
 
 # Helper methods
@@ -117,27 +113,15 @@ def clear_password():
 
 @pytest.fixture(autouse=True, scope='session')
 def setup_teardown():
-    """ Setup and teardown for all tests. The self-signed certificates are created before the tests, and removed after them.
-        Also, the keystore is removed.
-    """
+    """ Setup and teardown for all tests. The keystore database is removed after them. """
     # Setup
 
     # Move to root folder
     os.chdir(Path(__file__).parent.parent.parent.parent)
-    # Create certs path
-    os.makedirs(CERTS_PATH, exist_ok=True)
-
-    # Create self-signed certs
-    ca = trustme.CA(key_type=trustme.KeyType.RSA)
-    server_cert = ca.issue_cert("test-host.example.org", key_type=trustme.KeyType.RSA)
-    server_cert.private_key_pem.write_to_path(PRIVATE_KEY_FILE)
-    server_cert.cert_chain_pems[0].write_to_path(CERTIFICATE_FILE)
 
     yield
 
     # Teardown
-    os.remove(CERTIFICATE_FILE)
-    os.remove(PRIVATE_KEY_FILE)
     os.system(f"rm -rf {KEYSTORE_DB_PATH}")
 
 # Tests

@@ -16,11 +16,38 @@
 #include "remoted_op.h"
 #include "state.h"
 #include "wazuhdb_queries_op.h"
-#include "router.h"
 #include "sym_load.h"
+#include "remoted_module.h"
 #include "indexed_queue_op.h"
 #include "batch_queue_op.h"
 #include "http_op.h"
+#include "legacy_task_delivery.h"
+
+// REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
+// (remoted_module.h) are two independently-maintained mirrors of the same values, since
+// the config parser and the C++ module don't share a header. rm_config.verification_mode
+// below copies one directly into the other with no translation, so a silent reorder of
+// either enum would misconfigure TLS client-certificate verification without any build
+// failure to catch it -- this is the only place both headers are already included together.
+_Static_assert(REMOTED_HTTPS_VERIFY_UNSET == REMOTED_MODULE_HTTPS_VERIFY_UNSET,
+               "REMOTED_HTTPS_VERIFY_UNSET must match REMOTED_MODULE_HTTPS_VERIFY_UNSET");
+_Static_assert(REMOTED_HTTPS_VERIFY_NONE == REMOTED_MODULE_HTTPS_VERIFY_NONE,
+               "REMOTED_HTTPS_VERIFY_NONE must match REMOTED_MODULE_HTTPS_VERIFY_NONE");
+_Static_assert(REMOTED_HTTPS_VERIFY_CERTIFICATE == REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE,
+               "REMOTED_HTTPS_VERIFY_CERTIFICATE must match REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE");
+_Static_assert(REMOTED_HTTPS_VERIFY_FULL == REMOTED_MODULE_HTTPS_VERIFY_FULL,
+               "REMOTED_HTTPS_VERIFY_FULL must match REMOTED_MODULE_HTTPS_VERIFY_FULL");
+
+// Same reasoning as above, for REMOTED_HTTPS_DUAL_STACK_* / REMOTED_MODULE_HTTPS_DUAL_STACK_*:
+// rm_config.dual_stack copies one directly into the other with no translation, so a silent
+// reorder of either enum would misconfigure the IPV6_V6ONLY socket option without any build
+// failure to catch it.
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_UNSET == REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET,
+               "REMOTED_HTTPS_DUAL_STACK_UNSET must match REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_YES == REMOTED_MODULE_HTTPS_DUAL_STACK_YES,
+               "REMOTED_HTTPS_DUAL_STACK_YES must match REMOTED_MODULE_HTTPS_DUAL_STACK_YES");
+_Static_assert(REMOTED_HTTPS_DUAL_STACK_NO == REMOTED_MODULE_HTTPS_DUAL_STACK_NO,
+               "REMOTED_HTTPS_DUAL_STACK_NO must match REMOTED_MODULE_HTTPS_DUAL_STACK_NO");
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -64,15 +91,21 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+
+// Read the remoted.http_* internal options into the C++ module's config struct
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
+
+// Build limits JSON from manager_module_limits (only the limits object, not cluster/groups)
+STATIC char* build_limits_json(const module_limits_t *limits);
+
+// Read control endpoint internal options into the C++ module's config struct
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config);
 
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
@@ -86,8 +119,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define DBSYNC_HEADER "5:"
 #define DBSYNC_HEADER_SIZE 2
 
-// Router message forwarder - returns true if message was forwarded to router
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id);
+// Detects (and logs) legacy agent messages the 5.x manager no longer processes.
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -97,6 +130,16 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
+
+/**
+ * @brief maps logr's <remote><https> config, the `remoted.http_*` internal options,
+ *        and the memory-management constants onto the C-ABI struct handed to the C++
+ *        remoted_module
+ *
+ * @param logr remoted configuration structure (source)
+ * @param rm_config destination struct; fully zeroed and populated on return
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -204,6 +247,194 @@ typedef struct {
     w_rr_queue_t      *events_queue;      // round robbin event ring
 } rem_handler_args_t;
 
+/**
+ * @brief Read the C++ module's tunable settings (`remoted.*` internal options: HTTP
+ *        transport, memory-management, downstream client, and auth middleware) into
+ *        the config struct passed to remoted_module_start().
+ */
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
+    // io_threads/http_worker_threads: min+default 0 (not 1) so an unset option flows through as a
+    // real 0 -- the C++ side resolves 0 via cpp_get_nproc() instead of a fixed constant.
+    rm_config->io_threads = getDefine_Int_default("remoted", "http_io_threads", 0, 64, 0);
+    rm_config->http_worker_threads = getDefine_Int_default("remoted", "http_worker_threads", 0, 256, 0);
+    rm_config->http_read_timeout = getDefine_Int_default("remoted", "http_read_timeout", 1, 300, 10);
+    rm_config->http_write_timeout = getDefine_Int_default("remoted", "http_write_timeout", 1, 300, 10);
+    rm_config->http_request_timeout = getDefine_Int_default("remoted", "http_request_timeout", 1, 600, 30);
+    rm_config->http_max_url_size = getDefine_Int_default("remoted", "http_max_url_size", 1, 65536, 2048);
+    rm_config->http_max_header_name_size = getDefine_Int_default("remoted", "http_max_header_name_size", 1, 8192, 256);
+    rm_config->http_max_header_value_size = getDefine_Int_default("remoted", "http_max_header_value_size", 1, 65536, 8192);
+    rm_config->http_max_header_count = getDefine_Int_default("remoted", "http_max_header_count", 1, 1024, 64);
+    rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
+    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
+    rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+    // Bytes per chunk when streaming a response body (POST /download). Bounded at 1 MiB because
+    // this is per IN-FLIGHT TRANSFER: the worst case is roughly this times the number of
+    // simultaneous downloads, so a large value trades memory for fewer read/write round trips.
+    rm_config->http_stream_chunk_size = getDefine_Int_default("remoted", "http_stream_chunk_size", 4096, 1048576, 65536);
+    rm_config->http_content_encoding_enabled =
+        getDefine_Int_default("remoted", "http_content_encoding_enabled", 0, 1, 1);
+
+    // Memory-management (backpressure) tunables. These bound in-memory resource usage rather
+    // than tune the transport itself; the C++ side still clamps max_inflight_bytes up to at
+    // least one max-size request at start(), so a too-small value can't reject everything.
+    // max_inflight_bytes caps the HTTPS server's in-flight (unprocessed) request payload
+    // before it sheds load with 503. NOT logr->queue_size (that is an event COUNT, not bytes).
+    rm_config->max_inflight_bytes =
+        getDefine_Int_default("remoted", "max_inflight_bytes", 1048576, 1073741824, 268435456);
+    // max_parallel_connections caps simultaneous HTTPS connections, bounding the read-phase
+    // memory peak (~ max_parallel_connections * max body size). It is also the ONLY bound on
+    // concurrent streamed responses (POST /download): chunked output rearms http_write_timeout
+    // per chunk, so a client that keeps reading slowly can hold a transfer open indefinitely.
+    // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
+    // bounded only by this value, which is why it is settable rather than fixed.
+    rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 512);
+    // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
+    // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+    rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 256);
+
+    // Downstream (async UDS client to the engine's event ingress) tunables.
+    rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
+    rm_config->downstream_write_timeout = getDefine_Int_default("remoted", "downstream_write_timeout", 1, 300, 5);
+    rm_config->downstream_response_timeout = getDefine_Int_default("remoted", "downstream_response_timeout", 1, 300, 5);
+    // /stateful gets its own (longer) response deadline: a sync session is indexed and flushed
+    // within the request. The default (2+5+20 s) deliberately stays inside http_request_timeout's
+    // default (30 s); raising this past that also requires raising remoted.http_request_timeout
+    // (the module warns at startup otherwise).
+    rm_config->downstream_stateful_response_timeout =
+        getDefine_Int_default("remoted", "downstream_stateful_response_timeout", 1, 3600, 20);
+    rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
+    rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
+    rm_config->downstream_max_response_body_size =
+        getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
+
+    // Auth middleware (AES-CMAC request verification) tunables.
+    rm_config->auth_max_request_age = getDefine_Int_default("remoted", "auth_max_request_age", 1, 3600, 300);
+    rm_config->auth_max_future_skew = getDefine_Int_default("remoted", "auth_max_future_skew", 1, 300, 30);
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
+}
+
+/**
+ * @brief Build the config struct passed to remoted_module_start(), combining the
+ *        `remoted.http_*` internal options (see remoted_module_https_config()) with
+ *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
+ *        constants that are deliberately not internal options. Extracted out of
+ *        HandleSecure() so it's unit-testable without starting the module.
+ */
+STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config) {
+    memset(rm_config, 0, sizeof(*rm_config));
+
+    // rm_config->port is the HTTPS listening port -- unrelated to logr->port (remoted's
+    // own classic TCP/UDP port, already bound by the time we get here). Populated
+    // from <remote><https> when configured; otherwise left at 0 so the module falls
+    // back to its own default.
+    rm_config->port = logr->https.port;
+    remoted_module_https_config(rm_config);
+    rm_config->keystore_refresh_interval = keyupdate_interval;
+    rm_config->worker_node = logr->worker_node;
+    rm_config->verification_mode = logr->https.verification_mode;
+    rm_config->http_max_body_size = logr->https.max_body_size;
+    rm_config->dual_stack = logr->https.dual_stack;
+
+    if (logr->https.bind_addr) {
+        snprintf(rm_config->bind_address, sizeof(rm_config->bind_address), "%s", logr->https.bind_addr);
+    }
+
+    if (logr->https.certificate) {
+        snprintf(rm_config->certificate_path, sizeof(rm_config->certificate_path), "%s", logr->https.certificate);
+    }
+
+    if (logr->https.key) {
+        snprintf(rm_config->private_key_path, sizeof(rm_config->private_key_path), "%s", logr->https.key);
+    }
+
+    if (logr->https.ca) {
+        snprintf(rm_config->ca_path, sizeof(rm_config->ca_path), "%s", logr->https.ca);
+    }
+
+    if (logr->https.ciphers) {
+        snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
+    }
+}
+
+STATIC char* build_limits_json(const module_limits_t *limits) {
+    if (!limits) {
+        return NULL;
+    }
+
+    cJSON *limits_obj = cJSON_CreateObject();
+    if (!limits_obj) {
+        return NULL;
+    }
+
+    /* FIM limits */
+    cJSON *fim = cJSON_CreateObject();
+    if (fim) {
+        cJSON_AddNumberToObject(fim, "file", limits->fim.file);
+        cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
+        cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
+        cJSON_AddItemToObject(limits_obj, "fim", fim);
+    }
+
+    /* Syscollector limits */
+    cJSON *syscollector = cJSON_CreateObject();
+    if (syscollector) {
+        cJSON_AddNumberToObject(syscollector, "hotfixes", limits->syscollector.hotfixes);
+        cJSON_AddNumberToObject(syscollector, "packages", limits->syscollector.packages);
+        cJSON_AddNumberToObject(syscollector, "processes", limits->syscollector.processes);
+        cJSON_AddNumberToObject(syscollector, "ports", limits->syscollector.ports);
+        cJSON_AddNumberToObject(syscollector, "network_iface", limits->syscollector.network_iface);
+        cJSON_AddNumberToObject(syscollector, "network_protocol", limits->syscollector.network_protocol);
+        cJSON_AddNumberToObject(syscollector, "network_address", limits->syscollector.network_address);
+        cJSON_AddNumberToObject(syscollector, "hardware", limits->syscollector.hardware);
+        cJSON_AddNumberToObject(syscollector, "os_info", limits->syscollector.os_info);
+        cJSON_AddNumberToObject(syscollector, "users", limits->syscollector.users);
+        cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
+        cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
+        cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
+        cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
+    }
+
+    /* SCA limits */
+    cJSON *sca = cJSON_CreateObject();
+    if (sca) {
+        cJSON_AddNumberToObject(sca, "checks", limits->sca.checks);
+        cJSON_AddItemToObject(limits_obj, "sca", sca);
+    }
+
+    char *json_str = cJSON_PrintUnformatted(limits_obj);
+    cJSON_Delete(limits_obj);
+
+    return json_str;
+}
+
+STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
+    snprintf(rm_config->manager_version, sizeof(rm_config->manager_version), "%s", __wazuh_version);
+    rm_config->allow_higher_versions = logr.allow_higher_versions;
+
+    rm_config->groups_refresh_interval_sec = getDefine_Int_default("remoted", "control_groups_refresh_interval", 1, 3600, 60);
+    rm_config->wdb_request_connections = getDefine_Int_default("remoted", "control_wdb_request_connections", 1, 64, 4);
+    rm_config->wdb_roundtrip_deadline_ms = getDefine_Int_default("remoted", "control_wdb_roundtrip_deadline", 100, 30000, 2000);
+    rm_config->wdb_max_queue_size = getDefine_Int_default("remoted", "control_wdb_max_queue_size", 100, 1000000, 10000);
+    rm_config->tm_concurrency = getDefine_Int_default("remoted", "control_tm_concurrency", 1, 64, 4);
+    rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
+    rm_config->tm_max_queue_size = getDefine_Int_default("remoted", "control_tm_max_queue_size", 100, 1000000, 10000);
+
+    extern module_limits_t manager_module_limits;
+    extern bool manager_module_limits_enabled;
+
+    if (manager_module_limits_enabled) {
+        char *limits_json = build_limits_json(&manager_module_limits);
+        if (limits_json) {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "%s", limits_json);
+            os_free(limits_json);
+        } else {
+            snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+        }
+    } else {
+        snprintf(rm_config->limits_json, sizeof(rm_config->limits_json), "{}");
+    }
+}
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -211,6 +442,7 @@ void HandleSecure()
     int n_events = 0;
 
     agent_metadata_init();
+    legacy_task_delivery_init();
 
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
@@ -229,15 +461,6 @@ void HandleSecure()
 
     /* Global stats uptime */
     remoted_state.uptime = time(NULL);
-
-    /* Create OSHash for agents statistics */
-    remoted_agents_state = OSHash_Create();
-    if (!remoted_agents_state) {
-        merror_exit(HASH_ERROR);
-    }
-    if (!OSHash_setSize(remoted_agents_state, 2048)) {
-        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
-    }
 
     /* Initialize manager */
     manager_init();
@@ -264,8 +487,8 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Create State writer thread
-    w_create_thread(rem_state_main, NULL);
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
 
     /* Create wait_for_msgs threads */
     {
@@ -281,16 +504,20 @@ void HandleSecure()
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
-    // Router module logging initialization
-    router_initialize(taggedLogFunction, ARGV0);
+    // Launch the remoted C++ module in its own thread, seeded with a config struct.
+    {
+        remoted_module_config_t rm_config;
+        w_remoted_build_module_config(&logr, &rm_config);
+        remoted_module_control_config(&rm_config);
 
-    // Router providers initialization
-    if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
-        mdebug2("Failed to create router handle for 'upgrade_notifications'.");
-    }
+        char *rm_cluster_name = get_cluster_name();
+        if (rm_cluster_name) {
+            snprintf(rm_config.cluster_name, sizeof(rm_config.cluster_name), "%s", rm_cluster_name);
+            os_free(rm_cluster_name);
+        }
 
-    if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
-        mdebug2("Failed to create router handle for 'inventory synchronization'.");
+        remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
+        atexit(remoted_module_stop);
     }
 
     // Create upsert control message thread
@@ -911,7 +1138,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 _close_sock(&keys, sock_idle);
             }
 
-            rem_inc_recv_ctrl(key->id);
+            rem_inc_recv_ctrl();
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -923,72 +1150,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     agent_info_data *agent_data;
                     os_calloc(1, sizeof(agent_info_data), agent_data);
 
-                    // Detect JSON format (5.0+ agent) vs text format (4.x agent)
-                    int result;
-                    char **groups = NULL;
-                    size_t groups_count = 0;
-                    char *cluster_name = NULL;
-                    char *cluster_node = NULL;
-
-                    if (tmp_msg[0] == '{') {
-                        // JSON keepalive from 5.0+ agent - extract groups and cluster info during parsing
-                        result = parse_json_keepalive(tmp_msg, agent_data, &groups, &groups_count, &cluster_name, &cluster_node);
-                        if (result == OS_SUCCESS) {
-                            mdebug2("Parsed JSON keepalive from agent %s", key->id);
-                        } else {
-                            mwarn("Failed to parse JSON keepalive from agent %s", key->id);
-                        }
-                    } else {
-                        // Text keepalive from 4.x agent
-                        result = parse_agent_update_msg(tmp_msg, agent_data);
-                    }
+                    // Text keepalive from 4.x agent
+                    int result = parse_agent_update_msg(tmp_msg, agent_data);
 
                     if (OS_SUCCESS == result) {
                         // Build metadata from parsed agent_info_data and upsert in the global map
                         agent_meta_t *fresh = agent_meta_from_agent_info(key->id, key->name, agent_data);
                         if (fresh) {
-                            // Add groups if available (5.0+ agents only)
-                            if (groups) {
-                                fresh->groups = groups;
-                                fresh->groups_count = groups_count;
-                                groups = NULL;  // Transfer ownership to fresh
-                            }
-                            // Add cluster info if available (5.0+ agents only)
-                            if (cluster_name) {
-                                fresh->cluster_name = cluster_name;
-                                cluster_name = NULL;  // Transfer ownership to fresh
-                            }
-                            if (cluster_node) {
-                                fresh->cluster_node = cluster_node;
-                                cluster_node = NULL;  // Transfer ownership to fresh
-                            }
                             if (agent_meta_upsert_locked(key->id, fresh) != 0) {
                                 mwarn("Failed to update metadata cache for agent ID '%s'", key->id);
                                 agent_meta_free(fresh);
                             }
-                        } else {
-                            // Free groups if agent_meta creation failed
-                            if (groups) {
-                                for (size_t i = 0; i < groups_count; i++) {
-                                    os_free(groups[i]);
-                                }
-                                os_free(groups);
-                            }
-                            // Free cluster info if agent_meta creation failed
-                            os_free(cluster_name);
-                            os_free(cluster_node);
                         }
-                    } else {
-                        // Free groups if parsing failed
-                        if (groups) {
-                            for (size_t i = 0; i < groups_count; i++) {
-                                os_free(groups[i]);
-                            }
-                            os_free(groups);
-                        }
-                        // Free cluster info if parsing failed
-                        os_free(cluster_name);
-                        os_free(cluster_node);
                     }
 
                     wdb_free_agent_info_data(agent_data);
@@ -1061,157 +1234,60 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
-    // Check if message should be forwarded to router instead of analysisd
-    bool forwarded_to_router = false;
-    if (router_forwarding_disabled != 1) {
-        forwarded_to_router = router_message_forward(tmp_msg, msg_length, agentid_str);
+    // Legacy message types the 5.x manager no longer processes are discarded here, BEFORE the
+    // analysisd enqueue: letting them fall through would inject binary payloads as events.
+    if (discard_legacy_agent_message(tmp_msg, agentid_str)) {
+        os_free(agentid_str);
+        return;
     }
 
-    // Only send to analysisd if not forwarded to router
-    if (!forwarded_to_router) {
-        /* Router-bound messages may be binary; trim only analysisd events. */
-        size_t stripped_nulls = 0;
-        while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
-            msg_length--;
-            stripped_nulls++;
-        }
-        if (stripped_nulls > 0) {
-            mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
-                    stripped_nulls, agentid_str);
-        }
+    /* Trim trailing nulls from analysisd-bound events. */
+    size_t stripped_nulls = 0;
+    while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+        msg_length--;
+        stripped_nulls++;
+    }
+    if (stripped_nulls > 0) {
+        mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                stripped_nulls, agentid_str);
+    }
 
-        evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length + 1, sizeof(char), e->raw);
-        memcpy(e->raw, tmp_msg, msg_length);
-        e->len = msg_length;
+    evt_item_t *e; os_calloc(1, sizeof(*e), e);
+    os_calloc(msg_length + 1, sizeof(char), e->raw);
+    memcpy(e->raw, tmp_msg, msg_length);
+    e->len = msg_length;
 
-        int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
-        if (rc < 0) {
-            dispose_evt_item(e);
-            rem_inc_recv_events_failed();
-            maybe_log_events_queue_drop();
-        } else {
-            rem_inc_recv_events(agentid_str);
-        }
+    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
+    if (rc < 0) {
+        dispose_evt_item(e);
+        rem_inc_recv_events_failed();
+        maybe_log_events_queue_drop();
+    } else {
+        rem_inc_recv_events();
     }
 
     os_free(agentid_str);
 }
 
-bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
+STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) {
 
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
-    int message_header_size = 0;
-    msg_type message_type = MT_INVALID;
-
-    if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        if (!router_sync_handle) {
-            mdebug2("Router handle for 'inventory synchronization' not available.");
-            return false;
-        }
-        router_handle = router_sync_handle;
-        message_header_size = INVENTORY_SYNC_HEADER_SIZE;
-        message_type = MT_INV_SYNC;
-    }
-    else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
-        if (!router_upgrade_ack_handle) {
-            mdebug2("Router handle for 'upgrade_notifications' not available.");
-            return false;
-        }
-        router_handle = router_upgrade_ack_handle;
-        message_header_size = UPGRADE_ACK_HEADER_SIZE;
-        message_type = MT_UPGRADE_ACK;
-    }
-
-    if (!router_handle) {
-        return false;
-    }
-
-    mdebug2("Forwarding message to router");
-
-    char* msg_start = msg + message_header_size;
-    if (message_type == MT_INV_SYNC) {
-        // Validate minimum message length: header + "x:y" (4 chars minimum after header)
-        if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
-            mdebug2("Message too short for expected format.");
-            return false;
-        }
-
-        size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
-
-        // Find colon separator between module and message
-        // Format after header: {module}:{msg}
-        char* colon = (char*)memchr(msg_start, ':', remaining_len);
-        if (!colon || colon == msg_start) {
-            mdebug2("Invalid message format: missing or empty module.");
-            return false;
-        }
-
-        // Calculate module length and validate it's reasonable
-        size_t module_len = colon - msg_start;
-        if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
-            mdebug2("Invalid module length.");
-            return false;
-        }
-
-        // Calculate message payload position
-        char* msg_to_send = colon + 1;
-        size_t payload_offset = msg_to_send - msg;
-
-        if (payload_offset >= msg_length) {
-            mdebug2("Invalid message format: no payload data.");
-            return false;
-        }
-
-        // Calculate safe message size
-        size_t msg_size = msg_length - payload_offset;
-
-        // Send the raw flatbuffer to inventory sync with anti-spoofing validation
-        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id, cluster_name) != 0) {
-            mdebug2("Unable to forward message for agent '%s'.", agent_id);
-            return false;
-        }
-
-        rem_inc_recv_states(agent_id);
+    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
+        // Since 5.x, stateful synchronization only enters through remoted's authenticated
+        // POST /stateful route as a whole FullSession, so the old chunked wire protocol has
+        // nowhere to go. Discarded, not an error: it is a not-yet-updated agent, not an attack.
+        mdebug2("Discarding legacy stateful-sync message from agent '%s' (since 5.x the manager only accepts "
+                "whole sessions over POST /stateful)", agent_id);
         return true;
     }
-    else if (message_type == MT_UPGRADE_ACK) {
 
-        cJSON* upgrade_ack_json;
-        const char *json_err;
-        if (upgrade_ack_json = cJSON_ParseWithOpts(msg_start, &json_err, 0), !upgrade_ack_json) {
-            mwarn("Failed to parse router message JSON: '%s'", json_err);
-            return false;
-        }
-
-        cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
-
-        if (parameters_obj && cJSON_IsObject(parameters_obj)) {
-            int agent = atoi(agent_id);
-            cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-            cJSON_AddItemToObject(parameters_obj, "agents", agents);
-
-            char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
-            size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
-
-            if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
-                mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
-                cJSON_free(upgrade_message);
-                cJSON_Delete(upgrade_ack_json);
-                return false;
-            }
-
-            // Free the printed message and JSON object
-            cJSON_free(upgrade_message);
-            cJSON_Delete(upgrade_ack_json);
-            rem_inc_recv_upgrade_ack(agent_id);
-            return true;
-        }
-        else {
-            mwarn("Could not get parameters from upgrade message: '%s'", msg_start);
-            cJSON_Delete(upgrade_ack_json);
-            return false;
-        }
+    if (strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
+        // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
+        // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
+        // legacy_task_delivery.c). NOT discarded: the ack still falls through to the normal
+        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message.
+        legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
+        mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
+        return false;
     }
 
     return false;
@@ -1380,10 +1456,7 @@ static int append_header(dispatch_ctx_t *ctx) {
             has_cluster_info = true;
         }
 
-        if (have_meta && snap.cluster_node && snap.cluster_node[0]) {
-            cJSON_AddStringToObject(cluster, "node", snap.cluster_node);
-            has_cluster_info = true;
-        } else if (node_name && strcmp(node_name, "undefined") != 0) {
+        if (node_name && strcmp(node_name, "undefined") != 0) {
             cJSON_AddStringToObject(cluster, "node", node_name);
             has_cluster_info = true;
         }

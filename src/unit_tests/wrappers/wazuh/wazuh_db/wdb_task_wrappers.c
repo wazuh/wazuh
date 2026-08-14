@@ -13,63 +13,49 @@
 #include <cmocka.h>
 #include "wdb_task_wrappers.h"
 
-int __wrap_wdb_task_insert_task(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command) {
+int __wrap_wdb_task_create(__attribute__((unused)) wdb_t* wdb,
+                           const char *task_id,
+                           const char *agent_id,
+                           const char *task_type,
+                           const char *payload) {
+    check_expected(task_id);
     check_expected(agent_id);
-    check_expected(node);
-    check_expected(module);
-    check_expected(command);
+    check_expected(task_type);
+    check_expected(payload);
 
     return mock();
 }
 
-int __wrap_wdb_task_get_upgrade_task_status(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, char **status) {
+int __wrap_wdb_task_get_pending(__attribute__((unused)) wdb_t* wdb,
+                                const char *agent_id,
+                                int max_tasks,
+                                cJSON **tasks_json) {
     check_expected(agent_id);
-    check_expected(node);
+    check_expected(max_tasks);
 
-    os_strdup(mock_type(char*), *status);
-
-    return mock();
-}
-
-int __wrap_wdb_task_update_upgrade_task_status(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, const char *status, const char *error) {
-    check_expected(agent_id);
-    check_expected(node);
-    if (status) check_expected(status);
-    if (error) check_expected(error);
+    *tasks_json = mock_ptr_type(cJSON*);
 
     return mock();
 }
 
-int __wrap_wdb_task_get_upgrade_task_by_agent_id(__attribute__((unused)) wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
-    check_expected(agent_id);
-
-    os_strdup(mock_type(char*), *node);
-    os_strdup(mock_type(char*), *module);
-    os_strdup(mock_type(char*), *command);
-    os_strdup(mock_type(char*), *status);
-    os_strdup(mock_type(char*), *error);
-    *create_time = mock();
-    *last_update_time = mock();
+int __wrap_wdb_task_mark_delivered(__attribute__((unused)) wdb_t* wdb,
+                                   const char *task_id,
+                                   time_t delivery_time) {
+    check_expected(task_id);
+    check_expected(delivery_time);
 
     return mock();
 }
 
-int __wrap_wdb_task_cancel_upgrade_tasks(__attribute__((unused)) wdb_t* wdb, const char *node) {
-    check_expected(node);
+int __wrap_wdb_task_cleanup_expired(__attribute__((unused)) wdb_t* wdb,
+                                    int ttl) {
+    check_expected(ttl);
 
     return mock();
 }
 
-int __wrap_wdb_task_set_timeout_status(__attribute__((unused)) wdb_t* wdb, time_t now, int interval, time_t *next_timeout) {
-    check_expected(now);
-    check_expected(interval);
-
-    *next_timeout = mock();
-
-    return mock();
-}
-
-int __wrap_wdb_task_delete_old_entries(__attribute__((unused)) wdb_t* wdb, int timestamp) {
+int __wrap_wdb_task_delete_old(__attribute__((unused)) wdb_t* wdb,
+                               time_t timestamp) {
     check_expected(timestamp);
 
     return mock();

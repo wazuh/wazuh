@@ -1,0 +1,67 @@
+name: "5.X - Inventory Sync Server - Integration tests"
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_inventory-sync-server.yml"
+      - "src/wazuh_modules/inventory_sync_server/**"
+      - "src/shared_modules/utils/**"
+      - "src/shared_modules/indexer_connector/**"
+      - "src/shared_modules/metrics/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  inventory-sync-server-integration:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build external dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The QA harness: --serve boots the real server (and would boot the real
+      # scanner, which --no-vd skips) and keeps the UDS socket open for pytest.
+      - name: Inventory Sync Server - Test tool
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_sync_server_testtool"
+          test: "false"
+          asan: "false"
+
+      - name: Install dependencies
+        run: |
+          pip install -r src/wazuh_modules/inventory_sync_server/qa/requirements.txt
+
+      # conftest.py starts its own single-node OpenSearch container (security
+      # disabled) when none is reachable at INDEXER_URL -- same pattern as the
+      # sibling vulnerability-scanner suite.
+      - name: Run integration QA
+        run: |
+          cd src/wazuh_modules/inventory_sync_server/qa
+          python -m pytest -vv --log-cli-level=INFO

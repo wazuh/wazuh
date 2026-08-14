@@ -1,0 +1,25 @@
+{
+  "name": "checksum_reconcile",
+  "description": "Linux fleet exercising the checksum reconcile path on two lanes: one lane sends a delta then confirms with a correct checksum, the other lane sends a mismatch checksum to force a reconcile/resync on the server.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "confirm": [
+      { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 100 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
+    ],
+    "mismatch": [
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "mismatch" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 18000, "lanes": ["confirm", "mismatch"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

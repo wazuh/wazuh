@@ -86,6 +86,40 @@ class TestWazuhDBHTTPClient:
             call.get().json()
         ])
 
+    async def test_get_all_agents(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
+        """Check that the `get_all_agents` method works as expected."""
+        expected_result = [
+            {
+                'id': 1,
+                'name': 'agent1',
+                'ip': '192.168.1.10',
+                'status': 'active',
+                'os.name': 'Ubuntu',
+                'os.version': '20.04',
+                'version': 'v4.5.0'
+            },
+            {
+                'id': 2,
+                'name': 'agent2',
+                'ip': '192.168.1.11',
+                'status': 'disconnected',
+                'os.name': 'CentOS',
+                'os.version': '7',
+                'version': 'v4.5.0'
+            }
+        ]
+        response = MagicMock()
+        response.is_error = False
+        response.json.return_value = expected_result
+        client_mock.get.return_value = response
+
+        result = await module_instance.get_all_agents()
+        assert result == expected_result
+        client_mock.assert_has_calls([
+            call.get(url='http://localhost/v1/agents/all', headers={'Accept': APPLICATION_JSON}),
+            call.get().json()
+        ])
+
     async def test_get_agents_summary(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_summary` method works as expected."""
         agent_ids = []
@@ -141,11 +175,9 @@ class TestWazuhDBHTTPClient:
                     'id': 10,
                     'name': 'b922117b0323',
                     'ip': '172.18.0.9',
-                    'node_name': 'node01',
                     'last_keepalive': 1745892111,
                     'connection_status': 'active',
                     'disconnection_time': 0,
-                    'group_config_status': 'synced',
                     'status_code': 0
                 }
             ],
@@ -176,11 +208,10 @@ class TestWazuhDBHTTPClient:
                     'id': '010',
                     'name': 'b922117b0323',
                     'ip': '172.18.0.9',
-                    'node_name': 'node01',
                     'last_keepalive': 1745892111,
                     'connection_status': 'active',
                     'disconnection_time': 0,
-                    'group_config_status': 'synced',
+
                     'status_code': 0
                 }
             ],

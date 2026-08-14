@@ -72,7 +72,7 @@ daemons_handler_configuration = {'all_daemons': True}
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, shutdown_agentd,
-                           set_keys, set_password, configure_socket_listener, restart_agentd):
+                           set_keys, set_password, configure_socket_listener, configure_remoted_listener, restart_agentd):
     """
     description:
         "Check that different configuration generates the adequate enrollment message or the corresponding error
@@ -105,9 +105,12 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
         - configure_socket_listener:
             type: fixture
             brief: Configure MITM.
-            - restart_agentd:
-                type: fixture
-                brief: Restart Agentd and control if it is expected to fail or not.
+        - configure_remoted_listener:
+            type: fixture
+            brief: Reject the agent over HTTPS to force re-enrollment when it starts with a pre-existent key.
+        - restart_agentd:
+            type: fixture
+            brief: Restart Agentd and control if it is expected to fail or not.
 
     assertions:
         - The enrollment message is sent when the configuration is valid

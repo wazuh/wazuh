@@ -1,0 +1,47 @@
+{
+  "name": "real_first_connect_uds",
+  "description": "A freshly connected Windows agent and Linux agent, each replaying its own REAL first-connection dumps at FULL fidelity, straight to the module socket: FIM first sync (Windows: the whole 27,726-item registry corpus - 21,091 registry-values + 6,625 registry-keys + 10 files, ~26 MB in ONE session), syscollector, SCA full and a VDFirst inventory. The Linux side mixes real Ubuntu (FIM, SCA) and Debian (syscollector, VD) captures. This is the first-connection cost per agent that the truncated real_* scenarios deliberately do not measure. uds mode has no /control to learn the manager's current VD feed offset from, so the VDFirst sessions declare feed_offset=0 unless -vd-feed-offset is passed: against a target whose feed has a nonzero offset, they get 409 version_mismatch instead of 200, breaking the all-14-sessions-OK expectation below.",
+  "mode": "uds",
+  "defaults": {
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "fim_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_fim_first_sync.json.zst" }
+    ],
+    "syscollector_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_syscollector_sync.json.zst" }
+    ],
+    "sca_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_sca_full.json.zst" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/windows_vd_first.json.zst" }
+    ],
+    "fim_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_fim_first_sync.json.zst" }
+    ],
+    "syscollector_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/debian_syscollector_sync.json.zst" }
+    ],
+    "sca_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_sca_full.json.zst" }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/debian_vd_first.json.zst" }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 1, "first_id": 46000,
+      "lanes": ["fim_windows", "syscollector_windows", "sca_windows", "vd_windows"],
+      "start": { "osname": "Microsoft Windows 11 Enterprise Evaluation", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.26200", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 1, "first_id": 46100,
+      "lanes": ["fim_linux", "syscollector_linux", "sca_linux", "vd_linux"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "120s" },
+  "expected": {
+    "sessions": { "ok": { "eq": 14 }, "s5xx": { "eq": 0 }, "documents_sent": { "eq": 31950 } },
+    "transport_errors": { "eq": 0 }
+  }
+}

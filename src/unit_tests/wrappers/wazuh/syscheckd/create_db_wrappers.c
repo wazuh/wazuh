@@ -26,18 +26,8 @@ directory_t *__wrap_fim_configuration_directory(const char *path,
     return mock_type(directory_t *);
 }
 
-cJSON *__wrap_fim_json_event() {
-    return mock_type(cJSON *);
-}
-
 void __wrap_fim_realtime_event(char *file) {
     check_expected(file);
-}
-
-int __wrap_fim_registry_event(__attribute__((unused)) char *key,
-                              __attribute__((unused)) fim_file_data *data,
-                              __attribute__((unused)) int pos) {
-    return mock();
 }
 
 int __wrap_fim_whodata_event(whodata_evt * w_evt)
@@ -65,10 +55,6 @@ void expect_fim_checker_call(const char *path, const directory_t *configuration)
 void expect_fim_configuration_directory_call(const char *path, directory_t *ret) {
     expect_string(__wrap_fim_configuration_directory, path, path);
     will_return(__wrap_fim_configuration_directory, ret);
-}
-
-void __wrap_free_entry(__attribute__((unused)) fim_entry *entry) {
-    return;
 }
 
 void __wrap_fim_db_transaction_deleted_rows(__attribute__((unused))TXN_HANDLE txn_handler,

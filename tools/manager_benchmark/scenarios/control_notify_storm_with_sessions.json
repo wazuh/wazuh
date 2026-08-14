@@ -1,0 +1,55 @@
+{
+  "name": "control_notify_storm_with_sessions",
+  "description": "Agent-mode combined control + stateful pressure: the same aggressive 2s /control keepalive storm as control_notify_storm, but paired with a realistic sustained syscollector delta stream instead of a token lane.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": {
+      "enabled": true,
+      "keepalive_interval": "2s",
+      "send_host_info": true,
+      "startup_version": "5.0.0"
+    }
+  },
+  "lanes": {
+    "syscollector": [
+      {
+        "kind": "delta",
+        "module": "syscollector",
+        "indices": [
+          "wazuh-states-inventory-packages"
+        ],
+        "documents": {
+          "count": 40
+        },
+        "repeat_count": 30,
+        "repeat_delay": "2s",
+        "initial_delay": "10s"
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "linux",
+      "agents": 50,
+      "first_id": 26000,
+      "lanes": [
+        "syscollector"
+      ],
+      "start": {
+        "osname": "Ubuntu",
+        "osplatform": "ubuntu",
+        "ostype": "linux",
+        "osversion": "22.04",
+        "architecture": "x86_64",
+        "agentversion": "5.0.0"
+      }
+    }
+  ],
+  "pacing": {
+    "concurrent_agents": 0,
+    "requests_per_second": 0,
+    "repeat_until": "60s",
+    "drain_timeout": "30s"
+  }
+}

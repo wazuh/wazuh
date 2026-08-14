@@ -15,7 +15,7 @@
 /api/ @wazuh/devel-xdrsiem-server-div2 @wazuh/devel-xdrsiem-server-leaders
 
 # VD/IS
-/src/wazuh_modules/inventory_sync/          @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-leaders
+/src/wazuh_modules/inventory_sync_server/   @wazuh/devel-xdrsiem-server-div3 @wazuh/devel-xdrsiem-server-leaders
 /src/wazuh_modules/vulnerability_scanner/   @wazuh/devel-xdrsiem-server-div1 @wazuh/devel-xdrsiem-server-leaders
 
 # ##########################################

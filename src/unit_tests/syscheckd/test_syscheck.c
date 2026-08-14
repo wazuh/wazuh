@@ -102,7 +102,6 @@ void test_fim_initialize(void **state)
 {
     syscheck_config *syscheck_conf = *state;
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
 
 #ifdef TEST_WINAGENT
@@ -122,10 +121,6 @@ void test_fim_initialize(void **state)
     will_return(__wrap_w_query_agentd, true);
 
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
 
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -216,13 +211,8 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     // Schema validator initialization
@@ -265,13 +255,8 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -315,13 +300,8 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -402,13 +382,8 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -470,13 +445,8 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     syscheck.sync_end_delay = 1;
-    syscheck.sync_response_timeout = 30;
     syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
-    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
-    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
-    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
-    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);

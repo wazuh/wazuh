@@ -1,5 +1,0 @@
-  <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
-  </remote>
