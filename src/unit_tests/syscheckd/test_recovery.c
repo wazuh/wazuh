@@ -567,13 +567,17 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphaned key: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
     expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
     will_return(__wrap_fim_registry_configuration, NULL);
-    // No build_stateful_event_registry_key / asp_persist_diff_in_memory expectations for it.
+    // No build_stateful_event_registry_key / asp_persist_diff expectations for it.
 
     // Live key: config lookup returns non-NULL -> normal pipeline.
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
@@ -587,14 +591,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
 
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
