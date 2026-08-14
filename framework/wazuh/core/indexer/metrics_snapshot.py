@@ -418,7 +418,6 @@ class MetricsSnapshotTasks:
         raw_tcp_sessions = m.get("tcp_sessions")
         raw_evt_total = msgs_recv.get("events")
         raw_evt_failed = msgs_recv.get("events_failed")
-        raw_states = msgs_recv.get("states")
         raw_upgrade_ack = msgs_recv.get("upgrade_ack")
         raw_discarded = msgs_recv.get("discarded")
         raw_sent_bytes = bytes_info.get("sent")
@@ -508,7 +507,6 @@ class MetricsSnapshotTasks:
                             else doc.get("ctrl_msg_processed")
                         },
                     },
-                    "states": {"total": raw_states},
                     "upgrades": {"total": raw_upgrade_ack},
                 },
             }

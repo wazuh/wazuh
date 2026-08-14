@@ -207,7 +207,6 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_received_breakdown, "dequeued_after", state_cpy.recv_breakdown.dequeued_count);
     cJSON_AddNumberToObject(_received_breakdown, "discarded", state_cpy.recv_breakdown.discarded_count);
     cJSON_AddNumberToObject(_received_breakdown, "events", state_cpy.recv_breakdown.events_count);
-    cJSON_AddNumberToObject(_received_breakdown, "states", state_cpy.recv_breakdown.states_count);
     cJSON_AddNumberToObject(_received_breakdown, "ping", state_cpy.recv_breakdown.ping_count);
     cJSON_AddNumberToObject(_received_breakdown, "unknown", state_cpy.recv_breakdown.unknown_count);
     cJSON_AddNumberToObject(_received_breakdown, "upgrade_ack", state_cpy.recv_breakdown.upgrade_ack_count);

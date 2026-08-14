@@ -28,7 +28,6 @@ typedef struct _recv_msgs_t
 {
     uint64_t events_count;
     uint64_t ctrl_count;
-    uint64_t states_count;
     uint32_t upgrade_ack_count;
     uint32_t ping_count;
     uint32_t unknown_count;

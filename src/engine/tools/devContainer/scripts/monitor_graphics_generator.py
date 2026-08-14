@@ -417,11 +417,6 @@ REMOTED_METRICS = [
         "Count",
     ),
     (
-        "messages_received_breakdown_states",
-        "Remoted Messages Received States",
-        "Count",
-    ),
-    (
         "messages_sent_breakdown_discarded",
         "Remoted Messages Sent Discarded",
         "Count",

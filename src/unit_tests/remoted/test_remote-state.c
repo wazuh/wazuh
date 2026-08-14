@@ -34,7 +34,6 @@ static int test_setup(void ** state) {
     remoted_state.keys_reload_count = 15;
     remoted_state.recv_breakdown.events_count = 1234;
     remoted_state.recv_breakdown.ctrl_count = 2345;
-    remoted_state.recv_breakdown.states_count = 333;
     remoted_state.recv_breakdown.upgrade_ack_count = 11;
     remoted_state.recv_breakdown.ping_count = 18;
     remoted_state.recv_breakdown.unknown_count = 8;
@@ -88,8 +87,7 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(recv, "events")->valueint, 1234);
     assert_non_null(cJSON_GetObjectItem(recv, "control"));
     assert_int_equal(cJSON_GetObjectItem(recv, "control")->valueint, 2345);
-    assert_non_null(cJSON_GetObjectItem(recv, "states"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "states")->valueint, 333);
+    assert_null(cJSON_GetObjectItem(recv, "states"));
     assert_non_null(cJSON_GetObjectItem(recv, "upgrade_ack"));
     assert_int_equal(cJSON_GetObjectItem(recv, "upgrade_ack")->valueint, 11);
     assert_non_null(cJSON_GetObjectItem(recv, "ping"));

@@ -255,7 +255,6 @@ EXPECTED_COMMS_FIELDS = {
 # exist in the legacy flat format).
 EXPECTED_COMMS_FIELDS_V5_ONLY = {
     "events.failed.total",
-    "messages.states.total",
     "messages.upgrades.total",
 }
 
@@ -1931,7 +1930,6 @@ REMOTED_STATS_V5_ALL_ZEROS = {
             "received_breakdown": {
                 "events": 0,
                 "events_failed": 0,
-                "states": 0,
                 "upgrade_ack": 0,
                 "discarded": 0,
                 "dequeued_after": 0,
@@ -1957,7 +1955,6 @@ REMOTED_STATS_V5_NONZERO = {
             "received_breakdown": {
                 "events": 1000,
                 "events_failed": 4,
-                "states": 333,
                 "upgrade_ack": 2,
                 "discarded": 3,
                 "dequeued_after": 1,
@@ -2067,7 +2064,7 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["messages"]["control"]["replaced"]["total"] == 8
         assert doc["messages"]["control"]["processed"]["total"] == 202
         assert doc["messages"]["control"]["dropped_on_close"]["total"] == 1
-        assert doc["messages"]["states"]["total"] == 333
+        assert "states" not in doc["messages"]
         assert doc["messages"]["upgrades"]["total"] == 2
 
     @pytest.mark.asyncio
