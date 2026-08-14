@@ -21,6 +21,7 @@
 #include "curlHandle.hpp"
 #include "curlPerformer.hpp"
 #include "fakeManager.hpp"
+#include "fileCompressor.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "retrySender.hpp"
@@ -29,10 +30,13 @@
 
 #include <gtest/gtest.h>
 
+#include <zstd.h>
+
 #include <cstring>
 #include <fstream>
 #include <regex>
 #include <string>
+#include <vector>
 
 #include <unistd.h>
 
@@ -234,7 +238,7 @@ TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
     SystemClock clock;
     Mt19937Random random;
     Backoff backoff {10, 50, random};
-    RetrySender sender {m_performer, m_signer, clock, backoff};
+    RetrySender sender {m_performer, m_signer, clock, backoff, false};
     Waiter waiter;
 
     const std::string body = "H {}\nE 1:l:bp\n";
@@ -283,6 +287,57 @@ TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
     const auto replay = sendSession("sess-cmp-1");
     EXPECT_EQ(200, replay.httpCode);
     EXPECT_NE(std::string::npos, replay.body.find("\"cached\":true"));
+}
+
+TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompressesToTheOriginal)
+{
+    // Same shape as the uncompressed test above, but the session is
+    // compressed first (as StatefulStream::sendSession() now does) and the
+    // compressed sibling is what actually crosses the real curl path.
+    TempSpoolFactory factory {::testing::TempDir()};
+    std::string payload(64 * 1024, 'D'); // Larger than one read chunk.
+    std::memcpy(&payload[0], "FULLSESSION:syscollector:", 25);
+    const auto spool = factory.spool(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+    ASSERT_NE(nullptr, spool);
+
+    ZstdFileCompressor compressor;
+    const auto compressed = compressor.compress(spool->path(), payload.size(), ::testing::TempDir(), nullptr);
+    ASSERT_TRUE(compressed.has_value());
+    const auto& [compressedSpool, compressedSize] = *compressed;
+    ASSERT_LT(compressedSize, payload.size()); // Actually shrank.
+
+    const auto headers = m_signer.signFile("POST", "/stateful", compressedSpool->path(),
+                                           SystemClock {}.wallSeconds());
+    HttpRequestSpec spec;
+    spec.target = "/stateful";
+    spec.bodyFilePath = compressedSpool->path();
+    spec.bodyFileSize = compressedSize;
+    spec.timeoutMs = 3000;
+    spec.headers =
+    {
+        "X-Session-Id: sess-cmp-zstd", "Content-Encoding: zstd", headers->protocolVersion,
+        headers->authorization
+    };
+
+    const auto response = m_performer.perform(spec);
+
+    EXPECT_EQ(200, response.httpCode);
+    // This fake manager doesn't decode the body (see fakeManager.hpp) -- it
+    // just reports how many bytes it received, so this proves the *wire*
+    // request really did carry the smaller, compressed byte count.
+    EXPECT_NE(std::string::npos, response.body.find("\"bytes\":" + std::to_string(compressedSize)));
+
+    // Prove those wire bytes are what a real IBodyDecoder would accept: read
+    // them back independently and decompress with zstd.
+    std::ifstream compressedFile {compressedSpool->path(), std::ios::binary};
+    const std::string compressedBytes {std::istreambuf_iterator<char> {compressedFile},
+                                       std::istreambuf_iterator<char> {}};
+    std::vector<char> decompressed(payload.size());
+    const size_t decompressedSize = ZSTD_decompress(decompressed.data(), decompressed.size(),
+                                                    compressedBytes.data(), compressedBytes.size());
+    ASSERT_FALSE(ZSTD_isError(decompressedSize));
+    ASSERT_EQ(payload.size(), decompressedSize);
+    EXPECT_EQ(payload, std::string(decompressed.begin(), decompressed.end()));
 }
 
 TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)

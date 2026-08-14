@@ -171,6 +171,11 @@ typedef struct hc_config_t
     uint32_t stats_interval_s;         ///< 0 -> 60.
     bool config_report_enabled;
     uint32_t config_report_interval_s; ///< 0 -> 3600.
+
+    /// zstd-compress in-memory request bodies before signing/sending.
+    /// internal_options.conf (agent.https_compression_enabled), not a <client>
+    /// XML setting -- OFF by default.
+    bool https_compression_enabled;
 } hc_config_t;
 
 /**

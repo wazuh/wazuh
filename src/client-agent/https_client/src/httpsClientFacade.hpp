@@ -17,10 +17,12 @@
 #include "clusterIdentity.hpp"
 #include "cmacSigner.hpp"
 #include "collectorSource.hpp"
+#include "compressionGate.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
 #include "reporterStream.hpp"
 #include "curlPerformer.hpp"
+#include "fileCompressor.hpp"
 #include "https_client.h"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
@@ -92,6 +94,7 @@ class HttpsClientFacade final
         ConfigKeyProvider m_keyProvider;
         CmacSigner m_signer;
         TempSpoolFactory m_spoolFactory;
+        ZstdFileCompressor m_fileCompressor; // /stateful only; compresses spooled sessions once, up front.
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;
@@ -102,6 +105,9 @@ class HttpsClientFacade final
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
+        // Shared across every stream's RetrySender: one 415 disables
+        // compression agent-wide for the rest of this run.
+        CompressionGate m_compressionGate;
 
         CallbackCollectorSource m_collectors;
         StatelessStream m_stateless;

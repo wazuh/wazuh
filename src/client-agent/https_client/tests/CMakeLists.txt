@@ -24,6 +24,7 @@ target_link_libraries(
   optimized gtest
   optimized gmock
   https_client
+  ext_zstd
   pthread)
 
 target_include_directories(
@@ -69,6 +70,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gtest
     optimized gmock
     https_client
+    ext_zstd
     ${SRC_FOLDER}/external/openssl/libssl.a
     ${SRC_FOLDER}/external/openssl/libcrypto.a
     pthread)

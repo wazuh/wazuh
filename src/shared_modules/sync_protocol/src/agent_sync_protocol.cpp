@@ -1083,6 +1083,17 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
             m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
             break;
 
+        case 415: // Compression rejected. The agent's own RetrySender already reports this
+            // to the shared CompressionGate and retries once, uncompressed, within the same
+            // send() call -- this case is defense-in-depth for the rare compound failure
+            // where that one-shot retry doesn't land within the attempt budget. Treated as
+            // retryable, not a protocol violation: the manager will accept the next attempt
+            // once RetrySender's gate has disabled compression agent-wide.
+            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+            m_syncState.lastSyncManagerNotReady = true;
+            m_logger(LOG_DEBUG, "Manager rejected the compressed encoding (415): " + std::string(body));
+            break;
+
         case 0: // No HTTP response at all (timeout/connect/TLS failure/abort).
             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
             m_syncState.lastSyncManagerNotReady = true;

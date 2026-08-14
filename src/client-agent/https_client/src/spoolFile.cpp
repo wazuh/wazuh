@@ -11,21 +11,13 @@
 
 #include "spoolFile.hpp"
 
-#include <cerrno>
+#include "exclusiveTempFile.hpp"
+
 #include <cstdio>
-#include <random>
-#include <string>
-#include <thread>
 
 #ifdef WIN32
-#include <fcntl.h>
 #include <io.h>
-#include <process.h>
-#include <share.h>
-#include <sys/stat.h>
 #else
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #endif
 
@@ -50,53 +42,6 @@ namespace
         return "."; // LCOV_EXCL_LINE: at least one candidate is always set in practice.
     }
 
-    std::string threadIdHex()
-    {
-        const auto id = std::hash<std::thread::id> {}(std::this_thread::get_id());
-        char buffer[32];
-        std::snprintf(buffer, sizeof(buffer), "%zx", id);
-        return buffer;
-    }
-
-    std::string pidHex()
-    {
-#ifdef WIN32
-        const auto pid = static_cast<unsigned long>(_getpid());
-#else
-        const auto pid = static_cast<unsigned long>(::getpid());
-#endif
-        char buffer[24];
-        std::snprintf(buffer, sizeof(buffer), "%lx", pid);
-        return buffer;
-    }
-
-    std::string randomTokenHex()
-    {
-        // Thread-local RNG: spool() runs from several module threads at once; a
-        // shared generator would need locking. Seeded once per thread from the
-        // OS entropy source, so the next spool path is unpredictable.
-        static thread_local std::mt19937_64 engine {std::random_device {}()};
-        char buffer[24];
-        std::snprintf(buffer, sizeof(buffer), "%016llx",
-                      static_cast<unsigned long long>(engine()));
-        return buffer;
-    }
-
-    // Atomic, exclusive create (O_EXCL) with owner-only permissions. Returns a
-    // file descriptor, or -1 with errno set (EEXIST when the path already
-    // exists). Never follows an existing symlink -- the create simply fails.
-    int openExclusive(const std::string& path)
-    {
-#ifdef WIN32
-        int fd = -1;
-        _sopen_s(&fd, path.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _SH_DENYRW,
-                 _S_IREAD | _S_IWRITE);
-        return fd;
-#else
-        return ::open(path.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, S_IRUSR | S_IWUSR);
-#endif
-    }
-
     bool writeAll(int fd, const uint8_t* buffer, size_t length)
     {
         size_t written = 0;
@@ -118,15 +63,6 @@ namespace
         }
 
         return true;
-    }
-
-    void closeFd(int fd)
-    {
-#ifdef WIN32
-        _close(fd);
-#else
-        ::close(fd);
-#endif
     }
 } // namespace
 
@@ -173,39 +109,16 @@ TempSpoolFactory::TempSpoolFactory(std::string spoolDir)
 
 std::unique_ptr<SpoolFile> TempSpoolFactory::spool(const uint8_t* buffer, size_t length)
 {
-    // Create the file atomically and exclusively with owner-only permissions.
-    // A pre-existing path -- e.g. a symlink an attacker planted in a shared
-    // spool dir (/tmp) -- fails the create (EEXIST) instead of being followed
-    // and truncated, so it can neither hijack a victim file nor read back the
-    // session bytes. The retry loop handles the (essentially impossible)
-    // random-name collision; any other error means the dir is unusable.
-    constexpr int maxAttempts = 100;
     std::string path;
-    int fd = -1;
-
-    for (int attempt = 0; attempt < maxAttempts; attempt++)
-    {
-        path = uniquePath();
-        fd = openExclusive(path);
-
-        if (fd >= 0)
-        {
-            break;
-        }
-
-        if (errno != EEXIST)
-        {
-            return nullptr; // Unwritable/missing dir, etc.: not a collision.
-        }
-    }
+    const int fd = createExclusiveTempFile(m_spoolDir, "hc_sync_", path);
 
     if (fd < 0)
     {
-        return nullptr; // LCOV_EXCL_LINE: exhausting 100 random names is not reproducible.
+        return nullptr;
     }
 
     const bool ok = length == 0 || writeAll(fd, buffer, length);
-    closeFd(fd);
+    closeExclusiveTempFile(fd);
 
     if (!ok)
     {
@@ -214,14 +127,4 @@ std::unique_ptr<SpoolFile> TempSpoolFactory::spool(const uint8_t* buffer, size_t
     }
 
     return std::make_unique<SpoolFile>(path);
-}
-
-std::string TempSpoolFactory::uniquePath()
-{
-    // pid + thread id + per-factory counter order the name; a random token
-    // makes the next path unpredictable (so it cannot be pre-planted to force
-    // the exclusive create to fail). Including the pid keeps the name honestly
-    // unique across agent restarts, not merely within one process.
-    return m_spoolDir + "/hc_sync_" + pidHex() + "_" + threadIdHex() + "_"
-           + std::to_string(m_counter++) + "_" + randomTokenHex() + ".tmp";
 }

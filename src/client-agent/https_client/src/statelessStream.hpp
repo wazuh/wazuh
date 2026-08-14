@@ -51,7 +51,7 @@ class StatelessStream final
         ///        line carries only wazuh.agent.id, as before this field existed.
         StatelessStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                         IClock& clock, IRandom& random, ICallbackSink& sink, AuthGate& authGate,
-                        std::function<std::string()> collectHost = {});
+                        CompressionGate& compressionGate, std::function<std::string()> collectHost = {});
 
         /// Intake entry point (from agentd's EventForward seam). Emits a buffer
         /// level change if the append crosses a ladder threshold and tells the

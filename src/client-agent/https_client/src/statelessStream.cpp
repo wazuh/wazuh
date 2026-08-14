@@ -84,6 +84,7 @@ namespace
 StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& performer,
                                  const ISigner& signer, IClock& clock, IRandom& random,
                                  ICallbackSink& sink, AuthGate& authGate,
+                                 CompressionGate& compressionGate,
                                  std::function<std::string()> collectHost)
     : m_config(config)
     , m_clock(clock)
@@ -91,7 +92,7 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
     , m_accumulator(config.batchSizeBytes, config.bufferCapMultiplier, config.batchIntervalMs)
     , m_payload(config.batchSizeBytes)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, &authGate)
+    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
     , m_headerLine(buildHeaderLine(config.agentId, m_collectHost))

@@ -19,6 +19,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <zstd.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -26,8 +28,10 @@
 #include <vector>
 
 using ::testing::_;
+using ::testing::Contains;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Not;
 using ::testing::Return;
 
 namespace
@@ -63,11 +67,12 @@ namespace
                 : m_signer("001", m_keyProvider)
                 , m_config(makeConfig())
                 , m_authGate(m_sink, [] {})
-            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate)
+            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+                       m_compressionGate)
             {
             }
 
-            static ModuleConfig makeConfig()
+            static ModuleConfig makeConfig(bool compressionEnabled = false)
             {
                 hc_config_t config {};
                 std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
@@ -77,6 +82,7 @@ namespace
                 config.batch_size_bytes = 51;
                 config.batch_interval_ms = 5000;
                 config.buffer_cap_multiplier = 4;
+                config.https_compression_enabled = compressionEnabled;
                 return ModuleConfig::fromC(config);
             }
 
@@ -98,6 +104,7 @@ namespace
             NiceMock<MockCallbackSink> m_sink;
             MockHttpPerformer m_performer;
             AuthGate m_authGate;
+            CompressionGate m_compressionGate;
             FakeWaiter m_waiter;
             StatelessStream m_stream;
     };
@@ -159,7 +166,7 @@ TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
     raw.verify_mode = HC_VERIFY_NONE;
     const ModuleConfig config = ModuleConfig::fromC(raw);
     StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate};
+                            m_random, m_sink,      m_authGate, m_compressionGate};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -190,7 +197,7 @@ TEST_F(StatelessStreamTest, HeaderLineMergesHostBlockFromCollectHost)
         R"("host":{"hostname":"h1","architecture":"x86_64"}},)"
         R"("cluster":{"name":"c1","node":"n1"}})";
     StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, [&hostJson] { return hostJson; }};
+                            m_sink,    m_authGate, m_compressionGate, [&hostJson] { return hostJson; }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -229,7 +236,7 @@ TEST_F(StatelessStreamTest, HeaderLineFallsBackToAgentIdWhenCollectHostIsEmpty)
     // metadata_provider has nothing yet (e.g. before the first /control
     // handshake): the H line must still be well-formed, carrying only id.
     StatelessStream stream {m_config,  m_performer, m_signer, m_clock, m_random,
-                            m_sink,    m_authGate, [] { return std::string(); }};
+                            m_sink,    m_authGate, m_compressionGate, [] { return std::string(); }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -255,7 +262,7 @@ TEST_F(StatelessStreamTest, HeaderLineIgnoresAMalformedCollectHostResult)
     // A torn shared-memory read or an unexpected shape must degrade to
     // "agent.id only", never corrupt the H line or crash the stream.
     StatelessStream stream {m_config,  m_performer, m_signer,  m_clock, m_random,
-                            m_sink,    m_authGate, [] { return std::string("not json"); }};
+                            m_sink,    m_authGate, m_compressionGate, [] { return std::string("not json"); }};
 
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
@@ -283,7 +290,7 @@ TEST_F(StatelessStreamTest, HeaderLineIsRefreshedOnEveryFlushNotCachedAtConstruc
     std::string clusterName = "";
     StatelessStream stream
     {
-        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+        m_config,   m_performer, m_signer, m_clock, m_random, m_sink, m_authGate, m_compressionGate,
         [&clusterName]
         {
             return clusterName.empty() ? std::string() : R"({"cluster":{"name":")" + clusterName + "\"}}";
@@ -421,7 +428,7 @@ TEST_F(StatelessStreamTest, ASingleOversized413DoesNotShrinkTheBudget)
     raw.buffer_cap_multiplier = 4;
     const ModuleConfig config = ModuleConfig::fromC(raw);
     StatelessStream stream {config,   m_performer, m_signer, m_clock,
-                            m_random, m_sink,      m_authGate};
+                            m_random, m_sink,      m_authGate, m_compressionGate};
 
     const auto push = [&stream](const std::string & frame)
     {
@@ -674,4 +681,90 @@ TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
 
     EXPECT_GT(dropped, 0u);
     EXPECT_EQ(dropped, m_stream.droppedEvents());
+}
+
+TEST_F(StatelessStreamTest, CompressionRejectionRecoversAndDeliversEventExactlyOnce)
+{
+    // End-to-end proof that the RetrySender-level 415 recovery is
+    // invisible to StatelessStream: handleOutcome() only ever sees the final
+    // OutcomeClass, so a compressed-then-rejected-then-uncompressed-retry
+    // success looks exactly like any other Ok -- consumed once, not dropped,
+    // not left behind for a duplicate resend.
+    const ModuleConfig config = makeConfig(/*compressionEnabled=*/true);
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+                            m_compressionGate};
+
+    std::vector<std::vector<std::string>> headersPerCall;
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        headersPerCall.push_back(spec.headers);
+        return response(TransportStatus::Ok, 415);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        headersPerCall.push_back(spec.headers);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const std::string frame = "e1";
+    stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    stream.tick(m_waiter, true);
+
+    ASSERT_EQ(2u, headersPerCall.size());
+    EXPECT_THAT(headersPerCall[0], Contains("Content-Encoding: zstd"));
+    EXPECT_THAT(headersPerCall[1], Not(Contains("Content-Encoding: zstd")));
+    EXPECT_EQ(0u, stream.droppedEvents());
+
+    // Delivered exactly once: nothing left behind to resend on the next tick.
+    EXPECT_CALL(m_performer, perform(_)).Times(0);
+    stream.tick(m_waiter, true);
+}
+
+TEST_F(StatelessStreamTest, CompressionDoesNotChangeEventBatchingBudget)
+{
+    // AdaptivePayload/eventBytesBudgetLocked() must stay keyed off uncompressed
+    // content bytes: compression must only shrink the final wire bytes, never
+    // feed back into how much content one flush includes. Same 16-byte event
+    // budget as PayloadTooLargeKeepsEventsInOrderAndHalves above, but with
+    // compression on -- two "E aaaa\n" (7 bytes each) fit; a third must not be
+    // pulled into the same flush just because it would compress smaller.
+    const ModuleConfig config = makeConfig(/*compressionEnabled=*/true);
+    StatelessStream stream {config, m_performer, m_signer, m_clock, m_random, m_sink, m_authGate,
+                            m_compressionGate};
+
+    std::vector<std::string> decompressedBodies;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        std::vector<uint8_t> decompressed(4096);
+        const size_t size = ZSTD_decompress(decompressed.data(), decompressed.size(), spec.body, spec.bodyLength);
+        EXPECT_FALSE(ZSTD_isError(size));
+        decompressedBodies.emplace_back(reinterpret_cast<const char*>(decompressed.data()), size);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const std::string frame = "aaaa"; // "E aaaa\n" = 7 bytes.
+    stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size()); // 14: fits the 16-byte budget.
+    stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size()); // Would make 21: must wait.
+    stream.tick(m_waiter, true);
+
+    ASSERT_EQ(1u, decompressedBodies.size());
+    size_t eventCount = 0;
+
+    for (size_t pos = 0; (pos = decompressedBodies[0].find("E aaaa\n", pos)) != std::string::npos;
+            pos += 7, eventCount++) {}
+
+    EXPECT_EQ(2u, eventCount); // Only two events fit the uncompressed budget.
+
+    // The third event is still pending, not dropped: a further tick sends it.
+    stream.tick(m_waiter, true);
+    ASSERT_EQ(2u, decompressedBodies.size());
+    EXPECT_NE(std::string::npos, decompressedBodies[1].find("E aaaa\n"));
+    EXPECT_EQ(0u, stream.droppedEvents());
 }

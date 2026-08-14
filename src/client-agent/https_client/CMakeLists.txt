@@ -32,7 +32,9 @@ target_include_directories(
           ${SRC_FOLDER}/external/openssl/include)
 
 # wazuhext carries the vendored libcurl + OpenSSL symbols for agent targets.
-target_link_libraries(https_client PRIVATE wazuhext pthread)
+# ext_zstd: request-body compression, same target remoted_module
+# already links for the manager-side decode (#38129).
+target_link_libraries(https_client PRIVATE wazuhext pthread ext_zstd)
 
 set_target_properties(https_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                               BUILD_RPATH "$ORIGIN/../lib")
@@ -44,10 +46,20 @@ endif()
 # winagent: emit the .def at link time and generate the MinGW delay-load
 # import library the final win32 executables link against (the
 # agent_sync_protocol recipe).
+#
+# --exclude-libs=libzstd.a: MinGW auto-exports every global symbol from a
+# shared library by default (unlike ELF's convention), so without this,
+# zstd's own public C API (ZSTD_isError, etc.) leaks into this DLL's export
+# table/.def and gets its own delay-load thunk -- colliding with the real
+# ZSTD_isError the test binary also links directly via ext_zstd (needed
+# there to independently decompress and verify what this library produced).
+# Confirmed empirically: omitting this flag produces a real
+# "multiple definition of `ZSTD_isError'" link error building
+# https_client_unit_test.exe.
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     https_client PROPERTIES LINK_FLAGS
-                            "-Wl,--add-stdcall-alias -Wl,--output-def,libhttps_client.def")
+                            "-Wl,--add-stdcall-alias -Wl,--exclude-libs,libzstd.a -Wl,--output-def,libhttps_client.def")
 
   find_program(DLLTOOL i686-w64-mingw32-dlltool)
   if(NOT DLLTOOL)

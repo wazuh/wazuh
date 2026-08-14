@@ -12,7 +12,6 @@
 #ifndef _HC_SPOOL_FILE_HPP
 #define _HC_SPOOL_FILE_HPP
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -53,7 +52,9 @@ class ISpoolFileFactory
 /// Writes the buffer to a temp file under the configured spool directory,
 /// created atomically and exclusively (O_EXCL) with owner-only permissions so
 /// a shared dir (/tmp) cannot be used to hijack or read the spooled bytes.
-/// Portable across POSIX and Windows.
+/// Portable across POSIX and Windows. The exclusive-create itself lives in
+/// exclusiveTempFile.hpp, shared with ZstdFileCompressor's own temp output
+/// file so that security-relevant logic exists in exactly one place.
 class TempSpoolFactory final : public ISpoolFileFactory
 {
     public:
@@ -61,13 +62,7 @@ class TempSpoolFactory final : public ISpoolFileFactory
         std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) override;
 
     private:
-        std::string uniquePath();
-
         std::string m_spoolDir;
-
-        /// Atomic: spools happen from the stateful thread AND the control
-        /// thread (config downloads), concurrently.
-        std::atomic<uint64_t> m_counter {0};
 };
 
 #endif // _HC_SPOOL_FILE_HPP

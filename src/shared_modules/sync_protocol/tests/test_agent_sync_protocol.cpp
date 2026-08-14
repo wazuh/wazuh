@@ -1494,6 +1494,51 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     logCapture.expectDebugNotError("Manager reported not ready (503)");
 }
 
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckCompressionRejected)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LogCapture logCapture;
+    LoggerFunc testLogger = logCapture.logger();
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    // Enter in WaitingEndAck phase
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+        .WillOnce(Return(testData));
+
+        protocol->synchronizeModule(
+            Mode::DELTA
+        );
+    });
+
+    // Wait for WaitingStartAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck
+
+    // Wait for WaitingEndAck phase
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // EndAck with 415: the manager rejected Content-Encoding: zstd. RetrySender's
+    // own one-shot retry already absorbs this in the common case; this is the
+    // rare compound-failure path where a raw 415 reaches the protocol layer.
+    bool response = feedHttpResult(415);
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+
+    // Treated like 503 -- transient, retried next cycle, not a hard protocol
+    // violation that would drop the session's data.
+    logCapture.expectDebugNotError("Manager rejected the compressed encoding (415)");
+}
+
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();

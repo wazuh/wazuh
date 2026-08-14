@@ -47,6 +47,8 @@ enum class OutcomeClass
     Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
     PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
     VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
+    CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
+    ///< RetrySender retries once, uncompressed.
     Interrupted      ///< Aborted by shutdown: never a silent success.
 };
 
@@ -79,6 +81,9 @@ inline const char* outcomeName(OutcomeClass outcome)
 
         case OutcomeClass::VersionRejected:
             return "VersionRejected";
+
+        case OutcomeClass::CompressionRejected:
+            return "CompressionRejected";
 
         case OutcomeClass::Interrupted:
             return "Interrupted";
@@ -118,6 +123,12 @@ inline int toHcResult(OutcomeClass outcome)
         case OutcomeClass::VersionRejected:
             return HC_RESULT_PERMANENT;
 
+        // Reached here only if RetrySender's one-shot uncompressed retry was
+        // itself rejected too (unexpected -- the manager should never 415 an
+        // uncompressed body) -- same terminal treatment as Permanent.
+        case OutcomeClass::CompressionRejected:
+            return HC_RESULT_PERMANENT;
+
         default:
             return HC_RESULT_ERROR;
     }
@@ -136,6 +147,11 @@ struct HttpRequestSpec
     size_t bodyLength {0};
     std::string bodyFilePath;          ///< When non-empty: stream the body from this file.
     uint64_t bodyFileSize {0};
+    std::string precompressedBodyFilePath; ///< Optional zstd-compressed sibling of
+    ///< bodyFilePath, precomputed once by the caller (only /stateful today).
+    ///< attemptOnce() swaps it in when compression is enabled/allowed; empty
+    ///< means no such sibling exists, so bodyFilePath is sent as-is.
+    uint64_t precompressedBodyFileSize {0};
     std::string responseFilePath;      ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.
