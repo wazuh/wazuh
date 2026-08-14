@@ -594,7 +594,7 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_any(__wrap_asp_persist_diff_in_memory, data);
 
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
