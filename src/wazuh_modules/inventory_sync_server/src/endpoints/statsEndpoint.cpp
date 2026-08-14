@@ -31,10 +31,11 @@ namespace
     /// to the envelope.
     constexpr int STATS_DOCUMENT_VERSION {1};
 
-    /// `wazuh.schema.version` is the schema-wide marker, kept as a string because that is how
-    /// `wazuh-metrics-agents` declares it (keyword, not a number). Distinct from the layout version
-    /// above: this one tracks the schema the document claims to follow.
-    constexpr auto STATS_SCHEMA_VERSION {"1"};
+    /// `wazuh.schema.version` is the schema-wide marker, a string keyword (not a number). The value
+    /// matches `/config` and the stateful `wazuh-states-*` indices so the marker keeps one format
+    /// across agent-scoped indices. Distinct from the layout version above: this one tracks the
+    /// schema the document claims to follow.
+    constexpr auto STATS_SCHEMA_VERSION {"1.0"};
 
     // One shared instance rather than a per-call temporary: this runs on EVERY request.
     // loggerHelper.h stays out of statsEndpoint.hpp, which the tests include.
