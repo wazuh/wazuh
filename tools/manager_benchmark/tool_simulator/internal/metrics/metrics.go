@@ -16,6 +16,12 @@ type Counters struct {
 
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
+	// Scan* are the POST /scan/vd (feed-update re-scan) counters. Scan200 is
+	// "queued", not "scanned" -- the manager answers at admission and scans on
+	// its own worker pool afterward (docu/14-scan-vd.md). ScanOther collects
+	// the 400/401 that also invalidate the run.
+	ScanSent, Scan200, Scan409, Scan503, ScanOther uint64
+
 	// RetriesFeed counts feed-not-ready (503+Retry-After) re-sends; Retries503
 	// counts bare-503 (backpressure) re-sends; RetriesExhausted counts sessions
 	// whose retry budget ran out while the server was still answering 503.
@@ -40,6 +46,7 @@ func newBucket() *bucket {
 		"stateless": NewHistogram(),
 		"notify":    NewHistogram(),
 		"startup":   NewHistogram(),
+		"scan":      NewHistogram(),
 	}}
 }
 
@@ -153,6 +160,29 @@ func (r *Registry) RecordStateless(fleet, lane string, status int, events uint64
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.St503 }, 1)
 	default:
 		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StOther }, 1)
+	}
+}
+
+// RecordScanVD classifies a POST /scan/vd outcome and records its latency.
+//
+// The latency is the ADMISSION time (offset check plus enqueue), never a scan
+// duration: 200 means the request was queued, and the scan runs afterward on
+// remoted's worker pool, one agent at a time inside the VD module. 409
+// (version_mismatch) and 503 (scan_queue_full) are contract outcomes of real
+// fleet traffic; anything else lands in ScanOther, which for a 400/401 comes
+// with the run being invalidated by the caller.
+func (r *Registry) RecordScanVD(fleet, lane string, status int, latencyUS uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.ScanSent }, 1)
+	r.observe(fleet, lane, "scan", latencyUS)
+	switch status {
+	case 200:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Scan200 }, 1)
+	case 409:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Scan409 }, 1)
+	case 503:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.Scan503 }, 1)
+	default:
+		r.add(fleet, lane, func(c *Counters) *uint64 { return &c.ScanOther }, 1)
 	}
 }
 

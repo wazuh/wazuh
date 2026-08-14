@@ -43,7 +43,6 @@ func run() int {
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
 			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
 		cluster     = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
-		clusterNode = flag.String("cluster-node", "", "cluster node name (overrides the scenario)")
 		compression = flag.String("compression", "",
 			"session-body Content-Encoding: zstd | none (overrides the scenario's defaults.compression; agent mode only)")
 		noReuse      = flag.Bool("no-reuse", false, "disable HTTP keep-alive (agent mode)")
@@ -108,7 +107,7 @@ func run() int {
 	rn := runner.New(runner.Config{
 		Scenario: scn, ScenarioPath: absPath(*scenarioPath), Mode: scn.Mode,
 		Manager: *manager, Port: *port, RegPort: *regPort, Socket: *socket,
-		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster, ClusterNode: *clusterNode,
+		FeedTimeout: *feedTimeout, DrainTimeout: *drainTimeout, Timeout: *timeout, EnrollSettle: *enrollSettle, Cluster: *cluster,
 		Compression: *compression, Reuse: !*noReuse, Seed: usedSeed, SenderVer: senderVersion, VDFeedOffset: *vdFeedOffset,
 	})
 
@@ -160,6 +159,15 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verd
 	if c.StatelessSent > 0 {
 		fmt.Printf("stateless: sent=%d 202=%d 400=%d 413=%d 503=%d events=%d\n",
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)
+	}
+	if c.ScanSent > 0 {
+		// 200 is "queued": remoted admits the re-scan and its worker pool
+		// dispatches it later (docu/14-scan-vd.md), so this line says how many
+		// requests were ACCEPTED, not how many scans finished.
+		scan := s.Hists["scan"]
+		fmt.Printf("scan/vd: sent=%d 200(queued)=%d 409=%d 503=%d other=%d  admission ms: p50=%.1f p99=%.1f\n",
+			c.ScanSent, c.Scan200, c.Scan409, c.Scan503, c.ScanOther,
+			float64(scan.P50)/1000, float64(scan.P99)/1000)
 	}
 	if c.StartupOK+c.StartupErr+c.NotifyOK+c.NotifyErr+c.ShutdownOK+c.ShutdownErr > 0 {
 		fmt.Printf("control: startup=%d/%d notify=%d/%d shutdown=%d/%d\n",

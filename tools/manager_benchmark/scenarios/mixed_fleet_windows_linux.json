@@ -6,25 +6,24 @@
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",
-    "cluster_node": "node01",
     "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
   },
   "lanes": {
     "fim": [
       { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
-        "documents": { "count": 500, "size_bytes": 512, "with_checksum": true } },
+        "documents": { "count": 500, "size_bytes": 512 } },
       { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
         "documents": { "count": 20, "size_bytes": 512 }, "repeat_count": 10, "repeat_delay": "3s" }
     ],
     "sca": [
       { "kind": "full_resync", "module": "sca", "indices": ["wazuh-states-sca"],
-        "documents": { "count": 200, "size_bytes": 384, "with_checksum": true } },
+        "documents": { "count": 200, "size_bytes": 384 } },
       { "kind": "delta", "module": "sca", "indices": ["wazuh-states-sca"],
         "documents": { "count": 15 }, "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
     ],
     "syscollector": [
       { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
-        "documents": { "count": 300, "size_bytes": 256, "with_checksum": true } },
+        "documents": { "count": 300, "size_bytes": 256 } },
       { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
     ],
     "vd": [

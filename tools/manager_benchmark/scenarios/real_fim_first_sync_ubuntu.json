@@ -3,8 +3,7 @@
   "description": "FIM first scan replaying a real captured Ubuntu FIM session (sample_payloads/dumps/): a full_resync whose delta half sends the recorded documents verbatim, so the wire bytes match production shapes. Module, option and indices come from the dump.",
   "mode": "uds",
   "defaults": {
-    "cluster_name": "cluster01",
-    "cluster_node": "node01"
+    "cluster_name": "cluster01"
   },
   "lanes": {
     "fim": [

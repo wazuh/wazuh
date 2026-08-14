@@ -1,12 +1,12 @@
 {
-  "name": "mixed_fleet_windows_linux_uds",
-  "description": "The uds-mode twin of mixed_fleet_windows_linux: the same inventory lanes straight to the module socket, with no engine lane and no /control (both are agent-mode paths). Run as a pair with the agent-mode scenario, the difference isolates the remoted relay cost (F9c-4).",
-  "mode": "uds",
+  "name": "mixed_fleet_windows_linux_only_stateful",
+  "description": "The stateful-only twin of mixed_fleet_windows_linux: agent mode with /control keepalives, each agent running FIM + SCA + syscollector + VD inventory lanes, but no engine (log-event) lane. Doubled to 50+50 agents (vs. the flagship's 20+20) since dropping the engine budget frees the manager to take the full inventory-sync load, for a heavier stress run on the stateful sync path alone.",
+  "mode": "agent",
   "defaults": {
     "module": "syscollector",
     "option": "Sync",
     "cluster_name": "cluster01",
-    "control": { "enabled": false }
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
   },
   "lanes": {
     "fim": [
@@ -34,10 +34,10 @@
     ]
   },
   "fleets": [
-    { "name": "windows", "agents": 20, "first_id": 1000, "lanes": ["fim", "sca", "syscollector", "vd"],
+    { "name": "windows", "agents": 50, "first_id": 1000, "lanes": ["fim", "sca", "syscollector", "vd"],
       "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631", "architecture": "x86_64", "agentversion": "5.0.0" } },
-    { "name": "linux", "agents": 20, "first_id": 2000, "lanes": ["fim", "sca", "syscollector", "vd"],
+    { "name": "linux", "agents": 50, "first_id": 2000, "lanes": ["fim", "sca", "syscollector", "vd"],
       "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
   ],
-  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "300s" }
 }

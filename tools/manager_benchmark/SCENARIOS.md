@@ -111,6 +111,7 @@ matter, and volume is reached with `repeat_count` and fleet size). A step names 
 | `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
 | `real_first_connect_uds` (uds) | **A freshly connected Windows agent + Linux agent at FULL fidelity**: FIM first sync (Windows: the whole 27,726-item registry corpus — 21,091 registry-values + 6,625 registry-keys — in ONE ~26 MB session), syscollector, SCA full and VDFirst, each as its first-connection shape. `expected` pins all 14 sessions OK and the exact 31,950 documents |
 | `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**: uncompressed, the Windows FIM session exceeds remoted's 10 MiB body cap — this payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
+| `real_vd_rescan_storm` (agent) | **100 agents (50 Windows + 50 Linux) that sync their whole inventory and only then all ask for a re-scan at once**: real FIM + syscollector + SCA `full_resync`es plus a `syscollector_vd` VDFirst delta, then one `scan_vd` step per agent 90 s later — the `POST /scan/vd` feed-update path, a DIFFERENT manager path from the scan a VDFirst session triggers (see the note below). `expected` pins 700 sessions OK, ≥92,850 documents, no exhausted retry budget, and 100 re-scan requests with no malformed one |
 | `real_inspect_fleet` (agent) | A **dashboard-inspection showcase, not a measurement**: the same `real_first_connect` full-fidelity payload (1 Windows + 1 Linux agent, all 31,950 documents across FIM/syscollector/SCA/VD) plus a basic syslog `engine` lane, kept connected on `/control` keepalives for several extra minutes after the inventory sessions finish — see the note below |
 
 **Keeping a fleet connected without replaying its dumps.** `real_inspect_fleet` wants the two agents
@@ -124,6 +125,38 @@ a per-step `repeat_count`/`repeat_delay` on just the `engine` lane (the same mec
 event pressure): the heavy FIM/SCA/syscollector/VD dumps send once and are done in seconds, while the
 still-repeating `engine` lane keeps that agent's keepalive ticking for several more minutes, `pacing.
 repeat_until` itself staying `"0"`.
+
+**Two scans, two paths, one order.** `real_vd_rescan_storm` is the only scenario that walks both VD
+scan entry points, in the order a real agent does. Its `vd_*` lane first sends the inventory (a
+`delta` of a `VDFirst` dump), which the `inventory_sync_server`'s **VD scan lane** scans inline — one
+`option=VDFirst` scan per agent in modulesd's log. Then, after `initial_delay: "90s"`
+(the gap that lets the documents actually land in the indexer), the `scan_vd` step sends
+`POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset the agent learned from
+`/control`, and **remoted's** own worker pool dispatches a re-scan of that already-indexed inventory
+— one `reason=feed_update` scan per agent. Two things to keep in mind when reading a run:
+
+- **`200` means queued, not scanned.** The manager answers at admission and scans afterward, one
+  agent at a time (`ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock), so the
+  sender's `scan_latency_ms_*` is admission time. remoted's own `/scan/vd` counters are not exposed
+  on any metrics endpoint, which leaves modulesd's log as the only evidence the scans ran:
+  `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
+- **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
+  Check with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-detector/offset`
+  and wait for `CVE feed fully loaded — per-agent scans unblocked` in the log.
+
+- **The VD scan lane, not `/scan/vd`, is what 100 simultaneous first connections hit first.** The
+  inventory phase produced thousands of bare `503`s from `vd.capacity.503.total` (one indexer
+  connector, one scan at a time), which is why the scenario raises `retry.max_attempts` to 120 and
+  why its VD lane is a bare `delta`: a VDFirst `Cleans` session is `isVD` too, so it queues in that
+  same lane and waits its turn **without scanning anything** — with the `full_resync` shape it
+  doubled the lane's pressure for zero inventory, and 85 sessions then never landed at all. When a
+  VDFirst never lands, its agent's later re-scan is *correctly* skipped (`no package inventory
+  available`), so the storm reads as 100 × `200` with only a third of the scans actually running.
+  `retries_exhausted: 0` in the `expected` block is what guards that.
+
+100 agents also need enrollment room: run it with `--enroll-settle 300s` (remoted reloads
+`client.keys` on its own cadence, and that grows with fleet size — 100 keys took ~200 s and 100
+probes here). Full contract in [`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
 
 ## First-id ranges
 

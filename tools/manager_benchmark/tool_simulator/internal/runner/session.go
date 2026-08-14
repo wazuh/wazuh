@@ -189,6 +189,15 @@ func (a *agent) applyDumpMeta(start *fbbuild.Start, step scenario.Step) {
 	}
 	if step.Option == "" && scn.Defaults.Option == "" && ds.Option != "" {
 		start.Option = optionEnum(ds.Option)
+		// startFor only fills feed_offset when the SCENARIO already says the
+		// session is VD, and a dump that declares "VDFirst"/"VDSync" itself
+		// (the real_* first-connect captures do) only becomes VD here. Without
+		// re-resolving it, such a session declares option VDFirst with
+		// feed_offset 0 and the manager answers 409 version_mismatch against
+		// any node whose feed offset is not 0 -- the scan lane never runs.
+		if start.Option == fbbuild.OptionVDFirst || start.Option == fbbuild.OptionVDSync {
+			start.FeedOffset = a.feedOffsetFor(step)
+		}
 	}
 	if len(step.Indices) == 0 && len(ds.Indices) > 0 {
 		start.Indices = ds.Indices
@@ -223,7 +232,7 @@ func (a *agent) fillDocuments(lane string, step scenario.Step, sync *fbbuild.Syn
 	}
 	index := firstIndex(a.r.scn, step)
 	docs := source.Documents(a.r.seed, a.docKey(lane, step), source.DocSpec{
-		Count: spec.Count, SizeBytes: spec.SizeBytes, WithChecksum: spec.WithChecksum, Index: index,
+		Count: spec.Count, SizeBytes: spec.SizeBytes, Index: index,
 	})
 	total := 0
 	sync.Values = make([]fbbuild.Value, 0, len(docs))
@@ -253,7 +262,7 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 			return source.AggregateChecksum(nil)
 		}
 		docs := source.Documents(a.r.seed, a.docKey(lane, replaceKind(step, "delta")), source.DocSpec{
-			Count: spec.Count, SizeBytes: spec.SizeBytes, WithChecksum: true, Index: index,
+			Count: spec.Count, SizeBytes: spec.SizeBytes, Index: index,
 		})
 		sums := make([]string, 0, len(docs))
 		for _, d := range docs {
@@ -268,11 +277,13 @@ func (a *agent) checksumValue(lane string, step scenario.Step, index string) str
 }
 
 // runEngine ships the step's sample file to /stateless in batches of
-// events_per_batch H/E events (0 = the whole file at once). The lane's
+// events_per_batch H/E events (0 = the whole file at once). This agent's own
 // events_per_second limiter charges each batch its REAL cost in events
-// (WaitN), so the configured rate holds no matter how the events are grouped.
-// One call always covers the entire file; a 503'd batch is counted and
-// dropped, never retried -- an agent's events are lost the same way.
+// (WaitN), so the configured rate holds no matter how the events are grouped;
+// each agent paces itself independently, so the manager-side total scales
+// with how many agents run the lane. One call always covers the entire file;
+// a 503'd batch is counted and dropped, never retried -- an agent's events
+// are lost the same way.
 func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) {
 	lines := a.r.engineLines(step.Engine)
 	if len(lines) == 0 {
@@ -282,7 +293,7 @@ func (a *agent) runEngine(ctx context.Context, lane string, step scenario.Step) 
 	if batch <= 0 || batch > len(lines) {
 		batch = len(lines)
 	}
-	limiter := a.r.engineLimiter(lane, step.EventsPerSecond, batch)
+	limiter := a.r.engineLimiter(a.id, lane, step.EventsPerSecond, batch)
 
 	for off := 0; off < len(lines); off += batch {
 		end := off + batch

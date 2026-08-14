@@ -3,8 +3,7 @@
   "description": "Vulnerability-detection lane replaying real captured VD sessions: a VDFirst first scan of recorded package documents, then a VDSync delta replayed repeatedly. Option comes from each dump's metadata (VDFirst / VDSync). uds mode has no /control to learn the manager's current VD feed offset from, so pass -vd-feed-offset matching the target's real offset, or every replayed session gets a fast 409 version_mismatch instead of the real scan this replay is meant to load-test.",
   "mode": "uds",
   "defaults": {
-    "cluster_name": "cluster01",
-    "cluster_node": "node01"
+    "cluster_name": "cluster01"
   },
   "lanes": {
     "vd": [

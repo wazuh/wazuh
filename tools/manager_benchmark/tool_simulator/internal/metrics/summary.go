@@ -71,6 +71,11 @@ func bucketJSON(s CountersSnapshot) map[string]any {
 			"sent": c.StatelessSent, "s202": c.St202, "s400": c.StBad400,
 			"s413": c.StBad413, "s503": c.St503, "other": c.StOther, "events_sent": c.EventsSent,
 		},
+		// s200 is "queued", not "scanned": see RecordScanVD.
+		"scan": map[string]any{
+			"sent": c.ScanSent, "s200": c.Scan200, "s409": c.Scan409,
+			"s503": c.Scan503, "other": c.ScanOther,
+		},
 		"control": map[string]any{
 			"startup_ok": c.StartupOK, "startup_err": c.StartupErr,
 			"notify_ok": c.NotifyOK, "notify_err": c.NotifyErr,

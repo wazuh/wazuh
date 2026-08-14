@@ -67,7 +67,9 @@ Three rules keep an event lane honest:
 - Its rate is the lane's own `events_per_second`, separate from the session rate limiter: log
   volume and inventory volume stress different paths (the engine vs the sync pipeline) and must be
   dialed independently. The unit is real events — the limiter charges each batch its size — and the
-  rate is the lane's aggregate across every agent running it.
+  rate is EACH agent's own independent budget: every agent running the lane paces itself against
+  `events_per_second`, so the manager-side total scales with the fleet size
+  (`events_per_second × agents running the lane`), not a fixed aggregate.
 - `events_per_batch` sets how many events ride one `/stateless` request (0 = the whole sample file
   as a single batch). One pass always ships the entire file, split into as many requests as the
   batch size implies, so `stateless_sent` counts requests and `events_sent` counts events.

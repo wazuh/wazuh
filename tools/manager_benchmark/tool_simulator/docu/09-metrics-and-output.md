@@ -19,11 +19,13 @@ Header, in this exact order:
 timestamp,elapsed_s,mode,agents_active,
 sessions_sent,sessions_ok,sessions_noop,sessions_409,sessions_400,sessions_401,sessions_403,sessions_413,sessions_500,sessions_503,sessions_503_retry_after,sessions_other,
 stateless_sent,stateless_202,stateless_400,stateless_413,stateless_503,stateless_other,events_sent,
+scan_sent,scan_200,scan_409,scan_503,scan_other,
 retries_feed,retries_503,retries_exhausted,transport_errors,
 bytes_sent,documents_sent,
 control_startup_ok,control_startup_err,control_notify_ok,control_notify_err,control_shutdown_ok,control_shutdown_err,
 deletes_ok,deletes_err,
-session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_latency_ms_p99,stateless_latency_ms_p50,stateless_latency_ms_p99
+session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_latency_ms_p99,stateless_latency_ms_p50,stateless_latency_ms_p99,
+scan_latency_ms_p50,scan_latency_ms_p99
 ```
 
 - `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is seconds since the run started.
@@ -39,6 +41,12 @@ session_latency_ms_p50,session_latency_ms_p99,notify_latency_ms_p50,notify_laten
 - `sessions_noop` is a subset of `sessions_ok` (`{"status":"ok","noop":true}`).
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
+- `scan_*` are the `POST /scan/vd` counters ([14](14-scan-vd.md)): the feed-update re-scan requests
+  a `scan_vd` step sends. `scan_200` counts requests the manager **queued**, not scans it ran — it
+  answers at admission and scans afterward, so `scan_latency_ms_*` is admission time and NOT a scan
+  duration. `scan_409` (a stale `feed_offset`) and `scan_503` (`scan_queue_full`) are contract
+  outcomes; `scan_other` holds the `400`/`401` that also invalidate the run. A `scan_vd` step never
+  retries, so requests and attempts are the same number here.
 - `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.
@@ -76,6 +84,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
                   "abandoned_on_drain": 0 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
                    "events_sent": 1500000 },
+    "scan": { "sent": 100, "s200": 100, "s409": 0, "s503": 0, "other": 0 },
     "control": { "startup_ok": 100, "startup_err": 0, "notify_ok": 1500, "notify_err": 0,
                  "shutdown_ok": 100, "shutdown_err": 0 },
     "deletes": { "ok": 0, "err": 0 }
@@ -87,7 +96,8 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
     "session":   { "count": 240000, "p50": 4.1, "p90": 9.0, "p95": 14.0, "p99": 31.2, "max": 210.0, "avg": 6.2 },
     "stateless": { "count": 6000,   "p50": 2.0, "p90": 5.0, "p95": 8.0,  "p99": 20.0, "max": 90.0,  "avg": 3.1 },
     "notify":    { "count": 1500,   "p50": 1.2, "p90": 2.0, "p95": 3.0,  "p99": 5.5,  "max": 18.0,  "avg": 1.5 },
-    "startup":   { "count": 100,    "p50": 2.0, "p90": 3.1, "p95": 4.0,  "p99": 6.0,  "max": 9.0,   "avg": 2.2 }
+    "startup":   { "count": 100,    "p50": 2.0, "p90": 3.1, "p95": 4.0,  "p99": 6.0,  "max": 9.0,   "avg": 2.2 },
+    "scan":      { "count": 100,    "p50": 1.0, "p90": 1.8, "p95": 2.2,  "p99": 3.0,  "max": 5.0,   "avg": 1.1 }
   },
   "by_fleet": {
     "windows": { "sessions": { "sent": 120000, "ok": 119940, "s503": 60, "...": 0 },
@@ -100,7 +110,8 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   "by_lane": {
     "fim_windows":         { "sessions": { "sent": 60000, "ok": 60000 }, "latency_ms": { "session": { "p50": 3.8, "p99": 22.0 } } },
     "vd_windows":          { "sessions": { "sent": 21000, "ok": 20940, "s503": 60 }, "latency_ms": { "session": { "p50": 5.0, "p99": 80.0 } } },
-    "engine":              { "stateless": { "sent": 6000, "s202": 6000, "events_sent": 1500000 }, "latency_ms": { "stateless": { "p50": 2.0, "p99": 20.0 } } }
+    "engine":              { "stateless": { "sent": 6000, "s202": 6000, "events_sent": 1500000 }, "latency_ms": { "stateless": { "p50": 2.0, "p99": 20.0 } } },
+    "vd_linux":            { "sessions": { "sent": 100, "ok": 100 }, "scan": { "sent": 50, "s200": 50 }, "latency_ms": { "scan": { "p50": 1.0, "p99": 3.0 } } }
   }
 }
 ```
@@ -140,8 +151,9 @@ Histograms contribute one row per summary field, named `<metric>.p50`, `<metric>
 ## Console output
 
 Progress lines **SHOULD** be one per second, compact, and **MUST NOT** be the primary artifact. The
-final block **MUST** print: mode, achieved rate, the session and stateless status distributions, the
-session p50/p99, and whether the run was valid (not whether it "passed" — that distinction is the
+final block **MUST** print: mode, achieved rate, the session, stateless and `/scan/vd` status
+distributions (the last two only when the run produced any), the session p50/p99, and whether the
+run was valid (not whether it "passed" — that distinction is the
 point). Enough that a run can be judged from the terminal, with the files for the detail.
 
 ## What is not measured here

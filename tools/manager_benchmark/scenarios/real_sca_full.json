@@ -3,8 +3,7 @@
   "description": "SCA full sync replaying real captured SCA sessions for three platforms at once (Ubuntu, CentOS, Windows), each on its own lane and fleet, followed by a real SCA delta. The recorded check documents are large, so this exercises the bulk-bytes path with production shapes.",
   "mode": "uds",
   "defaults": {
-    "cluster_name": "cluster01",
-    "cluster_node": "node01"
+    "cluster_name": "cluster01"
   },
   "lanes": {
     "sca_ubuntu": [

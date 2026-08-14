@@ -49,8 +49,11 @@ type Scenario struct {
 type Defaults struct {
 	Module      string   `json:"module"`
 	Option      string   `json:"option"`
+	// ClusterName is the only cluster field a session declares. cluster_node was
+	// retired: the manager never validated it and is dropping its last consumer,
+	// and the value the tool used to send was read out of the manager's own
+	// config and handed straight back to it. See the conventions in docu/07.
 	ClusterName string   `json:"cluster_name"`
-	ClusterNode string   `json:"cluster_node"`
 	Documents   *DocSpec `json:"documents"`
 	Control     Control  `json:"control"`
 	Retry       Retry    `json:"retry"`
@@ -163,7 +166,9 @@ type Step struct {
 	Documents *DocSpec `json:"documents"`
 	Contexts  *DocSpec `json:"contexts"`
 	GlobalVer uint64   `json:"global_version"`
-	// FeedOffset overrides Start.feed_offset for a VDFirst/VDSync step. Nil
+	// FeedOffset overrides the feed offset a VD step declares: Start.feed_offset
+	// for a VDFirst/VDSync session, or the request body's feed_offset for a
+	// "scan_vd" step (the same resolution order, so one field pins both). Nil
 	// (the default) defers to -vd-feed-offset, or the value the agent's
 	// keepalive loop learned from /control's vd_feed_offset (agent mode only
 	// -- see docu/03-control-protocol.md); a pointer distinguishes "not set"
@@ -180,9 +185,11 @@ type Step struct {
 	// Engine-stream fields (kind "engine").
 	Engine   string `json:"engine"`   // path to a sample log file
 	Location string `json:"location"` // source path stamped on events
-	// EventsPerSecond caps the lane's REAL event rate, aggregated across every
-	// agent running the lane (0 = unlimited). The limiter charges one token per
-	// event, so the cap does not depend on how events are grouped into requests.
+	// EventsPerSecond caps EACH agent's own REAL event rate independently (0 =
+	// unlimited): every agent running the lane paces itself against its own
+	// budget, so N agents deliver up to N*EventsPerSecond to the manager in
+	// aggregate. The limiter charges one token per event, so the cap does not
+	// depend on how events are grouped into requests.
 	EventsPerSecond float64 `json:"events_per_second"`
 	// EventsPerBatch is how many events ride one /stateless request. 0 sends
 	// the whole sample file as a single batch. One runStep pass always ships the
@@ -191,10 +198,15 @@ type Step struct {
 }
 
 // DocSpec controls document (or context) generation for a step.
+//
+// There is deliberately no `with_checksum` knob: every generated document
+// carries checksum.hash.sha1, because every real one does (see
+// source.Documents). It was retired rather than defaulted to true, so a
+// scenario that still sets it fails to load instead of implying the sender
+// has a checksum-less mode.
 type DocSpec struct {
-	Count        int  `json:"count"`
-	SizeBytes    int  `json:"size_bytes"`
-	WithChecksum bool `json:"with_checksum"`
+	Count     int `json:"count"`
+	SizeBytes int `json:"size_bytes"`
 }
 
 // Pacing is the run-level load shape.
@@ -225,6 +237,7 @@ type Expected struct {
 	Stateless        map[string]Assertion `json:"stateless"`
 	Control          map[string]Assertion `json:"control"`
 	Deletes          map[string]Assertion `json:"deletes"`
+	Scan             map[string]Assertion `json:"scan"`
 	TransportErrors  Assertion            `json:"transport_errors"`
 	RetriesExhausted Assertion            `json:"retries_exhausted"`
 }

@@ -52,6 +52,12 @@ against its own version unless `allow_higher_versions` is set) and answers:
 Errors: `400 {"error":"invalid_version"}` when the version is malformed or too new,
 `500 {"error":"database_error"}` when wazuh-db is unreachable.
 
+`cluster` is where a REAL agent learns the values it later echoes in `Start` (it stores them as
+`agent_metadata_t.cluster_name`/`cluster_node`, "received during handshake"). The sender discards
+both, like every other field of this reply: `cluster_name` comes from the run configuration because a
+mismatch is answered `403` and the value belongs to the environment, and `cluster_node` is not sent at
+all — see [05-flatbuffers-messages.md](05-flatbuffers-messages.md).
+
 The sender **MUST** send a version the manager accepts (configurable, defaulting to the manager's
 own) so that `startup` failures are never mistaken for load effects.
 
@@ -147,7 +153,8 @@ system under test produces incomparable numbers between runs, and consuming that
 the tool a conformance checker for a contract that is not what this benchmark measures.
 
 The exception is `notify`'s `vd_feed_offset`: it is the one piece of server state a real agent
-DOES act on (deciding when to request a VD re-scan — see
+DOES act on (deciding when to request a VD re-scan through `POST /scan/vd` — see
+[14-scan-vd.md](14-scan-vd.md) and
 [stateless-api.yaml's `/control` docs](../../../../docs/ref/modules/remoted/https-events-api.md)),
 and VD sessions' `Start.feed_offset` must match the server's current offset or they are rejected
 with `409 version_mismatch` before ever reaching the scanner (see

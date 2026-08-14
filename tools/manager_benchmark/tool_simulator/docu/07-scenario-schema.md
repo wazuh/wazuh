@@ -24,7 +24,7 @@ production-shaped pressure.
   "lanes": {
     "fim_windows": [
       { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
-        "documents": { "count": 500, "size_bytes": 512, "with_checksum": true } },
+        "documents": { "count": 500, "size_bytes": 512 } },
       { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
         "documents": { "count": 20 }, "repeat_count": 10, "repeat_delay": "3s", "initial_delay": "0s" }
     ],
@@ -85,13 +85,14 @@ independent.
 
 | `kind` | Session built | Notes |
 |---|---|---|
-| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count/size/`checksum.hash.sha1`; `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
+| `delta` | `ModuleDelta` + `SyncData` | `documents` controls count and size (`checksum.hash.sha1` is always present — see the conventions); `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
 | `cleans` | `ModuleDelta` + `Cleans` | `indices` overrides the defaults |
 | `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
 | `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |
 | `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
 | `delete_agent` | `DELETE /agents` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
+| `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
 | `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
 
 Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
@@ -124,7 +125,7 @@ A lane step **MAY** carry:
 |---|---|
 | `repeat_count` | Send the step this many times (0 or absent = once). A steady delta stream is `delta` with a high `repeat_count` |
 | `repeat_delay` | Wait this long between repeats |
-| `initial_delay` | Wait this long before the step's first send — how lanes are staggered (VD starting after FIM has seeded, say) |
+| `initial_delay` | Wait this long before the step's first send — how lanes are staggered (VD starting after FIM has seeded, say), and how a `scan_vd` step waits for the inventory it re-scans to reach the indexer |
 
 Durations are Go duration strings (`"3s"`, `"5m"`).
 
@@ -137,12 +138,13 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
 | `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
 
-**What `requests_per_second` counts**: `/stateful` sessions and `DELETE /agents` requests, one token
-each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
+**What `requests_per_second` counts**: `/stateful` sessions, `DELETE /agents` and `POST /scan/vd`
+requests, one token each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
 FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
 and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees
 a session. Engine lanes have their own knob in real event units (`events_per_second`, [13](13-engine-event-streams.md)),
-aggregated across every agent running the lane. Both targets are recorded with the artifacts.
+applied per agent — the manager-side total scales with how many agents run the lane. Both targets
+are recorded with the artifacts.
 
 ## Retry (defaults.retry)
 
@@ -165,6 +167,7 @@ budget spent).
 "expected": {
   "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
   "stateless": { "s202": { "gte": 1 } },
+  "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
   "control":   { "startup_err": { "eq": 0 } },
   "deletes":   { "err": { "eq": 0 } },
   "transport_errors": { "eq": 0 },
@@ -189,6 +192,14 @@ already invalid — judging counters produced by an unauthenticated fleet would 
 - `documents.size_bytes` is the approximate serialized size of one document; the generator pads a
   realistic shape rather than one giant string, because document count and document size stress
   different parts of the pipeline (per-document overlay vs bulk bytes).
+- **Every generated document carries `checksum.hash.sha1`, and there is no knob to omit it.** A real
+  agent has no checksum-less mode: syscollector writes `/checksum/hash/sha1` into every item it emits
+  (`syscollectorImp.cpp`), SCA computes one per check (`sca_event_handler.cpp`), FIM keeps it as a
+  column of its own, and all 32,000 documents of the captured corpus in `sample_payloads/dumps/` have
+  one. It is also what the `ModuleCheck` aggregate is computed over, so a document without it is a
+  document the integrity path could never reconcile. The former `documents.with_checksum` field was
+  **retired**, not defaulted to `true`: a scenario that still sets it is refused at load time, like
+  every other retired knob, rather than reading as a choice the sender does not have.
 - **Generated documents MUST satisfy the target index's mapping.** The real state indices are
   `dynamic: strict`, so a field that is not in the mapping makes the indexer reject the whole bulk
   with `400` and the session answer `500` — the load never reaches the pipeline being measured. The
@@ -198,8 +209,11 @@ already invalid — judging counters produced by an unauthenticated fleet would 
   captured payloads, which is mapping-valid by construction.
 - **The cluster name is environment config, not scenario content.** The server answers `403` to a
   session whose `cluster_name` is not its own, so the value in the file is only a default:
-  `--cluster` / `--cluster-node` override it per run, which is what makes one scenario library usable
-  against any manager.
+  `--cluster` overrides it per run, which is what makes one scenario library usable against any
+  manager. There is **no cluster node**: `defaults.cluster_node` was retired (a file that still
+  declares it is refused at load time) and no session sets `Start.cluster_node`, because the manager
+  never validated it and the tool was only echoing back a value it had read from the manager's own
+  configuration — see [05](05-flatbuffers-messages.md).
 - Document generation is deterministic from a seed recorded in the run metadata: two runs of one
   scenario send byte-identical payloads, or the comparison is not one.
 - **There is no pass/fail gate unless the scenario opts in.** A scenario declares *what to send*;
