@@ -287,7 +287,11 @@ bool sendSyncSession(const std::string& socketPath, const std::string& sessionId
     // this one indefinitely.
     timeval timeout {};
     timeout.tv_sec = PEER_IDLE_TIMEOUT_MS / 1000;
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    // Best-effort: on the rare platform/socket where this is rejected, the
+    // read below simply has no idle timeout rather than the send failing
+    // outright -- ignoring it is a deliberate choice, not an oversight.
+    // (CID 562613)
+    (void)setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     const auto write = [fd](const void* buffer, size_t n) -> long
     {

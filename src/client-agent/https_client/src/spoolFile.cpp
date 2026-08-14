@@ -98,7 +98,10 @@ void SpoolFile::removeFile()
 {
     if (!m_path.empty())
     {
-        std::remove(m_path.c_str());
+        // Best-effort: a failure here just leaves a stale temp file behind and
+        // has no bearing on the request that was already sent/consumed. The
+        // (void) cast is a deliberate ignore, not an oversight. (CID 562612)
+        (void)std::remove(m_path.c_str());
     }
 }
 
@@ -122,8 +125,8 @@ std::unique_ptr<SpoolFile> TempSpoolFactory::spool(const uint8_t* buffer, size_t
 
     if (!ok)
     {
-        std::remove(path.c_str()); // LCOV_EXCL_LINE: write failure is not reproducible in tests.
-        return nullptr;            // LCOV_EXCL_LINE
+        (void)std::remove(path.c_str()); // LCOV_EXCL_LINE: write failure is not reproducible in tests.
+        return nullptr;                  // LCOV_EXCL_LINE
     }
 
     return std::make_unique<SpoolFile>(path);
