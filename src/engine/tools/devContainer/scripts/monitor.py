@@ -187,7 +187,6 @@ REMOTED_HEADER = [
     "messages_received_breakdown_control_breakdown_startup",
     "messages_sent_breakdown_ack",
     "messages_sent_breakdown_discarded",
-    "messages_sent_breakdown_request",
     "messages_sent_breakdown_shared",
     "queues_received_size",
     "queues_received_usage",
@@ -718,7 +717,6 @@ def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: fl
         if isinstance(sent_breakdown, dict):
             row["messages_sent_breakdown_ack"] = _as_int(sent_breakdown.get("ack"))
             row["messages_sent_breakdown_discarded"] = _as_int(sent_breakdown.get("discarded"))
-            row["messages_sent_breakdown_request"] = _as_int(sent_breakdown.get("request"))
             row["messages_sent_breakdown_shared"] = _as_int(sent_breakdown.get("shared"))
 
     queues = metrics.get("queues")

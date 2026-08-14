@@ -46,7 +46,6 @@ static int test_setup(void ** state) {
     remoted_state.recv_breakdown.ctrl_breakdown.request_count = 2;
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
-    remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
 
     return 0;
@@ -119,11 +118,10 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "ack")->valueint, 1114);
     assert_non_null(cJSON_GetObjectItem(sent, "shared"));
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
-    assert_non_null(cJSON_GetObjectItem(sent, "request"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
     assert_int_equal(cJSON_GetObjectItem(sent, "discarded")->valueint, 85);
     assert_null(cJSON_GetObjectItem(sent, "ar"));
+    assert_null(cJSON_GetObjectItem(sent, "request"));
 
     assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions")->valueint, 5);

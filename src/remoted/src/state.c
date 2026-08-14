@@ -125,12 +125,6 @@ void rem_inc_send_shared() {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_send_request() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.request_count++;
-    w_mutex_unlock(&state_mutex);
-}
-
 void rem_inc_send_discarded() {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.discarded_count++;
@@ -216,7 +210,6 @@ cJSON* rem_create_state_json() {
 
     cJSON_AddNumberToObject(_sent_breakdown, "ack", state_cpy.sent_breakdown.ack_count);
     cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
     cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
 
     cJSON *_queues = cJSON_CreateObject();
