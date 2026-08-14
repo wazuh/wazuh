@@ -1,0 +1,22 @@
+{
+  "name": "mega_burst",
+  "description": "One large Linux fleet (60 agents) all firing a syscollector delta stream unpaced (concurrent_agents 0, repeat_delay 0s), a maximum-unpaced-burst stress test of the sync ingress. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
+  "mode": "uds",
+  "defaults": {
+    "retry": { "enabled": false },
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 50 }, "repeat_count": 30, "repeat_delay": "0s" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 60, "first_id": 22000, "lanes": ["syscollector"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "120s" }
+}

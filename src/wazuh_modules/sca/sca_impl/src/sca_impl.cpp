@@ -474,8 +474,8 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
-void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps, std::chrono::seconds integrityInterval)
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
+                                                       std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -488,7 +488,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
             // Publish under the exclusive lock: wcom queries can arrive while the module
             // is still starting up, and they read the pointer under the shared lock.
             std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
-            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
@@ -593,6 +593,12 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             // Not a real failure: the sync was aborted because the module is stopping.
             // Report it as an expected event, not a WARNING.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
+        }
+        else if (result.awaitingPrerequisite)
+        {
+            // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+            // most commonly right after enrollment/restart. Expected to clear on its own.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
         }
         else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
@@ -857,6 +863,13 @@ int SecurityConfigurationAssessment::executeFlushSync()
     {
         // Not a real failure: the flush sync was aborted because the module is stopping.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
+        return -1;
+    }
+    else if (result.awaitingPrerequisite)
+    {
+        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+        // most commonly right after enrollment/restart. Expected to clear on its own.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
         return -1;
     }
     else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
@@ -1244,7 +1257,16 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             LOG_DEBUG,
             "Retrieved " + std::to_string(checks.size()) + " synced checks from database for SCA " + syncReason);
 
-        m_spSyncProtocol->clearInMemoryData();
+        // Clear the manager's index before resending: a full-replace sync is now a
+        // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
+        // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
+        // payload and could permanently drop whatever didn't fit in that one session).
+        if (!m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}))
+        {
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Failed to clear SCA index before " + syncReason + "; will retry later");
+            return {false, {}};
+        }
 
         for (const auto& check : checks)
         {
@@ -1312,7 +1334,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 const std::vector<unsigned char> hashResult = hash.hash();
                 std::string hashedId = Utils::asciiToHex(hashResult);
 
-                m_spSyncProtocol->persistDifferenceInMemory(
+                m_spSyncProtocol->persistDifference(
                     hashedId,
                     Operation::CREATE,
                     SCA_SYNC_INDEX,
@@ -1325,7 +1347,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
         {

@@ -26,6 +26,50 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
+### Installation variables
+
+The `<remote>` block of the generated `/var/wazuh-manager/etc/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
+
+```bash
+sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' dpkg -i wazuh-manager_*.deb
+```
+
+```bash
+sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -ivh wazuh-manager-*.rpm
+```
+
+> [!NOTE]
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with an error, before any configuration is written.
+>
+> The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
+
+| Variable | Configuration option | Default |
+|----------|----------------------|---------|
+| `WAZUH_REMOTE_HTTPS_PORT` | `remote.https.port` | `1517` |
+| `WAZUH_REMOTE_HTTPS_BIND_ADDR` | `remote.https.bind_addr` | `127.0.0.1` |
+| `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/certs/remoted.pem` |
+| `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/certs/remoted-key.pem` |
+| `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
+| `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`none`) |
+| `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
+| `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`20MB`) |
+| `WAZUH_REMOTE_HTTPS_DUAL_STACK` | `remote.https.dual_stack` | not set (`no`) |
+| `WAZUH_REMOTE_LEGACY_PORT` | `remote.legacy.port` | `1514` |
+| `WAZUH_REMOTE_LEGACY_PROTOCOL` | `remote.legacy.protocol` | `tcp` |
+| `WAZUH_REMOTE_LEGACY_LOCAL_IP` | `remote.legacy.local_ip` | `127.0.0.1` |
+| `WAZUH_REMOTE_LEGACY_QUEUE_SIZE` | `remote.legacy.queue_size` | `131072` |
+| `WAZUH_REMOTE_LEGACY_IPV6` | `remote.legacy.ipv6` | not set (`no`) |
+| `WAZUH_REMOTE_LEGACY_RIDS_CLOSING_TIME` | `remote.legacy.rids_closing_time` | not set (`5m`) |
+| `WAZUH_REMOTE_LEGACY_CONNECTION_OVERTAKE_TIME` | `remote.legacy.connection_overtake_time` | not set (`60`) |
+| `WAZUH_REMOTE_AGENTS_ALLOW_HIGHER_VERSIONS` | `remote.agents.allow_higher_versions` | `no` |
+
+Options marked "not set" are only written to the configuration file when their variable is provided; the value in parentheses is the built-in default applied by `wazuh-manager-remoted`. See the [remoted configuration reference](../modules/remoted/configuration.md) for the meaning and accepted values of each option.
+
+`WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. When they are, the installer does not generate the default self-signed certificate: the referenced files are managed by the administrator. `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
+
+> [!IMPORTANT]
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. When the file is not there, the HTTPS server fails to start and takes the legacy agent listener down with it: the service reports `active` while nothing is listening. The files must exist and be readable by the `wazuh-manager` user before the manager is started; the installer does not create them and does not adjust their ownership.
+
 ### Configuration
 
 #### Deploy certificates
@@ -40,13 +84,23 @@ sudo mkdir -p /var/wazuh-manager/etc/certs
 
 # Extract and deploy certificates
 sudo tar -xf wazuh-certificates.tar -C /var/wazuh-manager/etc/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./root-ca.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/manager.pem
-sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/manager-key.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME.pem /var/wazuh-manager/etc/certs/indexer-connector.pem
+sudo mv /var/wazuh-manager/etc/certs/$NODE_NAME-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 
-# Set proper permissions
-sudo chmod 500 /var/wazuh-manager/etc/certs
-sudo chmod 400 /var/wazuh-manager/etc/certs/*
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/certs
+# Set ownership and permissions on the indexer certificates.
+# The installer creates etc/certs as root:wazuh-manager with the sticky bit (1770)
+# and the daemons self-generate their own certificates (authd, remoted, apid) there
+# as wazuh-manager:wazuh-manager. Only the externally provisioned indexer material is
+# owned by root:wazuh-manager 0640, so the manager can read it after dropping
+# privileges but cannot replace its own trust anchor.
+sudo chown root:wazuh-manager \
+    /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo chmod 640 \
+    /var/wazuh-manager/etc/certs/root-ca.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector.pem \
+    /var/wazuh-manager/etc/certs/indexer-connector-key.pem
 ```
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.
@@ -72,8 +126,8 @@ Update the indexer configuration in `/var/wazuh-manager/etc/wazuh-manager.conf` 
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```

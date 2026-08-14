@@ -76,6 +76,7 @@ struct uhttp_client
     size_t resp_cap;            ///< capacity of resp_buf
     size_t resp_used;           ///< bytes written into resp_buf
     int keepalive;              ///< 1 = send "Connection: keep-alive"
+    char content_type[160];     ///< resolved "Content-Type: ..." line, so headers can be rebuilt
 };
 
 /* --------------------------- libcurl write callback --------------------------- */
@@ -135,6 +136,47 @@ static void uhttp_client_free_partial(uhttp_client_t* c, struct curl_slist* hdrs
     }
 }
 
+/**
+ * @brief Build the header list every request starts from: the resolved Content-Type, the
+ *        "Expect: 100-continue" suppression and, when enabled, the explicit keep-alive.
+ *
+ * In one place so uhttp_client_reset_headers() reproduces exactly what the constructor installed.
+ * A caller that clears the list to swap a per-request header would otherwise drop these three
+ * silently, with no way to get them back -- which is how a client created with `keepalive = true`
+ * ended up sending no keep-alive at all from its second request onward.
+ *
+ * @return a fresh list the caller owns, or NULL on allocation failure (nothing leaked).
+ */
+static struct curl_slist* _build_default_headers(const uhttp_client_t* c)
+{
+    struct curl_slist* hdrs = curl_slist_append(NULL, c->content_type);
+    if (!hdrs)
+        return NULL;
+
+    // Disable "Expect: 100-continue" to avoid an extra round-trip on small posts
+    struct curl_slist* next = curl_slist_append(hdrs, "Expect:");
+    if (!next)
+    {
+        curl_slist_free_all(hdrs);
+        return NULL;
+    }
+    hdrs = next;
+
+    if (c->keepalive)
+    {
+        // HTTP/1.1 defaults to keep-alive; being explicit is harmless and can help with proxies.
+        next = curl_slist_append(hdrs, "Connection: keep-alive");
+        if (!next)
+        {
+            curl_slist_free_all(hdrs);
+            return NULL;
+        }
+        hdrs = next;
+    }
+
+    return hdrs;
+}
+
 /* ------------------------------- Client lifecycle ------------------------------- */
 
 uhttp_client_t* uhttp_client_new(const uhttp_options_t* opt)
@@ -163,60 +205,31 @@ uhttp_client_t* uhttp_client_new(const uhttp_options_t* opt)
     c->connect_timeout_ms = opt->connect_timeout_ms;
     c->keepalive = opt->keepalive ? 1 : 0;
 
-    // Build initial headers into a temporary list; take ownership only on success.
-    struct curl_slist* hdrs = NULL;
-
+    // Resolve the Content-Type line ONCE and keep it: the header list is rebuilt from these fields
+    // whenever a caller resets it, so it cannot drift from what the constructor installed.
     if (opt->content_type && *opt->content_type)
     {
         if (strncasecmp(opt->content_type, "Content-Type:", 13) == 0)
         {
-            hdrs = curl_slist_append(hdrs, opt->content_type);
-            if (!hdrs)
-            {
-                uhttp_client_free_partial(c, hdrs);
-                return NULL;
-            }
+            snprintf(c->content_type, sizeof(c->content_type), "%s", opt->content_type);
         }
         else
         {
-            char line[160];
-            snprintf(line, sizeof(line), "Content-Type: %s", opt->content_type);
-            hdrs = curl_slist_append(hdrs, line);
-            if (!hdrs)
-            {
-                uhttp_client_free_partial(c, hdrs);
-                return NULL;
-            }
+            snprintf(c->content_type, sizeof(c->content_type), "Content-Type: %s", opt->content_type);
         }
     }
     else
     {
         // Default to a binary content type if none provided
-        hdrs = curl_slist_append(hdrs, "Content-Type: application/octet-stream");
-        if (!hdrs)
-        {
-            uhttp_client_free_partial(c, hdrs);
-            return NULL;
-        }
+        snprintf(c->content_type, sizeof(c->content_type), "Content-Type: application/octet-stream");
     }
 
-    // Disable "Expect: 100-continue" to avoid an extra round-trip on small posts
-    hdrs = curl_slist_append(hdrs, "Expect:");
+    // Build initial headers into a temporary list; take ownership only on success.
+    struct curl_slist* hdrs = _build_default_headers(c);
     if (!hdrs)
     {
-        uhttp_client_free_partial(c, hdrs);
+        uhttp_client_free_partial(c, NULL);
         return NULL;
-    }
-
-    if (c->keepalive)
-    {
-        // HTTP/1.1 defaults to keep-alive; being explicit is harmless and can help with proxies.
-        hdrs = curl_slist_append(hdrs, "Connection: keep-alive");
-        if (!hdrs)
-        {
-            uhttp_client_free_partial(c, hdrs);
-            return NULL;
-        }
     }
 
     // Configure the easy handle
@@ -299,11 +312,36 @@ void uhttp_client_clear_headers(uhttp_client_t* c)
         mdebug1("Failed to set CURLOPT_HTTPHEADER: %d", rc);
     }
 
-    if (c->headers) 
+    if (c->headers)
     {
         curl_slist_free_all(c->headers);
         c->headers = NULL;
     }
+}
+
+int uhttp_client_reset_headers(uhttp_client_t* c)
+{
+    if (!c || !c->easy)
+        return -1;
+
+    struct curl_slist* hdrs = _build_default_headers(c);
+    if (!hdrs)
+        return -1;
+
+    // Hand curl the new list BEFORE freeing the old one: curl holds the pointer it was given, so
+    // freeing first would leave it referencing released memory for the length of this call.
+    if (curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, hdrs) != CURLE_OK)
+    {
+        curl_slist_free_all(hdrs);
+        return -1;
+    }
+
+    if (c->headers)
+    {
+        curl_slist_free_all(c->headers);
+    }
+    c->headers = hdrs;
+    return 0;
 }
 
 /* ---------------------------- Response capture API ---------------------------- */
@@ -352,12 +390,25 @@ int uhttp_client_set_unix_sock(uhttp_client_t* c, const char* sock_path)
  */
 int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* out)
 {
-    if (!c || !c->easy || !data || len == 0)
+    /* An EMPTY body is a legitimate POST: a request whose whole input travels in headers or in the
+     * path (e.g. the inventory sync server's /agents/delete, which takes its target from
+     * X-Wazuh-Agent-Id and ignores the body). Only the contradictory combination is refused -- a NULL
+     * pointer with a positive length.
+     *
+     * Rejecting `len == 0` here was a trap rather than a validation: it returned before
+     * curl_easy_perform() AND without writing `out`, so the caller saw curl_code == 0 (CURLE_OK) with
+     * no HTTP status -- indistinguishable from a request that went out and succeeded. Every such
+     * deletion silently never left the process. */
+    if (!c || !c->easy || (!data && len > 0))
         return -1;
+
+    /* curl needs a non-NULL POSTFIELDS to send `Content-Length: 0` and an empty body; given NULL it
+     * would instead expect the body from a read callback that is never installed here. */
+    const void* fields = data ? data : "";
     CURLcode rc_opt;
 
 #if CURL_AT_LEAST_VERSION(7, 58, 0)
-    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, fields)) != CURLE_OK)
     {
         mdebug1("Failed to set CURLOPT_POSTFIELDS: %d", rc_opt);
         return -1;
@@ -369,7 +420,7 @@ int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* 
         return -1;
     }
 #else
-    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, fields)) != CURLE_OK)
     {
         mdebug1("Failed to set CURLOPT_POSTFIELDS: %d", rc_opt);
         return -1;

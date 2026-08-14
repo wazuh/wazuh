@@ -23,7 +23,6 @@ include_directories(
   ${SRC_FOLDER}/external/openssl/include/
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/external/rocksdb/include
-  ${SRC_FOLDER}/external/simdjson/include
   ${SRC_FOLDER}/client-agent/include
   ${SRC_FOLDER}/config/include
   ${SRC_FOLDER}/shared/include/error_messages
@@ -40,10 +39,14 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/common/
   ${SRC_FOLDER}/shared_modules/content_manager/include
   ${SRC_FOLDER}/shared_modules/dbsync/include
-  ${SRC_FOLDER}/shared_modules/router/include
   ${SRC_FOLDER}/shared_modules/sync_protocol/include
   ${SRC_FOLDER}/syscheckd/include
   ${SRC_FOLDER}/wazuh_db/include)
+
+# simdjson's ondemand API instantiates templates (logger, string_format) that trip
+# -Wformat-nonliteral/-Wdangling-reference under some GCC versions; SYSTEM keeps those out of our
+# warning budget without patching vendored code.
+include_directories(SYSTEM ${SRC_FOLDER}/external/simdjson/include)
 
 # Submodule include directories
 include_directories(
@@ -55,7 +58,8 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/include
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
-  ${SRC_FOLDER}/wazuh_modules/inventory_sync/include
+  ${SRC_FOLDER}/wazuh_modules/inventory_sync_server/include
+  ${SRC_FOLDER}/wazuh_modules/keystore_server/include
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
@@ -71,6 +75,8 @@ set(WAZUH_RUNTIME_GROUP "wazuh")
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   set(WAZUH_MODULESD_DAEMON_NAME "wazuh-manager-modulesd")
   set(WAZUH_RUNTIME_GROUP "wazuh-manager")
+  set(WAZUH_RUNTIME_USER "wazuh-manager")
+  add_definitions(-DWAZUH_RUNTIME_USER="${WAZUH_RUNTIME_USER}")
 endif()
 add_definitions(-DARGV0="${WAZUH_MODULESD_DAEMON_NAME}")
 add_definitions(-DGROUPGLOBAL="${WAZUH_RUNTIME_GROUP}")
@@ -91,7 +97,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Modules - Server only
-  add_subdirectory(inventory_sync)
+  add_subdirectory(inventory_sync_server)
+  add_subdirectory(keystore_server)
   add_subdirectory(vulnerability_scanner)
 else()
   # Modules - Agent only
@@ -128,7 +135,8 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   # Server build
   target_link_libraries(
     wazuh_modulesd_lib
-    PUBLIC inventory_sync
+    PUBLIC inventory_sync_server
+           keystore_server
            vulnerability_scanner
            wazuhext
            pthread

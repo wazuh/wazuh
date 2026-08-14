@@ -89,8 +89,7 @@ constexpr std::string_view STREAMLOG_MAX_ACCUMULATED_SIZE = "analysisd.streamlog
 constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
-constexpr std::string_view SKIP_GROUP_CHANGE = "analysisd.owner_group_change_skip";
-constexpr std::string_view GROUP = "analysisd.owner_group";
+constexpr std::string_view DROP_PRIVILEGES = "analysisd.drop_privileges";
 
 constexpr std::string_view API_RESOURCE_PAYLOAD_MAX_BYTES = "analysisd.api_resource_payload_max_bytes";
 constexpr std::string_view API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES = "analysisd.api_resource_kvdb_payload_max_bytes";

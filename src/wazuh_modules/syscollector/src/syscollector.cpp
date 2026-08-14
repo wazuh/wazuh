@@ -144,15 +144,15 @@ void syscollector_release_resources()
     Syscollector::instance().releaseResources();
 }
 
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
-                            unsigned int retries, size_t maxEps, uint32_t integrityInterval)
+void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD,
+                            uint32_t integrityInterval)
 {
-    if (moduleName && syncDbPath && syncDbPathVD && mqFuncs)
+    if (moduleName && syncDbPath && syncDbPathVD)
     {
         try
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), *mqFuncs, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout),
-                                                      retries, maxEps, integrityInterval);
+            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD),
+                                                      integrityInterval);
         }
         catch (const std::exception& ex)
         {
@@ -169,10 +169,12 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
 
 bool syscollector_sync_module(Mode_t mode)
 {
-    Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    (void)mode;
     // Syscollector::syncModule() already logs a WARNING with the failure reason before returning.
     // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
-    return Syscollector::instance().syncModule(syncMode).success;
+    // Only MODE_DELTA is meaningful here: a full replace is now a DataClean + DELTA
+    // sequence handled internally by the recovery path, not by this entry point.
+    return Syscollector::instance().syncModule(Mode::DELTA).success;
 }
 
 void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)

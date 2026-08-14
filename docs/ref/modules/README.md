@@ -14,19 +14,18 @@
 - [FIM](fim/index.html) - File Integrity Monitoring with persistent state synchronization
 - [Indexer Connector](indexer_connector/index.html) - OpenSearch indexing library (Filebeat replacement)
 - [Integrations](integrations/index.html) - Cloud services and third-party platform integrations
-- [Inventory Sync](inventory-sync/index.html) - Manager-side synchronization service for agent inventory and context data
-- [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB)
+- [Inventory Sync Server](inventory-sync-server/index.html) - Manager-side synchronization service for agent state data (HTTP over UDS)
+- [Keystore](keystore/index.html) - Encrypted credential storage (AES-256, RocksDB), served over UDS by the `keystore_server` module
 - [Logcollector](logcollector/index.html) - Log ingestion
 - [Logging](logging/index.html) - Log format configuration (plain text, JSON, or dual output)
 - [Monitord](monitord/index.html) - Agent disconnection monitoring and log rotation
 - [RBAC](rbac/index.html) - Role-based access control for the API
 - [Remoted](remoted/index.html) - Agent communication daemon
 - [Rootcheck](rootcheck/index.html) - Rootkit and anomaly detection
-- [Router](router/index.html) - Internal message routing
 - [SCA](sca/index.html) - Security Configuration Assessment for compliance evaluation
 - [Server API](server-api/index.html) - RESTful management API
 - [Syscollector](syscollector/index.html) - System inventory collection and monitoring
-- [Task Manager](task_manager/index.html) - Task orchestration for distributed operations
+- [Task Manager](task_manager/index.html) - Generic manager-side task broker for asynchronous agent operations
 - [Vulnerability Scanner](vulnerability-scanner/index.html) - CVE detection and vulnerability assessment
 - [Wazuh DB](wazuh_db/index.html) - Persistent SQLite database daemon for agent and task state
 - [Agent Sync Protocol](utils/sync-protocol/index.html) - Agent-side library for synchronizing data with the manager

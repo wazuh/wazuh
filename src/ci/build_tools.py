@@ -26,6 +26,7 @@ DELETE_FOLDER_DIC = {
                                      'coverage_report'],
     'wazuh_modules/sca':            ['build'],
     'wazuh_modules/agent_info':     ['build'],
+    'client-agent/https_client':    ['build', 'coverage_report'],
 }
 
 

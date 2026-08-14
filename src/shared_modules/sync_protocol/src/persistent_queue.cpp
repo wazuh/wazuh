@@ -143,14 +143,14 @@ void PersistentQueue::flushPendingBuffer()
     }
 }
 
-std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
+std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxBytes)
 {
     flushPendingBuffer();
 
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        return m_storage->fetchAndMarkForSync();
+        return m_storage->fetchAndMarkForSync(maxBytes);
     }
     catch (const std::exception& ex)
     {

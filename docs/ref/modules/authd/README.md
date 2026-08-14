@@ -25,7 +25,7 @@ For configuration options see [Authd Configuration](configuration.md).
 |--------|------|
 | Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` is `yes`) |
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth` |
-| Writer | Periodically flushes the in-memory key queue to `client.keys` on disk |
+| Writer | Periodically flushes the in-memory key queue to `client.keys` on disk, and — for each removed agent — asks the [Inventory Sync Server](../inventory-sync-server/README.md) to delete that agent's documents from the indexer |
 
 ## Storage
 
@@ -34,6 +34,24 @@ For configuration options see [Authd Configuration](configuration.md).
 | `/var/wazuh-manager/etc/client.keys` | One line per agent: `<id> <name> <ip> <key>` |
 | `/var/wazuh-manager/etc/agents-timestamp` | Per-agent registration timestamp |
 | `/var/wazuh-manager/etc/authd.pass` | Enrollment password (auto-generated on first start; required by default) |
+
+## Agent removal and the indexer
+
+Removing an agent has to clean up more than `client.keys`: the agent's documents in the indexer
+(inventory state, reported configuration and statistics) have nothing to overwrite them once the
+agent is gone. So, for every removed agent, the writer thread calls the Inventory Sync Server's
+deletion route over its Unix socket (`queue/sockets/inventory-sync.sock`) and treats the HTTP status
+as the outcome — this is not fire-and-forget.
+
+A failed deletion is retried up to three times with a widening pause, and each pause is logged at
+info level — the writer thread is single, so while it waits nothing else it owns progresses. When
+authd gives up it logs a `WARNING` naming the agent, distinguishing a request that never completed
+(modulesd down, or the transfer timed out) from one the server refused with a status. It is a warning
+rather than an error because the agent itself IS gone and can no longer connect; what remains is
+orphaned documents in the indexer, until an operator repeats the deletion, which is safe to re-run.
+Retries are abandoned if the daemon is shutting down. See the
+[Inventory Sync Server's deletion contract](../inventory-sync-server/api-reference.md) for what a
+`200` guarantees.
 
 ## Force re-enrollment
 

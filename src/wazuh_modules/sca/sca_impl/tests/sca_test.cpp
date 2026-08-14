@@ -598,26 +598,23 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         {"sync", 1}
     });
 
-    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
-    .Times(1);
-    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7))
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC))
+    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
     .WillOnce(testing::Invoke([](const std::string&,
                                  Operation,
                                  const std::string&,
                                  const std::string & data,
-                                 uint64_t)
+                                 uint64_t,
+                                 bool)
     {
         const auto payload = nlohmann::json::parse(data);
         EXPECT_EQ(payload["check"]["id"], "check-1");
         EXPECT_EQ(payload["check"]["result"], "Not applicable");
         EXPECT_EQ(payload["policy"]["id"], "policy-1");
     }));
-    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
-    .Times(0);
+    .WillOnce(testing::Return(SyncModuleResult{true}));
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
 
@@ -646,11 +643,11 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .WillOnce(testing::Return(SyncModuleResult{true}));
-    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
+    // After the first sync, periodic syncs call synchronizeModule() directly and never go
+    // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_))
     .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, testing::_, testing::_, testing::_, testing::_))
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
     .Times(0);
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
@@ -720,6 +717,33 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
                     " times in a row: Failed to communicate with the manager."));
 }
 
+// When the manager hasn't synchronized this agent's groups yet (most commonly right after
+// enrollment/restart), the periodic sync is reported at INFO as deferred, never as a WARNING --
+// regardless of how many cycles it takes to clear (no escalation, same treatment as `stopped`).
+TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult
+    {
+        false,
+        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
+        false, false, 0u, true}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
 // the ERROR it used to be.
 TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
@@ -758,6 +782,29 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA flush failed " + std::to_string(streak) +
                     " times in a row: Failed to communicate with the manager."));
+}
+
+// A flush that hits the same "no groups yet" condition is deferred at INFO too, not ERROR.
+TEST_F(ScaTest, ExecuteFlushSync_AwaitingPrerequisiteLogsDeferredNotError)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult
+    {
+        false,
+        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
+        false, false, 0u, true}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA flush deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA flush failed")));
 }
 
 // A flush failure that is not a manager-not-ready condition keeps the original ERROR.

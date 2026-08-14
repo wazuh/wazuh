@@ -227,6 +227,20 @@
             "problemMatcher": []
         },
         {
+            "label": "Download deps sources",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "deps",
+                "TARGET=manager",
+                "EXTERNAL_SRC_ONLY=yes",
+                "-j"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
             "label": "Clean deps",
             "type": "shell",
             "command": "/usr/bin/make",

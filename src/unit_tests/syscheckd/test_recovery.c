@@ -37,6 +37,7 @@ cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
 #ifdef WIN32
 cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *data);
 cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data);
+registry_t* __wrap_fim_registry_configuration(const char* key, int arch);
 #endif
 
 // Mock directories list for tests
@@ -44,6 +45,11 @@ static OSList mock_directories = {0};
 
 // Stand-in directory_t pointer for tests that only need a non-NULL "config exists" signal
 static directory_t mock_directory_config = {0};
+
+#ifdef WIN32
+// Same idea for the registry config model
+static registry_t mock_registry_config = {0};
+#endif
 
 // Mock implementations
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
@@ -75,6 +81,12 @@ cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sh
 cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data) {
     check_expected_ptr(path);
     return mock_ptr_type(cJSON*);
+}
+
+registry_t* __wrap_fim_registry_configuration(const char* key, int arch) {
+    check_expected(key);
+    check_expected(arch);
+    return mock_ptr_type(registry_t*);
 }
 #endif
 
@@ -167,8 +179,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_clear_in_memory_data call
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphan guard: path must still resolve to a config
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/test.txt");
@@ -184,16 +199,17 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     // Schema validator is not initialized (no validation)
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    // Expect asp_persist_diff_in_memory call - validate all parameters
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    // Expect asp_persist_diff call - validate all parameters
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     // Expect asp_sync_module call - return success
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     // Call the function
@@ -228,8 +244,11 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    // Expect asp_clear_in_memory_data call
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphan guard: path must still resolve to a config
     expect_string(__wrap_fim_configuration_directory, path, "/tmp/test2.txt");
@@ -245,16 +264,17 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     // Schema validator is not initialized (no validation)
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    // Expect asp_persist_diff_in_memory call - validate all parameters
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    // Expect asp_persist_diff call - validate all parameters
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     // Expect asp_sync_module call - return failure
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, false);
 
     // Call the function
@@ -404,12 +424,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
     will_return(__wrap_fim_db_get_every_element, test_items);
 
-    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
 
     // Orphaned path: config lookup returns NULL -> row is skipped entirely.
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
-    // No build_stateful_event_file / asp_persist_diff_in_memory expectations for the orphan row.
+    // No build_stateful_event_file / asp_persist_diff expectations for the orphan row.
 
     // Live path: config lookup returns non-NULL -> normal pipeline.
     expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
@@ -422,14 +445,15 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
 
     will_return(__wrap_schema_validator_is_initialized, false);
 
-    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
-    expect_any(__wrap_asp_persist_diff_in_memory, id);
-    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
-    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
-    expect_any(__wrap_asp_persist_diff_in_memory, data);
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
 
     expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -509,6 +533,79 @@ static void test_buildRegistryValueStatefulEvent_success(void **state) {
     cJSON_Delete(value_data);
     cJSON_Delete(result);
 }
+
+// Registry rows are filtered the same way as file rows. The orphaned key (its path
+// is no longer under any configured <windows_registry> entry) must be skipped before reaching
+// buildRegistryKeyStatefulEvent, which would otherwise build an event with a NULL configuration.
+static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_keys(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+
+    cJSON* orphan_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(orphan_item, "path", "HKEY_LOCAL_MACHINE\\Security");
+    cJSON_AddStringToObject(orphan_item, "checksum", "orphan-sha");
+    cJSON_AddNumberToObject(orphan_item, "version", 1);
+    cJSON_AddStringToObject(orphan_item, "architecture", "[x32]");
+    cJSON_AddItemToArray(test_items, orphan_item);
+
+    cJSON* live_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(live_item, "path", "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+    cJSON_AddStringToObject(live_item, "checksum", "live-sha");
+    cJSON_AddNumberToObject(live_item, "version", 1);
+    cJSON_AddStringToObject(live_item, "architecture", "[x64]");
+    cJSON_AddItemToArray(test_items, live_item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_REGISTRY_KEY_TABLENAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_REGISTRY_KEY_TABLENAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    // Expect asp_notify_data_clean call (clears the manager's index before resending)
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
+
+    // Orphaned key: config lookup returns NULL -> row is skipped entirely.
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
+    will_return(__wrap_fim_registry_configuration, NULL);
+    // No build_stateful_event_registry_key / asp_persist_diff expectations for it.
+
+    // Live key: config lookup returns non-NULL -> normal pipeline.
+    expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+    expect_value(__wrap_fim_registry_configuration, arch, ARCH_64BIT);
+    will_return(__wrap_fim_registry_configuration, &mock_registry_config);
+
+    expect_string(__wrap_build_stateful_event_registry_key, path, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
+    cJSON* mock_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(mock_event, "type", "registry_key");
+    will_return(__wrap_build_stateful_event_registry_key, mock_event);
+
+    will_return(__wrap_schema_validator_is_initialized, false);
+
+    expect_value(__wrap_asp_persist_diff, handle, handle);
+    expect_any(__wrap_asp_persist_diff, id);
+    expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff, data);
+    expect_value(__wrap_asp_persist_diff, version, 1);
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
+
+    // test_items is freed by the function.
+}
 #endif // WIN32
 
 int main(void) {
@@ -528,6 +625,7 @@ int main(void) {
 #ifdef WIN32
         cmocka_unit_test(test_buildRegistryKeyStatefulEvent_success),
         cmocka_unit_test(test_buildRegistryValueStatefulEvent_success),
+        cmocka_unit_test(test_fim_recovery_persist_table_and_resync_skips_orphan_registry_keys),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

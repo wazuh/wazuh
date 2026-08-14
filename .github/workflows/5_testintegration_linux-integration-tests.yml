@@ -40,7 +40,7 @@ on:
       timeout_minutes:
         required: false
         type: number
-        default: 120
+        default: 150
   workflow_dispatch:
     inputs:
       base_branch:
@@ -86,7 +86,7 @@ env:
 jobs:
   run-test:
     if: inputs.module_name != 'none'
-    timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
+    timeout-minutes: ${{ inputs.timeout_minutes || 150 }}
     name: Run integration tests
     permissions:
       id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
@@ -97,7 +97,7 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -164,11 +164,7 @@ jobs:
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           # The framework is installed for the system python3 that `sudo python`
-          # uses to run the tests. CodeBuild images ship no pip for it (the
-          # GitHub-hosted runner did), so install it and target it explicitly.
-          if ! sudo python3 -m pip --version >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y python3-pip
-          fi
+          # uses to run the tests, so target that interpreter explicitly.
           sudo python3 -m pip install --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 

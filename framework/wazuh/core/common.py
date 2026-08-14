@@ -150,10 +150,6 @@ MAX_GROUPS_PER_MULTIGROUP = 128
 # ============================================= Wazuh constants - Version ==============================================
 # Agent upgrading variables.
 WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
-# Agent component stats required version.
-AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
-# Version variables (legacy, required, etc).
-ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
 # ================================================ Wazuh path - Config =================================================

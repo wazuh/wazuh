@@ -1,0 +1,58 @@
+{
+  "name": "real_mixed_fleet",
+  "description": "Production-shaped agent-mode replay: a Windows fleet and a Linux fleet, each replaying real captured FIM, SCA, syscollector and VD sessions in parallel (verbatim payloads from sample_payloads/dumps/) plus a syslog engine lane and /control keepalives. The closest the benchmark gets to a real fleet's wire.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "fim_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/fim_first_sync_ubuntu.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/fim_delta_modify_ubuntu.json",
+        "repeat_count": 10, "repeat_delay": "3s", "initial_delay": "5s" }
+    ],
+    "fim_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/fim_first_sync_windows.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/fim_delta_modify_windows.json",
+        "repeat_count": 10, "repeat_delay": "3s", "initial_delay": "5s" }
+    ],
+    "sca_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_full_ubuntu.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_delta_ubuntu.json",
+        "repeat_count": 15, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "sca_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_full_windows.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/sca_delta_windows.json",
+        "repeat_count": 15, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "syscollector_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/syscollector_sync_debian.json" }
+    ],
+    "syscollector_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/syscollector_sync_windows.json" }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_first_debian.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_sync_debian.json",
+        "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "15s" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_first_windows.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_sync_windows.json",
+        "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "15s" }
+    ],
+    "engine": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
+        "events_per_second": 250, "events_per_batch": 100 }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 15, "first_id": 44000, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows", "engine"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 15, "first_id": 45000, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux", "engine"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+}

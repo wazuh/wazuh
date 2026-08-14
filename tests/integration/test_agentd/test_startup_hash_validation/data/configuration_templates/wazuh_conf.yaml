@@ -1,12 +1,12 @@
     - sections:
-      - section: client
+      - section: agent
         elements:
-            - manager:
+            - server:
                 elements:
                 - address:
                     value: '127.0.0.1'
                 - port:
-                    value: '1514'
+                    value: '1517'
             - notify_time:
                 value: '1'
       # syscheck + rootcheck must be explicitly enabled: these scenarios assert

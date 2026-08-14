@@ -175,6 +175,60 @@ void privSepSetGroup(gid_t gid)
     }
 }
 
+uid_t privSepGetUser(const std::string& username)
+{
+    long bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize <= 0)
+        bufsize = 1024;
+
+    std::vector<char> buffer(static_cast<size_t>(bufsize));
+    struct passwd pwd_storage {};
+    struct passwd* result = nullptr;
+
+    while (true)
+    {
+        result = getpwnam(username.c_str(), &pwd_storage, buffer.data(), buffer.size());
+        if (result)
+        {
+            return result->pw_uid;
+        }
+        if (errno == ERANGE)
+        {
+            if (buffer.size() >= MAX_RBUFFER_SIZE)
+            {
+                break;
+            }
+            buffer.resize(std::min(buffer.size() * 2, static_cast<size_t>(MAX_RBUFFER_SIZE)));
+            errno = 0;
+        }
+        else if (errno == 0)
+        {
+            throw std::runtime_error("Error changing to user '" + username + "': user not found");
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("Error looking up user '{}': {} ({})", username, std::strerror(errno), errno));
+        }
+    }
+
+    throw std::runtime_error("Exceeded maximum buffer size looking up user '" + username + "'");
+}
+
+void privSepSetUser(uid_t uid)
+{
+    if (setuid(uid) < 0)
+    {
+        throw std::runtime_error(fmt::format("Error changing to user ID {}: {} ({})", uid, strerror(errno), errno));
+    }
+
+    if (seteuid(uid) < 0)
+    {
+        throw std::runtime_error(
+            fmt::format("Error setting effective user ID {}: {} ({})", uid, strerror(errno), errno));
+    }
+}
+
 std::filesystem::path getWazuhHome()
 {
     // Manager mode: libwazuhshared is loaded before this is called (see main.cpp).
@@ -183,9 +237,9 @@ std::filesystem::path getWazuhHome()
     if (base::libwazuhshared::getLibPtr())
     {
         // Force if we want to avoid the /proc lookup
-        if (std::getenv("WAZUH_ENGINE_FORCE_HOME"))
+        if (std::getenv("WAZUH_MANAGER_FORCE_HOME"))
         {
-            return std::filesystem::path(std::getenv("WAZUH_ENGINE_FORCE_HOME"));
+            return std::filesystem::path(std::getenv("WAZUH_MANAGER_FORCE_HOME"));
         }
 
         using WHDir = char* (*)(const char*);

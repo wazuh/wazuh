@@ -1,0 +1,23 @@
+{
+  "name": "contract_invalid_bodies",
+  "description": "Contract test for the 400 rejection paths: a Linux fleet lane sends three malformed raw bodies in sequence (garbage, empty, not_full_session) to exercise the server's input-validation rejections.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "raw": [
+      { "kind": "raw", "raw": "garbage" },
+      { "kind": "raw", "raw": "empty" },
+      { "kind": "raw", "raw": "not_full_session" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 4, "first_id": 28000, "lanes": ["raw"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "30s" },
+  "expected": { "sessions": { "sent": { "eq": 12 }, "s400": { "eq": 12 }, "ok": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}

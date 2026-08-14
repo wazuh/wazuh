@@ -32,6 +32,8 @@ include_directories(
   ${SRC_FOLDER}/shared/os_xml/
   ${SRC_FOLDER}/config/include/
   ${SRC_FOLDER}/client-agent/include/
+  ${SRC_FOLDER}/client-agent/src/
+  ${SRC_FOLDER}/client-agent/https_client/include/
   ${SRC_FOLDER}/logcollector/include/
   ${SRC_FOLDER}/os_execd/include/
   ${SRC_FOLDER}/syscheckd/include/
@@ -41,7 +43,6 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/common/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/shared_modules/sync_protocol/include/
-  ${SRC_FOLDER}/shared_modules/router/include/
   ${SRC_FOLDER}/shared_modules/content_manager/include/
   ${SRC_FOLDER}/wazuh_modules/include/
   ${SRC_FOLDER}/wazuh_modules/src/
@@ -131,9 +132,13 @@ target_compile_definitions(wazuh-agent PRIVATE OSSECHIDS ARGV0="wazuh-agent"
 set_target_properties(
   wazuh-agent PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                          OUTPUT_NAME wazuh-agent)
+# These archives are mutually dependent (wazuh/wazuh-modulesd call
+# agcom_dispatch and syscom_dispatch, defined in wazuh-agentd and
+# wazuh-syscheckd), so a single-pass scan leaves them unresolved.
 target_link_libraries(
   wazuh-agent
-  PRIVATE dbsync
+  PRIVATE -Wl,--start-group
+          dbsync
           wazuh-agentd
           wazuh-logcollector
           wazuh-execd
@@ -141,11 +146,13 @@ target_link_libraries(
           fimdb
           agent_metadata
           agent_sync_protocol
+          https_client
           schema_validator
           config
           wazuh-modulesd
           wazuh
           rootcheck
+          -Wl,--end-group
           ${WIN_SYSTEM_LIBS})
 
 # --- wazuh-agent-eventchannel.exe ---
@@ -163,7 +170,8 @@ set_target_properties(
              OUTPUT_NAME wazuh-agent-eventchannel)
 target_link_libraries(
   wazuh-agent-eventchannel
-  PRIVATE dbsync
+  PRIVATE -Wl,--start-group
+          dbsync
           wazuh-agentd
           wazuh-logcollector-event
           wazuh-execd
@@ -171,11 +179,13 @@ target_link_libraries(
           fimdb
           agent_metadata
           agent_sync_protocol
+          https_client
           schema_validator
           config
           wazuh-modulesd
           wazuh
           rootcheck
+          -Wl,--end-group
           ${WIN_SYSTEM_LIBS})
 
 # --- setup-windows.exe ---

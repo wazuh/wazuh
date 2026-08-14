@@ -25,6 +25,9 @@
 #include "schemaValidator_c.h"
 #include "agentd_query.h"
 #include <limits.h>
+#ifdef WIN32
+#include "registry.h"
+#endif
 
 // Global variables
 syscheck_config syscheck;
@@ -150,37 +153,87 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
 /**
  * @brief Drop documents whose path is no longer covered by the current FIM configuration.
  *
- * Run before promoting file_entry rows at startup: if a directory was removed from the
+ * Run before promoting rows at startup: if a monitored path was removed from the
  * configuration since the last run (e.g. an agent group with a realtime FIM rule was
- * unassigned), the persisted rows for files under that path can no longer build a
- * stateful event — build_stateful_event_file would fail and log a spurious ERROR.
+ * unassigned, or the <syscheck> registry entries were replaced by a shared-config push),
+ * the persisted rows under that path can no longer build a stateful event — the
+ * build_stateful_event_* helpers would fail and log a spurious ERROR.
  * The scheduled scan that follows fim_initialize emits the real DELETE for these
  * rows via handle_orphaned_delete, so dropping them here is safe.
  *
- * Only applies to file_entry; registry tables use a different config model.
+ * file_entry rows are resolved against syscheck.directories; on Windows the registry
+ * tables are resolved against syscheck.registry, which is keyed by path *and* architecture.
  *
  * @param table_name Name of the table the documents belong to.
  * @param docs cJSON array of documents about to be promoted. Modified in place.
  * @return Number of documents dropped.
  */
 int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
-    if (!docs || !cJSON_IsArray(docs) || strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0) {
+    if (!docs || !cJSON_IsArray(docs) || table_name == NULL) {
+        return 0;
+    }
+
+    const bool is_file = strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0;
+#ifdef WIN32
+    const bool is_registry = strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
+                             strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0;
+#else
+    const bool is_registry = false;
+#endif
+
+    if (!is_file && !is_registry) {
         return 0;
     }
 
     int dropped = 0;
-    for (int i = cJSON_GetArraySize(docs) - 1; i >= 0; i--) {
-        const cJSON* item = cJSON_GetArrayItem(docs, i);
+
+    // Walk the child list directly instead of indexing: cJSON_GetArrayItem and
+    // cJSON_DeleteItemFromArray both traverse from the head, so an index-based loop is O(n^2).
+    // The registry tables reach tens of thousands of rows and this runs on the startup path.
+    cJSON* item = docs->child;
+
+    while (item != NULL) {
+        // Saved before any detach, which unlinks item from the list.
+        cJSON* next = item->next;
+
         const cJSON* path_json = cJSON_GetObjectItem(item, "path");
         const char* path = cJSON_GetStringValue(path_json);
         if (path == NULL) {
+            item = next;
             continue;
         }
-        if (fim_configuration_directory(path, false, syscheck.directories) == NULL) {
+
+        bool orphaned = false;
+
+        if (is_file) {
+            orphaned = fim_configuration_directory(path, false, syscheck.directories) == NULL;
+        }
+#ifdef WIN32
+        else {
+            // Registry rows are only meaningful together with their architecture: the same path can
+            // be monitored for [x32], [x64] or both. A row without it cannot be resolved at all.
+            const char* arch_str = cJSON_GetStringValue(cJSON_GetObjectItem(item, "architecture"));
+
+            if (arch_str == NULL) {
+                mdebug2("Skipping promotion of registry document without architecture: %s", path);
+                cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
+                dropped++;
+                item = next;
+                continue;
+            }
+
+            const int arch = (strcmp(arch_str, "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
+            orphaned = fim_registry_configuration(path, arch) == NULL;
+        }
+#endif
+
+        if (orphaned) {
             mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
-            cJSON_DeleteItemFromArray(docs, i);
+            cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
             dropped++;
         }
+
+        item = next;
     }
     return dropped;
 }
@@ -372,18 +425,6 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
     mdebug1("Sent %d %s documents to persistent queue for table %s", count, operation_name, table_name);
 }
 
-static int fim_startmq(const char* key, short type, short attempts) {
-    return StartMQPredicated(key, type, attempts, fim_shutdown_process_on);
-}
-
-static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
-    // returns on shutdown: asp_stop() wakes every wait inside the sync protocol but
-    // cannot interrupt this one, and the shutdown waiter joins the synchronization
-    // thread with no timeout (issue #37334).
-    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, fim_shutdown_process_on);
-}
-
 /**
  * @brief Fetch document sync limits from agentd.
  *
@@ -488,6 +529,7 @@ void fim_initialize() {
 
     // Initialize locks before sync handle creation
     w_rwlock_init(&syscheck.directories_lock, NULL);
+    syscheck_set_directories_lock_ready();
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifdef WIN32
@@ -499,12 +541,7 @@ void fim_initialize() {
     notify_scan = syscheck.notify_first_scan;
 
     // Initialize sync handle early so it's available for document promotion
-    MQ_Functions mq_funcs = {
-        .start = fim_startmq,
-        .send_binary = fim_send_binary_msg
-    };
-
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction, syscheck.sync_end_delay, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

@@ -46,12 +46,10 @@ tags:
     - stats_file
 '''
 
-import json
 import pytest
 from pathlib import Path
 import sys
 import time
-from queue import Empty
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
@@ -60,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
+from utils import wait_keepalive, wait_state_update
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -158,46 +156,6 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
         if remoted_server:
             remoted_server.destroy()
 
-def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 120):
-    """Request remoted_server the status of the agent
-
-    Args:
-        parameters:
-        - expected_status:
-            type: string
-            brief: Expected status reported from RemotedSimulator
-        - remoted_server:
-            type: RemotedSimulator
-            brief: RemotedSimulator instance
-        - timeout:
-            type: int
-            brief: Timeout to find the message with the requested information
-    Returns:
-        dict with state info
-    """
-    custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
-    remoted_server.send_custom_message(custom_message)
-
-    try:
-        log_line = remoted_server._queue_response_req_message.get(timeout=timeout)
-
-        if expected_status in log_line:
-            start_json_index = log_line.find('{')
-            end_json_index = log_line.rfind('}')
-
-            if start_json_index != -1 and end_json_index != -1 and end_json_index > start_json_index:
-                json_str = log_line[start_json_index : end_json_index + 1]
-                try:
-                    response = json.loads(json_str)
-                    response = response['data']
-                    return response
-                except json.JSONDecodeError:
-                    pass
-    except Exception as e:
-        pass
-    return None
-
-
 def check_fields(expected_output, remoted_server):
     """Check every field agains expected data
 
@@ -210,16 +168,12 @@ def check_fields(expected_output, remoted_server):
             brief: RemotedSimulator instance
     """
     checks = {
-        'last_ack': {'handler': check_last_ack, 'precondition': [wait_ack]},
         'last_keepalive': {'handler': check_last_keepalive, 'precondition': [wait_keepalive]},
         'msg_count': {'handler': check_msg_count, 'precondition': [wait_keepalive]},
         'status': {'handler': check_status, 'precondition': []}
     }
 
-    if expected_output['type'] == 'file':
-        get_state_callback = parse_state_file
-    else:
-        get_state_callback = wait_for_custom_message_response
+    get_state_callback = parse_state_file
 
     for field, expected_value in expected_output['fields'].items():
         # Check if expected value is valiable and mandatory
@@ -227,41 +181,6 @@ def check_fields(expected_output, remoted_server):
             for precondition in checks[field].get('precondition'):
                 precondition()
             assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server)
-
-
-def check_last_ack(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
-    """Check `last_ack` field
-
-    Args:
-        - expected_value:
-            type: string
-            brief: expected output in test case
-        - get_state_callback:
-            type: function
-            brief: Callback to get state
-        - expected_status:
-            type: string
-            brief: Expected status reported from RemotedSimulator
-        - remoted_server:
-            type: RemotedSimulator
-            brief: RemotedSimulator instance
-
-    Returns:
-        boolean: `True` if check was successfull. Otherwise asserts the test
-    """
-    if get_state_callback == parse_state_file:
-        wait_state_update()
-        current_value = get_state_callback()['last_ack']
-    else:
-        current_value = get_state_callback(expected_status, remoted_server)
-        if current_value:
-            current_value = current_value['last_ack']
-        else:
-            wait_ack()
-    if expected_value == '':
-        return expected_value == current_value
-
-    return True
 
 
 def check_last_keepalive(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
@@ -284,15 +203,8 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
     Returns:
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
-    if get_state_callback == parse_state_file:
-        wait_state_update()
-        current_value = get_state_callback()['last_keepalive']
-    else:
-        current_value = get_state_callback(expected_status, remoted_server)
-        if current_value:
-            current_value = current_value['last_keepalive']
-        else:
-            wait_ack()
+    wait_state_update()
+    current_value = get_state_callback()['last_keepalive']
     if expected_value == '':
         return expected_value == current_value
 
@@ -319,17 +231,16 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
     Returns:
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
-    if get_state_callback == parse_state_file:
-        wait_state_update()
-        current_value = get_state_callback()['msg_count']
-    else:
-        current_value = get_state_callback(expected_status, remoted_server)
-        if current_value:
-            current_value = current_value['msg_count']
+    # The legacy "Sending agent notification" log line has no HTTPS equivalent: msg_count
+    # is incremented once per locally-queued event forwarded over /stateless
+    # (EventForward(), event-forward.c), which never logs a per-event line -- it's a state
+    # update, not a message (same rationale as wait_keepalive(), utils.py). The state file
+    # is the only source of truth left, mirroring check_last_keepalive() above.
+    wait_state_update()
+    current_value = get_state_callback()['msg_count']
     if expected_value == '':
         return expected_value == current_value
 
-    wait_agent_notification(current_value)
     return True
 
 
@@ -353,26 +264,12 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
     Returns:
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
-    current_value = None
-
     if expected_value != 'pending':
         wait_keepalive()
-        if get_state_callback == parse_state_file:
-            # Sleep while file is updated
-            time.sleep(5)
-            wait_state_update()
-            current_value = get_state_callback()['status']
-        else:
-            current_value = get_state_callback(expected_status, remoted_server)
-            if current_value:
-                current_value = current_value['status']
-            else:
-                wait_keepalive()
-                return True
-    else:
-        # Sleep while file is updated
-        time.sleep(5)
-        wait_state_update()
-        current_value = get_state_callback()['status']
+
+    # Sleep while file is updated
+    time.sleep(5)
+    wait_state_update()
+    current_value = get_state_callback()['status']
 
     return expected_value == current_value

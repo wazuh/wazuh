@@ -1,14 +1,13 @@
 #include <base/libwazuhshared.hpp>
 
 #include <dlfcn.h>
+#include <fmt/format.h>
 #include <stdexcept>
 #include <string>
-#include <fmt/format.h>
-
 
 namespace
 {
-    void* g_libPtr = nullptr;
+void* g_libPtr = nullptr;
 }
 
 namespace base::libwazuhshared
@@ -68,4 +67,40 @@ std::string getJsonIndexerCnf()
     free(result);
     return jsonCnf;
 }
+
+std::pair<std::string, std::string> getClusterNameAndNodeName()
+{
+    using GetClusterNameFnType = char* (*)();
+    const auto getClusterNameFn = getFunction<GetClusterNameFnType>("get_cluster_name");
+    using GetClusterNodeNameFnType = char* (*)();
+    const auto getClusterNodeNameFn = getFunction<GetClusterNodeNameFnType>("get_node_name");
+
+    if (!getClusterNameFn)
+    {
+        throw std::runtime_error("Failed to get get_cluster_name function pointer.");
+    }
+
+    if (!getClusterNodeNameFn)
+    {
+        throw std::runtime_error("Failed to get get_node_name function pointer.");
+    }
+
+    char* result = getClusterNameFn();
+    if (!result)
+    {
+        throw std::runtime_error("get_cluster_name returned null.");
+    }
+    std::string clusterName(result);
+    free(result);
+
+    result = getClusterNodeNameFn();
+    if (!result)
+    {
+        throw std::runtime_error("get_node_name returned null.");
+    }
+    std::string nodeName(result);
+    free(result);
+    return std::make_pair(clusterName, nodeName);
 }
+
+} // namespace base::libwazuhshared

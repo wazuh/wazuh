@@ -72,7 +72,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
-receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'ssl_tls'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 receiver_sockets = None  # Set in the fixtures
 test_group = "TestGroup"
@@ -199,20 +199,18 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
 
 
     # Register a first agent, then register an agent with duplicate IP.
-    # Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
+    # Check that client.keys, agent-groups and agent-timestamp were updated correctly
 
     # Register first agent
     response = register_agent(receiver_sockets, 'userA', test_group, '192.0.0.0')
 
     utils.create_rids('001')  # Simulate rids was created
-    utils.create_diff('userA')  # Simulate diff folder was created
 
     assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
     assert check_client_keys('001', True), 'Agent key was never created'
     assert check_agent_groups('001', test_group), 'Did not recieve the expected group: {test_group} for the agent'
     assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', True), 'Agent_timestamp was never created'
     assert utils.check_rids('001', True), 'Rids file was never created'
-    assert utils.check_diff('userA', True), 'Agent diff folder was never created'
 
     # Register agent with duplicate IP
     response = register_agent(receiver_sockets, 'userC', test_group, '192.0.0.0')
@@ -224,14 +222,10 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
     assert utils.check_agent_timestamp('002', 'userC', '192.0.0.0', True), 'Agent_timestamp was never created'
     assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', False), 'Agent_timestamp was not removed'
     assert utils.check_rids('001', False), 'Rids file was was not removed'
-    assert utils.check_diff('userA', False), 'Agent diff folder was not removed'
 
     # Register a first agent, then register an agent with duplicate Name.
-    # Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
+    # Check that client.keys, agent-groups and agent-timestamp were updated correctly
 
-    utils.clean_diff()
-
-    utils.create_diff('userB')  # Simulate diff folder was created
     utils.create_rids('003')  # Simulate rids was created
 
     response = register_agent(receiver_sockets, 'userB', test_group)
@@ -241,7 +235,6 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
     assert check_agent_groups('003', test_group), 'Did not recieve the expected group: {test_group} for the agent'
     assert utils.check_agent_timestamp('003', 'userB', 'any', True), 'Agent_timestamp was never created'
     assert utils.check_rids('003', True), 'Rids file was never created'
-    assert utils.check_diff('userB', True), 'Agent diff folder was never created'
 
     # Register agent with duplicate Name
     response = register_agent(receiver_sockets, 'userB', test_group)
@@ -253,6 +246,5 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
     assert utils.check_agent_timestamp('004', 'userB', 'any', True), 'Agent_timestamp was never created'
     assert utils.check_agent_timestamp('003', 'userB', 'any', False), 'Agent_timestamp was not removed'
     assert utils.check_rids('003', False), 'Rids file was was not removed'
-    assert utils.check_diff('userB', False), 'Agent diff folder was not removed'
 
     delete_agent()

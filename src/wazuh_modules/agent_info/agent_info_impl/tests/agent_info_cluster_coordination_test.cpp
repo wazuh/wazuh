@@ -14,19 +14,17 @@
 
 // Declarations for mock setter functions (defined in agent_info_mock.cpp)
 void mock_set_cluster_name(const std::string& name);
-void mock_set_cluster_node(const std::string& node);
 
 /**
- * @brief Test fixture for cluster_name/cluster_node sync flag routing
+ * @brief Test fixture for cluster_name sync flag routing
  *
  * Tests that:
  * - cluster_name changes set the groups sync flag (not metadata)
- * - cluster_node changes set no sync flag
  * - Other metadata changes set the metadata sync flag
  * - Combined changes set appropriate flags
  *
- * Uses real DBSync with in-memory database and configurable mock
- * cluster_name/cluster_node values to simulate changes between iterations.
+ * Uses real DBSync with in-memory database and a configurable mock
+ * cluster_name value to simulate changes between iterations.
  */
 class AgentInfoClusterCoordinationTest : public ::testing::Test
 {
@@ -62,7 +60,6 @@ class AgentInfoClusterCoordinationTest : public ::testing::Test
 
             // Reset mock cluster values to defaults
             mock_set_cluster_name("test_cluster");
-            mock_set_cluster_node("test_node");
         }
 
         void TearDown() override
@@ -74,7 +71,6 @@ class AgentInfoClusterCoordinationTest : public ::testing::Test
 
             // Reset mock cluster values
             mock_set_cluster_name("test_cluster");
-            mock_set_cluster_node("test_node");
         }
 
         void setupDefaultMocks()
@@ -160,87 +156,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameChange_SetsGroupsSyncFlag)
     // Verify groups sync flag was set (not metadata sync flag)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Set sync flag for agent_groups to 1"));
     // Metadata sync flag should NOT be set for cluster_name-only change
-    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_metadata to 1")));
-}
-
-TEST_F(AgentInfoClusterCoordinationTest, ClusterNodeChange_NoSyncFlagSet)
-{
-    setupDefaultMocks();
-
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
-
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData))
-    .WillOnce(::testing::Return(osData));
-
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
-
-    // First run: populates initial data
-    runSingleIteration();
-    m_logOutput.clear();
-
-    // Change only cluster_node for second iteration
-    mock_set_cluster_node("new_node");
-
-    // Second run: should detect cluster_node change but NOT set any sync flag
-    runSingleIteration();
-
-    // Neither sync flag should be set for cluster_node-only change
-    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_metadata to 1")));
-    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_groups to 1")));
-}
-
-TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndClusterNode_OnlyGroupsFlagSet)
-{
-    setupDefaultMocks();
-
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
-
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData))
-    .WillOnce(::testing::Return(osData));
-
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
-
-    // First run
-    runSingleIteration();
-    m_logOutput.clear();
-
-    // Change both cluster_name and cluster_node
-    mock_set_cluster_name("new_cluster");
-    mock_set_cluster_node("new_node");
-
-    // Second run
-    runSingleIteration();
-
-    // Only groups sync flag should be set (cluster_name → groups, cluster_node → nothing)
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Set sync flag for agent_groups to 1"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_metadata to 1")));
 }
 
@@ -343,107 +258,6 @@ TEST_F(AgentInfoClusterCoordinationTest, ClusterNameAndOtherMetadata_OnlyMetadat
     runSingleIteration();
 
     // Only metadata flag should be set: metadata subsumes cluster_name when both change
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Set sync flag for agent_metadata to 1"));
-    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_groups to 1")));
-}
-
-TEST_F(AgentInfoClusterCoordinationTest, ClusterNodeAndOtherMetadata_OnlyMetadataFlagSet)
-{
-    nlohmann::json osData =
-    {
-        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
-        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
-    };
-
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillOnce(::testing::Return(osData))
-    .WillOnce(::testing::Return(osData));
-
-    // Second iteration returns a different agent_name via client.keys
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
-
-    // Each iteration calls readLineByLine twice (client.keys + merged.mg), so 2 iterations = 4 calls
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
-    // Iteration 1: client.keys
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
-
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 1: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
-
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 test-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: client.keys (changed agent_name)
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
-
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }))
-    // Iteration 2: merged.mg
-    .WillOnce(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
-    {
-        std::string pathStr = path.string();
-
-        if (pathStr.find("client.keys") != std::string::npos)
-        {
-            callback("001 renamed-agent 10.0.0.1 key");
-        }
-        else if (pathStr.find("merged.mg") != std::string::npos)
-        {
-            callback("#test-group");
-        }
-    }));
-
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      nullptr,
-                      m_mockSysInfo,
-                      m_mockFileIO,
-                      m_mockFileSystem
-                  );
-
-    // First run
-    runSingleIteration();
-    m_logOutput.clear();
-
-    // Change cluster_node and agent_name (via mock) for second iteration
-    mock_set_cluster_node("new_node");
-
-    // Second run
-    runSingleIteration();
-
-    // Only metadata sync flag should be set (agent_name changed, cluster_node is ignored)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Set sync flag for agent_metadata to 1"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_groups to 1")));
 }

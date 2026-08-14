@@ -1,0 +1,24 @@
+{
+  "name": "contract_vd_version_mismatch",
+  "description": "Contract test for the VD feed_offset gate (vdScanLane.cpp): a Linux fleet sends VDFirst sessions with a deliberately wrong Start.feed_offset (1 -- far below any real CVE feed cursor, so it mismatches regardless of what the target's actual current offset is), and every one of them must be rejected with 409 {\"error\":\"version_mismatch\",\"current_version\":N} without ever reaching the scanner. Distinct from checksum_reconcile.json's 409 (checksum_mismatch, a ModuleCheck contract) -- this one is VD-specific and carries a different body shape. concurrent_agents is 1 (not 0) deliberately: the offset check runs INSIDE the scan lane worker (after admission), so firing every agent at once would contend with the lane's own capacity gate (contract_vd_saturation's contract, 1 worker + 2 queue slots by default) and could shed some sessions with a bare 503 before they ever reach the offset check this scenario exists to pin.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "VDFirst",
+    "cluster_name": "cluster01",
+    "retry": { "enabled": false }
+  },
+  "lanes": {
+    "vd": [
+      { "kind": "delta", "option": "VDFirst", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 50, "size_bytes": 256 },
+        "feed_offset": 1 }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 4, "first_id": 26000, "lanes": ["vd"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 1, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "30s" },
+  "expected": { "sessions": { "sent": { "eq": 4 }, "s409": { "eq": 4 }, "ok": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}

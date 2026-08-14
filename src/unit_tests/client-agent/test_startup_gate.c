@@ -19,21 +19,37 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #include "agentd.h"
-#include "../os_crypto/md5/md5_op.h"
+#include "sha256_op.h"
 
 extern agent *agt;
 
-/* A 32-char hex MD5 string used as the canonical expected value across tests. */
-static const char *VALID_MD5_A = "0123456789abcdef0123456789abcdef";
-static const char *VALID_MD5_B = "fedcba9876543210fedcba9876543210";
-static const char *INVALID_MD5_NONHEX = "0123456789abcdef0123456789abcdez";   /* trailing 'z' */
-static const char *INVALID_MD5_SHORT  = "0123456789abcdef";                    /* too short */
+/* One feed since #38030: the manager's SHA-256 config_hash against a SHA-256 of
+ * the local merged.mg. The MD5 merged_sum feed went with the TCP data path. */
 
-/* Mock getsharedfiles(): each test that needs it primes a strdup'd return value
- * with will_return(__wrap_getsharedfiles, strdup("...")). The production code
- * frees the returned string with os_free(). */
-char * __wrap_getsharedfiles(void) {
-    return mock_ptr_type(char *);
+static const char *MANAGER_SHA256 =
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+static const char *OTHER_SHA256 =
+    "0000000000000000000000000000000000000000000000000000000000000000";
+
+/* Mock OS_SHA256_File(): a test primes the local merged.mg's hash, or a
+ * non-zero return for "no readable local file". */
+int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode) {
+    check_expected(fname);
+    check_expected(mode);
+    const char *hash = mock_ptr_type(const char *);
+
+    if (hash != NULL) {
+        snprintf(output, sizeof(os_sha256), "%s", hash);
+    }
+
+    return (int)mock();
+}
+
+static void expect_local_sha256(const char *hash, int retval) {
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, hash);
+    will_return(__wrap_OS_SHA256_File, retval);
 }
 
 /* Helper: query gate state and assert it matches expected. */
@@ -81,149 +97,153 @@ static void test_initialize_remote_conf_disabled_releases_gate(void **state) {
     assert_gate_state(true, "disabled");
 }
 
-/* When remote_conf is enabled, initialize() leaves the gate blocked. */
+/* When remote_conf is enabled, initialize() leaves the gate blocked waiting for
+ * the manager's config hash. */
 static void test_initialize_remote_conf_enabled_blocks_gate(void **state) {
     (void)state;
-    assert_gate_state(false, "waiting_handshake");
+    assert_gate_state(false, "waiting_config_hash");
 }
 
-/* process_handshake with is_startup=false is a no-op (gate state unchanged). */
-static void test_process_handshake_not_startup_is_noop(void **state) {
+/* --- startup_gate_check_manager_config_hash ----------------------------- */
+
+/* The manager's hash matches the local merged.mg: the agent booted in sync, so
+ * nothing downloads or reloads and this is what opens the gate. */
+static void test_manager_config_hash_match_releases_gate(void **state) {
     (void)state;
-    /* Pre-condition: gate is blocked (waiting_handshake) from initialize(). */
-    startup_gate_process_handshake(false, VALID_MD5_A);
-    /* No mdebug1 expected — no_op path */
-    assert_gate_state(false, "waiting_handshake");
+    expect_local_sha256(MANAGER_SHA256, 0);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: manager config hash (SHA-256) matches local, gate released.");
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(true, "https_hash_match");
 }
 
-/* With remote_conf disabled, process_handshake immediately releases the gate. */
-static void test_process_handshake_remote_conf_disabled(void **state) {
+/* A different hash means a download is coming: the gate stays blocked. */
+static void test_manager_config_hash_mismatch_keeps_gate_blocked(void **state) {
     (void)state;
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, VALID_MD5_A);
+    expect_local_sha256(OTHER_SHA256, 0);
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(false, "waiting_config_hash");
+}
+
+/* An empty (contract-legal) manager hash means there is no configuration to
+ * wait for: nothing downloads, so the gate must open or every module blocks
+ * forever in startup_gate_wait_for_ready(). No OS_SHA256_File mock is queued --
+ * the local file is irrelevant here. */
+static void test_manager_config_hash_empty_releases_gate(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: the manager reported no configuration, gate released.");
+
+    startup_gate_check_manager_config_hash("");
+
+    assert_gate_state(true, "no_manager_config");
+}
+
+/* Same for an absent field (NULL). */
+static void test_manager_config_hash_null_releases_gate(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate: the manager reported no configuration, gate released.");
+
+    startup_gate_check_manager_config_hash(NULL);
+
+    assert_gate_state(true, "no_manager_config");
+}
+
+/* Already released (remote_conf disabled): silent, and no file is read. */
+static void test_manager_config_hash_is_noop_when_released(void **state) {
+    (void)state;
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+    startup_gate_check_manager_config_hash("");
+
     assert_gate_state(true, "disabled");
 }
 
-/* NULL merged_sum → legacy_handshake (gate released). */
-static void test_process_handshake_null_merged_sum_releases_gate(void **state) {
+/* First boot, no local merged.mg: nothing to compare. */
+static void test_manager_config_hash_without_local_file_keeps_gate_blocked(void **state) {
     (void)state;
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, NULL);
-    assert_gate_state(true, "legacy_handshake");
+    expect_local_sha256(NULL, -1);
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(false, "waiting_config_hash");
 }
 
-/* Empty merged_sum → legacy_handshake (gate released). */
-static void test_process_handshake_empty_merged_sum_releases_gate(void **state) {
+/* bridge_on_config_downloaded() writes SHAREDCFG_FILE with the manager's exact
+ * bytes before it has dispatched (or even decided whether to dispatch) the
+ * reload that is supposed to release the gate with https_config_applied. A
+ * Notify landing in that window must not let the opportunistic hash-match
+ * path steal the release with the wrong reason -- no OS_SHA256_File mock is
+ * queued, so cmocka fails this test if the hash comparison runs at all. */
+static void test_manager_config_hash_match_suppressed_while_download_pending(void **state) {
     (void)state;
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, "");
-    assert_gate_state(true, "legacy_handshake");
+    startup_gate_mark_download_pending();
+
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+
+    assert_gate_state(false, "waiting_config_hash");
 }
 
-/* Invalid (non-hex) merged_sum → gate stays BLOCKED at invalid_handshake_hash.
- * The agent must not start modules when the manager handshake gives us no
- * valid hash to validate against; modules stay blocked until a fresh
- * handshake (typically after an agentd restart) provides a valid hash. */
-static void test_process_handshake_invalid_md5_nonhex_blocks_gate(void **state) {
+/* Once the download's own reload completes, release_from_https_apply() must
+ * still be the one to open the gate -- with https_config_applied, not
+ * whatever the suppressed hash-match attempt would have set. */
+static void test_release_from_https_apply_wins_race_over_pending_hash_match(void **state) {
     (void)state;
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, INVALID_MD5_NONHEX);
-    assert_gate_state(false, "invalid_handshake_hash");
+    startup_gate_mark_download_pending();
+    startup_gate_check_manager_config_hash(MANAGER_SHA256);
+    assert_gate_state(false, "waiting_config_hash");
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(true, "https_config_applied");
 }
 
-/* Short merged_sum (not 32 chars) → gate stays BLOCKED. */
-static void test_process_handshake_invalid_md5_short_blocks_gate(void **state) {
+/* --- startup_gate_release_from_https_apply ------------------------------ */
+
+/* Blocked + remote_conf enabled: releases directly, with no hash comparison (no
+ * OS_SHA256_File mock is queued, so cmocka fails if one is attempted). */
+static void test_release_from_https_apply_releases_blocked_gate(void **state) {
     (void)state;
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, INVALID_MD5_SHORT);
-    assert_gate_state(false, "invalid_handshake_hash");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(true, "https_config_applied");
 }
 
-/* Valid MD5 + local hash matches → gate released immediately. */
-static void test_process_handshake_valid_md5_local_matches_releases_gate(void **state) {
+/* remote_conf disabled: the gate is already released (by initialize()); this
+ * must be a silent no-op, not re-log a release. */
+static void test_release_from_https_apply_is_noop_when_disabled(void **state) {
     (void)state;
-    /* getsharedfiles() will be called once by startup_gate_hash_matches_local(). */
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_A));
-    /* Two debug logs: "expected merged_sum set" + "local hash matches". */
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    /* No expect_any(__wrap__mdebug1, ...): must not log anything. */
+    startup_gate_release_from_https_apply();
 
-    startup_gate_process_handshake(true, VALID_MD5_A);
-    assert_gate_state(true, "hash_match");
+    assert_gate_state(true, "disabled");
 }
 
-/* Valid MD5 + local hash does NOT match → gate stays blocked at waiting_hash_match. */
-static void test_process_handshake_valid_md5_local_mismatch_blocks_gate(void **state) {
+/* Idempotent: calling it again once already released (e.g. a later config
+ * download after the gate is already open) must not re-log or change state. */
+static void test_release_from_https_apply_is_noop_once_already_released(void **state) {
     (void)state;
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_B));
-    /* Two debug logs: "expected merged_sum set" + "local hash does not match". */
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+    startup_gate_release_from_https_apply();
+    assert_gate_state(true, "https_config_applied");
 
-    startup_gate_process_handshake(true, VALID_MD5_A);
-    assert_gate_state(false, "waiting_hash_match");
-}
-
-/* refresh_from_local_hash releases the gate when local hash now matches expected. */
-static void test_refresh_from_local_hash_matches_releases_gate(void **state) {
-    (void)state;
-    /* First: place the gate into "waiting_hash_match" with expected = VALID_MD5_A. */
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_B));
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
-    startup_gate_process_handshake(true, VALID_MD5_A);
-    assert_gate_state(false, "waiting_hash_match");
-
-    /* Now refresh: local hash matches expected → released. */
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_A));
-    startup_gate_refresh_from_local_hash();
-    assert_gate_state(true, "hash_match");
-}
-
-/* refresh_from_local_hash leaves the gate blocked when local hash still doesn't match. */
-static void test_refresh_from_local_hash_mismatch_keeps_gate_blocked(void **state) {
-    (void)state;
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_B));
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
-    startup_gate_process_handshake(true, VALID_MD5_A);
-    assert_gate_state(false, "waiting_hash_match");
-
-    /* refresh with still-mismatching local hash → no change. */
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_B));
-    startup_gate_refresh_from_local_hash();
-    assert_gate_state(false, "waiting_hash_match");
-}
-
-/* refresh_from_local_hash is a no-op when expected_sum is empty (no handshake yet). */
-static void test_refresh_from_local_hash_without_expected_sum_is_noop(void **state) {
-    (void)state;
-    /* No handshake processed → expected_sum stays empty → getsharedfiles
-     * must NOT be called. If it were, cmocka would fail on missing will_return. */
-    startup_gate_refresh_from_local_hash();
-    assert_gate_state(false, "waiting_handshake");
-}
-
-/* check_hash_match returns true only when blocked AND local hash matches. */
-static void test_check_hash_match_true_when_blocked_and_matches(void **state) {
-    (void)state;
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_B));
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
-    startup_gate_process_handshake(true, VALID_MD5_A);
-    /* Now blocked at waiting_hash_match with expected=VALID_MD5_A. */
-
-    will_return(__wrap_getsharedfiles, strdup(VALID_MD5_A));
-    assert_true(startup_gate_check_hash_match());
-}
-
-/* check_hash_match returns false when not blocked. */
-static void test_check_hash_match_false_when_not_blocked(void **state) {
-    (void)state;
-    /* Gate is at "waiting_handshake" (initialize), which is blocked. Move to
-     * released first via the disabled-conf shortcut. */
-    expect_any(__wrap__mdebug1, formatted_msg);
-    startup_gate_process_handshake(true, NULL);  /* legacy_handshake → released */
-    assert_true(startup_gate_is_ready());
-
-    /* No will_return needed: check_hash_match's "can_check" guard returns
-     * early when the gate is already ready, so getsharedfiles is not called. */
-    assert_false(startup_gate_check_hash_match());
+    /* Second call: already ready, so the enabled-and-not-ready guard skips the
+     * log/reason-update entirely -- no expect_any queued means cmocka fails
+     * this test if it logs again. */
+    startup_gate_release_from_https_apply();
+    assert_gate_state(true, "https_config_applied");
 }
 
 int main(void) {
@@ -232,31 +252,27 @@ int main(void) {
                                         setup_remote_conf_disabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_initialize_remote_conf_enabled_blocks_gate,
                                         setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_not_startup_is_noop,
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_match_releases_gate,
                                         setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_remote_conf_disabled,
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_mismatch_keeps_gate_blocked,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_without_local_file_keeps_gate_blocked,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_empty_releases_gate,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_null_releases_gate,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_is_noop_when_released,
                                         setup_remote_conf_disabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_null_merged_sum_releases_gate,
+        cmocka_unit_test_setup_teardown(test_manager_config_hash_match_suppressed_while_download_pending,
                                         setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_empty_merged_sum_releases_gate,
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_wins_race_over_pending_hash_match,
                                         setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_invalid_md5_nonhex_blocks_gate,
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_releases_blocked_gate,
                                         setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_invalid_md5_short_blocks_gate,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_valid_md5_local_matches_releases_gate,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_process_handshake_valid_md5_local_mismatch_blocks_gate,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_refresh_from_local_hash_matches_releases_gate,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_refresh_from_local_hash_mismatch_keeps_gate_blocked,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_refresh_from_local_hash_without_expected_sum_is_noop,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_check_hash_match_true_when_blocked_and_matches,
-                                        setup_remote_conf_enabled, teardown_gate),
-        cmocka_unit_test_setup_teardown(test_check_hash_match_false_when_not_blocked,
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_when_disabled,
+                                        setup_remote_conf_disabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_once_already_released,
                                         setup_remote_conf_enabled, teardown_gate),
     };
 

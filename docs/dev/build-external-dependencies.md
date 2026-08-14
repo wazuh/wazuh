@@ -132,7 +132,7 @@ everywhere — including the Windows agent. Only non-Windows targets link `libbz
 
 Consumers are `data_provider`/sysinfo, `syscheckd` (whodata), `rootcheck` — all
 agent-only subdirectories. The server's `wazuh_modules` builds
-inventory_sync/vulnerability_scanner instead, so it links none of these.
+inventory_sync_server/keystore_server/vulnerability_scanner instead, so it links none of these.
 
 | Dependency | La | Lm | Ma | Wa | Published as |
 |------------|----|----|----|----|--------------|
