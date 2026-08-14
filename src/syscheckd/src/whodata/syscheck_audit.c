@@ -516,11 +516,30 @@ void *audit_main(audit_data_t *audit_data) {
     atomic_int_set(&audit_thread_active, 1);
     w_cond_signal(&audit_thread_started);
 
+    if (audit_data->socket >= 0) {
+        close(audit_data->socket);
+        audit_data->socket = -1;
+    }
+
     while (!audit_db_consistency_flag) {
         w_cond_wait(&audit_db_consistency, &audit_mutex);
     }
 
     w_mutex_unlock(&audit_mutex);
+
+    // Reconnect once the gate is lifted
+    int conn_retries = 0;
+    audit_data->socket = init_auditd_socket();
+    while (audit_data->socket < 0 && conn_retries < MAX_CONN_RETRIES) {
+        sleep(1);
+        minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
+        audit_data->socket = init_auditd_socket();
+    }
+    if (audit_data->socket < 0) {
+        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        atomic_int_set(&audit_thread_active, 0);
+        return NULL;
+    }
 
     if (audit_data->mode == AUDIT_ENABLED) {
         // Start rules reloading thread
