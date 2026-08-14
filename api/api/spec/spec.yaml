@@ -1589,10 +1589,6 @@ components:
                       type: integer
                       format: int32
                       description : "ACK messages (response to keepalive, startup and shutdown) sent to agents"
-                    ar:
-                      type: integer
-                      format: int32
-                      description: "Active response messages sent to agents"
                     discarded:
                       type: integer
                       format: int32
@@ -6250,7 +6246,6 @@ paths:
                             upgrade_ack: 0
                           sent_breakdown:
                             ack: 0
-                            ar: 0
                             discarded: 0
                             request: 0
                             shared: 0

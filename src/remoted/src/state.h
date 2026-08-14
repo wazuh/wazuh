@@ -48,7 +48,6 @@ typedef struct _sent_msgs_t
 {
     uint64_t ack_count;
     uint64_t shared_count;
-    uint32_t ar_count;
     uint32_t request_count;
     uint32_t discarded_count;
 } sent_msgs_t;
@@ -172,11 +171,6 @@ void rem_inc_send_ack();
  * @brief Increment sent shared file messages counter
  */
 void rem_inc_send_shared();
-
-/**
- * @brief Increment sent AR messages counter
- */
-void rem_inc_send_ar();
 
 /**
  * @brief Increment sent request messages counter
