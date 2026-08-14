@@ -33,7 +33,7 @@ namespace invsync::endpoints::config
      * {
      *   "state": { "modified_at": "...", "document_version": 1 },
      *   "wazuh": {
-     *     "schema": { "version": "1.0.0" },
+     *     "schema": { "version": "1.0" },
      *     "agent": { "id": "<authenticated id>",
      *                "configuration": { "modules": ["fim", "logcollector", ...],
      *                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },

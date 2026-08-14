@@ -37,7 +37,7 @@ namespace invsync::endpoints::stats
      *
      * ```json
      * {"state": {"modified_at": …, "document_version": 1},
-     *  "wazuh": {"schema": {"version": "1"}, "cluster": {…},
+     *  "wazuh": {"schema": {"version": "1.0"}, "cluster": {…},
      *            "agent": {"id": …, "statistics": {"agent": {…}, …}}}}
      * ```
      *

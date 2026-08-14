@@ -239,7 +239,7 @@ TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
     ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
 
     const auto document = soleIndexedDocument(*connector);
-    EXPECT_EQ("1.0.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
+    EXPECT_EQ("1.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
 }
 
 /**
