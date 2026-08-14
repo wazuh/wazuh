@@ -11,8 +11,6 @@
 #ifndef AUDIT_RULE_HANDLING_WRAPPERS
 #define AUDIT_RULE_HANDLING_WRAPPERS
 
-void __wrap_fim_rules_initial_load();
-
 void __wrap_add_whodata_directory(const char *path);
 
 void __wrap_remove_audit_rule_syscheck(const char *path);

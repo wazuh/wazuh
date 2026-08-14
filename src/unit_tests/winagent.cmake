@@ -70,7 +70,14 @@ file(GLOB win32_files
   ${SRC_FOLDER}/build/win32/CMakeFiles/win32_common.dir/win_utils.c.obj)
 list(APPEND obj_files ${win32_files})
 
-add_library(DEPENDENCIES_O STATIC ${obj_files})
+# client_agent_lib above carries https_client_bridge.obj, whose hc_* references
+# resolve against libhttps_client, a DLL no unit test links. Every winagent test
+# links DEPENDENCIES_O, so without these stubs the whole winagent unit-test build
+# fails, syscheckd and the rest included. The other targets get the same file
+# through the CLIENT-AGENT library, which winagent deliberately does not build
+# (it would duplicate globals such as agent_state).
+add_library(DEPENDENCIES_O STATIC ${obj_files}
+            ${SRC_FOLDER}/unit_tests/client-agent/https_client_stubs.c)
 set_source_files_properties(
   ${obj_files}
   PROPERTIES

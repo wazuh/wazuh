@@ -41,14 +41,6 @@ int __wrap_OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) {
     return mock();
 }
 
-int __wrap_OS_SendUDPbySize(int sock, int size, const char *msg) {
-    check_expected(sock);
-    check_expected(size);
-    check_expected(msg);
-
-    return mock();
-}
-
 int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     check_expected(sock);
     check_expected(size);
@@ -102,12 +94,6 @@ int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6) {
     return mock_type(int);
 }
 
-int __wrap_OS_ConnectUDP(__attribute__((unused)) u_int16_t _port,
-                         __attribute__((unused)) const char *_ip,
-                         __attribute__((unused)) int ipv6) {
-    return mock();
-}
-
 int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
                              __attribute__((unused)) long seconds,
                              __attribute__((unused)) long useconds) {
@@ -117,22 +103,6 @@ int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
 int __wrap_OS_SetSendTimeout(__attribute__((unused)) int socket,
                              __attribute__((unused)) int seconds) {
     return mock();
-}
-
-int __wrap_OS_SetKeepalive(__attribute__((unused)) int socket) {
-    return mock();
-}
-
-void __wrap_OS_SetKeepalive_Options(__attribute__((unused)) int socket,
-                                    __attribute__((unused)) int idle,
-                                    __attribute__((unused)) int intvl,
-                                    __attribute__((unused)) int cnt) {
-    function_called();
-}
-
-int __wrap_wnet_select(__attribute__((unused)) int sock,
-                       __attribute__((unused)) int timeout) {
-    return (int)mock();
 }
 
 uint32_t __wrap_wnet_order(uint32_t value) {

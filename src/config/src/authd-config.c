@@ -14,6 +14,7 @@
 #include "shared.h"
 #include "authd-config.h"
 #include "config.h"
+#include "ssl_op.h"
 #include <string.h>
 
 #ifndef WIN32
@@ -27,6 +28,55 @@
 
 static short eval_bool(const char *str);
 int w_read_force_config(XML_NODE node, authd_config_t *config);
+
+/* TLS 1.3 ciphersuite names accepted by SSL_CTX_set_ciphersuites() (RFC 8446 section B.4) */
+static const char *VALID_TLS13_CIPHERSUITES[] = {
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_AES_128_CCM_SHA256",
+    "TLS_AES_128_CCM_8_SHA256",
+    NULL
+};
+
+int w_authd_validate_ciphers(const char *ciphers) {
+    if (!ciphers || !*ciphers) {
+        return OS_INVALID;
+    }
+
+    char *copy = strdup(ciphers);
+    char *token = strtok(copy, ":");
+    int result = 0;
+    int token_seen = 0;
+
+    while (token) {
+        token_seen = 1;
+        int valid = 0;
+
+        for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
+            if (!strcmp(token, VALID_TLS13_CIPHERSUITES[i])) {
+                valid = 1;
+                break;
+            }
+        }
+
+        if (!valid) {
+            merror("Invalid TLS 1.3 cipher suite '%s' in 'ciphers' option", token);
+            result = OS_INVALID;
+            break;
+        }
+
+        token = strtok(NULL, ":");
+    }
+
+    if (!token_seen) {
+        merror("Invalid TLS 1.3 cipher suite list: '%s'", ciphers);
+        result = OS_INVALID;
+    }
+
+    free(copy);
+    return result;
+}
 
 /**
  * @brief gets the auth agents configuration
@@ -50,7 +100,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_verify_host = "ssl_verify_host";
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
-    static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
     static const char *xml_agents = "agents";
 
@@ -60,8 +109,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
 
-    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/sslmanager.cert");
-    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/sslmanager.key");
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/authd.pem");
+    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/authd-key.pem");
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */
@@ -73,11 +122,10 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->flags.clear_removed = 0;
     /* Off when <use_password> is omitted (upgrades); the installer template ships it on. */
     config->flags.use_password = 0;
-    config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
+    config->ciphers = strdup(DEFAULT_CIPHERS);
     config->flags.verify_host = 0;
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
-    config->flags.auto_negotiate = 0;
     config->flags.remote_enrollment = 1;
     config->force_options.enabled = true;
     config->force_options.key_mismatch = true;
@@ -170,6 +218,10 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             config->flags.remote_enrollment = b;
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
+            if (w_authd_validate_ciphers(node[i]->content) == OS_INVALID) {
+                return OS_INVALID;
+            }
+
             free(config->ciphers);
             config->ciphers = strdup(node[i]->content);
         } else if (!strcmp(node[i]->element, xml_ssl_agent_ca)) {
@@ -190,15 +242,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         } else if (!strcmp(node[i]->element, xml_ssl_manager_key)) {
             free(config->manager_key);
             config->manager_key = strdup(node[i]->content);
-        } else if (!strcmp(node[i]->element, xml_ssl_auto_negotiate)) {
-            short b = eval_bool(node[i]->content);
-
-            if (b < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return OS_INVALID;
-            }
-
-            config->flags.auto_negotiate = b;
         } else if (strcasecmp(node[i]->element, xml_agents) == 0) {
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children == NULL) {

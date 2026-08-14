@@ -11,8 +11,6 @@
 #ifndef CLUSTER_OP_WRAPPERS_H
 #define CLUSTER_OP_WRAPPERS_H
 
-int __wrap_w_is_worker(void);
-
 int __wrap_w_is_single_node(int* is_worker);
 
 #endif

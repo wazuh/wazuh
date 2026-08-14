@@ -14,24 +14,16 @@
 #include "external/nlohmann/json.hpp"
 #include "indexerBulkQueue.hpp"
 #include "indexerConnector.hpp"
-#include "keyStore.hpp"
+#include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
-#include "shared_modules/utils/certHelper.hpp"
 #include "simdjson.h"
-#include <filesystem>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-
-static std::mutex G_CREDENTIAL_MUTEX;
-
-constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
-constexpr auto INDEXER_COLUMN {"indexer"};
-constexpr auto USER_KEY {"username"};
-constexpr auto PASSWORD_KEY {"password"};
 
 /**
  * @brief Appends an ID to bulkData, escaping special characters if necessary
@@ -186,7 +178,8 @@ public:
             logFunction,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string callerName = "")
+        std::string callerName = "",
+        std::optional<SecureCommunication> secureCommunication = std::nullopt)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_logFn {}
     {
@@ -200,67 +193,21 @@ public:
             Log::assignLogFunction(logFunction);
         }
 
-        std::string caRootCertificate;
-        std::string sslCertificate;
-        std::string sslKey;
-        if (config.contains("ssl"))
-        {
-            if (config.at("ssl").contains("certificate_authorities") &&
-                !config.at("ssl").at("certificate_authorities").empty())
-            {
-                std::vector<std::string> filePaths =
-                    config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
-                if (filePaths.size() > 1)
-                {
-                    Utils::CertHelper::mergeCaRootCertificates(filePaths, caRootCertificate, DEFAULT_PATH);
-                }
-                else
-                {
-                    if (std::filesystem::exists(filePaths.front()))
-                    {
-                        caRootCertificate = filePaths.front();
-                    }
-                    else
-                    {
-                        throw IndexerConnectorException("The CA root certificate file: '" + filePaths.front() +
-                                                        "' does not exist.");
-                    }
-                }
-            }
-            if (config.at("ssl").contains("certificate"))
-            {
-                sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
-            }
-            if (config.at("ssl").contains("key"))
-            {
-                sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
-            }
-        }
-
+        // `hosts` FIRST. Deliberately reordered: it used to be checked between the ssl block and the
+        // keystore read. It is the cheapest check and the most common one to fail, and doing it first
+        // means a config with no hosts never opens `queue/keystore` (RocksDB) on its way to throwing.
+        // Only observable change: with BOTH a nonexistent CA file and no hosts, the reported error is
+        // now the hosts one.
         if (!config.contains("hosts") || config.at("hosts").empty())
         {
             throw IndexerConnectorException("No hosts found in the configuration");
         }
 
-        std::lock_guard lock(G_CREDENTIAL_MUTEX);
-        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
-        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
-        if (username.empty() && password.empty())
-        {
-            username = "wazuh-manager";
-            password = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username and password found in the keystore, using default values.");
-        }
-        if (username.empty())
-        {
-            username = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username found in the keystore, using default value.");
-        }
-        m_secureCommunication = SecureCommunication::builder();
-        m_secureCommunication.basicAuth(username + ":" + password)
-            .sslCertificate(sslCertificate)
-            .sslKey(sslKey)
-            .caRootCertificate(caRootCertificate);
+        // Supplied by an IndexerSession when several connectors share one; built here otherwise.
+        // Either way this connector keeps its own copy: the selector is only one of six consumers,
+        // every bulk/search request below uses it too.
+        m_secureCommunication =
+            secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);

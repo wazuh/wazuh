@@ -18,10 +18,10 @@ class AgentStatus:
         self.disconnected = disconnected
         self.never_connected = never_connected
         self.pending = pending
-    
+
     def to_dict(self) -> dict:
         """Transform the class into a dictionary.
-        
+
         Returns
         -------
         dict
@@ -41,10 +41,10 @@ class AgentsSummary:
         self.status = AgentStatus(**agents_by_status)
         self.os = agents_by_os
         self.groups = agents_by_groups
-    
+
     def to_dict(self) -> dict:
         """Transform the class into a dictionary.
-        
+
         Returns
         -------
         dict
@@ -87,12 +87,12 @@ class WazuhDBHTTPClient:
 
     async def _get(self, endpoint: str) -> Any:
         """Send a GET request to the specified endpoint.
-        
+
         Parameters
         ----------
         endpoint : str
             Endpoint name.
-        
+
         Returns
         -------
         Any
@@ -107,7 +107,7 @@ class WazuhDBHTTPClient:
             raise WazuhError(2013, extra_message=str(exc))
 
         return response.json()
-    
+
     async def _post(self, endpoint: str, data: Any, empty_response: bool = False) -> Any:
         """Send a POST request to the specified endpoint.
 
@@ -140,7 +140,7 @@ class WazuhDBHTTPClient:
 
         except RequestError as exc:
             raise WazuhError(2013, extra_message=str(exc))
-        
+
         if empty_response:
             return
 
@@ -148,12 +148,12 @@ class WazuhDBHTTPClient:
 
     async def get_agent_groups(self, agent_id: str) -> list[str]:
         """Get agent groups.
-        
+
         Parameters
         ----------
         agent_id : str
             Agent ID.
-        
+
         Returns
         -------
         list[str]
@@ -161,14 +161,24 @@ class WazuhDBHTTPClient:
         """
         return await self._get(f'/agents/{agent_id}/groups')
 
+    async def get_all_agents(self) -> list[dict]:
+        """Get all agents with all fields.
+
+        Returns
+        -------
+        list[dict]
+            List of all agents with complete information.
+        """
+        return await self._get('/agents/all')
+
     async def get_agents_summary(self, agent_ids: list[str] = []) -> AgentsSummary:
         """Get agents information summary.
-        
+
         Parameters
         ----------
         agent_ids : list[str]
             Agent ID list. By default, the summary of all agents is returned.
-        
+
         Returns
         -------
         AgentsSummary
@@ -177,10 +187,10 @@ class WazuhDBHTTPClient:
         ids = [int(agent_id) for agent_id in agent_ids]
         data = await self._post('/agents/summary', ids)
         return AgentsSummary(**data)
-    
+
     async def get_agents_sync(self) -> dict:
         """Get agents synchronization information.
-        
+
         Returns
         -------
         dict
@@ -197,34 +207,6 @@ class WazuhDBHTTPClient:
             Agenst synchronization information.
         """
         await self._post('/agents/sync', agents_sync, empty_response=True)
-
-    async def get_agents_restart_info(self, ids: list, negate: bool) -> list[dict]:
-        """Retrieve agents restart information.
-
-        Parameters
-        ----------
-        ids : list[int]
-            List of agent IDs to query.
-        negate : bool
-            Whether to negate the ID filter (i.e., exclude these IDs).
-
-        Returns
-        -------
-        list[dict]
-            A list of agent restart information dicts.
-        """
-        request_data = {
-            'ids': [int(id) for id in ids],
-            'negate': negate
-        }
-
-        data = await self._post('/agents/restartinfo', request_data)
-        active_agents = data.get('items', [])
-
-        for agent in active_agents:
-            agent['id'] = str(agent['id']).zfill(3)
-
-        return active_agents
 
 
 @asynccontextmanager

@@ -4,17 +4,8 @@
 import os
 import time
 
-from wazuh_testing.constants.paths.sockets import QUEUE_AGENTS_TIMESTAMP_PATH, QUEUE_DIFF_PATH, QUEUE_RIDS_PATH
-from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
-
-
-def clean_diff():
-    try:
-        remove_file(QUEUE_DIFF_PATH)
-        recursive_directory_creation(QUEUE_DIFF_PATH)
-        os.chmod(QUEUE_DIFF_PATH, 0o777)
-    except Exception as e:
-        print('Failed to delete %s. Reason: %s' % (QUEUE_DIFF_PATH, e))
+from wazuh_testing.constants.paths.sockets import QUEUE_AGENTS_TIMESTAMP_PATH, QUEUE_RIDS_PATH
+from wazuh_testing.utils.file import truncate_file
 
 
 def clean_rids():
@@ -29,16 +20,6 @@ def clean_rids():
 
 def clean_agents_timestamp():
     truncate_file(QUEUE_AGENTS_TIMESTAMP_PATH)
-
-
-def check_diff(name, expected, timeout=30):
-    diff_path = os.path.join(QUEUE_DIFF_PATH, name)
-    wait = time.time() + timeout
-    while time.time() < wait:
-        ret = os.path.exists(diff_path)
-        if ret == expected:
-            return True
-    return False
 
 
 def check_rids(id, expected):
@@ -77,24 +58,3 @@ def create_rids(id):
         raise
 
 
-def create_diff(name):
-    SIGID = '533'
-    diff_folder = os.path.join(QUEUE_DIFF_PATH, name)
-    try:
-        os.mkdir(diff_folder)
-    except IOError:
-        raise
-
-    sigid_folder = os.path.join(diff_folder, SIGID)
-    try:
-        os.mkdir(sigid_folder)
-    except IOError:
-        raise
-
-    last_entry_path = os.path.join(sigid_folder, 'last-entry')
-    try:
-        file = open(last_entry_path, 'w')
-        file.close()
-        os.chmod(last_entry_path, 0o777)
-    except IOError:
-        raise

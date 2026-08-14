@@ -1,2 +1,1 @@
 pytest==7.4.4
-trustme==1.1.0

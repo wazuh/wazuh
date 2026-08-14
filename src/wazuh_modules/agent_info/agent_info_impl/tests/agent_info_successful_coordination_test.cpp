@@ -2,7 +2,6 @@
 #include <gmock/gmock.h>
 
 #include <agent_info_impl.hpp>
-#include <agent_sync_protocol.hpp>
 
 #include <mock_dbsync.hpp>
 #include <mock_file_io_utils.hpp>
@@ -48,27 +47,6 @@ class AgentInfoSuccessfulCoordinationTest : public ::testing::Test
             m_mockFileSystem.reset();
             m_mockFileIO.reset();
             m_mockSysInfo.reset();
-        }
-
-        // Helper function to create mock MQ_Functions
-        MQ_Functions createMockMQFunctions()
-        {
-            MQ_Functions mqFuncs;
-
-            // Mock start function - returns a valid queue descriptor
-            mqFuncs.start = [](const char* /* key */, short /* type */, short /* attempts */) -> int
-            {
-                return 1; // Return valid queue descriptor (positive number)
-            };
-
-            // Mock send_binary function - always returns success (0)
-            mqFuncs.send_binary = [](int /* queue */, const void* /* message */, size_t /* message_len */,
-                                     const char* /* locmsg */, char /* loc */) -> int
-            {
-                return 0; // Success
-            };
-
-            return mqFuncs;
         }
 
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
@@ -126,12 +104,10 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationWithNoModulesAvailable)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
+    // 1 second timeout, 1 retry
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup mocks to trigger coordination
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -230,12 +206,10 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CompleteSuccessfulCoordinationFlow)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
+    // 1 second timeout, 1 retry
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup mocks to trigger coordination
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -335,11 +309,9 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulFlushOperation)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
+    // 1 second timeout, 1 retry
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -425,11 +397,9 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, SuccessfulResumeOperation)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
+    // 1 second timeout, 1 retry
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -506,11 +476,9 @@ TEST_F(AgentInfoSuccessfulCoordinationTest, CoordinationCompletionMessage)
                   );
 
     // Set very short timeouts to make tests finish quickly
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000); // 1 second timeout, 1 retry
+    // 1 second timeout, 1 retry
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));

@@ -33,7 +33,7 @@ function get-version {
             Write-Output "$(Get-Date -format u) - Extracted version from $JsonFile : $version." >> .\upgrade\upgrade.log
         } else {
             Write-Output "$(Get-Date -format u) - Failed to extract version from JSON file $JsonFile." >> .\upgrade\upgrade.log
-            exit 1
+            return $null
         }
     }
     # fallback to the plain text VERSION file
@@ -43,7 +43,7 @@ function get-version {
         Write-Output "$(Get-Date -format u) - Extracted version from $TextFile : $version." >> .\upgrade\upgrade.log
     } else {
         Write-Output "$(Get-Date -format u) - Error: No version file found (expected $JsonFile or $TextFile)." >> .\upgrade\upgrade.log
-        exit 1
+        return $null
     }
 
     return $version
@@ -54,6 +54,15 @@ function remove_upgrade_files {
     Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
     Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
     Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+}
+
+
+# Write the upgrade result, remove upgrade files and restart the service
+function abort_upgrade($code) {
+    write-output "$code" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+    exit 1
 }
 
 
@@ -109,11 +118,14 @@ function check-process {
 function check-installation {
     $actual_version = get-version
     $counter = 5
-    while($actual_version -eq $current_version -And $counter -gt 0) {
+    while(($null -eq $actual_version -Or $actual_version -eq $current_version) -And $counter -gt 0) {
         write-output "$(Get-Date -format u) - Waiting for the Wazuh-Agent installation to end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 2
         $actual_version = get-version
+    }
+    if ($null -eq $actual_version) {
+        write-output "$(Get-Date -format u) - Could not read the installed version after the installation." >> .\upgrade\upgrade.log
     }
     write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
     Start-Service -Name "Wazuh"
@@ -149,17 +161,19 @@ function Get-MSIProductVersion {
     }
 
     try {
-        # Get the line that contains "ProductVersion"
-        $msi_version_info = Get-Content $logFilePath | Select-String "ProductVersion" | ForEach-Object { $_.Line }
+        # Match "ProductVersion = x.y.z" and take the first hit. Matching directly with
+        # Select-String avoids running -match against a collection of lines, which does not
+        # populate $Matches and would leave a stale or empty version.
+        $match = Get-Content $logFilePath | Select-String -Pattern "ProductVersion\s*=\s*([0-9\.]+)" | Select-Object -First 1
 
         # Check if the version format is valid
-        if (-not ($msi_version_info -match "ProductVersion\s*=\s*([0-9\.]+)")) {
+        if (-not $match) {
             write-output "$(Get-Date -format u) - Invalid ProductVersion format in the MSI log: $logFilePath" >> .\upgrade\upgrade.log
             return $null
         }
 
         # Return the version with the 'v' prefix
-        $product_version = "v$($matches[1])"
+        $product_version = "v$($match.Matches[0].Groups[1].Value)"
         return $product_version
 
     } catch {
@@ -219,14 +233,15 @@ function install {
 
         write-output "$(Get-Date -format u) - Installing MSI to: $installDir (msiexec.exe $($msiArgs -join ' '))" >> .\upgrade\upgrade.log
 
-        Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow
+        $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow -PassThru
+        write-output "$(Get-Date -format u) - msiexec finished with exit code: $($process.ExitCode)." >> .\upgrade\upgrade.log
+
+        return $process.ExitCode
 
     } catch {
         Write-Output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        return $false
+        return -1
     }
-
-    return $true
 }
 
 # Check that the Wazuh installation runs on the expected path
@@ -236,13 +251,15 @@ $currentDir = (Get-Location).Path.TrimEnd('\')
 
 if ($normalizedWazuhDir -ne $currentDir) {
     Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
-    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    remove_upgrade_files
-    exit 1
+    abort_upgrade "2"
 }
 
 # Get current version
 $current_version = get-version
+if ($null -eq $current_version) {
+    write-output "$(Get-Date -format u) - Upgrade failed: could not read the current agent version." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get new msi version
@@ -261,19 +278,91 @@ if ($msi_new_version -ne $null) {
         $current_ver = [Version]($current_version -replace '^v', '')
         if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
             write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
-            write-output "1" | out-file ".\upgrade\upgrade_result" -encoding ascii
-            remove_upgrade_files
-            Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-            exit 1
+            abort_upgrade "1"
         }
     } catch {
         write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
-        write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-        remove_upgrade_files
-        Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
-        exit 1
+        abort_upgrade "2"
     }
 }
+
+# Read <block><sub><tag> from the agent configuration, taking the last match.
+function get_conf_value($block, $sub, $tag) {
+    $conf_path = Join-Path $wazuhDir "ossec.conf"
+    if (-Not (Test-Path $conf_path)) {
+        return $null
+    }
+    # Strip CR and LF separately: the shipped template is LF-only, and `.` never matches a newline.
+    $conf = (Get-Content $conf_path -Raw) -replace "`r", "" -replace "`n", ""
+    $block_match = [regex]::Match($conf, "<$block>(.*)</$block>")
+    if (-Not $block_match.Success) {
+        return $null
+    }
+    $sub_match = [regex]::Match($block_match.Groups[1].Value, "<$sub>(.*)</$sub>")
+    if (-Not $sub_match.Success) {
+        return $null
+    }
+    $tag_matches = [regex]::Matches($sub_match.Groups[1].Value, "<$tag>([^<]*)</$tag>")
+    if ($tag_matches.Count -eq 0) {
+        return $null
+    }
+    return $tag_matches[$tag_matches.Count - 1].Groups[1].Value.Trim()
+}
+
+# Accept any certificate: the manager's is self-signed. Compiled, because .NET calls this
+# on a worker thread where a PowerShell scriptblock cannot run.
+if (-not ("WazuhProbeTrust" -as [type])) {
+    Add-Type @"
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public static class WazuhProbeTrust {
+    public static RemoteCertificateValidationCallback Always =
+        delegate (object s, X509Certificate c, X509Chain ch, SslPolicyErrors e) { return true; };
+}
+"@
+}
+
+# Check the manager is up: GET / is remoted's health endpoint and answers 200.
+# Never pin the TLS version here: the listener is TLS 1.3-only, so Tls12 fails the handshake.
+function probe_server($server, $port) {
+    $saved_callback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [WazuhProbeTrust]::Always
+        $response = Invoke-WebRequest -Uri "https://$($server):$($port)/" -UseBasicParsing -TimeoutSec 5
+        return ($response.StatusCode -eq 200)
+    } catch {
+        return $false
+    } finally {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $saved_callback
+    }
+}
+
+# The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
+$server_address = get_conf_value "agent" "server" "address"
+if ([string]::IsNullOrEmpty($server_address)) {
+    $server_address = get_conf_value "client" "server" "address"
+}
+
+# The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
+$server_port = get_conf_value "agent" "server" "port"
+if ([string]::IsNullOrEmpty($server_port)) {
+    $server_port = "1517"
+}
+
+if ([string]::IsNullOrEmpty($server_address)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: no manager address found in the configuration." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
+
+write-output "$(Get-Date -format u) - Checking connectivity to $($server_address):$($server_port)." >> .\upgrade\upgrade.log
+
+if (-Not (probe_server $server_address $server_port)) {
+    write-output "$(Get-Date -format u) - Upgrade failed: the manager is not reachable at $($server_address):$($server_port), interrupting upgrade." >> .\upgrade\upgrade.log
+    abort_upgrade "2"
+}
+
+write-output "$(Get-Date -format u) - Manager reachable at $($server_address):$($server_port)." >> .\upgrade\upgrade.log
 
 # Ensure no other instance of msiexec is running by stopping them
 try {
@@ -285,7 +374,7 @@ try {
 }
 
 # Install with explicit INSTALLDIR
-install -installDir $wazuhDir
+$msi_exit_code = install -installDir $wazuhDir
 check-installation
 
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
@@ -309,15 +398,25 @@ while($status -ne "connected"  -And $counter -gt 0) {
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-if ($status -ne "connected") {
-    write-output "$(Get-Date -format u) - Upgrade failed." >> .\upgrade\upgrade.log
+# Verify the committed on-disk state before reporting success, instead of trusting
+# the staged files alone. The upgrade is successful only if msiexec committed cleanly
+# (exit code 0; a reboot-required result is a failure because a restart is never
+# allowed), the version written to disk matches the MSI, and the agent reconnects.
+$new_version = get-version
+if ($msi_new_version -eq $null) {
+    write-output "$(Get-Date -format u) - Skipping on-disk version check: the MSI version could not be determined." >> .\upgrade\upgrade.log
+    $version_ok = $true
+} else {
+    $version_ok = ("v$new_version" -eq $msi_new_version)
+}
+
+if ($msi_exit_code -ne 0 -Or (-Not $version_ok) -Or ($status -ne "connected")) {
+    write-output "$(Get-Date -format u) - Upgrade failed (msiexec exit code: $($msi_exit_code), on-disk version: $($new_version), status: $($status))." >> .\upgrade\upgrade.log
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
 }
 else {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
-    $new_version = get-version
-    write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Upgrade finished successfully. New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
 remove_upgrade_files

@@ -13,28 +13,20 @@
 #include "exponentialBackoff.hpp"
 #include "external/nlohmann/json.hpp"
 #include "indexerConnector.hpp"
-#include "keyStore.hpp"
+#include "indexerTransport.hpp"
 #include "loggerHelper.h"
 #include "reflectiveJson.hpp"
 #include "secureCommunication.hpp"
-#include "shared_modules/utils/certHelper.hpp"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <filesystem>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <span>
 #include <string>
 #include <thread>
 #include <vector>
-
-static std::mutex G_CREDENTIAL_MUTEX;
-
-constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
-constexpr auto INDEXER_COLUMN {"indexer"};
-constexpr auto USER_KEY {"username"};
-constexpr auto PASSWORD_KEY {"password"};
 
 constexpr auto HTTP_OK {200};
 constexpr auto HTTP_CREATED {201};
@@ -354,9 +346,48 @@ class IndexerConnectorSyncImpl final
         }
 
         auto serverUrl = m_selector->getNext();
+
+        // A _delete_by_query answers 200 even when it deleted nothing it was asked to: per-shard
+        // errors come back in a `failures` array inside the body. Reporting that run as success is
+        // how documents survive a deletion that everyone upstream believes worked, so the failures
+        // are raised like a transport error and the caller decides whether to retry.
         const auto onSuccessDeleteByQuery = [this](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Response: %s", response.c_str());
+
+            const auto parsed = nlohmann::json::parse(response, nullptr, false);
+            if (parsed.is_discarded())
+            {
+                return;
+            }
+
+            const auto failures =
+                (parsed.contains("failures") && parsed.at("failures").is_array()) ? parsed.at("failures").size() : 0;
+
+            // The OTHER way a 200 leaves documents behind. `conflicts: "proceed"` (set when the
+            // query is staged) makes the run skip a document whose version moved between the search
+            // and the delete instead of aborting -- and OpenSearch tallies those skips in
+            // `version_conflicts`, NOT in `failures`. To the caller both mean the same thing:
+            // documents it asked to delete are still there. So both are raised, because for a
+            // whole-agent deletion the documented recovery is re-running the delete, and nothing
+            // re-runs it while this reports success.
+            const auto conflicts =
+                (parsed.contains("version_conflicts") && parsed.at("version_conflicts").is_number_integer())
+                    ? parsed.at("version_conflicts").get<std::size_t>()
+                    : 0;
+
+            if (failures == 0 && conflicts == 0)
+            {
+                return;
+            }
+
+            LOGFN_WARN(m_logFn,
+                       "deleteByQuery left documents behind: %zu shard failure(s), %zu version conflict(s). "
+                       "Response: %s",
+                       failures,
+                       conflicts,
+                       response.c_str());
+            throw IndexerConnectorException("deleteByQuery did not delete every matching document");
         };
 
         const auto onErrorDeleteByQuery =
@@ -400,11 +431,24 @@ class IndexerConnectorSyncImpl final
             url += index;
             url += "/_delete_by_query";
             LOGFN_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
-            m_httpRequest->post(
-                RequestParameters {
-                    .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
-                PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                {});
+            try
+            {
+                m_httpRequest->post(
+                    RequestParameters {
+                        .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
+                    {});
+            }
+            catch (...)
+            {
+                // Drop the staged queries on the way out. The caller is being told this flush
+                // failed, and it retries by re-staging its own queries; queries kept here would
+                // instead be re-fired by whatever flushes next -- after the retry already
+                // succeeded -- deleting documents written in between.
+                m_deleteByQuery.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw;
+            }
         }
 
         const auto onSuccess = [this, &needToRetry](const std::string& response)
@@ -682,7 +726,8 @@ public:
             logFunction,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string callerName = "")
+        std::string callerName = "",
+        std::optional<SecureCommunication> secureCommunication = std::nullopt)
         : m_logFn {}
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
@@ -696,67 +741,21 @@ public:
             Log::assignLogFunction(logFunction);
         }
 
-        std::string caRootCertificate;
-        std::string sslCertificate;
-        std::string sslKey;
-        if (config.contains("ssl"))
-        {
-            if (config.at("ssl").contains("certificate_authorities") &&
-                !config.at("ssl").at("certificate_authorities").empty())
-            {
-                std::vector<std::string> filePaths =
-                    config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
-                if (filePaths.size() > 1)
-                {
-                    Utils::CertHelper::mergeCaRootCertificates(filePaths, caRootCertificate, DEFAULT_PATH);
-                }
-                else
-                {
-                    if (std::filesystem::exists(filePaths.front()))
-                    {
-                        caRootCertificate = filePaths.front();
-                    }
-                    else
-                    {
-                        throw IndexerConnectorException("The CA root certificate file: '" + filePaths.front() +
-                                                        "' does not exist.");
-                    }
-                }
-            }
-            if (config.at("ssl").contains("certificate"))
-            {
-                sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
-            }
-            if (config.at("ssl").contains("key"))
-            {
-                sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
-            }
-        }
-
+        // `hosts` FIRST. Deliberately reordered: it used to be checked between the ssl block and the
+        // keystore read. It is the cheapest check and the most common one to fail, and doing it first
+        // means a config with no hosts never opens `queue/keystore` (RocksDB) on its way to throwing.
+        // Only observable change: with BOTH a nonexistent CA file and no hosts, the reported error is
+        // now the hosts one.
         if (!config.contains("hosts") || config.at("hosts").empty())
         {
             throw IndexerConnectorException("No hosts found in the configuration");
         }
 
-        std::lock_guard lock(G_CREDENTIAL_MUTEX);
-        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
-        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
-        if (username.empty() && password.empty())
-        {
-            username = "wazuh-manager";
-            password = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username and password found in the keystore, using default values.");
-        }
-        if (username.empty())
-        {
-            username = "wazuh-manager";
-            LOGFN_WARN(m_logFn, "No username found in the keystore, using default value.");
-        }
-        m_secureCommunication = SecureCommunication::builder();
-        m_secureCommunication.basicAuth(username + ":" + password)
-            .sslCertificate(sslCertificate)
-            .sslKey(sslKey)
-            .caRootCertificate(caRootCertificate);
+        // Supplied by an IndexerSession when several connectors share one; built here otherwise.
+        // Either way this connector keeps its own copy: the selector is only one of ten consumers,
+        // every bulk/search request below uses it too.
+        m_secureCommunication =
+            secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
@@ -842,6 +841,15 @@ public:
         }
 
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
+        if (success)
+        {
+            // OpenSearch defaults `conflicts` to "abort": ONE document whose version moved between
+            // the query's search phase and its delete phase stops the whole run, and the request
+            // still answers 200 with the rest of the agent's documents left behind. "proceed" makes
+            // it skip that document and carry on -- a conflicting document is one that was just
+            // rewritten, and for a whole-agent deletion re-running the delete is the recovery.
+            it->second["conflicts"] = "proceed";
+        }
         auto& boolQuery = it->second["query"]["bool"];
 
         if (clusterName.empty())
@@ -890,8 +898,8 @@ public:
             LOGFN_WARN(m_logFn,
                        "Update by query skipped: no valid indices after filtering (input had %zu entries)",
                        indices.size());
-            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent +
-            // sendEndAck) must still fire so the session terminates cleanly. Treat the
+            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent)
+            // must still fire so the session terminates cleanly. Treat the
             // missing/filtered indices as a no-op success.
             m_shouldNotifyAfterBulk = true;
             return;

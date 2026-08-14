@@ -5,10 +5,10 @@ port: 55000
 
 https:
  enabled: yes
- key: "manager.key"
- cert: "manager.crt"
+ key: "apid-key.pem"
+ cert: "apid.pem"
  use_ca: False
- ca: "ca.crt"
+ ca: "root-ca.pem"
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).

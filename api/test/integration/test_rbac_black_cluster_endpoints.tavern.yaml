@@ -40,7 +40,6 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items:
             - error:
@@ -68,7 +67,6 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 1
