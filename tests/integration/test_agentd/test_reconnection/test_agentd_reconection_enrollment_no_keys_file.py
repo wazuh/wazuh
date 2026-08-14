@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -124,7 +124,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
 
     expected_output:
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -143,19 +143,39 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         authd_server.start()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
         wait_connect()
 
+        # authd_server's underlying MitM signals "response sent" and "shut down"
+        # with the same threading.Event (mitm.py's StreamHandler.handle()): once
+        # the first enrollment sets it, any later connection on this same
+        # instance sees it already set and never even reads the request. clear()
+        # resets it so the REJECT_AUTH-triggered re-enrollment below can actually
+        # get a response instead of hanging until wait_connect()'s timeout.
+        authd_server.clear()
+
         # Reset simulator
         remoted_server.destroy()
+
+        # Start rejecting Agent: under HTTPS a dropped connection alone is
+        # just a TransientFailure, retried forever with backoff -- it never
+        # triggers re-enrollment (ControlStateMachine::onEvent, AuthGate is
+        # only armed by AuthFailed). Only an explicit credential rejection
+        # (401 on every request) escalates to AuthGate.reportAuthFailure()
+        # and drives the agent back to requesting a new key.
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
+        remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
         wait_enrollment_try()
 
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        # Reset simulator
+        remoted_server.destroy()
+
+        remoted_server = RemotedSimulator()
         remoted_server.start()
         # Wait until Agent is connected
         wait_connect()

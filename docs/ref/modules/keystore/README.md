@@ -1,6 +1,6 @@
 # Keystore
 
-`wazuh-manager-keystore` is a CLI utility that stores encrypted credentials for the Wazuh Manager. Other components (Indexer Connector, Server API) read secrets from the keystore at runtime via the `Keystore` C++ library.
+`wazuh-manager-keystore` is a CLI utility that stores encrypted credentials for the Wazuh Manager. Other components (Indexer Connector, Server API) read secrets from the keystore at runtime — C++ consumers via the `Keystore` library directly, and the Python framework through the `keystore_server` module (below).
 
 Source: `src/shared_modules/keystore/`
 
@@ -41,7 +41,7 @@ The keystore has undergone one version upgrade:
 
 | Version | Encryption | Notes |
 |---------|-----------|-------|
-| v1 | RSA (via `etc/sslmanager.key`) | Legacy format |
+| v1 | RSA (via `etc/certs/authd-key.pem`) | Legacy format |
 | v2 | AES-256-CBC (EVP) | Current format, no key file dependency |
 
 On first access after an upgrade, the daemon automatically migrates v1 entries to v2.

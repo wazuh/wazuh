@@ -2,7 +2,6 @@
 #include <gmock/gmock.h>
 
 #include <agent_info_impl.hpp>
-#include <agent_sync_protocol.hpp>
 #include "module_query_errors.h"
 
 #include <dbsync.hpp>
@@ -63,27 +62,6 @@ class AgentInfoCoordinationTest : public ::testing::Test
             m_mockSysInfo.reset();
         }
 
-        // Helper function to create mock MQ_Functions
-        MQ_Functions createMockMQFunctions()
-        {
-            MQ_Functions mqFuncs;
-
-            // Mock start function - returns a valid queue descriptor
-            mqFuncs.start = [](const char* /* key */, short /* type */, short /* attempts */) -> int
-            {
-                return 1; // Return valid queue descriptor (positive number)
-            };
-
-            // Mock send_binary function - always returns success (0)
-            mqFuncs.send_binary = [](int /* queue */, const void* /* message */, size_t /* message_len */,
-                                     const char* /* locmsg */, char /* loc */) -> int
-            {
-                return 0; // Success
-            };
-
-            return mqFuncs;
-        }
-
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
         std::shared_ptr<MockDBSync> m_mockDBSync;
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
@@ -117,9 +95,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagSuccess)
                   );
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup mocks to trigger coordination success
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -174,7 +150,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagSuccess)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     m_logOutput.clear();
 
@@ -306,9 +282,7 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleWithNonNullResponse)
                   );
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup to trigger coordination
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -394,9 +368,7 @@ TEST_F(AgentInfoCoordinationTest, QueryModuleSuccessfulOnFirstAttempt)
                   );
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -477,9 +449,7 @@ TEST_F(AgentInfoCoordinationTest, ModuleUnavailableScenario)
                   );
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -570,9 +540,7 @@ TEST_F(AgentInfoCoordinationTest, SuccessfulPauseOperation)
                       m_mockFileSystem
                   );
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -650,9 +618,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinateModulesGeneralException)
                       m_mockFileSystem
                   );
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -1061,8 +1027,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup basic mocks
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -1154,8 +1119,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionFailure)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup basic mocks
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -1214,8 +1178,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithNoModulesAvailable)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     // Setup basic mocks
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
@@ -1277,8 +1240,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithStdException)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));
@@ -1382,8 +1344,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagMetadataTable)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -1430,7 +1391,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagMetadataTable)
                       ":memory:", m_reportDiffFunc, m_logFunc, successfulQueryFunc, m_mockDBSync,
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     m_logOutput.clear();
 
@@ -1463,8 +1424,7 @@ TEST_F(AgentInfoCoordinationTest, ResetSyncFlagGroupsTable)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));
@@ -1576,8 +1536,7 @@ TEST_F(AgentInfoCoordinationTest, ParseResponseBufferWithSyncProtocol)
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // Initialize sync protocol to make m_spSyncProtocol non-null
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));

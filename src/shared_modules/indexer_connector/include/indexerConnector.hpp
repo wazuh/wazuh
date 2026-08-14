@@ -93,6 +93,60 @@ public:
     }
 };
 
+/// Implementation detail, defined only in src/. Declared here for IndexerSession's friend below.
+struct IndexerSessionData;
+
+/**
+ * @brief Shareable indexer session: host health monitoring plus authenticated transport settings.
+ *
+ * Build ONE and hand it to several connectors in the same process so they share a single health
+ * check thread, a single keystore read and a single CA merge, instead of one each. Without it, every
+ * connector runs its own synchronous round of `GET /_cat/health` (5 s timeout per host) inside its
+ * constructor, so a process holding both a sync and an async connector pays that cost twice.
+ *
+ * The constructor performs the SAME synchronous validation a connector's own constructor does --
+ * `hosts` present, referenced CA files exist on disk, keystore credentials readable -- and throws
+ * IndexerConnectorException the same way. A host that is merely UNREACHABLE does NOT throw: it just
+ * stays unavailable until the monitor sees it come up. So a session constructs successfully against
+ * an indexer that is still starting.
+ *
+ * LIFETIME: nothing retains the session. A connector copies the transport settings and takes a
+ * counted reference to the monitor, so the session may be destroyed as soon as the connectors are
+ * built; the monitoring thread lives until the last connector using it is gone.
+ *
+ * @note Every connector built from a session MUST be configured with the same `hosts` list -- see
+ *       the session-taking constructors below.
+ */
+class EXPORTED IndexerSession final
+{
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+
+    friend const IndexerSessionData& sessionData(const IndexerSession& session);
+
+public:
+    /**
+     * @brief Builds the session: validates the configuration, resolves the credentials and starts
+     *        one health monitor for the configured hosts.
+     *
+     * @param config Indexer configuration. `hosts` is required; `ssl.certificate_authorities`,
+     *               `ssl.certificate` and `ssl.key` are optional.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing or empty, or if a configured CA root
+     *         certificate file does not exist.
+     */
+    explicit IndexerSession(const nlohmann::json& config, LoggingContext logging = {});
+
+    ~IndexerSession();
+
+    IndexerSession(const IndexerSession&) = delete;
+    IndexerSession& operator=(const IndexerSession&) = delete;
+    IndexerSession(IndexerSession&&) = delete;
+    IndexerSession& operator=(IndexerSession&&) = delete;
+};
+
 /**
  * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
@@ -115,6 +169,26 @@ public:
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging = {});
+
+    /**
+     * @brief Class constructor that builds on a SHARED session instead of creating its own health
+     *        monitor and resolving its own credentials.
+     *
+     * Use this when the process holds more than one connector: the session's single monitoring thread
+     * and single startup health-check round are reused, so the second connector costs no extra
+     * network I/O at construction.
+     *
+     * @param config Indexer configuration. Still supplies this connector's own tunables
+     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`). Its
+     *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
+     *               built with, so a foreign host would throw std::out_of_range on the first request.
+     * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing, empty, or does not match the
+     *         session's host list, or if `max_retry_delay_seconds` is below the base retry delay.
+     */
+    IndexerConnectorSync(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging = {});
 
     ~IndexerConnectorSync();
 
@@ -329,6 +403,27 @@ public:
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging = {});
+
+    /**
+     * @brief Class constructor that builds on a SHARED session instead of creating its own health
+     *        monitor and resolving its own credentials.
+     *
+     * Use this when the process holds more than one connector: the session's single monitoring thread
+     * and single startup health-check round are reused, so the second connector costs no extra
+     * network I/O at construction.
+     *
+     * @param config Indexer configuration. Still supplies this connector's own tunables
+     *               (`bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`,
+     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`). Its `hosts` list MUST
+     *               equal the session's: the monitor only knows the hosts it was built with, so a
+     *               foreign host would throw std::out_of_range on the first request.
+     * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *
+     * @throws IndexerConnectorException if `hosts` is missing, empty, or does not match the
+     *         session's host list, or if `max_retry_delay_seconds` is below the base retry delay.
+     */
+    IndexerConnectorAsync(const nlohmann::json& config, const IndexerSession& session, LoggingContext logging = {});
 
     ~IndexerConnectorAsync();
 

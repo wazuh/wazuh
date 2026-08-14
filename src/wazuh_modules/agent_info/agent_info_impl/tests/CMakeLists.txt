@@ -111,16 +111,24 @@ add_test(NAME AgentInfoIntegrityTest COMMAND agent_info_integrity_test)
 
 set_tests_properties(AgentInfoIntegrityTest PROPERTIES LABELS "agent_info")
 
-# Agent Info Cluster Coordination Tests (cluster_name/cluster_node sync flag routing)
+# Agent Info Cluster Coordination Tests (cluster_name sync flag routing)
 add_executable(agent_info_cluster_coordination_test agent_info_cluster_coordination_test.cpp agent_info_mock.cpp)
 target_link_libraries(agent_info_cluster_coordination_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoClusterCoordinationTest COMMAND agent_info_cluster_coordination_test)
 
 set_tests_properties(AgentInfoClusterCoordinationTest PROPERTIES LABELS "agent_info")
 
-# Agent Info Handshake Tests (live per-cycle re-query of cluster_name/cluster_node/agent_groups)
+# Agent Info Handshake Tests (live per-cycle re-query of cluster_name/agent_groups)
 add_executable(agent_info_handshake_test agent_info_handshake_test.cpp agent_info_mock.cpp)
 target_link_libraries(agent_info_handshake_test PRIVATE AGENT_INFO_IMPL)
 add_test(NAME AgentInfoHandshakeTest COMMAND agent_info_handshake_test)
 
 set_tests_properties(AgentInfoHandshakeTest PROPERTIES LABELS "agent_info")
+
+# Agent Info VD Feed Offset Tests (observeVdFeedOffset/clearVdRescanPending/getVdFeedState,
+# VDFirst-done gating via get_vd_first_sync_completed)
+add_executable(agent_info_vd_offset_test agent_info_vd_offset_test.cpp agent_info_mock.cpp)
+target_link_libraries(agent_info_vd_offset_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoVdOffsetTest COMMAND agent_info_vd_offset_test)
+
+set_tests_properties(AgentInfoVdOffsetTest PROPERTIES LABELS "agent_info")

@@ -1,0 +1,47 @@
+{
+  "name": "mixed_fleet_windows_linux",
+  "description": "Flagship agent-mode run: a Windows fleet and a Linux fleet, each agent running FIM, SCA, syscollector and VD inventory lanes plus a syslog engine lane in parallel, with /control keepalives. Reproduces production-shaped, heterogeneous, simultaneous pressure.",
+  "mode": "agent",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "fim": [
+      { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 500, "size_bytes": 512 } },
+      { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 20, "size_bytes": 512 }, "repeat_count": 10, "repeat_delay": "3s" }
+    ],
+    "sca": [
+      { "kind": "full_resync", "module": "sca", "indices": ["wazuh-states-sca"],
+        "documents": { "count": 200, "size_bytes": 384 } },
+      { "kind": "delta", "module": "sca", "indices": ["wazuh-states-sca"],
+        "documents": { "count": 15 }, "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "syscollector": [
+      { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 300, "size_bytes": 256 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
+    ],
+    "vd": [
+      { "kind": "delta", "module": "syscollector", "option": "VDFirst", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 300, "size_bytes": 256 } },
+      { "kind": "delta", "option": "VDSync", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 30 }, "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
+    ],
+    "engine": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
+        "events_per_second": 250, "events_per_batch": 100 }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 20, "first_id": 1000, "lanes": ["fim", "sca", "syscollector", "vd", "engine"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 20, "first_id": 2000, "lanes": ["fim", "sca", "syscollector", "vd", "engine"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+}

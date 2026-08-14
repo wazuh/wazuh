@@ -1,0 +1,7 @@
+# Generated FlatBuffers bindings — produced by `make generate` (flatc --go).
+# Never committed: the schema is the source of truth, a schema change must be a
+# compile error, not a silent drift (see docu/05-flatbuffers-messages.md).
+/internal/fb/
+
+# Build output.
+/benchmark_sender

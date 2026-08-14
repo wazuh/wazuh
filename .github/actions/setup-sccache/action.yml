@@ -1,0 +1,141 @@
+name: "Setup sccache"
+description: >
+  Installs sccache with the Amazon S3 backend and transparently wraps every
+  compiler present on the runner (gcc/g++, clang, the mingw crosses) through
+  PATH masquerade, so make- and cmake-based builds get compilation caching
+  with no build-system changes. Requires AWS credentials already present in
+  the environment (aws-actions/configure-aws-credentials) with read/write
+  access to the cache prefix. If a probe write to the prefix fails, the
+  action disables itself with a warning and the build runs uncached.
+
+inputs:
+  bucket:
+    description: S3 bucket that stores the compilation cache
+    required: true
+  region:
+    description: AWS region of the bucket
+    required: true
+  key-prefix:
+    description: Key prefix for cache objects inside the bucket
+    required: false
+    default: "sccache"
+  version:
+    description: sccache release to install
+    required: false
+    default: "0.8.1"
+
+runs:
+  using: composite
+  steps:
+    - name: Install sccache
+      shell: bash
+      run: |
+        case "$(uname -m)" in
+          aarch64|arm64) arch="aarch64" ;;
+          *) arch="x86_64" ;;
+        esac
+        v="v${{ inputs.version }}"
+        curl -sSL --retry 3 \
+          "https://github.com/mozilla/sccache/releases/download/${v}/sccache-${v}-${arch}-unknown-linux-musl.tar.gz" \
+          | tar xz -C /tmp
+        sudo install -m 0755 "/tmp/sccache-${v}-${arch}-unknown-linux-musl/sccache" /usr/local/bin/sccache
+        sccache --version
+
+    - name: Probe cache prefix access
+      shell: bash
+      run: |
+        # The bucket input may arrive as "s3://name[/base/path]" (that is how
+        # the CI secret is stored and how upload_s3_artifact consumes it) or
+        # as a bare bucket name. Normalize to name + effective key prefix.
+        # The derived bare name is not covered by secret masking, so no S3
+        # output may reach the log: verdicts only.
+        raw="${{ inputs.bucket }}"
+        raw="${raw#s3://}"
+        bucket_name="${raw%%/*}"
+        base=""
+        case "$raw" in */*) base="${raw#*/}" ;; esac
+        prefix="${base:+${base%/}/}${{ inputs.key-prefix }}"
+        # State travels between steps in a file, never through GITHUB_ENV:
+        # job-level env is echoed into the env block of any later step that
+        # declares env:, which would print the bucket name in a public log.
+        envfile="${RUNNER_TEMP}/sccache.env"
+        {
+          echo "SCCACHE_BUCKET_NAME='$bucket_name'"
+          echo "SCCACHE_EFFECTIVE_PREFIX='$prefix'"
+        } > "$envfile"
+        # The bucket may live in a different region than the CI default; the
+        # AWS CLI follows the S3 301 redirect transparently but sccache's S3
+        # client does not, so resolve the real region from the unauthenticated
+        # x-amz-bucket-region header and fall back to the input.
+        detected=$(curl -sI --max-time 10 "https://${bucket_name}.s3.amazonaws.com/" \
+          | tr -d '\r' | awk -F': ' 'tolower($1)=="x-amz-bucket-region"{print $2}')
+        region="${detected:-${{ inputs.region }}}"
+        echo "SCCACHE_RESOLVED_REGION='$region'" >> "$envfile"
+        echo "bucket region resolved: $region"
+        probe="s3://${bucket_name}/${prefix}/.probe-${GITHUB_RUN_ID}"
+        if echo ok | aws s3 cp - "$probe" --region "$region" >/dev/null 2>&1; then
+          aws s3 rm "$probe" --region "$region" >/dev/null 2>&1 || true
+          echo "SCCACHE_PROBE_OK=1" >> "$envfile"
+          echo "probe OK: read/write available on the cache prefix"
+        else
+          echo "SCCACHE_PROBE_OK=0" >> "$envfile"
+          echo "::warning title=sccache disabled::the CI role cannot write to the cache prefix; building uncached"
+        fi
+
+    - name: Configure environment and wrap compilers
+      shell: bash
+      run: |
+        . "${RUNNER_TEMP}/sccache.env"
+        [ "$SCCACHE_PROBE_OK" = "1" ] || exit 0
+
+        # PATH masquerade instead of CC/CXX overrides: src/Makefile hardcodes
+        # CC=gcc, cmake discovers compilers from PATH, and the winagent target
+        # uses the mingw crosses — one wrapper directory ahead of PATH covers
+        # all of them. Real paths are resolved here, before the wrapper dir
+        # enters PATH, so a wrapper can never recurse into itself.
+        wrapdir="${RUNNER_TEMP}/sccache-wrappers"
+        mkdir -p "$wrapdir"
+        candidates="cc c++ gcc g++ gcc-14 g++-14 clang clang++ \
+          x86_64-w64-mingw32-gcc x86_64-w64-mingw32-g++ \
+          x86_64-w64-mingw32-gcc-posix x86_64-w64-mingw32-g++-posix \
+          i686-w64-mingw32-gcc i686-w64-mingw32-g++ \
+          i686-w64-mingw32-gcc-posix i686-w64-mingw32-g++-posix"
+        for name in $candidates; do
+          real="$(command -v "$name" 2>/dev/null)" || continue
+          [ -n "$real" ] || continue
+          printf '#!/bin/sh\nexec /usr/local/bin/sccache %s "$@"\n' "$real" > "$wrapdir/$name"
+          chmod +x "$wrapdir/$name"
+          echo "wrapped $name -> $real"
+        done
+        echo "$wrapdir" >> "$GITHUB_PATH"
+
+    - name: Start sccache server
+      shell: bash
+      run: |
+        . "${RUNNER_TEMP}/sccache.env"
+        [ "$SCCACHE_PROBE_OK" = "1" ] || exit 0
+        # A cache problem must never fail the job: on any startup error,
+        # sanitize the output (it can carry the unmasked bucket name),
+        # remove the compiler wrappers and continue uncached.
+        set +e
+        out=$(SCCACHE_BUCKET="$SCCACHE_BUCKET_NAME" \
+              SCCACHE_REGION="$SCCACHE_RESOLVED_REGION" \
+              SCCACHE_S3_KEY_PREFIX="$SCCACHE_EFFECTIVE_PREFIX" \
+              SCCACHE_IDLE_TIMEOUT=0 \
+              SCCACHE_LOG=debug \
+              SCCACHE_ERROR_LOG=/tmp/sccache_server.log \
+              sccache --start-server 2>&1)
+        rc=$?
+        set -e
+        if [ "$rc" -ne 0 ]; then
+          echo "$out" | sed "s/${SCCACHE_BUCKET_NAME}/<bucket>/g" | head -20
+          if [ -f /tmp/sccache_server.log ]; then
+            echo "── server debug log (sanitized):"
+            sed "s/${SCCACHE_BUCKET_NAME}/<bucket>/g" /tmp/sccache_server.log | grep -iE "error|stat|check|403|404|denied|response" | head -30
+          fi
+          echo "::warning title=sccache disabled::server failed to start (rc=$rc); building uncached"
+          rm -rf "${RUNNER_TEMP}/sccache-wrappers"
+          exit 0
+        fi
+        sccache --zero-stats >/dev/null 2>&1 || true
+        echo "sccache server started"

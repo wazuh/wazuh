@@ -138,7 +138,25 @@ In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<ag
 
 ### `<remote>` section
 
-The `<connection>` element has been removed. Leaving it in the configuration **causes a startup error** in 5.0. All agent-manager communication uses the secure protocol by default.
+The `<connection>`, `<allowed-ips>`, and `<denied-ips>` elements have been removed. Leaving any of
+them in the configuration **causes a startup error** in 5.0. All agent-manager communication uses
+the secure protocol by default.
+
+In addition, `<remote>`'s options are now grouped under nested blocks: the classic TCP/UDP listener
+options (`port`, `protocol`, `queue_size`, `ipv6`, `local_ip`, `rids_closing_time`,
+`connection_overtake_time`) move under a new `<legacy>` block, and a new `<https>` block configures
+the RESTinio-based HTTPS listener (see
+[Remoted Configuration Reference](../../ref/modules/remoted/configuration.md#https-configuration)).
+`<agents>` is unchanged. Options placed directly under `<remote>` (the pre-5.0 flat layout) are
+rejected and the manager will not start; there is no automatic migration.
+
+> **Breaking change:** `local_ip`'s default also changed, not just its location. In 4.x, leaving
+> `local_ip` unset meant "accept agent connections from any interface." In 5.0, an absent
+> `<local_ip>` defaults to `127.0.0.1` (loopback-only) -- the manager will not accept connections
+> from agents on other hosts. **If your 4.x configuration did not set `<local_ip>`, add
+> `<local_ip>0.0.0.0</local_ip>` under `<legacy>` to keep accepting agents from other hosts**; if
+> it already set `<local_ip>`, just move that value under `<legacy>` as shown below. See
+> [`legacy.local_ip`](../../ref/modules/remoted/configuration.md#legacylocal_ip) for details.
 
 **4.x:**
 ```xml
@@ -152,14 +170,20 @@ The `<connection>` element has been removed. Leaving it in the configuration **c
 **5.0:**
 ```xml
 <remote>
-  <port>1514</port>
-  <protocol>tcp</protocol>
+  <legacy>
+    <port>1514</port>
+    <protocol>tcp</protocol>
+    <local_ip>127.0.0.1</local_ip>
+  </legacy>
 </remote>
 ```
 
 ### `<auth>` section
 
-The section is preserved. Update the certificate paths to reflect the new installation directory.
+The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
+
+- `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-authd` does not start.
+- `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an invalid element (`ERROR: (1230): Invalid element in the configuration: 'ssl_auto_negotiate'.`) and also blocks `wazuh-authd` from starting.
 
 **4.x:**
 ```xml
@@ -167,6 +191,8 @@ The section is preserved. Update the certificate paths to reflect the new instal
   ...
   <ssl_manager_cert>/var/ossec/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/ossec/etc/sslmanager.key</ssl_manager_key>
+  <ssl_auto_negotiate>no</ssl_auto_negotiate>
+  <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
   ...
 </auth>
 ```
@@ -175,8 +201,9 @@ The section is preserved. Update the certificate paths to reflect the new instal
 ```xml
 <auth>
   ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
+  <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
 ```
@@ -262,8 +289,8 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -371,14 +398,15 @@ Apply your 4.x customizations to the 5.0 default file using the changes describe
 
 ### SSL certificate names
 
-The default certificate file names have changed to reflect the renamed system user.
+The API certificates moved to the unified `etc/certs` directory and were renamed after the daemon (`apid`). The default file names are resolved relative to `etc/certs`.
 
 | Option | 4.x default | 5.0 default |
 |--------|------------|------------|
-| `https.key` | `server.key` | `manager.key` |
-| `https.cert` | `server.crt` | `manager.crt` |
+| `https.key` | `server.key` | `apid-key.pem` |
+| `https.cert` | `server.crt` | `apid.pem` |
+| `https.ca` | `ca.crt` | `root-ca.pem` |
 
-If you use custom certificate file names, no change is needed. If you rely on the defaults, rename your certificate files or update the configuration.
+The 5.0 defaults resolve to `etc/certs/apid.pem`, `etc/certs/apid-key.pem` and `etc/certs/root-ca.pem`. If you use custom certificate file names, no change is needed. If you rely on the defaults, move and rename your certificate files or update the configuration.
 
 **4.x:**
 ```yaml
@@ -396,10 +424,10 @@ If you use custom certificate file names, no change is needed. If you rely on th
 ```yaml
 # https:
 #  enabled: yes
-#  key: "manager.key"
-#  cert: "manager.crt"
+#  key: "apid-key.pem"
+#  cert: "apid.pem"
 #  use_ca: False
-#  ca: "ca.crt"
+#  ca: "root-ca.pem"
 #  ssl_ciphers: ""
 ```
 

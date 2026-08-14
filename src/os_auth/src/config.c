@@ -58,7 +58,6 @@ cJSON *getAuthdConfig(void) {
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
     if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");
-    if (config.flags.auto_negotiate) cJSON_AddStringToObject(auth,"ssl_auto_negotiate","yes"); else cJSON_AddStringToObject(auth,"ssl_auto_negotiate","no");
     if (config.ciphers) cJSON_AddStringToObject(auth,"ciphers",config.ciphers);
     if (config.agent_ca) cJSON_AddStringToObject(auth,"ssl_agent_ca",config.agent_ca);
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);

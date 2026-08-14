@@ -35,9 +35,9 @@ typedef struct
     char os_platform[256];        ///< Operating system platform/distribution (e.g., "ubuntu", "centos", "windows")
     char os_version[256];         ///< Operating system version
     char cluster_name[256];       ///< Cluster name from manager (received during handshake)
-    char cluster_node[256];       ///< Cluster node from manager (received during handshake)
     char** groups;                ///< Array of group names (NULL-terminated strings)
     size_t groups_count;          ///< Number of groups in the array
+    uint64_t vd_feed_offset;      ///< Last observed VD feed offset (0 = not yet received from the manager)
 } agent_metadata_t;
 
 /**

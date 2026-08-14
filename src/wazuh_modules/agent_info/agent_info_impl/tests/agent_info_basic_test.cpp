@@ -345,7 +345,7 @@ TEST_F(AgentInfoImplTest, StopWaitsForRunLoopToExit)
     loopThread.join();
 }
 
-// After stop() tears down the sync protocol, the asynchronous MQ response path
+// After stop() tears down the sync protocol, the asynchronous response path
 // (parseResponseBuffer, called on the dispatch thread) must fail gracefully
 // instead of dereferencing the freed sync protocol.
 TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
@@ -353,12 +353,7 @@ TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
     // Initialize a real (in-memory, no DB file) sync protocol so that stop()
     // genuinely destroys it and the call below exercises the m_syncProtocolMutex
     // guard, not the trivial "was never initialized" path.
-    const MQ_Functions mqFuncs
-    {
-        [](const char*, short, short) -> int { return 0; },
-        [](int, const void*, size_t, const char*, char) -> int { return 0; }
-    };
-    m_agentInfo->initSyncProtocol("agent_info", mqFuncs);
+    m_agentInfo->initSyncProtocol("agent_info");
 
     const uint8_t data[] = {0x01, 0x02, 0x03};
 

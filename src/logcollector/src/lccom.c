@@ -10,9 +10,13 @@
 
 #include <shared.h>
 #include "logcollector.h"
+#include "module_report.h"
 #include "wmodules.h"
 #include "os_net.h"
 #include "state.h"
+
+/* Name this daemon reports itself under in the /config and /stats documents. */
+#define LCCOM_MODULE_NAME "logcollector"
 
 #define LEN_LOCATION        (10)    /*!< length of "location"*/
 #define LEN_BOOL_STR        (5)     /*!< length of "false"*/
@@ -56,6 +60,12 @@ size_t lccom_dispatch(char * command, char ** output){
             return strlen(*output);
         }
         return lccom_getconfig(rcv_args, output);
+
+    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+        return lccom_getallconfig(output);
+
+    } else if (strcmp(rcv_comm, "getallstats") == 0) {
+        return lccom_getallstats(output);
 
     } else if (strcmp(rcv_comm, "getstate") == 0) {
         if (rcv_args && !strncmp(rcv_args, "next", 4)){
@@ -449,6 +459,30 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
         retval = strlen(*output);
     }
     return retval;
+}
+
+size_t lccom_getallconfig(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+    cJSON *body = cJSON_CreateObject();
+
+    module_report_merge(body, getLocalfileConfig());
+    module_report_merge(body, getSocketConfig());
+    module_report_merge(body, getLogcollectorInternalOptions());
+
+    module_report_add(report, LCCOM_MODULE_NAME, body);
+    return module_report_reply(report, output);
+}
+
+size_t lccom_getallstats(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+
+    /* Straight from the state rather than through lccom_getstate(): the report
+     * wants the statistics themselves, without that path's error envelope or
+     * its 64k paging, which a single reply cannot carry anyway. */
+    module_report_add(report, LCCOM_MODULE_NAME, w_logcollector_state_get());
+    return module_report_reply(report, output);
 }
 
 size_t lccom_getconfig(const char * section, char ** output) {

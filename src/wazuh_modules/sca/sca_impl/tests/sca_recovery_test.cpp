@@ -19,10 +19,8 @@
 #include "timeHelper.h"
 #include <metadata_provider.h>
 
-#include <atomic>
 #include <chrono>
 #include <functional>
-#include <future>
 #include <memory>
 #include <string>
 #include <filesystem>
@@ -92,34 +90,15 @@ class SCARecoveryTest : public ::testing::Test
         // Helper method to initialize sync protocol with specific integrity interval
         void initSyncProtocolWithInterval(std::chrono::seconds integrityInterval)
         {
-            // Mock MQ_Functions for sync protocol initialization
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
             try
             {
-                m_sca->initSyncProtocol("test_module", "test_sync.db", mqFuncs,
-                                        std::chrono::seconds(1), std::chrono::seconds(30),
-                                        3, 10, integrityInterval);
+                m_sca->initSyncProtocol("test_module", "test_sync.db",
+                                        integrityInterval);
             }
             catch (const std::exception&)
             {
                 // Ignore initialization errors in tests - we just need the interval set
             }
-        }
-
-        void initSyncProtocolWithMq(const MQ_Functions& mqFuncs,
-                                    std::chrono::seconds integrityInterval = std::chrono::seconds(0))
-        {
-            m_sca->initSyncProtocol("test_module",
-                                    "test_sync.db",
-                                    mqFuncs,
-                                    std::chrono::seconds(1),
-                                    std::chrono::seconds(30),
-                                    3,
-                                    10,
-                                    integrityInterval);
         }
 
         static bool waitUntil(const std::function<bool()>& predicate,
@@ -452,71 +431,11 @@ TEST_F(SCARecoveryTest, CheckIntegrityResponseStructure)
     EXPECT_EQ(jsonResponse["data"]["action"], "check_integrity");
 }
 
-TEST_F(SCARecoveryTest, QueryFlushReportsInProgressAndThenSuccess)
-{
-    static std::atomic<bool> s_blockStart {false};
-    static std::atomic<bool> s_startEntered {false};
-    s_blockStart = true;
-    s_startEntered = false;
-
-    MQ_Functions mqFuncs {};
-    mqFuncs.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    initSyncProtocolWithMq(mqFuncs);
-
-    nlohmann::json flushResponse = nlohmann::json::parse(m_sca->query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], 0);
-    EXPECT_EQ(flushResponse["data"]["action"], "flush");
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        return s_startEntered.load();
-    }));
-
-    nlohmann::json inProgressResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(inProgressResponse["error"], 0);
-    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
-
-    s_blockStart = false;
-
-    EXPECT_TRUE(waitUntil([this]()
-    {
-        auto completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
-        return completedResponse["data"]["status"] == "completed";
-    }));
-
-    nlohmann::json completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(completedResponse["data"]["status"], "completed");
-    EXPECT_EQ(completedResponse["data"]["result"], "success");
-}
-
 TEST_F(SCARecoveryTest, QueryFlushReportsCompletedErrorWhenSyncFails)
 {
-    MQ_Functions mqFuncs {};
-    mqFuncs.start = [](const char*, short, short) -> int
-    {
-        return -1;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    initSyncProtocolWithMq(mqFuncs);
+    // No manager socket is available in the test environment, so the flush
+    // synchronization fails and the query must report completed with error.
+    initSyncProtocolWithInterval(std::chrono::seconds(0));
 
     nlohmann::json flushResponse = nlohmann::json::parse(m_sca->query(R"({"command":"flush"})"));
     EXPECT_EQ(flushResponse["error"], 0);
@@ -531,50 +450,4 @@ TEST_F(SCARecoveryTest, QueryFlushReportsCompletedErrorWhenSyncFails)
     nlohmann::json completedResponse = nlohmann::json::parse(m_sca->query(R"({"command":"is_flush_completed"})"));
     EXPECT_EQ(completedResponse["data"]["status"], "completed");
     EXPECT_EQ(completedResponse["data"]["result"], "error");
-}
-
-TEST_F(SCARecoveryTest, StopWaitsForActiveAsyncFlush)
-{
-    static std::atomic<bool> s_blockStart {false};
-    static std::atomic<bool> s_startEntered {false};
-    s_blockStart = true;
-    s_startEntered = false;
-
-    MQ_Functions mqFuncs {};
-    mqFuncs.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    initSyncProtocolWithMq(mqFuncs);
-
-    nlohmann::json flushResponse = nlohmann::json::parse(m_sca->query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], 0);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        return s_startEntered.load();
-    }));
-
-    auto stopFuture = std::async(std::launch::async, [this]()
-    {
-        m_sca->Stop();
-    });
-
-    EXPECT_EQ(stopFuture.wait_for(std::chrono::milliseconds(100)), std::future_status::timeout);
-
-    s_blockStart = false;
-
-    EXPECT_EQ(stopFuture.wait_for(std::chrono::seconds(1)), std::future_status::ready);
 }

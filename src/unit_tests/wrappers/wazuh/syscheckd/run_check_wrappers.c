@@ -68,18 +68,3 @@ void __wrap_cleanup_failed_registry_values(__attribute__((unused)) OSList* faile
     // No-op: Let the calling code handle the logic
     return;
 }
-
-void __wrap_fim_sync_check_eps() {
-    function_called();
-}
-
-// Send a state synchronization message
-void __wrap_fim_send_sync_state(const char* location, const char* msg) {
-    check_expected(location);
-    check_expected(msg);
-}
-
-void expect_fim_send_sync_state_call(const char* location, const char* msg) {
-    expect_value(__wrap_fim_send_sync_state, location, location);
-    expect_value(__wrap_fim_send_sync_state, msg, msg);
-}

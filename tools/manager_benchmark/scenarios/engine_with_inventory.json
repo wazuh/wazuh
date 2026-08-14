@@ -1,0 +1,32 @@
+{
+  "name": "engine_with_inventory",
+  "description": "Agent-mode: a syslog engine lane streaming to POST /stateless while inventory (FIM delta + syscollector checksum) lanes run on the same agents, plus /control keepalives. Exercises the engine ingress and the sync pipeline sharing one agent's connection and the manager's cross-path load.",
+  "mode": "agent",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true }
+  },
+  "lanes": {
+    "fim": [
+      { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 30, "size_bytes": 512 }, "repeat_count": 30, "repeat_delay": "2s" }
+    ],
+    "syscollector": [
+      { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 200, "size_bytes": 256 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct",
+        "repeat_count": 10, "repeat_delay": "6s", "initial_delay": "5s" }
+    ],
+    "engine": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
+        "events_per_second": 300, "events_per_batch": 100 }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 15, "first_id": 7000, "lanes": ["fim", "syscollector", "engine"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "45s" }
+}

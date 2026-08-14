@@ -61,7 +61,6 @@ typedef struct _enrollment_cert_cfg {
     char *agent_cert;           /**< Agent Certificate (null if not used) */
     char *agent_key;            /**< Agent Key (null if not used) */
     char *ca_cert;              /**< CA Certificate to verificate server (null if not used) */
-    unsigned int auto_method:1; /**< 0 for TLS v1.2 only (Default), 1 for Auto negotiate the most secure common SSL/TLS method with the client. */
 } w_enrollment_cert;
 
 /**

@@ -48,6 +48,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG
 from wazuh_testing.modules.execd import patterns as execd_paterns
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -74,7 +75,10 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {EXECD_DEBUG: '2', 'agent.remote_conf': '0'}
+# AGENTD_DEBUG is required for send_execd_message's setup: it waits on
+# AGENTD_HTTPS_STARTUP_ACCEPTED, an mdebug1() line that agentd only emits at
+# debug level >= 1 (https_client_bridge.c) -- EXECD_DEBUG alone doesn't cover it.
+local_internal_options = {EXECD_DEBUG: '2', AGENTD_DEBUG: '2', 'agent.remote_conf': '0'}
 daemons_handler_configuration = {'all_daemons': True}
 
 

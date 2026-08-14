@@ -1,0 +1,20 @@
+{
+  "name": "real_syscollector_debian",
+  "description": "Syscollector first scan + delta stream replaying a real captured Debian session that spans seven inventory indices (packages, ports, networks, groups, ...). The full_resync cleans exactly the dump's indices and then upserts the recorded documents; the delta replays a real inventory delta repeatedly.",
+  "mode": "uds",
+  "defaults": {
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/syscollector_sync_debian.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/syscollector_sync_debian.json",
+        "repeat_count": 6, "repeat_delay": "10s", "initial_delay": "15s" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 6, "first_id": 41000, "lanes": ["syscollector"],
+      "start": { "osname": "Debian GNU/Linux", "osplatform": "debian", "ostype": "linux", "osversion": "12", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

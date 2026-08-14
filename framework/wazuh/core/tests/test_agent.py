@@ -58,11 +58,11 @@ class InitAgent:
         with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
-        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
-                                       'group_config_status', 'status_code'}
+        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'dateAdd', 'id',
+                                       'status_code'}
         self.pending_fields = self.never_connected_fields | {'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
-        self.active_fields = self.manager_fields | {'group', 'mergedSum'}
+        self.active_fields = self.manager_fields | {'group'}
         self.disconnected_fields = self.active_fields | {'disconnection_time'}
         self.manager_fields -= {'registerIP'}
 
@@ -340,7 +340,6 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
     (['os.major'], [{'os': {'major': '18'}, 'count': 2}, {'os': {'major': '16'}, 'count': 1},
                     {'os': {'major': 'N/A'}, 'count': 2}, {'os': {'major': '5'}, 'count': 2},
                     {'os': {'major': '7'}, 'count': 1}]),
-    (['node_name'], [{'count': 6, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
     (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': 'N/A'}, 'count': 1, 'status': 'never_connected'},
@@ -447,7 +446,7 @@ def test_agent_load_info_from_db_ko(socket_mock, send_mock):
 @pytest.mark.parametrize('id, select', [
     (3, None),
     (5, {'id', 'ip', 'version'}),
-    (2, {'status', 'node_name', 'dateAdd', 'lastKeepAlive'})
+    (2, {'status', 'dateAdd', 'lastKeepAlive'})
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -521,30 +520,6 @@ def test_agent_get_key(socket_mock, send_mock, id, expected_key):
     result = agent.get_key()
 
     assert result == expected_key, 'Result does not match with expected key'
-
-
-@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
-    """Test if method reconnect calls send_msg method with correct params."""
-    agent_id = '001'
-    agent = Agent(agent_id)
-    agent.reconnect(WazuhQueue(common.AR_SOCKET))
-
-    # Assert send_msg method is called with correct params
-    mock_send_msg.assert_called_with(WazuhQueue.HC_FORCE_RECONNECT, agent_id)
-
-
-@patch('wazuh.core.agent.WazuhQueue')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
-    """Test if method reconnect raises exception."""
-    # Assert exception is raised when status of agent is not 'active'
-    with pytest.raises(WazuhError, match='.* 1707 .*'):
-        agent = Agent('003')
-        agent.reconnect(mock_queue)
 
 
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
@@ -1037,133 +1012,6 @@ async def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_
             await Agent.unset_single_group_agent('002', 'default', force=True)
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.get_config('com', 'active-response', 'Wazuh v4.0.0')
-    assert result == {"test": "conf"}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test getconfig method raises expected exceptions."""
-    # Invalid component
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1101 .*"):
-        agent.get_config('invalid_component', 'active-response', 'Wazuh v4.0.0')
-
-    # Component or config is none
-    agent = Agent('003')
-    with pytest.raises(WazuhError, match=".* 1307 .*"):
-        agent.get_config('com', None, 'Wazuh v4.0.0')
-        agent.get_config(None, 'active-response', 'Wazuh v4.0.0')
-
-    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.get_config('com', 'active-response', 'Wazuh v3.6.0')
-
-    # Action not available for manager (000)
-    agent = Agent('000')
-    with pytest.raises(WazuhError, match=".* 1703 .*"):
-        agent.get_config('auth', 'auth', 'Wazuh v4.0.0')
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method returns expected message."""
-    agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"global":{}, "interval":{}}}'
-    result = agent.get_stats('logcollector')
-    assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
-
-
-@patch('wazuh.core.wazuh_socket.WazuhSocket')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
-    """Test get_stats method raises expected exception when the agent's version is lower than required."""
-    agent = Agent('002')
-    with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
-        agent.get_stats('logcollector')
-
-
-@pytest.mark.parametrize('agent_id, mock_response, should_raise', [
-    ('001', b"ok ",                False),  # Wazuh v4.2.0 - socket succeeds
-    ('002', b"ok ",                False),  # Wazuh v4.0.0 - socket succeeds
-    ('003', b"ok ",                False),  # Wazuh v4.2.1 - socket succeeds
-    ('004', b"err Restart failed", True),   # Wazuh v3.13.2 - socket returns error
-    ('010', b"ok ",                False),  # v5.0.0 - socket succeeds
-])
-@patch('wazuh.core.agent.WazuhSocket')
-def test_send_restart_command(mock_socket_cls, agent_id, mock_response, should_raise):
-    """Test that send_restart_command sends the correct payload and handles responses.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID to send the restart command to.
-    mock_response : bytes
-        Mocked response from the socket.
-    should_raise : bool
-        Whether the function should raise WazuhInternalError.
-    """
-    mock_instance = mock_socket_cls.return_value
-    mock_instance.__enter__.return_value = mock_instance
-    mock_instance.receive.return_value = mock_response
-
-    if should_raise:
-        with pytest.raises(WazuhInternalError):
-            send_restart_command(agent_id)
-    else:
-        result = send_restart_command(agent_id)
-        mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
-        mock_instance.send.assert_called_with(f"{agent_id} control restart".encode())
-        assert result == mock_response.decode()
-
-
-@pytest.mark.parametrize('agent_id, mock_response, should_raise', [
-    ('001', b"ok ",                False),  # Wazuh v4.2.0 agent - socket succeeds
-    ('002', b"ok ",                False),  # Wazuh v4.0.0 agent - socket succeeds
-    ('003', b"ok ",                False),  # Wazuh v4.2.1 agent - socket succeeds
-    ('004', b"err Reload failed",  True),   # Wazuh v3.13.2 agent - socket returns error
-    ('010', b"ok ",                False),  # v5.0.0 agent - socket succeeds
-])
-@patch('wazuh.core.agent.WazuhSocket')
-def test_send_reload_command(mock_socket_cls, agent_id, mock_response, should_raise):
-    """Test that send_reload_command sends the correct payload and handles responses.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID to send the reload command to.
-    mock_response : bytes
-        Mocked response from the socket.
-    should_raise : bool
-        Whether the function should raise WazuhInternalError.
-    """
-    mock_instance = mock_socket_cls.return_value
-    mock_instance.__enter__.return_value = mock_instance
-    mock_instance.receive.return_value = mock_response
-
-    if should_raise:
-        with pytest.raises(WazuhInternalError):
-            send_reload_command(agent_id)
-    else:
-        result = send_reload_command(agent_id)
-        mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
-        mock_instance.send.assert_called_with(f"{agent_id} control reload".encode())
-        assert result == mock_response.decode()
-
-
 def test_get_agents_info():
     """Test that get_agents_info() returns expected agent IDs"""
     with open(os.path.join(test_data_path, 'client.keys')) as f:
@@ -1249,25 +1097,25 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     ([1, 2, 3, 4],
      [
          call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
-              package_type=None, file_path=None, installer=None, get_result=None)
+              package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      False),
     ([i for i in range(16)],
      [
          call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      False),
     ([i for i in range(13)],
      [
          call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      True)
 ])
@@ -1286,5 +1134,5 @@ def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, tas
     """
     mock_upgrade.side_effect = [{'data': [{'error': 0 if not task_manager_error else 4}]},
                                 {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
-    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test')
+    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test', request_time=123456789)
     mock_upgrade.assert_has_calls(expected_calls, any_order=False)

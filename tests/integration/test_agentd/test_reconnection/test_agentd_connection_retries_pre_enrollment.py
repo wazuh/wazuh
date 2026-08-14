@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -128,7 +128,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
                        for the environment setup using the TCP protocols.
 
     expected_output:
-        - r'Connected to the server'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -136,7 +136,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = 'tcp')
+    remoted_server = RemotedSimulator()
     try:
         remoted_server.start()
 

@@ -24,13 +24,21 @@ constexpr auto WM_HTTPSRV_LOGTAG = "httpsrv";
 namespace httpsrv
 {
 
-    Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetailedLogging)
+    Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetailedLogging, size_t threadPoolSize)
         : m_srv(std::make_shared<httplib::Server>())
         , m_id(id)
         , m_socketPath()
         , m_payloadMaxBytes(payloadMaxBytes)
         , m_enableDetailedLogging(enableDetailedLogging)
     {
+        if (threadPoolSize > 0)
+        {
+            m_srv->new_task_queue = [threadPoolSize]
+            {
+                return new httplib::ThreadPool(threadPoolSize);
+            };
+        }
+
         const auto excptFnName = "Server::Server(" + id + ")::set_exception_handler";
         m_srv->set_exception_handler(
             [id, excptFnName](const auto&, auto& res, std::exception_ptr ep)
