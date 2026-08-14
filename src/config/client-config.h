@@ -12,6 +12,7 @@
 #define CAGENTD_H
 
 #include "shared.h"
+#include <stdatomic.h>
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
@@ -31,7 +32,7 @@ typedef struct agent_server {
 typedef struct _agent {
     agent_server * server;
     int m_queue;
-    int sock;
+    _Atomic int sock; ///< Read/written from the main loop and from sender threads (dispatch_buffer, req_receiver)
     int execdq;
     int cfgadq;
     int rip_id; ///< Holds the index of the current connected server

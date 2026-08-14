@@ -41,9 +41,45 @@ int send_msg(const char *msg, ssize_t msg_length)
 #endif
     } else {
         w_mutex_lock(&send_mutex);
+        if (agt->sock < 0) {
+            /* Socket was already invalidated (e.g. by another sender thread
+             * after a previous timed-out send). Skip the call to avoid
+             * operating on -1 and reading a stale errno. */
+            w_mutex_unlock(&send_mutex);
+            return (-1);
+        }
         retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
 #ifndef WIN32
         error = errno;
+        if (retval) {
+            bool socket_dead;
+
+            switch (error) {
+            case EPIPE:
+            case ECONNRESET:
+            case ENOTCONN:
+            case ECONNREFUSED:
+                socket_dead = true;
+                break;
+            case ETIMEDOUT:
+            case EAGAIN:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+            case EWOULDBLOCK:
+#endif
+                /* SO_SNDTIMEO expired: the kernel send buffer never drained.
+                 * Close and invalidate so the main loop reconnects instead of
+                 * blocking again on the very next call. */
+                socket_dead = true;
+                break;
+            default:
+                socket_dead = false;
+                break;
+            }
+            if (socket_dead && agt->sock >= 0) {
+                OS_CloseSocket(agt->sock);
+                agt->sock = -1;
+            }
+        }
 #endif
         w_mutex_unlock(&send_mutex);
     }
@@ -61,6 +97,19 @@ int send_msg(const char *msg, ssize_t msg_length)
             break;
         case ECONNREFUSED:
             mdebug2(CONN_REF);
+            break;
+        case ECONNRESET:
+            mdebug2("Connection reset by manager.");
+            break;
+        case ENOTCONN:
+            mdebug2("Socket not connected.");
+            break;
+        case ETIMEDOUT:
+        case EAGAIN:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+        case EWOULDBLOCK:
+#endif
+            mwarn(SEND_ERROR, "server", strerror(error));
             break;
         default:
             mwarn(SEND_ERROR, "server", strerror(error));

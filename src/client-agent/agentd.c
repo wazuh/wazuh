@@ -164,16 +164,38 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Monitor loop */
     while (1) {
 
+        /* A sender thread (send_msg(), possibly on a blocked TCP send that hit
+         * SO_SNDTIMEO) may have invalidated agt->sock. Reconnect right away
+         * instead of waiting for run_notify()'s own staleness watchdog, which
+         * depends on receive_msg() having run recently on this same socket. */
+        if (agt->sock < 0) {
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+            merror(LOST_ERROR);
+            os_setwait();
+            start_agent(0);
+            minfo(SERVER_UP);
+            os_delwait();
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+            continue;
+        }
+
         /* Continuously send notifications */
         run_notify();
 
-        if (agt->sock > maxfd - 1) {
-            maxfd = agt->sock + 1;
+        /* run_notify() may also invalidate the socket (it calls send_msg()
+         * for the keep-alive); restart the loop before FD_SET() needs it. */
+        const int sock = agt->sock;
+        if (sock < 0) {
+            continue;
+        }
+
+        if (sock > maxfd - 1) {
+            maxfd = sock + 1;
         }
 
         /* Monitor all available sockets from here */
         FD_ZERO(&fdset);
-        FD_SET(agt->sock, &fdset);
+        FD_SET(sock, &fdset);
         FD_SET(agt->m_queue, &fdset);
 
         fdtimeout.tv_sec = 1;
@@ -185,6 +207,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         } while (rc < 0 && errno == EINTR);
 
         if (rc == -1) {
+            /* A sender thread may have closed agt->sock while we were
+             * blocked in select(), which select() reports as EBADF. */
+            if (errno == EBADF) {
+                agt->sock = -1;
+                continue;
+            }
             merror_exit(SELECT_ERROR, errno, strerror(errno));
         } else if (rc == 0) {
             continue;
@@ -248,7 +276,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
 
         /* For the receiver */
-        if (FD_ISSET(agt->sock, &fdset)) {
+        if (FD_ISSET(sock, &fdset)) {
             if (receive_msg() < 0) {
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
