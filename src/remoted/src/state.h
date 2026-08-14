@@ -99,6 +99,15 @@ void rem_inc_recv_events();
 void rem_inc_recv_ctrl();
 
 /**
+ * @brief Increment received upgrade-ack messages counter
+ *
+ * Only a well-formed upgrade_update_status counts. The same message is also
+ * counted as a received event, because the ack falls through to the ordinary
+ * event path once it has been processed.
+ */
+void rem_inc_recv_upgrade_ack();
+
+/**
  * @brief Increment failed-event messages counter
  *
  * Counts events that were accepted from the agent but could not be

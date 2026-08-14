@@ -1284,8 +1284,11 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) 
         // Parse just enough of the ack to confirm it's a valid upgrade_update_status message and
         // reply with clear_upgrade_result, which is what stops the agent's own retry loop (see
         // legacy_task_delivery.c). NOT discarded: the ack still falls through to the normal
-        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message.
-        legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE);
+        // analysisd/Engine event path (batch_queue_enqueue_ex) like any other agent message, so it
+        // is also counted as a received event, or as a failed one when the enqueue drops it.
+        if (legacy_task_process_upgrade_ack(agent_id, msg + UPGRADE_ACK_HEADER_SIZE)) {
+            rem_inc_recv_upgrade_ack();
+        }
         mdebug2("Upgrade acknowledgment from agent '%s' routed to the normal event path", agent_id);
         return false;
     }

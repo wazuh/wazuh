@@ -47,6 +47,12 @@ void rem_inc_recv_ctrl() {
     w_mutex_unlock(&state_mutex);
 }
 
+void rem_inc_recv_upgrade_ack() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.upgrade_ack_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
 void rem_inc_recv_events_failed() {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.events_failed_count++;
