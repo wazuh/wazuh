@@ -167,9 +167,17 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
 @patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
 def test_deprecated_get_daemons_stats(mock_daemons_stats_):
     """Makes sure deprecated_get_daemons_stats() fit with the expected."""
-    response = stats.deprecated_get_daemons_stats('filename')
+    response = stats.deprecated_get_daemons_stats(stats.common.ANALYSISD_STATS)
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
+
+
+@patch('wazuh.stats.get_daemons_stats_')
+def test_deprecated_get_daemons_stats_path_traversal(mock_daemons_stats_):
+    """Check that a filename outside the known daemon stats files is rejected and not read."""
+    with pytest.raises(stats.exception.WazuhError, match=".* 1308 .*"):
+        stats.deprecated_get_daemons_stats('/etc/passwd')
+    mock_daemons_stats_.assert_not_called()
 
 
 @pytest.mark.parametrize('component', [

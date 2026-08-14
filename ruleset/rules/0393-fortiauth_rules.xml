@@ -26,13 +26,13 @@
 
   <rule id="44732" level="4">
     <if_sid>44731</if_sid>
-    <field name="data.status">Pending</field>
+    <status>Pending</status>
     <description>FortiAuth: Authentication pending by user $(dstuser).</description>
   </rule>
 
   <rule id="44733" level="7">
     <if_sid>44731</if_sid>
-    <field name="data.status">Failed</field>
+    <status>Failed</status>
     <description>FortiAuth: Authentication failed by user $(dstuser).</description>
     <group>gpg13_3.3,hipaa_164.312.e.1,nist_800_53_AC.7,pci_dss_8.2</group>
     <mitre>
@@ -42,7 +42,7 @@
 
   <rule id="44734" level="3">
     <if_sid>44731</if_sid>
-    <field name="data.status">Success</field>
+    <status>Success</status>
     <description>FortiAuth: Authentication success by user $(dstuser).</description>
     <group>hipaa_164.312.d,pci_dss_8.2</group>
   </rule>
