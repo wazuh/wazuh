@@ -12,6 +12,7 @@ done
   sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/wazuh-manager/etc/wazuh-manager.conf
   sed -i "s:validate_responses=False:validate_responses=True:g" /var/wazuh-manager/api/scripts/wazuh_manager_apid.py
   sed -i "s:<bind_addr>127.0.0.1</bind_addr>:<bind_addr>0.0.0.0</bind_addr>:g" /var/wazuh-manager/etc/wazuh-manager.conf
+  sed -i "s:<local_ip>127.0.0.1</local_ip>:<local_ip>0.0.0.0</local_ip>:g" /var/wazuh-manager/etc/wazuh-manager.conf
   sed -i "/<cluster>/,/<\/cluster>/s:<key>.*</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:" /var/wazuh-manager/etc/wazuh-manager.conf
 
 if [ "$3" != "master" ]; then
@@ -37,9 +38,9 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
 done
 
 # API SSL sync (only when cluster + shared ssl volume)
-SSL_DIR="/var/wazuh-manager/api/configuration/ssl"
-SSL_KEY="${SSL_DIR}/manager.key"
-SSL_CRT="${SSL_DIR}/manager.crt"
+SSL_DIR="/var/wazuh-manager/etc/certs"
+SSL_KEY="${SSL_DIR}/apid-key.pem"
+SSL_CRT="${SSL_DIR}/apid.pem"
 
 if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
   echo "[entrypoint] Worker waiting for shared API SSL files..."

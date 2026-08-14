@@ -40,10 +40,6 @@ void expect_wrapper_fim_db_init(int storage, int file_limit, int value_limit);
 
 FIMDBErrorCode __wrap_fim_db_remove_path(const char* path);
 
-int __wrap_fim_db_read_line_from_file(fim_tmp_file* file, int storage, int it, char** buffer);
-
-void __wrap_fim_db_clean_file(fim_tmp_file** file, int storage);
-
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_count_file_entry
  */
@@ -93,9 +89,6 @@ cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count);
 cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count);
 
 int __wrap_fim_db_count_synced_docs(char* table_name);
-
-int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
-                                   const char* arch, const char* value, int sync_value);
 
 int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
 

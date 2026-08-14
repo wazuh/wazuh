@@ -84,6 +84,22 @@ jobs:
           gcc --version
           g++ --version
           gcov --version
+      # Compilation cache. Placed after the gcc 14.3 install so the wrappers
+      # resolve the final compilers. Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
       - name: "Build wazuh"
         uses: ./.github/actions/build_test_flags
         with:
@@ -99,3 +115,8 @@ jobs:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
+      - name: "Compilation cache statistics"
+        if: always()
+        # grep filters the "Cache location" line: it carries the bucket name,
+        # which secret masking does not cover once the s3:// scheme is stripped.
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

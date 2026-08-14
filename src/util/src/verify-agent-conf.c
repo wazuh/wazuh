@@ -159,9 +159,7 @@ int verify_agent_conf(const char * path) {
         return -1;
     } else if (Test_Localfile(path) < 0) {
         return -1;
-    } else if (Test_Client(path) < 0) {
-        return -1;
-    } else if (Test_ClientBuffer(path) < 0) {
+    } else if (Test_Agent(path) < 0) {
         return -1;
     } else if (Test_WModule(path) < 0) {
         return -1;

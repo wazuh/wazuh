@@ -116,8 +116,8 @@ Basic configuration with one Indexer node:
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -137,8 +137,8 @@ High availability configuration with multiple Indexer nodes:
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -158,8 +158,8 @@ If using certificates from different CAs:
       <ca>/var/wazuh-manager/etc/certs/root-ca-1.pem</ca>
       <ca>/var/wazuh-manager/etc/certs/root-ca-2.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/indexer-connector.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/indexer-connector-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -187,8 +187,8 @@ Test connectivity to the Indexer manually:
 
 ```bash
 curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-     --cert   /var/wazuh-manager/etc/certs/manager.pem \
-     --key    /var/wazuh-manager/etc/certs/manager-key.pem \
+     --cert   /var/wazuh-manager/etc/certs/indexer-connector.pem \
+     --key    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
      https://127.0.0.1:9200/_cluster/health
 ```
 
@@ -198,8 +198,8 @@ With authentication:
 
 ```bash
 curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-     --cert   /var/wazuh-manager/etc/certs/manager.pem \
-     --key    /var/wazuh-manager/etc/certs/manager-key.pem \
+     --cert   /var/wazuh-manager/etc/certs/indexer-connector.pem \
+     --key    /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
      -u admin:password \
      https://127.0.0.1:9200/_cluster/health
 ```
@@ -265,11 +265,11 @@ Verify certificate validity:
 
 ```bash
 # Check certificate dates
-openssl x509 -in /var/wazuh-manager/etc/certs/manager.pem -noout -dates
+openssl x509 -in /var/wazuh-manager/etc/certs/indexer-connector.pem -noout -dates
 
 # Verify certificate against CA
 openssl verify -CAfile /var/wazuh-manager/etc/certs/root-ca.pem \
-  /var/wazuh-manager/etc/certs/manager.pem
+  /var/wazuh-manager/etc/certs/indexer-connector.pem
 ```
 
 ### Authentication Errors

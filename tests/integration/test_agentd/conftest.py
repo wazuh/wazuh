@@ -27,8 +27,12 @@ def clean_keys() -> None:
 
 @pytest.fixture()
 def add_keys() -> None:
-    # Add content of client.keys file
-    add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
+    # Add content of client.keys file. No explicit key: add_client_keys_entry
+    # generates a random 64-hex-char one, which is what bridge_key_is_valid()
+    # (https_client_bridge.c) requires for AES-CMAC -- "SuperSecretKey" is
+    # neither hex nor 32/48/64 chars, so the HTTPS client would refuse to
+    # start at all.
+    add_client_keys_entry("001", "ubuntu-agent", "any")
 
 
 @pytest.fixture()

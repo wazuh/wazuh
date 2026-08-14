@@ -80,6 +80,7 @@ EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
+EXTERNAL_LLHTTP=external/llhttp/
 # XXX Becareful NO EXTRA Spaces here
 ifeq ($(TARGET),manager)
 WAZUH_USER?=wazuh-manager
@@ -410,7 +411,7 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	INDEXER_CURL_FLAGS += --retry-all-errors
 endif
 INDEXER_CURL := curl $(INDEXER_CURL_FLAGS) -o
-DEPS_VERSION = 99-37361
+DEPS_VERSION = 99-37702
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -475,7 +476,7 @@ endif
 #     shared by the unit-test CI, whose deps step runs `make deps TARGET=...`
 #     WITHOUT TEST=1 and only enables tests at build time. Gating these behind a
 #     TEST flag drops them from that bundle and breaks every test build (#36247).
-EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 googletest benchmark
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 zstd googletest benchmark
 
 # Linux unit-test wrapper dependencies (every Linux leg except the winagent
 # cross-compile). unit_tests/wrappers/externals/{audit,procpc} include
@@ -503,7 +504,7 @@ endif
 # Manager-only dependencies.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio
 endif
 endif
 
@@ -849,6 +850,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_LZMA)build
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
+	rm -rf $(EXTERNAL_LLHTTP)build
 # Manually-compiled dependencies - remove object files and build artifacts
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a
@@ -884,6 +886,7 @@ clean-internals:
 	rm -f wazuh_modules/syscollector/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
+	rm -rf wazuh_modules/vulnerability_scanner/include/*_generated.h
 # Selinux
 	rm -f selinux/wazuh.mod
 	rm -f selinux/wazuh.pp

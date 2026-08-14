@@ -78,6 +78,11 @@ void test_wurl_http_request_headers_list_null(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
+        // Windows has no CA file to point at: curl is asked for the system stores.
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_SSL_OPTIONS);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
         expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
@@ -137,8 +142,6 @@ void test_wurl_http_request_headers_tmp_null(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
-
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -224,8 +227,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
-
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -333,8 +334,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
-
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -447,8 +446,6 @@ void test_wurl_http_request_curl_easy_perform_fail_timeout(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
-
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
@@ -560,8 +557,6 @@ void test_wurl_http_request_curl_easy_setopt_fail(void **state)
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
-
         expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
@@ -670,8 +665,6 @@ void test_wurl_http_request_success(void **state)
 
     #else
         will_return(__wrap_curl_easy_init, curl);
-
-        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);

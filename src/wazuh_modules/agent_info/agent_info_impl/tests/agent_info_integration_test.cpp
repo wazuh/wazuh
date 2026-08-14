@@ -7,9 +7,11 @@
 #include <mock_filesystem_wrapper.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 /**
@@ -147,4 +149,36 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     }
 
     EXPECT_TRUE(foundMetadataEvent);
+}
+
+// Durable /control task_id dedup guard against a real (in-memory) SQLite database --
+// no mocking of selectRows/insertData/deleteRows, exercising the actual `tasks` table schema
+// and SQL this same agent_info.db now shares with agent_metadata/agent_groups.
+
+TEST_F(AgentInfoRealDBSyncTest, CheckAndRecordTaskDedupsAgainstRealDatabase)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, nullptr);
+
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("real-db-task-1"));
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("real-db-task-1"));
+
+    // A distinct task_id is unaffected by the first one already being recorded.
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("real-db-task-2"));
+    EXPECT_EQ(2u, m_agentInfo->countTasks());
+}
+
+TEST_F(AgentInfoRealDBSyncTest, CleanupExpiredTasksAllowsATaskIdToBeAcceptedAgainAfterItsTtl)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, nullptr);
+
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("ttl-task"));
+    EXPECT_FALSE(m_agentInfo->checkAndRecordTask("ttl-task")); // still a duplicate before the TTL elapses
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    m_agentInfo->cleanupExpiredTasks(/*ttlSeconds=*/1, /*maxEntries=*/4096);
+
+    EXPECT_EQ(0u, m_agentInfo->countTasks());
+    EXPECT_TRUE(m_agentInfo->checkAndRecordTask("ttl-task")); // treated as new again post-expiry
 }

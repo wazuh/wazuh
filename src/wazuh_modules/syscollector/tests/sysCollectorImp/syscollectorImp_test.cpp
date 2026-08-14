@@ -416,6 +416,7 @@ static const auto expectedPersistBrowserExtension
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -544,6 +545,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     GTEST_SKIP() << "Skipping intervalSeconds test on Windows due to sync protocol issues in Wine environment";
 #endif
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -590,6 +592,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 TEST_F(SyscollectorImpTest, noScanOnStart)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
@@ -683,6 +686,7 @@ TEST_F(SyscollectorImpTest, releaseResourcesReleasesSysInfoThreadResourcesOnStar
 TEST_F(SyscollectorImpTest, noHardware)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -805,6 +809,7 @@ TEST_F(SyscollectorImpTest, noHardware)
 TEST_F(SyscollectorImpTest, noOs)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
@@ -926,6 +931,7 @@ TEST_F(SyscollectorImpTest, noOs)
 TEST_F(SyscollectorImpTest, noNetwork)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
@@ -1039,6 +1045,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
 TEST_F(SyscollectorImpTest, noPackages)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1155,6 +1162,7 @@ TEST_F(SyscollectorImpTest, noPackages)
 TEST_F(SyscollectorImpTest, noPorts)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1276,6 +1284,7 @@ TEST_F(SyscollectorImpTest, noPorts)
 TEST_F(SyscollectorImpTest, noPortsAll)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1402,6 +1411,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
 TEST_F(SyscollectorImpTest, noProcesses)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1518,6 +1528,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
 TEST_F(SyscollectorImpTest, noHotfixes)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1639,6 +1650,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
 TEST_F(SyscollectorImpTest, noUsers)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1760,6 +1772,7 @@ TEST_F(SyscollectorImpTest, noUsers)
 TEST_F(SyscollectorImpTest, noGroups)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -1881,6 +1894,7 @@ TEST_F(SyscollectorImpTest, noGroups)
 TEST_F(SyscollectorImpTest, noServices)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -2002,6 +2016,7 @@ TEST_F(SyscollectorImpTest, noServices)
 TEST_F(SyscollectorImpTest, noBrowserExtensions)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -2123,6 +2138,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
 TEST_F(SyscollectorImpTest, portAllEnable)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2311,6 +2327,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 TEST_F(SyscollectorImpTest, portAllDisable)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2487,6 +2504,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 TEST_F(SyscollectorImpTest, PackagesDuplicated)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
@@ -2569,6 +2587,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -2703,6 +2722,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 TEST_F(SyscollectorImpTest, queryCommandPause)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2755,6 +2775,7 @@ TEST_F(SyscollectorImpTest, queryCommandPause)
 TEST_F(SyscollectorImpTest, queryCommandResume)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2811,6 +2832,7 @@ TEST_F(SyscollectorImpTest, queryCommandResume)
 TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2843,86 +2865,10 @@ TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
     Syscollector::instance().destroy();
 }
 
-TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
-{
-    static std::atomic<bool> s_blockStart {false};
-    static std::atomic<bool> s_startEntered {false};
-    s_blockStart = true;
-    s_startEntered = false;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions blockingMq {};
-    blockingMq.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1;
-    };
-    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              blockingMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(flushResponse["data"]["action"], "flush");
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        return s_startEntered.load();
-    }));
-
-    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(inProgressResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
-
-    s_blockStart = false;
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto completedResponse =
-            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return completedResponse["data"]["status"] == "completed";
-    }));
-
-    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(completedResponse["data"]["status"], "completed");
-    EXPECT_EQ(completedResponse["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
 TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
 {
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -2936,26 +2882,10 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
                                   3600, false, false, false, false, false, false,
                                   false, false, false, false, false, false, false, false);
 
-    MQ_Functions failingMq {};
-    failingMq.start = [](const char*, short, short) -> int
-    {
-        return -1;
-    };
-    failingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 0);
 
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              failingMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
+    // No sync intake socket is available in the test environment, so the flush
+    // synchronization fails and the query must report completed with error.
     auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
     EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
     EXPECT_EQ(flushResponse["data"]["action"], "flush");
@@ -2974,321 +2904,10 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
     Syscollector::instance().destroy();
 }
 
-TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os  (VD requires os)
-                                  false,    // network
-                                  true,     // packages (VD requires packages)
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    // Initialize once to create the schema (including table_metadata), then destroy to
-    // release the DB so we can seed the VD first-sync marker directly.
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_TEST_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os
-                                  false,    // network
-                                  true,     // packages
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-    Syscollector::instance().destroy();
-
-    {
-        sqlite3* rawDb = nullptr;
-        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
-
-        char* rawErrMsg = nullptr;
-        const int execResult = sqlite3_exec(db.get(),
-                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
-                                            nullptr,
-                                            nullptr,
-                                            &rawErrMsg);
-        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
-        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
-    }
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_TEST_DB_PATH,
-                                  "",
-                                  "",
-                                  3600,
-                                  false,    // scanOnStart
-                                  false,    // hardware
-                                  true,     // os  (VD requires os)
-                                  false,    // network
-                                  true,     // packages (VD requires packages)
-                                  false,    // ports
-                                  false,    // portsAll
-                                  false,    // processes
-                                  false,    // hotfixes
-                                  false,    // groups
-                                  false,    // users
-                                  false,    // services
-                                  false,    // browserExtensions
-                                  false);   // notifyOnFirstScan
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_VDSyncDisabled_FlushSucceeds)
-{
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    // os=false, packages=false → m_vdSyncEnabled=false → VD protocol uses Option::SYNC
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions successMq {};
-    successMq.start = [](const char*, short, short) -> int { return 0; };
-    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              successMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "success");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueFails_VDSucceeds_FlushFails)
-{
-    static std::atomic<int> s_startCallCount {0};
-    s_startCallCount = 0;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    // First start call (regular protocol) fails; second (VD protocol) succeeds
-    MQ_Functions partialMq {};
-    partialMq.start = [](const char*, short, short) -> int
-    {
-        return (++s_startCallCount == 1) ? -1 : 0;
-    };
-    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              partialMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "error");
-
-    Syscollector::instance().destroy();
-}
-
-TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_FlushFails)
-{
-    static std::atomic<int> s_startCallCount {0};
-    s_startCallCount = 0;
-
-    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    // First start call (regular protocol) succeeds; second (VD protocol) fails
-    MQ_Functions partialMq {};
-    partialMq.start = [](const char*, short, short) -> int
-    {
-        return (++s_startCallCount == 1) ? 0 : -1;
-    };
-    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-    Syscollector::instance().initSyncProtocol("syscollector",
-                                              ":memory:",
-                                              ":memory:",
-                                              partialMq,
-                                              std::chrono::seconds(0),
-                                              std::chrono::seconds(1),
-                                              1,
-                                              100,
-                                              0);
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-
-    EXPECT_TRUE(waitUntil([]()
-    {
-        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-        return r["data"]["status"] == "completed";
-    }));
-
-    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(r["data"]["status"], "completed");
-    EXPECT_EQ(r["data"]["result"], "error");
-
-    Syscollector::instance().destroy();
-}
-
 TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3359,6 +2978,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedDefaultsToFalse)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3383,6 +3003,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedDefaultsToFalse)
 TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMetadataExists)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3440,6 +3061,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedDefaultsToFalse)
 {
     // No scan has run and no marker is present: expect first_scan_completed == 0.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3465,6 +3087,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedReturnsTrueWhenMeta
 {
     // Seed the marker directly into the DB, then verify the query reports it.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3521,6 +3144,7 @@ TEST_F(SyscollectorImpTest, scanSetsFirstScanCompletedMarkerAfterFullScan)
     // After a complete scan() the first_scan_completed marker must be written
     // with a positive Unix timestamp.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3586,6 +3210,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
 {
     // If the marker is already set, a subsequent scan must NOT overwrite the timestamp.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3679,6 +3304,7 @@ TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
 TEST_F(SyscollectorImpTest, queryCommandSetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
@@ -3756,6 +3382,7 @@ TEST_F(SyscollectorImpTest, queryCommandSetVersion)
 TEST_F(SyscollectorImpTest, queryCommandUnknown)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3793,6 +3420,7 @@ TEST_F(SyscollectorImpTest, queryInvalidJson)
     GTEST_SKIP() << "Skipping queryInvalidJson test on Windows due to exception handling issues in Wine environment";
 #endif
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3825,6 +3453,7 @@ TEST_F(SyscollectorImpTest, queryInvalidJson)
 TEST_F(SyscollectorImpTest, queryMissingCommand)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3857,6 +3486,7 @@ TEST_F(SyscollectorImpTest, queryMissingCommand)
 TEST_F(SyscollectorImpTest, querySetVersionMissingParameter)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3889,6 +3519,7 @@ TEST_F(SyscollectorImpTest, querySetVersionMissingParameter)
 TEST_F(SyscollectorImpTest, querySetVersionInvalidParameterType)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3930,6 +3561,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -3961,25 +3593,11 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_AllModulesEnabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
-            std::chrono::seconds(5),
-            3,
-            100,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -3993,6 +3611,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4020,25 +3639,11 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_PackagesDisabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
-            std::chrono::seconds(5),
-            3,
-            100,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -4052,6 +3657,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4079,25 +3685,11 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_OsDisabled)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test initSyncProtocol - should not throw
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
-            std::chrono::seconds(5),
-            3,
-            100,
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -4107,10 +3699,11 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
 {
     /**
      * Test: Verify initSyncProtocol accepts and handles different parameter values
-     * Tests various timeout, retry, and maxEps values
+     * Tests various timeout and retry values
      */
 
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -4138,25 +3731,12 @@ TEST_F(SyscollectorImpTest, initSyncProtocol_DifferentParameters)
                                   false,   // browserExtensions
                                   false);  // notifyOnFirstScan
 
-    // Mock MQ functions
-    MQ_Functions mqFuncs;
-    mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
     // Test with different parameter values
     EXPECT_NO_THROW(
     {
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            mqFuncs,
-            std::chrono::seconds(30),  // Different syncEndDelay
-            std::chrono::seconds(15),  // Different timeout
-            5,                          // Different retries
-            500,                        // Different maxEps
-            86400
-        );
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", // Different retries
+                                                  86400
+                                                 );
     });
 
     Syscollector::instance().destroy();
@@ -4166,6 +3746,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanNoDisabledCollectors
 {
     // Test case: All collectors enabled, no data to clean
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4214,6 +3795,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
 {
     // Test case: Some collectors disabled but no data in database
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4262,6 +3844,7 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
 {
     // Test case: Disabled collectors with data in database
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4317,6 +3900,7 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataNoDisabledCollectors)
 {
     // Test case: No disabled collectors, nothing to delete
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Setup log capturing
     LogCapture logCapture;
@@ -4361,6 +3945,7 @@ TEST_F(SyscollectorImpTest, deleteDisableCollectorsDataWithDisabledCollectorsAnd
 {
     // Test case: Delete data for disabled collectors
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4414,6 +3999,7 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
 {
     // Test case: All collectors disabled - should detect it during initialization
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4475,6 +4061,7 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
 {
     // Test case: Network collector disabled - should detect 3 indices (interfaces, protocols, networks)
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Manually populate test DB
     populateTestDb();
@@ -4542,6 +4129,7 @@ TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
     {
         std::make_shared<MockSysInfo>()
     };
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackDataDelta
@@ -4621,6 +4209,7 @@ TEST_F(SyscollectorImpTest, stoppingDuringScanSkipsRemainingTasks)
     {
         std::make_shared<MockSysInfo>()
     };
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackDataDelta
@@ -4705,6 +4294,7 @@ TEST_F(SyscollectorImpTest, stoppingDuringScanSkipsRemainingTasks)
 TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4716,28 +4306,9 @@ TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
                                   3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
 
     // Initialize sync protocol with integrity interval
-    MQ_Functions mqFuncs{};
-    mqFuncs.start = [](const char*, short, short)
-    {
-        return 0;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-    {
-        return 0;
-    };
-
     EXPECT_NO_THROW(
-        Syscollector::instance().initSyncProtocol(
-            "syscollector",
-            ":memory:",
-            ":memory:",
-            mqFuncs,
-            std::chrono::seconds(10),
-            std::chrono::seconds(30),
-            3,
-            1000,
-            86400  // 24 hours integrity interval
-        )
+        Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400  // 24 hours integrity interval
+                                                 )
     );
 
     Syscollector::instance().destroy();
@@ -4746,6 +4317,7 @@ TEST_F(SyscollectorImpTest, initSyncProtocolWithIntegrityInterval)
 TEST_F(SyscollectorImpTest, runRecoveryProcessWithoutSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4765,6 +4337,7 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithoutSyncProtocol)
 TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
@@ -4776,27 +4349,8 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
                                   3600, false, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
     // Initialize sync protocol
-    MQ_Functions mqFuncs{};
-    mqFuncs.start = [](const char*, short, short)
-    {
-        return 0;
-    };
-    mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-    {
-        return 0;
-    };
-
-    Syscollector::instance().initSyncProtocol(
-        "syscollector",
-        ":memory:",
-        ":memory:",
-        mqFuncs,
-        std::chrono::seconds(10),
-        std::chrono::seconds(30),
-        3,
-        1000,
-        86400
-    );
+    Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                             );
 
     // Run recovery process - should execute without throwing
     EXPECT_NO_THROW(Syscollector::instance().runRecoveryProcess());
@@ -4808,6 +4362,7 @@ TEST_F(SyscollectorImpTest, runRecoveryProcessWithSyncProtocol)
 TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Return valid hardware data (cpu_speed as integer, which our correction handles)
     const std::string validHardwareJson =
@@ -4860,21 +4415,8 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
                                           3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -4895,6 +4437,7 @@ TEST_F(SyscollectorImpTest, schemaValidationAcceptsValidDataAfterCorrections)
 TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Data that our corrections should handle:
     // - file_inode as number (will be converted to string)
@@ -4967,21 +4510,8 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
                                           3600, true, true, false, false, false, true, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5002,6 +4532,7 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
 TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // cpu_speed as 0.0 represents an unavailable value (e.g. macOS ARM) and must be
     // reported as null instead of a misleading 0.
@@ -5061,21 +4592,8 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
                                           3600, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5101,6 +4619,7 @@ TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     int hwCallCount{0};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(testing::Invoke(
@@ -5209,6 +4728,7 @@ TEST_F(SyscollectorImpTest, ignoredCountersDoNotTriggerModifiedEventsAcrossScans
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
     // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
@@ -5270,21 +4790,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
                                           3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5307,6 +4814,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
     // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
@@ -5368,21 +4876,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
                                           3600, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
 
             // Initialize sync protocol to enable schema validation
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5404,6 +4899,7 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
 TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     // Return any hardware data (content doesn't matter, mock will force failure)
     const std::string hardwareJson =
@@ -5485,21 +4981,8 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5552,6 +5035,7 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
     const std::string hardwareJson =
         R"({"serial_number":"Intel Corporation", "cpu_speed":2688,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400","memory_free":2257872,"memory_total":4972208,"memory_used":54})";
@@ -5625,21 +5109,8 @@ TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
             SchemaValidator::SchemaValidatorFactory::getInstance().initialize(mockValidators);
 
             // Initialize sync protocol
-            MQ_Functions mqFuncs;
-            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
-
-            Syscollector::instance().initSyncProtocol(
-                "syscollector",
-                ":memory:",
-                ":memory:",
-                mqFuncs,
-                std::chrono::seconds(10),
-                std::chrono::seconds(5),
-                3,
-                100,
-                86400
-            );
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
 
             Syscollector::instance().start();
         }
@@ -5702,6 +5173,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidInput_NotAnObject)
 
     // Set up minimal mock sysinfo (no scan data needed for this test)
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5788,6 +5260,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5876,6 +5349,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_InvalidLimitValue_NotANumber)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -5965,6 +5439,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_UnknownIndexName)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6055,6 +5530,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6147,6 +5623,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     // Set up minimal mock sysinfo
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse("[]")));
@@ -6212,96 +5689,11 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
             << "Expected hotfixes limit to be set to 10";
 }
 
-TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
-{
-    // Static atomics used by the plain C function pointers in MQ_Functions.
-    // They are reset to initial values at the top of the test.
-    static std::atomic<bool> s_blockStart{false};
-    static std::atomic<bool> s_startEntered{false};
-    s_blockStart  = true;
-    s_startEntered = false;
-
-    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
-    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-
-    Syscollector::instance().init(spInfoWrapper,
-                                  reportFunction,
-                                  persistFunction,
-                                  logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
-                                  "",
-                                  "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
-
-    MQ_Functions blockingMq{};
-    // Block inside start(), which is called unconditionally from checkStatus() at the
-    // top of synchronizeModule() — before the empty-queue early-return.  This ensures
-    // the async flush worker remains active while we verify that destroy() waits for it,
-    // regardless of whether the persistent queue has any data to send.
-    blockingMq.start = [](const char*, short, short) -> int
-    {
-        s_startEntered = true;
-
-        while (s_blockStart)
-        {
-            std::this_thread::yield();
-        }
-
-        return 1; // valid queue descriptor
-    };
-    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
-    {
-        return 0;
-    };
-
-    Syscollector::instance().initSyncProtocol(
-        "syscollector", ":memory:", ":memory:",
-        blockingMq,
-        std::chrono::seconds(0),
-        std::chrono::seconds(1),
-        1, 100, 0);
-
-    std::atomic<bool> destroyDone{false};
-
-    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
-    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
-    EXPECT_EQ(flushResponse["data"]["action"], "flush");
-
-    // Wait until the async worker has entered start().
-    while (!s_startEntered)
-    {
-        std::this_thread::yield();
-    }
-
-    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
-    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
-
-    // destroy() signals stop on the protocol and waits for the async worker to finish.
-    std::thread destroyThread([&]()
-    {
-        Syscollector::instance().destroy();
-        destroyDone = true;
-    });
-
-    // Give destroy time to start and block waiting for the worker.
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    EXPECT_FALSE(destroyDone) << "destroy should be waiting for the async flush to finish";
-
-    // Release the blocking start — the worker completes, then destroy can proceed.
-    s_blockStart = false;
-
-    destroyThread.join();
-
-    EXPECT_TRUE(destroyDone);
-}
-
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
 {
     // No VD sync has run and no marker is present: expect vd_first_sync_completed == 0.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -6327,6 +5719,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedReturnsTrueWhenMe
 {
     // Seed the marker directly into the DB, then verify the query reports it.
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 
@@ -6378,6 +5771,7 @@ TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimest
 {
     // A row with last_sync_time=0 must NOT be reported as completed (boolean is "> 0").
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
 

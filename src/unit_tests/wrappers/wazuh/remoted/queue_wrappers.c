@@ -19,14 +19,6 @@
 #include "os_net.h"
 #include "queue_wrappers.h"
 
-size_t __wrap_rem_get_qsize() {
-    return mock();
-}
-
-size_t __wrap_rem_get_tsize() {
-    return mock();
-}
-
 size_t __wrap_rem_get_input_bytes_used() {
     return mock();
 }

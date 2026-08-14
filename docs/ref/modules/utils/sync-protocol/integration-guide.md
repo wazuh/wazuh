@@ -1,6 +1,6 @@
 # Integration Guide
 
-This guide provides step-by-step examples for integrating the Agent Sync Protocol into internal Wazuh modules such as FIM, SCA, and Inventory.
+This guide provides step-by-step examples for integrating the Agent Sync Protocol into internal Wazuh modules such as FIM, SCA, and Syscollector.
 
 ## Prerequisites
 
@@ -8,8 +8,9 @@ Before integrating the Agent Sync Protocol, ensure you have:
 
 1. Access to the protocol headers in `src/shared_modules/sync_protocol/include/`
 2. A unique module name identifier
-3. A dedicated SQLite database path for persistent storage
-4. Message queue functions configured for your environment
+3. A dedicated SQLite database path for persistent storage (or `std::nullopt`/`NULL` for in-memory-only use)
+
+There is no message-queue setup to wire in: the protocol carries a whole session over its own local `queue-sync` socket by default (see [API Reference](api-reference.md#transport-abstraction)); nothing needs to be passed in for that.
 
 ## Basic Integration Steps
 
@@ -20,7 +21,7 @@ Before integrating the Agent Sync Protocol, ensure you have:
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 
-// For custom queue implementations (optional)
+// For custom queue implementations (optional, mainly for testing)
 #include "ipersistent_queue.hpp"
 ```
 
@@ -35,26 +36,21 @@ Before integrating the Agent Sync Protocol, ensure you have:
 #### C++ Example
 ```cpp
 // Define logger function
-auto logger = [](int level, const std::string& message) {
-    switch(level) {
-        case 0: debug("%s", message.c_str()); break;
-        case 1: info("%s", message.c_str()); break;
-        case 2: warning("%s", message.c_str()); break;
-        case 3: error("%s", message.c_str()); break;
+LoggerFunc logger = [](modules_log_level_t level, const std::string& message) {
+    switch (level) {
+        case LOG_DEBUG:   mdebug1("%s", message.c_str()); break;
+        case LOG_INFO:    minfo("%s", message.c_str());   break;
+        case LOG_WARNING: mwarn("%s", message.c_str());   break;
+        case LOG_ERROR:   merror("%s", message.c_str());  break;
+        default: break;
     }
 };
 
-// Setup message queue functions
-MQ_Functions mqFuncs = {
-    .start = mq_start_wrapper,       // Your mq_start_fn implementation
-    .send_binary = mq_send_wrapper   // Your mq_send_binary_fn implementation
-};
-
-// Create protocol instance
+// Create protocol instance. queue and syncTransport are left at their
+// defaults (real SQLite queue, real queue-sync socket transport).
 auto protocol = std::make_unique<AgentSyncProtocol>(
-    "FIM",                              // Module name
+    "fim",                              // Module name
     "/var/ossec/queue/fim/fim_sync.db", // Database path
-    mqFuncs,                            // MQ functions
     logger                              // Logger callback
 );
 ```
@@ -63,30 +59,24 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
 ```c
 // Define logger function
 void module_logger(modules_log_level_t level, const char* message) {
-    switch(level) {
-        case 0: debug("%s", message); break;
-        case 1: info("%s", message); break;
-        case 2: warning("%s", message); break;
-        case 3: error("%s", message); break;
+    switch (level) {
+        case LOG_DEBUG:   mdebug1("%s", message); break;
+        case LOG_INFO:    minfo("%s", message);   break;
+        case LOG_WARNING: mwarn("%s", message);   break;
+        case LOG_ERROR:   merror("%s", message);  break;
+        default: break;
     }
 }
 
-// Setup message queue functions
-MQ_Functions mq_funcs = {
-    .start = mq_start_wrapper,       // Your mq_start_fn implementation
-    .send_binary = mq_send_wrapper   // Your mq_send_binary_fn implementation
-};
-
 // Create protocol handle
 AgentSyncProtocolHandle* handle = asp_create(
-    "SCA",
+    "sca",
     "/var/ossec/queue/sca/sca_sync.db",
-    &mq_funcs,
     module_logger
 );
 
 if (!handle) {
-    error("Failed to create sync protocol instance");
+    merror("Failed to create sync protocol instance");
     return -1;
 }
 ```
@@ -97,10 +87,8 @@ if (!handle) {
 ```cpp
 // File creation event
 void onFileCreated(const std::string& filepath, const FileInfo& info) {
-    // Generate unique ID (hash of filepath)
     std::string id = generateHash(filepath);
 
-    // Build JSON data
     nlohmann::json data = {
         {"path", filepath},
         {"size", info.size},
@@ -112,12 +100,12 @@ void onFileCreated(const std::string& filepath, const FileInfo& info) {
         {"hash_sha256", info.hash_sha256}
     };
 
-    // Persist the difference
     protocol->persistDifference(
         id,
         Operation::CREATE,
-        "fim_events",
-        data.dump()
+        "fim_files",
+        data.dump(),
+        info.version
     );
 }
 
@@ -128,21 +116,23 @@ void onFileModified(const std::string& filepath, const FileInfo& info) {
 
     protocol->persistDifference(
         id,
-        Operation::UPDATE,
-        "fim_events",
-        data.dump()
+        Operation::MODIFY,
+        "fim_files",
+        data.dump(),
+        info.version
     );
 }
 
 // File deletion event
-void onFileDeleted(const std::string& filepath) {
+void onFileDeleted(const std::string& filepath, uint64_t version) {
     std::string id = generateHash(filepath);
 
     protocol->persistDifference(
         id,
-        Operation::DELETE,
-        "fim_events",
-        "{\"path\": \"" + filepath + "\"}"
+        Operation::DELETE_,
+        "fim_files",
+        "{\"path\": \"" + filepath + "\"}",
+        version
     );
 }
 ```
@@ -150,126 +140,120 @@ void onFileDeleted(const std::string& filepath) {
 #### C Example - SCA Policy Check
 ```c
 // Policy check result
-void persist_policy_check(const char* policy_id, CheckResult* result) {
-    // Build JSON data
+void persist_policy_check(const char* policy_id, CheckResult* result, uint64_t version) {
     char json_data[4096];
     snprintf(json_data, sizeof(json_data),
         "{\"policy_id\": \"%s\", \"status\": \"%s\", \"score\": %d, \"timestamp\": %ld}",
-        policy_id,
-        result->status,
-        result->score,
-        result->timestamp
-    );
+        policy_id, result->status, result->score, result->timestamp);
 
-    // Persist the check result
     asp_persist_diff(
         handle,
         policy_id,
         OPERATION_MODIFY,
         "sca_checks",
-        json_data
+        json_data,
+        version
     );
 }
 ```
 
-#### C++ Example - Recovery Using In-Memory Storage
+#### C++ Example - Vulnerability-Detection Context Data
+
+Items that carry vulnerability-detection context (no upsert/delete semantics, stored but not indexed) are persisted with `isDataContext = true`. They can be mixed freely with regular items — both end up in the same session's `SyncData` payload:
+
 ```cpp
-// Module recovery scenario
-void recoverModuleData() {
-    info("Starting module recovery process");
+protocol->persistDifference(
+    "pkg_ctx_" + pkg.name,
+    Operation::CREATE,
+    "vd_packages",
+    contextData.dump(),
+    1,
+    /* isDataContext = */ true
+);
+```
 
-    // Clear in-memory data before sync attempt
-    protocol->clearInMemoryData();
+#### C++ Example - Full-Replace Recovery (DataClean + DELTA)
 
-    // Read recovery data from backup source
+There is no in-memory recovery API or `Mode::FULL`: a full-replace resync clears the target
+index first, then streams the fresh snapshot through the normal persistent-queue DELTA path
+(which safely splits into as many sessions as needed) — see
+[Protocol Lifecycle](lifecycle.md#full-replace-recovery-dataclean-then-delta) for why.
+
+```cpp
+void recoverModuleData(const std::string& index) {
+    minfo("Starting module recovery process");
+
+    // Clear the manager's index before resending the fresh snapshot.
+    if (!protocol->notifyDataClean({index})) {
+        merror("Failed to clear index %s before recovery; will retry later", index.c_str());
+        return;
+    }
+
     std::vector<RecoveryItem> recoveryItems = loadRecoveryData();
 
-    // Persist all recovery data in memory
     for (const auto& item : recoveryItems) {
-        protocol->persistDifferenceInMemory(
+        protocol->persistDifference(
             item.id,
             Operation::CREATE,
             item.index,
-            item.data
+            item.data,
+            item.version
         );
     }
 
-    info("Persisted %zu recovery items in memory", recoveryItems.size());
+    minfo("Persisted %zu recovery items", recoveryItems.size());
 
-    // Synchronize the in-memory data with the manager
-    bool success = protocol->synchronizeModule(
-        Mode::FULL,
-        std::chrono::seconds(60),
-        5,
-        2000
-    );
+    SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
 
-    if (success) {
-        info("Recovery completed successfully");
+    if (result.success) {
+        minfo("Recovery completed successfully");
     } else {
-        error("Recovery synchronization failed, will retry later");
+        merror("Recovery synchronization failed: %s", result.failureReason.c_str());
     }
 }
 ```
 
 #### C Example - Integrity Check Before Sync
 ```c
-// Check if full sync is needed before synchronization
 bool should_perform_full_sync(const char* index) {
-    // Calculate checksum for the index
     char checksum[65];
     calculate_index_checksum(index, checksum);
 
-    // Check with manager if full sync is required
-    bool needs_full_sync = asp_requires_full_sync(
-        handle,
-        index,
-        checksum,
-        30,   // timeout in seconds
-        3,    // retries
-        1000  // max EPS
-    );
+    // Sends one FullSession carrying a ChecksumModule payload and waits for the EndAck
+    bool needs_full_sync = asp_requires_full_sync(handle, index, checksum);
 
     if (needs_full_sync) {
-        info("Checksum mismatch detected for index %s, full sync required", index);
-        return true;
+        minfo("Checksum mismatch detected for index %s, full sync required", index);
     } else {
-        info("Checksum valid for index %s, delta sync sufficient", index);
-        return false;
+        minfo("Checksum valid for index %s, delta sync sufficient", index);
     }
+
+    return needs_full_sync;
 }
 ```
 
 ### Step 4: Process Manager Responses
 
-When the manager sends responses, you need to parse them using the protocol:
+The manager's answer (an `EndAck`, or the HTTPS transport's own result code) needs to reach `parseResponseBuffer()` for the in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()`/`synchronizeMetadataOrGroups()` call to unblock. In practice, this is wired up once by the transport that delivers the manager's HTTPS response back to the module, not called ad hoc by each module.
 
 #### C++ Example
 ```cpp
-// Message receive callback
-void onMessageReceived(const uint8_t* buffer, size_t length) {
-    // Parse the FlatBuffer response from manager
+void onManagerResponse(const uint8_t* buffer, size_t length) {
     bool parsed = protocol->parseResponseBuffer(buffer, length);
 
-    if (parsed) {
-        info("Successfully processed manager response");
-    } else {
-        error("Failed to parse manager response");
+    if (!parsed) {
+        merror("Failed to parse manager response");
     }
 }
 ```
 
 #### C Example
 ```c
-// Message receive callback
-void on_message_received(const uint8_t* buffer, size_t length) {
-    // Parse the FlatBuffer response from manager
-    bool parsed = asp_parse_response(handle, buffer, length);
+void on_manager_response(const uint8_t* buffer, size_t length) {
+    bool parsed = asp_parse_response_buffer(handle, buffer, length);
 
-    if (parsed) {
-        info("Successfully processed manager response");
-    } else {
-        error("Failed to parse manager response");
+    if (!parsed) {
+        merror("Failed to parse manager response");
     }
 }
 ```
@@ -279,18 +263,18 @@ void on_message_received(const uint8_t* buffer, size_t length) {
 #### C++ Example - Periodic Sync
 ```cpp
 void performPeriodicSync() {
-    // Delta sync with 30-second timeout, 3 retries, 1000 EPS limit
-    bool success = protocol->synchronizeModule(
-        Mode::DELTA,
-        std::chrono::seconds(30),
-        3,
-        1000
-    );
+    SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
 
-    if (success) {
-        info("Synchronization completed successfully");
+    if (result.success) {
+        minfo("Synchronization completed successfully");
+    } else if (result.stopped) {
+        mdebug1("Synchronization aborted by shutdown");
+    } else if (result.managerNotReady) {
+        // Escalate to WARNING only once consecutiveFailures crosses
+        // SYNC_MANAGER_NOT_READY_TOLERANCE; see the API reference.
+        mdebug1("Manager not ready yet (%u consecutive)", result.consecutiveFailures);
     } else {
-        error("Synchronization failed");
+        merror("Synchronization failed: %s", result.failureReason.c_str());
     }
 }
 
@@ -305,21 +289,14 @@ std::thread syncThread([&protocol]() {
 
 #### C Example - Event-Driven Sync
 ```c
-// Trigger sync when buffer reaches threshold
 void check_and_sync(size_t buffer_size) {
     const size_t SYNC_THRESHOLD = 1000;
 
     if (buffer_size >= SYNC_THRESHOLD) {
-        bool success = asp_sync_module(
-            handle,
-            MODE_DELTA,
-            30,    // timeout in seconds
-            3,     // retries
-            500    // max EPS
-        );
+        SyncModuleResult_t result = asp_sync_module(handle, MODE_DELTA);
 
-        if (!success) {
-            error("Failed to synchronize module data");
+        if (!result.success) {
+            merror("Failed to synchronize module data: %s", result.failure_reason);
         }
     }
 }
@@ -328,74 +305,73 @@ void check_and_sync(size_t buffer_size) {
 #### C Example - Metadata Synchronization
 ```c
 // Synchronize metadata at agent startup
-void sync_agent_metadata() {
-    info("Synchronizing agent metadata");
+void sync_agent_metadata(uint64_t global_version) {
+    minfo("Synchronizing agent metadata");
 
-    bool success = asp_sync_metadata_or_groups(
+    const char* indices[] = {"agent_metadata"};
+    SyncModuleResult_t result = asp_sync_metadata_or_groups(
         handle,
         MODE_METADATA_DELTA,
-        30,  // timeout in seconds
-        3,   // retries
-        0,   // no EPS limit
-        0
+        indices,
+        1,
+        global_version
     );
 
-    if (success) {
-        info("Agent metadata synchronized successfully");
+    if (result.success) {
+        minfo("Agent metadata synchronized successfully");
     } else {
-        error("Failed to synchronize agent metadata");
+        merror("Failed to synchronize agent metadata: %s", result.failure_reason);
     }
 }
 ```
 
 ## Complete Module Integration Example
 
-### Inventory Module Integration
+### Syscollector-Style Module Integration
 
 ```cpp
-class InventorySync {
-private:
-    std::unique_ptr<AgentSyncProtocol> m_protocol;
-    std::atomic<bool> m_running{true};
-    std::thread m_syncThread;
-
+class InventorySync
+{
 public:
-    InventorySync(const std::string& dbPath, const MQ_Functions& mqFuncs) {
-        // Initialize protocol
+    InventorySync(const std::string& dbPath)
+    {
         m_protocol = std::make_unique<AgentSyncProtocol>(
-            "Inventory",
+            "syscollector",
             dbPath,
-            mqFuncs,
-            [](int level, const std::string& msg) {
+            [](modules_log_level_t level, const std::string& msg)
+            {
                 log_message(level, "InventorySync", msg.c_str());
-            }
-        );
+            });
 
-        // Start sync thread
         m_syncThread = std::thread(&InventorySync::syncWorker, this);
     }
 
-    ~InventorySync() {
+    ~InventorySync()
+    {
+        m_protocol->stop();
         m_running = false;
-        if (m_syncThread.joinable()) {
+        if (m_syncThread.joinable())
+        {
             m_syncThread.join();
         }
     }
 
     // Called when system inventory changes
-    void onInventoryChange(const std::string& category, const nlohmann::json& data) {
+    void onInventoryChange(const std::string& category, const nlohmann::json& data, uint64_t version)
+    {
         std::string id = generateInventoryId(category, data);
 
         m_protocol->persistDifference(
             id,
-            Operation::UPDATE,
+            Operation::MODIFY,
             "inventory_" + category,
-            data.dump()
-        );
+            data.dump(),
+            version);
     }
 
-    // Called when new package is installed
-    void onPackageInstalled(const PackageInfo& pkg) {
+    // Called when a new package is installed
+    void onPackageInstalled(const PackageInfo& pkg)
+    {
         nlohmann::json data = {
             {"name", pkg.name},
             {"version", pkg.version},
@@ -408,55 +384,79 @@ public:
             pkg.name + "_" + pkg.version,
             Operation::CREATE,
             "inventory_packages",
-            data.dump()
-        );
+            data.dump(),
+            1);
     }
 
-    // Called when package is removed
-    void onPackageRemoved(const std::string& pkgName) {
+    // Called when a package is removed
+    void onPackageRemoved(const std::string& pkgName, uint64_t version)
+    {
         m_protocol->persistDifference(
             pkgName,
-            Operation::DELETE,
+            Operation::DELETE_,
             "inventory_packages",
-            "{\"name\": \"" + pkgName + "\"}"
-        );
+            "{\"name\": \"" + pkgName + "\"}",
+            version);
     }
 
 private:
-    void syncWorker() {
-        while (m_running) {
-            // Wait for sync interval
+    void syncWorker()
+    {
+        int syncCount = 0;
+
+        while (m_running)
+        {
             std::this_thread::sleep_for(std::chrono::minutes(15));
 
-            // Perform full sync every 4 hours, delta sync otherwise
-            static int syncCount = 0;
-            Mode mode = (++syncCount % 16 == 0) ? Mode::Full : Mode::Delta;
+            SyncModuleResult result;
 
-            bool success = m_protocol->synchronizeModule(
-                mode,
-                std::chrono::seconds(60),  // 1 minute timeout
-                5,                         // 5 retries
-                2000                       // 2000 EPS limit
-            );
+            // Full-replace resync every 4 hours (16 * 15 min): clear the index, re-persist a
+            // fresh snapshot, then sync via DELTA. Every other cycle is a plain delta sync of
+            // whatever is already pending. See the recovery example above for why there is no
+            // Mode::FULL to reach for here.
+            if (++syncCount % 16 == 0)
+            {
+                if (!m_protocol->notifyDataClean({"inventory_packages"}))
+                {
+                    merror("Failed to clear inventory_packages before full-replace resync");
+                    continue;
+                }
 
-            if (!success) {
-                error("Inventory sync failed, will retry in next interval");
+                for (const auto& pkg : loadAllInstalledPackages())
+                {
+                    onPackageInstalled(pkg);
+                }
+            }
+
+            result = m_protocol->synchronizeModule(Mode::DELTA);
+
+            if (!result.success)
+            {
+                merror("Inventory sync failed: %s", result.failureReason.c_str());
             }
         }
     }
 
-    std::string generateInventoryId(const std::string& category,
-                                   const nlohmann::json& data) {
-        // Generate unique ID based on category and key fields
+    std::string generateInventoryId(const std::string& category, const nlohmann::json& data)
+    {
         std::string keyData = category;
-        if (data.contains("name")) {
+
+        if (data.contains("name"))
+        {
             keyData += "_" + data["name"].get<std::string>();
         }
-        if (data.contains("id")) {
+
+        if (data.contains("id"))
+        {
             keyData += "_" + data["id"].get<std::string>();
         }
+
         return sha256(keyData);
     }
+
+    std::unique_ptr<AgentSyncProtocol> m_protocol;
+    std::atomic<bool> m_running{true};
+    std::thread m_syncThread;
 };
 ```
 
@@ -464,15 +464,27 @@ private:
 
 ### 1. Error Handling
 
-Always check return values and handle failures gracefully:
+Always check `SyncModuleResult`/`SyncModuleResult_t` and use its fields to decide how loudly to log, rather than treating every failure the same way:
 
 ```cpp
-if (!protocol->synchronizeModule(Mode::DELTA, timeout, retries, maxEps)) {
-    // Log error
-    error("Sync failed, scheduling retry");
+const auto result = protocol->synchronizeModule(Mode::DELTA);
 
-    // Schedule retry with exponential backoff
-    scheduleRetry(calculateBackoff(attemptNumber));
+if (!result.success)
+{
+    if (result.stopped)
+    {
+        mdebug1("Sync aborted by shutdown");
+    }
+    else if (result.managerNotReady && result.consecutiveFailures < SYNC_MANAGER_NOT_READY_TOLERANCE)
+    {
+        mdebug1("Manager not ready yet, will retry next cycle");
+    }
+    else
+    {
+        mwarn("Sync failed: %s", result.failureReason.c_str());
+    }
+    // No explicit retry scheduling needed: the module's own periodic
+    // cycle is what retries. The protocol itself does not re-attempt.
 }
 ```
 
@@ -493,28 +505,30 @@ AgentSyncProtocolHandle* handle = asp_create(...);
 asp_destroy(handle);  // Required cleanup
 ```
 
-### 3. Logging Integration
+### 3. Shutdown
 
-Provide detailed logging for debugging:
+Call `stop()`/`asp_stop()` before tearing down a module so any in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()` call unblocks instead of waiting indefinitely for a transport callback that will never arrive. `reset()`/`asp_reset()` clears the stop flag if the module restarts in the same process.
+
+### 4. Logging Integration
 
 ```cpp
-auto logger = [](int level, const std::string& message) {
-    std::string prefix = "[SyncProtocol] ";
+LoggerFunc logger = [](modules_log_level_t level, const std::string& message) {
+    const std::string prefix = "[SyncProtocol] ";
 
-    switch(level) {
-        case 0: // Debug
-            if (debug_enabled) {
-                mdebug1("%s%s", prefix.c_str(), message.c_str());
-            }
+    switch (level) {
+        case LOG_DEBUG:
+            mdebug1("%s%s", prefix.c_str(), message.c_str());
             break;
-        case 1: // Info
+        case LOG_INFO:
             minfo("%s%s", prefix.c_str(), message.c_str());
             break;
-        case 2: // Warning
+        case LOG_WARNING:
             mwarn("%s%s", prefix.c_str(), message.c_str());
             break;
-        case 3: // Error
+        case LOG_ERROR:
             merror("%s%s", prefix.c_str(), message.c_str());
+            break;
+        default:
             break;
     }
 };
@@ -524,41 +538,52 @@ auto logger = [](int level, const std::string& message) {
 
 ### Unit Testing
 
-Mock the protocol interface for unit tests:
+Mock the `IAgentSyncProtocol` interface for unit tests:
 
 ```cpp
-class MockAgentSyncProtocol : public IAgentSyncProtocol {
+class MockAgentSyncProtocol : public IAgentSyncProtocol
+{
 public:
     MOCK_METHOD(void, persistDifference,
-                (const std::string&, Operation, const std::string&, const std::string&),
+                (const std::string&, Operation, const std::string&, const std::string&, uint64_t, bool),
                 (override));
-    MOCK_METHOD(bool, synchronizeModule,
-                (Mode, std::chrono::seconds, unsigned int, size_t),
-                (override));
-    MOCK_METHOD(bool, parseResponseBuffer,
-                (const uint8_t*, size_t),
-                (override));
+    MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode, Option), (override));
+    MOCK_METHOD(bool, requiresFullSync, (const std::string&, const std::string&), (override));
+    MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>&, Option), (override));
+    MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t*, size_t), (override));
+    // ... plus the remaining IAgentSyncProtocol methods as needed by the test.
 };
 ```
 
 ### Integration Testing
 
-Test with a real protocol instance but mock message queue:
+Test with a real `AgentSyncProtocol` instance but a fake transport, so the test controls the manager's answer without a real socket or HTTPS round trip — this is the same `ISyncSessionTransport` seam `agent_sync_protocol_tests` itself uses (`tests/mocks/mock_sync_transport.hpp`):
 
 ```cpp
-MQ_Functions testMqFuncs = {
-    .open = [](const char*, int) { return 1; },
-    .send = [](int, const char*, const char*, const char*) { return 0; },
-    .recv = [](int, char*, unsigned int, unsigned int*) { return 0; },
-    .close = [](int) {}
+class FakeSyncTransport : public ISyncSessionTransport
+{
+public:
+    bool checkStatus() override { return true; }
+
+    bool sendSession(uint64_t /*session*/, const std::vector<uint8_t>& message) override
+    {
+        lastMessage = message;
+        return true; // pretend the local hand-off succeeded
+    }
+
+    std::vector<uint8_t> lastMessage;
 };
 
+auto transport = std::make_shared<FakeSyncTransport>();
 auto protocol = std::make_unique<AgentSyncProtocol>(
-    "TestModule",
-    ":memory:",  // In-memory SQLite for testing
-    testMqFuncs,
-    testLogger
-);
+    "test_module",
+    ":memory:",  // in-memory SQLite for testing
+    testLogger,
+    nullptr,     // default persistent queue
+    transport);
+
+// ... trigger a sync on another thread, then feed a synthetic EndAck back in:
+protocol->parseResponseBuffer(endAckBytes, endAckLength);
 ```
 
 ## Troubleshooting
@@ -569,26 +594,25 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
    - Ensure only one process accesses the database file
    - Check file permissions and disk space
 
-2. **Message Queue Failures**
-   - Verify queue path and permissions
-   - Check queue size limits
+2. **`queue-sync` Socket Failures**
+   - Verify the socket path and permissions
+   - Check that `agentd`/`https_client` is running and bound to the intake socket
+   - `SYNC_HANDOFF_RETRIES` (fixed at 3) only covers a transiently-unavailable local socket; it does not retry HTTP-level failures
 
-3. **Synchronization Timeouts**
-   - Increase timeout values for slow networks
-   - Check network connectivity to manager
-   - Verify manager is processing messages
+3. **Synchronization Never Returns**
+   - The protocol waits indefinitely for the manager's answer once the local hand-off succeeds; a hang here usually means the HTTPS transport's own timeout (`statefulTimeoutMs`) hasn't fired yet, or `stop()` was never called during shutdown
+   - Check `agentd`/`https_client` logs and network connectivity to the manager
 
 4. **Memory Issues**
-   - Monitor queue size and implement flow control
-   - Use EPS limiting to control memory usage
-   - Implement periodic cleanup of old data
+   - Monitor persistent-queue size
+   - `Option::VDFIRST`/`Option::VDSYNC` bypass the `FullSession` byte cap — make sure that is intentional for the flow using it
 
 5. **Checksum Mismatch Issues**
    - Ensure consistent checksum calculation algorithm
-   - Verify checksum is calculated for the correct index/table
+   - Verify the checksum is calculated for the correct index/table
    - Check for data corruption in persistent storage
 
 6. **Metadata/Groups Sync Failures**
-   - Verify correct mode is used (METADATA_DELTA, METADATA_CHECK, GROUP_DELTA, GROUP_CHECK)
-   - Ensure no data messages are sent during metadata/groups sync
+   - Verify the correct mode is used (`METADATA_DELTA`, `METADATA_CHECK`, `GROUP_DELTA`, `GROUP_CHECK`)
+   - These modes never populate a `SessionPayload` — only `Start`/`End` are sent
    - Check manager logs for additional error details

@@ -61,8 +61,12 @@ INDEXER_ENGINE_EXECUTABLE = "/usr/share/wazuh-indexer/engine/bin/wazuh-engine"
 DASHBOARD_EXECUTABLE = "/usr/share/wazuh-dashboard/bin/opensearch-dashboards"
 DASHBOARD_NODE_EXECUTABLE = "/usr/share/wazuh-dashboard/node/bin/node"
 
+# queue/inventory_sync is deliberately absent: it belonged to the retired
+# inventory_sync module. inventory_sync_server keeps no local store at all (it
+# streams straight to the indexer), so whatever is left at that path is frozen
+# residue and would only plot a flat line. queue/vd stays — the vulnerability
+# scanner's RocksDB is live and does grow.
 DEFAULT_DISK_PATHS = [
-    "/var/wazuh-manager/queue/inventory_sync",
     "/var/wazuh-manager/queue/vd",
     "/var/wazuh-manager/",
 ]
@@ -71,6 +75,10 @@ DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
 REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+
+DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync.sock"
+INVSYNC_STATS_CSV = "stats-api-inventory-sync.csv"
+INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
 DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
 ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
@@ -99,6 +107,59 @@ ANALYSISD_HEADER = [
     "spaces_standard_events_unclassified",
     "raw_response_json",
 ]
+
+# inventory_sync_server exposes GET /metrics on its own UDS socket. The route is
+# budget-exempt on purpose, so it keeps answering while the module sheds real
+# traffic -- which is exactly when these numbers matter.
+#
+# The per-shard gauges (sync.shard.<i>.{depth,bytes}) are aggregated rather than
+# given a column each: the shard count follows the configured worker count, so a
+# per-shard header would differ between machines and make two runs
+# incomparable. depth_max against depth_sum still shows imbalance, and the full
+# per-shard detail survives verbatim in raw_response_json.
+_INVSYNC_HISTOGRAMS: tuple[tuple[str, str], ...] = (
+    ("sync.session.duration.bulk", "session_duration_bulk"),
+    ("sync.session.duration.immediate", "session_duration_immediate"),
+    ("vd.lane.time", "vd_lane_time"),
+    ("vd.scan.duration", "vd_scan_duration"),
+)
+# Histogram values are microseconds (see the module's metricNames.hpp).
+_INVSYNC_HIST_FIELDS: tuple[str, ...] = ("count", "p50", "p90", "p99", "max")
+
+# metric name in the dump -> CSV column
+_INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
+    ("sync.requests.total.200", "requests_200"),
+    ("sync.requests.total.400", "requests_400"),
+    ("sync.requests.total.403", "requests_403"),
+    ("sync.requests.total.409", "requests_409"),
+    ("sync.requests.total.500", "requests_500"),
+    ("sync.requests.total.503", "requests_503"),
+    ("sync.requests.total.other", "requests_other"),
+    ("sync.docs.indexed", "docs_indexed"),
+    ("sync.docs.skipped", "docs_skipped"),
+    ("sync.bytes.ingested", "bytes_ingested"),
+    ("sync.pipeline.shed.total", "pipeline_shed_total"),
+    ("sync.bulk.flushes", "bulk_flushes"),
+    ("sync.bulk.sessions.total", "bulk_sessions_total"),
+    ("sync.bulk.bytes.total", "bulk_bytes_total"),
+    ("vd.lane.depth", "vd_lane_depth"),
+    ("vd.scans.ok", "vd_scans_ok"),
+    ("vd.scans.failed", "vd_scans_failed"),
+    ("vd.scans.skipped", "vd_scans_skipped"),
+    ("vd.capacity.503.total", "vd_capacity_503_total"),
+    ("vd.retry_after.total", "vd_retry_after_total"),
+)
+
+INVSYNC_HEADER = (
+    ["timestamp", "elapsed_s", "query_ok", "query_error"]
+    + [col for _, col in _INVSYNC_SCALARS]
+    + ["shard_count", "shard_depth_max", "shard_depth_sum",
+       "shard_bytes_max", "shard_bytes_sum"]
+    + [f"{prefix}_{field}"
+       for _, prefix in _INVSYNC_HISTOGRAMS
+       for field in _INVSYNC_HIST_FIELDS]
+    + ["raw_response_json"]
+)
 
 REMOTED_HEADER = [
     "timestamp",
@@ -375,7 +436,7 @@ BASE_CSV_HEADER = [
 def disk_col_name(path: str) -> str:
     """Stable CSV column name derived from a directory path.
 
-    Example: /var/wazuh-manager/queue/inventory_sync/  ->  dir_inventory_sync_mb
+    Example: /var/wazuh-manager/queue/vd/  ->  dir_vd_mb
     """
     basename = os.path.basename(os.path.normpath(path)) or "root"
     safe = re.sub(r"[^A-Za-z0-9_]", "_", basename)
@@ -871,6 +932,135 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
     logger.info("Analysisd API monitor finished. CSV written to %s", csv_path)
 
 
+# ---------------------------------------------------------------------------
+# inventory_sync_server metrics monitor
+# ---------------------------------------------------------------------------
+def _query_invsync_stats(socket_path: str, timeout: float = 5.0) -> dict[str, object]:
+    """GET /metrics over the module's HTTP-over-UDS socket."""
+    conn = _UnixSocketHTTPConnection(socket_path, timeout=timeout)
+    try:
+        conn.request("GET", "/metrics", headers={"Host": "localhost"})
+        resp = conn.getresponse()
+        raw_bytes = resp.read(INVSYNC_MAX_RESPONSE_SIZE)
+        if resp.status != 200:
+            raise ValueError(f"/metrics answered {resp.status}: {raw_bytes[:200]!r}")
+    finally:
+        conn.close()
+
+    data = json.loads(raw_bytes.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("inventory_sync_server response is not a JSON object")
+    return data
+
+
+def _empty_invsync_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row: dict[str, object] = {k: "" for k in INVSYNC_HEADER}
+    row["timestamp"] = timestamp
+    row["elapsed_s"] = elapsed_s
+    return row
+
+
+def _flatten_invsync_stats(raw: dict[str, object], timestamp: str,
+                           elapsed_s: float) -> dict[str, object]:
+    """Map the metrics dump onto the flat CSV row.
+
+    The dump is a list of {name, type, value, summary?} objects; a histogram
+    carries its distribution in "summary" and only its observation count in
+    "value" (see wazuh::metrics::dumpJson).
+    """
+    row = _empty_invsync_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+
+    by_name: dict[str, dict] = {}
+    for item in raw.get("metrics") or []:
+        if isinstance(item, dict) and "name" in item:
+            by_name[item["name"]] = item
+
+    for metric_name, column in _INVSYNC_SCALARS:
+        item = by_name.get(metric_name)
+        row[column] = _as_int(item.get("value")) if item else 0
+
+    # Per-shard gauges: aggregate, since how many there are follows the
+    # configured worker count and must not leak into the header.
+    depths: list[int] = []
+    sizes: list[int] = []
+    for name, item in by_name.items():
+        if not name.startswith("sync.shard."):
+            continue
+        if name.endswith(".depth"):
+            depths.append(_as_int(item.get("value")))
+        elif name.endswith(".bytes"):
+            sizes.append(_as_int(item.get("value")))
+    row["shard_count"] = len(depths)
+    row["shard_depth_max"] = max(depths) if depths else 0
+    row["shard_depth_sum"] = sum(depths)
+    row["shard_bytes_max"] = max(sizes) if sizes else 0
+    row["shard_bytes_sum"] = sum(sizes)
+
+    for metric_name, prefix in _INVSYNC_HISTOGRAMS:
+        summary = (by_name.get(metric_name) or {}).get("summary")
+        for field in _INVSYNC_HIST_FIELDS:
+            value = summary.get(field) if isinstance(summary, dict) else None
+            row[f"{prefix}_{field}"] = _as_int(value)
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def invsync_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                             stop_event: threading.Event | None = None) -> None:
+    """Poll inventory_sync_server's GET /metrics and write per-second CSV."""
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=INVSYNC_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Inventory sync API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Inventory sync API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_invsync_stats(socket_path)
+                row = _flatten_invsync_stats(raw, ts_now, elapsed_s)
+                logger.info(
+                    "[invsync-api] 200=%d 503=%d 500=%d docs=%d shed=%d "
+                    "shard_depth(max/sum)=%d/%d vd_lane=%d vd_503=%d "
+                    "session_p99=%dus vd_lane_p99=%dus",
+                    _as_int(row.get("requests_200")),
+                    _as_int(row.get("requests_503")),
+                    _as_int(row.get("requests_500")),
+                    _as_int(row.get("docs_indexed")),
+                    _as_int(row.get("pipeline_shed_total")),
+                    _as_int(row.get("shard_depth_max")),
+                    _as_int(row.get("shard_depth_sum")),
+                    _as_int(row.get("vd_lane_depth")),
+                    _as_int(row.get("vd_capacity_503_total")),
+                    _as_int(row.get("session_duration_bulk_p99")),
+                    _as_int(row.get("vd_lane_time_p99")),
+                )
+            except Exception as exc:
+                row = _empty_invsync_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Inventory sync API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Inventory sync API monitor finished. CSV written to %s", csv_path)
+
 # Friendly CSV filename overrides for processes whose basename is generic.
 # e.g. wazuh-indexer runs as "java" - we want wazuh-indexer.csv instead.
 _EXE_CSV_ALIAS: dict[str, str] = {
@@ -908,7 +1098,7 @@ OPTIONAL_PROCESS_TARGETS = [
 
 def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
-    """Spawn process, disk and remoted API monitoring threads."""
+    """Spawn the process, disk and per-daemon API monitoring threads."""
     os.makedirs(output_dir, exist_ok=True)
     logger.info("Output directory: %s", output_dir)
 
@@ -916,6 +1106,7 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     disk_stop = threading.Event()
     remoted_stop = threading.Event()
     analysisd_stop = threading.Event()
+    invsync_stop = threading.Event()
 
     # Per-process resource threads
     for target, proc in processes.items():
@@ -959,12 +1150,21 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
         daemon=True,
     )
 
+    invsync_csv = os.path.join(output_dir, INVSYNC_STATS_CSV)
+    invsync_thread = threading.Thread(
+        target=invsync_api_monitor_loop,
+        args=(invsync_csv, interval, DEFAULT_INVSYNC_SOCKET, invsync_stop),
+        name="mon-invsync-api",
+        daemon=True,
+    )
+
     for t in proc_threads:
         t.start()
     if disk_thread:
         disk_thread.start()
     remoted_thread.start()
     analysisd_thread.start()
+    invsync_thread.start()
 
     # Wait for all process threads to finish.
     while _running and any(t.is_alive() for t in proc_threads):
@@ -975,12 +1175,15 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     disk_stop.set()
     remoted_stop.set()
     analysisd_stop.set()
+    invsync_stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
     if remoted_thread.is_alive():
         remoted_thread.join(timeout=5.0)
     if analysisd_thread.is_alive():
         analysisd_thread.join(timeout=5.0)
+    if invsync_thread.is_alive():
+        invsync_thread.join(timeout=5.0)
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
 
@@ -1038,7 +1241,7 @@ def parse_args() -> argparse.Namespace:
         "--log-path",
         type=str,
         default=WAZUH_LOG_PATH,
-        help="Manager log path used for final InventorySync log extraction "
+        help="Manager log path used for the final log-event extraction "
              f"(default: {WAZUH_LOG_PATH})",
     )
     p.add_argument("-d", "--debug", action="store_true", help="Debug logging")
@@ -1091,276 +1294,126 @@ def main() -> None:
     monitor_start_time = datetime.now()
     monitor_multi(processes, output_dir, args.interval, disk_paths)
 
-    # Post-processing: extract InventorySync stats from wazuh-manager.log
-    extract_invsync_logs(output_dir, log_path=args.log_path, start_time=monitor_start_time)
+    # Post-processing: count the manager-log events that have no metric.
+    extract_manager_log_events(output_dir, log_path=args.log_path, start_time=monitor_start_time)
 
 
 # ---------------------------------------------------------------------------
-# InventorySync log extraction & event counting
+# Manager log event counting
 # ---------------------------------------------------------------------------
+# Everything the retired inventory_sync module used to log ("InventorySync queue
+# stats:", session stats, the RocksDB gauges) is gone: that module is no longer
+# built or registered, so those lines can never appear again. What remains here
+# counts what the CURRENT modules actually emit, and exists mainly for one gap:
+# the UDS transport's accept/parse/timeout failures have no metric counterpart,
+# so a log line is the only way to see them. Everything else below has a metric
+# in GET /metrics too, and is counted here only because a spike is easier to
+# spot against the same timeline as the rest of logs.csv.
 WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
 
-_RE_QUEUE_STATS = re.compile(
-    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync queue stats: (.+)$"
-)
-_RE_SESSION_STATS = re.compile(
-    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync session stats: (.+)$"
-)
-
-# Event counter patterns — matches error/warning events in the manager log.
-# Each match increments a per-second counter in logs.csv.
-_EVENT_PATTERNS: dict[str, re.Pattern] = {
-    "session_limit_reached":        re.compile(r"Session limit reached \(\d+/\d+ active sessions\)"),
-    "data_value_quota_exhausted":   re.compile(r"DataValue quota exhausted"),
-    "zombie_cleaned":               re.compile(r"Cleaning up zombie session \d+ for agent"),
-    "session_timeout":              re.compile(r"Session \d+ has timed out"),
-    "vdsync_timeout":               re.compile(r"Feed update scan timeout waiting for VDSync"),
-    "parse_error":                  re.compile(r"Failed to parse JSON message"),
-    "module_check_failed":          re.compile(r"ModuleCheck failed"),
-    "inventory_sync_error":         re.compile(r"InventorySyncFacade::start: (?!(Session not found|DataValue quota exhausted))"),
-    "indexer_error":                re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
-                                        re.IGNORECASE),
+# Rejections are logged THROTTLED, carrying their own count for the window:
+#   "Rejected 1234 request(s) with 503 in the last 90 s: ..."
+# Counting occurrences would undercount by orders of magnitude, so these
+# patterns capture the number and the counter sums it instead.
+_THROTTLED_EVENTS: dict[str, re.Pattern] = {
+    "session_rejected_403": re.compile(
+        r"Rejected (\d+) request\(s\) with 403 .*identity does not match"),
+    "vd_lane_full_503": re.compile(
+        r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
+    "indexer_unhealthy_503": re.compile(
+        r"Rejected (\d+) session\(s\) with 503 .*no configured indexer host is currently healthy"),
+    "pipeline_full_503": re.compile(
+        r"Rejected (\d+) session\(s\) with 503 .*sync pipeline queue is full"),
 }
 
-# Gauge metrics captured from "InventorySync queue stats:" lines.
-_GAUGE_PATTERN = re.compile(
-    r"InventorySync queue stats:\s+"
-    r"workers_q=(?P<workers_q>\d+)\s+"
-    r"indexer_q=(?P<indexer_q>\d+)\s+"
-    r"sessions=(?P<sessions>\d+)\s+"
-    r"blocked_agents=(?P<blocked_agents>\d+)\s+"
-    r"active_vdfirst=(?P<active_vdfirst>\d+)\s+"
-    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+|\?)\s+"
-    r"indexer_notify=(?P<indexer_notify>\d+|\?)\s+"
-    r"indexer_delbyq=(?P<indexer_delbyq>\d+|\?)\s+"
-    r"rocksdb_dir_bytes=(?P<rocksdb_dir_bytes>\d+)"
-    r"(?:\s+workers_q_limit=(?P<workers_q_limit>\d+)"
-    r"\s+workers_q_used_pct=(?P<workers_q_used_pct>\d+(?:\.\d+)?)"
-    r"\s+session_limit=(?P<session_limit>\d+)"
-    r"\s+session_used_pct=(?P<session_used_pct>\d+(?:\.\d+)?)"
-    r"\s+data_value_quota_total=(?P<data_value_quota_total>\d+)"
-    r"\s+data_value_quota_remaining=(?P<data_value_quota_remaining>\d+)"
-    r"\s+data_value_quota_reserved=(?P<data_value_quota_reserved>\d+)"
-    r"\s+data_value_quota_used_pct=(?P<data_value_quota_used_pct>\d+(?:\.\d+)?)"
-    r"\s+data_value_quota_rejections=(?P<data_value_quota_rejections>\d+))?"
-)
+# One line, one occurrence.
+_EVENT_PATTERNS: dict[str, re.Pattern] = {
+    "bulk_flush_failed":   re.compile(r"A bulk flush of \d+ session\(s\) failed"),
+    "scan_failed":         re.compile(r"The vulnerability scan for agent .* failed"),
+    "indexer_unreachable": re.compile(r"No configured indexer host is currently reachable"),
+    # The observability gap: transport errors have no metric, only this.
+    "transport_error":     re.compile(
+        r"inventory-sync-server:server.*(ERROR|WARNING)", re.IGNORECASE),
+}
 
-_GAUGE_NAMES: tuple[str, ...] = (
-    "workers_q", "indexer_q", "sessions", "blocked_agents", "active_vdfirst",
-    "indexer_bulk_bytes", "indexer_notify", "indexer_delbyq", "rocksdb_dir_bytes",
-    "workers_q_limit", "workers_q_used_pct", "session_limit", "session_used_pct",
-    "data_value_quota_total", "data_value_quota_remaining", "data_value_quota_reserved",
-    "data_value_quota_used_pct", "data_value_quota_rejections",
-)
-
-_LOGS_CSV_HEADER = (
-    ["timestamp", "elapsed_s"]
-    + list(_EVENT_PATTERNS.keys())
-    + list(_GAUGE_NAMES)
-)
+_COUNTER_NAMES: tuple[str, ...] = tuple(_THROTTLED_EVENTS) + tuple(_EVENT_PATTERNS)
+_LOGS_CSV_HEADER = ["timestamp", "elapsed_s"] + list(_COUNTER_NAMES)
 
 _RE_LOG_TIMESTAMP = re.compile(r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})")
 _LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
 
 
-def _parse_gauge_number(value: str | None) -> int | float | None:
-    if value in (None, "", "?"):
-        return None
-    return float(value) if "." in value else int(value)
+def extract_manager_log_events(output_dir: str,
+                               log_path: str = WAZUH_LOG_PATH,
+                               start_time: datetime | None = None) -> None:
+    """Parse wazuh-manager.log into ``logs.csv``: per-second event counters.
 
-
-def _parse_flat_kv(text: str) -> dict[str, str]:
-    """Parse 'key=value key2=value2 key3={a=1 b=2}' into a flat dict.
-
-    Nested braces like  raw_bytes={total=587568 avg=693 max=744 min_nonzero=672}
-    are flattened as   raw_bytes_total=587568  raw_bytes_avg=693  ...
-    """
-    result: dict[str, str] = {}
-    i = 0
-    while i < len(text):
-        # skip whitespace
-        while i < len(text) and text[i] == " ":
-            i += 1
-        if i >= len(text):
-            break
-        # read key
-        eq = text.index("=", i)
-        key = text[i:eq]
-        i = eq + 1
-        if i < len(text) and text[i] == "{":
-            # nested block
-            close = text.index("}", i)
-            inner = text[i + 1:close]
-            for sub_kv in inner.split():
-                sk, sv = sub_kv.split("=", 1)
-                result[f"{key}_{sk}"] = sv
-            i = close + 1
-        else:
-            # simple value — runs until next space or end
-            end = text.find(" ", i)
-            if end == -1:
-                end = len(text)
-            result[key] = text[i:end]
-            i = end
-    return result
-
-
-def extract_invsync_logs(output_dir: str,
-                         log_path: str = WAZUH_LOG_PATH,
-                         start_time: datetime | None = None) -> None:
-    """Parse wazuh-manager.log and produce three CSV outputs:
-
-    1. ``logs.csv`` — per-second event counters + gauge values (replaces
-       the former standalone log_parser.py).
-    2. ``invsync_queue_stats.csv`` — one row per raw queue-stats log line.
-    3. ``invsync_session_stats.csv`` — one row per session-stats log line.
-
-    Only log lines with a timestamp >= *start_time* are included so that
-    data from previous runs is not mixed in.
+    Only lines at or after *start_time* are counted, so a previous run's noise
+    is not mixed in. Throttled rejection lines contribute the count they carry
+    rather than 1, which is the difference between reading "4 rejections" and
+    the 40 000 they actually represent.
     """
     if not os.path.isfile(log_path):
         logger.info("Log file %s not found — skipping log extraction.", log_path)
         return
 
-    queue_rows: list[dict[str, str]] = []
-    session_rows: list[dict[str, str]] = []
-
-    # For logs.csv: bucket events and gauges into 1-second intervals.
-    # Key = integer elapsed second, value = {counter_name: count, ...}
+    # elapsed second -> {counter: total}
     buckets: dict[int, dict[str, int]] = {}
-    # Gauge values carry forward — last seen value persists until updated.
-    gauges: dict[str, int | float] = {}
-    # Track per-bucket gauge snapshots separately so carry-forward works.
-    bucket_gauges: dict[int, dict[str, int | float]] = {}
 
-    logger.info("Extracting InventorySync logs from %s (since %s) ...",
+    def bump(second: int, name: str, amount: int) -> None:
+        bucket = buckets.setdefault(second, {k: 0 for k in _COUNTER_NAMES})
+        bucket[name] += amount
+
+    logger.info("Extracting manager log events from %s (since %s) ...",
                 log_path,
                 start_time.strftime(_LOG_TS_FMT) if start_time else "beginning")
 
     with open(log_path, "r", errors="replace") as fh:
         for line in fh:
-            # Extract timestamp from log line
             ts_match = _RE_LOG_TIMESTAMP.match(line)
             if not ts_match:
                 continue
-            ts_str = ts_match.group(1)
             try:
-                line_dt = datetime.strptime(ts_str, _LOG_TS_FMT)
+                line_dt = datetime.strptime(ts_match.group(1), _LOG_TS_FMT)
             except ValueError:
                 continue
             if start_time and line_dt < start_time:
                 continue
 
-            # Compute elapsed second for this line
             elapsed_s = int((line_dt - start_time).total_seconds()) if start_time else 0
 
-            # --- Queue stats (raw CSV + gauge extraction) ---
-            m = _RE_QUEUE_STATS.match(line)
-            if m:
-                row = {"timestamp": ts_str}
-                row.update(_parse_flat_kv(m.group(2)))
-                queue_rows.append(row)
-                # Update gauges from this line
-                gauge_match = _GAUGE_PATTERN.search(line)
-                if gauge_match:
-                    for name in _GAUGE_NAMES:
-                        parsed = _parse_gauge_number(gauge_match.group(name))
-                        if parsed is not None:
-                            gauges[name] = parsed
-                    bucket_gauges[elapsed_s] = dict(gauges)
-                continue
+            for name, regex in _THROTTLED_EVENTS.items():
+                m = regex.search(line)
+                if m:
+                    bump(elapsed_s, name, _as_int(m.group(1), 1))
 
-            # --- Session stats (raw CSV) ---
-            m = _RE_SESSION_STATS.match(line)
-            if m:
-                row = {"timestamp": ts_str}
-                row.update(_parse_flat_kv(m.group(2)))
-                session_rows.append(row)
-                continue
-
-            # --- Event patterns (counters for logs.csv) ---
-            for key, regex in _EVENT_PATTERNS.items():
+            for name, regex in _EVENT_PATTERNS.items():
                 if regex.search(line):
-                    if elapsed_s not in buckets:
-                        buckets[elapsed_s] = {k: 0 for k in _EVENT_PATTERNS}
-                    buckets[elapsed_s][key] += 1
+                    bump(elapsed_s, name, 1)
 
-            # Also check for gauge in non-queue-stats lines (shouldn't happen
-            # but be safe)
-            gauge_match = _GAUGE_PATTERN.search(line)
-            if gauge_match:
-                for name in _GAUGE_NAMES:
-                    gauges[name] = int(gauge_match.group(name))
-                bucket_gauges[elapsed_s] = dict(gauges)
+    if not buckets:
+        logger.info("No matching log events found — logs.csv not written.")
+        return
 
-    # --- Write logs.csv (per-second counters + carry-forward gauges) ---
-    if buckets or bucket_gauges:
-        max_sec = max(
-            max(buckets.keys()) if buckets else 0,
-            max(bucket_gauges.keys()) if bucket_gauges else 0,
-        )
-        logs_rows: list[dict] = []
-        # Initialise all gauge metrics to 0 so that every second from the
-        # monitor start has a real value: before the first queue-stats log
-        # line the benchmark hasn't started yet and all session/queue counts
-        # are 0.  This makes the chart show a clean rise from 0 rather than
-        # the sessions line appearing blank (NaN) for the pre-benchmark window.
-        carried_gauges: dict[str, int | float] = {name: 0 for name in _GAUGE_NAMES}
-        for sec in range(0, max_sec + 1):
-            # Update carried gauges if this second has a snapshot
-            if sec in bucket_gauges:
-                carried_gauges.update(bucket_gauges[sec])
-            counters = buckets.get(sec, {k: 0 for k in _EVENT_PATTERNS})
-            row: dict[str, object] = {
-                "timestamp": (start_time + timedelta(seconds=sec)).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ") if start_time else "",
-                "elapsed_s": sec,
-            }
-            for k in _EVENT_PATTERNS:
-                row[k] = counters.get(k, 0)
-            for name in _GAUGE_NAMES:
-                row[name] = carried_gauges.get(name, "")
-            logs_rows.append(row)
+    max_sec = max(buckets)
+    rows: list[dict[str, object]] = []
+    for sec in range(0, max_sec + 1):
+        counters = buckets.get(sec, {})
+        row: dict[str, object] = {
+            "timestamp": (start_time + timedelta(seconds=sec)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if start_time else "",
+            "elapsed_s": sec,
+        }
+        for name in _COUNTER_NAMES:
+            row[name] = counters.get(name, 0)
+        rows.append(row)
 
-        logs_path = os.path.join(output_dir, "logs.csv")
-        with open(logs_path, "w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=_LOGS_CSV_HEADER)
-            writer.writeheader()
-            writer.writerows(logs_rows)
-        logger.info("Wrote %d rows -> %s", len(logs_rows), logs_path)
-    else:
-        logger.info("No event/gauge data found — logs.csv not written.")
-
-    # --- Write invsync_queue_stats.csv ---
-    if queue_rows:
-        path = os.path.join(output_dir, "invsync_queue_stats.csv")
-        _write_csv(path, queue_rows)
-        logger.info("Wrote %d queue-stats rows -> %s", len(queue_rows), path)
-    else:
-        logger.info("No InventorySync queue stats found in log.")
-
-    # --- Write invsync_session_stats.csv ---
-    if session_rows:
-        path = os.path.join(output_dir, "invsync_session_stats.csv")
-        _write_csv(path, session_rows)
-        logger.info("Wrote %d session-stats rows -> %s", len(session_rows), path)
-    else:
-        logger.info("No InventorySync session stats found in log.")
-
-
-def _write_csv(path: str, rows: list[dict[str, str]]) -> None:
-    """Write a list of dicts to CSV, deriving the header from all keys."""
-    all_keys: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        for k in row:
-            if k not in seen:
-                all_keys.append(k)
-                seen.add(k)
-    with open(path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=all_keys)
+    logs_path = os.path.join(output_dir, "logs.csv")
+    with open(logs_path, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=_LOGS_CSV_HEADER)
         writer.writeheader()
         writer.writerows(rows)
+    logger.info("Wrote %d rows -> %s", len(rows), logs_path)
 
 
 if __name__ == "__main__":

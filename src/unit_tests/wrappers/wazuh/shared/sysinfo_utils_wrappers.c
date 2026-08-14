@@ -15,38 +15,6 @@
 #include <errno.h>
 #include "../../common.h"
 
-bool __wrap_w_sysinfo_init(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
-    if (test_mode) {
-        bool ret = mock_type(bool);
-        return ret;
-    }
-    return w_sysinfo_init(sysinfo);
-}
-
-bool __wrap_w_sysinfo_deinit(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
-    if (test_mode) {
-        bool ret = mock_type(bool);
-        return ret;
-    }
-    return w_sysinfo_deinit(sysinfo);
-}
-
-cJSON * __wrap_w_sysinfo_get_processes(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
-    if (test_mode) {
-        cJSON * ret = mock_type(cJSON *);
-        return ret;
-    }
-    return w_sysinfo_get_processes(sysinfo);
-}
-
-cJSON * __wrap_w_sysinfo_get_os(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
-    if (test_mode) {
-        cJSON * ret = mock_type(cJSON *);
-        return ret;
-    }
-    return w_sysinfo_get_os(sysinfo);
-}
-
 pid_t * __wrap_w_get_process_childs(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo,
                                     __attribute__((__unused__)) pid_t parent_pid,
                                     __attribute__((__unused__)) unsigned int max_count) {

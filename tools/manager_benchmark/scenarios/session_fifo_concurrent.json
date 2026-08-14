@@ -1,0 +1,25 @@
+{
+  "name": "session_fifo_concurrent",
+  "description": "FIFO-per-shard stress. Each agent runs two lanes in parallel over the same shard: a small syscollector session and a large FIM session, POSTed concurrently. The server must keep each agent's sessions ordered per shard and must not cross documents between the two Starts. The successor of the retired session_mixup_repro, expressed as two concurrent lanes rather than a special step.",
+  "mode": "uds",
+  "defaults": {
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 20, "size_bytes": 256 }, "repeat_count": 40, "repeat_delay": "0s" }
+    ],
+    "fim": [
+      { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 1500, "size_bytes": 512 }, "repeat_count": 40, "repeat_delay": "0s" }
+    ]
+  },
+  "fleets": [
+    { "name": "mix", "agents": 8, "first_id": 5000, "lanes": ["syscollector", "fim"],
+      "start": { "osname": "Windows 11", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.22631" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "15s" },
+  "expected": { "sessions": { "ok": { "eq": 640 }, "s5xx": { "eq": 0 } }, "transport_errors": { "eq": 0 } }
+}

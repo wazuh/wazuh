@@ -95,8 +95,36 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 
     int item_count = cJSON_GetArraySize(items);
 
-    // Make sure memory is clean before we start to persist
-    asp_clear_in_memory_data(handle);
+    // The sync index only depends on the table, not on any individual item.
+    const char* recovery_index = NULL;
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        recovery_index = FIM_FILES_SYNC_INDEX;
+    }
+#ifdef WIN32
+    else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        recovery_index = FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        recovery_index = FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif
+    else {
+        merror("Invalid table name: %s", table_name);
+        cJSON_Delete(items);
+        return;
+    }
+
+    // Clear the manager's index for this table before resending: recovery is now a
+    // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
+    // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
+    // payload and could permanently drop whatever didn't fit in that one session).
+    const char* clean_indices[] = { recovery_index };
+    if (!asp_notify_data_clean(handle, clean_indices, 1)) {
+        merror("Failed to clear index '%s' before recovery resync for table %s; will retry later",
+               recovery_index, table_name);
+        cJSON_Delete(items);
+        return;
+    }
 
     // Process each item
     for (int i = 0; i < item_count; i++) {
@@ -190,11 +218,23 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version, directories_list);
         }
 #ifdef WIN32
-        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-            stateful_event = buildRegistryKeyStatefulEvent(path, item_copy, checksum, document_version, arch);
-        }
-        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-            stateful_event = buildRegistryValueStatefulEvent(path, value, item_copy, checksum, document_version, arch);
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
+                 strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            // Same reasoning as the file_entry branch above, resolved against syscheck.registry:
+            // a shared-config push can replace the <syscheck> registry entries, leaving rows whose
+            // path no longer matches any configured entry for this architecture.
+            if (fim_registry_configuration(path, arch) == NULL) {
+                mdebug2("Skipping recovery of orphaned path (no active configuration): %s", path);
+                cJSON_Delete(item_copy);
+                os_free(id_str);
+                continue;
+            }
+
+            if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+                stateful_event = buildRegistryKeyStatefulEvent(path, item_copy, checksum, document_version, arch);
+            } else {
+                stateful_event = buildRegistryValueStatefulEvent(path, value, item_copy, checksum, document_version, arch);
+            }
         }
 #endif // WIN32
         if (stateful_event) {
@@ -221,7 +261,7 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
 
                 // Persist only if validation passed
                 if (validation_passed) {
-                    asp_persist_diff_in_memory(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
+                    asp_persist_diff(handle, hashed_id, OPERATION_CREATE, index, stateful_event_str, document_version);
                 }
 
                 os_free(stateful_event_str);
@@ -234,14 +274,14 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         os_free(id_str);
     }
 
-    mdebug1("Persisted %d recovery items in memory", item_count);
+    mdebug1("Persisted %d recovery items", item_count);
     mdebug1("Starting recovery synchronization...");
 
     // Clean up items array
     cJSON_Delete(items);
 
     // Synchronize
-    SyncModuleResult_t result = asp_sync_module(handle, MODE_FULL);
+    SyncModuleResult_t result = asp_sync_module(handle, MODE_DELTA);
 
     if (result.success) {
         mdebug1("Recovery completed successfully");

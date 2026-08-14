@@ -38,6 +38,13 @@ using HeaderFieldType = uint32_t;
 constexpr auto PACKET_FIELD_SIZE {sizeof(PacketFieldType)};
 constexpr auto HEADER_FIELD_SIZE {sizeof(HeaderFieldType)};
 constexpr auto BUFFER_MAX_SIZE {8192 * 8};
+#ifdef CLIENT
+constexpr auto RECEIVE_BUFFER_OPTION {SO_RCVBUFFORCE};
+constexpr auto SEND_BUFFER_OPTION {SO_SNDBUFFORCE};
+#else
+constexpr auto RECEIVE_BUFFER_OPTION {SO_RCVBUF};
+constexpr auto SEND_BUFFER_OPTION {SO_SNDBUF};
+#endif
 
 enum class SocketType
 {
@@ -455,12 +462,12 @@ public:
             }
 
             constexpr uint32_t UI_OPT {BUFFER_MAX_SIZE};
-            if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
+            if (T::setsockopt(m_sock, SOL_SOCKET, RECEIVE_BUFFER_OPTION, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
             {
                 // TODO: Handle error
             }
 
-            if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
+            if (T::setsockopt(m_sock, SOL_SOCKET, SEND_BUFFER_OPTION, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
             {
                 // TODO: Handle error
             }
@@ -604,12 +611,12 @@ public:
 
         const uint32_t uiOpt {BUFFER_MAX_SIZE};
 
-        if (T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+        if (T::setsockopt(sock, SOL_SOCKET, RECEIVE_BUFFER_OPTION, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
         {
             // TODO: Handle error
         }
 
-        if (T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+        if (T::setsockopt(sock, SOL_SOCKET, SEND_BUFFER_OPTION, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
         {
             // TODO: Handle error
         }
@@ -763,12 +770,12 @@ public:
             }
 
             const uint32_t uiOpt {BUFFER_MAX_SIZE};
-            if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+            if (T::setsockopt(m_sock, SOL_SOCKET, RECEIVE_BUFFER_OPTION, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
             {
                 // TODO: Handle error
             }
 
-            if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+            if (T::setsockopt(m_sock, SOL_SOCKET, SEND_BUFFER_OPTION, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
             {
                 // TODO: Handle error
             }

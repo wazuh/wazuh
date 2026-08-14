@@ -18,6 +18,14 @@ else
   echo "[entrypoint] WARN: <address> tag not found in ${OSSEC_CONF}."
 fi
 
+# Restricted to the <client> block: 4.x nests the port under <server>, 5.x under
+# <manager>, and both files carry unrelated <port> tags elsewhere.
+if grep -q "<client>" "$OSSEC_CONF"; then
+  sed -i "/<client>/,/<\/client>/ s|<port>.*</port>|<port>${MANAGER_PORT}</port>|" "$OSSEC_CONF" || true
+else
+  echo "[entrypoint] WARN: <client> block not found in ${OSSEC_CONF}."
+fi
+
 if [[ -n "${AUTHD_PASSWORD}" ]]; then
   /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" -P "${AUTHD_PASSWORD}" || true
 else

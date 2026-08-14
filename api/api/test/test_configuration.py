@@ -84,7 +84,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         config = configuration.read_yaml_config()
         # Currently we only add SSL path to HTTPS options
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
-            config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
+            config[section][subsection] = config[section][subsection].replace(f'{api.constants.CERTS_PATH}/', '')
 
         # SSL paths (key, cert, ca) must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:

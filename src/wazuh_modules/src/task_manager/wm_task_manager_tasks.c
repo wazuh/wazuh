@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Agent Upgrading
+ * Wazuh Module for Task Manager
  * Copyright (C) 2015, Wazuh Inc.
  * October 19, 2020.
  *
@@ -18,99 +18,118 @@
 
 #include "wmodules.h"
 #include "wm_task_manager_tasks.h"
+#include "hash_op.h"
+#include "openssl/sha.h"
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
-wm_task_manager_upgrade* wm_task_manager_init_upgrade_parameters() {
-    wm_task_manager_upgrade *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade), parameters);
-    return parameters;
+// Simplified cache for "no pending tasks" state using OSHash
+// Only stores agent IDs that have no pending tasks
+// Cache is invalidated when new tasks are created via wm_task_manager_create_task()
+// Uses Wazuh's OSHash for efficient lookups
+static OSHash *g_task_cache = NULL;
+
+// Generate deterministic task ID
+char* wm_task_manager_generate_task_id(
+    const char *source_id,
+    const char *agent_id,
+    const char *task_type,
+    time_t create_time
+) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    char input[OS_MAXSTR];
+    char *task_id = NULL;
+
+    // Build deterministic input string
+    if (source_id && *source_id) {
+        snprintf(input, OS_MAXSTR, "%s:%s:%s:%ld",
+                 source_id, agent_id, task_type, (long)create_time);
+    } else {
+        snprintf(input, OS_MAXSTR, "%s:%s:%ld",
+                 agent_id, task_type, (long)create_time);
+    }
+
+    // SHA256 hash
+    SHA256((unsigned char*)input, strlen(input), hash);
+
+    // Format as UUID-like string (first 16 bytes)
+    os_calloc(37, sizeof(char), task_id);
+    snprintf(task_id, 37,
+             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+             hash[0], hash[1], hash[2], hash[3],
+             hash[4], hash[5], hash[6], hash[7],
+             hash[8], hash[9], hash[10], hash[11],
+             hash[12], hash[13], hash[14], hash[15]);
+
+    return task_id;
 }
 
-wm_task_manager_upgrade_get_status* wm_task_manager_init_upgrade_get_status_parameters() {
-    wm_task_manager_upgrade_get_status *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_get_status), parameters);
-    return parameters;
-}
+// Initialize cache
+void wm_task_cache_init(void) {
+    // Clean up existing cache if any
+    if (g_task_cache) {
+        wm_task_cache_destroy();
+    }
 
-wm_task_manager_upgrade_update_status* wm_task_manager_init_upgrade_update_status_parameters() {
-    wm_task_manager_upgrade_update_status *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_update_status), parameters);
-    return parameters;
-}
-
-wm_task_manager_upgrade_result* wm_task_manager_init_upgrade_result_parameters() {
-    wm_task_manager_upgrade_result *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_result), parameters);
-    return parameters;
-}
-
-wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_parameters() {
-    wm_task_manager_upgrade_cancel_tasks *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_cancel_tasks), parameters);
-    return parameters;
-}
-
-wm_task_manager_task* wm_task_manager_init_task() {
-    wm_task_manager_task *task;
-    os_calloc(1, sizeof(wm_task_manager_task), task);
-    return task;
-}
-
-void wm_task_manager_free_upgrade_parameters(wm_task_manager_upgrade* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->module);
-        os_free(parameters->agent_ids);
-        os_free(parameters);
+    g_task_cache = OSHash_Create();
+    if (!g_task_cache) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to create task cache");
+        return;
     }
 }
 
-void wm_task_manager_free_upgrade_get_status_parameters(wm_task_manager_upgrade_get_status* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->agent_ids);
-        os_free(parameters);
+// Get from cache
+// Returns empty array if agent has no pending tasks (cached state)
+// Returns NULL if cache miss (need to query DB)
+cJSON* wm_task_cache_get(const char *agent_id) {
+    if (!g_task_cache) return NULL;
+
+    // Check if agent is in cache (meaning it has no pending tasks)
+    void *result = OSHash_Get(g_task_cache, agent_id);
+
+    if (result) {
+        // Cache hit: agent has no pending tasks
+        return cJSON_CreateArray();
+    }
+
+    // Cache miss
+    return NULL;
+}
+
+// Set in cache
+// Only call this when agent has NO pending tasks
+// NEVER cache actual tasks - they must be delivered only once
+void wm_task_cache_set(const char *agent_id, cJSON *tasks) {
+    if (!g_task_cache) return;
+
+    // Only cache empty states
+    if (!tasks || cJSON_GetArraySize(tasks) > 0) {
+        return;
+    }
+
+    // Add agent to cache (value is just a marker, we use (void*)1)
+    // OSHash_Set will add or update, no need to check if exists
+    int result = OSHash_Set(g_task_cache, agent_id, (void*)1);
+
+    if (result != OSHASH_SUCCESS && result != OSHASH_DUPLICATE) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to cache empty state for agent %s", agent_id);
     }
 }
 
-void wm_task_manager_free_upgrade_update_status_parameters(wm_task_manager_upgrade_update_status* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->agent_ids);
-        os_free(parameters->status);
-        os_free(parameters->error_msg);
-        os_free(parameters);
-    }
+// Invalidate cache entry
+void wm_task_cache_invalidate(const char *agent_id) {
+    if (!g_task_cache) return;
+
+    // Remove agent from cache
+    OSHash_Delete(g_task_cache, agent_id);
 }
 
-void wm_task_manager_free_upgrade_result_parameters(wm_task_manager_upgrade_result* parameters) {
-    if (parameters) {
-        os_free(parameters->agent_ids);
-        os_free(parameters);
-    }
-}
+// Destroy cache
+void wm_task_cache_destroy(void) {
+    if (!g_task_cache) return;
 
-void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrade_cancel_tasks* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters);
-    }
-}
-
-void wm_task_manager_free_task(wm_task_manager_task* task) {
-    if (task) {
-        if (task->parameters) {
-            if ((WM_TASK_UPGRADE == task->command) || (WM_TASK_UPGRADE_CUSTOM == task->command)) {
-                wm_task_manager_free_upgrade_parameters((wm_task_manager_upgrade*)task->parameters);
-            } else if (WM_TASK_UPGRADE_GET_STATUS == task->command) {
-                wm_task_manager_free_upgrade_get_status_parameters((wm_task_manager_upgrade_get_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_UPDATE_STATUS == task->command) {
-                wm_task_manager_free_upgrade_update_status_parameters((wm_task_manager_upgrade_update_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_RESULT == task->command) {
-                wm_task_manager_free_upgrade_result_parameters((wm_task_manager_upgrade_result*)task->parameters);
-            } else if (WM_TASK_UPGRADE_CANCEL_TASKS == task->command) {
-                wm_task_manager_free_upgrade_cancel_tasks_parameters((wm_task_manager_upgrade_cancel_tasks*)task->parameters);
-            }
-        }
-        os_free(task);
-    }
+    // OSHash_Free handles all cleanup including mutex
+    OSHash_Free(g_task_cache);
+    g_task_cache = NULL;
 }

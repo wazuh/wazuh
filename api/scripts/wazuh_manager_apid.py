@@ -53,7 +53,7 @@ def configure_ssl(params):
             logger.info(
                 f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
-        # Check and assign ownership to wazuh user for manager.key and manager.crt files
+        # Check and assign ownership to wazuh user for the API certificate and key files
         assign_wazuh_ownership(api_conf['https']['key'])
         assign_wazuh_ownership(api_conf['https']['cert'])
 

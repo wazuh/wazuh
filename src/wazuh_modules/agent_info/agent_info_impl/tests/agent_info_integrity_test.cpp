@@ -2,7 +2,6 @@
 #include <gmock/gmock.h>
 
 #include <agent_info_impl.hpp>
-#include <agent_sync_protocol.hpp>
 #include <metadata_provider.h>
 
 #include <mock_dbsync.hpp>
@@ -62,24 +61,6 @@ class AgentInfoIntegrityTest : public ::testing::Test
             m_mockFileSystem.reset();
             m_mockFileIO.reset();
             m_mockSysInfo.reset();
-        }
-
-        MQ_Functions createMockMQFunctions()
-        {
-            MQ_Functions mqFuncs;
-
-            mqFuncs.start = [](const char* /* key */, short /* type */, short /* attempts */) -> int
-            {
-                return 1;
-            };
-
-            mqFuncs.send_binary = [](int /* queue */, const void* /* message */, size_t /* message_len */,
-                                     const char* /* locmsg */, char /* loc */) -> int
-            {
-                return 0;
-            };
-
-            return mqFuncs;
         }
 
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
@@ -252,10 +233,9 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000);
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -354,10 +334,9 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 1, 0, 1000);
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));
@@ -459,10 +438,9 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->setSyncParameters(1, 1, 1, 1000);
 
-    MQ_Functions mqFuncs = createMockMQFunctions();
-    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    m_agentInfo->initSyncProtocol("test_module");
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(true));

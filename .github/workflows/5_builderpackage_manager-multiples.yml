@@ -13,7 +13,6 @@ on:
       - "packages/*"
       - "packages/*/utils/*"
       - ".github/workflows/5_testintegration_manager.yml"
-      - ".github/workflows/5_testintegration_inventory-sync.yml"
       - ".github/workflows/.python-version-it"
       - ".github/test_modules_manager.json"
       - ".github/actions/reinstall_cmake/**"
@@ -33,8 +32,7 @@ on:
       - "!src/unit_tests/**"
       - "!src/**/tests/**"
       - "!src/**/integrationTests/**"
-      # qa/ suites run in other workflows; inventory_sync/qa stays (its IT is
-      # dispatched from here) and indexer_connector/** is detect-changes-mapped
+      # qa/ suites run in other workflows; indexer_connector/** is detect-changes-mapped
       - "!src/data_provider/qa/**"
       - "!src/shared_modules/keystore/qa/**"
       - "!src/wazuh_modules/vulnerability_scanner/qa/**"
@@ -124,8 +122,6 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       any_matched: ${{ steps.set-matrix.outputs.any_matched }}
-      inventory_sync_changed: ${{ steps.set-matrix.outputs.inventory_sync_changed }}
-      inventory_sync_timeout: ${{ steps.set-matrix.outputs.inventory_sync_timeout }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -179,9 +175,6 @@ jobs:
                   "timeout_minutes":   mod.get("timeout_minutes", 120),
               }
 
-          inv_mod = next((m for m in config["modules"] if m["suite_type"] == "inventory_sync"), {})
-          inv_timeout = inv_mod.get("timeout_minutes", 60)
-
           # Manual dispatch without run_all has no PR SHAs, so resolve them by diffing the
           # dispatched branch against its base branch. If it can't be resolved, the SHAs stay
           # empty and the logic below falls back to running everything.
@@ -196,10 +189,7 @@ jobs:
 
           if event_name == "workflow_dispatch" and run_all:
               matrix_entries = []
-              inventory_sync_matched = True
               for mod in config["modules"]:
-                  if mod["suite_type"] == "inventory_sync":
-                      continue
                   for tier in mod.get("tiers", ["0 1"]):
                       matrix_entries.append(build_entry(mod, tier))
           elif base_sha and head_sha:
@@ -209,24 +199,17 @@ jobs:
               )
               changed = set(result.stdout.splitlines())
               matrix_entries = []
-              inventory_sync_matched = False
               for mod in config["modules"]:
                   regexes = [github_glob_to_regex(p) for p in mod["paths"]]
                   if not any(any(re.fullmatch(rx, fp) for rx in regexes) for fp in changed):
                       continue
-                  if mod["suite_type"] == "inventory_sync":
-                      inventory_sync_matched = True
-                  else:
-                      for tier in mod.get("tiers", ["0 1"]):
-                          matrix_entries.append(build_entry(mod, tier))
+                  for tier in mod.get("tiers", ["0 1"]):
+                      matrix_entries.append(build_entry(mod, tier))
           else:
               # Fallback: no diff base could be resolved — run everything to stay safe.
               print("::warning::Could not resolve a diff base — running all modules.")
               matrix_entries = []
-              inventory_sync_matched = True
               for mod in config["modules"]:
-                  if mod["suite_type"] == "inventory_sync":
-                      continue
                   for tier in mod.get("tiers", ["0 1"]):
                       matrix_entries.append(build_entry(mod, tier))
 
@@ -236,8 +219,6 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"matrix={json.dumps(matrix)}\n")
               f.write(f"any_matched={any_matched}\n")
-              f.write(f"inventory_sync_changed={'true' if inventory_sync_matched else 'false'}\n")
-              f.write(f"inventory_sync_timeout={inv_timeout}\n")
 
   build-wazuh-manager:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -279,19 +260,5 @@ jobs:
       pytest_extra_args: ${{ matrix.pytest_extra_args }}
       pytest_tier_args: ${{ matrix.pytest_tier_args }}
       timeout_minutes: ${{ matrix.timeout_minutes }}
-      base_branch: ${{ github.event.pull_request.base.ref || inputs.base_branch || 'main' }}
-    secrets: inherit
-
-  run-inventory-sync:
-    if: >
-      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
-      needs.detect-changes.outputs.inventory_sync_changed == 'true' &&
-      needs.build-wazuh-manager.result == 'success'
-    name: ${{ needs.detect-changes.outputs.inventory_sync_changed == 'true' && 'Integration tests - inventory_sync' || 'Integration tests - inventory_sync - No relevant changes' }}
-    needs: [build-wazuh-manager, detect-changes]
-    uses: ./.github/workflows/5_testintegration_inventory-sync.yml
-    with:
-      build_run_id: ${{ github.run_id }}
-      timeout_minutes: ${{ fromJSON(needs.detect-changes.outputs.inventory_sync_timeout) }}
       base_branch: ${{ github.event.pull_request.base.ref || inputs.base_branch || 'main' }}
     secrets: inherit

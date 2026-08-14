@@ -20,22 +20,6 @@ char *__wrap_convert_windows_string(LPCWSTR string) {
 }
 #endif
 
-int __wrap_wstr_end(char *str, const char *str_end) {
-    if (str) {
-        check_expected(str);
-    }
-
-    if (str_end) {
-        check_expected(str_end);
-    }
-
-    return mock();
-}
-
-char *__wrap_wstr_escape_json(__attribute__ ((__unused__)) const char * string) {
-    return mock_type(char *);
-}
-
 char *__wrap_wstr_replace(const char * string, const char * search, const char * replace) {
     check_expected(string);
     check_expected(search);

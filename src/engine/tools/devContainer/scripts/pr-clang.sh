@@ -89,7 +89,16 @@ PR_BASE_REF="$(cd "$WAZUH_REPO" && gh pr view --json baseRefName -q '.baseRefNam
 
 if [[ -n "$PR_NUMBER" ]]; then
   echo "    PR #${PR_NUMBER} detected (base: ${PR_BASE_REF:-unknown})."
-  COMMITTED_FILES="$(cd "$WAZUH_REPO" && gh pr diff "$PR_NUMBER" --name-only)"
+  # `gh pr diff --name-only` fetches the PR's `.diff` (unified diff) under the hood, which
+  # GitHub caps at 20000 lines (HTTP 406 "diff exceeded the maximum number of lines" on large
+  # PRs) -- even though we only want file names. The paginated Files API has no such cap, so
+  # use that instead; fall back to a local git diff against the PR's base ref if it ever fails.
+  COMMITTED_FILES="$(cd "$WAZUH_REPO" && gh api "repos/{owner}/{repo}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' 2>/dev/null || true)"
+  if [[ -z "$COMMITTED_FILES" ]]; then
+    FALLBACK_BASE="${PR_BASE_REF:-$(detect_base_branch "$WAZUH_REPO")}"
+    echo "    gh api pulls/files returned nothing; falling back to local git diff against ${FALLBACK_BASE}."
+    COMMITTED_FILES="$(git -C "$WAZUH_REPO" diff --name-only --diff-filter=AM "origin/${FALLBACK_BASE}...HEAD" 2>/dev/null || true)"
+  fi
 else
   BASE_BRANCH="$(detect_base_branch "$WAZUH_REPO")"
   echo "    No PR associated, diffing against ${BASE_BRANCH}..."

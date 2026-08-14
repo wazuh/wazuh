@@ -15,13 +15,19 @@
 #include "wm_agent_upgrade.h"
 
 #ifdef WIN32
-    #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "\\upgrade_result"
+#define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "\\upgrade_result"
+#define WM_AGENT_UPGRADE_LOCK_FILE UPGRADE_DIR "\\upgrade_in_progress"
 #else
-    #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "/upgrade_result"
+#define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "/upgrade_result"
+#define WM_AGENT_UPGRADE_LOCK_FILE UPGRADE_DIR "/upgrade_in_progress_pid"
 #endif
 
+/* Seconds before the first upgrade_result read, between re-reads, and how many reads. */
 #define WM_AGENT_UPGRADE_RESULT_WAIT_TIME 30
+#define WM_AGENT_UPGRADE_RESULT_RETRY_TIME 30
+#define WM_AGENT_UPGRADE_RESULT_MAX_READS 4
 
+/* The codes pkg_installer.sh / do_upgrade.ps1 write into upgrade_result. */
 typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_SUCCESSFUL = 0,
     WM_UPGRADE_FAILED_INTERMEDIATE,

@@ -1,0 +1,23 @@
+{
+  "name": "contract_feed_not_ready_retry",
+  "description": "Contract test for the feed-not-ready path: a VDFirst delta immediately followed by a checksum confirm, the pattern that hits 503+Retry-After while the vulnerability feed is still downloading. The sender re-encodes on every Retry-After wait (not a byte-identical resend, unlike plain backpressure retries) so Start.feed_offset stays whatever -vd-feed-offset/the agent's learned value is right up to the send that finally lands, bounded by --feed-timeout, until the feed becomes ready. In uds mode there is no /control to learn an offset from, so this still declares 0 unless -vd-feed-offset is passed explicitly -- if the target's feed settles on a nonzero offset, run with -vd-feed-offset matching it, or the VDFirst session gets a 409 version_mismatch instead of the 200 this scenario expects.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "VDFirst",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "vd": [
+      { "kind": "delta", "module": "syscollector", "option": "VDFirst", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 50 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 4, "first_id": 30000, "lanes": ["vd"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" },
+  "expected": { "sessions": { "ok": { "eq": 8 } }, "retries_exhausted": { "eq": 0 }, "transport_errors": { "eq": 0 } }
+}

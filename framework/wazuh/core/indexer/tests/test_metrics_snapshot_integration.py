@@ -52,7 +52,6 @@ mocked_modules = {
     "wazuh.core.cluster.dapi": MagicMock(),
     "wazuh.core.cluster.dapi.dapi": MagicMock(),
     "wazuh.core.exception": MagicMock(),
-    "wazuh.core.wazuh_queue": MagicMock(),
     "wazuh.core.wazuh_socket": MagicMock(),
     "wazuh.core.wdb": MagicMock(),
     "wazuh.core.wdb_http": MagicMock(),
@@ -380,36 +379,63 @@ class TestRegressionDaemonStats:
         assert docs == []
 
 
+def _mock_wdb_http_client(agents_data):
+    """Build a patchable stand-in for ``get_wdb_http_client()``.
+
+    ``get_wdb_http_client`` is an ``@asynccontextmanager`` function: calling it returns an
+    async context manager, and ``async with ... as wdb_client`` yields the client. Returns the
+    (context_manager, client) pair so a test can both patch the former and assert on the latter.
+    """
+    client = AsyncMock()
+    client.get_all_agents = AsyncMock(return_value=agents_data)
+
+    # MagicMock() auto-provisions __aenter__/__aexit__ as async-aware magic methods; configure
+    # their return values rather than replacing the attributes outright -- `async with` resolves
+    # dunders on the type, not the instance, so a wholesale reassignment is silently never called.
+    context_manager = MagicMock()
+    context_manager.__aenter__.return_value = client
+    context_manager.__aexit__.return_value = None
+
+    return context_manager, client
+
+
 class TestRegressionAgentsEndpoint:
     """
     Regression tests: MetricsSnapshotTasks registration must not alter
     the GET /agents response shape.
+
+    _collect_agents fetches agents via the wdb-http `/agents/all` endpoint
+    (WazuhDBHTTPClient.get_all_agents), not WazuhDBQueryAgents — see
+    metrics_snapshot.py's _collect_agents and wdb_http.py's get_wdb_http_client.
     """
 
     @pytest.mark.asyncio
-    async def test_wazuh_db_query_agents_called_with_no_limit(self):
-        """WazuhDBQueryAgents is always called with limit=None — same as the agents endpoint."""
-        with patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents") as MockQuery:
-            MockQuery.return_value.run.return_value = {"items": []}
+    async def test_get_all_agents_called_through_wdb_http_client(self):
+        """_collect_agents fetches every agent through get_wdb_http_client().get_all_agents()."""
+        context_manager, client = _mock_wdb_http_client([])
+
+        with patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client", return_value=context_manager):
             tasks = _make_tasks()
             await tasks._collect_agents(TIMESTAMP)
 
-        MockQuery.assert_called_once_with(limit=None)
+        client.get_all_agents.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_collect_agents_adds_metadata_fields(self):
         """_collect_agents correctly maps fields into the nested ECS structure and adds metadata."""
-        original_agent = {"id": "001", "name": "test-agent", "status": "active"}
+        # Shape returned by the real /agents/all endpoint: raw int id, flat os.* fields.
+        original_agent = {"id": 1, "name": "test-agent", "status": "active"}
+        context_manager, _ = _mock_wdb_http_client([dict(original_agent)])
 
-        with patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents") as MockQuery:
-            MockQuery.return_value.run.return_value = {"items": [dict(original_agent)]}
+        with patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client", return_value=context_manager):
             tasks = _make_tasks()
             docs = await tasks._collect_agents(TIMESTAMP)
 
         assert len(docs) == 1
         doc = docs[0]
 
-        assert doc["wazuh"]["agent"]["id"] == original_agent["id"]
+        # Zero-padded to 3 digits, like everywhere else agent ids are indexed.
+        assert doc["wazuh"]["agent"]["id"] == "001"
         assert doc["wazuh"]["agent"]["name"] == original_agent["name"]
         assert doc["wazuh"]["agent"]["status"] == original_agent["status"]
 
@@ -421,8 +447,9 @@ class TestRegressionAgentsEndpoint:
     @pytest.mark.asyncio
     async def test_collect_agents_returns_list(self):
         """_collect_agents always returns a list, never None."""
-        with patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents") as MockQuery:
-            MockQuery.return_value.run.return_value = {"items": []}
+        context_manager, _ = _mock_wdb_http_client([])
+
+        with patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client", return_value=context_manager):
             tasks = _make_tasks()
             result = await tasks._collect_agents(TIMESTAMP)
 
@@ -431,7 +458,9 @@ class TestRegressionAgentsEndpoint:
     @pytest.mark.asyncio
     async def test_metrics_task_registration_does_not_interfere_with_agents_query(self):
         """Instantiating MetricsSnapshotTasks does not trigger any agent query."""
-        with patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents") as MockQuery:
+        context_manager, client = _mock_wdb_http_client([])
+
+        with patch("wazuh.core.indexer.metrics_snapshot.get_wdb_http_client", return_value=context_manager):
             _make_tasks()
 
-        MockQuery.assert_not_called()
+        client.get_all_agents.assert_not_awaited()

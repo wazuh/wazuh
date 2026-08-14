@@ -22,6 +22,9 @@
 
 #ifdef WIN32
 #define localtime_r(x, y) localtime_s(y, x)
+/* No portable gmtime_r on the mingw C runtime; same shim the other C callers
+ * use (see syscheckd/src/file/events.c). */
+#define gmtime_r(x, y) (gmtime_s(y, x) == 0 ? (y) : NULL)
 #endif
 
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
@@ -71,8 +74,6 @@ int write_state() {
     const char * status;
     char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
-    char last_ack[1024] = "";
-    int buffered_event;
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -81,7 +82,6 @@ int write_state() {
 
     mdebug2("Updating state file.");
 
-    buffered_event = w_agentd_get_buffer_lenght();
     w_mutex_lock(&state_mutex);
 
 #ifdef WIN32
@@ -111,11 +111,6 @@ int write_state() {
         strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
     }
 
-    if (agent_state.last_ack) {
-        localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
-    }
-
     fprintf(fp,
         "# State file for %s\n"
         "\n"
@@ -128,9 +123,6 @@ int write_state() {
         "# Last time a keepalive was sent\n"
         W_AGENTD_FIELD_KEEP_ALIVE "='%s'\n"
         "\n"
-        "# Last time a control message was received\n"
-        W_AGENTD_FIELD_LAST_ACK "='%s'\n"
-        "\n"
         "# Number of generated events\n"
         W_AGENTD_FIELD_MSG_COUNT "='%u'\n"
         "\n"
@@ -138,15 +130,25 @@ int write_state() {
         W_AGENTD_FIELD_MSG_SENT "='%u'\n"
         "\n"
         "# Number of events currently buffered\n"
-        "# Empty if anti-flooding mechanism is disabled\n"
+        "# Always empty: the HTTPS accumulator reports occupancy as a ladder,\n"
+        "# not as a count\n"
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
-        last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        last_keepalive, agent_state.msg_count, agent_state.msg_sent);
 
-        if (buffered_event >= 0) {
-            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "='%i'\n", buffered_event);
-        } else {
-            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
-        }
+        fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
+
+    fprintf(fp,
+        "\n"
+        "# /control tasks routed to a handler\n"
+        W_AGENTD_FIELD_TASK_DISPATCHED "='%u'\n"
+        "\n"
+        "# /control tasks discarded as duplicates (durable registry)\n"
+        W_AGENTD_FIELD_TASK_DUPLICATE "='%u'\n"
+        "\n"
+        "# /control tasks that failed to dispatch/execute\n"
+        W_AGENTD_FIELD_TASK_FAILED "='%u'\n",
+        agent_state.task_dispatched, agent_state.task_discarded_duplicate,
+        agent_state.task_failed);
 
     fclose(fp);
 
@@ -202,11 +204,6 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
             agent_state.last_keepalive = *((time_t *) data);
         }
         break;
-    case UPDATE_ACK:
-        if (data != NULL) {
-            agent_state.last_ack = *((time_t *) data);
-        }
-        break;
     case INCREMENT_MSG_COUNT:
         agent_state.msg_count++;
         break;
@@ -218,6 +215,15 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
             agent_state.msg_count = *((unsigned int *) data);
         }
         break;
+    case INCREMENT_TASK_DISPATCHED:
+        agent_state.task_dispatched++;
+        break;
+    case INCREMENT_TASK_DISCARDED_DUPLICATE:
+        agent_state.task_discarded_duplicate++;
+        break;
+    case INCREMENT_TASK_FAILED:
+        agent_state.task_failed++;
+        break;
     default:
         break;
     }
@@ -226,58 +232,67 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
     return;
 }
 
-char * w_agentd_state_get() {
+/* Each task counter is reported as {"total": n}: ".total" is the wcs marker for
+ * a counter that is monotonic over the process's uptime. */
+static void w_agentd_state_add_counter(cJSON * parent, const char * name, unsigned int value) {
+    cJSON * counter = cJSON_CreateObject();
 
-    const char * status = NULL;
-    char last_keepalive[W_AGENTD_STATE_TIME_LENGHT] = {0};
-    char last_ack[W_AGENTD_STATE_TIME_LENGHT] = {0};
-    unsigned int count;
-    unsigned int sent;
-    int buffered_event;
-    bool buffer_enable = true;
+    if (!counter) {
+        return;
+    }
 
+    cJSON_AddNumberToObject(counter, W_AGENTD_FIELD_TOTAL, value);
+    cJSON_AddItemToObject(parent, name, counter);
+}
+
+cJSON * w_agentd_state_get(void) {
+
+    char last_keepalive[W_AGENTD_STATE_TIME_ISO8601_LENGHT] = {0};
     struct tm tm = {.tm_sec = 0};
-    char * retval = NULL;
-    cJSON * json_retval = cJSON_CreateObject();
-    cJSON * data = cJSON_CreateObject();
 
-    /* Get status info */
+    cJSON * body = cJSON_CreateObject();
+    cJSON * messages = cJSON_CreateObject();
+    cJSON * tasks = cJSON_CreateObject();
+
+    if (!body || !messages || !tasks) {
+        cJSON_Delete(body);
+        cJSON_Delete(messages);
+        cJSON_Delete(tasks);
+        return NULL;
+    }
+
     w_mutex_lock(&state_mutex);
-    status = get_str_status(agent_state.status);
+    const char * status = get_str_status(agent_state.status);
 
+    /* gmtime_r, not localtime_r: only the agent knows its own offset, so a naive
+     * local time cannot be resolved to an instant downstream. */
     if (agent_state.last_keepalive) {
-        localtime_r(&agent_state.last_keepalive, &tm);
-        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
+        gmtime_r(&agent_state.last_keepalive, &tm);
+        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT_ISO8601, &tm);
     }
 
-    if (agent_state.last_ack) {
-        localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
-    }
-
-    count = agent_state.msg_count;
-    sent = agent_state.msg_sent;
+    const unsigned int count = agent_state.msg_count;
+    const unsigned int dispatched = agent_state.task_dispatched;
+    const unsigned int duplicate = agent_state.task_discarded_duplicate;
+    const unsigned int failed = agent_state.task_failed;
     w_mutex_unlock(&state_mutex);
 
-    if (buffered_event = w_agentd_get_buffer_lenght(), buffered_event < 0) {
-        buffer_enable = false;
-        buffered_event = 0;
+    cJSON_AddStringToObject(body, W_AGENTD_FIELD_STATUS, status);
+
+    /* Omitted rather than sent empty: the field is mapped `date`, and an empty
+     * string is not a parsable one, so the indexer would reject the whole
+     * document -- silently, since the push is fire-and-forget. */
+    if (last_keepalive[0] != '\0') {
+        cJSON_AddStringToObject(body, W_AGENTD_FIELD_KEEP_ALIVE, last_keepalive);
     }
 
-    /* json response */
-    cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
-    cJSON_AddItemToObject(json_retval, W_AGENTD_JSON_DATA, data);
+    cJSON_AddNumberToObject(messages, W_AGENTD_FIELD_MESSAGES_COUNT, count);
+    cJSON_AddItemToObject(body, W_AGENTD_FIELD_MESSAGES, messages);
 
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_STATUS, status);
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_KEEP_ALIVE, last_keepalive);
-    cJSON_AddStringToObject(data, W_AGENTD_FIELD_LAST_ACK, last_ack);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_COUNT, count);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
-    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_BUFF, buffered_event);
-    cJSON_AddBoolToObject(data, W_AGENTD_FIELD_EN_BUFF, buffer_enable);
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_DISPATCHED, dispatched);
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_DUPLICATE, duplicate);
+    w_agentd_state_add_counter(tasks, W_AGENTD_FIELD_TASK_FAILED, failed);
+    cJSON_AddItemToObject(body, W_AGENTD_FIELD_TASKS, tasks);
 
-    retval = cJSON_PrintUnformatted(json_retval);
-    cJSON_Delete(json_retval);
-
-    return retval;
+    return body;
 }

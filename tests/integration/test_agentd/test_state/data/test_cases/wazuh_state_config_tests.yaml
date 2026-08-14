@@ -8,7 +8,6 @@
       fields:
         status: "pending"
         last_keepalive: ""
-        last_ack: ""
         msg_count: ""
 
 - name: "Successful_connection_with_remoted"
@@ -21,26 +20,4 @@
       fields:
         status: "connected"
         last_keepalive: true
-        last_ack: true
-        msg_count: true
-    - type: "remote"
-      fields:
-        status: "connected"
-        last_keepalive: true
-        last_ack: true
-        msg_count: true
-
-- name: "Only_remote_request_available"
-  description:
-  configuration_parameters:
-  metadata:
-    local_internal_options:
-      agent.state_interval: 0
-    remoted: true
-    output:
-    - type: "remote"
-      fields:
-        status: "connected"
-        last_keepalive: true
-        last_ack: true
         msg_count: true

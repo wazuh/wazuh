@@ -16,8 +16,6 @@ wdb_t* __wrap_wdb_open_global();
 
 int __wrap_wdb_begin2(wdb_t* aux);
 
-int __wrap_wdb_finalize();
-
 int __wrap_wdb_step(sqlite3_stmt* stmt);
 
 int __wrap_wdb_stmt_cache(wdb_t wdb, int index);
@@ -32,8 +30,6 @@ int __wrap_wdbc_parse_result(char* result, char** payload);
 
 int __wrap_wdbc_query_ex(int* sock, const char* query, char* response, const int len);
 
-int __wrap_wdbc_connect_with_attempts(int max_attempts);
-
 cJSON* __wrap_wdbc_query_parse_json(int* sock, const char* query, char* response, const int len);
 
 wdbc_result __wrap_wdbc_query_parse(int* sock, const char* query, char* response, const int len, char** payload);
@@ -44,17 +40,11 @@ void __wrap_wdb_leave(wdb_t* wdb);
 
 int __wrap_wdb_sql_exec(wdb_t* wdb, const char* sql_exec);
 
-wdb_t* __wrap_wdb_init(sqlite3* db, const char* id);
-
 int __wrap_wdb_close(wdb_t* wdb, bool commit);
-
-int __wrap_wdb_create_global(const char* path);
 
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
 int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt);
-
-sqlite3_stmt* __wrap_wdb_get_cache_stmt(wdb_t* wdb, char const* query);
 
 cJSON* __wrap_wdb_get_internal_config();
 
@@ -75,7 +65,5 @@ int __wrap_wdb_update_last_vacuum_data(__attribute__((unused)) wdb_t* wdb,
                                        const char* last_vacuum_value);
 
 int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused)) wdb_t* wdb);
-
-int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer);
 
 #endif

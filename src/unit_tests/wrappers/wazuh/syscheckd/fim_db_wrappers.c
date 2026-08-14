@@ -64,21 +64,6 @@ FIMDBErrorCode __wrap_fim_db_remove_path(const char *path) {
     return mock_type(int);
 }
 
-int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
-    check_expected_ptr(file);
-    check_expected(storage);
-    check_expected(it);
-
-    *buffer = mock_type(char *);
-
-    return mock();
-}
-
-void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
-    check_expected_ptr(file);
-    check_expected(storage);
-}
-
 void expect_wrapper_fim_db_get_count_file_entry(int ret) {
     will_return(__wrap_fim_db_get_count_file_entry, ret);
 }
@@ -181,16 +166,6 @@ cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count) {
 
 int __wrap_fim_db_count_synced_docs(char* table_name) {
     check_expected(table_name);
-    return mock_type(int);
-}
-
-int __wrap_fim_db_sync_row_update(const char* table_name, const char* path,
-                                   const char* arch, const char* value, int sync_value) {
-    check_expected_ptr(table_name);
-    check_expected_ptr(path);
-    if (arch) check_expected_ptr(arch);
-    if (value) check_expected_ptr(value);
-    check_expected(sync_value);
     return mock_type(int);
 }
 

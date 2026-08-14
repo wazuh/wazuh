@@ -20,7 +20,6 @@
 #define CAGENT_CONFIG 0000010000
 #define CWMODULE      0000200000
 #define CAUTHD        0001000000
-#define CBUFFER       0002000000
 #define CLGCSOCKET    0010000000
 #define WAZUHDB       0040000000
 #define ATAMPERING    0200000000
@@ -32,7 +31,7 @@
                             (modules & CROOTCHECK    ) | (modules & CLOCALFILE    ) |\
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CWMODULE      ) |\
-                            (modules & CAUTHD        ) | (modules & CBUFFER       ) |\
+                            (modules & CAUTHD        ) |\
                             (modules & CLGCSOCKET    ) | (modules & WAZUHDB       ) )
 
 
@@ -50,18 +49,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
-int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
-int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
+int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_Legacy_Client_Address(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
 /**
- * @brief Read the configuration for client section with centralized configuration
+ * @brief Read the <agent> block as it arrives through the centralized configuration
+ * @param xml XML object
  * @param node XML node to analyze
- * @param d1 Pub/Sub configuration structure
+ * @param d1 Agent configuration structure
  */
-int Read_Client_Shared(XML_NODE node, void *d1);
+int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1);
 
 /**
  * @brief Read the configuration for Google Cloud Pub/Sub
@@ -129,10 +129,9 @@ int Test_Rootcheck(const char * path);
 int Test_Localfile(const char * path);
 
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
-int Test_Client(const char * path);
+int Test_Agent(const char * path);
 
 /* Verifies that the configuration for ClientBuffer is correct. Return 0 on success or -1 on error.  */
-int Test_ClientBuffer(const char * path);
 
 /* Verifies that the configuration for Wodle is correct. Return 0 on success or -1 on error. */
 int Test_WModule(const char * path);
