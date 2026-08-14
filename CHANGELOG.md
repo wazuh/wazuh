@@ -6,6 +6,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38260](https://github.com/wazuh/wazuh/issues/38260) | Added HTTPS communication between Wazuh agents and the manager: a new HTTPS transport, protocol, and control plane (connection, configuration, statistics, task dispatch, remote upgrade, and event ingestion) replacing the legacy MQ/DGRAM-based agent-manager protocol end to end. |
 | [#31295](https://github.com/wazuh/wazuh/issues/31295) | Added cluster-by-default deployment model: all Wazuh Server installations now run as a cluster node, removing the distinction between clustered and non-clustered deployments. The `cluster.disabled` configuration option has been removed. |
 | [#33269](https://github.com/wazuh/wazuh/issues/33269) | Added stateless metadata enrichment in `remoted`, centralizing event metadata handling for stateless messages and removing the dependency on `wazuh-db` for that ingestion path. |
 | [#33493](https://github.com/wazuh/wazuh/issues/33493) | Added Engine enrichment support: IOC matching, GeoIP lookup, and event filters. |
