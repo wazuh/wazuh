@@ -38,7 +38,7 @@ jobs:
         run: |
           cd src
           make deps TARGET=${{matrix.target}} -j$(nproc)
-          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
+          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} INSTALLDIR=/var/ossec DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: ./.github/actions/upload_s3_artifact
