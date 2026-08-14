@@ -294,7 +294,7 @@ TEST(StatsEndpointTest, NothingTheAgentClaimsAboutItsIdentityIsIndexed)
     EXPECT_FALSE(document.contains("cluster")) << "the reporter's root cluster object must not survive";
     EXPECT_EQ("001", document["/wazuh/agent/id"_json_pointer].get<std::string>()) << "claimed 999";
     EXPECT_EQ("test-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
-    EXPECT_EQ("1", document["/wazuh/schema/version"_json_pointer].get<std::string>()) << "claimed 999";
+    EXPECT_EQ("1.0", document["/wazuh/schema/version"_json_pointer].get<std::string>()) << "claimed 999";
     EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>()) << "claimed 999";
 }
 
@@ -318,15 +318,16 @@ TEST(StatsEndpointTest, StampsStateModifiedAtIso8601WithMillisecondsAndZulu)
 }
 
 /**
- * `wazuh.schema.version` is a string, not a number: `wazuh-metrics-agents` declares it `keyword`, and
- * this index follows it so one schema marker does not come back in two types depending on the index.
+ * `wazuh.schema.version` is a string, not a number: it is declared `keyword`, so one schema marker
+ * does not come back in two types depending on the index. The value matches `/config` and the
+ * stateful `wazuh-states-*` indices.
  */
 TEST(StatsEndpointTest, StampsTheSchemaVersionAsAKeyword)
 {
     const auto version = indexedDocument(kAgentReport, "001")["/wazuh/schema/version"_json_pointer];
 
     ASSERT_TRUE(version.is_string()) << version.dump();
-    EXPECT_EQ("1", version.get<std::string>());
+    EXPECT_EQ("1.0", version.get<std::string>());
 }
 
 TEST(StatsEndpointTest, NonObjectBodiesAreRejected)

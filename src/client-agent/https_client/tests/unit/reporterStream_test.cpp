@@ -171,7 +171,8 @@ TEST_F(ReporterStreamTest, NullCollectorReturnRetriesSoonNotAfterFullInterval)
     // short backoff as a send failure, not wait out the full (60 s here) interval.
     m_collectors.m_stats = std::nullopt;
     const auto config = makeConfig(true, false);
-    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_cluster, m_collectors};
+    ReporterStream reporter {config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate,
+                             m_cluster, m_collectors};
     EXPECT_CALL(m_performer, perform(_)).Times(0);
 
     reporter.tick(m_waiter, true); // First attempt: nothing collected yet.

@@ -31,10 +31,10 @@ namespace
     // deletion scope rather than re-spelled here, so DELETE /agents can never miss this index.
     constexpr std::string_view AGENT_CONFIG_INDEX_NAME {invsync::sync::AGENT_CONFIG_INDEX};
 
-    // WCS (Wazuh Common Schema) field naming convention, per docs/ref/glossary.md. Local to this
-    // module: there is no shared cross-module constant for it (vulnerability_scanner defines its
-    // own the same way).
-    constexpr auto WAZUH_SCHEMA_VERSION {"1.0.0"};
+    // `wazuh.schema.version` marker, a string keyword per WCS (docs/ref/glossary.md). The value
+    // matches `/stats` and the stateful `wazuh-states-*` indices so the marker keeps one format
+    // across agent-scoped indices. Local to this module: there is no shared cross-module constant.
+    constexpr auto WAZUH_SCHEMA_VERSION {"1.0"};
 
     // Generation of the *layout* this handler produces under `wazuh.agent.configuration` -- bump
     // this if that shape ever changes, not on every report. Always 1 today: this is the first
