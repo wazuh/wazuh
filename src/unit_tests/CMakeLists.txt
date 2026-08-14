@@ -123,6 +123,12 @@ elseif(${TARGET} STREQUAL "agent")
                  "client-agent/test_anti_tampering_no.conf" COPYONLY)
   configure_file("config_files/test_anti_tampering_invalid.conf"
                  "client-agent/test_anti_tampering_invalid.conf" COPYONLY)
+  configure_file("config_files/test_config_report_default.conf"
+                 "client-agent/test_config_report_default.conf" COPYONLY)
+  configure_file("config_files/test_config_report_disabled.conf"
+                 "client-agent/test_config_report_disabled.conf" COPYONLY)
+  configure_file("config_files/test_config_report_custom_interval.conf"
+                 "client-agent/test_config_report_custom_interval.conf" COPYONLY)
 elseif(${TARGET} STREQUAL "winagent")
   include("./winagent.cmake")
 else()

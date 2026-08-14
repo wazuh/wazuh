@@ -1027,8 +1027,12 @@ static void test_reports_are_off_when_absent(void **state) {
     xml_node **nodes;
     agent cfg;
 
-    /* Both pushes must default to off: the manager's config/stats indices have
-     * a single writer, and nobody asked for it yet. */
+    /* Read_Agent() itself never sets a default -- it only writes report->enabled
+     * when <enabled> is present, so a struct that starts zeroed stays zeroed here.
+     * This is NOT the product's default for <config_report>: ClientConf() sets
+     * that field to 1 before parsing (see test_agentd.c), so a real agent with
+     * no <config_report> block ships with it enabled. Only <stats_report> is
+     * actually off by default end-to-end. */
     const char *xml_str = "<server><address>10.0.0.1</address><port>1517</port></server>";
 
     expect_valid_ip("10.0.0.1");

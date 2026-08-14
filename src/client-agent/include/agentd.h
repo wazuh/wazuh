@@ -142,6 +142,19 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 // Query startup gate state.
 bool startup_gate_is_ready(void);
 
+// Stricter than startup_gate_is_ready(): true only once margin_seconds have
+// also elapsed since it opened. Used by report_query() (agent_report.c) so
+// the /config and /stats collectors give the other daemons a grace period to
+// finish opening their own command sockets after the gate releases them,
+// instead of settling for whichever few happened to answer first.
+bool startup_gate_is_settled(unsigned int margin_seconds);
+
+// Grace period report_query() (agent_report.c) waits, on top of the startup
+// gate itself, before trusting any component's answer. Declared here (rather
+// than kept private to agent_report.c) so tests can compute a "definitely
+// settled" timestamp without duplicating the number.
+#define REPORT_STARTUP_SETTLE_SECONDS 5
+
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 size_t agcom_getallconfig(char ** output);

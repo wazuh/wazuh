@@ -63,9 +63,15 @@ typedef struct agent_batch {
  * @brief <agent><stats_report> / <agent><config_report>: the periodic push of
  *        a whole-agent snapshot to /stats and /config (#37843).
  *
- * The two are independent and both stay off until <enabled> says otherwise.
- * Zero interval means "unset": the transport module applies its own default
- * (60 s for stats, 3600 s for config).
+ * The two are independent. <stats_report> stays off until <enabled> says
+ * otherwise; <config_report> ships on by default (ClientConf() sets it before
+ * the config is parsed), so only an explicit <enabled>no</enabled> disables it.
+ * ClientConf() also seeds <interval> with its effective default (60 s for
+ * stats, 3600 s for config) before parsing, for the same reason: a zero
+ * interval is otherwise indistinguishable from "unset" (Read_Agent_Report()
+ * rejects an explicit zero outright), and the transport module's own
+ * zero-means-unset fallback would otherwise be the only place that default
+ * was visible.
  */
 typedef struct agent_report {
     unsigned char enabled; ///< <enabled>: whether to push at all.

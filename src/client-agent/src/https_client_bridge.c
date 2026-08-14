@@ -1618,8 +1618,11 @@ static bool bridge_build_config(hc_config_t *config)
     config->batch_interval_ms = (uint32_t)(agt->batch.interval * 1000);
 
     /* <client><stats_report>/<config_report>: the two periodic pushes (#37843),
-     * independent of each other and off unless configured. A zero interval
-     * leaves the module on its own default (60 s / 3600 s). */
+     * independent of each other. <stats_report> is off unless configured;
+     * <config_report> is on by default. Both intervals also default to their
+     * effective value (60 s / 3600 s) in ClientConf(), so this copy is never
+     * actually zero in practice -- the module's own zero-means-unset fallback
+     * (moduleConfig.cpp) stays only as a defensive floor. */
     config->stats_enabled = agt->stats_report.enabled;
     config->stats_interval_s = (uint32_t)agt->stats_report.interval;
     config->config_report_enabled = agt->config_report.enabled;
