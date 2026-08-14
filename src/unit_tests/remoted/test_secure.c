@@ -639,6 +639,99 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     indexed_queue_free(control_msg_queue);
 }
 
+void test_HandleSecureMessage_shutdown_message_embedded_null(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-agent shutdown ";
+    message_t message = {.buffer = buffer, .size = 18, .sock = 1, .counter = 10};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    /* Decrypted payload holding trailing bytes after its string terminator */
+    char decrypted[64] = "#!-agent shutdown ";
+    memset(decrypted + 19, 'A', 32);
+    const size_t decrypted_length = 51;
+    const size_t body_length = decrypted_length - 3;
+    const size_t body_strlen = strlen("agent shutdown ");
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-agent shutdown ");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, decrypted_length);
+    will_return(__wrap_ReadSecMSG, decrypted);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent shutdown ");
+    expect_value(__wrap_validate_control_msg, msg_length, body_length);
+    will_return(__wrap_validate_control_msg, 1);
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Expect the control message to be added to the queue
+    w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
+    assert_non_null(node);
+    assert_string_equal(node->message, "agent shutdown ");
+
+    // Only the string is copied, the trailing bytes are not
+    for (size_t i = body_strlen; i < body_length; i++) {
+        assert_int_equal(node->message[i], '\0');
+    }
+
+    OS_FreeKey(node->key);
+    os_free(node->message);
+    os_free(node);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
 void test_HandleSecureMessage_HC_req_message(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "#!-req payload";
@@ -2552,6 +2645,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
+        cmocka_unit_test(test_HandleSecureMessage_shutdown_message_embedded_null),
         cmocka_unit_test(test_HandleSecureMessage_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_invalid_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
