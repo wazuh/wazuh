@@ -82,6 +82,229 @@ typedef struct _os_channel {
 
 STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
+STATIC int find_event_data(const char *xml, const char *name, const char **value_start, const char **value_end)
+{
+    const char *data = xml;
+
+    while ((data = strstr(data, "<Data")) != NULL) {
+        const char *tag_end;
+        const char *attribute;
+
+        if (data[5] != ' ' && data[5] != '\t' && data[5] != '\r' && data[5] != '\n') {
+            data += 5;
+            continue;
+        }
+
+        if ((tag_end = strchr(data, '>')) == NULL) {
+            return 0;
+        }
+
+        attribute = data;
+        while ((attribute = strstr(attribute, "Name=")) != NULL && attribute < tag_end) {
+            const char quote = attribute[5];
+            const char *attribute_end;
+
+            if (attribute > data && !isspace((unsigned char)attribute[-1])) {
+                attribute += 5;
+                continue;
+            }
+
+            if (quote != '\'' && quote != '"') {
+                attribute += 5;
+                continue;
+            }
+
+            if ((attribute_end = strchr(attribute + 6, quote)) == NULL || attribute_end > tag_end) {
+                return 0;
+            }
+
+            if ((size_t)(attribute_end - (attribute + 6)) == strlen(name) &&
+                strncmp(attribute + 6, name, strlen(name)) == 0) {
+                const char *closing_tag = strstr(tag_end + 1, "</Data>");
+
+                if (closing_tag == NULL) {
+                    return 0;
+                }
+
+                *value_start = tag_end + 1;
+                *value_end = closing_tag;
+                return 1;
+            }
+
+            attribute = attribute_end + 1;
+        }
+
+        data = tag_end + 1;
+    }
+
+    return 0;
+}
+
+STATIC char *escape_xml_text(const char *text)
+{
+    size_t length = 0;
+    char *escaped;
+    char *output;
+
+    for (const char *current = text; *current; ++current) {
+        size_t addition = 1;
+
+        if (*current == '&') {
+            addition = 5;
+        } else if (*current == '<' || *current == '>') {
+            addition = 4;
+        }
+
+        if (length > SIZE_MAX - addition - 1) {
+            return NULL;
+        }
+
+        length += addition;
+    }
+
+    if ((escaped = malloc(length + 1)) == NULL) {
+        return NULL;
+    }
+
+    output = escaped;
+    for (const char *current = text; *current; ++current) {
+        if (*current == '&') {
+            memcpy(output, "&amp;", 5);
+            output += 5;
+        } else if (*current == '<') {
+            memcpy(output, "&lt;", 4);
+            output += 4;
+        } else if (*current == '>') {
+            memcpy(output, "&gt;", 4);
+            output += 4;
+        } else {
+            *output++ = *current;
+        }
+    }
+    *output = '\0';
+
+    return escaped;
+}
+
+STATIC void enrich_member_name(char **xml_event)
+{
+    const char *member_name_start;
+    const char *member_name_end;
+    const char *member_sid_start;
+    const char *member_sid_end;
+    size_t member_name_length;
+    size_t member_sid_length;
+    char *member_sid = NULL;
+    PSID sid = NULL;
+    char *account = NULL;
+    char *domain = NULL;
+    char *resolved = NULL;
+    char *escaped = NULL;
+    char *updated_xml = NULL;
+    SID_NAME_USE sid_type;
+    size_t account_length;
+    size_t domain_length;
+    size_t separator_length;
+    size_t resolved_length;
+    size_t prefix_length;
+    size_t escaped_length;
+    size_t suffix_length;
+    size_t updated_length;
+
+    if (xml_event == NULL || *xml_event == NULL) {
+        return;
+    }
+
+    if (!find_event_data(*xml_event, "MemberName", &member_name_start, &member_name_end) ||
+        !find_event_data(*xml_event, "MemberSid", &member_sid_start, &member_sid_end)) {
+        return;
+    }
+
+    member_name_length = member_name_end - member_name_start;
+    if (member_name_length != 0 && (member_name_length != 1 || member_name_start[0] != '-')) {
+        return;
+    }
+
+    member_sid_length = member_sid_end - member_sid_start;
+    if (member_sid_length == 0 || (member_sid_length == 1 && member_sid_start[0] == '-')) {
+        return;
+    }
+
+    if (member_sid_length == SIZE_MAX || (member_sid = malloc(member_sid_length + 1)) == NULL) {
+        goto cleanup;
+    }
+    memcpy(member_sid, member_sid_start, member_sid_length);
+    member_sid[member_sid_length] = '\0';
+
+    if (!ConvertStringSidToSidA(member_sid, &sid) || sid == NULL) {
+        goto cleanup;
+    }
+
+    if (!utf8_LookupAccountSid(NULL, sid, &account, NULL, &domain, NULL, &sid_type) ||
+        account == NULL || account[0] == '\0' || domain == NULL) {
+        goto cleanup;
+    }
+
+    account_length = strlen(account);
+    domain_length = strlen(domain);
+    separator_length = domain_length ? 1 : 0;
+
+    if (domain_length > SIZE_MAX - separator_length ||
+        domain_length + separator_length > SIZE_MAX - account_length ||
+        domain_length + separator_length + account_length == SIZE_MAX) {
+        goto cleanup;
+    }
+    resolved_length = domain_length + separator_length + account_length;
+
+    if ((resolved = malloc(resolved_length + 1)) == NULL) {
+        goto cleanup;
+    }
+
+    if (domain_length) {
+        memcpy(resolved, domain, domain_length);
+        resolved[domain_length] = '\\';
+    }
+    memcpy(resolved + domain_length + separator_length, account, account_length + 1);
+
+    if ((escaped = escape_xml_text(resolved)) == NULL) {
+        goto cleanup;
+    }
+
+    prefix_length = member_name_start - *xml_event;
+    escaped_length = strlen(escaped);
+    suffix_length = strlen(member_name_end);
+
+    if (prefix_length > SIZE_MAX - escaped_length ||
+        prefix_length + escaped_length > SIZE_MAX - suffix_length ||
+        prefix_length + escaped_length + suffix_length == SIZE_MAX) {
+        goto cleanup;
+    }
+    updated_length = prefix_length + escaped_length + suffix_length;
+
+    if ((updated_xml = malloc(updated_length + 1)) == NULL) {
+        goto cleanup;
+    }
+
+    memcpy(updated_xml, *xml_event, prefix_length);
+    memcpy(updated_xml + prefix_length, escaped, escaped_length);
+    memcpy(updated_xml + prefix_length + escaped_length, member_name_end, suffix_length + 1);
+
+    os_free(*xml_event);
+    *xml_event = updated_xml;
+    updated_xml = NULL;
+
+cleanup:
+    os_free(updated_xml);
+    os_free(escaped);
+    os_free(resolved);
+    os_free(domain);
+    os_free(account);
+    if (sid != NULL) {
+        LocalFree(sid);
+    }
+    os_free(member_sid);
+}
+
 wchar_t *convert_unix_string(char *string)
 {
     wchar_t *dest = NULL;
@@ -352,6 +575,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     if (!xml_event) {
         goto cleanup;
     }
+
+    enrich_member_name(&xml_event);
 
     win_format_event_string(xml_event);
 

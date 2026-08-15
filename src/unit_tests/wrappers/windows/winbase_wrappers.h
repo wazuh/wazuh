@@ -12,6 +12,7 @@
 #define WINBASE_WRAPPERS_H
 
 #include <windows.h>
+#include <sddl.h>
 
 #undef  LookupPrivilegeValue
 #define LookupPrivilegeValue wrap_LookupPrivilegeValue
@@ -22,6 +23,8 @@
 #define LookupAccountSid wrap_LookupAccountSid
 #undef  LookupAccountSidW
 #define LookupAccountSidW wrap_LookupAccountSid
+#undef  ConvertStringSidToSidA
+#define ConvertStringSidToSidA wrap_ConvertStringSidToSidA
 #undef  GetFileSecurity
 #define GetFileSecurity wrap_GetFileSecurity
 #define ReadDirectoryChangesW wrap_ReadDirectoryChangesW
@@ -52,6 +55,10 @@ WINBOOL wrap_LookupAccountSid(LPCSTR lpSystemName,
                               PSID_NAME_USE peUse);
 
 void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value);
+
+BOOL WINAPI wrap_ConvertStringSidToSidA(LPCSTR StringSid, PSID *Sid);
+
+void expect_ConvertStringSidToSidA_call(const char *string_sid, PSID sid, BOOL result);
 
 WINBOOL wrap_ReadDirectoryChangesW(HANDLE hDirectory,
                                    LPVOID lpBuffer,
