@@ -61,4 +61,6 @@ target_include_directories(
           ${SRC_FOLDER}/external/cpp-httplib)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
-set_tests_properties(remoted_module_utest PROPERTIES LABELS remoted_module_utest)
+# The suite normally finishes in well under a minute; the TIMEOUT is a backstop so a parked
+# thread (gated fixtures, server pools) wedges CI with a kill + failure, never an infinite hang.
+set_tests_properties(remoted_module_utest PROPERTIES LABELS remoted_module_utest TIMEOUT 600)

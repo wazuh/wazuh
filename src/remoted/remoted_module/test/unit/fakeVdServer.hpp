@@ -24,6 +24,7 @@
 #include <functional>
 #include <httplib.h>
 #include <json.hpp>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -36,19 +37,30 @@ namespace remoted::test
     public:
         using Handler = std::function<void(const httplib::Request&, httplib::Response&)>;
 
-        explicit FakeVdServer(std::string socketPath)
+        /// @param poolThreads 0 keeps httplib's default pool (max(8, hw_concurrency - 1)). Tests
+        /// that deliberately park many /scan calls MUST size this above whatever they park:
+        /// both endpoints are served from the SAME pool, so a saturated /scan otherwise starves
+        /// /offset and everything downstream of it.
+        explicit FakeVdServer(std::string socketPath, std::size_t poolThreads = 0)
             : m_socketPath(std::move(socketPath))
         {
             std::filesystem::remove(m_socketPath);
             m_server.set_address_family(AF_UNIX);
+            if (poolThreads != 0)
+            {
+                m_server.new_task_queue = [poolThreads]
+                {
+                    return new httplib::ThreadPool(poolThreads);
+                };
+            }
 
             m_server.Get("/vulnerability-detector/offset",
                          [this](const httplib::Request& req, httplib::Response& res)
                          {
                              m_offsetRequestCount.fetch_add(1);
-                             if (m_offsetHandler)
+                             if (const auto handler = copyHandler(m_offsetHandler))
                              {
-                                 m_offsetHandler(req, res);
+                                 handler(req, res);
                              }
                          });
 
@@ -56,9 +68,9 @@ namespace remoted::test
                           [this](const httplib::Request& req, httplib::Response& res)
                           {
                               m_scanRequestCount.fetch_add(1);
-                              if (m_scanHandler)
+                              if (const auto handler = copyHandler(m_scanHandler))
                               {
-                                  m_scanHandler(req, res);
+                                  handler(req, res);
                               }
                           });
 
@@ -102,15 +114,19 @@ namespace remoted::test
         FakeVdServer(const FakeVdServer&) = delete;
         FakeVdServer& operator=(const FakeVdServer&) = delete;
 
-        /// @brief Set the handler invoked for GET /vulnerability-detector/offset.
+        /// @brief Set the handler invoked for GET /vulnerability-detector/offset. Safe to call
+        /// while requests are in flight (tests move the offset mid-test): the swap and the route
+        /// lambdas' reads share m_handlerMutex.
         void setOffsetHandler(Handler handler)
         {
+            std::lock_guard<std::mutex> lock(m_handlerMutex);
             m_offsetHandler = std::move(handler);
         }
 
         /// @brief Set the handler invoked for POST /vulnerability-detector/scan.
         void setScanHandler(Handler handler)
         {
+            std::lock_guard<std::mutex> lock(m_handlerMutex);
             m_scanHandler = std::move(handler);
         }
 
@@ -138,9 +154,18 @@ namespace remoted::test
         }
 
     private:
+        // Copy under the lock, invoke outside it: handlers may block (gated tests), and holding
+        // the mutex across the call would serialize the whole pool behind one parked request.
+        Handler copyHandler(const Handler& handler) const
+        {
+            std::lock_guard<std::mutex> lock(m_handlerMutex);
+            return handler;
+        }
+
         std::string m_socketPath;
         httplib::Server m_server;
         std::thread m_thread;
+        mutable std::mutex m_handlerMutex;
         Handler m_offsetHandler;
         Handler m_scanHandler;
         std::atomic<bool> m_bindFailed {false};

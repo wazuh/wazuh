@@ -86,7 +86,11 @@ namespace
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_waitingCount++;
-                m_cv.wait(lock, [this] { return m_released; });
+                // Bounded on purpose: a passing test releases within milliseconds, and a FAILING
+                // one must degrade to a clean assertion failure -- an unbounded wait here turns
+                // any missed release() into pool threads parked forever and a teardown that never
+                // returns (the server can't join its pool).
+                m_cv.wait_for(lock, std::chrono::seconds(10), [this] { return m_released; });
             }
             {
                 std::lock_guard<std::mutex> idLock(m_idMutex);
@@ -135,6 +139,19 @@ namespace
         size_t m_waitingCount {0};
         mutable std::mutex m_idMutex;
         std::vector<std::string> m_agentIds;
+    };
+
+    // Opens the gate on scope exit so an ASSERT_* early return can never leave handler workers
+    // (or server pool threads) parked behind it during teardown. Declare it AFTER the handler
+    // under test: destruction runs in reverse, so the release happens before the handler's
+    // destructor joins its workers.
+    struct GateReleaser
+    {
+        GatedScanHandler& gate;
+        ~GateReleaser()
+        {
+            gate.release();
+        }
     };
 } // namespace
 
@@ -273,13 +290,14 @@ TEST(ScanVdHandlerTest, PermanentFailureIsNotRetried)
 TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
 {
     const auto socketPath = makeUniqueVdSocketPath("queuefull");
-    FakeVdServer server(socketPath);
-    server.setOffset(100);
 
     // Gated so agents 1 and 2 are provably still "tracked" (their attempt hasn't finished, so
     // their AgentScanState hasn't been erased yet) at the exact moment agent 3 is submitted --
-    // not just "probably, if submission was fast enough."
+    // not just "probably, if submission was fast enough." Declared before the server: pool
+    // threads reference the gate, so it must outlive them.
     GatedScanHandler gate;
+    FakeVdServer server(socketPath);
+    server.setOffset(100);
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
@@ -287,6 +305,7 @@ TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
     ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(
         std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath, /*maxTrackedAgents=*/2);
+    GateReleaser releaser {gate};
 
     EXPECT_EQ(callSync(handler, 1, 100).outcome, ScanVdOutcome::Accepted);
     EXPECT_EQ(callSync(handler, 2, 100).outcome, ScanVdOutcome::Accepted);
@@ -306,18 +325,20 @@ TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
 TEST(ScanVdHandlerTest, OffsetChangeDuringInFlightAttemptTriggersImmediateRescanWithNewOffset)
 {
     const auto socketPath = makeUniqueVdSocketPath("inflightchange");
-    FakeVdServer server(socketPath);
-    server.setOffset(100);
 
     // The gate gives an exact, wall-clock-independent signal for "the first attempt has actually
-    // started and is in flight" -- no fixed sleep to guess at.
+    // started and is in flight" -- no fixed sleep to guess at. Declared before the server so it
+    // outlives the pool threads that reference it.
     GatedScanHandler gate;
+    FakeVdServer server(socketPath);
+    server.setOffset(100);
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
     wazuh::metrics::Manager metricsManager;
     ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
+    GateReleaser releaser {gate};
 
     ASSERT_EQ(callSync(handler, 42, 100).outcome, ScanVdOutcome::Accepted);
 
@@ -343,8 +364,6 @@ TEST(ScanVdHandlerTest, OffsetChangeDuringInFlightAttemptTriggersImmediateRescan
 TEST(ScanVdHandlerTest, StaleQueuedTaskIsDiscardedWhenOffsetChangesBeforeExecution)
 {
     const auto socketPath = makeUniqueVdSocketPath("discard");
-    FakeVdServer server(socketPath);
-    server.setOffset(100);
 
     // Just enough fillers to saturate every real worker thread (scanWorkerPoolSize() ==
     // cpp_get_nproc(), which can never exceed hardware_concurrency()) plus a small margin, so the
@@ -353,6 +372,12 @@ TEST(ScanVdHandlerTest, StaleQueuedTaskIsDiscardedWhenOffsetChangesBeforeExecuti
     // however long this test's (synchronous, network-round-trip-per-call) submission loop takes.
     const unsigned fillerCount = std::max(2U, std::thread::hardware_concurrency()) + 4U;
     GatedScanHandler gate;
+    // The server pool must EXCEED the fillers: both endpoints share one httplib pool, and this
+    // test parks up to workerCount scans in the gate. With the default pool (max(8, hw-1)) a
+    // >=8-core machine ends up with every server thread parked, /offset unanswerable, and the
+    // pre-warm assertion below failing on a stale cached offset.
+    FakeVdServer server(socketPath, /*poolThreads=*/fillerCount + 4);
+    server.setOffset(100);
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
@@ -362,16 +387,30 @@ TEST(ScanVdHandlerTest, StaleQueuedTaskIsDiscardedWhenOffsetChangesBeforeExecuti
                               metrics,
                               socketPath,
                               /*maxTrackedAgents=*/fillerCount + 10);
+    GateReleaser releaser {gate};
 
+    // Park the workers ONE AT A TIME: submit a filler, then wait until it is provably blocked in
+    // the gate before submitting the next. Submitting them in a burst looks equivalent but is
+    // not: every worker then connect()s to the fake server at once, httplib's listen backlog is
+    // a compile-time 5, and on a UDS socket an over-backlog connect fails IMMEDIATELY with
+    // EAGAIN -- which triggerVdScan correctly treats as a retryable failure, FREEING that worker
+    // to dequeue further (a freed worker reaching agent 999 before the offset moves is exactly
+    // the flake this ordering removes). Serialized, there is never more than one pending connect,
+    // so every dequeued filler deterministically parks. Once the pool is exhausted (one bounded
+    // wait times out), the remaining fillers -- at least 4, since fillerCount > workerCount by
+    // construction -- just queue up, guaranteeing agent 999 sits behind queued work no worker is
+    // free to reach.
+    unsigned parked = 0;
     for (unsigned i = 1; i <= fillerCount; ++i)
     {
         ASSERT_EQ(callSync(handler, i, 100).outcome, ScanVdOutcome::Accepted);
+        if (parked == i - 1 && gate.waitForWaiters(i, 2s))
+        {
+            parked = i;
+        }
     }
-
-    // The target agent is queued behind all fillers. Confirm every worker is genuinely occupied
-    // (blocked in the gate) before proceeding -- at that point agent 999 cannot possibly have
-    // been dequeued yet, since there are more fillers than workers.
-    ASSERT_TRUE(gate.waitForWaiters(1, 2s)) << "no worker ever reached the scan handler at all";
+    ASSERT_GE(parked, 2u) << "no worker pool to saturate -- the fixture can't exercise the queue";
+    ASSERT_LT(parked, fillerCount) << "every filler got a worker: nothing is left queued to shield agent 999";
     ASSERT_EQ(callSync(handler, 999, 100).outcome, ScanVdOutcome::Accepted);
 
     // Move the feed forward. No new request is made for agent 999, so its pendingOffset stays at
