@@ -155,6 +155,54 @@ namespace wazuh::uds_http
     using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
+     * @brief Service class of a route, classified by its SHEDDING CONTRACT -- not by verb.
+     *
+     * - Data: bulk payloads with deferred completion, the reason the byte budget exists. Charged
+     *   the budget; shed with 503 under pressure (the peer implements retry/backoff by design).
+     * - Control: small-bodied requests other daemons depend on. NEVER shed by data-plane pressure
+     *   (budget-exempt); bounded instead by their own small body cap and session cap. A Control
+     *   route that does real work still sheds ITS OWN capacity module-side (a bounded queue
+     *   answering 503) -- the class only guarantees the data plane cannot starve it.
+     * - Liveness: answered from resident state; must respond under any pressure.
+     */
+    enum class RouteClass : std::uint8_t
+    {
+        Data = 0,
+        Control = 1,
+        Liveness = 2
+    };
+
+    /// Number of route classes, for per-class arrays.
+    inline constexpr std::size_t ROUTE_CLASS_COUNT {3};
+
+    /**
+     * @brief Per-route registration options.
+     *
+     * The zeroes defer to the class policy in UdsHttpServerConfig, so a plain
+     * `RouteOptions {RouteClass::Control}` is the common spelling.
+     */
+    struct RouteOptions
+    {
+        RouteClass cls {RouteClass::Data};
+        /// Per-route body-cap override; 0 -> the class policy's cap. Checked against the DECLARED
+        /// Content-Length at headers-complete: over it is a 413 (the peer is wrong), never a 503.
+        std::size_t maxBodyBytes {0};
+        /// Per-route concurrent-session cap, enforced with the route's own counter IN ADDITION to
+        /// the class cap; 0 -> only the class cap applies.
+        std::size_t maxSessions {0};
+    };
+
+    /**
+     * @brief Admission policy of one route class.
+     */
+    struct ClassPolicy
+    {
+        bool chargeByteBudget {false}; ///< Reserve declared length + overhead from the byte budget.
+        std::size_t maxBodyBytes {0};  ///< Declared-length cap -> 413. UNLIMITED_BODY_SIZE disables.
+        std::size_t maxSessions {0};   ///< Concurrent classified sessions -> 503. 0 = resolved at start().
+    };
+
+    /**
      * @brief Server configuration, decoupled from the C-ABI struct.
      *
      * The in-struct values below ARE the module defaults; buildServerConfig() only overrides the
@@ -229,6 +277,23 @@ namespace wazuh::uds_http
         std::string budgetOptionHint {};
         /// Ditto for the connection cap diagnostic.
         std::string connectionCapOptionHint {};
+
+        /*
+         * Route-class admission policies (QoS). The defaults implement the model the classes were
+         * designed for: the DATA plane can shed (503) and is the only class charged the byte
+         * budget; CONTROL and LIVENESS are exempt from it and bounded by their own small body and
+         * session caps instead, so a saturated data plane can never starve them. The decisive
+         * mechanism is reservedControlConnections: Data's session cap resolves to
+         * maxConnections - reserved, so Data ALONE can never drive occupancy up to the
+         * accept-time cap -- headroom always remains for the other classes to be accepted,
+         * classified and served.
+         */
+        ClassPolicy dataPolicy {true, UNLIMITED_BODY_SIZE, 0}; ///< maxSessions 0 -> maxConnections - reserved.
+        ClassPolicy controlPolicy {false, 64U * 1024U, 256};
+        ClassPolicy livenessPolicy {false, 4U * 1024U, 64};
+        /// Accept-headroom the data plane can never consume. Clamped at start() to at most
+        /// maxConnections / 4 (and to 0 when that quarter is 0, i.e. tiny test configs).
+        std::size_t reservedControlConnections {64};
         /// Reserved from the declared Content-Length at headers-complete, so this bounds the
         /// read-phase peak as well as resident payloads. 0 disables. start() clamps it up to at
         /// least one maximum-size body, so a too-small value cannot reject everything.
@@ -249,6 +314,9 @@ namespace wazuh::uds_http
         std::size_t budgetInFlightBytes {0};  ///< Bytes currently reserved by admitted requests.
         std::size_t budgetInFlightCount {0};  ///< Requests currently holding a reservation.
         std::size_t liveSessions {0};         ///< Open connections, deferred replies included.
+        /// Classified sessions per class, indexed by RouteClass. Sums to at most liveSessions
+        /// (connections still reading their head are counted only in liveSessions).
+        std::size_t sessionsByClass[ROUTE_CLASS_COUNT] {0, 0, 0};
     };
 
     /**
@@ -266,17 +334,28 @@ namespace wazuh::uds_http
         /**
          * @brief Register a route. Must be called before start().
          *
-         * @param method             HTTP verb to match.
-         * @param path               Exact path to match (compared against the pre-'?' prefix of
-         *                           the request target; no wildcards or patterns).
-         * @param handler            Handler invoked on a match.
-         * @param countAgainstBudget When false, the route is exempt from the in-flight byte budget
-         *                           (no reservation, never shed with 503). Use for tiny liveness
-         *                           probes so they stay answerable under memory pressure.
+         * @param method  HTTP verb to match.
+         * @param path    Exact path to match (compared against the pre-'?' prefix of the request
+         *                target; no wildcards or patterns).
+         * @param handler Handler invoked on a match.
+         * @param options Service class and per-route cap overrides (see RouteOptions).
          * @throws std::logic_error if called after start().
          */
-        virtual void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) = 0;
+        virtual void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options) = 0;
+
+        /**
+         * @brief Compatibility spelling of addRoute() predating the class model.
+         *
+         * true maps to Data (budget-charged, sheddable), false to Liveness (the exempt probes) --
+         * exactly what the flag used to mean.
+         */
+        void addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true)
+        {
+            addRoute(method,
+                     path,
+                     std::move(handler),
+                     RouteOptions {countAgainstBudget ? RouteClass::Data : RouteClass::Liveness});
+        }
 
         /**
          * @brief Bind, chmod and start serving. Throws on any bind/permission/configuration

@@ -387,3 +387,30 @@ TEST_F(StatefulEndpointE2ETest, TransportDiagnosticsArePublishedOnMetrics)
     EXPECT_NE(std::string::npos, response.body.find("server.budget.inflight.requests"));
     EXPECT_NE(std::string::npos, response.body.find("server.sessions.live"));
 }
+
+/*
+ * E2 route classes, proven through wire behaviour: deletions are CONTROL (empty body by contract,
+ * so their 64 KiB class cap answers 413 to an oversized one), while /stateful is DATA (the same
+ * declared size sails through admission and fails only later, as FlatBuffers garbage -> 400).
+ * A saturated ingest budget can therefore never starve a deletion -- the signed E2 decision.
+ */
+TEST_F(StatefulEndpointE2ETest, DeletionsAreControlClassAndStatefulIsDataClass)
+{
+    const std::string oversized(100 * 1024, 'x'); // over Control's 64 KiB, nothing to Data
+
+    std::string deleteRequest = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
+                                "Content-Length: " +
+                                std::to_string(oversized.size()) + "\r\nConnection: close\r\n\r\n" + oversized;
+    const auto rejected = wazuh::uds_http::test::sendRaw(m_path, deleteRequest);
+    EXPECT_EQ(413, rejected.status);
+    EXPECT_NE(std::string::npos, rejected.body.find("control-class")) << rejected.body;
+
+    const auto accepted = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(oversized));
+    EXPECT_EQ(400, accepted.status) << "data class must ADMIT the size; only the payload itself is garbage";
+
+    // And the liveness plane has the tightest cap of all.
+    const std::string bigProbe = "GET /metrics HTTP/1.1\r\nHost: localhost\r\nContent-Length: 8192\r\n"
+                                 "Connection: close\r\n\r\n" +
+                                 std::string(8192, 'y');
+    EXPECT_EQ(413, wazuh::uds_http::test::sendRaw(m_path, bigProbe).status);
+}

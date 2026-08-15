@@ -40,8 +40,8 @@ namespace wazuh::uds_http
         AsioUdsHttpServer(const AsioUdsHttpServer&) = delete;
         AsioUdsHttpServer& operator=(const AsioUdsHttpServer&) = delete;
 
-        void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) override;
+        using IUdsHttpServer::addRoute; // the bool compatibility spelling
+        void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options) override;
         void start(const UdsHttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;

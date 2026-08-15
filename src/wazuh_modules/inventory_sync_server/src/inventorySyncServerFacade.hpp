@@ -375,7 +375,7 @@ namespace invsync
                     responder->send(wazuh::uds_http::HttpResponse::json(
                         200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
-                /*countAgainstBudget=*/false);
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
             // The endpoint handlers take their dependencies WEAKLY (the shared_ptr members convert
             // to the weak_ptr fields implicitly) -- see stop()'s phase 2 for why that matters. Safe
@@ -413,30 +413,40 @@ namespace invsync
                     invsync::metrics::RequestCounters::make(*m_metricsManager),
                     m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
                                                          "503 responses carrying a Retry-After header",
-                                                         "count")}));
+                                                         "count")}),
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
-            // rather than sharing one handler because their real payloads will diverge.
+            // rather than sharing one handler because their real payloads will diverge. DATA class
+            // (U4): these carry documents agents send through remoted -- payloads of agent origin
+            // that must charge the byte budget exactly like /stateful, not control-plane reads.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
-                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity));
+                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             m_httpServer->addRoute(invsync::endpoints::config::method(),
                                    invsync::endpoints::config::path(),
-                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity));
+                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Whole-agent deletion (design doc 04): UDS-local, deferred to the agent's pipeline
             // shard. Registered on the canonical DELETE and on a POST alias with the SAME handler
-            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST.
+            // -- authd's C-side HTTP helper (uhttp_*) only speaks POST. CONTROL class (signed
+            // decision): the agent id travels in a header and the body is empty, so a saturated
+            // ingest budget must never fail deletions that cost it no payload memory; their real
+            // capacity control stays in the pipeline.
             {
                 const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
                                                                                  m_indexerConnectorSync};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::altMethod(),
                                        invsync::endpoints::delete_agent::altPath(),
-                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps));
+                                       invsync::endpoints::delete_agent::makeHandler(deleteDeps),
+                                       wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control});
             }
 
             // The D18 statistics dump. Budget-exempt like the health probe: reading metrics is
@@ -444,7 +454,7 @@ namespace invsync
             m_httpServer->addRoute(invsync::endpoints::metrics::method(),
                                    invsync::endpoints::metrics::path(),
                                    invsync::endpoints::metrics::makeHandler(m_metricsManager),
-                                   /*countAgainstBudget=*/false);
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
             m_httpServer->start(config);
             registerTransportDiagnostics();
@@ -510,6 +520,33 @@ namespace invsync
                 invsync::metrics::SERVER_SESSIONS_LIVE,
                 [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
                 "Open transport connections, deferred replies included",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_DATA,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Data)]);
+                },
+                "Sessions classified on data-class routes",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_CONTROL,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Control)]);
+                },
+                "Sessions classified on control-class routes",
+                "connections");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_LIVENESS,
+                [snapshot]
+                {
+                    return static_cast<uint64_t>(
+                        snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Liveness)]);
+                },
+                "Sessions classified on liveness-class routes",
                 "connections");
         }
 

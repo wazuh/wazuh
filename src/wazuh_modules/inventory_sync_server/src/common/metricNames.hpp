@@ -50,6 +50,9 @@ namespace invsync::metrics
     constexpr auto SERVER_BUDGET_IN_FLIGHT_BYTES {"server.budget.inflight.bytes"};
     constexpr auto SERVER_BUDGET_IN_FLIGHT_REQUESTS {"server.budget.inflight.requests"};
     constexpr auto SERVER_SESSIONS_LIVE {"server.sessions.live"};
+    constexpr auto SERVER_SESSIONS_DATA {"server.sessions.data"};
+    constexpr auto SERVER_SESSIONS_CONTROL {"server.sessions.control"};
+    constexpr auto SERVER_SESSIONS_LIVENESS {"server.sessions.liveness"};
 
     // -- vulnerability-detection lane -------------------------------------------------------
     constexpr auto VD_CAPACITY_503_TOTAL {"vd.capacity.503.total"};

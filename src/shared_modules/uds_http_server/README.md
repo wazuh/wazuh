@@ -95,6 +95,32 @@ sequenceDiagram
     Note over IO: S3 send() on ANY responder is a no-op forever after —<br/>responders co-own the runtime, nothing dangles
 ```
 
+Route classes (QoS) — how one server hosts a sheddable data plane without starving anyone:
+
+```mermaid
+flowchart LR
+    A[accept] -->|liveSessions <= maxConnections,<br/>else 503+close| H[read head]
+    H --> M{match route}
+    M -->|none| R404[404 / 405+Allow]
+    M --> B{declared length <=<br/>class body cap?}
+    B -->|no| R413[413 — the peer is wrong]
+    B --> C{class session cap<br/>Data: maxConnections − reserved<br/>Control: 256 · Liveness: 64}
+    C -->|over| R503c[503 — class confined]
+    C --> G{charge byte budget?<br/>only Data}
+    G -->|exhausted| R503b[503 — shed]
+    G --> D[read body → dispatch]
+```
+
+The decisive mechanism is `reservedControlConnections`: Data's session cap resolves to
+`maxConnections − reserved`, so the data plane ALONE can never drive occupancy up to the
+accept-time cap — Control and Liveness always find a slot. The honest residual: class
+membership is unknowable before the head is read, so connections racing BETWEEN accept and
+classification occupy global slots class-blind; the hard "control always answers" guarantee
+holds while the concurrency of new data connects stays below the reserve (rejections beyond
+that are transient accept races). A Control route that does real work still sheds its own
+capacity module-side (bounded queue → 503); the class only guarantees the data plane cannot
+starve it.
+
 Threading: one shared `asio::io_context` wrapped in a `Runtime` co-owned by the server, every
 session and every responder (that shared ownership is what makes a posthumous `send()` defined);
 N I/O threads (`ioThreads`, default nproc) in a resume-on-exception loop; the acceptor on its
@@ -144,6 +170,7 @@ with its own `main()` (`testMain.cpp`) that owns the binary's log sink; no modul
 | `udsShutdown_test.cpp` | S1/S2/S3 verbatim: replies between the two phases, `send()` after stop AND after destruction, drain window, force-close as EOF, concurrent stop races |
 | `requestParser_test.cpp` | The parser alone, byte-by-byte split boundaries, every limit, chunked ⇒ 411 |
 | `inFlightBudget_test.cpp` | Reservation RAII, move semantics, concurrent exactness |
+| `routeClasses_test.cpp` | The QoS model end to end: data saturation not shedding Control/Liveness, class body caps (413 at headers), class session caps releasing on close, the reserved headroom under a flood (and its documented residual), the bool-shim mapping, per-route overrides, per-class diagnostics |
 | `transportDiagnostics_test.cpp` | `diagnostics()` before/during/after; identity injection rendering the consumer vocabulary byte-for-byte; the capacity-hint sentence appearing only when configured |
 | `serverDiagnostics_test.cpp` | Operator-visible (throttled) lines per rejection class |
 | `logThrottle_test.cpp`, `socketPathCheck_test.cpp` | The helpers |

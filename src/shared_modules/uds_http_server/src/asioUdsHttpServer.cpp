@@ -209,8 +209,39 @@ namespace wazuh::uds_http
             Method method;
             std::string path;
             RouteHandler handler;
-            bool countAgainstBudget;
+            RouteOptions options;
+            /// Per-route occupancy, allocated only when options.maxSessions > 0. A shared_ptr so
+            /// Route stays copyable and a Session can keep the counter alive to decrement it.
+            std::shared_ptr<std::atomic<std::size_t>> occupancy;
         };
+
+        /// RouteClass as a per-class array index.
+        constexpr std::size_t classIndex(RouteClass cls) noexcept
+        {
+            return static_cast<std::size_t>(cls);
+        }
+
+        const char* className(RouteClass cls) noexcept
+        {
+            switch (cls)
+            {
+                case RouteClass::Data: return "data";
+                case RouteClass::Control: return "control";
+                case RouteClass::Liveness: return "liveness";
+            }
+            return "data"; // LCOV_EXCL_LINE -- unreachable, the enum is exhaustive
+        }
+
+        const ClassPolicy& policyFor(const UdsHttpServerConfig& config, RouteClass cls) noexcept
+        {
+            switch (cls)
+            {
+                case RouteClass::Data: return config.dataPolicy;
+                case RouteClass::Control: return config.controlPolicy;
+                case RouteClass::Liveness: return config.livenessPolicy;
+            }
+            return config.dataPolicy; // LCOV_EXCL_LINE -- unreachable, the enum is exhaustive
+        }
 
         struct ServerState;
 
@@ -268,6 +299,10 @@ namespace wazuh::uds_http
             std::mutex progressMutex;
             std::condition_variable progressCv;
 
+            /// Classified sessions per class; +1 at admission, -1 when the session unregisters.
+            /// What backs both the class caps and TransportDiagnostics::sessionsByClass.
+            std::atomic<std::size_t> classSessions[ROUTE_CLASS_COUNT] {};
+
             /// Separate per condition: a storm of one kind must not suppress another kind's first line.
             LogThrottle budgetThrottle;
             LogThrottle connectionCapThrottle;
@@ -282,6 +317,8 @@ namespace wazuh::uds_http
             LogThrottle writeErrorThrottle;
             LogThrottle phaseTimeoutThrottle;
             LogThrottle peerGoneThrottle;
+            LogThrottle classBodyCapThrottle;
+            LogThrottle classSessionCapThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
@@ -616,6 +653,45 @@ namespace wazuh::uds_http
                 }
             }
 
+            wazuh::uds_http::HttpResponse classBodyCapResponse(RouteClass cls) const
+            {
+                switch (cls)
+                {
+                    case RouteClass::Data: return errorResponse(413, "Request body exceeds the data-class limit");
+                    case RouteClass::Control: return errorResponse(413, "Request body exceeds the control-class limit");
+                    case RouteClass::Liveness:
+                        return errorResponse(413, "Request body exceeds the liveness-class limit");
+                }
+                return errorResponse(413, "Request body exceeds the class limit"); // LCOV_EXCL_LINE
+            }
+
+            wazuh::uds_http::HttpResponse classSessionCapResponse(RouteClass cls) const
+            {
+                switch (cls)
+                {
+                    case RouteClass::Data: return errorResponse(503, "Data session limit reached");
+                    case RouteClass::Control: return errorResponse(503, "Control session limit reached");
+                    case RouteClass::Liveness: return errorResponse(503, "Liveness session limit reached");
+                }
+                return errorResponse(503, "Session limit reached"); // LCOV_EXCL_LINE
+            }
+
+            void reportClassSessionCap(RouteClass cls, std::size_t cap)
+            {
+                if (const auto decision = m_state->classSessionCapThrottle.record())
+                {
+                    LOGFN_WARN(m_state->log,
+                               "Rejected %llu request(s) with 503 in the last %d s: the %s-class session "
+                               "limit (%zu) is reached. The class caps confine each class to its own "
+                               "headroom; a persistent hit on a control class means a client is leaking "
+                               "connections or polling too hard.",
+                               static_cast<unsigned long long>(decision.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               className(cls),
+                               cap);
+                }
+            }
+
             /**
              * @brief Admission control, run while parsing is paused at the end of the head.
              *
@@ -632,9 +708,60 @@ namespace wazuh::uds_http
                     return RequestParser::Feed::Incomplete; // deliver() already ran; nothing more to parse
                 }
 
-                if (route->countAgainstBudget && m_state->budget)
+                const auto cls = route->options.cls;
+                const auto& policy = policyFor(m_state->config, cls);
+                const auto declared = static_cast<std::size_t>(m_parser.declaredContentLength());
+
+                // Class body cap FIRST, from the declared length: over it is a 413 -- the peer is
+                // wrong and must not retry -- and no body byte is read, no counter is charged.
+                const auto bodyCap =
+                    route->options.maxBodyBytes != 0 ? route->options.maxBodyBytes : policy.maxBodyBytes;
+                if (bodyCap != UdsHttpServerConfig::UNLIMITED_BODY_SIZE && declared > bodyCap)
                 {
-                    const auto declared = static_cast<std::size_t>(m_parser.declaredContentLength());
+                    if (const auto decision = m_state->classBodyCapThrottle.record())
+                    {
+                        LOGFN_WARN(m_state->log,
+                                   "Rejected %llu request(s) with 413 in the last %d s: the declared body "
+                                   "exceeds the %s-class cap (last: %zu > %zu byte(s) on '%s').",
+                                   static_cast<unsigned long long>(decision.total),
+                                   LogThrottle::kDefaultWindowSeconds,
+                                   className(cls),
+                                   declared,
+                                   bodyCap,
+                                   route->path.c_str());
+                    }
+                    deliver(classBodyCapResponse(cls));
+                    return RequestParser::Feed::Incomplete;
+                }
+
+                // Class session cap: increment-then-check, the same pattern as the accept-time
+                // global cap. The counter is owned by m_class from here on -- a rejection still
+                // closes through the normal path, whose unregister() decrements it.
+                const auto occupied =
+                    m_state->classSessions[classIndex(cls)].fetch_add(1, std::memory_order_relaxed) + 1;
+                m_class = cls;
+                if (policy.maxSessions != 0 && occupied > policy.maxSessions)
+                {
+                    reportClassSessionCap(cls, policy.maxSessions);
+                    deliver(classSessionCapResponse(cls));
+                    return RequestParser::Feed::Incomplete;
+                }
+
+                // Per-route override, on the route's own counter, IN ADDITION to the class cap.
+                if (route->occupancy)
+                {
+                    const auto routeOccupied = route->occupancy->fetch_add(1, std::memory_order_relaxed) + 1;
+                    m_routeOccupancy = route->occupancy;
+                    if (routeOccupied > route->options.maxSessions)
+                    {
+                        reportClassSessionCap(cls, route->options.maxSessions);
+                        deliver(classSessionCapResponse(cls));
+                        return RequestParser::Feed::Incomplete;
+                    }
+                }
+
+                if (policy.chargeByteBudget && m_state->budget)
+                {
                     auto reserved = m_state->budget->tryReserve(declared + m_state->perRequestOverhead);
                     if (!reserved)
                     {
@@ -972,6 +1099,14 @@ namespace wazuh::uds_http
                 {
                     m_state->undispatched.fetch_sub(1, std::memory_order_relaxed);
                 }
+                if (m_class)
+                {
+                    m_state->classSessions[classIndex(*m_class)].fetch_sub(1, std::memory_order_relaxed);
+                }
+                if (m_routeOccupancy)
+                {
+                    m_routeOccupancy->fetch_sub(1, std::memory_order_relaxed);
+                }
                 m_state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
 
                 {
@@ -1046,6 +1181,12 @@ namespace wazuh::uds_http
 
             InFlightBudget::Reservation m_reservation;
             const Route* m_route {nullptr};
+            /// Set the moment the session is classified (class counter already incremented), so
+            /// unregister() can decrement exactly once -- including for admission rejections that
+            /// still travel the normal deliver-and-close path.
+            std::optional<RouteClass> m_class;
+            /// Non-null iff this session incremented a per-route occupancy counter.
+            std::shared_ptr<std::atomic<std::size_t>> m_routeOccupancy;
             bool m_pathMatchedOtherMethod {false};
 
             std::uint64_t m_id {0};
@@ -1795,14 +1936,14 @@ namespace wazuh::uds_http
         m_impl->doStop();
     }
 
-    void
-    AsioUdsHttpServer::addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget)
+    void AsioUdsHttpServer::addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options)
     {
         if (m_impl->lifecycle.load() != Impl::State::Idle)
         {
             throw std::logic_error {"routes must be registered before the server is started"};
         }
-        m_impl->state->routes.push_back(Route {method, path, std::move(handler), countAgainstBudget});
+        auto occupancy = options.maxSessions != 0 ? std::make_shared<std::atomic<std::size_t>>(0) : nullptr;
+        m_impl->state->routes.push_back(Route {method, path, std::move(handler), options, std::move(occupancy)});
     }
 
     void AsioUdsHttpServer::start(const UdsHttpServerConfig& config)
@@ -1816,6 +1957,33 @@ namespace wazuh::uds_http
         // From here on every diagnostic carries the consumer's identity, not the library default.
         m_impl->state->log = LogFn {m_impl->state->config.logTag};
         m_impl->socketPath = config.socketPath;
+
+        {
+            // Resolve the class-cap arithmetic once. The reservation may claim at most a quarter
+            // of the connection cap (and nothing on tiny test-sized configs, where the quarter is
+            // zero); Data's session cap then defaults to everything but that reservation, which is
+            // the invariant the whole model rests on: the data plane ALONE can never drive
+            // occupancy up to the accept-time cap.
+            auto& cfg = m_impl->state->config;
+            const auto reservedCeiling = cfg.maxConnections / 4;
+            if (cfg.reservedControlConnections > reservedCeiling)
+            {
+                if (reservedCeiling > 0)
+                {
+                    LOGFN_WARN(m_impl->state->log,
+                               "reserved control connections (%zu) exceed a quarter of the %zu-connection cap; "
+                               "clamping to %zu.",
+                               cfg.reservedControlConnections,
+                               cfg.maxConnections,
+                               reservedCeiling);
+                }
+                cfg.reservedControlConnections = reservedCeiling;
+            }
+            if (cfg.dataPolicy.maxSessions == 0)
+            {
+                cfg.dataPolicy.maxSessions = cfg.maxConnections - cfg.reservedControlConnections;
+            }
+        }
 
         m_impl->state->perRequestOverhead = perRequestOverhead(m_impl->state->config);
 
@@ -1978,6 +2146,10 @@ namespace wazuh::uds_http
             snapshot.budgetInFlightCount = state.budget->inFlightCount();
         }
         snapshot.liveSessions = state.liveSessions.load(std::memory_order_relaxed);
+        for (std::size_t i = 0; i < ROUTE_CLASS_COUNT; ++i)
+        {
+            snapshot.sessionsByClass[i] = state.classSessions[i].load(std::memory_order_relaxed);
+        }
         return snapshot;
     }
 

@@ -76,6 +76,15 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 
     EXPECT_EQ(1024U, config.maxConnections);
     EXPECT_EQ(256U * 1024U * 1024U, config.maxInFlightBytes);
+
+    // Route-class admission (QoS): the reserve and the control caps are tunables; liveness is
+    // fixed in the library (a term of the memory ceiling, same criterion as max_header_count).
+    EXPECT_EQ(64U, config.reservedControlConnections);
+    EXPECT_FALSE(config.controlPolicy.chargeByteBudget);
+    EXPECT_EQ(64U * 1024U, config.controlPolicy.maxBodyBytes);
+    EXPECT_EQ(256U, config.controlPolicy.maxSessions);
+    EXPECT_TRUE(config.dataPolicy.chargeByteBudget);
+    EXPECT_EQ(0U, config.dataPolicy.maxSessions) << "0: resolved to maxConnections - reserved at start()";
 }
 
 // The socket path being relative is the whole basis of the chroot/chdir agreement with the peer:
@@ -108,6 +117,9 @@ TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)
     input.drain_timeout = 8;
     input.max_parallel_connections = 77;
     input.max_inflight_bytes = 12345;
+    input.reserved_control_connections = 19;
+    input.control_max_body_bytes = 2048;
+    input.control_max_sessions = 33;
 
     const auto config = buildServerConfig(input);
 
@@ -128,6 +140,9 @@ TEST(UdsHttpServerConfigTest, PositiveValuesOverrideEveryDefault)
     EXPECT_EQ(8U, config.drainTimeoutSec);
     EXPECT_EQ(77U, config.maxConnections);
     EXPECT_EQ(12345U, config.maxInFlightBytes);
+    EXPECT_EQ(19U, config.reservedControlConnections);
+    EXPECT_EQ(2048U, config.controlPolicy.maxBodyBytes);
+    EXPECT_EQ(33U, config.controlPolicy.maxSessions);
 }
 
 // Negative is treated exactly like zero: "the caller has no opinion". Anything else would let a
