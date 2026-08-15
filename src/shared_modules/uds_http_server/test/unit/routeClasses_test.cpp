@@ -334,6 +334,34 @@ TEST(RouteClassesTest, APerRouteSessionOverrideConfinesThatRouteOnly)
     server->stop();
 }
 
+TEST(RouteClassesTest, APerRouteBodyCapOverridesTheClassCapOnThatRouteOnly)
+{
+    const auto path = uniqueSocketPath("class_body");
+    auto server = makeUdsHttpServer();
+
+    RouteOptions capped {RouteClass::Control};
+    capped.maxBodyBytes = 4096;
+    server->addRoute(Method::Post, "/scan", answer200(), capped);
+    server->addRoute(Method::Post, "/ctl", answer200(), RouteOptions {RouteClass::Control});
+    server->start(configFor(path));
+
+    // One byte over the ROUTE's cap, well under the 64 KiB class cap. Declared length only,
+    // zero body bytes: the rejection must come at headers-complete, and the body text is still
+    // keyed on the CLASS (the cap that fired is the route's).
+    const std::string head = "POST /scan HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4097\r\n"
+                             "Connection: close\r\n\r\n";
+    const auto rejected = sendRaw(path, head);
+    EXPECT_EQ(413, rejected.status);
+    EXPECT_NE(std::string::npos, rejected.body.find("control-class limit")) << rejected.body;
+
+    const std::string body(4097, 'x');
+    EXPECT_EQ(200, sendRaw(path, peerRequest("POST", "/ctl", body)).status)
+        << "a sibling route of the SAME class must keep the class cap";
+    EXPECT_EQ(200, sendRaw(path, peerRequest("POST", "/scan", std::string(4096, 'x'))).status)
+        << "at the route cap is fine";
+    server->stop();
+}
+
 TEST(RouteClassesTest, DiagnosticsExposePerClassOccupancy)
 {
     const auto path = uniqueSocketPath("class_diag");

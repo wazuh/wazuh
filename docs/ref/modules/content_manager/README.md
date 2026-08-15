@@ -66,7 +66,8 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/vd.sock \
 ```
 
 Request body: `{"topic": "<name>", "offset": -1|0}` — `offset` is optional; `-1` (default)
-keeps the current offset, `0` restarts the content from scratch.
+keeps the current offset, `0` restarts the content from scratch. The body is capped at 4 KiB
+(a larger declared `Content-Length` is rejected with `413` before any body byte is read).
 
 | Status | Body | Meaning |
 |---|---|---|
