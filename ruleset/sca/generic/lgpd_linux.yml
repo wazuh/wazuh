@@ -1,0 +1,199 @@
+# Security Configuration Assessment
+# LGPD (Lei Geral de Proteção de Dados) Compliance Checks for Linux
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License (version 2) as published by the
+# FSF - Free Software Foundation
+#
+# SCA policy for LGPD compliance based on Lei nº 13.709/2018 (Brazil)
+
+policy:
+  id: "lgpd_linux"
+  file: "lgpd_linux.yml"
+  name: "LGPD (Lei Geral de Proteção de Dados) Compliance for Linux"
+  description: "This policy provides prescriptive guidance for establishing security controls
+    required for compliance with Brazil's Lei Geral de Proteção de Dados (LGPD),
+    Lei nº 13.709/2018, effective since September 2020. The LGPD governs the
+    processing of personal data of individuals in Brazil and applies to any
+    organization that processes such data regardless of where it is located."
+  references:
+    - https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm
+    - https://www.gov.br/anpd/pt-br
+    - https://www.serpro.gov.br/lgpd
+
+requirements:
+  name: "Check Linux version"
+  description: "Requirements for running the LGPD SCA scan against Linux systems"
+  condition: all
+  rules:
+    - "f:/proc/sys/kernel/ostype -> Linux"
+
+checks:
+  # Art. 46 - Technical and administrative security measures
+  - id: 72000
+    name: "Ensure audit logging is enabled (auditd)"
+    description: "Auditd provides detailed logging of system calls and file access,
+      enabling organizations to track access to personal data as required by LGPD Art. 46."
+    rationale: "LGPD Art. 46 requires organizations to adopt technical and administrative
+      measures to protect personal data from unauthorized access. Audit logging is
+      a fundamental control for detecting and investigating unauthorized access to
+      systems that process personal data."
+    remediation: "Install and enable auditd: apt install auditd / yum install audit.
+      Enable the service: systemctl enable auditd && systemctl start auditd."
+    compliance:
+      lgpd: ["Art. 46", "Art. 48"]
+      gdpr: ["IV_32.1.a", "IV_32.1.b"]
+      iso_27001: ["A.12.4.1"]
+      nist_800_53: ["AU-2", "AU-3", "AU-6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled auditd -> r:enabled"
+      - "c:systemctl is-active auditd -> r:active"
+
+  # Art. 46 - Access control
+  - id: 72001
+    name: "Ensure password hashing algorithm is SHA-512"
+    description: "Weak password hashing can expose personal data to unauthorized access.
+      SHA-512 provides strong cryptographic protection for stored credentials."
+    rationale: "LGPD Art. 46 requires adoption of security measures to protect personal data.
+      Using strong password hashing prevents unauthorized access to systems that
+      store or process personal data of Brazilian individuals."
+    remediation: "Edit /etc/login.defs and set ENCRYPT_METHOD SHA512.
+      Run: authconfig --passalgo=sha512 --update (RHEL/CentOS) or
+      update /etc/pam.d/common-password to use sha512 (Debian/Ubuntu)."
+    compliance:
+      lgpd: ["Art. 46", "Art. 47"]
+      gdpr: ["IV_32.1.a"]
+      iso_27001: ["A.9.4.3"]
+      nist_800_53: ["IA-5"]
+      pci_dss: ["8.2.1"]
+    condition: any
+    rules:
+      - "f:/etc/login.defs -> r:^ENCRYPT_METHOD\s+SHA512"
+      - "f:/etc/pam.d/common-password -> r:sha512"
+      - "f:/etc/pam.d/system-auth -> r:sha512"
+
+  # Art. 46 - Encryption of data at rest
+  - id: 72002
+    name: "Ensure filesystem encryption is configured"
+    description: "Encryption of data at rest protects personal data stored on disk from
+      unauthorized physical access, as required by LGPD Art. 46."
+    rationale: "LGPD Art. 46 requires technical measures to protect personal data.
+      Filesystem encryption ensures that personal data is unreadable if physical
+      media is accessed without authorization."
+    remediation: "Configure LUKS disk encryption during OS installation or use
+      fscrypt for individual directories containing personal data.
+      Refer to your distribution documentation for implementation details."
+    compliance:
+      lgpd: ["Art. 46", "Art. 47"]
+      gdpr: ["IV_32.1.a"]
+      iso_27001: ["A.10.1.1"]
+      nist_800_53: ["SC-28"]
+    condition: any
+    rules:
+      - "c:lsblk -o type -> r:crypt"
+      - "c:dmsetup ls --target crypt -> r:\\S+"
+
+  # Art. 48 - Incident response
+  - id: 72003
+    name: "Ensure system logging (syslog/rsyslog/journald) is enabled"
+    description: "System logging is required to detect security incidents involving
+      personal data and to fulfill LGPD Art. 48 notification obligations."
+    rationale: "LGPD Art. 48 requires that the data controller notify the ANPD and
+      affected data subjects of security incidents that may result in risk or
+      damage. Active logging is essential to detect such incidents."
+    remediation: "Install and enable rsyslog: apt install rsyslog / yum install rsyslog.
+      Enable: systemctl enable rsyslog && systemctl start rsyslog."
+    compliance:
+      lgpd: ["Art. 48", "Art. 46"]
+      gdpr: ["IV_33.1", "IV_33.2"]
+      iso_27001: ["A.12.4.1", "A.16.1.2"]
+      nist_800_53: ["IR-6", "AU-2"]
+    condition: any
+    rules:
+      - "c:systemctl is-active rsyslog -> r:active"
+      - "c:systemctl is-active syslog -> r:active"
+      - "c:systemctl is-active systemd-journald -> r:active"
+
+  # Art. 46 - Minimize attack surface
+  - id: 72004
+    name: "Ensure SSH root login is disabled"
+    description: "Disabling direct SSH root login reduces the risk of unauthorized
+      privileged access to systems processing personal data."
+    rationale: "LGPD Art. 46 requires technical measures to prevent unauthorized access
+      to personal data. Direct root login over SSH increases the risk of brute-force
+      attacks against systems that store or process personal data."
+    remediation: "Edit /etc/ssh/sshd_config and set: PermitRootLogin no.
+      Restart SSH: systemctl restart sshd."
+    compliance:
+      lgpd: ["Art. 46", "Art. 47"]
+      gdpr: ["IV_32.1.b"]
+      iso_27001: ["A.9.4.4"]
+      nist_800_53: ["AC-6", "AC-17"]
+      pci_dss: ["2.2.4"]
+    condition: all
+    rules:
+      - "f:/etc/ssh/sshd_config -> r:^PermitRootLogin\s+no"
+
+  # Art. 46 - Session timeout
+  - id: 72005
+    name: "Ensure SSH idle timeout is configured"
+    description: "Configuring SSH session timeout reduces the risk of unauthorized access
+      through abandoned sessions on systems processing personal data."
+    rationale: "LGPD Art. 46 requires technical measures to protect personal data from
+      unauthorized access. Unattended SSH sessions represent a risk of unauthorized
+      access to systems that store or process personal data."
+    remediation: "Edit /etc/ssh/sshd_config and set:
+      ClientAliveInterval 300
+      ClientAliveCountMax 0
+      Restart SSH: systemctl restart sshd."
+    compliance:
+      lgpd: ["Art. 46"]
+      gdpr: ["IV_32.1.b"]
+      iso_27001: ["A.11.2.8", "A.9.4.2"]
+      nist_800_53: ["AC-11", "AC-12"]
+    condition: all
+    rules:
+      - "f:/etc/ssh/sshd_config -> r:^ClientAliveInterval\s+[1-9]"
+      - "f:/etc/ssh/sshd_config -> r:^ClientAliveCountMax\s+[0-3]$"
+
+  # Art. 46 - Firewall
+  - id: 72006
+    name: "Ensure a firewall is active"
+    description: "An active firewall restricts unauthorized network access to systems
+      that store or process personal data, as required by LGPD Art. 46."
+    rationale: "LGPD Art. 46 requires technical measures to protect personal data.
+      A properly configured firewall is a fundamental network security control
+      that limits exposure of systems processing personal data."
+    remediation: "Enable ufw: ufw enable, or enable firewalld: systemctl enable firewalld
+      && systemctl start firewalld."
+    compliance:
+      lgpd: ["Art. 46"]
+      gdpr: ["IV_32.1.b"]
+      iso_27001: ["A.13.1.1"]
+      nist_800_53: ["SC-7", "CA-3"]
+    condition: any
+    rules:
+      - "c:ufw status -> r:Status: active"
+      - "c:firewall-cmd --state -> r:running"
+      - "c:iptables -L -> r:Chain INPUT"
+
+  # Art. 46 - File permissions on sensitive logs
+  - id: 72007
+    name: "Ensure /var/log permissions restrict unauthorized access"
+    description: "Restricting access to log directories prevents unauthorized users from
+      reading logs that may contain personal data."
+    rationale: "LGPD Art. 46 requires measures to protect personal data from unauthorized
+      access. System logs may contain personal data such as usernames, IP addresses,
+      and other identifiers. Restricting log access is essential for LGPD compliance."
+    remediation: "Set correct permissions: chmod 640 /var/log/*.log
+      chown root:adm /var/log/*.log"
+    compliance:
+      lgpd: ["Art. 46", "Art. 47"]
+      gdpr: ["IV_32.1.b"]
+      iso_27001: ["A.9.4.1"]
+      nist_800_53: ["AC-3", "AU-9"]
+    condition: all
+    rules:
+      - "c:stat -c %a /var/log -> r:^7[0-7][0-5]$|^[0-6][0-7][0-5]$|^750$|^755$|^640$|^644$"
