@@ -269,7 +269,7 @@ public:
             {
                 if (status != rocksdb::Status::NotFound())
                 {
-                    throw std::runtime_error("Failed to get elements, error: " + status.code());
+                    throw std::runtime_error("Failed to get elements, error: " + std::to_string(status.code()));
                 }
             }
             ++index;
