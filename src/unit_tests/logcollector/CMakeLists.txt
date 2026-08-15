@@ -34,7 +34,7 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND logcollector_names "test_read_win_event_channel")
     list(APPEND logcollector_flags "-Wl,--wrap,wstr_split -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string -Wl,--wrap=SendMSG \
-                                    -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap,w_query_agentd -Wl,--wrap=utf8_LookupAccountSid ${DEBUG_OP_WRAPPERS}")
 
     list(APPEND logcollector_names "test_read_ucs2")
     list(APPEND logcollector_flags "-Wl,--wrap,can_read -Wl,--wrap,w_get_hash_context -Wl,--wrap,w_update_file_status \

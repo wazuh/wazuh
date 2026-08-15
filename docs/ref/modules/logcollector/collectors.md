@@ -68,7 +68,7 @@ The agent wrapped each event in a JSON object containing a human-readable messag
 
 #### Wazuh 5.0
 
-The agent now forwards the native Windows Event XML exactly as returned by `EvtRender()`, matching the export format of Windows Event Viewer:
+The agent now forwards native Windows Event XML in the format returned by `EvtRender()`, matching the export format of Windows Event Viewer:
 
 ```xml
 <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
@@ -92,6 +92,7 @@ Key differences from the previous format:
 - No `<?xml version="1.0" encoding="UTF-8"?>` declaration.
 - `<Event>` is the root element.
 - Namespaces and attributes are preserved exactly as provided by the EventChannel API.
+When `MemberName` is empty or `-` and `MemberSid` is available, the Windows agent attempts to resolve the SID and inserts the resulting `DOMAIN\account` (or account) into `MemberName`.
 
 This change standardizes event data for downstream processing and makes forwarded events directly comparable to native Windows Event Viewer exports.
 
