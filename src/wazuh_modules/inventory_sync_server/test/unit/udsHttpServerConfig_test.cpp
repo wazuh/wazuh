@@ -11,8 +11,8 @@
 
 #include "http_server/udsHttpServerConfig.hpp"
 
-#include "http_server/requestParser.hpp"
 #include "proc.hpp"
+#include "requestParser.hpp" // white-box: the lib test dir exposes src/
 
 #include <gtest/gtest.h>
 

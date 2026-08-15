@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -14,9 +14,9 @@
  * under ASan and TSan before trusting a change to the shutdown protocol.
  */
 
-#include "http_server/IUdsHttpServer.hpp"
-#include "http_server/udsHttpServerFactory.hpp"
 #include "udsTestClient.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -28,16 +28,16 @@
 #include <thread>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
-using invsync::http::IUdsHttpServer;
-using invsync::http::makeUdsHttpServer;
-using invsync::http::Method;
-using invsync::http::UdsHttpServerConfig;
-using invsync::test::peerRequest;
-using invsync::test::sendRaw;
-using invsync::test::uniqueSocketPath;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
+using wazuh::uds_http::IUdsHttpServer;
+using wazuh::uds_http::makeUdsHttpServer;
+using wazuh::uds_http::Method;
+using wazuh::uds_http::UdsHttpServerConfig;
+using wazuh::uds_http::test::peerRequest;
+using wazuh::uds_http::test::sendRaw;
+using wazuh::uds_http::test::uniqueSocketPath;
 
 namespace
 {
@@ -60,7 +60,7 @@ namespace
         std::vector<std::shared_ptr<IHttpResponder>> responders;
         std::atomic<int> dispatched {0};
 
-        invsync::http::RouteHandler handler()
+        wazuh::uds_http::RouteHandler handler()
         {
             return [this](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
             {
@@ -179,9 +179,9 @@ TEST(UdsShutdownTest, StopAcceptingGuaranteesNoFurtherHandlerInvocation)
     // A connection that sends only part of a request: it is mid-parse, so it has not reached the
     // handler and never will.
     asio::io_context ioc;
-    invsync::test::stream_protocol::socket socket {ioc};
+    wazuh::uds_http::test::stream_protocol::socket socket {ioc};
     std::error_code ec;
-    socket.connect(invsync::test::stream_protocol::endpoint {path}, ec);
+    socket.connect(wazuh::uds_http::test::stream_protocol::endpoint {path}, ec);
     ASSERT_FALSE(ec);
     asio::write(socket, asio::buffer(std::string {"POST /inventory/sync HTTP/1.1\r\nHost: h\r\n"}), ec);
     ASSERT_FALSE(ec);
@@ -248,7 +248,7 @@ TEST(UdsShutdownTest, SendAfterTheServerIsDestroyedIsASafeNoOp)
 
     // Declared out here so the request is still outstanding when the server is destroyed: it is the
     // destructor's force-close, not a response timeout, that has to end this connection.
-    std::future<invsync::test::Response> pending;
+    std::future<wazuh::uds_http::test::Response> pending;
     {
         auto config = configFor(path);
         config.drainTimeoutSec = 1;
@@ -384,7 +384,7 @@ TEST(UdsShutdownTest, DestructorPerformsBothPhasesWithADeferralInFlight)
     Parking parking;
     std::vector<std::shared_ptr<IHttpResponder>> responders;
 
-    auto pending = std::future<invsync::test::Response> {};
+    auto pending = std::future<wazuh::uds_http::test::Response> {};
     {
         auto config = configFor(path);
         config.drainTimeoutSec = 1;
@@ -419,7 +419,7 @@ TEST(UdsShutdownTest, ConcurrentSendAndStopFromManyThreads)
     server->addRoute(Method::Post, "/inventory/sync", parking.handler());
     server->start(config);
 
-    std::vector<std::future<invsync::test::Response>> pending;
+    std::vector<std::future<wazuh::uds_http::test::Response>> pending;
     pending.reserve(CONCURRENCY);
     for (int i = 0; i < CONCURRENCY; ++i)
     {
@@ -472,7 +472,7 @@ TEST(UdsShutdownTest, StopAcceptingThenStopUnderManyLiveDeferrals)
     server->addRoute(Method::Post, "/inventory/sync", parking.handler());
     server->start(config);
 
-    std::vector<std::future<invsync::test::Response>> pending;
+    std::vector<std::future<wazuh::uds_http::test::Response>> pending;
     pending.reserve(CONCURRENCY);
     for (int i = 0; i < CONCURRENCY; ++i)
     {

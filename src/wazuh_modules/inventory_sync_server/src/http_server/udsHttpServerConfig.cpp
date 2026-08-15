@@ -102,6 +102,16 @@ namespace invsync::http
     {
         UdsHttpServerConfig result;
 
+        // This module's identity, injected into the shared transport so every diagnostic renders
+        // exactly the lines this module logged before the transport was extracted (RF-6): the
+        // serverName templates expand to "inventory sync server ...", and the capacity hints name
+        // THIS module's internal options.
+        result.logTag = "wazuh-manager-modulesd:inventory-sync-server:server";
+        result.serverName = "inventory sync";
+        result.serverHeader = "wazuh-manager-modulesd";
+        result.budgetOptionHint = "inventory_sync_server_max_inflight_bytes";
+        result.connectionCapOptionHint = "inventory_sync_server_max_parallel_connections";
+
         result.socketPath = config.socket_path[0] != '\0' ? std::string {config.socket_path} : DEFAULT_SOCKET_PATH;
         result.socketMode =
             config.socket_mode > 0 ? static_cast<std::uint32_t>(config.socket_mode) : DEFAULT_SOCKET_MODE;

@@ -45,6 +45,12 @@ namespace invsync::metrics
     constexpr auto DOCS_SKIPPED {"sync.docs.skipped"};
     constexpr auto BYTES_INGESTED {"sync.bytes.ingested"};
 
+    // -- transport diagnostics (pull metrics over IUdsHttpServer::diagnostics(), U10) --------
+    constexpr auto SERVER_BUDGET_AVAILABLE_BYTES {"server.budget.available.bytes"};
+    constexpr auto SERVER_BUDGET_IN_FLIGHT_BYTES {"server.budget.inflight.bytes"};
+    constexpr auto SERVER_BUDGET_IN_FLIGHT_REQUESTS {"server.budget.inflight.requests"};
+    constexpr auto SERVER_SESSIONS_LIVE {"server.sessions.live"};
+
     // -- vulnerability-detection lane -------------------------------------------------------
     constexpr auto VD_CAPACITY_503_TOTAL {"vd.capacity.503.total"};
     constexpr auto VD_LANE_DEPTH {"vd.lane.depth"};

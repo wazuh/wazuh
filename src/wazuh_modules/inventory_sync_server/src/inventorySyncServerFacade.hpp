@@ -371,8 +371,7 @@ namespace invsync
                 invsync::http::Method::Get,
                 "/",
                 [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<invsync::http::IHttpResponder> responder) {
                     responder->send(
                         invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
@@ -448,6 +447,7 @@ namespace invsync
                                    /*countAgainstBudget=*/false);
 
             m_httpServer->start(config);
+            registerTransportDiagnostics();
 
             LOGFN_INFO(moduleLogFn(),
                        "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s and DELETE %s; "
@@ -459,6 +459,58 @@ namespace invsync
                        invsync::endpoints::config::path(),
                        invsync::endpoints::delete_agent::path(),
                        m_syncPipeline ? m_syncPipeline->workerCount() : 0);
+        }
+
+        /**
+         * @brief Publish the transport's bounded resources as pull metrics (U10).
+         *
+         * Called after every successful start: the weak target is repointed at the new server,
+         * while the pulls themselves are registered exactly once (iManager has no unregister).
+         * After stop() resets m_httpServer the weak_ptr expires and every metric reads 0 --
+         * the documented quiesced value -- so a dump can never touch a dead server.
+         */
+        void registerTransportDiagnostics()
+        {
+            {
+                std::lock_guard<std::mutex> lock {m_transportDiagMutex};
+                m_transportDiagTarget = m_httpServer;
+            }
+            if (m_transportPullsRegistered)
+            {
+                return;
+            }
+            m_transportPullsRegistered = true;
+
+            const auto snapshot = [this]() -> invsync::http::TransportDiagnostics
+            {
+                std::lock_guard<std::mutex> lock {m_transportDiagMutex};
+                if (const auto server = m_transportDiagTarget.lock())
+                {
+                    return server->diagnostics();
+                }
+                return {};
+            };
+
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_AVAILABLE_BYTES,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
+                "Bytes the in-flight payload budget can still admit",
+                "bytes");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_IN_FLIGHT_BYTES,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
+                "Bytes currently reserved by admitted requests",
+                "bytes");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_BUDGET_IN_FLIGHT_REQUESTS,
+                [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
+                "Requests currently holding a budget reservation",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::SERVER_SESSIONS_LIVE,
+                [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
+                "Open transport connections, deferred replies included",
+                "connections");
         }
 
         /**
@@ -815,8 +867,7 @@ namespace invsync
                 !buildAndPublish(m_indexerSession,
                                  FailureStage::IndexerSession,
                                  generation,
-                                 [&]
-                                 {
+                                 [&] {
                                      return sessionFactory(
                                          rawIndexerConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
@@ -1148,7 +1199,17 @@ namespace invsync
         std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
             m_logFunction;
 
-        std::unique_ptr<invsync::http::IUdsHttpServer> m_httpServer; ///< HTTP-over-UDS transport.
+        /// HTTP-over-UDS transport. shared_ptr (not unique) so the transport-diagnostics pull
+        /// metrics can hold a WEAK reference that expires the moment stop() resets this.
+        std::shared_ptr<invsync::http::IUdsHttpServer> m_httpServer;
+
+        /// Pull metrics are registered once (there is no unregister -- iManager.hpp), but the
+        /// server they observe is replaced per start attempt, so the getters resolve the current
+        /// one through this weak target under its own tiny mutex (never the lifecycle mutex: a
+        /// metrics dump must not be able to contend with stop()).
+        mutable std::mutex m_transportDiagMutex;
+        std::weak_ptr<invsync::http::IUdsHttpServer> m_transportDiagTarget;
+        bool m_transportPullsRegistered {false};
 
         /*
          * The three indexer slots, each constructed at most once per start()/stop() cycle and memoised
@@ -1186,7 +1247,9 @@ namespace invsync
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
+            {
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
 
         /*
          * The production connector factories are the only place that knows the seam it is handed wraps
@@ -1203,7 +1266,10 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[]()
+                                             {
+                                                 return invsync::vd::makeProductionVdScanner();
+                                             }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

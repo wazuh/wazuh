@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -30,7 +30,7 @@ namespace
     }
 } // namespace
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /**
@@ -418,4 +418,4 @@ namespace invsync::http
         return Feed::HeadersReady;
     }
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http

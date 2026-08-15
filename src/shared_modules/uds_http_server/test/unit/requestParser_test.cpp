@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,16 +9,16 @@
  * Foundation.
  */
 
-#include "http_server/requestParser.hpp"
+#include "requestParser.hpp"
 
 #include <gtest/gtest.h>
 
 #include <string>
 #include <vector>
 
-using invsync::http::Method;
-using invsync::http::RequestParser;
-using Feed = invsync::http::RequestParser::Feed;
+using wazuh::uds_http::Method;
+using wazuh::uds_http::RequestParser;
+using Feed = wazuh::uds_http::RequestParser::Feed;
 
 namespace
 {

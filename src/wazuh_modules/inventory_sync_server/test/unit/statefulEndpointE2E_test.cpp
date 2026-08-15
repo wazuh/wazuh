@@ -17,6 +17,13 @@
 #include "testSessionBuilder.hpp"
 #include "udsTestClient.hpp"
 
+// TRANSITIONAL (deleted by the rename commit): the raw client moved to the shared transport's
+// test fixtures with its namespace; bridge the one helper this suite borrows from it.
+namespace invsync::test
+{
+    using wazuh::uds_http::test::sendRaw;
+} // namespace invsync::test
+
 #include "hashHelper.h"
 #include "stringHelper.h"
 
