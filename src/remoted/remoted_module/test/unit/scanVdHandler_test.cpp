@@ -20,6 +20,8 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -35,6 +37,7 @@ using namespace std::chrono_literals;
 using remoted::common::VdClient;
 using remoted::endpoints::scanvd::ScanVdOutcome;
 using remoted::endpoints::scanvd::ScanVdResponse;
+using remoted::scanvd::makeScanVdMetrics;
 using remoted::scanvd::ScanVdHandlerImpl;
 using remoted::scanvd::ScanVdMetrics;
 using remoted::test::FakeVdServer;
@@ -142,7 +145,8 @@ TEST(ScanVdHandlerTest, VersionMismatchRejectsWithoutEverTriggeringAScan)
     server.setOffset(100);
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     const auto response = callSync(handler, 1, 50 /* stale offset */);
@@ -153,8 +157,8 @@ TEST(ScanVdHandlerTest, VersionMismatchRejectsWithoutEverTriggeringAScan)
     // Give any (incorrect) background trigger a chance to happen before asserting it didn't.
     std::this_thread::sleep_for(150ms);
     EXPECT_EQ(server.scanRequestCount(), 0u);
-    EXPECT_EQ(metrics.acceptedCount.load(), 0u);
-    EXPECT_EQ(metrics.versionMismatchCount.load(), 1u);
+    EXPECT_EQ(metrics.accepted->get(), 0u);
+    EXPECT_EQ(metrics.versionMismatch->get(), 1u);
 }
 
 TEST(ScanVdHandlerTest, ZeroAgentIdIsRejectedAsInvalidAgent)
@@ -164,13 +168,14 @@ TEST(ScanVdHandlerTest, ZeroAgentIdIsRejectedAsInvalidAgent)
     server.setOffset(100);
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     const auto response = callSync(handler, 0, 100);
 
     EXPECT_EQ(response.outcome, ScanVdOutcome::InvalidAgent);
-    EXPECT_EQ(metrics.invalidAgentCount.load(), 1u);
+    EXPECT_EQ(metrics.invalidAgent->get(), 1u);
 
     std::this_thread::sleep_for(150ms);
     EXPECT_EQ(server.scanRequestCount(), 0u);
@@ -185,20 +190,21 @@ TEST(ScanVdHandlerTest, AcceptedRequestTriggersExactlyOneSuccessfulScan)
                           { res.set_content("{}", "application/json"); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     const auto response = callSync(handler, 7, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::Accepted);
-    EXPECT_EQ(metrics.acceptedCount.load(), 1u);
+    EXPECT_EQ(metrics.accepted->get(), 1u);
 
-    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceededCount.load() == 1; }));
+    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceeded->get() == 1; }));
     EXPECT_EQ(server.scanRequestCount(), 1u);
 
     // Give it a further window to make sure success doesn't spuriously retry.
     std::this_thread::sleep_for(200ms);
     EXPECT_EQ(server.scanRequestCount(), 1u);
-    EXPECT_EQ(metrics.scanRetriedCount.load(), 0u);
+    EXPECT_EQ(metrics.scanRetried->get(), 0u);
 }
 
 TEST(ScanVdHandlerTest, RetryableFailureIsRetriedAndEventuallySucceeds)
@@ -223,15 +229,16 @@ TEST(ScanVdHandlerTest, RetryableFailureIsRetriedAndEventuallySucceeds)
         });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     const auto response = callSync(handler, 8, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::Accepted);
 
     // First backoff is 1s (see MAX_RETRIES/backoff in scanVdHandler.cpp), so this needs real time.
-    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceededCount.load() == 1; }, 3s));
-    EXPECT_EQ(metrics.scanRetriedCount.load(), 1u);
+    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceeded->get() == 1; }, 3s));
+    EXPECT_EQ(metrics.scanRetried->get(), 1u);
     EXPECT_EQ(attempt.load(), 2);
 }
 
@@ -248,18 +255,19 @@ TEST(ScanVdHandlerTest, PermanentFailureIsNotRetried)
         });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     const auto response = callSync(handler, 9, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::Accepted);
 
-    ASSERT_TRUE(waitUntil([&] { return metrics.scanPermanentFailureCount.load() == 1; }));
+    ASSERT_TRUE(waitUntil([&] { return metrics.scanPermanentFailure->get() == 1; }));
 
     // Must not have retried: exactly one request, ever.
     std::this_thread::sleep_for(1200ms);
     EXPECT_EQ(server.scanRequestCount(), 1u);
-    EXPECT_EQ(metrics.scanRetriedCount.load(), 0u);
+    EXPECT_EQ(metrics.scanRetried->get(), 0u);
 }
 
 TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
@@ -275,7 +283,8 @@ TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(
         std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath, /*maxTrackedAgents=*/2);
 
@@ -286,11 +295,11 @@ TEST(ScanVdHandlerTest, QueueFullRejectsWhenTrackingTableIsAtCapacity)
     // Table is now at capacity (2/2); a third, different agent must be rejected.
     const auto response = callSync(handler, 3, 100);
     EXPECT_EQ(response.outcome, ScanVdOutcome::QueueFull);
-    EXPECT_EQ(metrics.queueFullCount.load(), 1u);
+    EXPECT_EQ(metrics.queueFull->get(), 1u);
 
     // Once agents 1 and 2 finish, capacity frees up again.
     gate.release();
-    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceededCount.load() == 2; }, 2s));
+    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceeded->get() == 2; }, 2s));
     EXPECT_EQ(callSync(handler, 3, 100).outcome, ScanVdOutcome::Accepted);
 }
 
@@ -306,7 +315,8 @@ TEST(ScanVdHandlerTest, OffsetChangeDuringInFlightAttemptTriggersImmediateRescan
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}), metrics, socketPath);
 
     ASSERT_EQ(callSync(handler, 42, 100).outcome, ScanVdOutcome::Accepted);
@@ -325,7 +335,7 @@ TEST(ScanVdHandlerTest, OffsetChangeDuringInFlightAttemptTriggersImmediateRescan
     gate.release();
 
     ASSERT_TRUE(waitUntil([&] { return gate.count("42") >= 2; }, 3s));
-    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceededCount.load() == 1; }))
+    ASSERT_TRUE(waitUntil([&] { return metrics.scanSucceeded->get() == 1; }))
         << "the agent's final state must resolve as a single successful scan, not two independent "
            "successes or a discard";
 }
@@ -346,7 +356,8 @@ TEST(ScanVdHandlerTest, StaleQueuedTaskIsDiscardedWhenOffsetChangesBeforeExecuti
     server.setScanHandler([&gate](const httplib::Request& req, httplib::Response& res) { gate(req, res); });
 
     VdClient vdClient(socketPath, VDCLIENT_TTL, VDCLIENT_FAILURE_RETRY);
-    ScanVdMetrics metrics;
+    wazuh::metrics::Manager metricsManager;
+    ScanVdMetrics metrics {makeScanVdMetrics(metricsManager)};
     ScanVdHandlerImpl handler(std::shared_ptr<VdClient>(&vdClient, [](auto*) {}),
                               metrics,
                               socketPath,
@@ -387,9 +398,9 @@ TEST(ScanVdHandlerTest, StaleQueuedTaskIsDiscardedWhenOffsetChangesBeforeExecuti
     // Wait for every agent (fillers + target) to reach a terminal state, then check the one thing
     // that actually matters: agent 999 itself was never scanned.
     const size_t totalAgents = static_cast<size_t>(fillerCount) + 1;
-    ASSERT_TRUE(waitUntil(
-        [&] { return metrics.scanSucceededCount.load() + metrics.scanDiscardedCount.load() >= totalAgents; }, 5s));
+    ASSERT_TRUE(
+        waitUntil([&] { return metrics.scanSucceeded->get() + metrics.scanDiscarded->get() >= totalAgents; }, 5s));
 
-    EXPECT_GE(metrics.scanDiscardedCount.load(), 1u) << "the offset-moved-on-while-queued mechanism must have fired";
+    EXPECT_GE(metrics.scanDiscarded->get(), 1u) << "the offset-moved-on-while-queued mechanism must have fired";
     EXPECT_EQ(gate.count("999"), 0u) << "a stale-offset task must never actually reach VD's /scan endpoint";
 }

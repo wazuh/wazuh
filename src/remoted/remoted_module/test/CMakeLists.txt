@@ -35,7 +35,11 @@ target_link_libraries(
   ext_zlib
   # authGateway_test.cpp/zstdDecoder_test.cpp build zstd fixtures directly with ZSTD_compress();
   # remoted_module links ext_zstd PRIVATE, so this target needs its own link too.
-  ext_zstd)
+  ext_zstd
+  # The metrics tests instantiate their own wazuh::metrics::Manager and dumpJson(); remoted_module
+  # links wazuh_metrics PRIVATE (static), so this target needs its own link (which also propagates
+  # the <wazuh_metrics/...> include dir the control/ and scanvd/ metric headers pull in).
+  wazuh_metrics)
 
 target_include_directories(
   remoted_module_utest

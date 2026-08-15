@@ -499,16 +499,21 @@ Built via `remoted::control::buildControlConfig()` in the facade's startup.
 
 ### Metrics
 
-`ControlMetrics` (`metrics.hpp`) tracks:
-- `startupCount` — total `POST /control {"type":"startup"}` messages
-- `notifyCount` — total `POST /control {"type":"notify"}` messages
-- `shutdownCount` — total `POST /control {"type":"shutdown"}` messages
-- `wdbErrorCount` — wazuh-db operation failures (connection, timeout, queue full)
-- `taskFetchCount` — successful task fetches from task-manager
-- `taskFetchErrorCount` — task-manager operation failures
+`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` counter family, resolved from the
+facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeControlMetrics()`:
+- `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
+- `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
+- `remoted.control.shutdown` — total `POST /control {"type":"shutdown"}` messages
+- `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
+- `remoted.control.task_fetch` — successful task fetches from task-manager
+- `remoted.control.task_fetch_error` — task-manager operation failures
 
-All atomic `uint64_t`. Exposed via `RemotedModuleFacade::getMetrics()` (future: add a `GET /metrics`
-endpoint to surface these).
+Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
+all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
+log when the module stops; it is NEVER exposed through the public HTTPS endpoint (agent-facing,
+not an admin plane). Natural future candidates on the same registry: per-status passthrough
+counters for `/stateful`/`/stateless`, CMAC-gateway 401s, and the `AgentRegistry` size as a pull
+metric.
 
 ### Error handling
 
@@ -640,11 +645,12 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 ### Metrics
 
-`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) tracks, per the design doc's Phase 4 observability
-goals: `requestsTotal`, `versionMismatchCount`, `queueFullCount`, `invalidAgentCount`,
-`acceptedCount`, `scanSucceededCount`, `scanRetriedCount`, `scanRetriesExhaustedCount`,
-`scanPermanentFailureCount`, `scanDiscardedCount` (offset moved on while queued). All atomic
-`uint64_t`, incremented inline at each outcome — same shape as `ControlMetrics`.
+`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family, per the
+design doc's Phase 4 observability goals: `requests.total`, `version_mismatch`, `queue_full`,
+`invalid_agent`, `accepted`, `scans.succeeded`, `scans.retried`, `scans.retries_exhausted`,
+`scans.permanent_failure`, `scans.discarded` (offset moved on while queued). Resolved from the
+facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and incremented inline at each
+outcome — same shape (and same null-object contract) as `ControlMetrics`.
 
 ### Lifecycle
 

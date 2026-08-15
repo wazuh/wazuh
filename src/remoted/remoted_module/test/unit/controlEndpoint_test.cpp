@@ -28,6 +28,8 @@
 #include "fakeUdsServer.hpp"
 #include "http_server/IHttpServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -113,7 +115,9 @@ namespace
         std::string wdbPath;
         std::string taskPath;
         Config cfg;
-        ControlMetrics metrics;
+        // A real manager-backed set (not the null object): these tests assert the counts.
+        wazuh::metrics::Manager metricsManager;
+        ControlMetrics metrics {makeControlMetrics(metricsManager)};
         std::unique_ptr<FakeUdsServer> wdbServer;
         std::unique_ptr<FakeUdsServer> taskServer;
         std::shared_ptr<AgentRegistry> registry;
@@ -342,7 +346,7 @@ TEST(ControlEndpointTest, StartupDispatchesToHandlerAndReturnsClusterEnvelope)
     EXPECT_EQ(j["cluster"]["name"], "wazuh");
     ASSERT_TRUE(j["agent"]["groups"].is_array());
     EXPECT_EQ(j["agent"]["groups"][0], "default");
-    EXPECT_GE(f.metrics.startupCount.load(), 1U);
+    EXPECT_GE(f.metrics.startup->get(), 1U);
 }
 
 TEST(ControlEndpointTest, NotifyDispatchesToHandlerAndReturnsConfigAndSettingsHash)
@@ -362,7 +366,7 @@ TEST(ControlEndpointTest, NotifyDispatchesToHandlerAndReturnsConfigAndSettingsHa
     EXPECT_TRUE(j["agent"].contains("config_hash"));
     EXPECT_TRUE(j.contains("settings_hash"));
     EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U);
-    EXPECT_GE(f.metrics.notifyCount.load(), 1U);
+    EXPECT_GE(f.metrics.notify->get(), 1U);
 }
 
 TEST(ControlEndpointTest, ShutdownDispatchesToHandlerAndReturnsEmptyJsonObject)
@@ -375,7 +379,7 @@ TEST(ControlEndpointTest, ShutdownDispatchesToHandlerAndReturnsEmptyJsonObject)
     ASSERT_TRUE(resp->wait(500ms));
     EXPECT_EQ(resp->captured().status, 200);
     EXPECT_EQ(resp->captured().body, "{}");
-    EXPECT_GE(f.metrics.shutdownCount.load(), 1U);
+    EXPECT_GE(f.metrics.shutdown->get(), 1U);
 }
 
 TEST(ControlEndpointTest, SuccessResponsesAreApplicationJson)

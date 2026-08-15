@@ -26,6 +26,8 @@
 #include "control/wazuhDBClient.hpp"
 #include "fakeUdsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -172,7 +174,9 @@ namespace
     {
         TempEnv env;
         Config cfg;
-        ControlMetrics metrics;
+        // A real manager-backed set (not the null object): these tests assert the counts.
+        wazuh::metrics::Manager metricsManager;
+        ControlMetrics metrics {makeControlMetrics(metricsManager)};
 
         std::unique_ptr<FakeUdsServer> wdbServer;
         std::unique_ptr<FakeUdsServer> taskServer;
@@ -220,7 +224,7 @@ TEST(ControlHandlerTest, StartupInvalidVersionReturns400AndUpdatesStatusCode)
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.status, 400);
     EXPECT_NE(w.value.body.find("invalid_version"), std::string::npos);
-    EXPECT_GE(h.metrics.startupCount.load(), 1U);
+    EXPECT_GE(h.metrics.startup->get(), 1U);
 
     // A status_code update should have been fired-and-forgot to wdb.
     // Give it a beat to hit the wire.
@@ -412,7 +416,7 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     EXPECT_EQ(j["tasks"][0]["task_id"], "T1");
     EXPECT_EQ(j["tasks"][0]["task_type"], "upgrade");
 
-    EXPECT_GE(h.metrics.notifyCount.load(), 1U);
+    EXPECT_GE(h.metrics.notify->get(), 1U);
 }
 
 TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
@@ -458,7 +462,7 @@ TEST(ControlHandlerTest, ShutdownReturns200WithEmptyBodyImmediately)
     ASSERT_TRUE(w.wait(500ms));
     EXPECT_EQ(w.value.status, 200);
     EXPECT_EQ(w.value.body, "{}");
-    EXPECT_GE(h.metrics.shutdownCount.load(), 1U);
+    EXPECT_GE(h.metrics.shutdown->get(), 1U);
 
     // Give the async wdb write a beat to hit the wire and confirm the command.
     for (int i = 0; i < 200 && h.wdbServer->requestCount() < 1; ++i)

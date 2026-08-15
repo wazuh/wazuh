@@ -53,6 +53,9 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "singleton.hpp"
 
+#include <wazuh_metrics/jsonDump.hpp>
+#include <wazuh_metrics/manager.hpp>
+
 constexpr auto REMOTED_MODULE_LOGTAG {"wazuh-manager-remoted:communication"}; ///< Tag used for remoted module logging.
 
 /// Not a member: LogFn has hidden ELF visibility (loggerHelper.h wraps everything in a visibility
@@ -224,6 +227,14 @@ public:
             workerToJoin.join();
         }
 
+        // Final counter totals. The registry has no transport exposure yet (and the public HTTPS
+        // endpoint must never grow one -- it is agent-facing, not an admin plane), so this debug
+        // line is how the metrics are observed today. The macro skips the dump entirely when
+        // debug logging is inactive.
+        LOGFN_DEBUG1(moduleLogFn(),
+                     "remoted module metrics: %s",
+                     wazuh::metrics::dumpJson(*m_metricsManager, {"remoted"}).c_str());
+
         LOGFN_INFO(moduleLogFn(), "remoted module stopped.");
     }
 
@@ -369,8 +380,9 @@ private:
         // Lifetime: m_controlHandler outlives the route (see stop()/resetHttpServerStack()):
         // stopAccepting() drains the HTTP worker pool BEFORE m_controlHandler.reset(), so no
         // in-flight endpoint lambda can touch a destroyed handler. ControlMetrics is a value
-        // member on this facade, so its address stays stable across HTTP-server retries and
-        // counters carry over -- desirable for observability.
+        // member on this facade, so its address stays stable across HTTP-server retries; the
+        // counters it caches live in m_metricsManager (created once, never reset), so totals
+        // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
@@ -531,16 +543,27 @@ private:
     std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).
     std::unique_ptr<remoted::downstream::DeferredForwarder> m_forwarder; ///< Forwards to the downstream service.
 
-    // /control lifecycle: counters live on the facade (stable address across HTTP-server
-    // retries; ControlHandler holds a reference). m_controlHandler owns the AgentRegistry,
-    // HashCache, WazuhDBClient and TaskClient it was constructed with; resetting it joins
-    // their threads in the right order (see ControlHandler::Impl's dtor).
-    remoted::control::ControlMetrics m_controlMetrics {};               ///< /control counters.
+    // The module's metric registry (shared_modules/metrics). Created ONCE and NEVER reset in
+    // stop(): counters must survive the HTTP server's restart retries (an operator reading a
+    // dump after a retry wants totals, not a fresh zeroed registry). Declared BEFORE the metric
+    // structs below -- their default member initializers resolve counters from it, and members
+    // initialize in declaration order. NEVER exposed through the public HTTPS endpoint (it is
+    // agent-facing, not an admin plane); today the dump only reaches the debug log on stop().
+    const std::shared_ptr<wazuh::metrics::IManager> m_metricsManager {std::make_shared<wazuh::metrics::Manager>()};
+
+    // /control lifecycle: the metric struct is a value member on the facade (stable address
+    // across HTTP-server retries; ControlHandler holds a reference), caching counters that live
+    // in m_metricsManager. m_controlHandler owns the AgentRegistry, HashCache, WazuhDBClient and
+    // TaskClient it was constructed with; resetting it joins their threads in the right order
+    // (see ControlHandler::Impl's dtor).
+    remoted::control::ControlMetrics m_controlMetrics {
+        remoted::control::makeControlMetrics(*m_metricsManager)};       ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
 
-    // /scan/vd lifecycle: handles VD scan requests from agents. Counters live on the facade for
+    // /scan/vd lifecycle: handles VD scan requests from agents. Metric struct on the facade for
     // the same reason as m_controlMetrics: a stable address across HTTP-server retries.
-    remoted::scanvd::ScanVdMetrics m_scanVdMetrics {};                   ///< /scan/vd counters.
+    remoted::scanvd::ScanVdMetrics m_scanVdMetrics {
+        remoted::scanvd::makeScanVdMetrics(*m_metricsManager)};          ///< /scan/vd counters.
     std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
 };
 

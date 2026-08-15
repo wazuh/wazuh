@@ -37,6 +37,8 @@
 #include "scanvd/scanVdMetrics.hpp"
 #include "testTlsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -65,8 +67,10 @@ namespace
         std::string taskPath;
         std::string vdSocketPath;
         Config cfg;
-        ControlMetrics controlMetrics;
-        remoted::scanvd::ScanVdMetrics scanVdMetrics;
+        // One manager for both families, like the facade; the E2E assertions read the counters.
+        wazuh::metrics::Manager metricsManager;
+        ControlMetrics controlMetrics {makeControlMetrics(metricsManager)};
+        remoted::scanvd::ScanVdMetrics scanVdMetrics {remoted::scanvd::makeScanVdMetrics(metricsManager)};
         std::unique_ptr<remoted::test::FakeUdsServer> wdbServer;
         std::unique_ptr<remoted::test::FakeUdsServer> taskServer;
         std::unique_ptr<remoted::test::FakeVdServer> vdServer;
@@ -227,7 +231,7 @@ TEST(ControlScanVdE2ETest, ScanVdMatchingOffsetReturns200OverRealHttp)
 
     ASSERT_NE(head.find("200"), std::string::npos) << "raw response head: " << head;
     EXPECT_EQ(respBody, "{}");
-    EXPECT_EQ(f.scanVdMetrics.acceptedCount.load(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.accepted->get(), 1u);
 }
 
 TEST(ControlScanVdE2ETest, ScanVdMismatchedOffsetReturns409OverRealHttp)
@@ -246,5 +250,5 @@ TEST(ControlScanVdE2ETest, ScanVdMismatchedOffsetReturns409OverRealHttp)
     const auto json = nlohmann::json::parse(respBody);
     EXPECT_EQ(json.at("error").get<std::string>(), "version_mismatch");
     EXPECT_EQ(json.at("current_version").get<uint64_t>(), 12345u);
-    EXPECT_EQ(f.scanVdMetrics.versionMismatchCount.load(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.versionMismatch->get(), 1u);
 }
