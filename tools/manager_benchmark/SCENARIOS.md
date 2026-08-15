@@ -141,7 +141,7 @@ scan entry points, in the order a real agent does. Its `vd_*` lane first sends t
   on any metrics endpoint, which leaves modulesd's log as the only evidence the scans ran:
   `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
 - **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
-  Check with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-detector/offset`
+  Check with `curl --unix-socket queue/sockets/vd.sock http://localhost/vulnerability-detector/offset`
   and wait for `CVE feed fully loaded — per-agent scans unblocked` in the log.
 
 - **The VD scan lane, not `/scan/vd`, is what 100 simultaneous first connections hit first.** The

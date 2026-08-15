@@ -606,7 +606,7 @@ triggers the scan against the `vulnerability_scanner` module.
   `QueueFull` above a configurable tracked-agent cap (production default: 10000).
 - **Worker pool** (`scanWorkerPoolSize()`, sized to the host's available CPUs via `cpp_get_nproc()`):
   each worker re-validates the offset immediately before calling `POST
-  /vulnerability-detector/scan` on the VD module (over the *same* modulesd UDS socket `VdClient`
+  /vulnerability-detector/scan` on the VD module (over the *same* `vd.sock` UDS socket `VdClient`
   uses for `/offset` — see below) — the feed may have moved on again while the request sat queued,
   in which case the task is silently discarded (the agent will notice the newer offset on its next
   `/control` notify and re-request; no error is returned for this since the original HTTP response

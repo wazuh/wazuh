@@ -31,7 +31,7 @@ namespace remoted::scanvd
     public:
         /**
          * @param vdModulesdSocketPath VD module UDS endpoint used to trigger scans, as a raw
-         * filesystem path (e.g. "/queue/sockets/modulesd-vdscan") -- NOT a "unix://" URI; see
+         * filesystem path (e.g. "/queue/sockets/vd.sock") -- NOT a "unix://" URI; see
          * vdClient.cpp for why. This is VD's dedicated scan socket, separate from the one
          * VdClient uses for /offset -- see vulnerabilityScanner.cpp's SCAN_SOCKET_PATH, kept in
          * sync manually since remoted and VD are independent binaries. Defaults to the real
@@ -43,7 +43,7 @@ namespace remoted::scanvd
          */
         ScanVdHandlerImpl(std::shared_ptr<remoted::common::VdClient> vdClient,
                           ScanVdMetrics& metrics,
-                          std::string vdModulesdSocketPath = "/queue/sockets/modulesd-vdscan",
+                          std::string vdModulesdSocketPath = "/queue/sockets/vd.sock",
                           size_t maxTrackedAgents = 10000);
         ~ScanVdHandlerImpl() override;
 
