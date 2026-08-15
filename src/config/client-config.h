@@ -12,7 +12,6 @@
 #define CAGENTD_H
 
 #include "shared.h"
-#include <stdatomic.h>
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
@@ -32,7 +31,9 @@ typedef struct agent_server {
 typedef struct _agent {
     agent_server * server;
     int m_queue;
-    _Atomic int sock; ///< Read/written from the main loop and from sender threads (dispatch_buffer, req_receiver)
+    atomic_int_t sock; ///< Read/written from the main loop and from sender threads (dispatch_buffer, req_receiver).
+                       ///< This project's own portable wrapper (headers/atomic.h), not C11 _Atomic: some Tier 2/3
+                       ///< agent platforms (AIX, HP-UX, Solaris, older GCC) can't be relied on for <stdatomic.h>.
     int execdq;
     int cfgadq;
     int rip_id; ///< Holds the index of the current connected server

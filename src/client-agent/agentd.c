@@ -93,7 +93,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 #endif
 
     maxfd = agt->m_queue;
-    agt->sock = -1;
+    atomic_int_set(&agt->sock, -1);
 
     /* Create PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -133,8 +133,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     w_create_thread(state_main, NULL);
 
     /* Set max fd for select */
-    if (agt->sock > maxfd) {
-        maxfd = agt->sock;
+    int initial_sock = atomic_int_get(&agt->sock);
+    if (initial_sock > maxfd) {
+        maxfd = initial_sock;
     }
 
     start_agent(1);
@@ -164,30 +165,36 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Monitor loop */
     while (1) {
 
+#ifndef ONEWAY_ENABLED
         /* A sender thread (send_msg(), possibly on a blocked TCP send that hit
          * SO_SNDTIMEO) may have invalidated agt->sock. Reconnect right away
          * instead of waiting for run_notify()'s own staleness watchdog, which
-         * depends on receive_msg() having run recently on this same socket. */
-        if (agt->sock < 0) {
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+         * depends on receive_msg() having run recently on this same socket.
+         * Skipped under ONEWAY_ENABLED: start_agent() never actually connects
+         * in that build (a pre-existing, separate gap), so agt->sock never
+         * leaves -1 and this would otherwise spin at 100% CPU instead of
+         * being paced by select()'s timeout below, as it was before this fix. */
+        if (atomic_int_get(&agt->sock) < 0) {
             merror(LOST_ERROR);
-            os_setwait();
-            start_agent(0);
+            reconnect_to_server();
             minfo(SERVER_UP);
-            os_delwait();
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
             continue;
         }
+#endif
 
         /* Continuously send notifications */
         run_notify();
 
+#ifndef ONEWAY_ENABLED
         /* run_notify() may also invalidate the socket (it calls send_msg()
          * for the keep-alive); restart the loop before FD_SET() needs it. */
-        const int sock = agt->sock;
+        const int sock = atomic_int_get(&agt->sock);
         if (sock < 0) {
             continue;
         }
+#else
+        const int sock = atomic_int_get(&agt->sock);
+#endif
 
         if (sock > maxfd - 1) {
             maxfd = sock + 1;
@@ -207,11 +214,22 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         } while (rc < 0 && errno == EINTR);
 
         if (rc == -1) {
-            /* A sender thread may have closed agt->sock while we were
-             * blocked in select(), which select() reports as EBADF. */
+            /* select() reports EBADF for ANY invalid descriptor in the set,
+             * not necessarily agt->sock -- it could be agt->m_queue. A sender
+             * thread only ever closes agt->sock under send_mutex, so if this
+             * really was our socket being invalidated, agt->sock is already
+             * -1 by the time we get here; checking under the same lock tells
+             * the two cases apart instead of blindly assuming (and leaking
+             * the real, still-open descriptor by overwriting agt->sock without
+             * closing it first). */
             if (errno == EBADF) {
-                agt->sock = -1;
-                continue;
+                send_mutex_lock();
+                const bool sock_lost = atomic_int_get(&agt->sock) < 0;
+                send_mutex_unlock();
+
+                if (sock_lost) {
+                    continue;
+                }
             }
             merror_exit(SELECT_ERROR, errno, strerror(errno));
         } else if (rc == 0) {
@@ -278,13 +296,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         /* For the receiver */
         if (FD_ISSET(sock, &fdset)) {
             if (receive_msg() < 0) {
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
-                os_setwait();
-                start_agent(0);
+                reconnect_to_server();
                 minfo(SERVER_UP);
-                os_delwait();
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
             }
         }
 

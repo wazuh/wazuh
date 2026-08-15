@@ -49,18 +49,24 @@ bool connect_server(int server_id, bool verbose)
 {
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
-    /* Close socket if available */
-    if (agt->sock >= 0) {
-        OS_CloseSocket(agt->sock);
-        agt->sock = -1;
+    /* Close socket if available. Locked so a concurrent sender in send_msg()
+     * (which only ever touches agt->sock under this same mutex) can't read a
+     * descriptor that's being closed out from under it. */
+    send_mutex_lock();
+    int old_sock = atomic_int_get(&agt->sock);
+    bool had_old_socket = old_sock >= 0;
+    if (had_old_socket) {
+        OS_CloseSocket(old_sock);
+        atomic_int_set(&agt->sock, -1);
+    }
+    send_mutex_unlock();
 
-        if (agt->server[agt->rip_id].rip) {
-            if (verbose) {
-                minfo("Closing connection to server ([%s]:%d/%s).",
-                    agt->server[agt->rip_id].rip,
-                    agt->server[agt->rip_id].port,
-                    agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
-            }
+    if (had_old_socket && agt->server[agt->rip_id].rip) {
+        if (verbose) {
+            minfo("Closing connection to server ([%s]:%d/%s).",
+                agt->server[agt->rip_id].rip,
+                agt->server[agt->rip_id].port,
+                agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
         }
     }
 
@@ -93,14 +99,17 @@ bool connect_server(int server_id, bool verbose)
             agt->server[server_id].port,
             agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
     }
+    int new_sock;
     if (agt->server[server_id].protocol == IPPROTO_UDP) {
-        agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+        new_sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
     } else {
-        agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+        new_sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
     }
 
-    if (agt->sock < 0) {
-        agt->sock = -1;
+    if (new_sock < 0) {
+        send_mutex_lock();
+        atomic_int_set(&agt->sock, -1);
+        send_mutex_unlock();
 
         if (verbose) {
             #ifdef WIN32
@@ -115,33 +124,85 @@ bool connect_server(int server_id, bool verbose)
                 int bmode = 1;
 
                 /* Set socket to non-blocking */
-                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
+                ioctlsocket(new_sock, FIONBIO, (u_long FAR *) &bmode);
             }
         #endif
         if (agt->server[server_id].protocol != IPPROTO_UDP) {
             /* Detect a silently half-closed TCP connection (no FIN/RST seen)
-             * and bound how long a blocked send() may hold send_mutex. */
-            if (OS_SetKeepalive(agt->sock) < 0) {
+             * and bound how long a blocked send() may hold send_mutex. Applied
+             * on the local fd, before it's published to agt->sock, so no
+             * sender can ever observe an unconfigured socket. */
+            if (OS_SetKeepalive(new_sock) < 0) {
+#ifdef WIN32
+                mwarn("OS_SetKeepalive failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
                 mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+#endif
             } else {
+#if !defined(WIN32) && !defined(OpenBSD)
+                /* OS_SetKeepalive_Options() only warns "unsupported platform"
+                 * on WIN32/OpenBSD/sun for every single parameter -- skip the
+                 * call there instead of logging the same noise on every
+                 * reconnect. */
                 int keepidle = getDefine_Int("agent", "tcp_keepidle", 1, 7200);
                 int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
                 int keepcnt = getDefine_Int("agent", "tcp_keepcnt", 1, 50);
-                OS_SetKeepalive_Options(agt->sock, keepidle, keepintvl, keepcnt);
+                OS_SetKeepalive_Options(new_sock, keepidle, keepintvl, keepcnt);
+#endif
             }
 
             int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
-            if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+            if (OS_SetSendTimeout(new_sock, send_timeout) < 0) {
+#ifdef WIN32
+                mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
                 mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+#endif
+            }
+
+            /* Bound the handshake's blocking receive too (receive_message()
+             * -> OS_RecvSecureTCP() -> os_recv_waitall()), which otherwise has
+             * no timeout at all: a manager that delivers a partial reply and
+             * goes silent would hang this single-threaded path indefinitely,
+             * the same clinical picture (status='connected', stuck forever)
+             * this whole fix exists to close on the send side. */
+            if (OS_SetRecvTimeout(new_sock, timeout, 0) < 0) {
+#ifdef WIN32
+                mwarn("OS_SetRecvTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+                mwarn("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+#endif
             }
         }
+
+        /* rip_id published before sock, both under the same lock: send_msg()
+         * reads agt->server[agt->rip_id].protocol to pick UDP vs TCP before
+         * it ever takes this mutex, so a sender must never be able to see the
+         * new socket paired with the previous (possibly different-protocol)
+         * server's rip_id. */
+        send_mutex_lock();
         agt->rip_id = server_id;
+        atomic_int_set(&agt->sock, new_sock);
+        send_mutex_unlock();
+
         last_connection_time = (int)time(NULL);
         os_free(ip_address);
         return true;
     }
     os_free(ip_address);
     return false;
+}
+
+/* Common reconnect sequence: toggle the wait/status flags around start_agent(0).
+ * Defined here (not in agentd.c) because agentd.o is excluded from the Windows
+ * agent link, while start_agent.o is shared by every build target -- notify.c
+ * and receiver.c (the Windows receive loop) both call this too. */
+void reconnect_to_server(void) {
+    os_setwait();
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+    start_agent(0);
+    os_delwait();
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 }
 
 /* Send synchronization message to the server and wait for the ack */
@@ -274,8 +335,15 @@ static void w_agentd_keys_init (void) {
 static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
 
     ssize_t recv_b = 0;
+    const int sock = atomic_int_get(&agt->sock);
+
+    if (sock < 0) {
+        /* FD_SET(-1, ...) is undefined behavior; nothing to wait on anyway. */
+        return 0;
+    }
+
     /* Read received reply */
-    switch (wnet_select(agt->sock, timeout)) {
+    switch (wnet_select(sock, timeout)) {
         case -1:
             merror(SELECT_ERROR, errno, strerror(errno));
             break;
@@ -287,10 +355,10 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
         default:
             if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
                 /* Receive response UDP*/
-                recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
+                recv_b = recv(sock, buffer, max_lenght, MSG_DONTWAIT);
             } else {
                 /* Receive response TCP*/
-                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
+                recv_b = OS_RecvSecureTCP(sock, buffer, max_lenght);
             }
 
             /* Successful response */
@@ -360,7 +428,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
 
     if (connect_server(server_id, true)) {
         /* Send start up message */
-        send_msg(msg, -1);
+        if (send_msg(msg, -1) != 0) {
+            /* send_msg() may have closed and invalidated agt->sock (e.g. a
+             * short write or a dead peer) -- nothing to read a reply from. */
+            return false;
+        }
 
         /* Read until our reply comes back */
         recv_b = receive_message(buffer, OS_MAXSTR);

@@ -19,7 +19,6 @@
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 
 #define DUMMY_VALID_SOCKET_FD 5
@@ -38,7 +37,13 @@ static int setup(void **state) {
     agt->server = servers;
     agt->rip_id = 0;
     agt->server[0].protocol = IPPROTO_TCP;
-    agt->sock = DUMMY_VALID_SOCKET_FD;
+    /* memset() only zeroes agt->sock.data; the embedded pthread_mutex_t must
+     * be initialized for real before any atomic_int_get/set(&agt->sock) call.
+     * send_mutex_lock/unlock() are not mocked here (real pthread mutexes,
+     * same as production), so behavior is verified via retval/socket-value
+     * assertions rather than call-count expectations. */
+    w_mutex_init(&agt->sock.mutex, NULL);
+    atomic_int_set(&agt->sock, DUMMY_VALID_SOCKET_FD);
     sender_init();
     errno = 0;
     return 0;
@@ -75,44 +80,41 @@ static void test_send_msg_create_sec_msg_fail(void **state) {
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
-    assert_int_equal(agt->sock, DUMMY_VALID_SOCKET_FD);
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
 }
 
 /* Socket already invalidated (-1) by another thread: send_mutex is still
  * taken (unlike an ad-hoc check before locking) so the check itself can't
  * race with a concurrent sender, but OS_SendSecureTCP is never reached. */
 static void test_send_msg_socket_already_invalid(void **state) {
-    agt->sock = -1;
+    atomic_int_set(&agt->sock, -1);
     expect_create_sec_msg_ok();
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_value(__wrap_sleep, seconds, 1);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
-    assert_int_equal(agt->sock, -1);
+    assert_int_equal(atomic_int_get(&agt->sock), -1);
 }
 
 /* Successful send -> returns 0, state updated, socket stays open. */
 static void test_send_msg_success(void **state) {
     expect_create_sec_msg_ok();
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_any(__wrap_OS_SendSecureTCP, sock);
     expect_any(__wrap_OS_SendSecureTCP, size);
     expect_any(__wrap_OS_SendSecureTCP, msg);
     will_return(__wrap_OS_SendSecureTCP, 0);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_value(__wrap_w_agentd_state_update, type, INCREMENT_MSG_SEND);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, 0);
-    assert_int_equal(agt->sock, DUMMY_VALID_SOCKET_FD);
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
 }
 
 /* Shared body for the "fatal" errno cases: OS_SendSecureTCP fails, the
  * socket is closed and invalidated, and the failure is logged. */
 static void run_fatal_error_case(int err, void (*expect_log)(void)) {
     expect_create_sec_msg_ok();
-    expect_function_call(__wrap_pthread_mutex_lock);
     errno = err;
     expect_any(__wrap_OS_SendSecureTCP, sock);
     expect_any(__wrap_OS_SendSecureTCP, size);
@@ -120,13 +122,12 @@ static void run_fatal_error_case(int err, void (*expect_log)(void)) {
     will_return(__wrap_OS_SendSecureTCP, -1);
     expect_value(__wrap_OS_CloseSocket, sock, DUMMY_VALID_SOCKET_FD);
     will_return(__wrap_OS_CloseSocket, 0);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_log();
     expect_value(__wrap_sleep, seconds, 1);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
-    assert_int_equal(agt->sock, -1);
+    assert_int_equal(atomic_int_get(&agt->sock), -1);
 }
 
 static void expect_mdebug2_any(void) {
@@ -157,6 +158,22 @@ static void test_send_msg_econnrefused(void **state) {
     run_fatal_error_case(ECONNREFUSED, expect_mdebug2_any);
 }
 
+/* EBADF: fd is no longer open (e.g. closed by another thread without
+ * updating agt->sock) -> socket invalidated, instead of retrying forever
+ * on the same dead descriptor. */
+static void test_send_msg_ebadf(void **state) {
+    run_fatal_error_case(EBADF, expect_mdebug2_any);
+}
+
+/* errno == 0 with retval != 0: OS_SendSecureTCP() zeroes errno right before
+ * send(), so this means send() returned a short/partial write, not a hard
+ * error (SO_SNDTIMEO can expire mid-write on a large message). The
+ * length-prefixed framing on this connection is now corrupted regardless of
+ * how many bytes got through, so this must be treated as fatal too. */
+static void test_send_msg_partial_write(void **state) {
+    run_fatal_error_case(0, expect_mwarn_any);
+}
+
 /* ETIMEDOUT (retransmission exhausted, or SO_SNDTIMEO expiry) -> invalidated */
 static void test_send_msg_etimedout(void **state) {
     run_fatal_error_case(ETIMEDOUT, expect_mwarn_any);
@@ -173,19 +190,17 @@ static void test_send_msg_eagain(void **state) {
  * only errors that mean the connection itself is dead should tear it down. */
 static void test_send_msg_unknown_error_keeps_socket(void **state) {
     expect_create_sec_msg_ok();
-    expect_function_call(__wrap_pthread_mutex_lock);
     errno = ENOMEM;
     expect_any(__wrap_OS_SendSecureTCP, sock);
     expect_any(__wrap_OS_SendSecureTCP, size);
     expect_any(__wrap_OS_SendSecureTCP, msg);
     will_return(__wrap_OS_SendSecureTCP, -1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_any(__wrap__mwarn, formatted_msg);
     expect_value(__wrap_sleep, seconds, 1);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
-    assert_int_equal(agt->sock, DUMMY_VALID_SOCKET_FD); /* socket must NOT be closed */
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD); /* socket must NOT be closed */
 }
 
 /* ── test cases (UDP path, unaffected by this fix) ────────────────────── */
@@ -203,7 +218,7 @@ static void test_send_msg_udp_success(void **state) {
     assert_int_equal(ret, 0);
     /* UDP errors never invalidate agt->sock: there's no dead-socket detection
      * for a connectionless protocol. */
-    assert_int_equal(agt->sock, DUMMY_VALID_SOCKET_FD);
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
 }
 
 static void test_send_msg_udp_error_keeps_socket(void **state) {
@@ -219,7 +234,7 @@ static void test_send_msg_udp_error_keeps_socket(void **state) {
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
-    assert_int_equal(agt->sock, DUMMY_VALID_SOCKET_FD);
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
 }
 
 int main(void) {
@@ -231,6 +246,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_econnreset, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_enotconn, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_econnrefused, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_send_msg_ebadf, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_send_msg_partial_write, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_etimedout, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_eagain, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_unknown_error_keeps_socket, setup, teardown),

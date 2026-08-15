@@ -116,8 +116,14 @@ static int setup_test(void **state) {
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
+    /* connect_server() now takes send_mutex, and agt->sock is this project's
+     * portable atomic_int_t (headers/atomic.h), not a plain int: initialize
+     * both mutexes for real instead of relying on calloc()'s zero bytes
+     * behaving like PTHREAD_MUTEX_INITIALIZER (a glibc-specific assumption). */
+    sender_init();
+    w_mutex_init(&agt->sock.mutex, NULL);
     /* Connected sock */
-    agt->sock = -1;
+    atomic_int_set(&agt->sock, -1);
     /* Server */
     add_server_config("127.0.0.1", IPPROTO_UDP);
     add_server_config("127.0.0.2", IPPROTO_TCP);
@@ -169,13 +175,14 @@ static void test_connect_server_keepalive_fails(void **state) {
     /* OS_SetKeepalive_Options must NOT be called (it is inside the else branch) */
     will_return(__wrap_getDefine_Int, 30);     /* send_timeout still queried */
     will_return(__wrap_OS_SetSendTimeout, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
 
     expect_any(__wrap__minfo, formatted_msg);       /* "Trying to connect to server..." */
     expect_any(__wrap__mwarn, formatted_msg);       /* "OS_SetKeepalive failed..." */
 
     connected = connect_server(1, true);
     assert_true(connected);
-    assert_int_equal(agt->sock, 10);
+    assert_int_equal(atomic_int_get(&agt->sock), 10);
     assert_int_equal(agt->rip_id, 1);
 }
 
@@ -193,19 +200,22 @@ static void test_connect_server_send_timeout_fails(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 10);
     will_return(__wrap_OS_SetKeepalive, 0);
+#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);   /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);   /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);    /* tcp_keepcnt */
+#endif
     will_return(__wrap_getDefine_Int, 30);   /* send_timeout */
     will_return(__wrap_OS_SetSendTimeout, -1);  /* send timeout fails */
+    will_return(__wrap_OS_SetRecvTimeout, 0);
 
     expect_any(__wrap__minfo, formatted_msg);       /* "Trying to connect to server..." */
     expect_any(__wrap__mwarn, formatted_msg);       /* "OS_SetSendTimeout failed..." */
 
     connected = connect_server(1, true);
     assert_true(connected);
-    assert_int_equal(agt->sock, 10);
+    assert_int_equal(atomic_int_get(&agt->sock), 10);
     assert_int_equal(agt->rip_id, 1);
 }
 
@@ -222,7 +232,7 @@ static void test_connect_server(void **state) {
 
     connected = connect_server(0, true);
     assert_int_equal(agt->rip_id, 0);
-    assert_int_equal(agt->sock, 11);
+    assert_int_equal(atomic_int_get(&agt->sock), 11);
     assert_true(connected);
 
     /* Connect to second server (TCP), previous connection must be closed*/
@@ -237,18 +247,21 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 11);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
+#endif
     will_return(__wrap_getDefine_Int, 30);  /* send_timeout */
     will_return(__wrap_OS_SetSendTimeout, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     connected = connect_server(1, true);
     assert_int_equal(agt->rip_id, 1);
-    assert_int_equal(agt->sock, 12);
+    assert_int_equal(atomic_int_get(&agt->sock), 12);
     assert_true(connected);
 
     /* Connect to third server (UDP), valid host name*/
@@ -261,7 +274,7 @@ static void test_connect_server(void **state) {
 
     connected = connect_server(2, true);
     assert_int_equal(agt->rip_id, 2);
-    assert_int_equal(agt->sock, 13);
+    assert_int_equal(atomic_int_get(&agt->sock), 13);
     assert_true(connected);
 
     /* Connect to fourth server (UDP), invalid host name*/
@@ -323,12 +336,15 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 21);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
+#endif
     will_return(__wrap_getDefine_Int, 30);  /* send_timeout */
     will_return(__wrap_OS_SetSendTimeout, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);
@@ -356,12 +372,15 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 22);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
+#endif
     will_return(__wrap_getDefine_Int, 30);  /* send_timeout */
     will_return(__wrap_OS_SetSendTimeout, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
     will_return(__wrap_wnet_select, 1);
     expect_any(__wrap_OS_RecvSecureTCP, sock);
     expect_any(__wrap_OS_RecvSecureTCP, size);

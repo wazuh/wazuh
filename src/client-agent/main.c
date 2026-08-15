@@ -177,6 +177,9 @@ int main(int argc, char **argv)
     if (!agt) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
+    /* calloc() only zeroes agt->sock.data; the embedded pthread_mutex_t must
+     * be initialized for real before any atomic_int_get/set(&agt->sock) call. */
+    w_mutex_init(&agt->sock.mutex, NULL);
 
     atc = (anti_tampering *)calloc(1, sizeof(anti_tampering));
     if (!atc) {
