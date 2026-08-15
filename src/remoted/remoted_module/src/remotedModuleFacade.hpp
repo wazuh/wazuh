@@ -53,6 +53,8 @@
 #include "scanvd/scanVdHandler.hpp"
 #include "singleton.hpp"
 
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 #include <wazuh_metrics/jsonDump.hpp>
 #include <wazuh_metrics/manager.hpp>
 
@@ -74,12 +76,22 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics). RELATIVE on purpose:
+// remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
+// Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
+// a management plane, and it must not collide with remcom's legacy "queue/sockets/remote". No
+// config knob -- internal options only carry ints, the same criterion that fixed inventory
+// sync's socket path.
+constexpr auto REMOTED_MODULE_ADMIN_SOCKET_PATH {"queue/sockets/remoted-module.sock"};
+
 /**
  * @brief Internal engine of the remoted module.
  *
  * Owns the worker std::thread and implements the canonical cooperative-shutdown
  * lifecycle (atomic flag + condition_variable + join), plus the HTTPS transport
- * (our IHttpServer) and the framework-agnostic auth layer wired on top of it.
+ * (our IHttpServer) and the framework-agnostic auth layer wired on top of it, and
+ * the optional local admin socket (shared uds_http_server) serving the module's
+ * metrics.
  */
 class RemotedModuleFacade final : public Singleton<RemotedModuleFacade>
 {
@@ -136,6 +148,11 @@ public:
         }
         LOGFN_INFO(moduleLogFn(), "remoted HTTP server started.");
 
+        // The local admin socket comes up AFTER the public HTTPS server on purpose: the HTTPS
+        // listener is what remoted exists for, the admin plane is optional observability.
+        // startAdminServer() never throws -- a failure there is a WARN and the module continues.
+        startAdminServer();
+
         // m_running is set only AFTER the worker thread exists. Setting it first meant that a
         // throwing std::thread constructor (EAGAIN / resource exhaustion) left the facade claiming
         // to run with no worker: every later start() then hit the "already started" guard above and
@@ -179,6 +196,15 @@ public:
                 m_httpServer->stopAccepting();
             }
 
+            // Same phase-1 contract for the local admin socket: after this, no admin handler
+            // will ever run again. Its handlers only read m_metricsManager -- which is never
+            // reset -- but the discipline of closing accepts before ANY teardown is kept
+            // uniform so the admin plane can never depend on teardown order by accident.
+            if (m_adminServer)
+            {
+                m_adminServer->stopAccepting();
+            }
+
             // Phase 1b: tear down the /control and /scan/vd state. The /control handler's dtor
             // stops the eviction thread, then drops the wdb/task async clients -- their dtors
             // join workers and fail any pending callbacks, which invoke the endpoint's
@@ -208,6 +234,19 @@ public:
             // the downstream client so nothing new can reach D either.
             m_httpServer.reset();
 
+            // The admin server is torn down in the same phase: accepts were already closed in
+            // phase 1, nothing its handlers reach was destroyed in between (their only
+            // dependency, m_metricsManager, outlives every stop()), so this stop() just drains
+            // and releases its I/O runtime and unlinks the socket. After the reset, the
+            // transport-diagnostics pulls read through an expired weak_ptr as 0 -- the
+            // documented quiesced values -- so the final dump below can never touch a dead
+            // server.
+            if (m_adminServer)
+            {
+                m_adminServer->stop();
+            }
+            m_adminServer.reset();
+
             m_authGateway.reset();
             m_keystore.reset();
 
@@ -227,10 +266,11 @@ public:
             workerToJoin.join();
         }
 
-        // Final counter totals. The registry has no transport exposure yet (and the public HTTPS
-        // endpoint must never grow one -- it is agent-facing, not an admin plane), so this debug
-        // line is how the metrics are observed today. The macro skips the dump entirely when
-        // debug logging is inactive.
+        // Final counter totals. The runtime exposure is GET /metrics on the local admin socket
+        // (never the public HTTPS endpoint -- it is agent-facing, not an admin plane), but the
+        // admin server is already down by this point (and is optional to begin with), so this
+        // debug line is how the LAST totals are observed. The macro skips the dump entirely
+        // when debug logging is inactive.
         LOGFN_DEBUG1(moduleLogFn(),
                      "remoted module metrics: %s",
                      wazuh::metrics::dumpJson(*m_metricsManager, {"remoted"}).c_str());
@@ -423,6 +463,177 @@ private:
     }
 
     /**
+     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics) -- best effort.
+     *
+     * Sibling of startHttpServer(), called after it: this is the module's management plane
+     * (shared_modules/uds_http_server over REMOTED_MODULE_ADMIN_SOCKET_PATH), reachable only
+     * from the local host -- agents can never reach it, and the public HTTPS server must never
+     * grow these routes (it is agent-facing, not an admin plane). Both routes are Liveness
+     * class: answered inline from resident state, exempt from the byte budget, so they respond
+     * under any pressure.
+     *
+     * Never throws. The admin plane is optional observability, so ANY failure here (most
+     * commonly: queue/sockets/ missing outside an installed manager, or the path occupied by a
+     * non-socket file the library rightly refuses to unlink) is a WARN and the module keeps
+     * running without it -- remoted must never die for its metrics.
+     */
+    void startAdminServer()
+    {
+        try
+        {
+            m_adminServer = wazuh::uds_http::makeUdsHttpServer();
+
+            // Unauthenticated liveness probe, mirroring the public server's GET / (which stays:
+            // agents probe THAT one; this one answers operators on the local socket).
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/",
+                [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
+                    responder->send(
+                        wazuh::uds_http::HttpResponse::json(200, R"({"status":"ok","module":"remoted_module"})"));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
+            // GET /metrics: dump the module's whole registry (remoted.control.*, remoted.scanvd.*,
+            // remoted.admin.server.*...), same envelope as the stop() debug dump. The manager is
+            // captured weakly for consistency with inventory sync's metricsEndpoint (503 when
+            // gone), even though this facade never resets its manager -- totals survive restart
+            // retries on purpose.
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/metrics",
+                [weakManager = std::weak_ptr<wazuh::metrics::IManager>(m_metricsManager)](
+                    std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                    std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
+                    const auto manager = weakManager.lock();
+                    if (!manager)
+                    {
+                        responder->send(
+                            wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                        return;
+                    }
+                    responder->send(
+                        wazuh::uds_http::HttpResponse::json(200, wazuh::metrics::dumpJson(*manager, {"remoted"})));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
+            wazuh::uds_http::UdsHttpServerConfig config;
+            config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
+            // Identity: a NEW server with no prior wire contract, so the Server: header carries
+            // remoted's own daemon name (unlike inventory sync, which kept its historical value).
+            config.logTag = "wazuh-manager-remoted:remoted-module:admin";
+            config.serverName = "remoted admin";
+            config.serverHeader = "wazuh-remoted";
+            // Two liveness routes serving one local operator: sized far below the library's
+            // data-plane defaults, everything else left at them.
+            config.ioThreads = 2;
+            config.maxConnections = 64;
+            m_adminServer->start(config);
+
+            registerAdminTransportDiagnostics();
+
+            LOGFN_INFO(moduleLogFn(),
+                       "remoted admin server listening on '%s' (routes: GET / and GET /metrics).",
+                       REMOTED_MODULE_ADMIN_SOCKET_PATH);
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_WARN(moduleLogFn(),
+                       "remoted admin server failed to start on '%s': %s. Continuing without it; the "
+                       "metrics dump stays reachable through the stop() debug log.",
+                       REMOTED_MODULE_ADMIN_SOCKET_PATH,
+                       e.what());
+            m_adminServer.reset();
+        }
+    }
+
+    /**
+     * @brief Publish the admin server's bounded resources as pull metrics (remoted.admin.server.*).
+     *
+     * Same wiring as inventory sync's registerTransportDiagnostics() (U10): the weak target is
+     * repointed at the new server after every successful start, while the pulls themselves are
+     * registered exactly once -- IManager has no unregister. After stop() resets m_adminServer
+     * the weak_ptr expires and every metric reads 0, the documented quiesced value, so a dump
+     * can never touch a dead server. The budget and data/control lanes are structurally idle
+     * today (both routes are Liveness class), but the full set is published anyway so every
+     * uds_http_server consumer reports the same vocabulary.
+     */
+    void registerAdminTransportDiagnostics()
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_adminDiagMutex};
+            m_adminDiagTarget = m_adminServer;
+        }
+        if (m_adminPullsRegistered)
+        {
+            return;
+        }
+        m_adminPullsRegistered = true;
+
+        // Safe to capture this: the facade is a process-lifetime singleton, and diagnostics()
+        // itself is lock-free relaxed loads -- callable from a dump at any time.
+        const auto snapshot = [this]() -> wazuh::uds_http::TransportDiagnostics
+        {
+            std::lock_guard<std::mutex> lock {m_adminDiagMutex};
+            if (const auto server = m_adminDiagTarget.lock())
+            {
+                return server->diagnostics();
+            }
+            return {};
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.budget.available.bytes",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
+            "Bytes the admin server's in-flight payload budget can still admit",
+            "bytes");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.budget.inflight.bytes",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
+            "Bytes currently reserved by admitted admin requests",
+            "bytes");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.budget.inflight.requests",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
+            "Admin requests currently holding a budget reservation",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.sessions.live",
+            [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
+            "Open admin socket connections, deferred replies included",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.sessions.data",
+            [snapshot]
+            {
+                return static_cast<uint64_t>(
+                    snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Data)]);
+            },
+            "Admin sessions classified on data-class routes",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.sessions.control",
+            [snapshot]
+            {
+                return static_cast<uint64_t>(
+                    snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Control)]);
+            },
+            "Admin sessions classified on control-class routes",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            "remoted.admin.server.sessions.liveness",
+            [snapshot]
+            {
+                return static_cast<uint64_t>(
+                    snapshot().sessionsByClass[static_cast<std::size_t>(wazuh::uds_http::RouteClass::Liveness)]);
+            },
+            "Admin sessions classified on liveness-class routes",
+            "connections");
+    }
+
+    /**
      * @brief Warns when an endpoint's downstream deadlines cannot actually be honored.
      *
      * RESTinio's handle_request_timeout (http_request_timeout) bounds the WHOLE request, and its
@@ -461,6 +672,9 @@ private:
     void resetHttpServerStack()
     {
         m_httpServer.reset();
+        // The admin server (when it came up) goes with the stack; its dtor runs the two-phase
+        // stop, and its handlers only reach m_metricsManager, which is never reset.
+        m_adminServer.reset();
         // The control handler may have been partially built (its ctor spins up an eviction
         // thread and the wdb/task client workers) before startHttpServer() threw further down.
         // Reset it here so those threads join before the next retry constructs a fresh one.
@@ -536,7 +750,16 @@ private:
     std::thread m_worker;                ///< The C++ thread launched for remoted.
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 
-    std::unique_ptr<remoted::http::IHttpServer> m_httpServer;       ///< HTTPS transport (behind our interface).
+    std::unique_ptr<remoted::http::IHttpServer> m_httpServer; ///< HTTPS transport (behind our interface).
+    /// Local admin plane (fixed UDS socket, GET / + GET /metrics). OPTIONAL by policy: a failed
+    /// start leaves it null and the module keeps running (see startAdminServer()).
+    std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
+    /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is
+    /// repointed under its own mutex on every start; the pulls are registered exactly once per
+    /// process because IManager has no unregister (see registerAdminTransportDiagnostics()).
+    std::mutex m_adminDiagMutex;
+    std::weak_ptr<wazuh::uds_http::IUdsHttpServer> m_adminDiagTarget;
+    bool m_adminPullsRegistered {false};
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
@@ -548,7 +771,8 @@ private:
     // dump after a retry wants totals, not a fresh zeroed registry). Declared BEFORE the metric
     // structs below -- their default member initializers resolve counters from it, and members
     // initialize in declaration order. NEVER exposed through the public HTTPS endpoint (it is
-    // agent-facing, not an admin plane); today the dump only reaches the debug log on stop().
+    // agent-facing, not an admin plane); the dump is served by GET /metrics on the local admin
+    // socket (see startAdminServer()) and reaches the debug log on stop().
     const std::shared_ptr<wazuh::metrics::IManager> m_metricsManager {std::make_shared<wazuh::metrics::Manager>()};
 
     // /control lifecycle: the metric struct is a value member on the facade (stable address

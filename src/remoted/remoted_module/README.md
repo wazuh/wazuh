@@ -1065,6 +1065,42 @@ try/catch frame at ~30 per-request call sites, measurable even when the body doe
 forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
 (request target, header values), so using it as a format would be a remote format-string bug.
 
+## Local admin socket — `queue/sockets/remoted-module.sock`
+
+The module's management plane: a second, independent HTTP server (the shared
+`shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
+brought up by `startAdminServer()` right after the public server. It serves exactly two
+read-only routes, both **Liveness** class (answered inline from resident state, exempt from the
+byte budget):
+
+| Route | Answer |
+|---|---|
+| `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
+| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`), same envelope as inventory sync's `/metrics` |
+
+Contract points:
+
+- **Fixed path, no knob**: the constant `queue/sockets/remoted-module.sock` is **relative** on
+  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  `$WAZUH_HOME/queue/sockets/remoted-module.sock` (mode 0660). Internal options only carry ints,
+  so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
+- **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
+  admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
+  server keeps the opposite policy: its failure is fatal.)
+- **Local-only by construction**: agents can never reach it — no route on the public HTTPS
+  endpoint exposes it (that endpoint is agent-facing, not an admin plane), and the C-side stats
+  served by remcom's legacy `getstats` are untouched (decision U6).
+- **Dogfooding**: the admin server's own `TransportDiagnostics` are published on the same
+  registry as `remoted.admin.server.*` pull metrics (weak_ptr target behind its own mutex,
+  registered once per process — pulls cannot be unregistered), so `GET /metrics` also reports
+  the transport serving it.
+- **Shutdown**: `stopAccepting()` in `stop()`'s phase 1 alongside the HTTPS server's, full
+  `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
 ## Integration in remoted
 
 - Build wiring: `add_subdirectory(remoted_module)` + `remoted_module` added to
@@ -1115,6 +1151,12 @@ dequeued), and `controlScanVdE2E_test.cpp` (the one test that goes over a **real
 wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409 responses
 survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files exercise
 directly).
+
+Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
+the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying the
+`remoted.control.*`/`remoted.scanvd.*`/`remoted.admin.server.*` families, 404/405 exact-match
+routing, the warn-and-continue policy when the bind fails with the public listener unaffected,
+and `stop()` unlinking the socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V

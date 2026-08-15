@@ -21,7 +21,8 @@
  * shared_ptrs: consumers resolve once via makeControlMetrics() (cold path) and every inc*
  * afterwards is a single relaxed atomic op, exactly like the hand-rolled std::atomic fields it
  * replaced. NEVER exposed through the public HTTPS endpoint (it is agent-facing, not an admin
- * plane); observability is the manager's dump (log today, UDS /metrics later).
+ * plane); observability is the manager's dump (GET /metrics on the local admin socket, and the
+ * debug log on stop()).
  */
 
 #include <memory>
