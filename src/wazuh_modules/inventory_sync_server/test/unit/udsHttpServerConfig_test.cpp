@@ -19,9 +19,9 @@
 #include <cstdio>
 #include <limits>
 
-using invsync::http::buildServerConfig;
-using invsync::http::RequestParser;
-using invsync::http::UdsHttpServerConfig;
+using invsync::buildServerConfig;
+using wazuh::uds_http::RequestParser;
+using wazuh::uds_http::UdsHttpServerConfig;
 
 namespace
 {
@@ -62,7 +62,7 @@ TEST(UdsHttpServerConfigTest, ZeroedStructYieldsEveryDocumentedDefault)
 
     // No own body cap by default (a whole sync session is ONE request); the effective session
     // limit is the in-flight byte budget, which start() feeds to the parser as a 413 boundary.
-    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
+    EXPECT_EQ(wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(2048U, config.maxUrlSize);
     EXPECT_EQ(256U, config.maxHeaderNameSize);
     EXPECT_EQ(8192U, config.maxHeaderValueSize);
@@ -147,7 +147,7 @@ TEST(UdsHttpServerConfigTest, NegativeValuesFallBackToDefaults)
     const auto config = buildServerConfig(input);
 
     EXPECT_EQ(static_cast<std::size_t>(cpp_get_nproc()), config.ioThreads);
-    EXPECT_EQ(invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
+    EXPECT_EQ(wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE, config.maxBodySize);
     EXPECT_EQ(10U, config.headerTimeoutSec);
     EXPECT_EQ(1024U, config.maxConnections);
     EXPECT_EQ(0660U, config.socketMode);

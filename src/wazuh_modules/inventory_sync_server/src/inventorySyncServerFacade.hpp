@@ -25,15 +25,12 @@
 
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
-#include "common/socketPathCheck.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/deleteAgentEndpoint.hpp"
 #include "endpoints/metricsEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
 #include "endpoints/syncEndpoint.hpp"
-#include "http_server/IUdsHttpServer.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
-#include "http_server/udsHttpServerFactory.hpp"
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "indexer/IIndexerSession.hpp"
@@ -51,6 +48,9 @@
 #include "vd/serverScanCoordinator.hpp"
 #include "vd/vdScanLane.hpp"
 #include "vd/vdScannerFactory.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/socketPathCheck.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -143,9 +143,9 @@ namespace invsync
             {
                 // Before anything is allocated or spawned: an unusable socket path means this module can
                 // never serve, and modulesd must not come up pretending inventory ingress exists.
-                const auto resolved = invsync::http::buildServerConfig(configuration);
+                const auto resolved = invsync::buildServerConfig(configuration);
                 std::string reason;
-                if (!invsync::common::socketPathIsUsable(resolved.socketPath, reason))
+                if (!wazuh::uds_http::socketPathIsUsable(resolved.socketPath, reason))
                 {
                     LOGFN_ERROR(moduleLogFn(),
                                 "The inventory sync server cannot use its socket path '%s': %s. This path is fixed, "
@@ -361,19 +361,19 @@ namespace invsync
         }
 
     private:
-        void startHttpServer(const invsync::http::UdsHttpServerConfig& config)
+        void startHttpServer(const wazuh::uds_http::UdsHttpServerConfig& config)
         {
-            m_httpServer = invsync::http::makeUdsHttpServer();
+            m_httpServer = wazuh::uds_http::makeUdsHttpServer();
 
             // Liveness probe. Exempt from the in-flight byte budget so it keeps answering under
             // memory pressure -- which is exactly when someone is most likely to be probing it.
             m_httpServer->addRoute(
-                invsync::http::Method::Get,
+                wazuh::uds_http::Method::Get,
                 "/",
-                [](std::shared_ptr<const invsync::http::HttpRequest>,
-                   std::shared_ptr<invsync::http::IHttpResponder> responder) {
-                    responder->send(
-                        invsync::http::HttpResponse::json(200, R"({"status":"ok","module":"inventory_sync_server"})"));
+                [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
+                    responder->send(wazuh::uds_http::HttpResponse::json(
+                        200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
                 /*countAgainstBudget=*/false);
 
@@ -481,7 +481,7 @@ namespace invsync
             }
             m_transportPullsRegistered = true;
 
-            const auto snapshot = [this]() -> invsync::http::TransportDiagnostics
+            const auto snapshot = [this]() -> wazuh::uds_http::TransportDiagnostics
             {
                 std::lock_guard<std::mutex> lock {m_transportDiagMutex};
                 if (const auto server = m_transportDiagTarget.lock())
@@ -739,7 +739,7 @@ namespace invsync
             // deadlocks.
             std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
 
-            invsync::http::UdsHttpServerConfig serverConfig;
+            wazuh::uds_http::UdsHttpServerConfig serverConfig;
             nlohmann::json rawIndexerConfig;
             nlohmann::json syncConnectorConfig;
             nlohmann::json asyncConnectorConfig;
@@ -779,7 +779,7 @@ namespace invsync
 
                 // Resolved once per attempt and kept, so the failure path can name the actual path
                 // without rebuilding the configuration (and so the two can never disagree).
-                serverConfig = invsync::http::buildServerConfig(m_config);
+                serverConfig = invsync::buildServerConfig(m_config);
                 m_resolvedSocketPath = serverConfig.socketPath;
 
                 needSession = !m_indexerSession;
@@ -1201,14 +1201,14 @@ namespace invsync
 
         /// HTTP-over-UDS transport. shared_ptr (not unique) so the transport-diagnostics pull
         /// metrics can hold a WEAK reference that expires the moment stop() resets this.
-        std::shared_ptr<invsync::http::IUdsHttpServer> m_httpServer;
+        std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_httpServer;
 
         /// Pull metrics are registered once (there is no unregister -- iManager.hpp), but the
         /// server they observe is replaced per start attempt, so the getters resolve the current
         /// one through this weak target under its own tiny mutex (never the lifecycle mutex: a
         /// metrics dump must not be able to contend with stop()).
         mutable std::mutex m_transportDiagMutex;
-        std::weak_ptr<invsync::http::IUdsHttpServer> m_transportDiagTarget;
+        std::weak_ptr<wazuh::uds_http::IUdsHttpServer> m_transportDiagTarget;
         bool m_transportPullsRegistered {false};
 
         /*

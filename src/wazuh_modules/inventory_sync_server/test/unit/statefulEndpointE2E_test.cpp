@@ -17,13 +17,6 @@
 #include "testSessionBuilder.hpp"
 #include "udsTestClient.hpp"
 
-// TRANSITIONAL (deleted by the rename commit): the raw client moved to the shared transport's
-// test fixtures with its namespace; bridge the one helper this suite borrows from it.
-namespace invsync::test
-{
-    using wazuh::uds_http::test::sendRaw;
-} // namespace invsync::test
-
 #include "hashHelper.h"
 #include "stringHelper.h"
 
@@ -117,7 +110,7 @@ protected:
 TEST_F(StatefulEndpointE2ETest, AValidDeltaIsAppliedFlushedAndAnswered200)
 {
     const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}});
-    const auto response = invsync::test::sendRaw(m_path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
 
     EXPECT_EQ(200, response.status) << response.body;
     EXPECT_EQ(R"({"status":"ok"})", response.body);
@@ -134,7 +127,7 @@ TEST_F(StatefulEndpointE2ETest, AnAllSkippedSessionAnswersNoOp)
     ValueSpec outside;
     outside.index = "alerts";
     const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {outside});
-    const auto response = invsync::test::sendRaw(m_path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
 
     EXPECT_EQ(200, response.status);
     EXPECT_EQ(R"({"status":"ok","noop":true})", response.body);
@@ -144,7 +137,7 @@ TEST_F(StatefulEndpointE2ETest, AnAllSkippedSessionAnswersNoOp)
 TEST_F(StatefulEndpointE2ETest, CleansReachTheIndexerAsDeleteByQuery)
 {
     const auto body = invsync::test::buildCleansSession(SessionSpec {}, {"wazuh-states-fim-files"});
-    const auto response = invsync::test::sendRaw(m_path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
 
     EXPECT_EQ(200, response.status) << response.body;
     const auto ops = m_events->syncOps();
@@ -168,12 +161,13 @@ TEST_F(StatefulEndpointE2ETest, ChecksumVerificationAnswers200OnMatchAnd409OnMis
     SessionSpec spec;
     spec.mode = invsync::test::fb::Mode_ModuleCheck;
 
-    const auto match = invsync::test::sendRaw(m_path,
-                                              statefulRequest(invsync::test::buildChecksumSession(
-                                                  spec, "wazuh-states-inventory-packages", expectedSha1Hex("abc123"))));
+    const auto match =
+        wazuh::uds_http::test::sendRaw(m_path,
+                                       statefulRequest(invsync::test::buildChecksumSession(
+                                           spec, "wazuh-states-inventory-packages", expectedSha1Hex("abc123"))));
     EXPECT_EQ(200, match.status) << match.body;
 
-    const auto mismatch = invsync::test::sendRaw(
+    const auto mismatch = wazuh::uds_http::test::sendRaw(
         m_path,
         statefulRequest(invsync::test::buildChecksumSession(spec, "wazuh-states-inventory-packages", "deadbeef")));
     EXPECT_EQ(409, mismatch.status);
@@ -184,7 +178,8 @@ TEST_F(StatefulEndpointE2ETest, AMetadataSessionRunsItsUpdateByQuery)
 {
     SessionSpec spec;
     spec.mode = invsync::test::fb::Mode_MetadataDelta;
-    const auto response = invsync::test::sendRaw(m_path, statefulRequest(invsync::test::buildBareSession(spec)));
+    const auto response =
+        wazuh::uds_http::test::sendRaw(m_path, statefulRequest(invsync::test::buildBareSession(spec)));
 
     EXPECT_EQ(200, response.status) << response.body;
     const auto ops = m_events->syncOps();
@@ -194,10 +189,10 @@ TEST_F(StatefulEndpointE2ETest, AMetadataSessionRunsItsUpdateByQuery)
 
 TEST_F(StatefulEndpointE2ETest, GarbageIs400AndAForeignIdentityIs403)
 {
-    EXPECT_EQ(400, invsync::test::sendRaw(m_path, statefulRequest("junk")).status);
+    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, statefulRequest("junk")).status);
 
     const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {invsync::test::ValueSpec {}});
-    const auto spoofed = invsync::test::sendRaw(m_path, statefulRequest(body, "42"));
+    const auto spoofed = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body, "42"));
     EXPECT_EQ(403, spoofed.status);
     EXPECT_NE(std::string::npos, spoofed.body.find("identity mismatch"));
     EXPECT_TRUE(m_events->syncOps().empty()) << "rejections must never reach the indexer";
@@ -211,7 +206,7 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithTheScannerDisabledIndexesAndAnswer
     SessionSpec spec;
     spec.option = invsync::test::fb::Option_VDSync;
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
-    const auto response = invsync::test::sendRaw(m_path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
 
     EXPECT_EQ(200, response.status) << response.body;
     const auto ops = m_events->syncOps();
@@ -237,7 +232,7 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetr
     SessionSpec spec;
     spec.option = invsync::test::fb::Option_VDSync;
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
-    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(path, statefulRequest(body));
 
     EXPECT_EQ(503, response.status);
     ASSERT_TRUE(response.hasHeader("Retry-After")) << response.raw;
@@ -270,7 +265,7 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithMatchingFeedOffsetIsScannedAndAnsw
     spec.option = invsync::test::fb::Option_VDFirst;
     spec.feedOffset = 500;
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
-    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(path, statefulRequest(body));
 
     EXPECT_EQ(200, response.status) << response.body;
     const auto ops = m_events->syncOps();
@@ -296,7 +291,7 @@ TEST_F(StatefulEndpointE2ETest, AVDSessionWithMismatchedFeedOffsetIsRejectedWith
     spec.option = invsync::test::fb::Option_VDFirst;
     spec.feedOffset = 100; // stale relative to m_vdCurrentOffset=500
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
-    const auto response = invsync::test::sendRaw(path, statefulRequest(body));
+    const auto response = wazuh::uds_http::test::sendRaw(path, statefulRequest(body));
 
     EXPECT_EQ(409, response.status) << response.body;
     const auto json = nlohmann::json::parse(response.body);
@@ -311,13 +306,13 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
     // authd's uhttp_* helper only speaks POST, so a route drift would silently orphan deletions.
     const std::string deleteHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 9\r\n"
                                    "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    const auto response = invsync::test::sendRaw(m_path, deleteHead);
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteHead);
     EXPECT_EQ(200, response.status) << response.body;
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
     const std::string aliasHead = "POST /agents/delete HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 10\r\n"
                                   "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(200, invsync::test::sendRaw(m_path, aliasHead).status);
+    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, aliasHead).status);
 
     // Each deletion deletes across its whole scope: wazuh-states-* plus the two wazuh-agent-*
     // indices, which live outside the state family and used to outlive the agent.
@@ -342,7 +337,7 @@ TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAndBothRoutesServeIt)
 
     const std::string badHead = "DELETE /agents HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: nope\r\n"
                                 "Content-Length: 0\r\nConnection: close\r\n\r\n";
-    EXPECT_EQ(400, invsync::test::sendRaw(m_path, badHead).status);
+    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, badHead).status);
 }
 
 TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)
@@ -351,7 +346,7 @@ TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)
     std::string request = "POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 1\r\n"
                           "Content-Length: " +
                           std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
-    EXPECT_EQ(404, invsync::test::sendRaw(m_path, request).status);
+    EXPECT_EQ(404, wazuh::uds_http::test::sendRaw(m_path, request).status);
 }
 
 /**
@@ -372,6 +367,23 @@ TEST_F(StatefulEndpointE2ETest, DeclaringMoreThanTheWholeBudgetIs413)
 
     const std::string head = "POST /stateful HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 1\r\n"
                              "Content-Length: 16777216\r\nConnection: close\r\n\r\n";
-    const auto response = invsync::test::sendRaw(path, head);
+    const auto response = wazuh::uds_http::test::sendRaw(path, head);
     EXPECT_EQ(413, response.status);
+}
+
+/*
+ * U10: the transport's bounded resources are published as pull metrics through the module's own
+ * GET /metrics, resolved live via the facade's weak target -- the acceptance check of the
+ * transport extraction (the only wire delta it is allowed to add).
+ */
+TEST_F(StatefulEndpointE2ETest, TransportDiagnosticsArePublishedOnMetrics)
+{
+    const std::string head = "GET /metrics HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n"
+                             "Connection: close\r\n\r\n";
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, head);
+
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_NE(std::string::npos, response.body.find("server.budget.available.bytes")) << response.body;
+    EXPECT_NE(std::string::npos, response.body.find("server.budget.inflight.requests"));
+    EXPECT_NE(std::string::npos, response.body.find("server.sessions.live"));
 }

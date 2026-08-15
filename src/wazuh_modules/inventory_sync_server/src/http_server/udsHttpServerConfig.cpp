@@ -36,7 +36,7 @@ namespace
     // an arbitrary per-request cap would be an arbitrary session-size cap; what bounds memory is
     // the in-flight byte budget, which start() feeds to the parser so "declares more than the
     // whole budget" is refused with 413 at headers-complete.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE};
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE};
 
     // llhttp enforces none of these itself, so they are applied by hand in the parser.
     constexpr std::size_t DEFAULT_MAX_URL_SIZE {2048};
@@ -95,7 +95,7 @@ namespace
     }
 } // namespace
 
-namespace invsync::http
+namespace invsync
 {
 
     UdsHttpServerConfig buildServerConfig(const inventory_sync_server_config_t& config)
@@ -167,4 +167,4 @@ namespace invsync::http
         return result;
     }
 
-} // namespace invsync::http
+} // namespace invsync
