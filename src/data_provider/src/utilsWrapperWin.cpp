@@ -11,10 +11,8 @@
 
 #include <regex>
 #include <sstream>        // For std::ostringstream
-#include <iomanip>        // For std::hex
 #include <stdexcept>      // For std::runtime_error
 #include <string>         // For std::string and std::wstring
-#include <locale>         // For localization utilities (if needed for string conversion)
 
 #include "utilsWrapperWin.hpp"
 #include <shellapi.h>
@@ -266,7 +264,7 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
     HRESULT hres;
     IUpdateSearcher* pUpdateSearcher = NULL;
     IUpdateHistoryEntryCollection* pHistory = NULL;
-    std::regex hotfixRegex("KB[0-9]+");
+    static const std::regex hotfixRegex("KB[0-9]+");
     std::ostringstream oss;
 
     hres = comHelper.CreateUpdateSearcher(pUpdateSearcher);
