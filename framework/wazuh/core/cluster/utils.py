@@ -84,6 +84,19 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     return config_cluster
 
 
+def process_exists(pid: int) -> bool:
+    """Return whether a process exists without requiring access to its /proc entry."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # The process exists, but belongs to a user we cannot signal. This is
+        # expected when /proc is mounted with hidepid=invisible.
+        return True
+    return True
+
+
 @temporary_cache()
 def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
@@ -124,7 +137,7 @@ def get_manager_status(cache=False) -> typing.Dict:
             # it means each process crashed and was not able to remove its own pidfile.
             data[process] = 'failed'
             for pid in pidfile:
-                if os.path.exists(os.path.join(proc_path, pidfile_regex.match(pid).group(1))):
+                if process_exists(int(pidfile_regex.match(pid).group(1))):
                     data[process] = 'running'
                     break
 
