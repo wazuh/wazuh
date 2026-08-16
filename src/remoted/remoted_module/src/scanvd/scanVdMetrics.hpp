@@ -28,19 +28,16 @@
 
 namespace remoted::scanvd
 {
-    // The remoted.scanvd.* name catalog. `requests`/`accepted`/... count the handler's immediate
-    // accept/reject decision; the `scans.*` names count what the background worker did with an
-    // accepted request afterwards.
+    // The remoted.scanvd.* name catalog. Every counter is an admission-time decision: the
+    // handler is a synchronous passthrough of VD's own admission, so there is no worker-side
+    // family -- what became of an accepted scan is VD's to report (its dispatcher logs each
+    // outcome), and a request VD refused was answered 503, which the agent knows to retry.
     constexpr auto METRIC_REQUESTS_TOTAL {"remoted.scanvd.requests.total"};
     constexpr auto METRIC_VERSION_MISMATCH {"remoted.scanvd.version_mismatch"};
     constexpr auto METRIC_QUEUE_FULL {"remoted.scanvd.queue_full"};
     constexpr auto METRIC_INVALID_AGENT {"remoted.scanvd.invalid_agent"};
     constexpr auto METRIC_ACCEPTED {"remoted.scanvd.accepted"};
-    constexpr auto METRIC_SCANS_SUCCEEDED {"remoted.scanvd.scans.succeeded"};
-    constexpr auto METRIC_SCANS_RETRIED {"remoted.scanvd.scans.retried"};
-    constexpr auto METRIC_SCANS_RETRIES_EXHAUSTED {"remoted.scanvd.scans.retries_exhausted"};
-    constexpr auto METRIC_SCANS_PERMANENT_FAILURE {"remoted.scanvd.scans.permanent_failure"};
-    constexpr auto METRIC_SCANS_DISCARDED {"remoted.scanvd.scans.discarded"};
+    constexpr auto METRIC_VD_ERROR {"remoted.scanvd.vd_error"};
 
     /**
      * @brief The /scan/vd counter set, pre-resolved from one manager.
@@ -51,15 +48,12 @@ namespace remoted::scanvd
     struct ScanVdMetrics
     {
         std::shared_ptr<wazuh::metrics::ICounter> requests;
-        std::shared_ptr<wazuh::metrics::ICounter> versionMismatch;      ///< 409s: requested offset != current offset.
-        std::shared_ptr<wazuh::metrics::ICounter> queueFull;            ///< 503s: tracking table at capacity.
-        std::shared_ptr<wazuh::metrics::ICounter> invalidAgent;         ///< 400s: agentId 0 reached the handler.
-        std::shared_ptr<wazuh::metrics::ICounter> accepted;             ///< 200s: queued, or refreshed an entry.
-        std::shared_ptr<wazuh::metrics::ICounter> scanSucceeded;        ///< Worker successfully triggered the scan.
-        std::shared_ptr<wazuh::metrics::ICounter> scanRetried;          ///< Worker hit a retryable failure.
-        std::shared_ptr<wazuh::metrics::ICounter> scanRetriesExhausted; ///< Worker gave up after MAX_RETRIES.
-        std::shared_ptr<wazuh::metrics::ICounter> scanPermanentFailure; ///< VD returned a non-retryable error.
-        std::shared_ptr<wazuh::metrics::ICounter> scanDiscarded;        ///< Skipped at execution: offset moved on.
+        std::shared_ptr<wazuh::metrics::ICounter> versionMismatch; ///< 409s: requested offset != current offset.
+        std::shared_ptr<wazuh::metrics::ICounter> queueFull;       ///< 503s: VD's dispatch queue at capacity.
+        std::shared_ptr<wazuh::metrics::ICounter> invalidAgent;    ///< 400s: agentId 0 reached the handler.
+        std::shared_ptr<wazuh::metrics::ICounter> accepted;        ///< 200s: VD queued the scan -- it will run.
+        std::shared_ptr<wazuh::metrics::ICounter> vdError;         ///< 503s for any other reason: VD unreachable, not
+                                                                   ///< ready, stopping, or an unexpected answer.
     };
 
     /// Resolves the remoted.scanvd.* family on @p manager (creating it on first call; totals
@@ -70,20 +64,12 @@ namespace remoted::scanvd
             manager.getOrCreateCounter(METRIC_REQUESTS_TOTAL, "/scan/vd requests reaching the handler", "count"),
             manager.getOrCreateCounter(
                 METRIC_VERSION_MISMATCH, "409 rejections: requested offset != current offset", "count"),
-            manager.getOrCreateCounter(METRIC_QUEUE_FULL, "503 rejections: tracking table at capacity", "count"),
+            manager.getOrCreateCounter(
+                METRIC_QUEUE_FULL, "503 rejections: VD's scan dispatch queue at capacity", "count"),
             manager.getOrCreateCounter(METRIC_INVALID_AGENT, "400 rejections: agentId 0 reached the handler", "count"),
+            manager.getOrCreateCounter(METRIC_ACCEPTED, "200 acceptances: VD queued the scan", "count"),
             manager.getOrCreateCounter(
-                METRIC_ACCEPTED, "200 acceptances: queued, or refreshed an existing entry", "count"),
-            manager.getOrCreateCounter(
-                METRIC_SCANS_SUCCEEDED, "Scans the worker successfully triggered on VD", "count"),
-            manager.getOrCreateCounter(
-                METRIC_SCANS_RETRIED, "Scan attempts that hit a retryable failure and backed off", "count"),
-            manager.getOrCreateCounter(
-                METRIC_SCANS_RETRIES_EXHAUSTED, "Scans given up after exhausting MAX_RETRIES", "count"),
-            manager.getOrCreateCounter(
-                METRIC_SCANS_PERMANENT_FAILURE, "Scans VD rejected with a non-retryable error", "count"),
-            manager.getOrCreateCounter(
-                METRIC_SCANS_DISCARDED, "Scans skipped at execution time: offset moved on", "count")};
+                METRIC_VD_ERROR, "503s relayed for non-capacity reasons: VD unreachable, not ready, ...", "count")};
     }
 
     inline void incRequests(ScanVdMetrics& m)
@@ -121,39 +107,11 @@ namespace remoted::scanvd
             m.accepted->add();
         }
     }
-    inline void incScanSucceeded(ScanVdMetrics& m)
+    inline void incVdError(ScanVdMetrics& m)
     {
-        if (m.scanSucceeded)
+        if (m.vdError)
         {
-            m.scanSucceeded->add();
-        }
-    }
-    inline void incScanRetried(ScanVdMetrics& m)
-    {
-        if (m.scanRetried)
-        {
-            m.scanRetried->add();
-        }
-    }
-    inline void incScanRetriesExhausted(ScanVdMetrics& m)
-    {
-        if (m.scanRetriesExhausted)
-        {
-            m.scanRetriesExhausted->add();
-        }
-    }
-    inline void incScanPermanentFailure(ScanVdMetrics& m)
-    {
-        if (m.scanPermanentFailure)
-        {
-            m.scanPermanentFailure->add();
-        }
-    }
-    inline void incScanDiscarded(ScanVdMetrics& m)
-    {
-        if (m.scanDiscarded)
-        {
-            m.scanDiscarded->add();
+            m.vdError->add();
         }
     }
 

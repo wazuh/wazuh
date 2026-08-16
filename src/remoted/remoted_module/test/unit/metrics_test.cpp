@@ -144,13 +144,9 @@ TEST(ScanVdMetricsTest, DefaultConstructedCountsNothing)
     incQueueFull(m);
     incInvalidAgent(m);
     incAccepted(m);
-    incScanSucceeded(m);
-    incScanRetried(m);
-    incScanRetriesExhausted(m);
-    incScanPermanentFailure(m);
-    incScanDiscarded(m);
+    incVdError(m);
     EXPECT_EQ(m.requests, nullptr);
-    EXPECT_EQ(m.scanDiscarded, nullptr);
+    EXPECT_EQ(m.vdError, nullptr);
 }
 
 // makeScanVdMetrics() registers the whole remoted.scanvd.* family, and each inc helper touches
@@ -167,11 +163,7 @@ TEST(ScanVdMetricsTest, MakeRegistersFamilyAndIncHelpersEachTouchOneCounter)
         {incQueueFull, METRIC_QUEUE_FULL},
         {incInvalidAgent, METRIC_INVALID_AGENT},
         {incAccepted, METRIC_ACCEPTED},
-        {incScanSucceeded, METRIC_SCANS_SUCCEEDED},
-        {incScanRetried, METRIC_SCANS_RETRIED},
-        {incScanRetriesExhausted, METRIC_SCANS_RETRIES_EXHAUSTED},
-        {incScanPermanentFailure, METRIC_SCANS_PERMANENT_FAILURE},
-        {incScanDiscarded, METRIC_SCANS_DISCARDED}};
+        {incVdError, METRIC_VD_ERROR}};
     EXPECT_EQ(manager.count(), pairs.size());
 
     uint64_t expected = 0;

@@ -7,8 +7,8 @@
 // /stateful session scans the inventory it CARRIES, while this endpoint asks
 // the manager to re-scan the inventory it ALREADY has, against a newer feed.
 // Same offset gate on both, one source of truth (VdClient::getOffset()), but
-// different manager-side machinery -- remoted's own worker pool here, the
-// inventory_sync_server's VD scan lane there.
+// different manager-side machinery -- remoted relaying VD's admission here,
+// the inventory_sync_server's VD scan lane there.
 package scanvd
 
 import (
@@ -44,10 +44,10 @@ func (e *ErrProtocol) Error() string { return e.msg }
 
 // Request sends one feed_update scan request for the offset the caller resolved.
 //
-// 200 (queued), 409 (version_mismatch) and 503 (scan_queue_full) are all
-// ORDINARY results the caller records: the last two are contract outcomes of a
-// real fleet's traffic, not failures of the measurement. Only 400/401 return an
-// ErrProtocol.
+// 200 (queued), 409 (version_mismatch) and 503 (VD did not queue it; the body
+// names the cause) are all ORDINARY results the caller records: the last two
+// are contract outcomes of a real fleet's traffic, not failures of the
+// measurement. Only 400/401 return an ErrProtocol.
 func Request(c *wire.Client, feedOffset uint64, now int64) (Result, error) {
 	body, err := json.Marshal(map[string]any{"type": "feed_update", "feed_offset": feedOffset})
 	if err != nil {
@@ -61,9 +61,10 @@ func Request(c *wire.Client, feedOffset uint64, now int64) (Result, error) {
 
 	switch resp.Status {
 	case 200:
-		// The reply is the literal {}. It says "queued", NOT "scanned": the scan
-		// itself happens later, on remoted's worker pool, so nothing downstream
-		// may read this latency as a scan duration.
+		// The reply is the literal {}. It says "queued", NOT "scanned": the
+		// request sits in VD's dispatch lane and the scan runs later on VD's
+		// single worker, so nothing downstream may read this latency as a scan
+		// duration.
 		var reply map[string]any
 		if err := json.Unmarshal(resp.Body, &reply); err != nil {
 			return result, &ErrProtocol{fmt.Sprintf("scan/vd: 200 with a non-JSON body: %v", err)}

@@ -42,11 +42,12 @@ scan_latency_ms_p50,scan_latency_ms_p99
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
 - `scan_*` are the `POST /scan/vd` counters ([14](14-scan-vd.md)): the feed-update re-scan requests
-  a `scan_vd` step sends. `scan_200` counts requests the manager **queued**, not scans it ran — it
-  answers at admission and scans afterward, so `scan_latency_ms_*` is admission time and NOT a scan
-  duration. `scan_409` (a stale `feed_offset`) and `scan_503` (`scan_queue_full`) are contract
-  outcomes; `scan_other` holds the `400`/`401` that also invalidate the run. A `scan_vd` step never
-  retries, so requests and attempts are the same number here.
+  a `scan_vd` step sends. `scan_200` counts requests **queued by VD** (the scan will run), not scans
+  that ran yet — the manager answers at admission and scans afterward, so `scan_latency_ms_*` is
+  admission time and NOT a scan duration. `scan_409` (a stale `feed_offset`) and `scan_503` (VD did
+  not queue it: lane full / not ready / unreachable) are contract outcomes; `scan_other` holds the
+  `400`/`401` that also invalidate the run. A `scan_vd` step never retries, so requests and attempts
+  are the same number here.
 - `sessions_401` has its own column rather than living in `sessions_other`: a `401` means remoted has
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.

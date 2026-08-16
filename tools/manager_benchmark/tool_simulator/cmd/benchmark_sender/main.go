@@ -161,8 +161,8 @@ func printFinal(rn *runner.Runner, meta metrics.Meta, code int, verdictRes *verd
 			c.StatelessSent, c.St202, c.StBad400, c.StBad413, c.St503, c.EventsSent)
 	}
 	if c.ScanSent > 0 {
-		// 200 is "queued": remoted admits the re-scan and its worker pool
-		// dispatches it later (docu/14-scan-vd.md), so this line says how many
+		// 200 is "queued": VD admits the re-scan into its dispatch lane and
+		// scans it later (docu/14-scan-vd.md), so this line says how many
 		// requests were ACCEPTED, not how many scans finished.
 		scan := s.Hists["scan"]
 		fmt.Printf("scan/vd: sent=%d 200(queued)=%d 409=%d 503=%d other=%d  admission ms: p50=%.1f p99=%.1f\n",

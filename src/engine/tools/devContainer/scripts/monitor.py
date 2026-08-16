@@ -172,10 +172,11 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
 # remoted_module's registry, served by GET /metrics on the admin socket. Everything here is a
 # cumulative counter except the server.* block, which mirrors the transport gauges above.
 #
-# The scanvd family is the one a saturation run is read on: `queue_full` counts the 503s the
-# handler answered, and an accepted request's fate lands in exactly one of the `scans.*`
-# counters afterwards -- so "no scan was lost" reads as queue_full rejections coming back as
-# retried and eventually succeeded, with retries_exhausted flat.
+# The scanvd family is admission-only: remoted is a synchronous passthrough of VD's admission,
+# so a request either came back 200 (accepted = VD queued it and WILL run it) or an honest 503
+# (queue_full = VD's lane at capacity, vd_error = anything else). What became of an accepted
+# scan is VD's to report -- the sender's scan_200/scan_503 columns now mean the same thing this
+# family does, which is the whole point of the redesign.
 _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.control.startup", "control_startup"),
     ("remoted.control.notify", "control_notify"),
@@ -188,11 +189,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.scanvd.queue_full", "scanvd_queue_full"),
     ("remoted.scanvd.version_mismatch", "scanvd_version_mismatch"),
     ("remoted.scanvd.invalid_agent", "scanvd_invalid_agent"),
-    ("remoted.scanvd.scans.succeeded", "scanvd_scans_succeeded"),
-    ("remoted.scanvd.scans.retried", "scanvd_scans_retried"),
-    ("remoted.scanvd.scans.retries_exhausted", "scanvd_scans_retries_exhausted"),
-    ("remoted.scanvd.scans.permanent_failure", "scanvd_scans_permanent_failure"),
-    ("remoted.scanvd.scans.discarded", "scanvd_scans_discarded"),
+    ("remoted.scanvd.vd_error", "scanvd_vd_error"),
     # The admin server dogfooding its own transport. Both its routes are liveness-class, so
     # the budget and the data/control lanes are structurally zero -- only sessions.live and
     # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.
@@ -1204,20 +1201,16 @@ def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path:
             try:
                 raw = _query_uds_metrics(socket_path, REMOTED_MODULE_MAX_RESPONSE_SIZE)
                 row = _flatten_remoted_module_stats(raw, ts_now, elapsed_s)
-                # The scan funnel, in the order a saturation run is read: what arrived, what
-                # was admitted, what was shed, and where the admitted ones ended up.
+                # The admission split, in the order a saturation run is read: what arrived,
+                # what VD queued (and will run), and what was shed -- by capacity or otherwise.
                 logger.info(
-                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d mismatch=%d | "
-                    "scans ok=%d retried=%d exhausted=%d discarded=%d | "
+                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d vd_err=%d mismatch=%d | "
                     "control notify=%d wdb_err=%d | admin sessions=%d",
                     _as_int(row.get("scanvd_requests_total")),
                     _as_int(row.get("scanvd_accepted")),
                     _as_int(row.get("scanvd_queue_full")),
+                    _as_int(row.get("scanvd_vd_error")),
                     _as_int(row.get("scanvd_version_mismatch")),
-                    _as_int(row.get("scanvd_scans_succeeded")),
-                    _as_int(row.get("scanvd_scans_retried")),
-                    _as_int(row.get("scanvd_scans_retries_exhausted")),
-                    _as_int(row.get("scanvd_scans_discarded")),
                     _as_int(row.get("control_notify")),
                     _as_int(row.get("control_wdb_error")),
                     _as_int(row.get("admin_sessions_live")),
@@ -1516,6 +1509,10 @@ _THROTTLED_EVENTS: dict[str, re.Pattern] = {
     # --- bounded lanes behind vd.sock ----------------------------------------------------
     "vd_scan_dispatch_full_503": re.compile(
         r"Rejected (\d+) scan request\(s\) with 503 .*scan dispatch queue is full"),
+    # remoted's relay leg failing for NON-capacity reasons (VD unreachable / not ready):
+    # capacity 503s are VD's own line above, this one is the passthrough's.
+    "scanvd_relay_503": re.compile(
+        r"Answered (\d+) scan request\(s\) with 503 .*VD did not queue them"),
     "ondemand_lane_full_503": re.compile(
         r"Rejected (\d+) on-demand update\(s\) with 503 .*on-demand lane is full"),
     # Not a failure: concurrent triggers for one topic coalesce into a single update.
@@ -1565,10 +1562,11 @@ _EVENT_PATTERNS: dict[str, re.Pattern] = {
     "bulk_flush_failed":   re.compile(r"A bulk flush of \d+ session\(s\) failed"),
     "scan_failed":         re.compile(r"The vulnerability scan for agent .* failed"),
     "indexer_unreachable": re.compile(r"No configured indexer host is currently reachable"),
-    "scanvd_tracking_full": re.compile(r"Scan tracking table full \(\d+ agents\)"),
     # Shutdown summaries from the bounded lanes (one line per stop, not per request): accepted
-    # work that was shed because the module went down mid-flight.
-    "lane_shutdown_shed": re.compile(r"queued (?:scan request|update)\(s\) were answered 503"),
+    # work that was shed because the module went down mid-flight. The scan lane DROPS its queue
+    # (the peers were answered at admission), the on-demand lane still answers 503s (deferred).
+    "lane_shutdown_shed": re.compile(
+        r"queued (?:scan request|update)\(s\) were (?:answered 503|dropped)"),
     # Deliberately a count of LINES, not of events: every transport message is throttled and
     # carries its own count, so one line here means "a 90 s throttle window fired", and the
     # events inside it are counted by the specific _THROTTLED_EVENTS patterns above. A

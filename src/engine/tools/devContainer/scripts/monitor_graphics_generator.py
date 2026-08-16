@@ -409,14 +409,10 @@ INVSYNC_METRICS = [
 # lifetime; the admin.* block is the transport gauges of the admin server itself.
 REMOTED_MODULE_METRICS = [
     ("scanvd_requests_total",     "VD Scan Requests Received",            "Count"),
-    ("scanvd_accepted",           "VD Scan Requests Accepted",            "Count"),
-    ("scanvd_queue_full",         "VD Scan Requests Shed (tracking full)", "Count"),
+    ("scanvd_accepted",           "VD Scan Requests Queued by VD",        "Count"),
+    ("scanvd_queue_full",         "VD Scan Requests Shed (lane full)",    "Count"),
+    ("scanvd_vd_error",           "VD Scan Relay Failures (VD unreachable/not ready)", "Count"),
     ("scanvd_version_mismatch",   "VD Scan Requests Rejected (offset mismatch)", "Count"),
-    ("scanvd_scans_succeeded",    "VD Scans Triggered OK",                "Count"),
-    ("scanvd_scans_retried",      "VD Scan Attempts Retried",             "Count"),
-    ("scanvd_scans_retries_exhausted", "VD Scans Given Up (retries exhausted)", "Count"),
-    ("scanvd_scans_permanent_failure", "VD Scans Failed (permanent)",     "Count"),
-    ("scanvd_scans_discarded",    "VD Scans Discarded (offset moved on)", "Count"),
     ("control_notify",            "Control — Keepalive Requests",         "Count"),
     ("control_startup",           "Control — Startup Requests",           "Count"),
     ("control_shutdown",          "Control — Shutdown Requests",          "Count"),
@@ -426,14 +422,17 @@ REMOTED_MODULE_METRICS = [
     ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
 ]
 
-# The scan funnel: what the handler shed, what it retried, and where it ended up. A healthy
-# saturated run shows queue_full and retried climbing together while succeeded keeps pace and
-# retries_exhausted stays flat -- i.e. backpressure delayed work instead of dropping it.
+# The admission split: everything that arrived lands in exactly one of these. remoted is a
+# synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
+# and every rejection was VISIBLE to the agent (a 503 its next notify retries) -- a healthy
+# saturated run shows accepted at the lane's capacity and queue_full absorbing the excess,
+# with vd_error flat.
 _SCANVD_FUNNEL_COLS = [
+    "scanvd_requests_total",
+    "scanvd_accepted",
     "scanvd_queue_full",
-    "scanvd_scans_retried",
-    "scanvd_scans_succeeded",
-    "scanvd_scans_retries_exhausted",
+    "scanvd_vd_error",
+    "scanvd_version_mismatch",
 ]
 
 REMOTED_METRICS = [
@@ -976,9 +975,9 @@ def generate_charts(
                 out,
             )
 
-        # The chart a saturation run is judged on: shed -> retried -> succeeded, with
-        # retries_exhausted as the failure line that must stay flat. One per run, since the
-        # four series only make sense read against each other.
+        # The chart a saturation run is judged on: requests split into queued-and-will-run vs
+        # honestly-shed, with vd_error as the failure line that must stay flat. One per run,
+        # since the series only make sense read against each other.
         for label, df in remoted_module_dfs.items():
             if not any(col in df.columns for col in _SCANVD_FUNNEL_COLS):
                 continue

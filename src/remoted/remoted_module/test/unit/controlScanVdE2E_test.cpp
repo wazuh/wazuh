@@ -252,3 +252,31 @@ TEST(ControlScanVdE2ETest, ScanVdMismatchedOffsetReturns409OverRealHttp)
     EXPECT_EQ(json.at("current_version").get<uint64_t>(), 12345u);
     EXPECT_EQ(f.scanVdMetrics.versionMismatch->get(), 1u);
 }
+
+TEST(ControlScanVdE2ETest, ScanVdRefusedByVdIsAnHonest503OverRealHttp)
+{
+    ControlScanVdE2EFixture f;
+    if (!f.start())
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+
+    // The negative twin of the 200 case: VD refuses at admission, and the agent must SEE that
+    // -- the old design answered 200 here and dropped the scan later if retries ran out.
+    f.vdServer->setScanHandler(
+        [](const httplib::Request&, httplib::Response& res)
+        {
+            res.status = 503;
+            res.set_content(R"({"error":"scan_queue_full","retryable":true})", "application/json");
+        });
+
+    const std::string body = R"({"type":"feed_update","feed_offset":12345})";
+    const auto raw = remoted::test::sendSignedRequest(f.port, remoted::test::testAgentKey(), "/scan/vd", body);
+    const auto [head, respBody] = remoted::test::splitResponse(raw);
+
+    ASSERT_NE(head.find("503"), std::string::npos) << "raw response head: " << head;
+    const auto json = nlohmann::json::parse(respBody);
+    EXPECT_EQ(json.at("error").get<std::string>(), "scan_queue_full") << "VD's cause travels to the agent";
+    EXPECT_EQ(f.scanVdMetrics.queueFull->get(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.accepted->get(), 0u);
+}
