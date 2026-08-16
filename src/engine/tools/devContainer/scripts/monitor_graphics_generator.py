@@ -507,6 +507,13 @@ SIMPLE_MONITOR_EXTRA_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
 )
+
+# Memory is the one axis the indexer JVM cannot share: it sits around 6 GB while every manager
+# process stays under ~600 MB, so including it pins the axis and collapses the whole manager
+# into an unreadable band at the bottom. Its memory is not lost -- monitor_rss_total_with_indexer
+# is the combined view. The indexer-owned engine stays: it runs in the manager's range.
+_MEMORY_METRICS = frozenset({"rss_mb", "vms_mb"})
+_SCALE_BREAKING_COMPONENTS = frozenset({"wazuh-indexer"})
 TOTAL_MONITOR_EXTRA_COMPONENTS = EXTRA_PROCESS_COMPONENTS
 
 
@@ -690,12 +697,16 @@ def generate_charts(
                 monitors_with_simple_extras[key] = df
 
         for col, title_suffix, ylabel in MONITOR_METRICS:
+            datasets = monitors_with_simple_extras
+            title = f"Wazuh Manager — {title_suffix}"
+            if col in _MEMORY_METRICS:
+                datasets = {
+                    key: df for key, df in datasets.items()
+                    if key.split("/")[-1] not in _SCALE_BREAKING_COMPONENTS
+                }
+                title += " (manager processes)"
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
-            plot_timeseries(
-                monitors_with_simple_extras, col,
-                f"Wazuh Manager — {title_suffix}",
-                ylabel, out,
-            )
+            plot_timeseries(datasets, col, title, ylabel, out)
 
         if monitors:
             # manager-only: per-process lines + manager total (no indexer,
