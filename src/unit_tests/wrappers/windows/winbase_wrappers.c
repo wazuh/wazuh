@@ -68,26 +68,6 @@ void expect_LookupAccountSid_call(char *name, char *DomainName, int ret_value) {
     will_return(wrap_LookupAccountSid, ret_value);
 }
 
-BOOL WINAPI wrap_ConvertStringSidToSidA(LPCSTR StringSid, PSID *Sid) {
-    BOOL result;
-
-    check_expected(StringSid);
-    result = mock_type(BOOL);
-    if (result) {
-        *Sid = mock_type(PSID);
-    }
-
-    return result;
-}
-
-void expect_ConvertStringSidToSidA_call(const char *string_sid, PSID sid, BOOL result) {
-    expect_string(wrap_ConvertStringSidToSidA, StringSid, string_sid);
-    will_return(wrap_ConvertStringSidToSidA, result);
-    if (result) {
-        will_return(wrap_ConvertStringSidToSidA, sid);
-    }
-}
-
 WINBOOL wrap_GetFileSecurity(LPCSTR lpFileName,
                              __UNUSED_PARAM(SECURITY_INFORMATION RequestedInformation),
                              PSECURITY_DESCRIPTOR pSecurityDescriptor,

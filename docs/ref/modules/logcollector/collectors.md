@@ -92,9 +92,28 @@ Key differences from the previous format:
 - No `<?xml version="1.0" encoding="UTF-8"?>` declaration.
 - `<Event>` is the root element.
 - Namespaces and attributes are preserved exactly as provided by the EventChannel API.
-When `MemberName` is empty or `-` and `MemberSid` is available, the Windows agent attempts to resolve the SID and inserts the resulting `DOMAIN\account` (or account) into `MemberName`.
 
 This change standardizes event data for downstream processing and makes forwarded events directly comparable to native Windows Event Viewer exports.
+
+### Member name enrichment
+
+Some Windows Security events provide a `MemberSid` but leave `MemberName` empty or set it to `-`. When the account can be resolved, the Windows agent adds the account name to `MemberName` before forwarding the event.
+
+Native Windows event:
+
+```xml
+<Data Name='MemberName'>-</Data>
+<Data Name='MemberSid'>S-1-5-21-3362136261-2111957958-1377730528-1006</Data>
+```
+
+Forwarded event:
+
+```xml
+<Data Name='MemberName'>DOMAIN\account</Data>
+<Data Name='MemberSid'>S-1-5-21-3362136261-2111957958-1377730528-1006</Data>
+```
+
+The event is forwarded unchanged if the SID is missing, invalid, unmapped, or cannot be resolved. Existing `MemberName` values are preserved.
 
 !!! note
     This change applies to **Windows agents only**. The `<log_format>eventchannel</log_format>` configuration is unchanged.
