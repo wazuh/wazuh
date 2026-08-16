@@ -82,6 +82,11 @@ Requests are executed by a bounded lane (queue of 4, two workers) so a burst of 
 explicitly instead of piling up; concurrent triggers for the *same* topic serialize through the
 `409` above.
 
+Every rejection is logged under the `wazuh-manager-modulesd:content-updater` tag, **throttled**:
+one line per 90-second window carrying the number of occurrences it stands for, so a storm of
+triggers cannot flood `wazuh-manager.log`. Shutdown is the exception — its per-request `503`s are
+summarised in a single line reporting how many queued updates were shed.
+
 ## Key source files
 
 | File | Purpose |

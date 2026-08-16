@@ -83,27 +83,63 @@ void OnDemandManager::dispatch(const std::string& topic,
         std::shared_lock<std::shared_mutex> lock {m_registryMutex};
         if (m_endpoints.find(topic) == m_endpoints.end())
         {
+            lock.unlock();
+            logUnknownTopic(topic);
             responder->send(wazuh::uds_http::HttpResponse::json(404, R"({"error":"unknown_topic","retryable":false})"));
             return;
         }
     }
 
+    auto laneFull = false;
     {
         std::lock_guard<std::mutex> lock {m_laneMutex};
         if (m_stopping || m_workers.empty())
         {
+            // Not logged per request: shutdown is bounded and stopWorkers() reports what it shed.
             responder->send(wazuh::uds_http::HttpResponse::json(503, R"({"error":"shutting_down","retryable":true})"));
             return;
         }
-        if (m_queue.size() >= QUEUE_SLOTS)
+        laneFull = m_queue.size() >= QUEUE_SLOTS;
+        if (!laneFull)
         {
-            responder->send(
-                wazuh::uds_http::HttpResponse::json(503, R"({"error":"ondemand_queue_full","retryable":true})"));
-            return;
+            m_queue.push_back(Job {topic, offset, std::move(responder)});
         }
-        m_queue.push_back(Job {topic, offset, std::move(responder)});
     }
+
+    if (laneFull)
+    {
+        // Formatted outside m_laneMutex on purpose: a burst that fills the lane is exactly when
+        // the workers need that lock to drain it.
+        if (const auto decision = m_laneFullThrottle.record())
+        {
+            logWarn(WM_CONTENTUPDATER,
+                    "Rejected %llu on-demand update(s) with 503 in the last %d s: the on-demand lane is full "
+                    "(%zu slot(s)) (last topic: '%s').",
+                    static_cast<unsigned long long>(decision.total),
+                    wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                    QUEUE_SLOTS,
+                    topic.c_str());
+        }
+        responder->send(
+            wazuh::uds_http::HttpResponse::json(503, R"({"error":"ondemand_queue_full","retryable":true})"));
+        return;
+    }
+
     m_wake.notify_one();
+}
+
+void OnDemandManager::logUnknownTopic(const std::string& topic)
+{
+    // Shared by both lookups -- the inline one and the worker's re-check after the topic was
+    // removed while the job waited. Same condition from the caller's side, same window.
+    if (const auto decision = m_unknownTopicThrottle.record())
+    {
+        logWarn(WM_CONTENTUPDATER,
+                "Rejected %llu on-demand request(s) with 404 in the last %d s: unknown topic (last: '%s').",
+                static_cast<unsigned long long>(decision.total),
+                wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                topic.c_str());
+    }
 }
 
 void OnDemandManager::startWorkersLocked()
@@ -146,7 +182,16 @@ void OnDemandManager::stopWorkers()
             worker.join();
         }
     }
-    logDebug1(WM_CONTENTUPDATER, "On-demand lane stopped");
+    if (abandoned.empty())
+    {
+        logDebug1(WM_CONTENTUPDATER, "On-demand lane stopped");
+    }
+    else
+    {
+        // Worth an INFO: work was accepted and then shed, which the operator cannot see anywhere
+        // else (the per-request 503s of a shutdown are deliberately not logged).
+        logInfo(WM_CONTENTUPDATER, "On-demand lane stopped; %zu queued update(s) were answered 503.", abandoned.size());
+    }
 }
 
 void OnDemandManager::run()
@@ -172,6 +217,7 @@ void OnDemandManager::run()
         const auto it = m_endpoints.find(job.topic);
         if (it == m_endpoints.end())
         {
+            logUnknownTopic(job.topic);
             job.responder->send(
                 wazuh::uds_http::HttpResponse::json(404, R"({"error":"unknown_topic","retryable":false})"));
             continue;
@@ -186,7 +232,17 @@ void OnDemandManager::run()
             else
             {
                 // The honest answer the old server never gave: it said 200 to a request it had
-                // silently ignored because that topic's update was already running.
+                // silently ignored because that topic's update was already running. INFO, not a
+                // warning: coalescing concurrent triggers for one topic is the design working.
+                if (const auto decision = m_inProgressThrottle.record())
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "Answered %llu on-demand request(s) with 409 in the last %d s: an update for that topic "
+                            "was already running (last: '%s').",
+                            static_cast<unsigned long long>(decision.total),
+                            wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                            job.topic.c_str());
+                }
                 job.responder->send(
                     wazuh::uds_http::HttpResponse::json(409, R"({"error":"update_in_progress","retryable":true})"));
             }

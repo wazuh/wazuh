@@ -1508,11 +1508,21 @@ WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
 _THROTTLED_EVENTS: dict[str, re.Pattern] = {
     "session_rejected_403": re.compile(
         r"Rejected (\d+) request\(s\) with 403 .*identity does not match"),
-    # inventory_sync_server's OWN scan lane, not the vulnerability scanner's dispatcher --
-    # that one rejects silently (no log line at all), so its saturation is only visible in
-    # remoted's scanvd metrics and in the sender's scan_503 column.
+    # inventory_sync_server's OWN scan lane. The vulnerability scanner's dispatcher is a
+    # different queue with its own counter below; the two are kept apart by wording ("scan
+    # lane queue" vs "scan dispatch queue") because one column mixing both would be useless.
     "vd_lane_full_503": re.compile(
         r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
+    # --- bounded lanes behind vd.sock ----------------------------------------------------
+    "vd_scan_dispatch_full_503": re.compile(
+        r"Rejected (\d+) scan request\(s\) with 503 .*scan dispatch queue is full"),
+    "ondemand_lane_full_503": re.compile(
+        r"Rejected (\d+) on-demand update\(s\) with 503 .*on-demand lane is full"),
+    # Not a failure: concurrent triggers for one topic coalesce into a single update.
+    "ondemand_in_progress_409": re.compile(
+        r"Answered (\d+) on-demand request\(s\) with 409"),
+    "ondemand_unknown_topic_404": re.compile(
+        r"Rejected (\d+) on-demand request\(s\) with 404"),
     # The noun varies by endpoint: sessions on /stateful, "stats document(s)" on /stats and
     # "config document(s)" on /config -- all three now charge the same pipeline.
     "indexer_unhealthy_503": re.compile(
@@ -1556,6 +1566,9 @@ _EVENT_PATTERNS: dict[str, re.Pattern] = {
     "scan_failed":         re.compile(r"The vulnerability scan for agent .* failed"),
     "indexer_unreachable": re.compile(r"No configured indexer host is currently reachable"),
     "scanvd_tracking_full": re.compile(r"Scan tracking table full \(\d+ agents\)"),
+    # Shutdown summaries from the bounded lanes (one line per stop, not per request): accepted
+    # work that was shed because the module went down mid-flight.
+    "lane_shutdown_shed": re.compile(r"queued (?:scan request|update)\(s\) were answered 503"),
     # Deliberately a count of LINES, not of events: every transport message is throttled and
     # carries its own count, so one line here means "a 90 s throttle window fired", and the
     # events inside it are counted by the specific _THROTTLED_EVENTS patterns above. A

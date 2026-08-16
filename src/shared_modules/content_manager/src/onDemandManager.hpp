@@ -16,6 +16,7 @@
 #include "singleton.hpp"
 
 #include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/logThrottle.hpp>
 
 #include <condition_variable>
 #include <deque>
@@ -103,6 +104,7 @@ private:
     void startWorkersLocked(); ///< Requires m_laneMutex held.
     void stopWorkers();        ///< Must be called WITHOUT m_registryMutex held (joins workers).
     void run();
+    void logUnknownTopic(const std::string& topic); ///< Throttled; shared by both 404 paths.
 
     std::map<std::string, std::function<bool(ActionOrchestrator::UpdateData)>> m_endpoints {};
     std::shared_mutex m_registryMutex {};
@@ -112,6 +114,14 @@ private:
     std::deque<Job> m_queue {};
     bool m_stopping {false};
     std::vector<std::thread> m_workers {};
+
+    /// One window per condition, so a persistent one cannot mask a newly-appearing different
+    /// one. NOTE for tests: this manager is a singleton with no reset, so these windows live
+    /// for the whole process -- after the first emission a 90 s silence is expected behaviour,
+    /// not a lost log line.
+    wazuh::uds_http::LogThrottle m_laneFullThrottle {};
+    wazuh::uds_http::LogThrottle m_unknownTopicThrottle {};
+    wazuh::uds_http::LogThrottle m_inProgressThrottle {};
 };
 
 #endif // _ONDEMAND_MANAGER_HPP
