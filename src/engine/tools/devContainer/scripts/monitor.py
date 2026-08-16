@@ -80,6 +80,14 @@ DEFAULT_INVSYNC_SOCKET = "/var/wazuh-manager/queue/sockets/inventory-sync.sock"
 INVSYNC_STATS_CSV = "stats-api-inventory-sync.csv"
 INVSYNC_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
 
+# remoted's C++ module publishes its own metrics on a manager-local admin socket, served by
+# the same shared HTTP-over-UDS transport inventory_sync_server uses. This is ADDITIVE to the
+# legacy framed `getstats` above: that one carries remoted's C statistics, which stay where
+# they are. The C++ module's counters exist nowhere else.
+DEFAULT_REMOTED_MODULE_SOCKET = "/var/wazuh-manager/queue/sockets/remoted-module.sock"
+REMOTED_MODULE_STATS_CSV = "stats-api-remoted-module.csv"
+REMOTED_MODULE_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+
 DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
 ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
 ANALYSISD_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
@@ -148,6 +156,59 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
     ("vd.scans.skipped", "vd_scans_skipped"),
     ("vd.capacity.503.total", "vd_capacity_503_total"),
     ("vd.retry_after.total", "vd_retry_after_total"),
+    # Transport diagnostics of the shared UDS server itself: a snapshot of the in-flight byte
+    # budget and of how many connections each route class is holding. These are the numbers
+    # that say WHY a session was shed -- budget exhausted vs a class at its cap -- and they
+    # are instantaneous gauges, not counters, so read them as levels rather than as growth.
+    ("server.budget.available.bytes", "server_budget_available_bytes"),
+    ("server.budget.inflight.bytes", "server_budget_inflight_bytes"),
+    ("server.budget.inflight.requests", "server_budget_inflight_requests"),
+    ("server.sessions.live", "server_sessions_live"),
+    ("server.sessions.data", "server_sessions_data"),
+    ("server.sessions.control", "server_sessions_control"),
+    ("server.sessions.liveness", "server_sessions_liveness"),
+)
+
+# remoted_module's registry, served by GET /metrics on the admin socket. Everything here is a
+# cumulative counter except the server.* block, which mirrors the transport gauges above.
+#
+# The scanvd family is the one a saturation run is read on: `queue_full` counts the 503s the
+# handler answered, and an accepted request's fate lands in exactly one of the `scans.*`
+# counters afterwards -- so "no scan was lost" reads as queue_full rejections coming back as
+# retried and eventually succeeded, with retries_exhausted flat.
+_REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
+    ("remoted.control.startup", "control_startup"),
+    ("remoted.control.notify", "control_notify"),
+    ("remoted.control.shutdown", "control_shutdown"),
+    ("remoted.control.wdb_error", "control_wdb_error"),
+    ("remoted.control.task_fetch", "control_task_fetch"),
+    ("remoted.control.task_fetch_error", "control_task_fetch_error"),
+    ("remoted.scanvd.requests.total", "scanvd_requests_total"),
+    ("remoted.scanvd.accepted", "scanvd_accepted"),
+    ("remoted.scanvd.queue_full", "scanvd_queue_full"),
+    ("remoted.scanvd.version_mismatch", "scanvd_version_mismatch"),
+    ("remoted.scanvd.invalid_agent", "scanvd_invalid_agent"),
+    ("remoted.scanvd.scans.succeeded", "scanvd_scans_succeeded"),
+    ("remoted.scanvd.scans.retried", "scanvd_scans_retried"),
+    ("remoted.scanvd.scans.retries_exhausted", "scanvd_scans_retries_exhausted"),
+    ("remoted.scanvd.scans.permanent_failure", "scanvd_scans_permanent_failure"),
+    ("remoted.scanvd.scans.discarded", "scanvd_scans_discarded"),
+    # The admin server dogfooding its own transport. Both its routes are liveness-class, so
+    # the budget and the data/control lanes are structurally zero -- only sessions.live and
+    # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.
+    ("remoted.admin.server.budget.available.bytes", "admin_budget_available_bytes"),
+    ("remoted.admin.server.budget.inflight.bytes", "admin_budget_inflight_bytes"),
+    ("remoted.admin.server.budget.inflight.requests", "admin_budget_inflight_requests"),
+    ("remoted.admin.server.sessions.live", "admin_sessions_live"),
+    ("remoted.admin.server.sessions.data", "admin_sessions_data"),
+    ("remoted.admin.server.sessions.control", "admin_sessions_control"),
+    ("remoted.admin.server.sessions.liveness", "admin_sessions_liveness"),
+)
+
+REMOTED_MODULE_HEADER = (
+    ["timestamp", "elapsed_s", "query_ok", "query_error"]
+    + [col for _, col in _REMOTED_MODULE_SCALARS]
+    + ["raw_response_json"]
 )
 
 INVSYNC_HEADER = (
@@ -933,15 +994,20 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
 
 
 # ---------------------------------------------------------------------------
-# inventory_sync_server metrics monitor
+# wazuh_metrics dumps over HTTP-over-UDS (inventory_sync_server, remoted_module)
 # ---------------------------------------------------------------------------
-def _query_invsync_stats(socket_path: str, timeout: float = 5.0) -> dict[str, object]:
-    """GET /metrics over the module's HTTP-over-UDS socket."""
+# Every module built on wazuh_metrics answers the same envelope on GET /metrics:
+#   {"name": <daemon>, "timestamp": <ISO8601>, "metrics": [ {name, type, value, ...}, ... ]}
+# There is no server-side filtering: the dump carries that manager's whole registry, so the
+# scope of a scrape is decided by WHICH SOCKET is polled. The helpers below are shared by
+# every such scraper; only the metric->column catalog differs per module.
+def _query_uds_metrics(socket_path: str, max_size: int, timeout: float = 5.0) -> dict[str, object]:
+    """GET /metrics over a module's HTTP-over-UDS socket."""
     conn = _UnixSocketHTTPConnection(socket_path, timeout=timeout)
     try:
         conn.request("GET", "/metrics", headers={"Host": "localhost"})
         resp = conn.getresponse()
-        raw_bytes = resp.read(INVSYNC_MAX_RESPONSE_SIZE)
+        raw_bytes = resp.read(max_size)
         if resp.status != 200:
             raise ValueError(f"/metrics answered {resp.status}: {raw_bytes[:200]!r}")
     finally:
@@ -949,15 +1015,46 @@ def _query_invsync_stats(socket_path: str, timeout: float = 5.0) -> dict[str, ob
 
     data = json.loads(raw_bytes.decode("utf-8"))
     if not isinstance(data, dict):
-        raise ValueError("inventory_sync_server response is not a JSON object")
+        raise ValueError(f"{socket_path} /metrics response is not a JSON object")
     return data
 
 
-def _empty_invsync_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
-    row: dict[str, object] = {k: "" for k in INVSYNC_HEADER}
+def _index_metrics_by_name(raw: dict[str, object]) -> dict[str, dict]:
+    """Index a dump's "metrics" array by metric name for O(1) lookup."""
+    by_name: dict[str, dict] = {}
+    for item in raw.get("metrics") or []:
+        if isinstance(item, dict) and "name" in item:
+            by_name[item["name"]] = item
+    return by_name
+
+
+def _scalars_into_row(row: dict[str, object], by_name: dict[str, dict],
+                      spec: tuple[tuple[str, str], ...]) -> None:
+    """Copy the spec'd metrics into their CSV columns, 0 when one is absent.
+
+    Absence is normal: a metric registered lazily (the transport diagnostics only exist once
+    the server started) simply has not appeared yet. Values go through _as_int because pull
+    metrics arrive as JSON doubles -- wazuh::metrics::dumpJson writes uint64 pulls through
+    writer.Double(), so `3` is on the wire as `3.0`.
+    """
+    for metric_name, column in spec:
+        item = by_name.get(metric_name)
+        row[column] = _as_int(item.get("value")) if item else 0
+
+
+def _empty_metrics_row(header: list[str], timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row: dict[str, object] = {k: "" for k in header}
     row["timestamp"] = timestamp
     row["elapsed_s"] = elapsed_s
     return row
+
+
+def _query_invsync_stats(socket_path: str, timeout: float = 5.0) -> dict[str, object]:
+    return _query_uds_metrics(socket_path, INVSYNC_MAX_RESPONSE_SIZE, timeout)
+
+
+def _empty_invsync_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    return _empty_metrics_row(INVSYNC_HEADER, timestamp, elapsed_s)
 
 
 def _flatten_invsync_stats(raw: dict[str, object], timestamp: str,
@@ -972,14 +1069,8 @@ def _flatten_invsync_stats(raw: dict[str, object], timestamp: str,
     row["query_ok"] = 1
     row["query_error"] = ""
 
-    by_name: dict[str, dict] = {}
-    for item in raw.get("metrics") or []:
-        if isinstance(item, dict) and "name" in item:
-            by_name[item["name"]] = item
-
-    for metric_name, column in _INVSYNC_SCALARS:
-        item = by_name.get(metric_name)
-        row[column] = _as_int(item.get("value")) if item else 0
+    by_name = _index_metrics_by_name(raw)
+    _scalars_into_row(row, by_name, _INVSYNC_SCALARS)
 
     # Per-shard gauges: aggregate, since how many there are follows the
     # configured worker count and must not leak into the header.
@@ -1061,6 +1152,92 @@ def invsync_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
 
     logger.info("Inventory sync API monitor finished. CSV written to %s", csv_path)
 
+
+# ---------------------------------------------------------------------------
+# remoted_module metrics monitor (admin socket)
+# ---------------------------------------------------------------------------
+def _empty_remoted_module_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    return _empty_metrics_row(REMOTED_MODULE_HEADER, timestamp, elapsed_s)
+
+
+def _flatten_remoted_module_stats(raw: dict[str, object], timestamp: str,
+                                  elapsed_s: float) -> dict[str, object]:
+    """Map remoted_module's metrics dump onto the flat CSV row.
+
+    Plain scalars only: this registry has no histograms and no per-shard family, so unlike
+    inventory sync there is nothing to aggregate.
+    """
+    row = _empty_remoted_module_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+
+    _scalars_into_row(row, _index_metrics_by_name(raw), _REMOTED_MODULE_SCALARS)
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                                    stop_event: threading.Event | None = None) -> None:
+    """Poll remoted_module's GET /metrics on its admin socket and write per-second CSV.
+
+    The socket is optional by design: remoted only warns if the admin server cannot bind, so
+    an absent socket must degrade to query_ok=0 rows rather than take the monitor down. Those
+    rows are themselves the evidence that the plane was not observable during the run.
+    """
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=REMOTED_MODULE_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Remoted module API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Remoted module API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_uds_metrics(socket_path, REMOTED_MODULE_MAX_RESPONSE_SIZE)
+                row = _flatten_remoted_module_stats(raw, ts_now, elapsed_s)
+                # The scan funnel, in the order a saturation run is read: what arrived, what
+                # was admitted, what was shed, and where the admitted ones ended up.
+                logger.info(
+                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d mismatch=%d | "
+                    "scans ok=%d retried=%d exhausted=%d discarded=%d | "
+                    "control notify=%d wdb_err=%d | admin sessions=%d",
+                    _as_int(row.get("scanvd_requests_total")),
+                    _as_int(row.get("scanvd_accepted")),
+                    _as_int(row.get("scanvd_queue_full")),
+                    _as_int(row.get("scanvd_version_mismatch")),
+                    _as_int(row.get("scanvd_scans_succeeded")),
+                    _as_int(row.get("scanvd_scans_retried")),
+                    _as_int(row.get("scanvd_scans_retries_exhausted")),
+                    _as_int(row.get("scanvd_scans_discarded")),
+                    _as_int(row.get("control_notify")),
+                    _as_int(row.get("control_wdb_error")),
+                    _as_int(row.get("admin_sessions_live")),
+                )
+            except Exception as exc:
+                row = _empty_remoted_module_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Remoted module API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Remoted module API monitor finished. CSV written to %s", csv_path)
+
+
 # Friendly CSV filename overrides for processes whose basename is generic.
 # e.g. wazuh-indexer runs as "java" - we want wazuh-indexer.csv instead.
 _EXE_CSV_ALIAS: dict[str, str] = {
@@ -1107,6 +1284,7 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     remoted_stop = threading.Event()
     analysisd_stop = threading.Event()
     invsync_stop = threading.Event()
+    remoted_module_stop = threading.Event()
 
     # Per-process resource threads
     for target, proc in processes.items():
@@ -1158,6 +1336,14 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
         daemon=True,
     )
 
+    remoted_module_csv = os.path.join(output_dir, REMOTED_MODULE_STATS_CSV)
+    remoted_module_thread = threading.Thread(
+        target=remoted_module_api_monitor_loop,
+        args=(remoted_module_csv, interval, DEFAULT_REMOTED_MODULE_SOCKET, remoted_module_stop),
+        name="mon-remoted-module-api",
+        daemon=True,
+    )
+
     for t in proc_threads:
         t.start()
     if disk_thread:
@@ -1165,6 +1351,7 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     remoted_thread.start()
     analysisd_thread.start()
     invsync_thread.start()
+    remoted_module_thread.start()
 
     # Wait for all process threads to finish.
     while _running and any(t.is_alive() for t in proc_threads):
@@ -1176,6 +1363,7 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
     remoted_stop.set()
     analysisd_stop.set()
     invsync_stop.set()
+    remoted_module_stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
     if remoted_thread.is_alive():
@@ -1184,6 +1372,8 @@ def monitor_multi(processes: dict[ProcessTarget, psutil.Process], output_dir: st
         analysisd_thread.join(timeout=5.0)
     if invsync_thread.is_alive():
         invsync_thread.join(timeout=5.0)
+    if remoted_module_thread.is_alive():
+        remoted_module_thread.join(timeout=5.0)
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
 
@@ -1318,12 +1508,46 @@ WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
 _THROTTLED_EVENTS: dict[str, re.Pattern] = {
     "session_rejected_403": re.compile(
         r"Rejected (\d+) request\(s\) with 403 .*identity does not match"),
+    # inventory_sync_server's OWN scan lane, not the vulnerability scanner's dispatcher --
+    # that one rejects silently (no log line at all), so its saturation is only visible in
+    # remoted's scanvd metrics and in the sender's scan_503 column.
     "vd_lane_full_503": re.compile(
         r"Rejected (\d+) .*with 503 .*scan lane queue is full"),
+    # The noun varies by endpoint: sessions on /stateful, "stats document(s)" on /stats and
+    # "config document(s)" on /config -- all three now charge the same pipeline.
     "indexer_unhealthy_503": re.compile(
-        r"Rejected (\d+) session\(s\) with 503 .*no configured indexer host is currently healthy"),
+        r"Rejected (\d+) (?:\w+ )?(?:session|document)\(s\) with 503 "
+        r".*no configured indexer host is currently healthy"),
     "pipeline_full_503": re.compile(
         r"Rejected (\d+) session\(s\) with 503 .*sync pipeline queue is full"),
+    # --- shared UDS transport (inventory sync, vulnerability detector, remoted admin) -----
+    # These are capacity conditions of the transport itself rather than of a module's
+    # pipeline, and they are what a saturation run needs: they say whether load was shed at
+    # the door and by which mechanism. All of them are throttled with an embedded count.
+    #
+    # None of the messages name their server -- only the log tag does -- so a single column
+    # per condition mixes the three daemons on purpose: the per-server split lives in each
+    # module's own metrics CSV, and here what matters is the timeline.
+    "transport_connection_cap_503": re.compile(
+        # Note the verb: connections are REFUSED at accept time, requests are REJECTED after
+        # the head is read. Anchoring this one on "Rejected" would silently never match.
+        r"Refused (\d+) connection\(s\) with 503 .*connection limit is reached"),
+    "transport_class_session_cap_503": re.compile(
+        r"Rejected (\d+) request\(s\) with 503 .*-class session limit"),
+    "transport_body_cap_413": re.compile(
+        r"Rejected (\d+) request\(s\) with 413 .*-class cap"),
+    "transport_budget_503": re.compile(
+        r"Rejected (\d+) request\(s\) with 503 .*in-flight payload budget is exhausted"),
+    "transport_no_route": re.compile(
+        r"Answered (\d+) request\(s\) .*no route for"),
+    "transport_response_timeout_504": re.compile(
+        r"(\d+) request\(s\) in the last \d+ s were not answered within"),
+    "transport_abandoned_503": re.compile(
+        r"(\d+) request\(s\) in the last \d+ s were dropped by their handler"),
+    "transport_malformed_400": re.compile(
+        r"Rejected (\d+) malformed HTTP request\(s\)"),
+    "transport_accept_error": re.compile(
+        r"Failed to accept (\d+) .*connection\(s\)"),
 }
 
 # One line, one occurrence.
@@ -1331,9 +1555,18 @@ _EVENT_PATTERNS: dict[str, re.Pattern] = {
     "bulk_flush_failed":   re.compile(r"A bulk flush of \d+ session\(s\) failed"),
     "scan_failed":         re.compile(r"The vulnerability scan for agent .* failed"),
     "indexer_unreachable": re.compile(r"No configured indexer host is currently reachable"),
-    # The observability gap: transport errors have no metric, only this.
+    "scanvd_tracking_full": re.compile(r"Scan tracking table full \(\d+ agents\)"),
+    # Deliberately a count of LINES, not of events: every transport message is throttled and
+    # carries its own count, so one line here means "a 90 s throttle window fired", and the
+    # events inside it are counted by the specific _THROTTLED_EVENTS patterns above. A
+    # catch-all with a capture group would be fragile (the count sits in a different position
+    # per message) and would double-count what those already sum.
+    #
+    # The tag alternation covers the three servers that now share the transport; the tag is a
+    # line PREFIX and precedes the level, so tag-then-level is the right order here.
     "transport_error":     re.compile(
-        r"inventory-sync-server:server.*(ERROR|WARNING)", re.IGNORECASE),
+        r"(?:inventory-sync-server:server|vulnerability-scanner:server|remoted-module:admin)"
+        r".*(ERROR|WARNING)", re.IGNORECASE),
 }
 
 _COUNTER_NAMES: tuple[str, ...] = tuple(_THROTTLED_EVENTS) + tuple(_EVENT_PATTERNS)

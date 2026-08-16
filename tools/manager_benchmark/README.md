@@ -58,6 +58,17 @@ including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row p
 `charts/`. The sender's formats are pinned by
 [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
+The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
+`GET /metrics` over its admin socket (`queue/sockets/remoted-module.sock`): the `remoted.control.*`
+and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
+is what a saturation run is read on — `scanvd_queue_full` against `scanvd_scans_retried` /
+`succeeded` / `retries_exhausted` shows whether backpressure delayed work or dropped it, and the
+charts render it as `remoted_module_scanvd_funnel_<label>.png`. Remoted's **C** statistics keep
+their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
+disjoint. Both inventory sync and the admin server also report their route-class connection
+counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class
+cap rather than guessed at.
+
 **One poller, one source of truth.** The monitor samples the manager's processes *and* polls each
 daemon's statistics, so it also owns the inventory-sync scrape. `scrape_metrics.sh` stays as a
 standalone tool and is only started automatically when the monitor cannot run (it needs `psutil`),
