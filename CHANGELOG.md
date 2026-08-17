@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.9]
 
+### Agent
+
+#### Fixed
+
+- Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38170](https://github.com/wazuh/wazuh/issues/38170))
+
 ## [v4.14.8]
 
 ### Manager
