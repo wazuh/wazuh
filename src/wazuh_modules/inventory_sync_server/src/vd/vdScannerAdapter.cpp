@@ -59,6 +59,13 @@ namespace invsync::vd
                 return ScanVerdict::Skipped;
             }
 
+            // LCOV_EXCL_START - integration-only from here down: everything below drives the REAL
+            // VulnerabilityScannerFacade (feed state, scan orchestration, indexer writes). This
+            // adapter exists precisely so the lane above it can be unit-tested against IVdScanner
+            // fakes; the adapter itself is exercised by qa/test_vd_lane.py, which runs in the
+            // integration workflow against a live scanner and is never part of a coverage
+            // capture. The gate above (isInitialized -> Skipped) stays measured: it is the one
+            // branch the unit tests do reach.
             const bool vdFirst = session.option == schema::fb::Option_VDFirst;
 
             vd_sync::SessionInfoView info;
@@ -141,6 +148,7 @@ namespace invsync::vd
 
             return items;
         }
+        // LCOV_EXCL_STOP
     };
 
     std::shared_ptr<IVdScanner> makeProductionVdScanner()
