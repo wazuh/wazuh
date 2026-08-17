@@ -54,6 +54,146 @@ _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
 # under it; comfortably shorter than "the mess just sits there until someone notices manually".
 _ORPHAN_STALENESS_THRESHOLD = timedelta(hours=3)
 
+# Per-run S3 namespace to isolate concurrent AWS IT runs on the shared bucket (issue #38194).
+# Every key a run uploads - and the module's configured path - is placed under "<GITHUB_RUN_ID>/",
+# so two runs executing at the same time never share keys/prefixes. Empty locally (no GITHUB_RUN_ID),
+# which keeps the current bucket layout for local runs.
+_RUN_ID = os.environ.get('GITHUB_RUN_ID', '')
+
+_GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
+    'guardduty_discard_regex',
+    'guardduty_without_only_logs_after',
+    'guardduty_with_only_logs_after',
+    'guardduty_only_logs_after_multiple_calls',
+    'guardduty_remove_from_bucket',
+}
+
+
+def _namespaced(path):
+    """Prefix a bucket path with the per-run namespace: '<run>/<path>' in CI, '<path>' locally.
+
+    The original path's trailing-slash semantics are preserved (only the run id is prepended): the module
+    builds its base prefix as '{path}AWSLogs/' (string concat, not a path join), so an empty path must map
+    to '<run>/' - WITH the trailing slash - to read '<run>/AWSLogs/...'. Stripping it would yield
+    '<run>AWSLogs/' and the module would find nothing. os.path.join in generate_file tolerates either form.
+    """
+    path = path or ''
+    if not _RUN_ID:
+        return path
+    return f"{_RUN_ID}/{path}"
+
+
+def _copy_seeds_into_namespace(s3_client, bucket_name):
+    """Mirror the permanent seeds under the per-run namespace so the module's check_bucket /
+    find_account_ids see the expected AWSLogs/ structure at '<run>/AWSLogs/...'. The originals at the
+    bucket root are never modified; the copies live under '<run>/' and are removed with the namespace.
+    """
+    if not _RUN_ID:
+        return
+    for key in _PERMANENT_SEED_KEYS:
+        try:
+            s3_client.Object(bucket_name, f"{_RUN_ID}/{key}").copy_from(
+                CopySource={'Bucket': bucket_name, 'Key': key})
+        except Exception as exc:
+            logger.warning("Could not copy seed '%s' into run namespace: %s", key, exc)
+
+
+def _delete_run_namespace(s3_client, bucket_name):
+    """Delete the whole per-run namespace '<run>/' (test data + seed copies). Never touches the root."""
+    if not _RUN_ID:
+        return
+    try:
+        s3_client.Bucket(bucket_name).objects.filter(Prefix=f"{_RUN_ID}/").delete()
+    except Exception as exc:
+        logger.warning("Could not delete run namespace '%s/': %s", _RUN_ID, exc)
+
+
+def _notif_rule_id():
+    return f"wazuh-it-{_RUN_ID}"
+
+
+def _rule_prefix(queue_config):
+    """Return the S3 key prefix filter of a QueueConfiguration rule, or '' if it has no prefix filter."""
+    for fr in queue_config.get('Filter', {}).get('Key', {}).get('FilterRules', []):
+        if fr.get('Name', '').lower() == 'prefix':
+            return fr.get('Value', '')
+    return ''
+
+
+def _prefixes_overlap(a, b):
+    """S3 rejects two notification rules for the same event whose prefixes overlap (one is a prefix of the
+    other). Distinct per-run '<run>/' namespaces never overlap; an empty prefix (a legacy no-filter rule)
+    overlaps everything."""
+    return a.startswith(b) or b.startswith(a)
+
+
+def _merge_queue_configs(cfg, keep_rule=None, add_rule=None):
+    """Rebuild a bucket notification config from an existing one: drop our own rule and any rule whose
+    prefix filter OVERLAPS ours (a legacy no-filter rule or a stale one - S3 forbids overlapping prefixes
+    for the same event), optionally add ours, and preserve Topic/Lambda/EventBridge configs so we never
+    clobber unrelated notifications. Distinct '<run>/' prefixes never overlap, so concurrent runs survive."""
+    rule_id = _notif_rule_id()
+    own_prefix = f"{_RUN_ID}/"
+    queues = [q for q in cfg.get('QueueConfigurations', [])
+              if q.get('Id') != rule_id and not _prefixes_overlap(_rule_prefix(q), own_prefix)]
+    if add_rule:
+        queues.append(add_rule)
+    out = {'QueueConfigurations': queues}
+    for k in ('TopicConfigurations', 'LambdaFunctionConfigurations', 'EventBridgeConfiguration'):
+        if cfg.get(k):
+            out[k] = cfg[k]
+    return out
+
+
+def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn):
+    """Concurrency-safe bucket->SQS notification for the custom-bucket tests (issue #38194).
+
+    The bucket notification config is a single shared resource and the framework helper REPLACES it, so
+    two concurrent runs clobber each other. Instead register THIS run's queue with a '<run>/' prefix
+    filter, merged into the existing config, so each run is only notified of its own uploads. Read-modify-
+    write with a verify+retry loop to converge if a concurrent run's put races ours. Locally (no run id)
+    fall back to a plain single-queue put (original behaviour).
+    """
+    client = s3_resource.meta.client
+    if not _RUN_ID:
+        client.put_bucket_notification_configuration(
+            Bucket=bucket_name,
+            NotificationConfiguration={'QueueConfigurations': [
+                {'QueueArn': sqs_queue_arn, 'Events': ['s3:ObjectCreated:*']}]})
+        return
+    rule = {'Id': _notif_rule_id(), 'QueueArn': sqs_queue_arn, 'Events': ['s3:ObjectCreated:*'],
+            'Filter': {'Key': {'FilterRules': [{'Name': 'prefix', 'Value': f'{_RUN_ID}/'}]}}}
+    for _ in range(5):
+        cfg = client.get_bucket_notification_configuration(Bucket=bucket_name)
+        client.put_bucket_notification_configuration(
+            Bucket=bucket_name, NotificationConfiguration=_merge_queue_configs(cfg, add_rule=rule))
+        check = client.get_bucket_notification_configuration(Bucket=bucket_name)
+        if any(q.get('Id') == rule['Id'] for q in check.get('QueueConfigurations', [])):
+            return
+    logger.warning("Could not persist bucket notification rule for run %s", _RUN_ID)
+
+
+def _remove_run_bucket_notification(s3_resource, bucket_name):
+    """Remove THIS run's notification rule at teardown, preserving other runs' rules. Read-modify-write
+    with a verify+retry loop so a concurrent run's racing put does not resurrect our rule or drop theirs."""
+    if not _RUN_ID:
+        return
+    client = s3_resource.meta.client
+    rule_id = _notif_rule_id()
+    for _ in range(5):
+        try:
+            cfg = client.get_bucket_notification_configuration(Bucket=bucket_name)
+            client.put_bucket_notification_configuration(
+                Bucket=bucket_name, NotificationConfiguration=_merge_queue_configs(cfg))
+            check = client.get_bucket_notification_configuration(Bucket=bucket_name)
+            if not any(q.get('Id') == rule_id for q in check.get('QueueConfigurations', [])):
+                return
+        except Exception as exc:
+            logger.warning("Could not remove bucket notification rule for run %s: %s", _RUN_ID, exc)
+            return
+    logger.warning("Bucket notification rule for run %s may persist after teardown", _RUN_ID)
+
+
 _GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
     'guardduty_discard_regex',
     'guardduty_without_only_logs_after',
@@ -94,40 +234,16 @@ def record_uploaded_key():
     return _record_uploaded_key
 
 
-def _record_uploaded_key(key):
-    """Append an uploaded key to the cleanup manifest, if one is configured.
-
-    pytest teardown only deletes the keys of its own run and only runs after 'yield', so a hard-cancelled
-    CI job (e.g. a new push cancelling the in-flight run) leaves the already-uploaded files as orphans.
-    Recording every key here, at upload time, lets a CI step with 'if: always()' delete them even when the
-    job is cancelled before teardown. The manifest path comes from AWS_IT_CLEANUP_MANIFEST; when it is not
-    set (e.g. local runs) this is a no-op and normal teardown still applies.
-    """
-    manifest = os.environ.get('AWS_IT_CLEANUP_MANIFEST')
-    if not manifest:
-        return
-    try:
-        with open(manifest, 'a') as handle:
-            handle.write(f"{key}\n")
-            handle.flush()
-    except OSError as exc:
-        logger.warning("Could not record uploaded key '%s' to manifest '%s': %s", key, manifest, exc)
-
-
-@pytest.fixture
-def record_uploaded_key():
-    """Expose _record_uploaded_key to test bodies that upload objects themselves.
-
-    manage_bucket_files records the keys it uploads, but a few tests upload directly in their body
-    (e.g. test_bucket_multiple_calls). Those must register their key too, otherwise a hard cancel
-    during the test would orphan the object - the exact case this cleanup targets.
-    """
-    return _record_uploaded_key
+def _is_permanent_seed(key):
+    """True if key is a permanent seed - the root seed OR its per-run namespaced copy ('<run>/<seed>')."""
+    candidate = key[len(_RUN_ID) + 1:] if _RUN_ID and key.startswith(f"{_RUN_ID}/") else key
+    return (candidate in _PERMANENT_SEED_KEYS
+            or any(fid in key for fid in _PERMANENT_SEED_FLOW_LOG_IDS))
 
 
 def _safe_delete_key(key, bucket_name, s3_client):
     """Delete one key from the shared bucket; log failures; refuse to touch permanent seeds."""
-    if key in _PERMANENT_SEED_KEYS or any(fid in key for fid in _PERMANENT_SEED_FLOW_LOG_IDS):
+    if _is_permanent_seed(key):
         logger.warning("TEARDOWN: skipping permanent seed key: %s", key)
         return
     try:
@@ -162,8 +278,7 @@ def _assert_prefix_clean(bucket_name, key, s3_client):
     prefix = key.rsplit('/', 1)[0] + '/' if '/' in key else ''
     unexpected = [
         obj for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix, Delimiter='/')
-        if obj.key not in _PERMANENT_SEED_KEYS
-        and not any(fid in obj.key for fid in _PERMANENT_SEED_FLOW_LOG_IDS)
+        if not _is_permanent_seed(obj.key)  # root seeds and their per-run namespaced copies
         and not obj.key.endswith('/')  # skip S3 folder-marker objects (empty keys ending with /)
     ]
     if not unexpected:
@@ -405,14 +520,34 @@ def test_configuration() -> dict:
     return {}
 
 
+@pytest.fixture(scope='session', autouse=True)
+def aws_run_namespace():
+    """Isolate this run under '<GITHUB_RUN_ID>/' on the shared bucket (issue #38194).
+
+    Mirrors the permanent seeds into the namespace at session start so the module's check_bucket /
+    find_account_ids find the AWSLogs/ structure under '<run>/', and deletes the whole namespace at the
+    end. No-op locally (no GITHUB_RUN_ID). Uses its own S3 resource because it is session-scoped.
+    """
+    bucket = os.environ.get('AWS_BUCKET_NAME')
+    if not _RUN_ID or not bucket:
+        yield
+        return
+    profile = os.environ.get('AWS_PROFILE', 'default')
+    s3 = boto3.Session(profile_name=profile).resource(service_name='s3', region_name=US_EAST_1_REGION)
+    _copy_seeds_into_namespace(s3, bucket)
+    yield
+    _delete_run_namespace(s3, bucket)
+
+
 @pytest.fixture()
-def create_test_bucket(metadata: dict, test_configuration: dict):
+def create_test_bucket(metadata: dict, test_configuration: dict, aws_run_namespace):
     """Use a pre-existing S3 bucket for tests.
 
     Args:
         metadata (dict): Bucket information.
         test_configuration (dict): Wazuh configuration template built at import time.
             Patched in-place so set_wazuh_configuration writes the shared bucket into ossec.conf.
+        aws_run_namespace: ensures the per-run namespace (seeds) is set up before the test.
     """
     shared_bucket = os.environ.get('AWS_BUCKET_NAME')
     if not shared_bucket:
@@ -426,6 +561,16 @@ def create_test_bucket(metadata: dict, test_configuration: dict):
     # Override so all S3 operations and the Wazuh module CLI use the shared bucket.
     metadata['bucket_name'] = shared_bucket
 
+    # Namespace the bucket path under the per-run prefix so concurrent runs never share keys. The
+    # uploaded keys (via manage_bucket_files -> generate_file) and the module's configured <path> both
+    # use this value, so they stay aligned. No-op locally.
+    namespaced_path = _namespaced(metadata.get('path', ''))
+    # Only mutate metadata['path'] when a run namespace is active; otherwise (local, no GITHUB_RUN_ID)
+    # leave it untouched so path-less cases keep no 'path' key and the tests don't emit a spurious
+    # --trail_prefix "" that the module (empty path) never logs.
+    if _RUN_ID:
+        metadata['path'] = namespaced_path
+
     # Patch test_configuration so set_wazuh_configuration writes the shared bucket into ossec.conf.
     # Without this, ossec.conf keeps the YAML name (plus the session suffix added by _modify_metadata),
     # causing a mismatch with metadata['bucket_name'] and triggering incorrect_parameters failures.
@@ -433,9 +578,18 @@ def create_test_bucket(metadata: dict, test_configuration: dict):
         for element in section.get('elements', []):
             bucket_cfg = element.get('bucket')
             if isinstance(bucket_cfg, dict):
-                for bucket_elem in bucket_cfg.get('elements', []):
+                bucket_elements = bucket_cfg.setdefault('elements', [])
+                path_found = False
+                for bucket_elem in bucket_elements:
                     if 'name' in bucket_elem:
                         bucket_elem['name']['value'] = shared_bucket
+                    if 'path' in bucket_elem:
+                        bucket_elem['path']['value'] = namespaced_path
+                        path_found = True
+                # A path-less bucket type (reads the bucket root) needs an explicit <path> so the
+                # module reads under the run namespace instead of the shared root.
+                if _RUN_ID and not path_found:
+                    bucket_elements.append({'path': {'value': namespaced_path}})
 
 
 @pytest.fixture
@@ -475,6 +629,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
         files_to_upload = []
         metadata['uploaded_file'] = ''
         flow_log_id = None
+        flow_log_owned = False
         try:
             if vpc_bucket:
                 vpc_id = os.environ.get('AWS_VPC_ID')
@@ -483,21 +638,38 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                         "AWS_VPC_ID is not set. A pre-existing VPC ID is required "
                         "for VPC flow log tests. Set the IT_AWS_VPC_ID GitHub secret."
                     )
-                response = ec2_client.create_flow_logs(
-                    ResourceIds=[vpc_id],
-                    ResourceType='VPC',
-                    TrafficType='REJECT',
-                    LogDestinationType='s3',
-                    LogDestination=f'arn:aws:s3:::{bucket_name}'
-                )
-                unsuccessful = response.get('Unsuccessful', [])
-                if unsuccessful:
-                    err = unsuccessful[0]['Error']
-                    raise RuntimeError(
-                        f"Failed to create VPC flow log on {vpc_id}: "
-                        f"[{err['Code']}] {err['Message']}"
+                # The flow log's dedup key is (VPC, traffic type, destination), all shared across runs, so
+                # two concurrent runs (issue #38194) collide with FlowLogAlreadyExists. Reuse the existing
+                # one when that happens; only the run that actually created it deletes it in teardown. The
+                # flow_log_id is just used to name the synthetic S3 object, so a shared id is harmless.
+                try:
+                    response = ec2_client.create_flow_logs(
+                        ResourceIds=[vpc_id],
+                        ResourceType='VPC',
+                        TrafficType='REJECT',
+                        LogDestinationType='s3',
+                        LogDestination=f'arn:aws:s3:::{bucket_name}'
                     )
-                flow_log_id = response['FlowLogIds'][0]
+                    unsuccessful = response.get('Unsuccessful', [])
+                    if unsuccessful:
+                        err = unsuccessful[0]['Error']
+                        if err['Code'] == 'FlowLogAlreadyExists':
+                            raise ClientError({'Error': err}, 'CreateFlowLogs')
+                        raise RuntimeError(
+                            f"Failed to create VPC flow log on {vpc_id}: "
+                            f"[{err['Code']}] {err['Message']}"
+                        )
+                    flow_log_id = response['FlowLogIds'][0]
+                    flow_log_owned = True
+                except ClientError as fl_error:
+                    if fl_error.response['Error']['Code'] != 'FlowLogAlreadyExists':
+                        raise
+                    existing = ec2_client.describe_flow_logs(
+                        Filters=[{'Name': 'resource-id', 'Values': [vpc_id]}])
+                    flow_logs = existing.get('FlowLogs', [])
+                    if not flow_logs:
+                        raise
+                    flow_log_id = flow_logs[0]['FlowLogId']
                 metadata['flow_log_id'] = flow_log_id
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
@@ -543,7 +715,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
-            if flow_log_id is not None:
+            if flow_log_owned and flow_log_id is not None:
                 try:
                     ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
                 except Exception:
@@ -556,7 +728,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
-            if flow_log_id is not None:
+            if flow_log_owned and flow_log_id is not None:
                 try:
                     ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
                 except Exception:
@@ -575,7 +747,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
         for key in all_keys:
             _safe_delete_key(key, bucket_name, s3_client)
 
-        if vpc_bucket and flow_log_id is not None:
+        if vpc_bucket and flow_log_owned and flow_log_id is not None:
             try:
                 ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
             except Exception as exc:
@@ -780,7 +952,10 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
     """
     # Get bucket name
     bucket_name = metadata["bucket_name"]
-    # Get SQS name
+    # The queue name is already unique per run: configurator._modify_metadata appends a random per-session
+    # '-<uuid>-todelete' suffix, so concurrent runs never share a queue. (Do NOT append GITHUB_RUN_ID here:
+    # it would land after '-todelete' and fall outside the IAM policy's allowed queue-name pattern.) The
+    # cross-run collision that issue #38194 fixes is the bucket notification, handled below.
     sqs_name = metadata["sqs_name"]
 
     sqs_queues, sqs_client = sqs_manager
@@ -800,10 +975,8 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
                        sqs_queue_arn=sqs_queue_arn,
                        client=sqs_client)
 
-        # Set bucket notification configuration
-        set_bucket_event_notification_configuration(bucket_name=bucket_name,
-                                                    sqs_queue_arn=sqs_queue_arn,
-                                                    client=s3_client)
+        # Set bucket notification configuration (per-run, prefix-filtered, merged - see helper).
+        _set_run_bucket_notification(s3_client, bucket_name, sqs_queue_arn)
 
     except ClientError as error:
         # Check if the sqs exist
@@ -815,6 +988,11 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
 
     except Exception as error:
         raise error
+
+    yield
+
+    # Remove only this run's notification rule so a concurrent run's rule survives.
+    _remove_run_bucket_notification(s3_client, bucket_name)
 
 
 """DB fixtures"""
