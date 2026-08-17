@@ -55,11 +55,11 @@
 <decoder name="fortiauth-fields">
   <parent>fortiauth</parent>
   <regex>action="(\.*)"</regex>
-  <order>data.action</order>
+  <order>action</order>
 </decoder>
 
 <decoder name="fortiauth-fields">
   <parent>fortiauth</parent>
   <regex>status="(\.*)"\s(\.+)</regex>
-  <order>data.status,description</order>
+  <order>status,description</order>
 </decoder>
