@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
-- Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38170](https://github.com/wazuh/wazuh/issues/38170))
+- Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38340](https://github.com/wazuh/wazuh/pull/38340))
 
 ## [v4.14.8]
 
