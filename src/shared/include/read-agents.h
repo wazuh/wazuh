@@ -22,9 +22,6 @@ typedef enum agent_status_t {
     GA_STATUS_UNKNOWN
 } agent_status_t;
 
-/* Delete diff folders */
-void delete_diff(const char *name);
-
 #ifndef WIN32
 /* Return the unix permission string
  * Returns a pointer to a local static array

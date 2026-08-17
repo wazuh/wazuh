@@ -14,6 +14,7 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <shared_mutex>
 #include <memory>
 #include <optional>
 #include <atomic>
@@ -100,9 +101,8 @@ class EXPORTED Syscollector final
         void destroy();
 
         // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                              std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps, uint32_t integrityInterval);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
+                              uint32_t integrityInterval);
         SyncModuleResult syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
@@ -168,6 +168,11 @@ class EXPORTED Syscollector final
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
         bool isVDFirstSyncDone();
+
+        /// @brief Body of deleteDatabase() without taking m_resourcesMutex.
+        /// @note The caller must already hold m_resourcesMutex. Exists so callers that
+        /// already hold it shared do not acquire it a second time on the same thread.
+        void deleteDatabaseUnlocked();
         void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
         /**
          * @brief Processes VD DataContext after scan completes
@@ -470,6 +475,17 @@ class EXPORTED Syscollector final
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
+
+        /// @brief Serializes releaseResources() against the entry points that other threads
+        /// keep driving while the module tears down: wcom's dispatcher is detached and never
+        /// joined, and agent-info's coordination polls call query() in-process from its own
+        /// module thread (e.g. the get_first_sync_completed guard, which reaches
+        /// getMetadataValue() and dereferences m_spDBSync). Those entry points take it shared
+        /// around each access; initSyncProtocol() publishes the protocols under the exclusive
+        /// lock and releaseResources() resets the members under it. The scan and sync workers
+        /// do not take it: they are joined before releaseResources() runs. Mirrors
+        /// SecurityConfigurationAssessment::m_resourcesMutex, added for the same defect.
+        mutable std::shared_mutex                                                m_resourcesMutex;
 };
 
 

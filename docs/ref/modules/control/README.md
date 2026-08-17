@@ -67,22 +67,30 @@ Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Win
 4. **Fork and Execute**: Spawns child process to execute command
 5. **Immediate Response**: Returns success immediately (non-blocking)
 
-### Remote Agent Control (Unix)
+### Remote Agent Control (Task-Based - v5.0+)
 
-1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or reload equivalent
-2. **Framework**: Sends `"{agent_id} control restart"` or `"{agent_id} control reload"` to the remoted socket
-3. **Remoted**: Forwards the control message to the target agent
-4. **Agent Dispatch**: `wazuh-agentd`'s `request.c` receives the `"control"` target and forwards it to the agent's control Unix socket (`CONTROL_SOCK`)
-5. **wm_control thread**: `process_control()` (running as a thread in `wazuh-modulesd`) receives the command and dispatches to `wm_control_dispatch()` with `"wazuh-agent"` as the service name
+**For agents running version 5.0.0 or higher**, restart and reload operations use the **Task Manager** instead of direct control messages:
+
+1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or `PUT /agents/{agent_id}/reload`
+2. **Framework**: Creates a task via Task Manager socket (`/queue/tasks/task`)
+   - Task type: `agent_restart` or `agent_reload`
+   - Payload: `{}`
+   - Task stored in Task Manager database with status `pending`
+3. **Agent Polling**: Agent polls Task Manager for pending tasks via HTTPS
+4. **Task Retrieval**: Agent receives task from manager
+5. **Agent Dispatch**: Agent's `request.c` forwards to control socket (Unix) or calls `control_dispatch()` (Windows)
 6. **Execution**: The agent runs restart/reload via systemctl or wazuh-control
+7. **Fire-and-Forget**: No status reported back to manager (task marked as `delivered` locally)
 
-### Remote Agent Control (Windows)
+**Key Differences from Legacy Approach**:
+- **Asynchronous**: API returns immediately after task creation
+- **No status tracking**: Fire-and-forget model, no upgrade-style result queries
+- **Batch operations**: Multiple agents can be restarted/reloaded efficiently
+- **Version check**: API validates agent version ≥ 5.0.0 before creating tasks
 
-1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or reload equivalent
-2. **Framework**: Sends `"{agent_id} control restart"` to the remoted socket
-3. **Remoted**: Forwards the control message to the target agent
-4. **Agent Dispatch**: `wazuh-agentd`'s `request.c` calls `control_dispatch()` in-process
-5. **Execution**: `control_run_detached()` spawns a detached copy of `wazuh-agent.exe service-restart` that stops and restarts the service from outside WazuhSvc
+**Framework Code**:
+- Task creation: `framework/wazuh/core/agent_tasks.py::core_restart_agents()` / `core_reload_agents()`
+- High-level API: `framework/wazuh/agent.py::restart_agents()` / `reload_agents()`
 
 ### Systemd Detection
 
@@ -102,24 +110,23 @@ For reload operations with systemd, the module:
 ### API Usage
 
 The Wazuh RESTful API uses the control channel for:
-- `PUT /manager/restart` — Manager restart
+- `PUT /cluster/restart` — Manager restart
 - `PUT /agents/restart` / `PUT /agents/{agent_id}/restart` — Agent restart (requires agent v5.0.0+)
 - `PUT /agents/reload` / `PUT /agents/{agent_id}/reload` — Agent reload (requires agent v5.0.0+)
 - `PUT /agents/group/{group_id}/reload` — Reload agents in a group
-- `PUT /agents/node/{node_id}/reload` — Reload agents on a cluster node
 
 **Framework Code**:
 - Manager: `framework/wazuh/core/cluster/utils.py::manager_restart()`
-- Agents: `framework/wazuh/core/agent.py::send_restart_command()` / `send_reload_command()`
+- Agents: `framework/wazuh/core/agent_tasks.py::core_restart_agents()` / `core_reload_agents()`
 
 ### Agent Version Requirement
 
 Agent restart and reload via the API require the target agent to be running **version 5.0.0 or higher**. Agents on older versions will return error `1761`.
 
-### Socket Communication Example
+### Communication Examples
 
+**Manager Control (Direct Socket)**:
 ```python
-# Manager-side: send control command directly
 import socket
 
 def send_control_command(command):
@@ -133,10 +140,17 @@ def send_control_command(command):
 result = send_control_command('restart')  # Returns: "ok "
 ```
 
+**Agent Control (Task Manager - v5.0+)**:
 ```python
-# Agent-side: framework sends via remoted socket
-# Format: "{agent_id} control {command}"
-# e.g.: "002 control restart"
+from wazuh.core.agent_tasks import core_restart_agents
+import time
+
+# Create restart tasks for agents
+agent_ids = ['001', '002', '003']
+request_time = int(time.time())
+result = core_restart_agents(agents_chunk=agent_ids, request_time=request_time)
+
+# Result format: {"data": [{"agent": "001", "error": 0, "message": "..."}, ...]}
 ```
 
 ## Related Modules

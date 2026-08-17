@@ -18,8 +18,6 @@
 #include <errno.h>
 
 
-struct group *__wrap_getgrgid(gid_t gid);
-
 int __wrap_getgrnam_r(const char *name, struct group *grp, char *buf, size_t buflen, struct group **result);
 
 #endif

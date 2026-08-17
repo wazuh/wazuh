@@ -40,17 +40,6 @@ int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute_
     return mock_ptr_type(int*);
 }
 
-int* __wrap_wdb_get_agents_ids_of_current_node(const char* status,
-                                               __attribute__((unused)) int* sock,
-                                               int last_id,
-                                               int limit)
-{
-    check_expected(status);
-    check_expected(last_id);
-    check_expected(limit);
-    return mock_ptr_type(int*);
-}
-
 rb_tree* __wrap_wdb_get_all_agents_rbtree(__attribute__((unused)) int* sock)
 {
     return mock_ptr_type(rb_tree*);
@@ -128,22 +117,6 @@ char* __wrap_wdb_get_agent_group(int id, __attribute__((unused)) int* wdb_sock)
     return mock_type(char*);
 }
 
-char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int* wdb_sock)
-{
-    check_expected(id);
-    return mock_type(char*);
-}
-
-int __wrap_wdb_remove_agent_db(int id, const char* name)
-{
-    check_expected(id);
-    if (name)
-    {
-        check_expected(name);
-    }
-    return mock();
-}
-
 cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int* sock)
 {
     return mock_ptr_type(cJSON*);
@@ -173,5 +146,11 @@ int __wrap_wdb_insert_agent(int id,
 int __wrap_wdb_remove_agent(int id, __attribute__((unused)) int* sock)
 {
     check_expected(id);
+    return mock();
+}
+
+int __wrap_wdb_remove_group_db(const char* name, __attribute__((unused)) int* sock)
+{
+    check_expected(name);
     return mock();
 }

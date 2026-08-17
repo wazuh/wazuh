@@ -11,15 +11,14 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Any, Dict, Optional, List, Callable, Tuple, Set
+from typing import Any, Dict, Optional, List, Set
 
 from wazuh.core import common
 from wazuh.core.agent import WazuhDBQueryAgents
-from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import ClusterFilter
 from wazuh.core.exception import WazuhError, IndexerUnavailableError
 from wazuh.core.indexer.indexer import get_indexer_client
-from wazuh.core.wazuh_queue import WazuhQueue
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 
 
 AR_INDEX = "wazuh-active-responses*"
@@ -76,8 +75,6 @@ AR_SCHEMA = {
     "required": ["wazuh"],
     "additionalProperties": True,
 }
-
-node_id = get_node().get("node")
 
 
 @dataclass
@@ -192,14 +189,15 @@ class ActiveResponse:
     doc_source: Dict[str, Any]
     bookmark: ActiveResponseBookmark
     event: Optional[Dict[str, Any]] = None
+    doc_id: Optional[str] = None  # Indexer document _id (for task source_id)
 
-    def target_agents(self, available_agents: List[str]) -> List[str]:
-        """Determine target agent IDs based on AR location and availability.
+    def target_agents(self, all_agents: List[str]) -> List[str]:
+        """Determine target agent IDs based on AR location.
 
         Parameters
         ----------
-        available_agents : List[str]
-            List of currently active agent IDs.
+        all_agents : List[str]
+            List of all agent IDs (used for "all" location only).
 
         Returns
         -------
@@ -210,15 +208,17 @@ class ActiveResponse:
 
         match location:
             case "all":
-                return available_agents
+                return all_agents
 
             case "local":
                 agent_id = self.doc_source["wazuh"]["agent"]["id"]
-                return [agent_id] if agent_id in available_agents else []
+                # HTTPS: Create task regardless of connection status
+                return [agent_id] if agent_id else []
 
             case "defined-agent":
                 agent_id = self.doc_source["wazuh"]["active_response"]["agent_id"]
-                return [agent_id] if agent_id in available_agents else []
+                # HTTPS: Create task regardless of connection status
+                return [agent_id] if agent_id else []
 
         return []
 
@@ -227,18 +227,19 @@ class ActiveResponseHelpers:
     logger = logging.getLogger("wazuh")
 
     @staticmethod
-    def get_active_agents() -> List[str]:
-        """Retrieve the list of active agents for the current node.
+    def get_all_agents() -> List[str]:
+        """Retrieve the list of all agents (HTTPS: no status/node filtering).
 
         Returns
         -------
         List[str]
-            List of active agent IDs.
+            List of all agent IDs.
         """
 
-        active_agents = []
+        agents = []
 
-        filters = {"status": "active", "node_name": node_id}
+        # HTTPS: No status or node filtering - tasks stored in DB until agent polls
+        filters = {}
 
         try:
             with WazuhDBQueryAgents(
@@ -246,11 +247,11 @@ class ActiveResponseHelpers:
             ) as db_query:
                 data = db_query.run()
 
-            active_agents = [data["id"] for data in data["items"]]
+            agents = [data["id"] for data in data["items"]]
         except WazuhError as e:
-            ActiveResponseHelpers.logger.error(f"Error fetching active agents: {e}")
+            ActiveResponseHelpers.logger.error(f"Error fetching agents: {e}")
 
-        return active_agents
+        return agents
 
     @staticmethod
     async def fetch_active_response_docs(
@@ -358,91 +359,12 @@ class ActiveResponseHelpers:
 
         return events
 
-    @staticmethod
-    def build_ar_messages(
-        ars: List[ActiveResponse], agents: List[str]
-    ) -> List[Tuple[str, Dict[str, Any], ActiveResponseBookmark]]:
-        """Build messages to be sent to agents based on ARs and events.
-
-        Parameters
-        ----------
-        ars : List[ActiveResponse]
-            List of active response objects.
-        agents : List[str]
-            List of active agent IDs.
-
-        Returns
-        -------
-        List[Tuple[str, Dict[str, Any], ActiveResponseBookmark]]
-            Tuples of (agent_id, message_dict, bookmark_object).
-        """
-
-        def format_message(
-            ar_source: Dict[str, Any], event: Optional[Dict[str, Any]] = None
-        ) -> Dict[str, Any]:
-            """Merge AR and event data into a single message.
-
-            Parameters
-            ----------
-            ar_source : Dict[str, Any]
-                Source document of the AR.
-            event : Optional[Dict[str, Any]], optional
-                Source document of the associated event, by default None.
-
-            Returns
-            -------
-            Dict[str, Any]
-                Formatted message for the agent.
-            """
-
-            wazuh = ar_source.get("wazuh", {}).copy()
-
-            if event:
-                msg = {**ar_source, **event}
-                event_wazuh = event.get("wazuh", {})
-                wazuh = {**event_wazuh, **wazuh}
-
-            else:
-                msg = dict(ar_source)
-
-            msg["wazuh"] = wazuh
-
-            return msg
-
-        messages = []
-
-        for ar in ars:
-            for agent_id in ar.target_agents(agents):
-                messages.append(
-                    (agent_id, format_message(ar.doc_source, ar.event), ar.bookmark)
-                )
-
-        return messages
-
-    @staticmethod
-    def is_valid_agent(ar: ActiveResponse, available_agents: List[str]) -> bool:
-        """Check if the AR is valid for the given available agents.
-
-        Parameters
-        ----------
-        ar : ActiveResponse
-            The active response object to check.
-        available_agents : List[str]
-            List of available agent IDs.
-
-        Returns
-        -------
-        bool
-            True if the AR targets at least one available agent.
-        """
-        return ar.target_agents(available_agents) != []
-
 
 class ActiveResponseBuilder:
     def __init__(
         self,
         logger: logging.Logger,
-        active_agents: Optional[List[str]] = None,
+        all_agents: Optional[List[str]] = None,
         bookmark_file: Optional[ActiveResponseBookmarkFile] = None,
     ):
         """Initialize the AR builder.
@@ -451,16 +373,16 @@ class ActiveResponseBuilder:
         ----------
         logger : logging.Logger
             Logger instance for reporting.
-        active_agents : Optional[List[str]], optional
-            List of active agents, by default None (retrieves automatically).
+        all_agents : Optional[List[str]], optional
+            List of all agent IDs, by default None (retrieves automatically).
         bookmark_file : Optional[ActiveResponseBookmarkFile], optional
             Bookmark handler, by default None (creates new).
         """
         self.logger = logger
-        self._active_agents = (
-            active_agents
-            if active_agents is not None
-            else ActiveResponseHelpers.get_active_agents()
+        self._all_agents = (
+            all_agents
+            if all_agents is not None
+            else ActiveResponseHelpers.get_all_agents()
         )
         self._ars: List[ActiveResponse] = []
         self._bookmark_file = (
@@ -485,26 +407,12 @@ class ActiveResponseBuilder:
         )
         self._ars = [
             ActiveResponse(
-                doc_source=doc["_source"], bookmark=ActiveResponseBookmark(doc["sort"])
+                doc_source=doc["_source"],
+                bookmark=ActiveResponseBookmark(doc["sort"]),
+                doc_id=doc.get("_id")
             )
             for doc in docs
         ]
-        return self
-
-    def filter(self, fn: Callable[[ActiveResponse], bool]) -> "ActiveResponseBuilder":
-        """Filter the active responses based on a provided function.
-
-        Parameters
-        ----------
-        fn : Callable[[ActiveResponse], bool]
-            Predicate function for filtering.
-
-        Returns
-        -------
-        ActiveResponseBuilder
-            The builder instance.
-        """
-        self._ars = [ar for ar in self._ars if fn(ar)]
         return self
 
     async def enrich_ar_with_events_info(
@@ -545,74 +453,92 @@ class ActiveResponseBuilder:
 
         return self
 
-    def keep_only_active_agents_ars(self) -> "ActiveResponseBuilder":
-        """Keep only active responses for agents that are currently active.
-
-        Returns
-        -------
-        ActiveResponseBuilder
-            The builder instance.
-        """
-
-        if not self._ars:
-            return self
-
-        self.logger.debug(
-            f"Keeping only active responses for agents {self._active_agents}."
-        )
-
-        last_ar_bookmark = self._ars[-1].bookmark.sort
-
-        self.filter(
-            lambda ar: ActiveResponseHelpers.is_valid_agent(ar, self._active_agents)
-        )
-
-        if not self._ars:
-            self.logger.debug(
-                f"No active responses left after filtering active agents. "
-                f"Moving the bookmark to the last fetched active response (`{last_ar_bookmark}`)."
-            )
-            self._bookmark_file.update(last_ar_bookmark)
-
-        return self
-
     def dispatch(self) -> "ActiveResponseBuilder":
-        """Dispatch active responses to their target agents.
+        """Dispatch active responses to their target agents via Task Manager.
 
         Returns
         -------
         ActiveResponseBuilder
             The builder instance.
         """
-        msgs = ActiveResponseHelpers.build_ar_messages(self._ars, self._active_agents)
-
-        if not msgs:
+        if not self._ars:
             return self
 
         msgs_sent = 0
 
-        with WazuhQueue(common.AR_SOCKET) as wq:
-            for agent_id, msg, bookmark in msgs:
+        for ar in self._ars:
+            # Extract timestamp from AR document (for deterministic task ID)
+            timestamp_str = ar.doc_source.get("@timestamp")
+            if not timestamp_str:
+                self.logger.warning(
+                    f"AR document {ar.doc_id} missing @timestamp, skipping"
+                )
+                continue
+
+            # Convert ISO8601 timestamp to Unix timestamp
+            try:
+                dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                create_time = int(dt.timestamp())
+            except (ValueError, AttributeError) as e:
+                self.logger.error(
+                    f"Failed to parse @timestamp '{timestamp_str}' from AR {ar.doc_id}: {e}"
+                )
+                continue
+
+            # Build payload (merge AR source with event if available)
+            payload = dict(ar.doc_source)
+            if ar.event:
+                wazuh = ar.doc_source.get("wazuh", {}).copy()
+                event_wazuh = ar.event.get("wazuh", {})
+                payload = {**ar.doc_source, **ar.event}
+                payload["wazuh"] = {**event_wazuh, **wazuh}
+
+            # Dispatch to each target agent
+            for agent_id in ar.target_agents(self._all_agents):
                 try:
-                    json_msg = json.dumps(msg)
+                    # Build Task Manager message
+                    task_msg = {
+                        "action": "create_task",
+                        "agent_id": agent_id,
+                        "task_type": "active_response",
+                        "payload": payload,
+                        "source_id": ar.doc_id,
+                        "create_time": create_time
+                    }
+
                     self.logger.debug(
-                        f"Dispatching active response message to agent `{agent_id}`: {json_msg}"
+                        f"Creating task for agent `{agent_id}` (AR {ar.doc_id}): {task_msg}"
                     )
-                    wq.send_msg_to_agent(
-                        msg=json_msg, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE
-                    )
-                    msgs_sent += 1
+
+                    # Send to Task Manager via TCP socket and receive response
+                    with WazuhSocketJSON(common.TASKS_SOCKET) as sock:
+                        sock.send(task_msg)
+                        response = sock.receive(raw=True)
+
+                    # Parse response
+                    if response.get("status") == "ok":
+                        task_id = response.get("task_id")
+                        self.logger.debug(
+                            f"Created task {task_id} for agent {agent_id}"
+                        )
+                        msgs_sent += 1
+                    else:
+                        error = response.get("error", "unknown")
+                        message = response.get("message", "")
+                        self.logger.error(
+                            f"Task Manager error for agent {agent_id}: {error} - {message}"
+                        )
+
                 except WazuhError as e:
                     self.logger.error(
-                        f"Failed to send active response message to agent `{agent_id}`: {e}"
+                        f"Failed to create task for agent `{agent_id}`: {e}"
                     )
-                finally:
-                    # Bookmark is updated no matter the dispatch result.
-                    self._bookmark_file.update(bookmark.sort)
+
+            # Update bookmark after processing all targets for this AR
+            self._bookmark_file.update(ar.bookmark.sort)
 
         self.logger.info(
-            f"Dispatched {msgs_sent}/{len(msgs)} messages to agents"
-            f" from {len(self._ars)} active responses."
+            f"Created {msgs_sent} task(s) from {len(self._ars)} active response(s)."
         )
 
         return self
@@ -653,7 +579,6 @@ class ActiveResponseFetchTask:
         try:
             builder = ActiveResponseBuilder(logger=self.logger)
             await builder.fetch_ars(validate=True)
-            builder.keep_only_active_agents_ars()
             await builder.enrich_ar_with_events_info()
             builder.dispatch()
         except IndexerUnavailableError:

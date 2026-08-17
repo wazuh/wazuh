@@ -14,8 +14,13 @@
 #include "remoted_op.h"
 #include "wazuhdb_queries_op.h"
 #include <cJSON.h>
-#include "router.h"
-#include "sym_load.h"
+
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
@@ -36,9 +41,6 @@ int wd_shared_groups = -2;
 
 /* Get current inotify queued events limit */
 static int get_max_queued_events();
-
-/* Set current inotify queued events limit */
-static int set_max_queued_events(int size);
 
 // Setup inotify reader
 static void wm_inotify_setup(wm_database * data);
@@ -78,7 +80,7 @@ static void wm_check_agents();
  */
 static void wm_sync_agents();
 
-static int wm_sync_shared_group(const char *fname);
+STATIC int wm_sync_shared_group(const char *fname);
 static int wm_sync_file(const char *dirname, const char *path);
 
 // Database module context definition
@@ -107,9 +109,6 @@ void* wm_database_main(wm_database *data) {
     // the agent addition and removal from the database will be held by authd
     // in the master.
 
-    // Wait for inventory_sync to subscribe to router before sending deletion messages
-    wm_sleep_interruptible(5);
-    if (wm_shutdown_requested) return NULL;
     wm_sync_agents();
 
     // Groups synchronization with the database
@@ -226,92 +225,6 @@ void wm_sync_agents() {
     mtdebug1(WM_DATABASE_LOGTAG, "wm_sync_agents(): %.3f ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 }
 
-static router_provider_create_func router_provider_create_ptr = NULL;
-static router_provider_send_func router_provider_send_ptr = NULL;
-static void *router_module = NULL;
-
-/**
- * @brief Initialize router functions for agent deletion notifications
- *
- * @return true if router functions were successfully loaded, false otherwise
- */
-static bool initialize_router_functions(void) {
-    router_module = so_get_module_handle("router");
-    if (router_module) {
-        router_provider_create_ptr = so_get_function_sym(router_module, "router_provider_create");
-        router_provider_send_ptr = so_get_function_sym(router_module, "router_provider_send");
-    } else {
-        mtdebug2(WM_DATABASE_LOGTAG, "Unable to load router module.");
-        return false;
-    }
-
-    if (!router_provider_create_ptr || !router_provider_send_ptr) {
-        mtdebug2(WM_DATABASE_LOGTAG, "Unable to load router provider functions.");
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Send agent deletion message to inventory-sync via router
- *
- * @param agent_id The ID of the agent to delete
- */
-static void send_agent_delete_to_inventory_sync(const char *agent_id) {
-    static ROUTER_PROVIDER_HANDLE router_inventory_handle = NULL;
-    static bool router_initialized = false;
-
-    // Try to initialize router functions on first use
-    if (!router_initialized) {
-        router_initialized = true;
-        if (!initialize_router_functions()) {
-            return;
-        }
-    }
-
-    if (!router_provider_create_ptr || !router_provider_send_ptr) {
-        return;  // Router not available
-    }
-
-    // Try to create router handle if not already created
-    if (!router_inventory_handle) {
-        router_inventory_handle = router_provider_create_ptr("inventory-states", false);
-        if (!router_inventory_handle) {
-            mtdebug2(WM_DATABASE_LOGTAG, "Router not available for inventory-states topic, skipping agent deletion notification");
-            return;
-        }
-    }
-
-    // Build JSON message: {"command": "delete_agent", "agent_id": "001"}
-    cJSON *json_msg = cJSON_CreateObject();
-    if (!json_msg) {
-        mterror(WM_DATABASE_LOGTAG, "Failed to create JSON message for agent deletion");
-        return;
-    }
-
-    cJSON_AddStringToObject(json_msg, "command", "delete_agent");
-    cJSON_AddStringToObject(json_msg, "agent_id", agent_id);
-
-    char *json_str = cJSON_PrintUnformatted(json_msg);
-    cJSON_Delete(json_msg);
-
-    if (!json_str) {
-        mterror(WM_DATABASE_LOGTAG, "Failed to serialize JSON message for agent deletion");
-        return;
-    }
-
-    // Send message to router
-    int result = router_provider_send_ptr(router_inventory_handle, json_str, strlen(json_str) + 1);
-    if (result != 0) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Failed to send agent deletion message for agent '%s' to inventory-sync", agent_id);
-    } else {
-        mtinfo(WM_DATABASE_LOGTAG, "Sent agent deletion request for agent '%s' to inventory-sync", agent_id);
-    }
-
-    cJSON_free(json_str);
-}
-
 /**
  * @brief Synchronizes a keystore with the agent table of global.db. It will insert
  *        the agents that are in the keystore and are not in global.db.
@@ -357,25 +270,13 @@ void sync_keys_with_wdb(keystore *keys) {
         int agent_id = atoi(ids[i]);
 
         if (agent_id && (OS_IsAllowedID(keys, ids[i]) == -1)) {
-            char *agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
-
             if (wdb_remove_agent(agent_id, &wdb_wmdb_sock) < 0) {
                 mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent '%s' from the database.", ids[i]);
-                os_free(agent_name);
                 continue;
             }
 
-            // Agent not found. Removing agent artifacts
-            delete_diff(agent_name);
-
-            // Remove agent-related files
             OS_RemoveCounter(ids[i]);
             OS_RemoveAgentTimestamp(ids[i]);
-
-            // Notify inventory-sync to delete agent data from indexer
-            send_agent_delete_to_inventory_sync(ids[i]);
-
-            os_free(agent_name);
         }
     }
 
@@ -392,6 +293,14 @@ int wm_sync_shared_group(const char *fname) {
 
     dp = wopendir(path);
     if (!dp) {
+        int opendir_errno = errno;
+
+        if (opendir_errno == ENOENT) {
+            mtdebug2(WM_DATABASE_LOGTAG, "Group directory '%s' no longer exists, removing group '%s' from the database.", path, fname);
+        } else {
+            mtwarn(WM_DATABASE_LOGTAG, "Couldn't open directory '%s' to check group '%s': [(%d)-(%s)]. This is not a confirmed deletion, but a 'delete-group' will be sent anyway.", path, fname, opendir_errno, strerror(opendir_errno));
+        }
+
         /* The group was deleted */
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
@@ -510,24 +419,8 @@ int get_max_queued_events() {
     }
 }
 
-/* Set current inotify queued events limit */
-int set_max_queued_events(int size) {
-    FILE *fp;
-
-    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
-        mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
-        return -1;
-    }
-
-    fprintf(fp, "%d\n", size);
-    fclose(fp);
-    return 0;
-}
-
 // Setup inotify reader
 void wm_inotify_setup(wm_database * data) {
-    int old_max_queued_events = -1;
-
     if (ptable = OSHash_Create(), !ptable) {
         merror_exit("At wm_inotify_setup(): OSHash_Create()");
     }
@@ -537,15 +430,15 @@ void wm_inotify_setup(wm_database * data) {
     }
 
     if (data->max_queued_events) {
-        old_max_queued_events = get_max_queued_events();
+        const int current_max_queued_events = get_max_queued_events();
 
-        if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-            mtdebug1(WM_DATABASE_LOGTAG, "Setting inotify queued events limit to '%d'", data->max_queued_events);
-
-            if (set_max_queued_events(data->max_queued_events) < 0) {
-                // Error: do not reset then
-                old_max_queued_events = -1;
-            }
+        if (current_max_queued_events >= 0 && current_max_queued_events < data->max_queued_events) {
+            mtwarn(WM_DATABASE_LOGTAG,
+                   "The system inotify queued events limit is '%d', below the configured value '%d'. "
+                   "Update '%s' through the operating system.",
+                   current_max_queued_events,
+                   data->max_queued_events,
+                   MAX_QUEUED_EVENTS_PATH);
         }
     }
 
@@ -554,16 +447,10 @@ void wm_inotify_setup(wm_database * data) {
         mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
     }
 
-    // Reset inotify queued events limit
-    if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
-        mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
-        set_max_queued_events(old_max_queued_events);
-    }
-
     // Run thread
     w_create_thread(wm_inotify_start, NULL);
 
-    // First synchronization and add watch for client.keys, Syscheck and Rootcheck directories
+    // Add watches for client.keys and shared group changes
     char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 

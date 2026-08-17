@@ -1,0 +1,26 @@
+{
+  "name": "contract_ramp_503",
+  "description": "Contract test for backpressure shedding: an 80-agent fleet, fully unpaced (concurrent_agents 0, requests_per_second 0), replaying a large syscollector delta (150 docs x 16 KiB, ~2.4 MiB/session) back-to-back for a FIXED DURATION rather than a fixed session count -- a fast manager just admits more sessions in the same window before any one of them drains, so the pressure is self-scaling and the shed still triggers regardless of hardware. The gate this exercises is the pipeline's own admission queue (`inventory_sync_server_sync_queue_bytes`, default 64 MiB, a global byte counter checked at enqueue before a session reaches its shard) -- confirmed via GET /metrics (`sync.pipeline.shed.total` > 0 during the run), not the indexer-availability path session_storm's sustained flood happens to trip instead, nor the transport's far larger `max_inflight_bytes` (256 MiB). 503 responses here are expected backpressure behavior, not a failure. 503s are the MEASUREMENT here, so the agent-like retry is disabled (retry.enabled=false).",
+  "mode": "uds",
+  "defaults": {
+    "retry": { "enabled": false },
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "delta", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 150, "size_bytes": 16384 } }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 80, "first_id": 31000, "lanes": ["syscollector"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "60s", "drain_timeout": "120s" },
+  "expected": {
+    "sessions": { "s503": { "gte": 1 } },
+    "transport_errors": { "eq": 0 }
+  }
+}

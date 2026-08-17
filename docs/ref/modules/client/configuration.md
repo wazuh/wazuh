@@ -4,7 +4,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Configuration file:** `/var/ossec/etc/ossec.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\ossec.conf` (Windows)
 
-**XML Sections:** `<client>`, `<client_buffer>`, `<anti_tampering>`
+**XML Sections:** `<agent>`, `<anti_tampering>`
 
 **Module:** Agent-only
 
@@ -14,15 +14,15 @@ For module overview and architecture, see [Client Module](index.html).
 
 ---
 
-## Client Configuration (`<client>`)
+## Agent Configuration (`<agent>`)
 
 Configures the agent's connection to the Wazuh manager.
 
-### manager
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0. A configuration left by a 4.X agent still starts: `<server><address>` is read from `<client>` and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent>` to keep them all. See [Deprecated Options](#deprecated-options).
 
-Manager connection block. Multiple `<manager>` blocks can be defined for failover.
+### server
 
-The tag was named `<server>` in earlier versions. `<server>` is still parsed, but the agent logs `The <server> tag is deprecated, please use <manager> instead.` See [Deprecated Options](#deprecated-options).
+Manager connection block. Multiple `<server>` blocks can be defined for failover.
 
 **Sub-options:**
 
@@ -36,11 +36,12 @@ Manager IP address or hostname.
 
 #### port
 
-Manager port number.
+Manager port number for the agent's HTTPS connection.
 
-- **Default value:** `1514`
+- **Default value:** `1517`
 - **Allowed values:** Valid port number (1-65535)
-- **Example:** `1514`
+- **Example:** `1517`
+- **Note:** A `<port>` inside a legacy `<client><server>` block is not read.
 
 #### protocol
 
@@ -141,7 +142,7 @@ Enable automatic agent enrollment.
 
 Manager address for enrollment (can differ from data connection).
 
-- **Default value:** Value from `<manager><address>`
+- **Default value:** Value from `<server><address>`
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 
 #### port
@@ -183,11 +184,11 @@ Agent's IP address to use for enrollment (overrides auto-detected address).
 
 #### ssl_cipher
 
-SSL/TLS cipher suite for enrollment connection.
+TLS 1.3 ciphersuite list for the enrollment connection. Enrollment requires TLS 1.3, so this must be a colon-separated list of TLS 1.3 ciphersuite names.
 
-- **Default value:** System default
-- **Allowed values:** Valid OpenSSL cipher string
-- **Example:** `HIGH:!aNULL:!MD5`
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** Colon-separated TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`)
+- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 
 #### server_ca_path
 
@@ -211,14 +212,6 @@ Path to agent's private key for mutual TLS authentication during enrollment.
 - **Default value:** None
 - **Allowed values:** Valid file path
 - **Note:** Must correspond to `agent_certificate_path`
-
-#### auto_method
-
-Automatic enrollment method selection.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agent automatically selects best enrollment method
 
 #### delay_after_enrollment
 
@@ -248,34 +241,9 @@ Network interface index to bind for enrollment connection.
 
 ## Client Buffer Configuration (`<client_buffer>`)
 
-Configures event buffering when the manager is unreachable.
-
-### disabled
-
-Enable or disable client buffering.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled (`no`), events are buffered during manager disconnections
-
-### queue_size
-
-Maximum number of events to buffer.
-
-- **Default value:** `5000`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Maximum:** System memory dependent
-- **Note:** Events exceeding this limit are dropped
-
-### events_per_second
-
-Maximum events per second to send when reconnecting (rate limiting).
-
-- **Default value:** `500`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Note:** Prevents overwhelming manager during reconnection
+Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
+accumulator, configured under `<agent><batch>`. The section is still accepted
+and ignored, with a warning.
 
 ---
 
@@ -392,18 +360,18 @@ monitord.rotate_log=1
 Single manager, standard settings:
 
 ```xml
-<client>
-  <manager>
+<agent>
+  <server>
     <address>10.0.0.10</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
-  </manager>
+  </server>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
   <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
   <crypto_method>aes</crypto_method>
-</client>
+</agent>
 ```
 
 ### Failover Configuration
@@ -411,28 +379,28 @@ Single manager, standard settings:
 Multiple managers for high availability:
 
 ```xml
-<client>
-  <manager>
+<agent>
+  <server>
     <address>manager1.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </manager>
-  <manager>
+  </server>
+  <server>
     <address>manager2.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </manager>
-  <manager>
+  </server>
+  <server>
     <address>manager3.example.com</address>
     <port>1514</port>
     <protocol>tcp</protocol>
     <max_retries>3</max_retries>
-  </manager>
+  </server>
   <notify_time>30</notify_time>
   <time-reconnect>30</time-reconnect>
-</client>
+</agent>
 ```
 
 ### Auto-Enrollment Configuration
@@ -440,7 +408,7 @@ Multiple managers for high availability:
 Automatic agent registration:
 
 ```xml
-<client>
+<agent>
   <enrollment>
     <enabled>yes</enabled>
     <manager_address>manager.example.com</manager_address>
@@ -449,12 +417,12 @@ Automatic agent registration:
     <groups>webservers,production</groups>
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
   </enrollment>
-  <manager>
+  <server>
     <address>manager.example.com</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
-  </manager>
-</client>
+  </server>
+</agent>
 ```
 
 ### Client Buffer Configuration
@@ -462,11 +430,12 @@ Automatic agent registration:
 High-volume environment:
 
 ```xml
-<client_buffer>
-  <disabled>no</disabled>
-  <queue_size>50000</queue_size>
-  <events_per_second>1000</events_per_second>
-</client_buffer>
+<agent>
+  <batch>
+    <size>10MB</size>
+    <interval>5s</interval>
+  </batch>
+</agent>
 ```
 
 ### Anti-Tampering Configuration
@@ -485,19 +454,19 @@ Full example with all sections:
 
 ```xml
 <ossec_config>
-  <client>
-    <manager>
+  <agent>
+    <server>
       <address>manager1.example.com</address>
       <port>1514</port>
       <protocol>tcp</protocol>
       <max_retries>5</max_retries>
-    </manager>
-    <manager>
+    </server>
+    <server>
       <address>manager2.example.com</address>
       <port>1514</port>
       <protocol>tcp</protocol>
       <max_retries>5</max_retries>
-    </manager>
+    </server>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
     <time-reconnect>60</time-reconnect>
@@ -509,13 +478,7 @@ Full example with all sections:
       <port>1515</port>
       <groups>webservers,production</groups>
     </enrollment>
-  </client>
-
-  <client_buffer>
-    <disabled>no</disabled>
-    <queue_size>10000</queue_size>
-    <events_per_second>600</events_per_second>
-  </client_buffer>
+  </agent>
 
   <anti_tampering>
     <package_uninstallation>yes</package_uninstallation>
@@ -531,25 +494,25 @@ Full example with all sections:
 
 ## Deprecated Options
 
-### server
+### client
 
-**DEPRECATED:** The `<server>` block within `<client>` was renamed to `<manager>`.
+**DEPRECATED:** The `<client>` block was renamed to `<agent>` in 5.0.
+
+- **Status:** Deprecated, still parsed
+- **Behavior:** Only `<server><address>` is read from a legacy `<client>` block, as a fallback when `<agent>` provides none; every other option inside `<client>` is ignored. The port defaults to `1517`.
+- **Recommendation:** Rename the block to `<agent>`
+
+### server-ip, server-hostname
+
+**DEPRECATED:** Flat connection tags placed directly inside `<agent>`, superseded by the `<server>` block.
 
 - **Status:** Deprecated, still parsed and honored
-- **Behavior:** Parsed exactly like `<manager>`, but the agent logs `The <server> tag is deprecated, please use <manager> instead.`
-- **Recommendation:** Rename the block to `<manager>`
-
-### server-ip, server-hostname, port
-
-**DEPRECATED:** Flat connection tags placed directly inside `<client>`, superseded by the `<manager>` block.
-
-- **Status:** Deprecated, still parsed and honored
-- **Behavior:** Each one logs a warning pointing at its replacement: `<server-ip>` and `<server-hostname>` map to `<manager><address>`, and a bare `<port>` maps to `<manager><port>`
-- **Recommendation:** Move the values into a `<manager>` block
+- **Behavior:** Each one logs a warning pointing at its replacement: `<server-ip>` and `<server-hostname>` map to `<server><address>`
+- **Recommendation:** Move the values into a `<server>` block
 
 ### disable-active-response
 
-**DEPRECATED:** The `<disable-active-response>` tag within `<client>` is parsed but has no effect.
+**DEPRECATED:** The `<disable-active-response>` tag within `<agent>` is parsed but has no effect.
 
 - **Status:** Deprecated silent no-op
 - **Behavior:** Parser accepts the tag but does not use the value

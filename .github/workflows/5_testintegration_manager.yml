@@ -177,7 +177,21 @@ jobs:
       - name: Install compatible CMake
         if: inputs.build_run_id == ''
         uses: ./.github/actions/reinstall_cmake
-
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/5.0.0
       - name: Build wazuh-manager
         if: inputs.build_run_id == ''
         run: |
@@ -208,9 +222,22 @@ jobs:
             -out "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout "$INSTALLATION_DIR/etc/certs/manager-key.pem" \
-            -out "$INSTALLATION_DIR/etc/certs/manager.pem" \
+            -keyout "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem" \
+            -out "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
+          # Reproduce the deployment ownership model so startup exercises the privilege-dropped read
+          # (issue #38276): the indexer material is root:wazuh-manager 0640 and only group-readable,
+          # so a regression that leaves it root:root would make the dropped service fail to start.
+          sudo chown root:wazuh-manager \
+            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo chmod 640 \
+            "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector.pem" \
+            "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
+          sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
 
       - name: Start wazuh-manager and verify
         run: |
@@ -292,3 +319,6 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh-logs-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp/wazuh-logs
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

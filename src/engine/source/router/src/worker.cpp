@@ -31,14 +31,33 @@ void RouterWorker::start()
         return;
     }
 
+    // Get cluster info if available
+    std::string clusterName, nodeName;
+    if (base::libwazuhshared::isInitialized())
+    {
+        try
+        {
+            std::tie(clusterName, nodeName) = base::libwazuhshared::getClusterNameAndNodeName();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("[RouterWorker] Failed to get cluster and node name from libwazuhshared: {}", e.what());
+        }
+    }
+
     m_isRunning = true;
     m_thread = std::thread(
-        [this, functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread")]()
+        [this,
+         functionName = logging::getLambdaName(__FUNCTION__, "routerWorkerThread"),
+         clusterName = std::move(clusterName),
+         nodeName = std::move(nodeName)]()
         {
             const std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
 
             base::process::setThreadName("ORProd-" + std::to_string(tID));
+
+            const bool enrichClusterInfo = !clusterName.empty() && !nodeName.empty();
 
             // Cache metric pointer before hot path loop (one-time map lookup ~50ns)
             auto eventsProcessedCounter =
@@ -69,10 +88,15 @@ void RouterWorker::start()
                         m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp, eventId));
                     }
 
-                    // Parse + route to pipeline
+                    // Parse, enrich and forward to router
                     auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
                     event->setString(timestamp, "/@timestamp");
                     event->setString(eventId, "/wazuh/event/id");
+                    if (enrichClusterInfo)
+                    {
+                        event->setString(clusterName, "/wazuh/cluster/name");
+                        event->setString(nodeName, "/wazuh/cluster/node");
+                    }
                     m_router->ingest(std::move(event));
 
                     // Track processed events (hot path: direct atomic access ~3ns)

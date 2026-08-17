@@ -71,6 +71,19 @@ namespace
                     return -1;
                 }
 
+#ifndef _WIN32
+
+                // The constructor falls back to opening the segment O_RDONLY when the process
+                // cannot open it O_RDWR, and then maps it PROT_READ. Writing through that
+                // mapping is a segmentation fault, not a failed write, so a reader has to be
+                // turned away here rather than at the first store below.
+                if (m_read_only)
+                {
+                    return -1;
+                }
+
+#endif
+
                 m_shm->updating.store(true, std::memory_order_release);
 
                 // Copy scalar fields
@@ -104,8 +117,7 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.cluster_node, metadata->cluster_node, sizeof(m_shm->base_metadata.cluster_node) - 1);
-                m_shm->base_metadata.cluster_node[sizeof(m_shm->base_metadata.cluster_node) - 1] = '\0';
+                m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
@@ -177,8 +189,7 @@ namespace
                 std::strncpy(out_metadata->cluster_name, m_shm->base_metadata.cluster_name, sizeof(out_metadata->cluster_name) - 1);
                 out_metadata->cluster_name[sizeof(out_metadata->cluster_name) - 1] = '\0';
 
-                std::strncpy(out_metadata->cluster_node, m_shm->base_metadata.cluster_node, sizeof(out_metadata->cluster_node) - 1);
-                out_metadata->cluster_node[sizeof(out_metadata->cluster_node) - 1] = '\0';
+                out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
 
                 // Copy groups
                 if (m_shm->groups_count > 0)
@@ -204,6 +215,16 @@ namespace
 
             void reset()
             {
+#ifndef _WIN32
+
+                // Same read-only mapping hazard as update().
+                if (m_read_only)
+                {
+                    return;
+                }
+
+#endif
+
                 if (m_shm)
                 {
                     m_shm->updating.store(true, std::memory_order_release);
@@ -280,7 +301,7 @@ namespace
 
                 struct stat st;
 
-                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size < static_cast<off_t>(sizeof(SharedMetadata)));
+                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size != static_cast<off_t>(sizeof(SharedMetadata)));
 
                 // Always set correct size (only if we have write access)
                 if (!m_read_only && ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)

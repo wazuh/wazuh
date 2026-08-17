@@ -10,8 +10,12 @@
 
 #include <shared.h>
 #include "agentd.h"
+#include "module_report.h"
 #include "os_net.h"
 #include "wmodules.h"
+
+/* Name this daemon reports itself under in the /config and /stats documents. */
+#define AGCOM_MODULE_NAME "agent"
 
 
 size_t agcom_dispatch(char * command, char ** output){
@@ -33,9 +37,14 @@ size_t agcom_dispatch(char * command, char ** output){
         }
         return agcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+        return agcom_getallconfig(output);
+
+    } else if (strcmp(rcv_comm, "getallstats") == 0) {
+        return agcom_getallstats(output);
+
     } else if (strcmp(rcv_comm, "getstate") == 0) {
-        *output = w_agentd_state_get();
-        return strlen(*output);
+        return agcom_getstate(output);
     } else if (strcmp(rcv_comm, "gethandshake") == 0) {
         return agcom_gethandshake(output);
     } else if (strcmp(rcv_comm, "getstartupgate") == 0) {
@@ -72,19 +81,11 @@ size_t agcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
-    if (strcmp(section, "client") == 0){
-        if (cfg = getClientConfig(), cfg) {
-            *output = strdup("ok");
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    } else if (strcmp(section, "buffer") == 0){
-        if (cfg = getBufferConfig(), cfg) {
+    /* "client" is the 4.x name of this section and stays accepted so the Server
+     * API's existing /config/agent/client path keeps working; the document it
+     * returns is keyed "agent" either way. */
+    if (strcmp(section, "agent") == 0 || strcmp(section, "client") == 0){
+        if (cfg = getAgentConfig(), cfg) {
             *output = strdup("ok");
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
@@ -127,6 +128,61 @@ error:
     return strlen(*output);
 }
 
+size_t agcom_getallconfig(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+    cJSON *body = cJSON_CreateObject();
+
+    module_report_merge(body, getAgentConfig());
+    module_report_merge(body, getAgentInternalOptions());
+#ifndef WIN32
+    module_report_merge(body, getAntiTamperingConfig());
+#endif
+
+    module_report_add(report, AGCOM_MODULE_NAME, body);
+    return module_report_reply(report, output);
+}
+
+/* "getstate" is a socket call, and the {"error","data"} envelope is its framing:
+ * the body itself carries no error channel. Added here rather than inside
+ * w_agentd_state_get() so the /stats push, where the response status is the
+ * error channel, can send the body bare. */
+size_t agcom_getstate(char ** output) {
+
+    cJSON *envelope = cJSON_CreateObject();
+    cJSON *body = w_agentd_state_get();
+    char *json_str = NULL;
+
+    if (!envelope || !body) {
+        cJSON_Delete(envelope);
+        cJSON_Delete(body);
+        os_strdup("err Could not build the agent state", *output);
+        return strlen(*output);
+    }
+
+    cJSON_AddNumberToObject(envelope, W_AGENTD_JSON_ERROR, 0);
+    cJSON_AddItemToObject(envelope, W_AGENTD_JSON_DATA, body);
+
+    json_str = cJSON_PrintUnformatted(envelope);
+    cJSON_Delete(envelope);
+
+    if (!json_str) {
+        os_strdup("err Could not serialize the agent state", *output);
+        return strlen(*output);
+    }
+
+    *output = json_str;
+    return strlen(*output);
+}
+
+size_t agcom_getallstats(char ** output) {
+
+    cJSON *report = cJSON_CreateObject();
+
+    module_report_add(report, AGCOM_MODULE_NAME, w_agentd_state_get());
+    return module_report_reply(report, output);
+}
+
 /**
  * @brief Return cluster and group info received from the last handshake as JSON.
  * @param output Pointer to store the allocated response string.
@@ -137,14 +193,11 @@ size_t agcom_gethandshake(char **output) {
      * the connection thread on every reconnect, and agent-info now polls this every cycle
      * (not just once at startup), so a torn read is no longer a one-time-only risk. */
     char cluster_name_snapshot[256];
-    char cluster_node_snapshot[256];
     char agent_groups_snapshot[OS_SIZE_65536];
 
     w_mutex_lock(&agent_handshake_mutex);
     strncpy(cluster_name_snapshot, agent_cluster_name, sizeof(cluster_name_snapshot) - 1);
     cluster_name_snapshot[sizeof(cluster_name_snapshot) - 1] = '\0';
-    strncpy(cluster_node_snapshot, agent_cluster_node, sizeof(cluster_node_snapshot) - 1);
-    cluster_node_snapshot[sizeof(cluster_node_snapshot) - 1] = '\0';
     strncpy(agent_groups_snapshot, agent_agent_groups, sizeof(agent_groups_snapshot) - 1);
     agent_groups_snapshot[sizeof(agent_groups_snapshot) - 1] = '\0';
     w_mutex_unlock(&agent_handshake_mutex);
@@ -155,12 +208,6 @@ size_t agcom_gethandshake(char **output) {
         return strlen(*output);
     }
 
-    if (cluster_node_snapshot[0] == '\0') {
-        mdebug1("Cluster node not received yet from manager.");
-        os_strdup("err Cluster node not received yet from manager", *output);
-        return strlen(*output);
-    }
-
     /* Empty agent_groups is allowed - fallback to merge.mg will be used */
 
     char *json_str = NULL;
@@ -168,7 +215,6 @@ size_t agcom_gethandshake(char **output) {
 
     if (root) {
         cJSON_AddStringToObject(root, "cluster_name", cluster_name_snapshot);
-        cJSON_AddStringToObject(root, "cluster_node", cluster_node_snapshot);
         cJSON_AddStringToObject(root, "agent_groups", agent_groups_snapshot);
         json_str = cJSON_PrintUnformatted(root);
         cJSON_Delete(root);

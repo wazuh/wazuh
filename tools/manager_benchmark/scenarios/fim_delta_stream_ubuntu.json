@@ -1,0 +1,21 @@
+{
+  "name": "fim_delta_stream_ubuntu",
+  "description": "Linux fleet emitting a steady stream of small FIM deltas (no initial full_resync), used to measure sustained per-event delta cost independent of first-scan overhead.",
+  "mode": "uds",
+  "defaults": {
+    "module": "fim",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "fim": [
+      { "kind": "delta", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 25, "size_bytes": 512 }, "repeat_count": 60, "repeat_delay": "1s" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 12000, "lanes": ["fim"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "90s" }
+}

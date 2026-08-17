@@ -16,8 +16,6 @@
 #include "module_limits.h"
 
 /* Global variables */
-time_t available_server;
-time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
@@ -25,17 +23,15 @@ agent *agt;
 anti_tampering *atc;
 #endif
 int remote_conf;
-int min_eps;
 int rotate_log;
 int agent_debug_level;
 
 /* Agent's handshake globals */
 module_limits_t agent_module_limits;
 char agent_cluster_name[256] = {0};
-char agent_cluster_node[256] = {0};
 char agent_agent_groups[OS_SIZE_65536] = {0};
 
-/* Guards agent_cluster_name/agent_cluster_node/agent_agent_groups: written by the
+/* Guards agent_cluster_name/agent_agent_groups: written by the
  * connection thread on every (re)connect handshake, read by the agcom "gethandshake"
  * responder, which agent-info now polls periodically instead of only once at startup. */
 pthread_mutex_t agent_handshake_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -49,14 +45,32 @@ int ClientConf(const char *cfgfile)
     agt->rip_id = 0;
     agt->execdq = 0;
     agt->profile = NULL;
-    agt->buffer = 1;
-    agt->buflength = 5000;
-    agt->events_persec = 600;
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
+
+    /* The shipped configuration carries no <ssl> block, so this is the posture most
+     * agents actually run with -- as is any config written before the HTTPS transport
+     * existed. It is not the enum's zero value (FULL), which would make every one of
+     * those agents refuse to start on a missing CA, so it has to be set by hand. */
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+
+    /* <config_report> ships enabled: the manager needs the periodic /config snapshot
+     * even on a config nobody touched. It is not the struct's zero value, so it has
+     * to be set by hand -- an explicit <enabled>no</enabled> still overrides this,
+     * since Read_Agent_Report() only writes the field when the tag is present. */
+    agt->config_report.enabled = 1;
+
+    /* <stats_report>/<config_report><interval>: the effective default, set here
+     * instead of left at zero, so anything reading agt directly (e.g. the /config
+     * JSON dump) shows the real value instead of "0" -- Read_Agent_Report() rejects
+     * an explicit <interval>0</interval> outright, so zero can never be a legitimate
+     * value it wrote, and the transport module's own zero-means-unset fallback
+     * (moduleConfig.cpp) never actually sees a zero from here as a result. */
+    agt->stats_report.interval = 60;
+    agt->config_report.interval = 3600;
 
 #ifndef WIN32
     atc->package_uninstallation = false;
@@ -71,14 +85,12 @@ int ClientConf(const char *cfgfile)
     agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
     agt->enrollment_cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
-    if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
-        ReadConfig(CBUFFER, cfgfile, NULL, agt) < 0) {
+    if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);
     }
 
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
-        ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     } else {
         remote_conf = 0;
@@ -89,16 +101,39 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
-        mwarn("Client buffer throughput too low: set to %d eps", min_eps);
-        agt->events_persec = min_eps;
-    }
-
     return (1);
 }
 
+/* Both agentd and the Windows agent gate startup on this, at the point where each can
+ * still fail cleanly: before daemonizing on POSIX, before the first module thread on
+ * Windows. Shared so the two can never drift apart on what counts as a usable CA. */
+bool w_agent_validate_ssl_ca(const agent *cfg)
+{
+    const char *ca = cfg->ssl.certificate_authorities;
+    const bool readable = ca && w_is_file(ca);
 
-cJSON *getClientConfig(void) {
+    /* Under 'none' the CA is never read, so a wrong path stays invisible until someone
+     * enables verification -- and then the agent refuses to start. Warn while it is
+     * still harmless rather than accepting it in silence. */
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        if (ca && !readable) {
+            mwarn(AG_UNUSED_SSL_CA, ca);
+        }
+
+        return true;
+    }
+
+    /* A verifying mode without a readable CA can never connect: the https_client module
+     * fails closed on this, per its own validation. */
+    if (!readable) {
+        merror(AG_INV_SSL_CA, ca ? ca : "");
+        return false;
+    }
+
+    return true;
+}
+
+cJSON *getAgentConfig(void) {
 
     if (!agt) {
         return NULL;
@@ -106,14 +141,14 @@ cJSON *getClientConfig(void) {
 
     unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *client = cJSON_CreateObject();
+    cJSON *agent_config = cJSON_CreateObject();
 
-    if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
-    cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
-    cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
-    if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
-    if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
+    if (agt->profile) cJSON_AddStringToObject(agent_config,"config-profile",agt->profile);
+    cJSON_AddNumberToObject(agent_config,"notify_time",agt->notify_time);
+    cJSON_AddNumberToObject(agent_config,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(agent_config,"ip_update_interval",agt->main_ip_update_interval);
+    if (agt->flags.auto_restart) cJSON_AddStringToObject(agent_config,"auto_restart","yes"); else cJSON_AddStringToObject(agent_config,"auto_restart","no");
+    if (agt->flags.remote_conf) cJSON_AddStringToObject(agent_config,"remote_conf","yes"); else cJSON_AddStringToObject(agent_config,"remote_conf","no");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
@@ -129,7 +164,7 @@ cJSON *getClientConfig(void) {
 
             cJSON_AddItemToArray(servers,server);
         }
-        cJSON_AddItemToObject(client,"manager",servers);
+        cJSON_AddItemToObject(agent_config,"manager",servers);
     }
 
     if (agt->enrollment_cfg) {
@@ -161,33 +196,24 @@ cJSON *getClientConfig(void) {
         if(agt->enrollment_cfg->cert_cfg->authpass)
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
 
-        cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
-        cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
+        cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
     }
-    cJSON_AddItemToObject(root,"client",client);
+    /* The two periodic report pushes (#37843). Reported so the /config document
+     * says whether the agent is reporting, and on what cadence. */
+    cJSON *stats_report = cJSON_CreateObject();
+    cJSON_AddStringToObject(stats_report, "enabled", agt->stats_report.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(stats_report, "interval", agt->stats_report.interval);
+    cJSON_AddItemToObject(agent_config, "stats_report", stats_report);
+
+    cJSON *config_report = cJSON_CreateObject();
+    cJSON_AddStringToObject(config_report, "enabled", agt->config_report.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(config_report, "interval", agt->config_report.interval);
+    cJSON_AddItemToObject(agent_config, "config_report", config_report);
+
+    cJSON_AddItemToObject(root, "agent", agent_config);
 
     return root;
 }
-
-cJSON *getBufferConfig(void) {
-
-    if (!agt) {
-        return NULL;
-    }
-
-    cJSON *root = cJSON_CreateObject();
-    cJSON *buffer = cJSON_CreateObject();
-
-    if (agt->buffer) cJSON_AddStringToObject(buffer,"disabled","no"); else cJSON_AddStringToObject(buffer,"disabled","yes");
-    cJSON_AddNumberToObject(buffer,"queue_size",agt->buflength);
-    cJSON_AddNumberToObject(buffer,"events_per_second",agt->events_persec);
-
-    cJSON_AddItemToObject(root,"buffer",buffer);
-
-    return root;
-}
-
-
 
 #ifndef WIN32
 cJSON *getAntiTamperingConfig(void) {
@@ -197,7 +223,7 @@ cJSON *getAntiTamperingConfig(void) {
     }
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *package_uninstallation = cJSON_CreateArray();
+    cJSON *package_uninstallation = cJSON_CreateObject();
 
     if (atc->package_uninstallation) cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","yes"); else cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","no");
 
@@ -219,17 +245,15 @@ cJSON *getAgentInternalOptions(void) {
 #else
     cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
 #endif
+    /* Read from the internal options: the globals that held these lived in the
+     * retired buffer.c/request.c. */
+    const int warn_level = getDefine_Int("agent", "warn_level", 1, 100);
     cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",tolerance);
-    cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
+    cJSON_AddNumberToObject(agent,"normal_level",getDefine_Int("agent", "normal_level", 0, warn_level - 1));
+    cJSON_AddNumberToObject(agent,"tolerance",getDefine_Int("agent", "tolerance", 0, 600));
+    cJSON_AddNumberToObject(agent,"recv_timeout",getDefine_Int("agent", "recv_timeout", 1, 600));
     cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"min_eps",min_eps);
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
-    cJSON_AddNumberToObject(agent,"request_pool",request_pool);
-    cJSON_AddNumberToObject(agent,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(agent,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(agent,"max_attempts",max_attempts);
 
     cJSON_AddItemToObject(internals,"agent",agent);
 

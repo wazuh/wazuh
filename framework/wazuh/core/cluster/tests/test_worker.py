@@ -1166,8 +1166,10 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                              call(core_common.WAZUH_PATH, 'queue/TYPE/name'),
                                              call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call(core_common.WAZUH_PATH, 'filename1'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call('/zip/path', 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'filename3')])
+                                             call(core_common.WAZUH_PATH, 'filename3'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key')])
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
             mkdir_with_mode_mock.assert_any_call("queue/testing")
@@ -1180,10 +1182,11 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                 mock.reset_mock()
 
     # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> if
-    result_logs = worker_handler.update_master_files_in_worker(
-        {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-         "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-        cluster_items=cluster_items)
+    with patch("os.path.commonpath", return_value="queue/testing/"):
+        result_logs = worker_handler.update_master_files_in_worker(
+            {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
+             "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+            cluster_items=cluster_items)
 
     assert result_logs["error"]["shared"][0].startswith(
         "Error processing shared file 'filename1': string indices must be integers"
@@ -1215,10 +1218,11 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> else AND
     # for -> elif -> for -> except
     path_join_mock.return_value = "queue/testing_mock/"
-    result_logs = worker_handler.update_master_files_in_worker(
-        {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-         "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-        cluster_items=cluster_items)
+    with patch("os.path.commonpath", return_value="queue/testing_mock/"):
+        result_logs = worker_handler.update_master_files_in_worker(
+            {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
+             "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+            cluster_items=cluster_items)
 
     assert result_logs["error"]["shared"][0].startswith(
         "Error processing shared file 'filename1': string indices must be integers"
@@ -1253,9 +1257,10 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     # Test the try
     with patch("os.listdir", return_value="dir_files") as listdir_mock:
         with patch("shutil.rmtree") as rmtree_mock:
-            result_logs = worker_handler.update_master_files_in_worker(
-                {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-                cluster_items=cluster_items)
+            with patch("os.path.commonpath", return_value="queue/testing_mock/"):
+                result_logs = worker_handler.update_master_files_in_worker(
+                    {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                    cluster_items=cluster_items)
             rmtree_mock.assert_called_once()
             listdir_mock.assert_called_once()
 
@@ -1264,6 +1269,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                                            "File filename3 doesn't exist."]}
             assert result_logs['generic_errors'] == []
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                             call(core_common.WAZUH_PATH, "cluster_item_key"),
                                              call(core_common.WAZUH_PATH, "")])
             wazuh_uid_mock.assert_not_called()
             wazuh_gid_mock.assert_not_called()
@@ -1277,9 +1283,10 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                 mock.reset_mock()
 
     # Test the exception
-    result_logs = worker_handler.update_master_files_in_worker(
-        {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-        cluster_items=cluster_items)
+    with patch("os.path.commonpath", return_value="queue/testing_mock/"):
+        result_logs = worker_handler.update_master_files_in_worker(
+            {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+            cluster_items=cluster_items)
 
     assert result_logs['error'] == defaultdict(list)
     assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
@@ -1289,6 +1296,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
 
     path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                     call(core_common.WAZUH_PATH, "cluster_item_key"),
                                      call(core_common.WAZUH_PATH, "")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
@@ -1296,6 +1304,48 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     safe_move_mock.assert_not_called()
     open_mock.assert_not_called()
     path_exists_mock.assert_not_called()
+
+
+def test_worker_handler_update_master_files_in_worker_security_checks():
+    """Verify that confinement checks block non-merged and extra files outside their declared directory."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
+            'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': False},
+            'excluded_files': ['ar.conf', 'ossec.conf'],
+        }
+    }
+
+    # Non-merged: invalid cluster_item_key
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'etc/shared/agent.conf': {'merged': False, 'cluster_item_key': 'nonexistent/'}},
+         'missing': {}, 'extra': {}},
+        '/tmp', sec_cluster_items)
+    assert any("Invalid cluster_item_key: nonexistent/" in e for e in result['error']['shared'])
+
+    # Non-merged: path outside declared cluster_item_key directory
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'active-response/bin/evil.sh': {'merged': False, 'cluster_item_key': 'etc/shared/'}},
+         'missing': {}, 'extra': {}},
+        '/tmp', sec_cluster_items)
+    assert any("outside allowed directory" in e for e in result['error']['shared'])
+
+    # Extra: invalid cluster_item_key (must not crash on directories_to_check generator)
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {}, 'missing': {},
+         'extra': {'etc/shared/agent.conf': {'cluster_item_key': 'nonexistent/'}}},
+        '/tmp', sec_cluster_items)
+    assert any("Invalid cluster_item_key: nonexistent/" in e
+               for e in result['debug2']['etc/shared/agent.conf'])
+
+    # Extra: path outside declared cluster_item_key directory
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {}, 'missing': {},
+         'extra': {'active-response/bin/evil.sh': {'cluster_item_key': 'etc/shared/'}}},
+        '/tmp', sec_cluster_items)
+    assert any("outside allowed directory" in e
+               for e in result['debug2']['active-response/bin/evil.sh'])
 
 
 @pytest.mark.asyncio

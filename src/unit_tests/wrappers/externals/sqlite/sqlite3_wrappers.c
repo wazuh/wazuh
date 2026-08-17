@@ -107,21 +107,11 @@ int __wrap_sqlite3_column_int(__attribute__((unused)) sqlite3_stmt *pStmt,
     return mock();
 }
 
-sqlite3_int64 __wrap_sqlite3_column_int64(__attribute__((unused)) sqlite3_stmt* stmt,
-                                          int iCol) {
-    check_expected(iCol);
-    return mock();
-}
-
 const unsigned char *__wrap_sqlite3_column_text(__attribute__((unused)) sqlite3_stmt *pStmt,
                                                 int iCol) {
     check_expected(iCol);
     return mock_type(const unsigned char*);
 
-}
-
-int __wrap_sqlite3_extended_errcode(__attribute__((unused)) sqlite3* db) {
-    return mock();
 }
 
 const char *__wrap_sqlite3_errmsg(__attribute__((unused)) sqlite3* db) {
@@ -213,10 +203,6 @@ const char* __wrap_sqlite3_column_name(__attribute__((unused)) sqlite3_stmt *pSt
 }
 
 int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){
-    return mock();
-}
-
-int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db) {
     return mock();
 }
 

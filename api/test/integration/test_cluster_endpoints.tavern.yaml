@@ -53,14 +53,12 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: !anystr
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 2
@@ -84,20 +82,17 @@ stages:
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
             - info:
                 name: 'worker1'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
             - info:
                 name: 'worker2'
                 ip: !anystr
                 version: !anystr
                 type: !anystr
-                n_active_agents: !anyint
               status: !anything
           failed_items: []
           total_affected_items: 3
@@ -676,7 +671,6 @@ stages:
                 force: !anything
                 port: !anyint
                 purge: !anystr
-                ssl_auto_negotiate: !anystr
                 ssl_manager_cert: !anystr
                 ssl_manager_key: !anystr
                 use_password: !anystr
@@ -1407,7 +1401,7 @@ stages:
       method: GET
       params:
         section: "remote"
-        field: "port"
+        field: "legacy"
     response:
       status_code: 200
       json:
@@ -1415,7 +1409,10 @@ stages:
         data:
           affected_items:
             - remote:
-                - port: '1514'
+                - legacy:
+                    port: '1514'
+                    protocol:
+                      - tcp
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include "agentd.h"
+#include <string.h>
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/common.h"
 #include "../../data_provider/include/sysInfo.h"
@@ -28,8 +29,10 @@ static agent global_config = { .main_ip_update_interval = (int)TIME_INCREMENT };
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
 
-int __wrap_send_msg(const char *msg, ssize_t msg_length) {
-    check_expected(msg);
+/* Every frame goes to the HTTPS module: the legacy egress is gone (#38030). */
+int __wrap_w_https_client_submit_event(const char *frame, size_t length) {
+    check_expected(frame);
+    check_expected(length);
     return mock();
 }
 
@@ -252,14 +255,14 @@ static void test_SendMSGAction_mutex_error(void **state) {
 
 static void test_SendMSGAction_non_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:locmsg:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:locmsg:message");
+    expect_value(__wrap_w_https_client_submit_event, length, strlen("1:locmsg:message"));
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);
@@ -271,14 +274,14 @@ static void test_SendMSGAction_non_escape(void **state) {
 
 static void test_SendMSGAction_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:loc||msg|:test:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:loc||msg|:test:message");
+    expect_value(__wrap_w_https_client_submit_event, length, strlen("1:loc||msg|:test:message"));
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 0);
@@ -291,14 +294,14 @@ static void test_SendMSGAction_escape(void **state) {
 
 static void test_SendMSGAction_multi_escape(void **state) {
 
-    agt->buffer = 0;
 
     expect_any(wrap_WaitForSingleObject, hMutex);
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_string(__wrap_send_msg, msg, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
-    will_return(__wrap_send_msg, 0);
+    expect_string(__wrap_w_https_client_submit_event, frame, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
+    expect_value(__wrap_w_https_client_submit_event, length, strlen("1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message"));
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any_always(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);
@@ -341,10 +344,9 @@ static void test_SendBinaryMSGAction_message_too_large(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_SendBinaryMSGAction_direct_send_success(void **state) {
+static void test_SendBinaryMSGAction_submits_the_binary_frame(void **state) {
     (void) state;
 
-    agt->buffer = 0;
 
     const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
     size_t payload_len = sizeof(payload);
@@ -362,8 +364,10 @@ static void test_SendBinaryMSGAction_direct_send_success(void **state) {
     expect_value(wrap_WaitForSingleObject, value, 1000000L);
     will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
 
-    expect_memory(__wrap_send_msg, msg, expected_msg, total_len);
-    will_return(__wrap_send_msg, 0);
+    /* Binary payloads carry embedded NULs: the length must be the real one. */
+    expect_memory(__wrap_w_https_client_submit_event, frame, expected_msg, total_len);
+    expect_value(__wrap_w_https_client_submit_event, length, total_len);
+    will_return(__wrap_w_https_client_submit_event, 0);
 
     expect_any(wrap_ReleaseMutex, hMutex);
     will_return(wrap_ReleaseMutex, 1);
@@ -386,7 +390,7 @@ int main(void) {
         cmocka_unit_test(test_SendMSGAction_multi_escape),
         cmocka_unit_test(test_SendBinaryMSGAction_mutex_abandoned),
         cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
-        cmocka_unit_test(test_SendBinaryMSGAction_direct_send_success),
+        cmocka_unit_test(test_SendBinaryMSGAction_submits_the_binary_frame),
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

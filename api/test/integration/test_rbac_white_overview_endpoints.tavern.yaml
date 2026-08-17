@@ -17,9 +17,6 @@ stages:
            agent_version:
              version: str
              count: int
-           nodes:
-             node: str
-             count: int
      status_code: 200
      json:
        error: 0
@@ -47,10 +44,6 @@ stages:
              never_connected: 1
              pending: 0
              total: 6
-           configuration:
-             synced: 4
-             not_synced: 2
-             total: 6
          agent_version: !anything # This will be tested with an external function
          groups: []
          last_registered_agent:
@@ -59,9 +52,7 @@ stages:
              id: !anystr
              ip: !anystr
              lastKeepAlive: !anystr
-             mergedSum: !anystr
              name: !anystr
-             node_name: !anystr
              os:
                arch: !anystr
                major: !anystr
@@ -72,4 +63,3 @@ stages:
              registerIP: any
              status: disconnected
              version: !anystr
-         nodes: !anything

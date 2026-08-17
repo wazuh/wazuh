@@ -172,14 +172,6 @@ How often to trigger synchronization with the manager.
 - **Allowed values:** `1` to unlimited (seconds)
 - **Note:** Lower values provide faster synchronization but increase manager load. Higher values reduce network traffic but delay inventory delivery.
 
-### response_timeout
-
-Timeout for waiting manager responses during synchronization.
-
-- **Default value:** `60` (1 minute)
-- **Allowed values:** `1` to unlimited (seconds)
-- **Note:** Should be adjusted based on network latency. Inventory payloads can be larger than FIM events, may need higher timeouts than other modules.
-
 ### max_eps
 
 Maximum events per second for synchronization messages.
@@ -241,7 +233,6 @@ Standard configuration for most deployments:
     <synchronization>
         <enabled>yes</enabled>
         <interval>300</interval>
-        <response_timeout>60</response_timeout>
         <max_eps>75</max_eps>
         <integrity_interval>86400</integrity_interval>
     </synchronization>
@@ -376,7 +367,6 @@ Optimized for large-scale deployments with fast networks:
     <synchronization>
         <enabled>yes</enabled>
         <interval>120</interval>
-        <response_timeout>90</response_timeout>
         <max_eps>200</max_eps>
         <integrity_interval>43200</integrity_interval>  <!-- 12 hours -->
     </synchronization>
@@ -541,13 +531,6 @@ grep -i "sync.*error" /var/ossec/logs/ossec.log
 ```xml
 <synchronization>
     <integrity_interval>172800</integrity_interval>  <!-- 48 hours -->
-</synchronization>
-```
-
-**Increase response timeout for slow networks:**
-```xml
-<synchronization>
-    <response_timeout>120</response_timeout>  <!-- 2 minutes -->
 </synchronization>
 ```
 

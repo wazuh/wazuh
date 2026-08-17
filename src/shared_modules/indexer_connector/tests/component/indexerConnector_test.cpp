@@ -292,6 +292,9 @@ TEST_F(IndexerConnectorTest, SyncDeleteByQueryAndFlush)
 
     const auto body = nlohmann::json::parse(receivedBody);
     ASSERT_EQ(body["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"], nlohmann::json::array({agentId}));
+    // Without this, OpenSearch's default ("abort") lets a single version conflict stop the run and
+    // still answer 200, leaving the rest of the agent's documents behind.
+    EXPECT_EQ("proceed", body["conflicts"]);
 }
 
 /// With a cluster name, the delete query filters by agent.id and cluster.name.
@@ -505,4 +508,149 @@ TEST_F(IndexerConnectorTest, AsyncIndexUnavailableServer)
     }
 
     ASSERT_FALSE(bulkReceived);
+}
+
+// ─── IndexerSession (shared monitor) tests ────────────────────────────────────
+
+/**
+ * @brief A session performs exactly one health-check round for its hosts.
+ */
+TEST_F(IndexerConnectorTest, SessionPerformsOneHealthCheckRound)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    const auto before = m_indexerServers[A_IDX]->healthRequests();
+
+    IndexerSession session(config);
+
+    ASSERT_EQ(before + 1, m_indexerServers[A_IDX]->healthRequests());
+}
+
+/**
+ * @brief THE point of IndexerSession: a sync AND an async connector built from one session cost ONE
+ * health-check round between them, not one each.
+ *
+ * The contrast is pinned by SessionlessConnectorsEachRunTheirOwnHealthCheckRound below: without a
+ * session the same two constructions hit the server twice.
+ */
+TEST_F(IndexerConnectorTest, TwoConnectorsSharingASessionCostOneHealthCheckRound)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    const auto before = m_indexerServers[A_IDX]->healthRequests();
+
+    IndexerSession session(config);
+    const auto afterSession = m_indexerServers[A_IDX]->healthRequests();
+    ASSERT_EQ(before + 1, afterSession);
+
+    IndexerConnectorSync syncConnector(config, session);
+    IndexerConnectorAsync asyncConnector(config, session);
+
+    ASSERT_EQ(afterSession, m_indexerServers[A_IDX]->healthRequests())
+        << "connectors sharing a session must not run health checks of their own";
+    ASSERT_TRUE(syncConnector.isAvailable());
+    ASSERT_TRUE(asyncConnector.isAvailable());
+}
+
+/**
+ * @brief The baseline the shared session improves on: each sessionless connector runs its own round.
+ *
+ * This is what makes the assertion above meaningful rather than vacuous.
+ */
+TEST_F(IndexerConnectorTest, SessionlessConnectorsEachRunTheirOwnHealthCheckRound)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    const auto before = m_indexerServers[A_IDX]->healthRequests();
+
+    IndexerConnectorSync syncConnector(config);
+    IndexerConnectorAsync asyncConnector(config);
+
+    ASSERT_EQ(before + 2, m_indexerServers[A_IDX]->healthRequests());
+}
+
+/**
+ * @brief A session constructs fine against a server that is up but unhealthy: the gate is
+ * configuration validity, never reachability, so the indexer may come up after the manager.
+ */
+TEST_F(IndexerConnectorTest, SessionConstructsAgainstAnUnhealthyServer)
+{
+    m_indexerServers[A_IDX]->setHealth("red");
+
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    ASSERT_NO_THROW({ IndexerSession session(config); });
+
+    IndexerSession session(config);
+    IndexerConnectorSync connector(config, session);
+    ASSERT_FALSE(connector.isAvailable());
+}
+
+/**
+ * @brief A session constructs fine against a host that accepts no connections at all.
+ */
+TEST_F(IndexerConnectorTest, SessionConstructsAgainstAnUnreachableHost)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({"localhost:6789"});
+
+    ASSERT_NO_THROW({ IndexerSession session(config); });
+}
+
+/**
+ * @brief A session still rejects an invalid configuration, exactly like a connector does.
+ */
+TEST_F(IndexerConnectorTest, SessionRejectsAConfigWithoutHosts)
+{
+    ASSERT_THROW({ IndexerSession session(nlohmann::json::object()); }, IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorTest, SessionRejectsANonexistentCaFile)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+    config["ssl"]["certificate_authorities"] = nlohmann::json::array({"/nonexistent/not-a-real-ca.pem"});
+
+    ASSERT_THROW({ IndexerSession session(config); }, IndexerConnectorException);
+}
+
+/**
+ * @brief A connector whose hosts differ from the session's is refused at construction.
+ *
+ * The session's monitor only knows the hosts it was built with, so allowing this would surface later
+ * as a std::out_of_range from the first request instead of a clear configuration error here.
+ */
+TEST_F(IndexerConnectorTest, ConnectorWithHostsThatDoNotMatchTheSessionIsRejected)
+{
+    nlohmann::json sessionConfig;
+    sessionConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    IndexerSession session(sessionConfig);
+
+    nlohmann::json otherConfig;
+    otherConfig["hosts"] = nlohmann::json::array({B_ADDRESS});
+
+    ASSERT_THROW({ IndexerConnectorSync connector(otherConfig, session); }, IndexerConnectorException);
+    ASSERT_THROW({ IndexerConnectorAsync connector(otherConfig, session); }, IndexerConnectorException);
+}
+
+/**
+ * @brief The monitor outlives the session that created it, as documented: a connector holds a counted
+ * reference, so destroying the session early must not break it.
+ */
+TEST_F(IndexerConnectorTest, AConnectorKeepsWorkingAfterItsSessionIsDestroyed)
+{
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    std::unique_ptr<IndexerConnectorSync> connector;
+    {
+        IndexerSession session(config);
+        connector = std::make_unique<IndexerConnectorSync>(config, session);
+    }
+
+    ASSERT_TRUE(connector->isAvailable());
 }

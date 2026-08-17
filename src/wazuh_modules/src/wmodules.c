@@ -128,16 +128,17 @@ int wm_config() {
 #else
     wmodule *module;
 
-    if ((module = wm_router_read())) {
-        wm_add(module);
-    }
-
     if ((module = wm_content_manager_read())) {
         wm_add(module);
     }
 
-    // Inventory sync
-    if ((module = wm_inventory_sync_read()))
+    // Keystore server: hosts queue/sockets/keystore for the Python framework's credential
+    // manager, so the API's indexer access does not depend on any other module.
+    if ((module = wm_keystore_server_read()))
+        wm_add(module);
+
+    // Inventory sync server: the POST /stateful ingestion pipeline plus DELETE /agents.
+    if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
 
     // The database module won't be available on agents
@@ -472,8 +473,13 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
         return strlen(*output);
     }
 
-    // For SCA and Syscollector, pass the JSON command directly (it already contains all needed fields)
-    if (strcmp(module_name, SCA_WM_NAME) == 0 || strcmp(module_name, SYSCOLLECTOR_WM_NAME) == 0) {
+    // For SCA, Syscollector, and agent-info (the durable task_id registry query,
+    // the only in-process query path available on Windows -- POSIX instead reaches
+    // agent-info's query through wmcom_dispatch()'s own generic "query <module> <args>"
+    // verb, which has no such allow-list), pass the JSON command directly (it already
+    // contains all needed fields).
+    if (strcmp(module_name, SCA_WM_NAME) == 0 || strcmp(module_name, SYSCOLLECTOR_WM_NAME) == 0 ||
+            strcmp(module_name, AGENT_INFO_WM_NAME) == 0) {
         // Pass the original JSON directly - no need to reconstruct
         // Cast to non-const as required by the query function signature
         size_t result = module->context->query(module->data, (char*)json_command, output);

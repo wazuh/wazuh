@@ -28,7 +28,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
-    const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
+    const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
+    const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
     const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslogging = "logging";                          /* Logging Config */
@@ -84,15 +85,31 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CREMOTE) && (Read_Remote(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {
-                    if (Read_Client_Shared(chld_node, d1) < 0){
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0) {
                         goto fail;
                     }
                 }
                 else {
-                    if (Read_Client(xml, chld_node, d1, d2) < 0){
+                    if (Read_Agent(xml, chld_node, d1, d2) < 0) {
+                        goto fail;
+                    }
+                }
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+            /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
+             * ossec.conf, so the block is still accepted, but only <server><address>
+             * is read from it - as the fallback for <agent><server><address>. */
+            if (modules & CCLIENT) {
+                if (modules & CAGENT_CONFIG) {
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0){
+                        goto fail;
+                    }
+                }
+                else {
+                    if (Read_Legacy_Client_Address(xml, chld_node, d1, d2) < 0){
                         goto fail;
                     }
                 }
@@ -104,9 +121,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
 #endif
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
-            if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
+            /* Accepted and ignored rather than rejected (an unknown element is
+             * fatal here), so an ossec.conf or a pushed agent.conf still
+             * carrying it does not stop the agent from starting. */
+            mwarn("'%s' is no longer used and will be ignored. Event batching is configured "
+                  "under <client><batch>.", node[i]->element);
         }
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
@@ -268,11 +287,17 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         } else {
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         }
+
+        /* A failed read still leaves the object holding whatever it allocated before
+         * giving up, exactly like the successful path -- every other exit below
+         * clears it, these two early ones were simply missed. */
+        OS_ClearXML(&xml);
         return (OS_INVALID);
     }
 
     node = OS_GetElementsbyNode(&xml, NULL);
     if (!node) {
+        OS_ClearXML(&xml);
         return (0);
     }
 

@@ -134,7 +134,7 @@ def _conf_payload():
     return {
         "auth": {
             "use_password": "yes",
-            "ssl_manager_key": "etc/sslmanager.key"
+            "ssl_manager_key": "etc/certs/authd-key.pem"
         },
         "integration": {
             "secret": "topsecret",
@@ -147,7 +147,7 @@ def _conf_payload():
 def _conf_result_payload():
     r = AffectedItemsWazuhResult(all_msg="ok", some_msg="ok", none_msg="ok")
     r.affected_items.append({
-        "auth": {"use_password": "no", "ssl_manager_key": "etc/sslmanager.key"},
+        "auth": {"use_password": "no", "ssl_manager_key": "etc/certs/authd-key.pem"},
         "integration": {"secret": "topsecret"},
         "authd.pass": "P4ssW0rd!"
     })

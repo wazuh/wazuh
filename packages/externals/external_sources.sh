@@ -132,6 +132,17 @@ _reg fast_float         "https://github.com/fastfloat/fast_float/archive/refs/ta
 _reg tzdata             "https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz"                                        tar.gz  0  tzdata             false  "https://data.iana.org/time-zones/"
 _reg geo_db             "TBD"                                                                                                     tar.gz  0  geo_db             false  "https://www.maxmind.com/"
 
+# The manager's HTTPS listener stack: restinio plus the asio, llhttp and
+# expected-lite it is built against, and zstd. asio tags releases with dashes
+# (asio-1-38-2), hence {version_dash}; llhttp puts its tags under a release/
+# prefix; restinio and zstd publish source tarballs as release assets, which is
+# what src/external/ currently vendors.
+_reg asio               "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-{version_dash}.tar.gz"                       tar.gz  1  asio               false  "https://github.com/chriskohlhoff/asio"
+_reg expected-lite      "https://github.com/martinmoene/expected-lite/archive/refs/tags/v{version}.tar.gz"                        tar.gz  1  expected-lite      false  "https://github.com/martinmoene/expected-lite"
+_reg llhttp             "https://github.com/nodejs/llhttp/archive/refs/tags/release/v{version}.tar.gz"                            tar.gz  1  llhttp             false  "https://github.com/nodejs/llhttp"
+_reg restinio           "https://github.com/Stiffstream/restinio/releases/download/v{version}/restinio-{version}.tar.bz2"          tar.bz2 1  restinio           false  "https://github.com/Stiffstream/restinio"
+_reg zstd               "https://github.com/facebook/zstd/releases/download/v{version}/zstd-{version}.tar.gz"                      tar.gz  1  zstd               false  "https://github.com/facebook/zstd"
+
 # Sanity check: warn if any registered name has no corresponding directory in
 # src/external/. The script can decide whether to error or just log; this is
 # informational. Skipped at source-time (no side effects beyond array writes).

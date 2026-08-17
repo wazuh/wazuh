@@ -568,6 +568,79 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
     EXPECT_TRUE(Utils::isNumber(std::string_view("12345")));
 }
 
+TEST_F(StringUtilsTest, isMultipartNumeric_SingleInteger)
+{
+    EXPECT_TRUE(Utils::isMultipartNumeric("151"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("0"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("1"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_TwoParts)
+{
+    EXPECT_TRUE(Utils::isMultipartNumeric("151.0"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("1.2"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("0.0"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_ThreeParts)
+{
+    EXPECT_TRUE(Utils::isMultipartNumeric("1.2.3"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("151.0.0"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("0.0.0"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_MultipleParts)
+{
+    EXPECT_TRUE(Utils::isMultipartNumeric("1.2.3.4"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("16.0.35907.0"));
+    EXPECT_TRUE(Utils::isMultipartNumeric("1.2.3.4.5.6"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_Empty)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric(""));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_StartsWithDot)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric(".1.2.3"));
+    EXPECT_FALSE(Utils::isMultipartNumeric(".0"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_TrailingDot)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.2.3."));
+    EXPECT_FALSE(Utils::isMultipartNumeric("151.0."));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_AlphaChars)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0b2"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0alpha"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("abc"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.2.3a"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_EpochAndRevision)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric("1:151.0-1"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("2:1.0"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_SpecialChars)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0+dfsg"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0~beta"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0-1"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("1.0_2"));
+}
+
+TEST_F(StringUtilsTest, isMultipartNumeric_StartsWithAlpha)
+{
+    EXPECT_FALSE(Utils::isMultipartNumeric("v1.2.3"));
+    EXPECT_FALSE(Utils::isMultipartNumeric("r151"));
+}
+
 TEST_F(StringUtilsTest, parseStrToBoolYes)
 {
     EXPECT_TRUE(Utils::parseStrToBool("yes"));

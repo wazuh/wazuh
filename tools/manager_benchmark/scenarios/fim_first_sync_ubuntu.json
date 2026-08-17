@@ -1,0 +1,21 @@
+{
+  "name": "fim_first_sync_ubuntu",
+  "description": "Single Linux (Ubuntu) fleet running a single FIM full_resync (first scan) with checksums, no follow-up delta. Baseline for the FIM first-sync cost on a clean agent.",
+  "mode": "uds",
+  "defaults": {
+    "module": "fim",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "fim": [
+      { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 800, "size_bytes": 512 } }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 10000, "lanes": ["fim"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" }
+}

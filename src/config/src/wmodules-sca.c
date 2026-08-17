@@ -82,7 +82,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
     const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
-    const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
     const char *XML_DB_SYNC_INTEGRITY_INTERVAL = "integrity_interval";
 
@@ -110,14 +109,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 sca->sync.sync_end_delay = (uint32_t) sync_end_delay;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
-            long response_timeout = w_parse_time(node[i]->content);
-
-            if (response_timeout < 0 || (unsigned long)response_timeout > UINT32_MAX) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_response_timeout = (uint32_t) response_timeout;
             }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0) {
             char * end;
@@ -171,7 +162,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
         sca->sync.sync_end_delay = 1;
-        sca->sync.sync_response_timeout = 60;
         sca->sync.sync_max_eps = 75;
         sca->sync.integrity_interval = 86400;
     }

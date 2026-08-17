@@ -36,7 +36,6 @@ set(TEST_DEPS
     -Wl,--start-group
     ${WAZUHLIB}
     ${WAZUHEXT}
-    -lrouter
     -lschema_validator
     -Wl,--end-group
     -lpthread
@@ -51,3 +50,4 @@ add_subdirectory(os_auth)
 add_subdirectory(os_crypto)
 add_subdirectory(wazuh_modules)
 add_subdirectory(monitord)
+add_subdirectory(util)
