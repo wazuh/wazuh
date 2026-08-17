@@ -69,6 +69,7 @@
 | [#35043](https://github.com/wazuh/wazuh/issues/35043) | Fixed token validation race condition after revoke. |
 | [#35638](https://github.com/wazuh/wazuh/issues/35638) | Handled the stop signal during vulnerability feed download. |
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
+| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Fixed the `upgrade_ack` counter in `wazuh-manager-remoted` statistics, which reported a constant zero because its increment function was missing. |
 
 ### Agent
 

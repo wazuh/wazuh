@@ -6246,7 +6246,7 @@ paths:
                             shared: 0
                         queues:
                           received:
-                            size: 131072
+                            size: 67108864
                             usage: 0
                         tcp_sessions: 0
                   total_affected_items: 1
