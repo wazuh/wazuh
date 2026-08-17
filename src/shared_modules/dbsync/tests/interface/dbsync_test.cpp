@@ -809,7 +809,116 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
     EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate3.get(), callbackData));  // Expect an update event
 }
 
+TEST_F(DBSyncTest, syncRowIgnoreFieldsWithVersionColumn)
+{
+    // Tables with a DB-managed "version" column must still suppress the diff/callback when
+    // only ignored fields changed - "version" itself must not count as a "non-ignored" change.
+    const auto sql
+    {
+        "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, "
+        "`version` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (`pid`)) WITHOUT ROWID;"
+    };
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
 
+    auto insertionQuery = InsertQuery::builder().table("processes")
+                          .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"));
+    // Only the ignored field ("tid") changes - must NOT trigger a MODIFIED callback,
+    // even though the row's "version" column is bumped internally on every write.
+    auto updateQuery1 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":101})"));
+    // A non-ignored field ("name") also changes - MUST trigger a MODIFIED callback.
+    auto updateQuery2 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"SystemIsDown", "tid":102})"));
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"pid":4,"name":"System","tid":100,"version":1})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"pid":4,"name":"SystemIsDown","tid":102,"version":2})"))).Times(1);
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Ignored-only change: no callback
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate2.get(), callbackData));  // Real change: expect an update event
+}
+
+TEST_F(DBSyncTest, syncRowIgnoreFieldsWithExplicitVersionChange)
+{
+    // Mirrors Syscollector::setVersion(): the caller reads back a full row and rewrites only
+    // "version", with some other column ignored (standing in for the real "sync" ignore-list
+    // entry). Because the caller supplied "version" itself, it is a real, intentional change
+    // and must still count as non-ignored - even though no other column changed - so a
+    // MODIFIED callback must still fire and the new version must still be persisted.
+    const auto sql
+    {
+        "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, "
+        "`version` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (`pid`)) WITHOUT ROWID;"
+    };
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    auto insertionQuery = InsertQuery::builder().table("processes")
+                          .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100})"));
+    // "tid" is ignored and unchanged, "name" is unchanged - "version" is the only field that
+    // differs, and it was explicitly supplied by the caller. Must still trigger a MODIFIED
+    // callback carrying the new version.
+    auto updateQuery1 = SyncRowQuery::builder().table("processes")
+                        .ignoreColumn("tid")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "tid":100, "version":9})"));
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"pid":4,"name":"System","tid":100,"version":1})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"pid":4,"name":"System","tid":100,"version":9})"))).Times(1);
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsUpdate1.get(), callbackData));  // Explicit version-only change: still expect a MODIFIED event
+}
+
+// A partial row must not become an INSERT when the row is missing: the columns it omits
+// may be NOT NULL. This is FIM's sync-flag update failing on file_entry.checksum (#37993).
+TEST_F(DBSyncTest, syncRowUpdateOnlyDoesNotInsertMissingRow)
+{
+    const auto sql{ "CREATE TABLE file_entry(`path` TEXT, `checksum` TEXT NOT NULL, `sync` INTEGER DEFAULT 0, PRIMARY KEY (`path`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const auto fullRow{ R"({"table":"file_entry","data":[{"path":"/tmp/a","checksum":"abc","sync":0}]})"};
+    const auto partialRow{ R"({"table":"file_entry","data":[{"path":"/tmp/a","sync":1}]})"};
+    const auto partialRowUpdateOnly{ R"({"table":"file_entry","data":[{"path":"/tmp/a","sync":1}],"options":{"update_only":true}})"};
+    const auto deleteRow{ R"({"table":"file_entry","query":{"data":[{"path":"/tmp/a"}],"where_filter_opt":""}})"};
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsFullRow{ cJSON_Parse(fullRow) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsPartialRow{ cJSON_Parse(partialRow) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsPartialRowUpdateOnly{ cJSON_Parse(partialRowUpdateOnly) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsDeleteRow{ cJSON_Parse(deleteRow) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"path":"/tmp/a","checksum":"abc","sync":0})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"path":"/tmp/a","sync":1})"))).Times(1);
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsFullRow.get(), callbackData));
+    // The row is there: the partial sync updates it, with or without the option.
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsPartialRowUpdateOnly.get(), callbackData));
+
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteRow.get()));
+
+    // The row is gone: without the option the upsert trips the NOT NULL constraint.
+    EXPECT_NE(0, dbsync_sync_row(handle, jsPartialRow.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsPartialRowUpdateOnly.get(), callbackData));
+}
 
 TEST_F(DBSyncTest, syncRowInvalidData)
 {

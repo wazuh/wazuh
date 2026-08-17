@@ -18,9 +18,9 @@ class Result
 private:
     inline static const std::string EMPTY_TRACE {}; ///< Shared empty string for cases where no trace is present
 
-    Event m_payload;                    ///< The event payload
+    Event m_payload {};                 ///< The event payload
     std::optional<std::string> m_trace; ///< Optional trace message
-    bool m_success;                     ///< Status of the result, true for success, false for failure
+    bool m_success {false};             ///< Status of the result, true for success, false for failure
 
 public:
     /**

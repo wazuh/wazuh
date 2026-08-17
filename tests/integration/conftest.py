@@ -44,6 +44,20 @@ WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    """Stash each phase's TestReport on the item (item.rep_setup/rep_call/rep_teardown).
+
+    Standard pytest recipe: fixtures can't see their own test's outcome directly (it isn't known
+    yet during setup, and a plain teardown has no result object), so truncate_monitored_files
+    reads item.rep_call.failed here to decide whether to preserve ossec.log on a failure instead
+    of wiping it.
+    """
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{rep.when}", rep)
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add command-line options to the tests.
 
@@ -320,8 +334,17 @@ def file_monitoring(request):
     logger.debug(f"Trucanted {file_to_monitor}")
 
 
-def truncate_monitored_files_implementation() -> None:
-    """Truncate all the log files and json alerts files before and after the test execution"""
+def truncate_monitored_files_implementation(request: pytest.FixtureRequest = None) -> None:
+    """Truncate all the log files and json alerts files before the test execution, and after it too --
+    unless the test failed and `request` was given, in which case the post-test truncation is skipped
+    so ossec.log (etc.) survives on disk exactly as it was at the moment of failure, for post-mortem
+    diagnosis instead of being wiped by this same fixture's own teardown a moment later.
+
+    Args:
+        request (pytest.FixtureRequest, optional): Needed only to check the test's outcome
+            (item.rep_call, set by pytest_runtest_makereport) for the skip-on-failure behavior above.
+            Omitted by module-scoped callers, where a single outcome doesn't apply to the whole module.
+    """
     if services.get_service() == WAZUH_MANAGER:
         log_files = [
             WAZUH_LOG_PATH,
@@ -340,15 +363,19 @@ def truncate_monitored_files_implementation() -> None:
 
     yield
 
+    if request is not None and getattr(request.node, 'rep_call', None) is not None and request.node.rep_call.failed:
+        logger.warning(f"Test failed: preserving {log_files} for diagnosis instead of truncating them.")
+        return
+
     for log_file in log_files:
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
             file.truncate_file(log_file)
 
 
 @pytest.fixture()
-def truncate_monitored_files() -> None:
+def truncate_monitored_files(request: pytest.FixtureRequest) -> None:
     """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
-    yield from truncate_monitored_files_implementation()
+    yield from truncate_monitored_files_implementation(request)
 
 
 @pytest.fixture(scope="module")
@@ -797,7 +824,10 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
 
 @pytest.fixture(autouse=True)
 def ensure_merged_mg() -> None:
-    """Write the default dummy merged.mg whose MD5 matches RemotedSimulator.DEFAULT_MERGED_SUM.
+    """Write the default dummy merged.mg whose SHA-256 matches a freshly-constructed
+    RemotedSimulator's default config_hash, so the HTTPS startup gate
+    (startup_gate_check_manager_config_hash()) can release immediately on the first
+    /control notify instead of waiting for a /download round trip.
 
     On Linux the file is created with group-writable permissions (0o660) and
     owned by root:wazuh so that wazuh-agentd can overwrite it when receiving

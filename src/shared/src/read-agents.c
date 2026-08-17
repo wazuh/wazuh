@@ -14,21 +14,6 @@
 #include "wazuhdb_op.h"
 #include "wazuhdb_queries_op.h"
 
-/* Delete diff folders */
-void delete_diff(const char *name)
-{
-    if (NULL == name || *name == '\0') {
-        return;
-    }
-
-    char tmp_folder[513] = {0};
-    snprintf(tmp_folder, 512, "%s/%s",
-             DIFF_DIR,
-             name);
-
-    rmdir_ex(tmp_folder);
-}
-
 #ifndef WIN32
 /* Non-windows functions from now on */
 

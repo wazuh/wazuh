@@ -15,10 +15,6 @@
 #include <cmocka.h>
 
 
-void __wrap_fim_rules_initial_load() {
-    function_called();
-}
-
 void __wrap_add_whodata_directory(const char *path) {
     check_expected_ptr(path);
 }

@@ -1,7 +1,17 @@
+// Inventory synchronization schema (manager side) -- the FINAL wire contract
+// agreed with the agent team: a whole synchronization session travels as ONE
+// Message{FullSession} request over remoted's POST /stateful route, and the
+// HTTP response IS the session result. There are no acks, no End, no
+// retransmission and no per-item sequence numbers (design decisions D1-D4/D19
+// in inventory_sync_server_docs).
+//
+// This file replaced the legacy session-based schema when the inventory_sync
+// module was retired; inventory_sync_server is its only manager-side consumer
+// (remoted relays the body opaquely, and the module itself cross-checks
+// Start.agentid against the authenticated identity).
 namespace Wazuh.SyncSchema;
 
 enum Mode: byte {
-    ModuleFull,
     ModuleDelta,
     ModuleCheck,
     MetadataDelta,
@@ -15,14 +25,6 @@ enum Operation: byte {
     Delete
 }
 
-enum Status: byte {
-    Ok,
-    Error,
-    Offline,
-    ChecksumMismatch,
-    Processing
-}
-
 enum Option: byte {
     Sync,
     VDFirst,
@@ -30,8 +32,6 @@ enum Option: byte {
 }
 
 table DataValue {
-    seq: ulong;
-    session: ulong;
     operation: Operation;
     id: string;
     index: string;
@@ -40,8 +40,6 @@ table DataValue {
 }
 
 table DataContext {
-    seq: ulong;
-    session: ulong;
     id: string;
     index: string;
     data: [byte];
@@ -50,7 +48,6 @@ table DataContext {
 table Start {
     module: string;
     mode: Mode;
-    size: ulong;
     index: [string];
     option: Option;
     architecture: string;
@@ -65,47 +62,47 @@ table Start {
     groups: [string];
     global_version: ulong;
     cluster_name: string;
-    cluster_node: string;
-}
-
-table StartAck {
-    status: Status;
-    session: ulong;
-}
-
-table End {
-    session: ulong;
-}
-
-table EndAck {
-    status: Status;
-    session: ulong;
-}
-
-table Pair {
-    begin: ulong;
-    end: ulong;
-}
-
-table ReqRet {
-    seq: [Pair];
-    session: ulong;
+    feed_offset: ulong;
 }
 
 table DataClean {
-    seq: ulong;
-    session: ulong;
     index: string;
 }
 
 table ChecksumModule {
-    session: ulong;
     index: string;
     checksum: string;
 }
 
-table DataBatch {
+/// The data-sync payload of a FullSession: DataValue items (module/metadata
+/// upserts and deletes) and DataContext items (vulnerability-detection data)
+/// travel together in the same session, so both live here side by side.
+table SyncData {
     values: [DataValue];
+    contexts: [DataContext];
+}
+
+/// A session may clean several indices at once (e.g. FIM clearing files,
+/// registry keys, and registry values together), so this is a real array.
+table Cleans {
+    items: [DataClean];
+}
+
+/// A session carries exactly one of these: a data sync, a clean notification,
+/// or an integrity checksum - never a combination. An integrity check always
+/// covers a single index/module, so it references ChecksumModule directly
+/// instead of wrapping it in an array table.
+union SessionPayload {
+    SyncData,
+    Cleans,
+    ChecksumModule
+}
+
+/// A whole synchronization session as ONE message. Re-applying the same
+/// session is idempotent, so a retry is simply a re-POST of the same buffer.
+table FullSession {
+    start: Start;
+    payload: SessionPayload;
 }
 
 union MessageType {
@@ -113,12 +110,8 @@ union MessageType {
     DataClean,
     ChecksumModule,
     Start,
-    StartAck,
-    End,
-    EndAck,
-    ReqRet,
     DataContext,
-    DataBatch
+    FullSession
 }
 
 table Message {

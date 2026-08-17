@@ -13,6 +13,9 @@
  */
 #include "rootcheck.h"
 #include "agent_sync_protocol_c_interface.h"
+#ifdef CLIENT
+#include "client-config.h"
+#endif
 #include "db.h"
 #include "shared.h"
 #include "syscheck.h"
@@ -122,7 +125,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
          * (stop-aware waits, predicated sends, 1-second sleeps), so it reports its exit
          * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
          * join and the teardown below — destroying the handle under a live thread is the
-         * use-after-free this waiter exists to prevent — and let HandleSIG() exit. */
+         * use-after-free this waiter exists to prevent — and proceed to _exit(). */
         struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
         int poll_ret;
 
@@ -174,7 +177,14 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
     }
 
-    HandleSIG((int)fim_shutdown_sig);
+    /* Not HandleSIG(): its exit() would run the static destructors and the atexit handlers
+     * while the threads this waiter could not join are still using them (issue #37993). */
+    minfo(SIGNAL_RECV, (int)fim_shutdown_sig, strsignal((int)fim_shutdown_sig));
+#ifdef ENABLE_AUDIT
+    clean_rules();
+#endif
+    DeletePID(ARGV0);
+    _exit(1);
 
     return NULL;
 }
@@ -274,6 +284,20 @@ int main(int argc, char **argv)
     if (File_DateofChange(cfg) < 0) {
         merror_exit(NO_CONFIG, cfg);
     }
+
+#ifdef CLIENT
+    /* The sync protocol bounds one session by <agent><batch><size>, the same limit
+     * that bounds a /stateless request. The block belongs to the agent rather than
+     * to this daemon, and the protocol reads no configuration of its own, so it is
+     * read here and handed down before fim_initialize() builds the instance. */
+    agent_batch batch = { .size = 0, .interval = 0 };
+    w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
+    asp_set_session_max_bytes((uint64_t)batch.size);
+
+    if (batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
+    }
+#endif
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {

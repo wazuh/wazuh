@@ -18,7 +18,6 @@
 #include <map>
 #include <memory>
 #include <regex>
-#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -103,7 +102,7 @@ namespace Utils
 
     static bool replaceLast(std::string& data, const std::string& toSearch, const std::string& toReplace)
     {
-        auto pos {data.rfind(toSearch)};  // find last occurrence
+        auto pos {data.rfind(toSearch)}; // find last occurrence
         bool ret {false};
 
         if (pos != std::string::npos)
@@ -152,16 +151,10 @@ namespace Utils
         return leftTrim(rightTrim(str, args), args);
     }
 
-    static void trimSpaces(std::string & s)
+    static void trimSpaces(std::string& s)
     {
-        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch)
-        {
-            return !std::isspace(ch);
-        }));
-        s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch)
-        {
-            return !std::isspace(ch);
-        }).base(), s.end());
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) { return !std::isspace(ch); }));
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
     }
 
     static std::string trimRepeated(const std::string& str, char c = ' ')
@@ -413,13 +406,13 @@ namespace Utils
      */
     static bool isAlphaNumericWithSpecialCharacters(const std::string& str, const std::string& specialCharacters)
     {
-        return str.compare("") != 0 ? std::all_of(std::begin(str),
-                                                  std::end(str),
-                                                  [&specialCharacters](const auto& character) {
-                                                      return std::isalnum(character) ||
-                                                             specialCharacters.find(character) != std::string::npos;
-                                                  })
-                                    : false;
+        return str.compare("") != 0
+                   ? std::all_of(
+                         std::begin(str),
+                         std::end(str),
+                         [&specialCharacters](const auto& character)
+                         { return std::isalnum(character) || specialCharacters.find(character) != std::string::npos; })
+                   : false;
     }
 
     static bool isNumber(const std::string& str)
@@ -606,6 +599,21 @@ namespace Utils
         while (it != str.end() && std::isdigit(*it)) ++it;
 
         return !str.empty() && it == str.end();
+    }
+
+    /**
+     * @brief Returns true when the string is a pure dotted-numeric version,
+     */
+    static bool isMultipartNumeric(std::string_view s)
+    {
+        if (s.empty() || !std::isdigit(static_cast<unsigned char>(s[0])) || s.back() == '.')
+            return false;
+        for (unsigned char c : s)
+        {
+            if (!std::isdigit(c) && c != '.')
+                return false;
+        }
+        return true;
     }
 #endif
 

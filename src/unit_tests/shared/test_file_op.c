@@ -16,6 +16,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include "defs.h"
 #include "file_op.h"
 #include "error_messages.h"
@@ -1795,6 +1796,192 @@ void test_cldir_ex_ignore_partial_path_match(void **state) {
     assert_int_equal(ret, 0);
 }
 
+/* Tests w_fopen_nofollow */
+
+// These tests run against the real file system: a symlink cannot be mocked into existence, and the
+// property under test is precisely what the operating system does with one.
+
+static char nofollow_dir[PATH_MAX + 1];
+
+static void nofollow_path(char path[PATH_MAX + 1], const char * name) {
+    snprintf(path, PATH_MAX + 1, "%s/%s", nofollow_dir, name);
+}
+
+static void nofollow_create_file(const char * name, const char * content) {
+    char path[PATH_MAX + 1];
+    int fd;
+
+    nofollow_path(path, name);
+    fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(write(fd, content, strlen(content)), (ssize_t)strlen(content));
+    close(fd);
+}
+
+static off_t nofollow_size(const char * name) {
+    char path[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(path, name);
+    assert_int_equal(stat(path, &statbuf), 0);
+    return statbuf.st_size;
+}
+
+static int setup_nofollow(void **state) {
+    // The file operations below must reach the file system, not the wrappers.
+    test_mode = 0;
+    snprintf(nofollow_dir, sizeof(nofollow_dir), "/tmp/wazuh_nofollow_XXXXXX");
+    assert_non_null(mkdtemp(nofollow_dir));
+    return 0;
+}
+
+static int teardown_nofollow(void **state) {
+    const char * entries[] = { "regular", "link", "dangling", "fifo", "subdir", "target", "victim", NULL };
+    char path[PATH_MAX + 1];
+    int i;
+
+    for (i = 0; entries[i]; i++) {
+        nofollow_path(path, entries[i]);
+        remove(path);
+    }
+
+    remove(nofollow_dir);
+    test_mode = 1;
+    return 0;
+}
+
+void test_w_fopen_nofollow_regular_file(void **state) {
+    FILE * fp = w_fopen_nofollow(nofollow_dir, "regular", "wb");
+
+    assert_non_null(fp);
+    assert_int_equal(fwrite("content", 1, 7, fp), 7);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 7);
+}
+
+void test_w_fopen_nofollow_truncates_existing_file(void **state) {
+    FILE * fp;
+
+    nofollow_create_file("regular", "previous content");
+
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "wb");
+    assert_non_null(fp);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 0);
+}
+
+void test_w_fopen_nofollow_symlink_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "wb"));
+    // Linux and macOS report ELOOP for O_NOFOLLOW, other systems are allowed to report EMLINK.
+    assert_true(errno == ELOOP || errno == EMLINK);
+    // The whole point: the symlink target was neither opened nor truncated.
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_hard_link_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "wb"));
+    assert_int_equal(errno, EMLINK);
+    // A hard link is a regular file, so nothing but the link count rules it out — and the open must not
+    // have truncated it on the way to finding that out.
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_dangling_symlink_rejected(void **state) {
+    char link[PATH_MAX + 1];
+    char created[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(link, "dangling");
+    nofollow_path(created, "target");
+    assert_int_equal(symlink(created, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "dangling", "wb"));
+    assert_true(errno == ELOOP || errno == EMLINK);
+    // O_CREAT must not have created the file the dangling symlink points at.
+    assert_int_equal(stat(created, &statbuf), -1);
+}
+
+void test_w_fopen_nofollow_fifo_rejected(void **state) {
+    char path[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+
+    // Must return instead of blocking on the FIFO waiting for a reader.
+    assert_null(w_fopen_nofollow(nofollow_dir, "fifo", "wb"));
+    assert_int_equal(stat(path, &statbuf), 0);
+    assert_true(S_ISFIFO(statbuf.st_mode));
+}
+
+void test_w_fopen_nofollow_directory_rejected(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_path(path, "subdir");
+    assert_int_equal(mkdir(path, 0750), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "subdir", "wb"));
+    assert_int_equal(errno, EISDIR);
+}
+
+void test_w_fopen_nofollow_invalid_name(void **state) {
+    const char * names[] = { "", ".", "..", "../victim", "subdir/victim", "/etc/passwd", NULL };
+    int i;
+
+    for (i = 0; names[i]; i++) {
+        errno = 0;
+        assert_null(w_fopen_nofollow(nofollow_dir, names[i], "wb"));
+        assert_int_equal(errno, EINVAL);
+    }
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, NULL, "wb"));
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_fopen_nofollow_invalid_mode(void **state) {
+    const char * modes[] = { "r", "rb", "a", "w+", "", NULL };
+    int i;
+
+    for (i = 0; modes[i]; i++) {
+        errno = 0;
+        assert_null(w_fopen_nofollow(nofollow_dir, "regular", modes[i]));
+        assert_int_equal(errno, EINVAL);
+    }
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "regular", NULL));
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_fopen_nofollow_missing_basedir(void **state) {
+    char basedir[PATH_MAX + 1];
+
+    snprintf(basedir, sizeof(basedir), "%s/subdir", nofollow_dir);
+
+    assert_null(w_fopen_nofollow(basedir, "regular", "wb"));
+}
+
 #endif /* TEST_WINAGENT */
 
 int main(void) {
@@ -1857,6 +2044,17 @@ int main(void) {
         cmocka_unit_test(test_cldir_ex_ignore_rmdir_ex_failure),
         cmocka_unit_test(test_cldir_ex_ignore_multiple_files_in_ignore),
         cmocka_unit_test(test_cldir_ex_ignore_partial_path_match),
+        // w_fopen_nofollow
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_regular_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_truncates_existing_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_hard_link_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_fifo_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_directory_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_invalid_name, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_invalid_mode, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_missing_basedir, setup_nofollow, teardown_nofollow),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

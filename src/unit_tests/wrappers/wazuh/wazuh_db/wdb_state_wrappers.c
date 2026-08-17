@@ -84,14 +84,6 @@ void __wrap_w_inc_global_agent_update_agent_data_time(__attribute__((unused))str
     function_called();
 }
 
-void __wrap_w_inc_global_agent_update_agent_name() {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_update_agent_name_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
 void __wrap_w_inc_global_agent_update_keepalive() {
     function_called();
 }
@@ -129,14 +121,6 @@ void __wrap_w_inc_global_agent_delete_agent() {
 }
 
 void __wrap_w_inc_global_agent_delete_agent_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_select_agent_name() {
-    function_called();
-}
-
-void __wrap_w_inc_global_agent_select_agent_name_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 

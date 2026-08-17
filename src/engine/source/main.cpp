@@ -263,13 +263,16 @@ int main(int argc, char* argv[])
 
     try
     {
-        // Changing group only if not in standalone mode
-        if (!confManager.get<bool>(conf::key::SKIP_GROUP_CHANGE) && !base::process::isStandaloneModeEnable())
+        // Dropping privileges only if not in standalone mode. The group must be
+        // changed before the user: once the process is no longer root, setgid()
+        // is not permitted anymore.
+        if (!base::process::isStandaloneModeEnable() && confManager.get<bool>(conf::key::DROP_PRIVILEGES))
         {
-            /* Check if the user/group given are valid */
-            const auto group = confManager.get<std::string>(conf::key::GROUP);
-            const auto gid = base::process::privSepGetGroup(group);
+            const auto gid = base::process::privSepGetGroup(base::process::WAZUH_GROUP);
             base::process::privSepSetGroup(gid);
+
+            const auto uid = base::process::privSepGetUser(base::process::WAZUH_USER);
+            base::process::privSepSetUser(uid);
         }
 
         // Set new log level if it is different from the default

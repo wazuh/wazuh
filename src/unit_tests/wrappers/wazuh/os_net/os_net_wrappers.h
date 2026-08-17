@@ -25,8 +25,6 @@ int __wrap_OS_BindUnixDomain(const char* path, int type, int max_msg_size);
 
 int __wrap_OS_ConnectUnixDomain(const char* path, int type, int max_msg_size);
 
-int __wrap_OS_SendUDPbySize(int sock, int size, const char* msg);
-
 int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void* msg);
 
 int __wrap_OS_SendUnix(int socket, const char* msg, int size);
@@ -41,17 +39,9 @@ char* __wrap_OS_GetHost(const char* host, unsigned int attempts);
 
 int __wrap_OS_ConnectTCP(u_int16_t _port, const char* _ip, int ipv6);
 
-int __wrap_OS_ConnectUDP(u_int16_t _port, const char* _ip, int ipv6);
-
 int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
 int __wrap_OS_SetSendTimeout(int socket, int seconds);
-
-int __wrap_OS_SetKeepalive(int socket);
-
-void __wrap_OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
-
-int __wrap_wnet_select(int sock, int timeout);
 
 uint32_t __wrap_wnet_order(uint32_t value);
 

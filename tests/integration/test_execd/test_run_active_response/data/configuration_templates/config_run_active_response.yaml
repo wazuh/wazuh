@@ -1,5 +1,5 @@
 - sections:
-    - section: client
+    - section: agent
       elements:
         - notify_time:
             value: 10
@@ -7,14 +7,12 @@
             value: 60
         - auto_restart:
             value: "yes"
-        - manager:
+        - server:
             elements:
                 - address:
                     value: 127.0.0.1
                 - port:
-                    value: 1514
-                - protocol:
-                    value: tcp
+                    value: 1517
     - section: active-response
       elements:
         - disabled:

@@ -153,6 +153,15 @@ cJSON* build_stateful_event_registry(const char* path, const char* sha1_hash, co
 
 cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *registry_data){
     const registry_t* config = fim_registry_configuration(path, arch);
+
+    // If config is NULL the attributes cannot be translated: fim_registry_key_attributes_json needs it
+    // to know which checks are enabled. Callers replaying rows from the local DB (startup promotion,
+    // recovery resync) may hand us a path that is no longer covered by the current configuration.
+    if (config == NULL) {
+        merror("Failed to get configuration for registry path: %s", path);
+        return NULL;
+    }
+
     cJSON* registry_stateful = fim_registry_key_attributes_json(dbsync_event, registry_data, config);
 
     cJSON* stateful_event = build_stateful_event_registry(path, sha1_hash, document_version, arch, dbsync_event, registry_stateful);
@@ -168,6 +177,13 @@ cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash
 
 cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_value_data *registry_data){
     const registry_t* config = fim_registry_configuration(path, arch);
+
+    // Same as build_stateful_event_registry_key: without configuration there is nothing to translate.
+    if (config == NULL) {
+        merror("Failed to get configuration for registry path: %s", path);
+        return NULL;
+    }
+
     cJSON* registry_stateful = fim_registry_value_attributes_json(dbsync_event, registry_data, config);
 
     char *utf8_value = auto_to_utf8(value);
@@ -1172,6 +1188,15 @@ registry_t *fim_registry_configuration(const char *key, int arch) {
     int top = 0;
     int match;
     registry_t *ret = NULL;
+
+    // syscheck.registry is normally left as REGISTRY_EMPTY by Read_Syscheck_Config, but that fallback
+    // sits after its OS_INVALID returns: an unparseable ossec.conf leaves it NULL, and
+    // Start_win32_Syscheck's dump_syscheck_registry() recovery only runs on the "disabled" branch,
+    // while fim_initialize() runs unconditionally. Guard here so every caller is safe.
+    if (syscheck.registry == NULL) {
+        mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", key);
+        return NULL;
+    }
 
     for (it = 0; syscheck.registry[it].entry; it++) {
         if (arch != syscheck.registry[it].arch) {

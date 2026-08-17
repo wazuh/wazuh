@@ -15,10 +15,6 @@
 #include <string.h>
 #include <stdio.h>
 
-int __wrap_isChroot() {
-    return mock();
-}
-
 void __wrap__mdebug1(__attribute__((unused)) const char * file,
                      __attribute__((unused)) int line,
                      __attribute__((unused)) const char * func,

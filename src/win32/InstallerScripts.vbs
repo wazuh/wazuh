@@ -84,15 +84,18 @@ public function config()
 
                 not_replaced = True
                 formatted_list = vbCrLf
+                ' <server> inside <agent> since 5.x: <agent> takes no other
+                ' element name, so writing back the legacy <manager> would make the
+                ' agent reject its own configuration.
                 for i=0 to UBound(ip_list)
                     If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <manager>" & vbCrLf
+                        formatted_list = formatted_list & "    <server>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
-                        formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                        formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
                         if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </manager>"
+                            formatted_list = formatted_list & "    </server>"
                         Else
-                            formatted_list = formatted_list & "    </manager>" & vbCrLf
+                            formatted_list = formatted_list & "    </server>" & vbCrLf
                         End If
                     End If
                 next
@@ -101,7 +104,10 @@ public function config()
 
             If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
                 If InStr(strText, "<port>") > 0 Then
-                    strText = Replace(strText, "<port>1514</port>", "<port>" & WAZUH_MANAGER_PORT & "</port>")
+                    Set re = new regexp
+                    re.Pattern = "<port>.*</port>"
+                    re.Global = True
+                    strText = re.Replace(strText, "<port>" & WAZUH_MANAGER_PORT & "</port>")
                 End If
 
             End If
@@ -112,6 +118,11 @@ public function config()
                     re.Pattern = "<notify_time>.*</notify_time>"
                     re.Global = True
                     strText = re.Replace(strText, "<notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>")
+                Else
+                    ' The shipped configuration no longer carries the options it left at
+                    ' their default, so there is nothing to replace on a fresh install.
+                    ' Add the tag instead of dropping the property the user asked for.
+                    strText = Replace(strText, "  </agent>", "    <notify_time>" & WAZUH_KEEP_ALIVE_INTERVAL & "</notify_time>" & vbCrLf & "  </agent>")
                 End If
             End If
 
@@ -129,9 +140,9 @@ public function config()
             enrollment_list = "    <enrollment>" & vbCrLf
             enrollment_list = enrollment_list & "      <enabled>yes</enabled>" & vbCrLf
             enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
-            enrollment_list = enrollment_list & "  </client>" & vbCrLf
+            enrollment_list = enrollment_list & "  </agent>" & vbCrLf
 
-            strText = Replace(strText, "  </client>", enrollment_list)
+            strText = Replace(strText, "  </agent>", enrollment_list)
 
             If WAZUH_REGISTRATION_SERVER <> "" Then
                 strText = Replace(strText, "    </enrollment>", "      <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
@@ -221,7 +232,12 @@ public function config()
         Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
-        re.Pattern = "(</manager>)"
+        ' The shipped template uses <server> (the deprecated <manager> tag only
+        ' survives on an upgraded ossec.conf that predates that migration), so
+        ' this must anchor on either closing tag to keep inserting the profile
+        ' block right after the server/manager block on both fresh installs
+        ' and upgrades.
+        re.Pattern = "(</server>|</manager>)"
         re.Global = False
         strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)
     End If
@@ -319,12 +335,30 @@ public function config()
 End Function
 
 Private Function GetVersion()
-	Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
-	Set colItems = objWMIService.ExecQuery("Select * from Win32_OperatingSystem",,48)
+	Dim WshShell, majorVersion, currentVersion
+	Set WshShell = CreateObject("WScript.Shell")
 
-	For Each objItem in colItems
-		GetVersion = Split(objItem.Version,".")(0)
-	Next
+	On Error Resume Next
+
+	' Windows 10/11 and Server 2016+ expose the major version as a DWORD.
+	majorVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMajorVersionNumber")
+	If Err.Number = 0 And IsNumeric(majorVersion) Then
+		GetVersion = CStr(majorVersion)
+	Else
+		' Older systems: parse the "CurrentVersion" string value (e.g. "6.1", "6.3").
+		Err.Clear
+		currentVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentVersion")
+		If Err.Number = 0 And Len(currentVersion) > 0 Then
+			GetVersion = Split(currentVersion, ".")(0)
+		Else
+			' Last resort: don't abort the install if the version can't be read, and don't
+			' silently skip SetWazuhPermissions()'s ACL hardening either - every currently
+			' supported Windows version satisfies ">= 6", so assume one instead of "0".
+			GetVersion = "6"
+		End If
+	End If
+
+	On Error GoTo 0
 End Function
 
 Public Function CheckSvcRunning()

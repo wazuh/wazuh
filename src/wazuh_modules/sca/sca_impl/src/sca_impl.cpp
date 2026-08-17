@@ -376,10 +376,29 @@ void SecurityConfigurationAssessment::releaseResources()
 
     std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
 
+    // Release the sync manager first: it was constructed with a copy of m_dBSync (see the
+    // constructor), so it co-owns the DBSync handle. Resetting m_dBSync alone leaves that copy
+    // alive, ~SQLiteDBEngine never runs, and the standing write transaction on sca.db is never
+    // committed nor the connection closed -- so the file stays locked until the OS tears the
+    // process down and the next agent process fails with "database is locked" (issue #38069).
+    m_syncManager.reset();
+
     // Explicitly release DBSync before static destruction to avoid use-after-free
     // during shutdown when DBSyncImplementation singleton may be destroyed first.
+    // This must drop the last reference, otherwise the database is not closed here: every
+    // member holding a copy of m_dBSync has to be reset above (see releaseResources() in the
+    // header). It cannot be left to ~SecurityConfigurationAssessment, which never runs because
+    // SCA::~SCA releases the impl to avoid teardown races at process exit.
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
+    if (m_dBSync && m_dBSync.use_count() > 1)
+    {
+        LoggingHelper::getInstance().log(
+            LOG_WARNING,
+            "SCA database is still referenced by " + std::to_string(m_dBSync.use_count() - 1) +
+            " other owner(s); it will not be closed until the process exits.");
+    }
+
     m_dBSync.reset();
 
     // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
@@ -389,7 +408,9 @@ void SecurityConfigurationAssessment::releaseResources()
     // thread and the SCA run loop have already exited (see wm_sca_start teardown),
     // mirroring Syscollector::releaseResources(); the entry points still reachable from
     // other threads (wcom queries and sync responses, agent-info's in-process
-    // coordination queries) are excluded by the lock, which they take shared.
+    // coordination queries) are excluded by the lock, which they take shared -- except
+    // setSyncLimit(), which takes no lock because it runs on the module thread before the
+    // run loop starts (its only caller is wm_sca_start).
     m_spSyncProtocol.reset();
 }
 
@@ -453,8 +474,8 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
 // LCOV_EXCL_START
 
 // Sync protocol methods implementation
-void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
-                                                       std::chrono::seconds timeout, unsigned int retries, size_t maxEps, std::chrono::seconds integrityInterval)
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
+                                                       std::chrono::seconds integrityInterval)
 {
     auto logger_func = [](modules_log_level_t level, const std::string & msg)
     {
@@ -467,7 +488,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
             // Publish under the exclusive lock: wcom queries can arrive while the module
             // is still starting up, and they read the pointer under the shared lock.
             std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
-            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
@@ -572,6 +593,12 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             // Not a real failure: the sync was aborted because the module is stopping.
             // Report it as an expected event, not a WARNING.
             LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
+        }
+        else if (result.awaitingPrerequisite)
+        {
+            // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+            // most commonly right after enrollment/restart. Expected to clear on its own.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization deferred: " + result.failureReason);
         }
         else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
         {
@@ -836,6 +863,13 @@ int SecurityConfigurationAssessment::executeFlushSync()
     {
         // Not a real failure: the flush sync was aborted because the module is stopping.
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
+        return -1;
+    }
+    else if (result.awaitingPrerequisite)
+    {
+        // Not a real failure either: the manager hasn't synchronized this agent's groups yet,
+        // most commonly right after enrollment/restart. Expected to clear on its own.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason);
         return -1;
     }
     else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
@@ -1223,7 +1257,16 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
             LOG_DEBUG,
             "Retrieved " + std::to_string(checks.size()) + " synced checks from database for SCA " + syncReason);
 
-        m_spSyncProtocol->clearInMemoryData();
+        // Clear the manager's index before resending: a full-replace sync is now a
+        // DataClean followed by a DELTA sync of the fresh snapshot, never Mode::FULL (which
+        // used to make the manager unconditionally deleteByQuery over a byte-capped/truncated
+        // payload and could permanently drop whatever didn't fit in that one session).
+        if (!m_spSyncProtocol->notifyDataClean({SCA_SYNC_INDEX}))
+        {
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Failed to clear SCA index before " + syncReason + "; will retry later");
+            return {false, {}};
+        }
 
         for (const auto& check : checks)
         {
@@ -1291,7 +1334,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 const std::vector<unsigned char> hashResult = hash.hash();
                 std::string hashedId = Utils::asciiToHex(hashResult);
 
-                m_spSyncProtocol->persistDifferenceInMemory(
+                m_spSyncProtocol->persistDifference(
                     hashedId,
                     Operation::CREATE,
                     SCA_SYNC_INDEX,
@@ -1304,7 +1347,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
         {

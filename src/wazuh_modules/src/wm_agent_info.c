@@ -19,6 +19,7 @@
 
 #include "agent_sync_protocol_c_interface_types.h"
 #include "logging_helper.h"
+#include "module_query_errors.h"
 #include "mq_op.h"
 #include "rc.h"
 #include "sym_load.h"
@@ -67,9 +68,19 @@ agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
 agent_info_set_is_shutting_down_function_func agent_info_set_is_shutting_down_function_ptr = NULL;
 agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
-agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
 agent_info_set_query_handshake_function_func agent_info_set_query_handshake_function_ptr = NULL;
+
+// Durable task_id registry function pointers. Cleanup runs automatically from
+// within AgentInfoImpl::start()'s own loop -- no separate cleanup function
+// pointer/thread needed here anymore.
+agent_info_task_registry_init_func agent_info_task_registry_init_ptr = NULL;
+agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr = NULL;
+
+// Durable VD feed offset / pending-rescan function pointers (see agent_info.h).
+agent_info_vd_offset_observe_func agent_info_vd_offset_observe_ptr = NULL;
+agent_info_vd_offset_clear_pending_func agent_info_vd_offset_clear_pending_ptr = NULL;
+agent_info_vd_offset_get_state_func agent_info_vd_offset_get_state_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -84,6 +95,7 @@ void wm_agent_info_destroy(wm_agent_info_t* agent_info);
 cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info);
 int wm_agent_info_sync_message(const char* command, size_t command_len);
 void wm_agent_info_stop(void);
+size_t wm_agent_info_query(void* data, char* args, char** output);
 
 // Module context
 const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
@@ -92,7 +104,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
                                           .sync = (int (*)(const char*, size_t))wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
-                                          .query = NULL};
+                                          .query = wm_agent_info_query};
 
 // ==============================================================================
 // Static Helper Functions
@@ -183,6 +195,11 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
     }
 }
 
+// Durable task_id registry bounds are internal_options.conf tunables
+// (agent_info.max_entries/agent_info.ttl), read via getDefine_Int_default() in
+// wm_agent_info_read() -- not part of this module's ossec.conf configuration surface,
+// so there is no XML parsing for them here.
+
 // Logging callback function for agent-info module
 static void
 agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag)
@@ -211,12 +228,6 @@ static bool wm_agent_info_is_shutting_down(void)
 static int wm_agent_info_startmq(const char* key, short type, short attempts)
 {
     return StartMQPredicated(key, type, attempts, wm_agent_info_is_shutting_down);
-}
-
-static int
-wm_agent_info_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
-{
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 
 // Wrapper function to adapt wm_module_query signature to the expected callback type
@@ -287,18 +298,12 @@ extern size_t agcom_dispatch(char* command, char** output);
 // On Unix: connects to agcom socket (AG_LOCAL_SOCK)
 static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
                                                  size_t cluster_name_size,
-                                                 char* cluster_node,
-                                                 size_t cluster_node_size,
                                                  char* agent_groups,
                                                  size_t agent_groups_size)
 {
     if (cluster_name && cluster_name_size > 0)
     {
         cluster_name[0] = '\0';
-    }
-    if (cluster_node && cluster_node_size > 0)
-    {
-        cluster_node[0] = '\0';
     }
     if (agent_groups && agent_groups_size > 0)
     {
@@ -371,16 +376,6 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
         }
     }
 
-    cJSON* node = cJSON_GetObjectItem(root, "cluster_node");
-    if (node && cJSON_IsString(node) && node->valuestring)
-    {
-        if (cluster_node && cluster_node_size > 0)
-        {
-            strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
-            cluster_node[cluster_node_size - 1] = '\0';
-        }
-    }
-
     cJSON* groups = cJSON_GetObjectItem(root, "agent_groups");
     if (groups && cJSON_IsString(groups) && groups->valuestring)
     {
@@ -393,9 +388,8 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
 
     cJSON_Delete(root);
 
-    mdebug1("Received handshake data from agentd: cluster_name=%s, cluster_node=%s, agent_groups=%s",
+    mdebug1("Received handshake data from agentd: cluster_name=%s, agent_groups=%s",
             cluster_name ? cluster_name : "",
-            cluster_node ? cluster_node : "",
             agent_groups ? agent_groups : "");
     return true;
 }
@@ -477,6 +471,16 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->sync.sync_retries = 3;
     agent_info->sync.sync_max_eps = 50;
 
+    // Durable task_id registry bounds: not part of this module's ossec.conf configuration
+    // surface, so these are internal_options.conf tunables (agent_info.max_entries/
+    // agent_info.ttl) rather than an ossec.conf <task_registry> block. Defaults: 4096
+    // entries, remembered for 24h (matching remote_upgrade's own TTL, the longest-lived of
+    // the four /control task types, since the registry must outlast whichever task type
+    // needs the longest at-least-once redelivery window). Cleanup runs on the module's own
+    // <interval> cycle (AgentInfoImpl::start()'s loop) -- no separate cadence to configure.
+    agent_info->task_registry.max_entries = (uint32_t)getDefine_Int_default("agent_info", "max_entries", 1, 1000000, 4096);
+    agent_info->task_registry.ttl_s = (uint32_t)getDefine_Int_default("agent_info", "ttl", 1, 31536000, 86400);
+
     module->context = &WM_AGENT_INFO_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = agent_info;
@@ -544,6 +548,232 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     }
 
     return 0;
+}
+
+// Builds a {"error":<code>,"message":"..."} response, the same envelope
+// SCA/Syscollector's own query handlers use (module_query_errors.h) so
+// agent-info's coordination-facing callers (queryModuleWithRetry,
+// task_registry_client.c) parse every module's query response the same way.
+static void wm_agent_info_query_error(char** output, int error_code, const char* message)
+{
+    cJSON* response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", error_code);
+    cJSON_AddStringToObject(response, "message", message);
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+}
+
+// Query handler: the same generic per-module request/response path
+// SCA/Syscollector already use for their own query handlers (wm_find_module +
+// module->context->query(), src/wazuh_modules/src/wmodules.c's
+// wm_module_query()/wm_module_query_json_ex()) -- no new socket. On
+// Linux/macOS it is reached over the existing wmcom request socket
+// (WM_LOCAL_SOCK: "query agent-info {...}" -> wmcom_dispatch() ->
+// wm_module_query(), which strips "agent-info " and calls this with `args`
+// holding exactly the remaining JSON); on Windows, task_registry_client.c
+// calls wm_module_query_json_ex("agent-info", ..., ...) directly in-process,
+// which reaches this the same way. Supports:
+// {"command":"task_check_and_record","task_id":"..."} ->
+//   {"error":0,"data":{"new":true|false}}.
+// {"command":"vd_offset_observe","offset":N} ->
+//   {"error":0,"data":{"changed":bool,"pending":bool,"pending_offset":N}}.
+// {"command":"vd_offset_clear_pending","offset":N} ->
+//   {"error":0,"data":{"cleared":true|false}}.
+// {"command":"vd_offset_get_state"} ->
+//   {"error":0,"data":{"has_offset":bool,"offset":N,"pending":bool,"pending_offset":N}}.
+size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char** output)
+{
+    cJSON* request = args ? cJSON_Parse(args) : NULL;
+
+    if (!request)
+    {
+        wm_agent_info_query_error(output, MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        return strlen(*output);
+    }
+
+    cJSON* command_item = cJSON_GetObjectItem(request, "command");
+
+    if (!command_item || !cJSON_IsString(command_item))
+    {
+        cJSON_Delete(request);
+        wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "task_check_and_record") == 0)
+    {
+        cJSON* task_id_item = cJSON_GetObjectItem(request, "task_id");
+
+        if (!task_id_item || !cJSON_IsString(task_id_item) || !task_id_item->valuestring ||
+            !*task_id_item->valuestring)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_task_check_and_record_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        int result = agent_info_task_check_and_record_ptr(task_id_item->valuestring);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "new", result == 1);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_observe") == 0)
+    {
+        cJSON* offset_item = cJSON_GetObjectItem(request, "offset");
+
+        if (!offset_item || !cJSON_IsNumber(offset_item))
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_vd_offset_observe_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        uint64_t offset = (uint64_t)offset_item->valuedouble;
+        int out_changed = 0;
+        int out_pending = 0;
+        uint64_t out_pending_offset = 0;
+        int result = agent_info_vd_offset_observe_ptr(offset, &out_changed, &out_pending, &out_pending_offset);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "changed", out_changed != 0);
+        cJSON_AddBoolToObject(response_data, "pending", out_pending != 0);
+        cJSON_AddNumberToObject(response_data, "pending_offset", (double)out_pending_offset);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_clear_pending") == 0)
+    {
+        cJSON* offset_item = cJSON_GetObjectItem(request, "offset");
+
+        if (!offset_item || !cJSON_IsNumber(offset_item))
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_vd_offset_clear_pending_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        uint64_t offset = (uint64_t)offset_item->valuedouble;
+        int result = agent_info_vd_offset_clear_pending_ptr(offset);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "cleared", result == 1);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "vd_offset_get_state") == 0)
+    {
+        cJSON_Delete(request);
+
+        if (!agent_info_vd_offset_get_state_ptr)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        int out_has_offset = 0;
+        uint64_t out_offset = 0;
+        int out_pending = 0;
+        uint64_t out_pending_offset = 0;
+        int result = agent_info_vd_offset_get_state_ptr(&out_has_offset, &out_offset, &out_pending, &out_pending_offset);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "has_offset", out_has_offset != 0);
+        cJSON_AddNumberToObject(response_data, "offset", (double)out_offset);
+        cJSON_AddBoolToObject(response_data, "pending", out_pending != 0);
+        cJSON_AddNumberToObject(response_data, "pending_offset", (double)out_pending_offset);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    /* Echo the unrecognized command back in "data.command", matching
+     * SCA/Syscollector's own query() unknown-command responses
+     * (sca_impl.cpp/syscollectorImp.cpp: response["data"]["command"] =
+     * command) -- wm_agent_info_query_error() alone (used for every other
+     * error path above) never adds a "data" object, so this one path is
+     * built by hand instead. */
+    char unknown_command[128];
+    strncpy(unknown_command, command_item->valuestring, sizeof(unknown_command) - 1);
+    unknown_command[sizeof(unknown_command) - 1] = '\0';
+    cJSON_Delete(request);
+
+    cJSON* response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", MQ_ERR_UNKNOWN_COMMAND);
+    cJSON_AddStringToObject(response, "message", MQ_MSG_UNKNOWN_COMMAND);
+    cJSON* response_data = cJSON_CreateObject();
+    cJSON_AddStringToObject(response_data, "command", unknown_command);
+    cJSON_AddItemToObject(response, "data", response_data);
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+    return strlen(*output);
 }
 
 // Stop function
@@ -635,10 +865,20 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_is_shutting_down_function_ptr =
             so_get_function_sym(agent_info_module, "agent_info_set_is_shutting_down_function");
         agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
-        agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
         agent_info_set_query_handshake_function_ptr =
             so_get_function_sym(agent_info_module, "agent_info_set_query_handshake_function");
+
+        // Durable task_id registry function pointers
+        agent_info_task_registry_init_ptr = so_get_function_sym(agent_info_module, "agent_info_task_registry_init");
+        agent_info_task_check_and_record_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_task_check_and_record");
+
+        // Durable VD feed offset / pending-rescan function pointers
+        agent_info_vd_offset_observe_ptr = so_get_function_sym(agent_info_module, "agent_info_vd_offset_observe");
+        agent_info_vd_offset_clear_pending_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_vd_offset_clear_pending");
+        agent_info_vd_offset_get_state_ptr = so_get_function_sym(agent_info_module, "agent_info_vd_offset_get_state");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -669,7 +909,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         }
 
         // Set the handshake query function so agent-info can re-query agentd for fresh
-        // cluster_name/cluster_node/agent_groups on every metadata population cycle
+        // cluster_name/agent_groups on every metadata population cycle
         if (agent_info_set_query_handshake_function_ptr)
         {
             agent_info_set_query_handshake_function_ptr(wm_agent_info_query_agentd_handshake);
@@ -683,13 +923,26 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     if (agent_info_init_sync_protocol_ptr)
     {
-        MQ_Functions mq_funcs = {.start = wm_agent_info_startmq, .send_binary = wm_agent_info_send_binary_msg};
-        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, &mq_funcs);
+        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME);
     }
 
-    // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom
+    // Durable task_id registry: initialize before the handshake wait/coordinator
+    // loop below, so it is ready the moment agentd's first /control dedup query can arrive.
+    // Periodic cleanup runs automatically from within AgentInfoImpl::start()'s own loop
+    // -- no separate thread spawned here anymore.
+    if (agent_info_task_registry_init_ptr)
+    {
+        agent_info_task_registry_init_ptr(agent_info->task_registry.max_entries,
+                                          agent_info->task_registry.ttl_s);
+    }
+    else
+    {
+        merror("agent_info_task_registry_init function not available; /control task dedup will "
+               "fail closed (every task treated as non-dispatchable) until this is fixed.");
+    }
+
+    // Query agentd for handshake data (cluster_name, agent_groups) via agcom
     char cluster_name[256] = {0};
-    char cluster_node[256] = {0};
     char agent_groups[OS_SIZE_65536] = {0};
     bool handshake_success = false;
 
@@ -697,8 +950,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     {
         if (wm_agent_info_query_agentd_handshake(cluster_name,
                                                  sizeof(cluster_name),
-                                                 cluster_node,
-                                                 sizeof(cluster_node),
                                                  agent_groups,
                                                  sizeof(agent_groups)))
         {
@@ -707,11 +958,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
             {
                 agent_info_set_cluster_name_ptr(cluster_name);
                 mdebug1("Cluster name received from agentd: %s", cluster_name);
-            }
-            if (cluster_node[0] != '\0' && agent_info_set_cluster_node_ptr)
-            {
-                agent_info_set_cluster_node_ptr(cluster_node);
-                mdebug1("Cluster node received from agentd: %s", cluster_node);
             }
             if (agent_groups[0] != '\0' && agent_info_set_agent_groups_ptr)
             {
@@ -793,6 +1039,15 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
         cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
 
         cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
+
+        // Durable task_id registry values -- internal_options.conf tunables
+        // (agent_info.max_entries/agent_info.ttl), not ossec.conf, but still worth
+        // surfacing in the config dump for diagnostics.
+        cJSON* task_registry = cJSON_CreateObject();
+        cJSON_AddNumberToObject(task_registry, "max_entries", agent_info->task_registry.max_entries);
+        cJSON_AddNumberToObject(task_registry, "ttl", agent_info->task_registry.ttl_s);
+
+        cJSON_AddItemToObject(wm_agent_info, "task_registry", task_registry);
     }
 
     cJSON_AddItemToObject(root, "agent-info", wm_agent_info);

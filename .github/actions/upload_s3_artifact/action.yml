@@ -8,8 +8,8 @@ description: >
   AWS credentials are configured by the action itself via OIDC, so the calling
   job only needs `permissions: id-token: write`. Pass the region via the
   `aws_region` input (set it to the CI_AWS_REGION secret at the call site).
-  Requires `7z` and the AWS CLI on the runner (present on the CodeBuild and
-  GitHub-hosted windows-2025 images used by these workflows).
+  Requires an archiver (`7z`, `zip`, or python3 as a fallback) and the AWS CLI
+  on the runner; all runner images used by these workflows provide them.
 
 inputs:
   name:

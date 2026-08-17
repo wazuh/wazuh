@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Agent Upgrading
+ * Wazuh Module for Task Manager
  * Copyright (C) 2015, Wazuh Inc.
  * October 19, 2020.
  *
@@ -8,81 +8,59 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef WM_AGENT_UPGRADE_TASKS_H
-#define WM_AGENT_UPGRADE_TASKS_H
+#ifndef WM_TASK_MANAGER_TASKS_H
+#define WM_TASK_MANAGER_TASKS_H
 
 #include "wm_task_manager.h"
 
 /**
- * Initialization of wm_task_manager_upgrade
- * @param return an initialized wm_task_manager_upgrade structure
- * */
-wm_task_manager_upgrade* wm_task_manager_init_upgrade_parameters();
+ * Generate deterministic task ID from source information
+ * All managers generate IDENTICAL ID from same inputs
+ *
+ * @param source_id Optional source ID (AR document ID, API request ID, etc.)
+ * @param agent_id Agent identifier
+ * @param task_type Task type string ("active_response", "remote_upgrade", etc.)
+ * @param create_time Unix timestamp (second precision)
+ * @return Deterministic task ID (UUID format string), caller must free
+ */
+char* wm_task_manager_generate_task_id(
+    const char *source_id,
+    const char *agent_id,
+    const char *task_type,
+    time_t create_time
+);
 
 /**
- * Initialization of wm_task_manager_upgrade_get_status
- * @param return an initialized wm_task_manager_upgrade_get_status structure
- * */
-wm_task_manager_upgrade_get_status* wm_task_manager_init_upgrade_get_status_parameters();
+ * Initialize task cache
+ * Cache only stores "no pending tasks" states - actual tasks are never cached
+ */
+void wm_task_cache_init(void);
 
 /**
- * Initialization of wm_task_manager_upgrade_update_status
- * @param return an initialized wm_task_manager_upgrade_update_status structure
- * */
-wm_task_manager_upgrade_update_status* wm_task_manager_init_upgrade_update_status_parameters();
+ * Get tasks from cache
+ * @param agent_id Agent identifier
+ * @return Empty array if agent has no pending tasks (cached state), or NULL if cache miss
+ */
+cJSON* wm_task_cache_get(const char *agent_id);
 
 /**
- * Initialization of wm_task_manager_upgrade_result
- * @param return an initialized wm_task_manager_upgrade_result structure
- * */
-wm_task_manager_upgrade_result* wm_task_manager_init_upgrade_result_parameters();
+ * Set tasks in cache
+ * Only caches empty task arrays (no pending tasks state)
+ * @param agent_id Agent identifier
+ * @param tasks Tasks array - only empty arrays are cached
+ */
+void wm_task_cache_set(const char *agent_id, cJSON *tasks);
 
 /**
- * Initialization of wm_task_manager_upgrade_cancel_tasks
- * @param return an initialized wm_task_manager_upgrade_cancel_tasks structure
- * */
-wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_parameters();
+ * Invalidate cache entry for an agent
+ * @param agent_id Agent identifier
+ */
+void wm_task_cache_invalidate(const char *agent_id);
 
 /**
- * Initialization of wm_task_manager_task
- * @param return an initialized wm_task_manager_task structure
- * */
-wm_task_manager_task* wm_task_manager_init_task();
-
-/**
- * Deallocate wm_task_manager_upgrade structure
- * @param parameters wm_task_manager_upgrade structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_parameters(wm_task_manager_upgrade* parameters);
-
-/**
- * Deallocate wm_task_manager_upgrade_get_status structure
- * @param parameters wm_task_manager_upgrade_get_status structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_get_status_parameters(wm_task_manager_upgrade_get_status* parameters);
-
-/**
- * Deallocate wm_task_manager_upgrade_update_status structure
- * @param parameters wm_task_manager_upgrade_update_status structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_update_status_parameters(wm_task_manager_upgrade_update_status* parameters);
-
-/**
- * Deallocate wm_task_manager_upgrade_result structure
- * @param parameters wm_task_manager_upgrade_result structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_result_parameters(wm_task_manager_upgrade_result* parameters);
-
-/**
- * Deallocate wm_task_manager_upgrade_cancel_tasks structure
- * @param parameters wm_task_manager_upgrade_cancel_tasks structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrade_cancel_tasks* parameters);
-
-/**
- * Deallocate wm_task_manager_task structure
- * @param task wm_task_manager_task structure to be deallocated
- * */
-void wm_task_manager_free_task(wm_task_manager_task* task);
+ * Destroy task cache and free all resources
+ * Should be called at shutdown or in test cleanup
+ */
+void wm_task_cache_destroy(void);
 
 #endif

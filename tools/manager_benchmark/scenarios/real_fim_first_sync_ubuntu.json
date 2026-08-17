@@ -1,0 +1,20 @@
+{
+  "name": "real_fim_first_sync_ubuntu",
+  "description": "FIM first scan replaying a real captured Ubuntu FIM session (sample_payloads/dumps/): a full_resync whose delta half sends the recorded documents verbatim, so the wire bytes match production shapes. Module, option and indices come from the dump.",
+  "mode": "uds",
+  "defaults": {
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "fim": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/fim_first_sync_ubuntu.json" },
+      { "kind": "delta", "dump": "../sample_payloads/dumps/fim_delta_create_ubuntu.json",
+        "repeat_count": 10, "repeat_delay": "2s", "initial_delay": "3s" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 8, "first_id": 40000, "lanes": ["fim"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "45s" }
+}

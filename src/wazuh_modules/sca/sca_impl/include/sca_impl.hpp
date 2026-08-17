@@ -69,6 +69,10 @@ class SecurityConfigurationAssessment
         /// @brief Releases owned resources after the sync worker thread has exited.
         /// Must be called only after all threads that may use those resources
         /// (in particular the sync worker thread) have been joined.
+        /// @note Every member that holds a copy of m_dBSync must be reset here (currently
+        /// m_syncManager). Missing one keeps the DBSync refcount above zero, so the SQLite
+        /// connection to sca.db is neither committed nor closed and the database stays locked
+        /// for the next process.
         void releaseResources();
 
         /// @copydoc IModule::Name
@@ -93,14 +97,11 @@ class SecurityConfigurationAssessment
         /// @brief Initialize the sync protocol
         /// @param moduleName Name of the module
         /// @param syncDbPath Path to the sync database
-        /// @param mqFuncs Message queue functions
-        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Timeout for synchronization responses
         /// @param retries Number of retries for synchronization
-        /// @param maxEps Maximum events per second
         /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay, std::chrono::seconds timeout, unsigned int retries,
-                              size_t maxEps, std::chrono::seconds integrityInterval);
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
+                              std::chrono::seconds integrityInterval);
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
@@ -268,6 +269,8 @@ class SecurityConfigurationAssessment
         std::shared_ptr<IDBSync> m_dBSync;
 
         /// @brief SCA sync manager (document limits)
+        /// @note Co-owns m_dBSync (it is constructed with a copy of it), so it must be reset in
+        /// releaseResources() for the sca.db connection to actually be closed.
         std::shared_ptr<SCASyncManager> m_syncManager;
 
         /// @brief Function for pushing stateless event messages

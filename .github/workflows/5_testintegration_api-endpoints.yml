@@ -28,6 +28,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   api_endpoints_integration_tests_setup:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -151,7 +154,7 @@ jobs:
       - name: Calculate checksum for environment files
         id: calculate_checksum
         run: |
-          checksum=$(find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+          checksum=$( { find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum; echo "${{ github.sha }}"; } | sha256sum | awk '{print $1}')
           echo "Checksum: $checksum"
           echo "checksum=$checksum" >> $GITHUB_OUTPUT
 
@@ -186,6 +189,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     name: Run smoke test for API endpoints
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -218,6 +224,16 @@ jobs:
           cd api/test/integration
           pytest --nobuild -vvv _test_smoke.tavern.yaml
 
+      - name: Upload manager/cluster/agent logs on failure
+        if: failure()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: integration-logs-smoke-test-${{ github.run_id }}-${{ github.run_attempt }}
+          path: api/test/integration/_test_results/logs/
+
   api_endpoints_integration_tests_execution:
     needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -228,6 +244,9 @@ jobs:
       matrix:
         test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix) }}
     name: Run integration tests for API endpoints
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -259,3 +278,13 @@ jobs:
         run: |
           cd api/test/integration
           pytest --nobuild -vvv --reruns 3 --reruns-delay 5 ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
+
+      - name: Upload manager/cluster/agent logs on failure
+        if: failure()
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          name: integration-logs-${{ matrix.test_file }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: api/test/integration/_test_results/logs/

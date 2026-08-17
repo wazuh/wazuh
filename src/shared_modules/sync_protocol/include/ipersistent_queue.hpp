@@ -11,6 +11,7 @@
 
 #include "agent_sync_protocol_c_interface_types.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <optional>
@@ -28,7 +29,6 @@ enum class Operation : int
 /// @brief Defines the type of synchronization mode.
 enum class Mode : int
 {
-    FULL  = MODE_FULL,               ///< Full synchronization mode.
     DELTA = MODE_DELTA,              ///< Delta synchronization mode.
     CHECK = MODE_CHECK,              ///< Integrity check mode.
     METADATA_DELTA = MODE_METADATA_DELTA, ///< Metadata delta synchronization mode.
@@ -100,9 +100,10 @@ class IPersistentQueue
                             uint64_t version,
                             bool isDataContext = false) = 0;
 
-        /// @brief Fetches a batch of pending messages and marks them for synchronization.
+        /// @brief Fetches a batch of pending messages up to a byte budget and marks them for synchronization.
+        /// @param maxBytes Maximum estimated payload size to collect. 0 means no byte cap.
         /// @return A vector of messages now marked as SYNCING.
-        virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
+        virtual std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) = 0;
 
         /// @brief Fetches pending DataValue items without marking them for sync.
         /// @param onlyDataValues If true, only returns items with is_data_context=false

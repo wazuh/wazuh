@@ -161,6 +161,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
 
     auto it { jsInput.find("options") };
     auto returnOldData { false };
+    auto updateOnly { false };
     nlohmann::json ignoredColumns { };
 
     if (jsInput.end() != it)
@@ -177,6 +178,13 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
         if (it->end() != itIgnoredFields)
         {
             ignoredColumns = itIgnoredFields->is_array() ? itIgnoredFields.value() : ignoredColumns;
+        }
+
+        auto itUpdateOnly { it->find("update_only") };
+
+        if (it->end() != itUpdateOnly)
+        {
+            updateOnly = itUpdateOnly->is_boolean() ? itUpdateOnly.value().get<bool>() : updateOnly;
         }
     }
 
@@ -260,7 +268,10 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         }
                     }
                 }
-                else
+                // diffExist is false for a missing row, so the upsert would insert `entry`.
+                // Callers passing only some columns must not do that: the omitted ones may
+                // be NOT NULL. update_only makes the absent row a no-op.
+                else if (!updateOnly)
                 {
                     insertElement(table, m_tableFields[table], entry,
                                   [&]()
@@ -1534,14 +1545,27 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
         {
             auto haveDiffOnNonIgnored
             {
-                [&ignoredColumns, primaryKeyList](const nlohmann::json & rowToBeUpdated) -> bool
+                [&ignoredColumns, primaryKeyList, &data](const nlohmann::json & rowToBeUpdated) -> bool
                 {
                     bool haveDiff { false };
 
                     for (const auto& fieldToBeUpdated : rowToBeUpdated.items())
                     {
-                        if (std::find(ignoredColumns.begin(), ignoredColumns.end(),
-                                      fieldToBeUpdated.key()) == ignoredColumns.end())
+                        // "version"/"sync" are DB-managed bookkeeping fields normally always present
+                        // in oldData/updatedData regardless of whether any real column changed, so
+                        // they must be excluded here too or the ignore list can never suppress a diff.
+                        // But if the caller's own data explicitly set one of them (e.g. the
+                        // syscollector set_version command rewriting only "version"), that's a real,
+                        // intentional change and must still count.
+                        const bool isBookkeepingOnly
+                        {
+                            (fieldToBeUpdated.key() == "version" || fieldToBeUpdated.key() == "sync")
+                            && data.find(fieldToBeUpdated.key()) == data.end()
+                        };
+
+                        if (!isBookkeepingOnly
+                                && std::find(ignoredColumns.begin(), ignoredColumns.end(),
+                                             fieldToBeUpdated.key()) == ignoredColumns.end())
                         {
                             if (std::find(primaryKeyList.begin(), primaryKeyList.end(),
                                           fieldToBeUpdated.key()) == primaryKeyList.end())

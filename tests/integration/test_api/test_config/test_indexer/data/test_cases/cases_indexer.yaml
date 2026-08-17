@@ -8,7 +8,9 @@
     request_body: >
       <wazuh_config>
         <remote>
-          <port>1514</port>
+          <legacy>
+            <port>1514</port>
+          </legacy>
         </remote>
       </wazuh_config>
 
@@ -22,7 +24,9 @@
     request_body: >
       <wazuh_config>
         <remote>
-          <port>1514</port>
+          <legacy>
+            <port>1514</port>
+          </legacy>
         </remote>
       </wazuh_config>
 
@@ -36,6 +40,8 @@
     request_body: >
       <wazuh_config>
         <remote>
-          <port>1514</port>
+          <legacy>
+            <port>1514</port>
+          </legacy>
         </remote>
       </wazuh_config>

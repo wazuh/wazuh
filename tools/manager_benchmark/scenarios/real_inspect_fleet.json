@@ -1,0 +1,54 @@
+{
+  "name": "real_inspect_fleet",
+  "description": "Dashboard-inspection showcase, not a measurement: one Windows agent and one Linux agent replaying their own REAL first-connection dumps at FULL fidelity (same corpus as real_first_connect -- 31,950 documents across FIM, syscollector, SCA and VD) plus a basic syslog engine lane, so every real module lands in the indexer at once. The engine lane's own repeat_count keeps that one lane going well after the inventory sessions finish -- pacing.repeat_until stays \"0\" so the heavy FIM/SCA/syscollector full_resync dumps (each a Cleans + Delta pair) send exactly ONCE and are never wiped-and-replayed. Since an agent's keepalive loop only stops once ALL of its lanes finish, the still-running engine lane keeps both agents connected and sending /control notify keepalives for several extra minutes -- time to go look at wazuh-states-* in the indexer dashboard while the fleet still shows as connected. Run with run_benchmark.sh --keep-agents so the documents survive after the process exits too.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "fim_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_fim_first_sync.json.zst" }
+    ],
+    "syscollector_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_syscollector_sync.json.zst" }
+    ],
+    "sca_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/windows_sca_full.json.zst" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/windows_vd_first.json.zst" }
+    ],
+    "fim_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_fim_first_sync.json.zst" }
+    ],
+    "syscollector_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/debian_syscollector_sync.json.zst" }
+    ],
+    "sca_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/first_connect/ubuntu_sca_full.json.zst" }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/first_connect/debian_vd_first.json.zst" }
+    ],
+    "engine": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
+        "events_per_second": 20, "events_per_batch": 50, "repeat_count": 5, "repeat_delay": "30s" }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 1, "first_id": 47000,
+      "lanes": ["fim_windows", "syscollector_windows", "sca_windows", "vd_windows", "engine"],
+      "start": { "osname": "Microsoft Windows 11 Enterprise Evaluation", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.26200", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 1, "first_id": 47100,
+      "lanes": ["fim_linux", "syscollector_linux", "sca_linux", "vd_linux", "engine"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "120s" },
+  "expected": {
+    "sessions": { "ok": { "eq": 14 }, "s5xx": { "eq": 0 }, "documents_sent": { "eq": 31950 } },
+    "stateless": { "s202": { "gte": 1 } },
+    "control": { "startup_err": { "eq": 0 } },
+    "transport_errors": { "eq": 0 }
+  }
+}

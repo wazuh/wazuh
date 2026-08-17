@@ -83,21 +83,6 @@
       ]
     },
     {
-      "name": "inventory_sync",
-      "suite_type": "inventory_sync",
-      "timeout_minutes": 120,
-      "paths": [
-        ".github/workflows/5_builderpackage_manager-multiples.yml",
-        ".github/workflows/5_testintegration_inventory-sync.yml",
-        ".github/test_modules_manager.json",
-        ".github/actions/reinstall_cmake/**",
-        "src/wazuh_modules/inventory_sync/**",
-        "src/shared_modules/utils/flatbuffers/**",
-        "src/shared_modules/indexer_connector/**",
-        "src/Makefile"
-      ]
-    },
-    {
       "name": "authd-tier-0-1",
       "suite_type": "manager_install",
       "pytest_target": "test_authd/",

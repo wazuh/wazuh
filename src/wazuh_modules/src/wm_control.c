@@ -9,18 +9,41 @@
  * Foundation.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #if defined(__linux__) || defined(__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 
 #include "wm_control.h"
 #include <cJSON.h>
 #include "file_op.h"
 #include "os_net.h"
+#include <poll.h>
+#include <stdint.h>
+#include <sys/wait.h>
+
+#define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
+#define MANAGER_SERVICE_CONTROL_STATUS_FD 3
+#define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
 
 static void *wm_control_main();
 static void wm_control_destroy();
 static void wm_control_stop();
 cJSON *wm_control_dump();
 static void *process_control();
+
+#if !defined(CLIENT) && defined(__linux__)
+static void *wm_control_reap_service_control(void *data) {
+    const pid_t pid = (pid_t)(intptr_t)data;
+
+    int status;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    }
+
+    return NULL;
+}
+#endif
 
 const wm_context WM_CONTROL_CONTEXT = {
     .name = "control",
@@ -186,6 +209,63 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
         return strlen(*output);
     }
 #else
+#if !defined(CLIENT) && defined(__linux__)
+    (void)service;
+    int status_pipe[2];
+    if (pipe(status_pipe) < 0) {
+        mterror(WM_CONTROL_LOGTAG, "Cannot create service control status pipe for %s: %s (%d)", action, strerror(errno), errno);
+        os_strdup("err Cannot create service control pipe", *output);
+        return strlen(*output);
+    }
+
+    const pid_t pid = fork();
+    if (pid < 0) {
+        close(status_pipe[0]);
+        close(status_pipe[1]);
+        mterror(WM_CONTROL_LOGTAG, "Cannot fork service control for %s: %s (%d)", action, strerror(errno), errno);
+        os_strdup("err Cannot fork", *output);
+        return strlen(*output);
+    }
+
+    if (pid == 0) {
+        close(status_pipe[0]);
+        if (status_pipe[1] != MANAGER_SERVICE_CONTROL_STATUS_FD) {
+            if (dup2(status_pipe[1], MANAGER_SERVICE_CONTROL_STATUS_FD) < 0) {
+                _exit(EXIT_FAILURE);
+            }
+            close(status_pipe[1]);
+        }
+
+        execl(MANAGER_SERVICE_CONTROL_BIN, MANAGER_SERVICE_CONTROL_BIN, action, NULL);
+        _exit(EXIT_FAILURE);
+    }
+
+    close(status_pipe[1]);
+    struct pollfd service_control_status = {.fd = status_pipe[0], .events = POLLIN | POLLHUP};
+    const int poll_result = poll(&service_control_status, 1, MANAGER_SERVICE_CONTROL_TIMEOUT_MS);
+    char accepted = '\0';
+    const ssize_t length = poll_result > 0 ? read(status_pipe[0], &accepted, sizeof(accepted)) : -1;
+    close(status_pipe[0]);
+
+    if (length == 1 && accepted == '1') {
+        os_strdup("ok accepted", *output);
+        if (!CreateThread(wm_control_reap_service_control, (void *)(intptr_t)pid)) {
+            mtwarn(WM_CONTROL_LOGTAG, "Cannot create service control reaper thread for PID '%d'", pid);
+            int status;
+            waitpid(pid, &status, WNOHANG);
+        }
+    } else {
+        int status;
+        if (poll_result <= 0) {
+            kill(pid, SIGKILL);
+        }
+        waitpid(pid, &status, 0);
+        mterror(WM_CONTROL_LOGTAG, "Privileged service control rejected or could not execute '%s'", action);
+        os_strdup("err Service control rejected action", *output);
+    }
+
+    return strlen(*output);
+#else
     bool use_systemd = wm_control_check_systemd();
     const char *control_bin = wm_control_get_bin();
     char *exec_cmd[4] = {NULL};
@@ -226,13 +306,20 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
             return strlen(*output);
     }
 #endif
+#endif
 }
 
 size_t wm_control_dispatch(char *command, char **output) {
     char *args = strchr(command, ' ');
     if (args) {
         *args = '\0';
+#ifndef CLIENT
+        mtwarn(WM_CONTROL_LOGTAG, "Unexpected arguments for command: '%s'", command);
+        os_strdup("err Unexpected arguments", *output);
+        return strlen(*output);
+#else
         args++;
+#endif
     }
 
     mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
@@ -287,6 +374,17 @@ static void *process_control() {
             }
             continue;
         }
+
+#if !defined(CLIENT) && defined(SO_PEERCRED)
+        struct ucred credentials;
+        socklen_t credentials_size = sizeof(credentials);
+        if (getsockopt(peer, SOL_SOCKET, SO_PEERCRED, &credentials, &credentials_size) < 0 ||
+            (credentials.uid != 0 && credentials.uid != getuid())) {
+            mtwarn(WM_CONTROL_LOGTAG, "Rejected unauthorized control socket peer.");
+            close(peer);
+            continue;
+        }
+#endif
 
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 

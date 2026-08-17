@@ -17,7 +17,6 @@ from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
 from wazuh.core import cluster as metadata, common, exception, utils
-from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
@@ -1176,11 +1175,8 @@ class Master(server.AbstractServer):
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
-        # Get active agents by node and format last keep alive date format
+        # Format last keep alive date format
         for node_name in workers_info.keys():
-            active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True).get('totalItems', 0)
-            workers_info[node_name]["info"]["n_active_agents"] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']

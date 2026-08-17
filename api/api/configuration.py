@@ -18,7 +18,7 @@ from jsonschema import validate, ValidationError
 
 import wazuh.core.utils as core_utils
 from api.api_exception import APIError
-from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
+from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, CERTS_PATH
 from api.validator import api_config_schema, security_config_schema
 
 # Fields that must preserve case sensitivity when converting to lowercase
@@ -40,10 +40,10 @@ default_api_configuration = {
     },
     "https": {
         "enabled": True,
-        "key": "manager.key",
-        "cert": "manager.crt",
+        "key": "apid-key.pem",
+        "cert": "apid.pem",
         "use_ca": False,
-        "ca": "ca.crt",
+        "ca": "root-ca.pem",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -171,7 +171,7 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
 
 def generate_private_key(private_key_path: str, public_exponent: int = 65537,
                          key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'CONFIG_PATH/ssl/manager.key'.
+    """Generate a private key in 'etc/certs/apid-key.pem'.
 
     Parameters
     ----------
@@ -198,14 +198,14 @@ def generate_private_key(private_key_path: str, public_exponent: int = 65537,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         ))
-    os.chmod(private_key_path, 0o400)
+    os.chmod(private_key_path, 0o640)
 
     return key
 
 
 def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
-    'CONFIG_PATH/ssl/manager.crt'.
+    'etc/certs/apid.pem'.
 
     Parameters
     ----------
@@ -244,7 +244,7 @@ def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate
     # Write our certificate out to disk.
     with open(certificate_path, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
-    os.chmod(certificate_path, 0o400)
+    os.chmod(certificate_path, 0o640)
 
 
 def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = None) -> Dict:
@@ -282,7 +282,7 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
                         conf[k] = False
 
     if default_conf is None:
-        default_conf = default_api_configuration
+        default_conf = copy.deepcopy(default_api_configuration)
 
     if config_file and os.path.exists(config_file):
         try:
@@ -305,7 +305,7 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
         configuration = fill_dict(default_conf, configuration, schema)
 
     # Append Wazuh prefixes to all relative paths in configuration
-    append_wazuh_prefixes(configuration, {API_SSL_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
+    append_wazuh_prefixes(configuration, {CERTS_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
 
     return configuration
 

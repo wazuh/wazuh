@@ -77,11 +77,6 @@ cJSON * __wrap_cJSON_CreateObject(void) {
 }
 #endif
 
-cJSON * __wrap_cJSON_CreateNumber(double num) {
-    check_expected(num);
-    return mock_type(cJSON *);
-}
-
 cJSON * __wrap_cJSON_CreateString(const char *string) {
     check_expected(string);
     return mock_type(cJSON *);
@@ -99,18 +94,6 @@ cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const 
 
 char* WSTD_CALL __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(char*);
-}
-
-cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
-    return mock_type(cJSON_bool);
-}
-
-cJSON_bool __wrap_cJSON_IsString(__attribute__ ((__unused__)) const cJSON * const item) {
-    return mock_type(cJSON_bool);
-}
-
-cJSON_bool __wrap_cJSON_IsObject(__attribute__ ((__unused__)) cJSON * item) {
-    return mock_type(cJSON_bool);
 }
 
 cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {

@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -121,7 +121,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
 
     expected_output:
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'https_client startup accepted'
 
     tags:
         - simulator
@@ -140,17 +140,30 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         wait_enrollment()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
         wait_connect()
 
+        # authd_server's underlying MitM signals "response sent" and "shut down"
+        # with the same threading.Event (mitm.py's StreamHandler.handle()): once
+        # the first enrollment sets it, any later connection on this same
+        # instance sees it already set and never even reads the request. clear()
+        # resets it so the REJECT_AUTH-triggered re-enrollment below can actually
+        # get a response instead of hanging until wait_connect()'s timeout.
+        authd_server.clear()
+
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        # Start rejecting Agent: a 401 on every request (regardless of what the
+        # agent actually signs) is the HTTPS equivalent of "the manager no
+        # longer accepts this credential" -- two consecutive 401s on the same
+        # request escalate to AuthGate.reportAuthFailure(), which is what
+        # actually drives re-enrollment under HTTPS (a dropped/refused
+        # connection alone does not; only a rejected credential does).
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
@@ -160,7 +173,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         remoted_server.destroy()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected

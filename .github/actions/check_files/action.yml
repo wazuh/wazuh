@@ -85,7 +85,17 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      # check_files must be able to stat every file under the installation
+      # directory, which the package creates root/wazuh-owned with restrictive
+      # permissions. Self-hosted and CodeBuild runners execute as root, so no
+      # elevation was needed there. GitHub-hosted runners execute as an unprivileged
+      # user, where an unreadable file is reported as a missing one. Elevate
+      # only when needed, so behaviour on root runners is unchanged and no
+      # dependency on `sudo` being installed is introduced.
+      SUDO=""
+      if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+
+      $SUDO venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload current stats
     if: success()
@@ -108,7 +118,17 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      # check_files must be able to stat every file under the installation
+      # directory, which the package creates root/wazuh-owned with restrictive
+      # permissions. Self-hosted and CodeBuild runners execute as root, so no
+      # elevation was needed there. GitHub-hosted runners execute as an unprivileged
+      # user, where an unreadable file is reported as a missing one. Elevate
+      # only when needed, so behaviour on root runners is unchanged and no
+      # dependency on `sudo` being installed is introduced.
+      SUDO=""
+      if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+
+      $SUDO venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload validation results
     if: always()

@@ -77,6 +77,14 @@ nlohmann::json SysInfo::browserExtensions()
     return getBrowserExtensions();
 }
 
+#ifndef _WIN32
+void SysInfo::releaseThreadResources()
+{
+    // No per-thread resources to release outside Windows -- sysInfoWin.cpp provides
+    // the real implementation for _WIN32 builds.
+}
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

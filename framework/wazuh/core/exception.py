@@ -40,7 +40,6 @@ class WazuhException(Exception):
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh to restore sockets'},
-        1015: 'Agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
@@ -85,7 +84,7 @@ class WazuhException(Exception):
         1116: {'message': "Requested component configuration does not exist",
                'remediation': f"Please, visit the official documentation (https://documentation.wazuh.com/"
                               f"{DOCU_VERSION}/user-manual/api/reference.html#operation/"
-                              f"api.controllers.agents_controller.get_agent_config) to check available component "
+                              f"api.controllers.cluster_controller.get_node_config) to check available component "
                               f"configurations"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
@@ -152,12 +151,6 @@ class WazuhException(Exception):
         1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
-        1707: {'message': 'Cannot send request, agent is not active',
-               'remediation': 'Please, check non-active agents connection and try again. Visit '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/registering/index.html and '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/agents/agent-connection.'
-                              f'html to obtain more information on registering and connecting agents'
-               },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'
                },
@@ -207,10 +200,6 @@ class WazuhException(Exception):
                'remediation': f'Agent does not belong to specified group, to assign the agent to a group follow: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/agents/grouping-agents.html'
                },
-        1735: {'message': 'Agent version is not compatible with this feature',
-               'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com'
-                              '/wazuh/wazuh/issues'
-               },
         1737: {'message': f"Maximum number of groups per multigroup is {MAX_GROUPS_PER_MULTIGROUP}",
                'remediation': 'Please choose another group or remove an agent from the target group'
                },
@@ -229,6 +218,11 @@ class WazuhException(Exception):
                'remediation': 'Please check all data fields and try again'
                },
         1761: {'message': 'Could not send restart/reload command. This operation via API requires agent version 5.0 or higher.'
+               },
+        1762: {'message': 'Could not get statistics from the agent. '
+                          'This daemon statistics query is only available for agents running a '
+                          'version lower than 5.0; agents on 5.0 or higher report their own '
+                          'statistics over HTTPS instead.'
                },
 
         # Manager:
@@ -344,19 +338,10 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
-
-        # HAProxy Helper exceptions
-        3041: "Server status check timed out after adding new servers",
-        3042: "User configuration is not valid",
-        3043: "Could not initialize Proxy API",
-        3044: "Could not connect to the HAProxy dataplane API",
-        3045: "Could not connect to HAProxy",
-        3046: "Invalid credentials for the Proxy API",
-        3047: "Invalid HAProxy Dataplane API specification configured",
-        3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3050: "Payload size exceeds maximum allowed limit",
         3051: "Too many concurrent divided messages",
         3052: "Invalid cluster file parameter",
+        3053: "Decompressed file exceeds the maximum allowed size",
         3060: {'message': "Invalid node name format",
                'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
@@ -424,7 +409,7 @@ class WazuhException(Exception):
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
         5009: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain a length between 8 and 64 characters.'},
+               'remediation': 'The password must contain a length between 12 and 64 characters.'},
         5010: {'message': 'The value of the parameter allow_run_as is invalid',
                'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
                               'authorization context) or false (disabled authentication through authorization context).'
@@ -637,12 +622,6 @@ class WazuhClusterError(WazuhInternalError):
     _default_title = "Wazuh Cluster Error"
 
 
-class WazuhHAPHelperError(WazuhClusterError):
-    """
-    This type of exception is raised inside the HAProxy Helper.
-    """
-    _default_type = "about:blank"
-    _default_title = "HAProxy Helper Error"
 
 
 class WazuhIndexerError(WazuhInternalError):

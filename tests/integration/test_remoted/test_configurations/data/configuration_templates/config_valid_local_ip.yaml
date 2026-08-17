@@ -1,9 +1,11 @@
 - sections:
     - section: remote
       elements:
-        - port:
-            value: '1514'
-        - local_ip:
-            value: LOCAL_IP
-        - protocol:
-            value: TCP
+        - legacy:
+            elements:
+              - port:
+                  value: '1514'
+              - local_ip:
+                  value: LOCAL_IP
+              - protocol:
+                  value: TCP

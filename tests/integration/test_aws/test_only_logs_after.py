@@ -710,7 +710,7 @@ configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
                          ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
         metadata, mark_cases_as_skipped, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
-        load_wazuh_basic_configuration, restart_wazuh_function
+        load_wazuh_basic_configuration, restart_wazuh_function, record_uploaded_key
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -886,6 +886,9 @@ def test_bucket_multiple_calls(
                                   suffix='',
                                   date='')
     metadata['filename'] = key
+
+    # Record the key before uploading so a hard cancel during this test still cleans it up.
+    record_uploaded_key(key)
 
     upload_bucket_file(bucket_name=bucket_name,
                        data=data,

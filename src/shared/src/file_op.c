@@ -1160,12 +1160,12 @@ int mkstemp_ex(char *tmp_path)
 const char *getuname()
 {
     struct utsname uts_buf;
-    static char muname[512] = "";
+    static char muname[2048] = "";
     os_info *read_version;
 
     if (!muname[0]){
         if (read_version = get_unix_version(), read_version){
-            snprintf(muname, 512, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
+            snprintf(muname, 2048, "%s |%s |%s |%s |%s [%s|%s: %s] - %s %s",
                     read_version->sysname,
                     read_version->nodename,
                     read_version->release,
@@ -1179,7 +1179,7 @@ const char *getuname()
             free_osinfo(read_version);
         }
         else if (uname(&uts_buf) >= 0) {
-            snprintf(muname, 512, "%s %s %s %s %s - %s %s",
+            snprintf(muname, 2048, "%s %s %s %s %s - %s %s",
                      uts_buf.sysname,
                      uts_buf.nodename,
                      uts_buf.release,
@@ -1187,7 +1187,7 @@ const char *getuname()
                      uts_buf.machine,
                      __wazuh_name, __wazuh_version);
         } else {
-            snprintf(muname, 512, "No system info available - %s %s",
+            snprintf(muname, 2048, "No system info available - %s %s",
                      __wazuh_name, __wazuh_version);
         }
     }
@@ -2085,7 +2085,13 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     char buffer[4096];
     int status = 0;
 
-    fp_src = wfopen(src, "r");
+    /* 'b': exact binary copy -- wfopen() defaults to _O_TEXT on Windows unless
+     * 'b' is in the mode string, which silently rewrites every bare '\n' as
+     * '\r\n' on write (and the reverse on read). A caller copying content
+     * whose exact bytes matter downstream (e.g. a hash computed over it) must
+     * request binary mode explicitly; text mode and binary mode are
+     * equivalent on non-Windows, so this only changes Windows behavior. */
+    fp_src = wfopen(src, mode == 'b' ? "rb" : "r");
 
     if (!fp_src) {
         if(!silent) {
@@ -2097,6 +2103,9 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     /* Append to file */
     if (mode == 'a') {
         fp_dst = wfopen(dst, "a");
+    }
+    else if (mode == 'b') {
+        fp_dst = wfopen(dst, "wb");
     }
     else {
         fp_dst = wfopen(dst, "w");
@@ -2258,6 +2267,28 @@ int w_ref_parent_folder(const char * path) {
     }
 
     return 0;
+}
+
+
+int w_is_bare_filename(const char * filename) {
+
+    // "." is not caught by w_ref_parent_folder(), which only rejects references to a parent folder.
+    if (!filename || !*filename || strcmp(filename, ".") == 0) {
+        return 0;
+    }
+
+    if (strchr(filename, '/')) {
+        return 0;
+    }
+
+#ifdef WIN32
+    // Windows accepts both separators, so a name holding either one is not a bare file name.
+    if (strchr(filename, '\\')) {
+        return 0;
+    }
+#endif
+
+    return w_ref_parent_folder(filename) ? 0 : 1;
 }
 
 
@@ -2446,6 +2477,196 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #else
     return fopen(pathname, mode);
+#endif
+}
+
+
+#ifdef WIN32
+/**
+ * Translate a Win32 error into an errno value. Assigning GetLastError() straight into errno, as the
+ * older helpers in this file do, is wrong twice over: the numbering spaces are unrelated, so strerror()
+ * prints something misleading, and a raw Win32 code can collide with an errno that callers test for --
+ * ERROR_INVALID_TARGET_HANDLE is 114, which is mingw's ELOOP, the very value w_fopen_nofollow() uses to
+ * report a rejected symlink.
+ */
+static int w_win32_to_errno(DWORD error) {
+    switch (error) {
+    case ERROR_FILE_NOT_FOUND:
+    case ERROR_PATH_NOT_FOUND:
+    case ERROR_INVALID_DRIVE:
+        return ENOENT;
+    case ERROR_ACCESS_DENIED:
+    case ERROR_NETWORK_ACCESS_DENIED:
+        return EACCES;
+    case ERROR_SHARING_VIOLATION:
+    case ERROR_LOCK_VIOLATION:
+        return EBUSY;
+    case ERROR_FILE_EXISTS:
+    case ERROR_ALREADY_EXISTS:
+        return EEXIST;
+    case ERROR_DISK_FULL:
+        return ENOSPC;
+    case ERROR_INVALID_NAME:
+    case ERROR_BAD_PATHNAME:
+        return EINVAL;
+    case ERROR_TOO_MANY_OPEN_FILES:
+        return EMFILE;
+    default:
+        return EIO;
+    }
+}
+#endif
+
+
+FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
+    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    char final_path[PATH_MAX + 1];
+    BY_HANDLE_FILE_INFORMATION file_info;
+    HANDLE hFile;
+    int flags = strchr(mode, 'b') ? 0 : _O_TEXT;
+    int fd;
+    FILE * fp;
+
+    if (snprintf(final_path, sizeof(final_path), "%s\\%s", basedir, filename) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+    // OPEN_ALWAYS rather than CREATE_ALWAYS: the file must not be truncated before the handle has been
+    // confirmed to be a regular file. FILE_FLAG_OPEN_REPARSE_POINT makes the handle refer to a symlink
+    // or junction itself instead of to its target, so the target is never opened nor modified.
+    hFile = wCreateFile(final_path, GENERIC_WRITE, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = w_win32_to_errno(GetLastError());
+        return NULL;
+    }
+
+    if (!GetFileInformationByHandle(hFile, &file_info)) {
+        errno = w_win32_to_errno(GetLastError());
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        CloseHandle(hFile);
+        errno = ELOOP;
+        return NULL;
+    }
+
+    if (file_info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        CloseHandle(hFile);
+        errno = EISDIR;
+        return NULL;
+    }
+
+    // An NTFS hard link carries neither of the attributes above, and unlike a symlink it needs no
+    // privilege to create (mklink /H), so it is the easier of the two to plant. The link count is the
+    // only thing that distinguishes it.
+    if (file_info.nNumberOfLinks != 1) {
+        CloseHandle(hFile);
+        errno = EMLINK;
+        return NULL;
+    }
+
+    // The file pointer sits at the beginning of the file, so this truncates it.
+    if (!SetEndOfFile(hFile)) {
+        errno = w_win32_to_errno(GetLastError());
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // _open_osfhandle() and _fdopen() are CRT calls: they set errno and leave the Win32 last error
+    // alone, so errno is left exactly as they reported it.
+    if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle, so it has to be closed through the CRT: calling
+    // CloseHandle() would release the handle while leaving the descriptor allocated forever.
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        const int fdopen_errno = errno;
+        _close(fd);
+        errno = fdopen_errno;
+        return NULL;
+    }
+
+    return fp;
+#else
+    struct stat statbuf;
+    FILE * fp;
+    int dirfd;
+    int fd;
+    int saved_errno;
+    int flags;
+
+    if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+        return NULL;
+    }
+
+    // O_NOFOLLOW makes the open fail with ELOOP if the target is a symlink, and O_NONBLOCK keeps it from
+    // blocking on a FIFO waiting for a reader. Deliberately NOT O_TRUNC: truncating at open time would
+    // destroy the target before anything about it can be checked, which is precisely how a hard link
+    // slips through — it is a regular file, so no file type test can tell it apart. The file is
+    // truncated below instead, once the descriptor has been vetted, mirroring what the Windows branch
+    // does with OPEN_ALWAYS plus SetEndOfFile().
+    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
+    saved_errno = errno;
+    close(dirfd);
+
+    if (fd < 0) {
+        errno = saved_errno;
+        return NULL;
+    }
+
+    // Rules out anything O_NOFOLLOW does not, such as a block or character device.
+    if (fstat(fd, &statbuf) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        close(fd);
+        errno = EINVAL;
+        return NULL;
+    }
+
+    // A hard link is a regular file by every other measure; the link count is what gives it away.
+    if (statbuf.st_nlink != 1) {
+        close(fd);
+        errno = EMLINK;
+        return NULL;
+    }
+
+    // Safe now: the descriptor is known to point at a lone regular file.
+    if (ftruncate(fd, 0) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    // O_NONBLOCK has no effect on a regular file, but the stream is expected to behave like fopen's.
+    if (flags = fcntl(fd, F_GETFL), flags != -1) {
+        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    }
+
+    if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
 #endif
 }
 

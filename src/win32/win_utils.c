@@ -11,6 +11,7 @@
 #ifdef WIN32
 #include "shared.h"
 #include "agentd.h"
+#include "https_client_bridge.h"
 #include "logcollector.h"
 #include "execd.h"
 #include "wmodules.h"
@@ -19,6 +20,7 @@
 #include "os_net.h"
 #include "dll_load_notify.h"
 #include "startup_gate_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
@@ -109,10 +111,37 @@ void stop_wmodules()
     // handler sets this; on Windows shutdown flows through here instead.
     wm_shutdown_requested = 1;
 
+    // Generous relative to each module's own internal shutdown-wait timeout (e.g.
+    // syscollector's 10 s), so this join is the actual gate and not a race against it.
+    // Shared across every module in the loop below (not reset per module), so total
+    // time spent in stop_wmodules() is bounded regardless of how many wodles are
+    // configured -- otherwise N modules could each burn a fresh timeout and the sum
+    // could outlast the SCM's own patience (WaitToKillServiceTimeout).
+    const DWORD MODULE_JOIN_BUDGET_MS = 20000;
+    const ULONGLONG budget_start = GetTickCount64();
+
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {
             cur_module->context->stop(cur_module->data);
+        }
+
+        if (cur_module->win_thread) {
+            const ULONGLONG elapsed = GetTickCount64() - budget_start;
+            const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;
+            const DWORD wait_result = remaining ? WaitForSingleObject(cur_module->win_thread, remaining) : WAIT_TIMEOUT;
+
+            if (wait_result == WAIT_TIMEOUT) {
+                merror("Module '%s' worker thread did not exit within the %lu ms shutdown budget; "
+                       "shutdown will proceed while it may still be running.",
+                       cur_module->context->name, MODULE_JOIN_BUDGET_MS);
+            } else if (wait_result == WAIT_FAILED) {
+                merror("Module '%s' worker thread wait failed (error %lu); closing handle and proceeding.",
+                       cur_module->context->name, GetLastError());
+            }
+
+            CloseHandle(cur_module->win_thread);
+            cur_module->win_thread = NULL;
         }
     }
 }
@@ -180,6 +209,12 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
+    /* Checked here, before any module thread is created, instead of failing much later
+     * inside w_https_client_start(). */
+    if (!w_agent_validate_ssl_ca(agt)) {
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
@@ -191,10 +226,17 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
-    startup_gate_initialize();
+    /* Same session ceiling modulesd applies on the other platforms, taken straight from
+     * the configuration this process already read (local and centralized merged) rather
+     * than re-reading the files. It has to be set here, while the configuration is being
+     * finalized and before any thread exists: syscheck is started below and builds its
+     * protocol instance on that thread, and an instance copies the limit once, when it
+     * is constructed. Setting it any later is a race the module usually wins. */
+    asp_set_session_max_bytes((uint64_t)agt->batch.size);
 
-    /* Initialize sender */
-    sender_init();
+    if (agt->batch.size > 0) {
+        mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
+    }
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
@@ -227,12 +269,18 @@ int local_start()
     /* Set wait lock before starting threads */
     os_setwait();
 
-    /* Initialize buffer before starting threads that may use it */
-    if (agt->buffer) {
-        buffer_init();
-    } else {
-        minfo(DISABLED_BUFFER);
-    }
+    /* Enrollment (blocking until a valid key exists) and the startup gate
+     * must both be ready before the HTTPS client is ever started: it reads
+     * client.keys exactly once, at creation, with no retry on failure. */
+    start_agent_prepare();
+
+    /* HTTPS client: the agent's only transport (mirrors AgentdStart on POSIX;
+     * the Windows startup path is separate). Started before any producer
+     * thread: on Windows the modules call SendMSG in-process, so an event
+     * emitted before the accumulator exists is dropped outright rather than
+     * waiting in a queue as it would on POSIX. */
+    w_https_client_start();
+    atexit(w_https_client_stop);
 
     /* Start syscheck thread */
     w_create_thread(NULL,
@@ -309,17 +357,14 @@ int local_start()
             module_name = (cur_module->context && cur_module->context->name) ? cur_module->context->name : "module";
             snprintf(start_ctx->name, sizeof(start_ctx->name), "wazuh-modulesd/%s", module_name);
 
-            w_create_thread(NULL,
-                            0,
-                            win_module_thread,
-                            start_ctx,
-                            0,
-                            (LPDWORD)&threadID2);
+            cur_module->win_thread = w_create_thread(NULL,
+                                                      0,
+                                                      win_module_thread,
+                                                      start_ctx,
+                                                      0,
+                                                      (LPDWORD)&threadID2);
         }
     }
-
-    /* Socket connection */
-    agt->sock = -1;
 
     /* Initialize random numbers */
     srandom(time(0));
@@ -336,16 +381,6 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Launch dispatch thread */
-    if (agt->buffer) {
-        w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }
-
     /* Configure and start statistics */
     w_agentd_state_init();
     w_create_thread(NULL,
@@ -357,26 +392,19 @@ int local_start()
 
     start_agent(1);
 
-    os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
-
-    /* Start request module */
-    req_init();
-    w_create_thread(NULL,
-                     0,
-                     req_receiver,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
-
     /* Delete agent state file at exit */
     atexit(DeleteState);
 
-    /* Send agent stopped message at exit */
-    atexit(send_agent_stopped_message);
+    /* Main thread from here on. With no manager socket left to read, all that
+     * remains of the old receiver loop is expiring the active-response
+     * timeouts, which only this thread runs. */
+    while (1) {
+        if (agt->execdq >= 0) {
+            ExecdTimeoutRun();
+        }
 
-    /* Start receiver -- main process here */
-    receiver_messages();
+        sleep(1);
+    }
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);
@@ -425,16 +453,12 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
-    /* Send events to the manager across the buffer */
-    if (!agt->buffer){
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        if (send_msg(tmpstr, -1) >= 0) {
-            retval = 0;
-        }
-    } else {
-        buffer_append(tmpstr, -1);
-        retval = 0;
-    }
+    /* Every event goes to the HTTPS /stateless accumulator; sync sessions are
+     * handed to the module in-process (bridge_submit_sync_session).
+     * (Windows has no DGRAM queue; SendMSGAction is the in-process EventForward.) */
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+    w_https_client_submit_event(tmpstr, strlen(tmpstr));
+    retval = 0;
 
     if (!ReleaseMutex(hMutex)) {
         merror("Error releasing mutex.");
@@ -509,19 +533,10 @@ int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, 
     // Append the binary payload
     memcpy(p, message, message_len);
 
-    // Dispatch the message (either to buffer or directly)
-    if (!agt->buffer) {
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        // Pass the constructed message and its *actual size*.
-        if (send_msg(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
-    } else {
-        // Pass the constructed message and its *actual size* to the buffer.
-        if (buffer_append(tmpstr, total_len) >= 0) {
-            retval = 0;
-        }
-    }
+    // Dispatch the message with its *actual size* (binary payload: no strlen).
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+    w_https_client_submit_event(tmpstr, total_len);
+    retval = 0;
 
     // Release the mutex
     if (!ReleaseMutex(hMutex)) {

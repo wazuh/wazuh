@@ -1,0 +1,6 @@
+# Extra dependency for this lab, on top of ../requirements.txt.
+# ../requirements.txt already provides requests, cryptography and zstandard; this tool only
+# needs cryptography (for AES-CMAC) and zstandard (for the --zstd tests), both of which come
+# from there. Listed explicitly so the lab can be used standalone.
+cryptography>=41.0.0
+zstandard>=0.21.0
