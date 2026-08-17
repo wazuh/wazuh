@@ -170,6 +170,11 @@ disable()
     fi
 }
 
+get_node_type()
+{
+    grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} 2>/dev/null | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' '
+}
+
 status()
 {
     RETVAL=0
@@ -177,10 +182,17 @@ status()
 
     checkpid;
 
+    node_type=$(get_node_type);
+
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${DAEMONS}; do
+        ## The API daemon only runs on the master node
+        if [ X"$i" = "Xwazuh-manager-apid" ] && [ "$node_type" != "master" ]; then
+            continue
+        fi
+
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
         else
@@ -326,7 +338,7 @@ start_service()
     TO_DELETE="$DIR/tmp"
     find "$TO_DELETE" -mindepth 1 -delete
 
-    node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    node_type=$(get_node_type);
     if [ -z $node_type ]; then
         echo "Invalid cluster configuration, check the $DIR/etc/${WAZUH_CONF} file."
         unlock;
