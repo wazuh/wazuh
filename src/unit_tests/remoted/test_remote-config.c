@@ -1027,13 +1027,6 @@ static void test_read_remote_denied_ips_section(void **state) {
     free_node_array(nodes);
 }
 
-// A real <legacy> XML node's children can only be resolved via OS_GetElementsbyNode
-// against a fully parsed OS_XML tree, which this lightweight hand-built xml_node harness
-// doesn't provide (see the w_remoted_parse_legacy tests above for that coverage instead).
-// These tests exercise Read_Remote()'s own top-level scan and tail-defaulting logic with
-// an empty node array, pre-setting legacy_enabled the way encountering a real <legacy>
-// node during that scan would.
-
 static void test_read_remote_no_legacy_block_disables_legacy(void **state) {
     test_state *ts = *state;
 
@@ -1064,6 +1057,26 @@ static void test_read_remote_legacy_block_present_defaults_applied(void **state)
     assert_string_equal(ts->logr->lip, "127.0.0.1");
     assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
     assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_DEFAULT);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_explicit_values_cleared_when_disabled(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = false;
+    ts->logr->port = 1514;
+    ts->logr->proto = REMOTED_NET_PROTOCOL_TCP;
+    os_strdup("127.0.0.1", ts->logr->lip);
+
+    xml_node **nodes = create_node_array(0);
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, 0);
+    assert_false(ts->logr->legacy_enabled);
+    assert_int_equal(ts->logr->port, 0);
+    assert_int_equal(ts->logr->proto, 0);
+    assert_null(ts->logr->lip);
 
     free_node_array(nodes);
 }
@@ -1136,6 +1149,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_no_legacy_block_disables_legacy, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_legacy_block_present_defaults_applied, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_explicit_values_cleared_when_disabled, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
 
     };

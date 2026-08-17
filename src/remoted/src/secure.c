@@ -596,9 +596,10 @@ void HandleSecure()
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
 
-    /* protocol is 0 when <remote><legacy> is absent/disabled (Read_Remote() only fills in
-     * logr.proto for an enabled legacy block), so neither branch below adds a socket and
-     * the event loop just idles -- no separate legacy_enabled check needed here. */
+    /* protocol is 0 when <remote><legacy> is absent/disabled -- Read_Remote() resets proto
+     * to 0 in that case even if <protocol> was explicitly set, so neither branch below
+     * adds a socket and the event loop just idles -- no separate legacy_enabled check
+     * needed here. */
 
     /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
     if (protocol & REMOTED_NET_PROTOCOL_TCP) {

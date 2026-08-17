@@ -116,8 +116,10 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         i++;
     }
 
-    /* These defaults only make sense for the classic listener; leaving them unset when
-     * <legacy> is absent or disabled is what keeps HandleRemote() from binding it. */
+    /* These settings only make sense for the classic listener; keeping them at their
+     * disabled state (0/NULL) when <legacy> is absent or disabled is what keeps
+     * HandleRemote() from binding it and secure.c's protocol-gated wnotify_add() from
+     * touching a socket that was never bound. */
     if (logr->legacy_enabled) {
         /* Set port in here */
         if (logr->port == 0) {
@@ -133,6 +135,10 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         if (logr->lip == NULL && !logr->ipv6) {
             os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
         }
+    } else {
+        logr->port = 0;
+        logr->proto = 0;
+        os_free(logr->lip);
     }
 
     return (0);
