@@ -32,7 +32,7 @@ The client module is responsible for:
 - **Auto-connection:** Automatically connects to configured manager
 - **Keep-alive:** Maintains persistent connection with heartbeat
 - **Auto-reconnection:** Automatically reconnects after network issues
-- **Multiple managers:** Failover support for high availability
+- **Single manager:** Only one `<server>` block is honored; a second one replaces the first instead of adding failover
 
 ### Data Transmission
 - **Event forwarding:** Sends alerts, logs, and events to manager

@@ -22,7 +22,9 @@ Configures the agent's connection to the Wazuh manager.
 
 ### server
 
-Manager connection block. Multiple `<server>` blocks can be defined for failover.
+Manager connection block.
+
+**Only one `<server>` block is supported.** Server rotation and failover were removed with the HTTPS transport (#37702 restriction 2/3): if more than one `<server>` block is present, the agent logs `Only one <server> block is supported; the last one prevails.` and keeps only the last one.
 
 **Sub-options:**
 
@@ -30,7 +32,7 @@ Manager connection block. Multiple `<server>` blocks can be defined for failover
 
 Manager IP address or hostname.
 
-- **Required:** Yes (at least one server must be defined)
+- **Required:** Yes
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 - **Example:** `192.168.1.100`, `manager.example.com`, `::1`
 
@@ -53,19 +55,19 @@ Manager port number for the agent's HTTPS connection.
 
 #### max_retries
 
-Maximum connection retry attempts before failing over to next server.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Note:** Only applicable when multiple servers are configured
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Server rotation and the connection-retry loop were removed with the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <max_retries> option is deprecated and no longer has any effect."
 
 #### retry_interval
 
-Time in seconds to wait between connection retry attempts.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
-- **Note:** Applies when retrying connection to the same server
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Server rotation and the connection-retry loop were removed with the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <retry_interval> option is deprecated and no longer has any effect."
 
 #### interface_index
 
@@ -103,11 +105,11 @@ Interval between agent keep-alive notifications to the manager.
 
 ### time-reconnect
 
-Time to wait before attempting to reconnect after connection loss.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Minimum:** `1`
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** There is no persistent connection to reconnect under the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <time-reconnect> option is deprecated and no longer has any effect."
 
 ### auto_restart
 
@@ -364,44 +366,32 @@ Single manager, standard settings:
   <server>
     <address>10.0.0.10</address>
     <port>1517</port>
-    <protocol>tcp</protocol>
   </server>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
-  <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
-  <crypto_method>aes</crypto_method>
 </agent>
 ```
 
-### Failover Configuration
+### Only the Last `<server>` Block Is Used
 
-Multiple managers for high availability:
+There is no failover: a second `<server>` block does not add a backup manager, it replaces the first one, with a warning:
 
 ```xml
 <agent>
   <server>
     <address>manager1.example.com</address>
     <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
   </server>
   <server>
     <address>manager2.example.com</address>
     <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <server>
-    <address>manager3.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
   </server>
   <notify_time>30</notify_time>
-  <time-reconnect>30</time-reconnect>
 </agent>
 ```
+
+Only `manager2.example.com` is used; the agent logs `Only one <server> block is supported; the last one prevails.`
 
 ### Auto-Enrollment Configuration
 
@@ -420,7 +410,6 @@ Automatic agent registration:
   <server>
     <address>manager.example.com</address>
     <port>1517</port>
-    <protocol>tcp</protocol>
   </server>
 </agent>
 ```
@@ -458,20 +447,10 @@ Full example with all sections:
     <server>
       <address>manager1.example.com</address>
       <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
-    </server>
-    <server>
-      <address>manager2.example.com</address>
-      <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
     </server>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
-    <time-reconnect>60</time-reconnect>
     <auto_restart>yes</auto_restart>
-    <crypto_method>aes</crypto_method>
     <enrollment>
       <enabled>yes</enabled>
       <manager_address>manager1.example.com</manager_address>
