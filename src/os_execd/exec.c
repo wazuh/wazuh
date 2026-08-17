@@ -31,7 +31,7 @@ int ReadExecConfig()
     char buffer[OS_MAXSTR + 1];
 
     /* Clean up */
-    for (i = 0; i <= exec_size + 1; i++) {
+    for (i = 0; i <= MAX_AR; i++) {
         memset(exec_names[i], '\0', OS_FLSIZE + 1);
         memset(exec_cmd[i], '\0', OS_FLSIZE + 1);
         exec_timeout[i] = 0;
@@ -49,6 +49,13 @@ int ReadExecConfig()
     while (fgets(buffer, OS_MAXSTR, fp) != NULL) {
         char *str_pt;
         char *tmp_str;
+
+        // No room left in the command table
+
+        if (exec_size >= MAX_AR) {
+            merror(EXEC_MAX_AR, MAX_AR, DEFAULTAR);
+            break;
+        }
 
         str_pt = buffer;
 

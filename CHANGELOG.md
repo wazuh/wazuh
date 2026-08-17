@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
+- Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38358](https://github.com/wazuh/wazuh/issues/38358))
 
 ## [v4.14.8]
 
