@@ -1289,9 +1289,7 @@ namespace wazuh::uds_http
                                           "-character limit for Unix domain sockets"};
             }
 
-            struct stat existing
-            {
-            };
+            struct stat existing {};
             if (::stat(socketPath.c_str(), &existing) == 0)
             {
                 if (!S_ISSOCK(existing.st_mode))
@@ -1333,9 +1331,7 @@ namespace wazuh::uds_http
 
             // Remembered so closeAcceptor() can tell OUR socket from one another process rebound at
             // the same path in the meantime, and unlink only its own.
-            struct stat bound
-            {
-            };
+            struct stat bound {};
             boundInode = (::stat(socketPath.c_str(), &bound) == 0) ? bound.st_ino : 0;
         }
 
@@ -1723,9 +1719,7 @@ namespace wazuh::uds_http
             {
                 return;
             }
-            struct stat current
-            {
-            };
+            struct stat current {};
             const auto statResult = ::stat(socketPath.c_str(), &current);
             if (statResult == 0 && current.st_ino == boundInode)
             {
