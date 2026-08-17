@@ -157,6 +157,31 @@ def test_results_AffectedItemsWazuhResult___or__(get_wazuh_failed_item):
     assert or_result_2.failed_items == failed_item.failed_items
 
 
+def test_results_AffectedItemsWazuhResult___or___reconciles_conflicting_verdicts():
+    """Test that `__or__` reconciles conflicting per-item verdicts from different sources.
+
+    Regression test: when merging responses from multiple cluster nodes, one node may report an
+    item as successfully affected while another (e.g. working from a stale local view) reports
+    that same item as failed. A success must be authoritative: the item should end up only in
+    affected_items, never duplicated, and it must not also linger in failed_items.
+    """
+    success = AffectedItemsWazuhResult(affected_items=['001', '002'])
+
+    stale_failure = AffectedItemsWazuhResult(affected_items=['003'])
+    stale_failure.add_failed_item(id_='001', error=WazuhException(WAZUH_EXCEPTION_CODE))
+    stale_failure.add_failed_item(id_='004', error=WazuhException(WAZUH_EXCEPTION_CODE))
+
+    # Another node redundantly reports '002' as affected too (e.g. duplicate task creation).
+    redundant_success = AffectedItemsWazuhResult(affected_items=['002'])
+
+    result = success | stale_failure | redundant_success
+
+    assert sorted(result.affected_items) == ['001', '002', '003']
+    assert result.total_affected_items == 3
+    assert next(iter(result.failed_items.values())) == {'004'}
+    assert result.total_failed_items == 1
+
+
 @pytest.mark.parametrize('or_item, expected_result', [
     (WazuhError(WAZUH_EXCEPTION_CODE, ids=['001']), AffectedItemsWazuhResult),
     (WazuhError(WAZUH_EXCEPTION_CODE), WazuhException),

@@ -1,0 +1,117 @@
+name: 5.X - VD Scanner tools Delivery
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/wazuh_modules/vulnerability_scanner/testtool/**"
+      - "src/wazuh_modules/vulnerability_scanner/src/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      - "src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "src/wazuh_modules/inventory_sync/**"
+      - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
+  workflow_dispatch:
+
+inputs:
+  aws_region:
+    description: 'AWS region to upload the artifact'
+    required: true
+    default: 'us-east-1'
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  BUILD_DIR: ${{ github.workspace }}/src/build
+  TOOLS_FILE_NAME: vdscanner_testtools
+
+jobs:
+  build:
+    name: VD Scanner Tools Delivery
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install compatible CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build external dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Build inventory_sync testtool
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "inventory_sync_testtool"
+          test: "false"
+          asan: "false"
+
+      - name: Prepare vdscanner tools
+        run: |
+          TOOLS_STAGING=${{ env.BUILD_DIR }}/staging
+          mkdir -p ${TOOLS_STAGING}/scanner
+
+          # Copy binaries
+          cp ${{ env.BUILD_DIR }}/bin/inventory_sync_testtool ${TOOLS_STAGING}/scanner/
+
+          # Copy shared libraries from build/lib
+          for lib in \
+            libinventory_sync.so \
+            libvulnerability_scanner.so \
+            librouter.so \
+            libindexer_connector.so \
+            libwazuhext.so \
+            libcontent_manager.so \
+            libschema_validator.so; do
+            cp ${{ env.BUILD_DIR }}/lib/${lib} ${TOOLS_STAGING}/
+          done
+
+          # Copy rocksdb (lives outside build/lib)
+          cp ${{ github.workspace }}/src/external/rocksdb/build/librocksdb.so.8 \
+             ${TOOLS_STAGING}/
+
+          # Copy reduced feed file used by the QA test to seed OpenSearch
+          cp ${{ github.workspace }}/src/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_reduced_feed.json \
+             ${TOOLS_STAGING}/scanner/
+
+          # Copy flatbuffer schemas
+          cp -r ${{ github.workspace }}/src/wazuh_modules/vulnerability_scanner/schemas/ ${TOOLS_STAGING}/
+
+
+      - name: Compress vdscanner tools
+        run: |
+          TOOLS_STAGING=${{ env.BUILD_DIR }}/staging
+          cd ${TOOLS_STAGING}
+          XZ_OPT=-9 tar cfJ ${{ env.TOOLS_FILE_NAME }}.tar.xz *
+
+          if [ $? -eq 0 ]; then
+            size=$(du -sh ${{ env.TOOLS_FILE_NAME }}.tar.xz)
+            echo "vdscanner tools successfully compressed: ${size}"
+            tar -tf ${{ env.TOOLS_FILE_NAME }}.tar.xz
+            mv ${{ env.TOOLS_FILE_NAME }}.tar.xz ${{ github.workspace }}
+            exit 0
+          else
+            echo "Error compressing vdscanner tools."
+            exit 1
+          fi
+
+      # Upload vdscanner tools
+      - name: Upload vdscanner tools
+        if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          aws_region: ${{ inputs.aws_region }}
+          name: ${{ env.TOOLS_FILE_NAME }}
+          path: ${{ env.TOOLS_FILE_NAME }}.tar.xz
+

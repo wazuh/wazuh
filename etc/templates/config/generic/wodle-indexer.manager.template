@@ -6,7 +6,7 @@
       <certificate_authorities>
         <ca>etc/certs/root-ca.pem</ca>
       </certificate_authorities>
-      <certificate>etc/certs/manager.pem</certificate>
-      <key>etc/certs/manager-key.pem</key>
+      <certificate>etc/certs/indexer-connector.pem</certificate>
+      <key>etc/certs/indexer-connector-key.pem</key>
     </ssl>
   </indexer>

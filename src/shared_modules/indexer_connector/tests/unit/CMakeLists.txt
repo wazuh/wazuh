@@ -4,7 +4,12 @@ project(indexer_connector_utest)
 
 file(GLOB SOURCES *.cpp)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+# These tests instantiate the connector Impl templates from src/ directly instead of linking
+# libindexer_connector.so, so any non-template symbol those headers call has to be compiled in here
+# too. buildSecureCommunication() lives in its own TU precisely so its credential cache is unique
+# process-wide; keeping it out of the header is what makes `queue/keystore` open once.
+add_executable(${PROJECT_NAME} ${SOURCES}
+               ${CMAKE_CURRENT_LIST_DIR}/../../src/indexerTransport.cpp)
 
 target_link_libraries(
   ${PROJECT_NAME}

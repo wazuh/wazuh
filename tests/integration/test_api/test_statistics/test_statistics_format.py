@@ -50,7 +50,6 @@ os_version:
 
 references:
     - https://documentation.wazuh.com/current/user-manual/api/reference.html (Get Wazuh daemon stats)
-    - https://documentation.wazuh.com/current/user-manual/api/reference.html (Get Wazuh daemon stats from an agent)
 
 tags:
     - api
@@ -76,13 +75,9 @@ daemons_handler_configuration = {'all_daemons': True}
 test1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cluster_statistics_format_test_module',
                         'cases_cluster_statistics_format.yaml')
 test1_statistics_template_path = Path(STATISTICS_TEMPLATE_PATH, 'cluster_statistics_format_test_module')
-test2_cases_path = Path(TEST_CASES_FOLDER_PATH, 'agent_statistics_format_test_module',
-                        'cases_agent_statistics_format.yaml')
-test2_statistics_template_path = Path(STATISTICS_TEMPLATE_PATH, 'agent_statistics_format_test_module')
 
 # Configurations
 _, test1_metadata, test1_cases_ids = get_test_cases_data(test1_cases_path)
-_, test2_metadata, test2_cases_ids = get_test_cases_data(test2_cases_path)
 
 
 # Tests
@@ -126,57 +121,6 @@ def test_cluster_statistics_format(test_metadata, load_wazuh_basic_configuration
     authentication_headers, _ = login()
 
     # Get daemon statistics
-    response = requests.get(url, headers=authentication_headers, verify=False)
-
-    # Check if the API statistics response data meets the expected schema. Raise an exception if not.
-    validate_statistics(response, statistics_schema_path)
-
-
-@pytest.mark.parametrize('test_metadata', test2_metadata, ids=test2_cases_ids)
-def test_agent_statistics_format(test_metadata, daemons_handler, simulate_agent):
-    """
-    description: Check if the statistics returned by the API have the expected format.
-
-    test_phases:
-        - setup:
-            - Restart wazuh-manager service to apply configuration changes
-        - test:
-            - Simulate and connect an agent
-            - Request the statistics of a particular daemon and agent from the API
-            - Compare the obtained statistics with the json schema
-            - Stop and delete the simulated agent
-        - teardown:
-            - Stop wazuh-manager
-
-    wazuh_min_version: 4.4.0
-
-    parameters:
-        - test_metadata:
-            type: dict
-            brief: Get metadata from the module.
-        - daemons_handler:
-            type: fixture
-            brief: Wrapper of a helper function to handle Wazuh daemons.
-        - simulate_agent:
-            type: fixture
-            brief: Simulate an agent
-
-    assertions:
-        - Check if the statistics returned by the API have the expected format.
-
-    input_description:
-        - The `cases_agent_statistics_format` file provides the test cases.
-    """
-    endpoint = test_metadata['endpoint']
-    statistics_schema_path = Path(test2_statistics_template_path, f"{endpoint}_template.json")
-    agent = simulate_agent
-
-    route = f"/agents/{agent.id}/daemons/stats"
-    params = f"?daemons_list={endpoint}"
-    url = get_base_url() + route + params
-    authentication_headers, _ = login()
-
-    # Get Agent's daemon stats
     response = requests.get(url, headers=authentication_headers, verify=False)
 
     # Check if the API statistics response data meets the expected schema. Raise an exception if not.

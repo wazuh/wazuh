@@ -9,8 +9,10 @@
 
 #include "wmodules.h"
 
-static const char *XML_CLEANUP_TIME = "cleanup_time";
-static const char *XML_TASK_TIMEOUT = "task_timeout";
+static const char *XML_TASK_TTL = "task_ttl";
+static const char *XML_CLEANUP_INTERVAL = "cleanup_interval";
+static const char *XML_MAX_PAYLOAD_BYTES = "max_payload_bytes";
+static const char *XML_MAX_TASKS_PER_POLL = "max_tasks_per_poll";
 
 int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
@@ -20,8 +22,10 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
     if (!module->data) {
         os_calloc(1, sizeof(wm_task_manager), data);
         data->enabled = 1;
-        data->cleanup_time = WM_TASK_DEFAULT_CLEANUP_TIME;
-        data->task_timeout = WM_TASK_MAX_IN_PROGRESS_TIME;
+        data->task_ttl = 0;              // 0 = use default
+        data->cleanup_interval = 0;      // 0 = use default
+        data->max_payload_bytes = 0;     // 0 = use default
+        data->max_tasks_per_poll = 0;    // 0 = use default
         module->context = &WM_TASK_MANAGER_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = data;
@@ -38,66 +42,49 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, xml_node **n
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        } else if (!strcmp(nodes[i]->element, XML_CLEANUP_TIME)) {
-            char *endptr;
-            data->cleanup_time = strtol(nodes[i]->content, &endptr, 0);
-
-            if (data->cleanup_time == 0 || data->cleanup_time == INT_MAX) {
-                merror("Invalid cleanup_time at module '%s'", WM_TASK_MANAGER_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_TASK_TTL)) {
+            if (!nodes[i]->content) {
+                merror("Empty content for tag '%s' at module '%s'.", XML_TASK_TTL, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
-
-            switch (*endptr) {
-            case 'd':
-                data->cleanup_time *= 86400;
-                break;
-            case 'h':
-                data->cleanup_time *= 3600;
-                break;
-            case 'm':
-                data->cleanup_time *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid cleanup_time at module '%s'", WM_TASK_MANAGER_CONTEXT.name);
+            data->task_ttl = atoi(nodes[i]->content);
+            if (data->task_ttl < 0) {
+                merror("Invalid value for element '%s' at module '%s'.", XML_TASK_TTL, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_TASK_TIMEOUT)) {
-            char *endptr;
-            data->task_timeout = strtol(nodes[i]->content, &endptr, 0);
-
-            if (data->task_timeout == 0 || data->task_timeout == INT_MAX) {
-                merror("Invalid task_timeout at module '%s'", WM_TASK_MANAGER_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_CLEANUP_INTERVAL)) {
+            if (!nodes[i]->content) {
+                merror("Empty content for tag '%s' at module '%s'.", XML_CLEANUP_INTERVAL, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
-
-            switch (*endptr) {
-            case 'd':
-                data->task_timeout *= 86400;
-                break;
-            case 'h':
-                data->task_timeout *= 3600;
-                break;
-            case 'm':
-                data->task_timeout *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid task_timeout at module '%s'", WM_TASK_MANAGER_CONTEXT.name);
+            data->cleanup_interval = atoi(nodes[i]->content);
+            if (data->cleanup_interval < 0) {
+                merror("Invalid value for element '%s' at module '%s'.", XML_CLEANUP_INTERVAL, WM_TASK_MANAGER_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_MAX_PAYLOAD_BYTES)) {
+            if (!nodes[i]->content) {
+                merror("Empty content for tag '%s' at module '%s'.", XML_MAX_PAYLOAD_BYTES, WM_TASK_MANAGER_CONTEXT.name);
+                return OS_INVALID;
+            }
+            data->max_payload_bytes = atoi(nodes[i]->content);
+            if (data->max_payload_bytes < 0) {
+                merror("Invalid value for element '%s' at module '%s'.", XML_MAX_PAYLOAD_BYTES, WM_TASK_MANAGER_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_MAX_TASKS_PER_POLL)) {
+            if (!nodes[i]->content) {
+                merror("Empty content for tag '%s' at module '%s'.", XML_MAX_TASKS_PER_POLL, WM_TASK_MANAGER_CONTEXT.name);
+                return OS_INVALID;
+            }
+            data->max_tasks_per_poll = atoi(nodes[i]->content);
+            if (data->max_tasks_per_poll < 0) {
+                merror("Invalid value for element '%s' at module '%s'.", XML_MAX_TASKS_PER_POLL, WM_TASK_MANAGER_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_TASK_MANAGER_CONTEXT.name);
         }
-    }
-
-    if (data->cleanup_time < data->task_timeout) {
-        merror("Too short cleanup_time at module '%s'", WM_TASK_MANAGER_CONTEXT.name);
-        return OS_INVALID;
     }
 
     return 0;

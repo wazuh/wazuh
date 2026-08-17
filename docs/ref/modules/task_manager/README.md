@@ -1,10 +1,10 @@
 # Task Manager Module
 
-The Task Manager module orchestrates and executes tasks on Wazuh agents from the manager.
+The Task Manager is a generic manager-side task-broker that stores tasks addressed to agents and lets other manager components (Agent Upgrade, Active Response, API) hand off asynchronous work to be picked up by agents on their next poll.
 
 **Daemon:** Part of `wazuh-modulesd`
 
-**Platform:** Linux, Windows, macOS
+**Platform:** Manager only (Linux)
 
 **Type:** Manager-only
 
@@ -12,275 +12,206 @@ The Task Manager module orchestrates and executes tasks on Wazuh agents from the
 
 **XML Section:** `<task-manager>`
 
+Source: [src/wazuh_modules/src/task_manager/](../../../../src/wazuh_modules/src/task_manager/)
+
 ---
 
 ## Overview
 
-The Task Manager is a manager-side module that:
-- Coordinates task execution on remote agents
-- Manages task lifecycle (creation, distribution, execution, completion)
-- Tracks task status and results
-- Provides task scheduling and prioritization
-- Handles task timeout and retry logic
+The Task Manager owns the lifecycle of *tasks* — small, typed JSON records that instruct an agent to perform an action. It exposes a JSON-based IPC interface over a Unix domain socket and persists tasks in the `tasks.db` SQLite database (managed by Wazuh DB). The Task Manager itself never delivers a task to an agent — it only stores `create_task` calls and hands back pending ones on `get_pending_tasks`, marking them delivered as it does. Delivery is the consumer's job: `remoted`'s own task-polling thread is the current consumer, and it pushes `remote_upgrade` tasks over the agent's existing session.
 
-Common tasks include:
-- Agent upgrades
-- Configuration updates
-- Remote command execution
-- File distribution
-- Security scans
+Key properties of the current implementation:
+
+- **Task-type based** — a task is not tied to a single module. Four task types are supported today: `active_response`, `remote_upgrade`, `agent_restart`, and `agent_reload`.
+- **Deterministic task IDs** — task IDs are UUID-like strings derived from `SHA-256(source_id : agent_id : task_type : create_time)`, so the same logical task produced on different cluster nodes has the same ID and is not duplicated.
+- **Fire-and-forget** — the Task Manager does not track task execution results. It stores tasks, delivers them to the agent, marks them as delivered, and expires them after their TTL.
+- **In-memory cache** — caches "no pending tasks" state per agent to reduce database queries from high-frequency agent polls without risk of re-delivering tasks.
+- **Multi-threaded architecture** — uses a dealer thread to accept connections and a pool of 8 worker threads to process requests concurrently, matching the WazuhDB architecture. Worker threads use `wnotify` for event-driven I/O and maintain persistent connections to optimize performance.
+- **Runs on every manager node** — the listener socket and cleanup thread start on both master and worker nodes so any node can create tasks and serve them to the agents connected to it.
 
 ---
 
-## Key Features
+## Task types
 
-### Task Orchestration
-- **Centralized control:** Manage tasks from a single manager
-- **Multi-agent targeting:** Execute tasks on multiple agents simultaneously
-- **Task queuing:** Queue tasks when agents are offline
-- **Result collection:** Aggregate task results from agents
+| Type              | Purpose                                        | Created by                        |
+| ----------------- | ---------------------------------------------- | --------------------------------- |
+| `active_response` | Execute an Active Response script on the agent | Engine / Active Response pipeline |
+| `remote_upgrade`  | Trigger a WPK-based agent upgrade              | Agent Upgrade module              |
+| `agent_restart`   | Restart the `wazuh-agent` service              | Server API                        |
+| `agent_reload`    | Reload the agent configuration                 | Server API                        |
 
-### Reliability
-- **Timeout handling:** Automatically fail tasks that exceed time limits
-- **Retry logic:** Configurable retry attempts for failed tasks
-- **Status tracking:** Monitor task progress in real-time
-- **Error handling:** Graceful failure with detailed error messages
-
-### Performance
-- **Concurrent execution:** Run multiple tasks in parallel
-- **Resource management:** Limit concurrent tasks to avoid overload
-- **Priority queuing:** Higher-priority tasks execute first
+Each task carries a free-form JSON `payload` whose contents are defined by the producer of the task and interpreted by the agent.
 
 ---
 
-## Architecture
+## IPC interface
 
-### Task Flow
+The Task Manager listens on the Unix domain socket `queue/tasks/task` (`TASK_QUEUE` / `WM_TASK_MODULE_SOCK`). Messages are JSON documents; the socket uses the Wazuh secure TCP framing (`OS_SendSecureTCP` / `OS_RecvSecureTCP`).
 
-1. **Task creation:** API or internal module creates task request
-2. **Task queuing:** Task Manager queues task for target agents
-3. **Task distribution:** Manager sends task to connected agents
-4. **Task execution:** Agents execute task and report status
-5. **Result collection:** Manager collects and stores results
-6. **Completion:** Task marked as complete or failed
+Two actions are accepted:
 
-### Component Interaction
+### `create_task`
+
+Request:
+
+```json
+{
+  "action": "create_task",
+  "agent_id": "001",
+  "task_type": "remote_upgrade",
+  "create_time": 1734879600,
+  "source_id": "optional-source-identifier",
+  "payload": {
+    "wpk_file": "wazuh_agent_v5.0.0_linux_x86_64.wpk",
+    "wpk_sha1": "aabbccdd...",
+    "installer": "upgrade.sh"
+  }
+}
+```
+
+- `agent_id` — required string.
+- `task_type` — required, one of the values listed above.
+- `create_time` — required Unix timestamp. Must be within `[now - 1 year, now + 60 s]`.
+- `source_id` — optional. When present it is mixed into the deterministic task ID (useful for Active Response, which uses the source document ID).
+- `payload` — required JSON object. Any structure is accepted; the module validates it is well-formed JSON and its serialized size does not exceed `max_payload_bytes`.
+
+Successful response:
+
+```json
+{"status": "ok", "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f"}
+```
+
+Error response:
+
+```json
+{"error": "<code>", "message": "<description>"}
+```
+
+Possible error codes returned by the module: `invalid_json`, `parsing_error`, `create_failed`, `query_failed`, `parsing_failed`, `serialization_failed`.
+
+### `get_pending_tasks`
+
+Request:
+
+```json
+{"action": "get_pending_tasks", "agent_id": "001"}
+```
+
+Successful response:
+
+```json
+{
+  "status": "ok",
+  "tasks": [
+    {
+      "task_id": "a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f",
+      "task_type": "remote_upgrade",
+      "payload": { "...": "..." }
+    }
+  ]
+}
+```
+
+Calling `get_pending_tasks` also **marks the returned tasks as delivered** in `tasks.db`. Delivery is recorded only on the node that served the request; the Task Manager does not propagate delivery state across cluster nodes.
+
+---
+
+## Task lifecycle
 
 ```
-┌─────────────────────┐
-│   Wazuh API / CLI   │
-│                     │
-└──────────┬──────────┘
-           │ Create Task
-           ▼
-┌─────────────────────┐
-│   Task Manager      │
-│   (Manager)         │
-│  - Queue tasks      │
-│  - Track status     │
-│  - Handle timeouts  │
-└──────────┬──────────┘
-           │ Distribute
-           ▼
-┌─────────────────────┐
-│   Task Executor     │
-│   (Agent)           │
-│  - Execute task     │
-│  - Report status    │
-└─────────────────────┘
+create_task ─► pending (stored in tasks.db)
+                 │
+                 ▼
+       get_pending_tasks ─► delivered (delivery_time recorded, cache updated)
+                              │
+                              ▼
+        (after task_ttl)   expired (marked by cleanup thread)
+                              │
+                              ▼
+        (after 24 h)        deleted (removed by cleanup thread)
 ```
+
+- The cleanup thread runs every `cleanup_interval` seconds. It sends `task cleanup_expired` and `task delete_old` queries to Wazuh DB and, once a day, `task sql VACUUM;`.
+- A task that never got picked up by an agent transitions `pending → expired → deleted`.
+- A task that was delivered stays as `delivered` until it is deleted by the cleanup thread.
+
+---
+
+## In-memory cache
+
+`get_pending_tasks` uses an in-memory cache to optimize database access. The cache only stores "no pending tasks" states per agent — actual tasks are never cached to ensure each task is delivered exactly once. Cache invalidation happens automatically when a new task is created for the agent.
+
+The cache reduces database queries for agents that poll frequently when they have no pending tasks. Its size grows linearly with the number of distinct agents with no pending work.
+
+---
+
+## Cluster behavior
+
+- The listener socket and the cleanup thread run on every manager node — master and workers alike. Any node can accept `create_task` requests from local producers and serve `get_pending_tasks` to the agents connected to it.
+- Task IDs are deterministic, so the same logical request routed to different manager nodes produces the same `task_id` and collapses into a single row in `tasks.db`.
+- Delivery bookkeeping is node-local: `mark_delivered` is issued by the node that returned the task, and no cross-node broadcast is performed. Task creation always routes to the agent's current owning node, so this is a stranding risk (a task can sit on the wrong node's `tasks.db` if an agent reconnects elsewhere, and simply expires via the normal TTL sweep), not a duplication risk — an agent can't receive the same task twice from two nodes, since `remoted`'s poller only ever talks to the agent's own node.
+
+---
+
+## Storage
+
+Tasks are stored in the `tasks.db` database managed by Wazuh DB. The Task Manager talks to Wazuh DB through the standard `task <command> <parameters>` protocol; commands used by this module are:
+
+| Command                | Direction               | Purpose                                                   |
+| ---------------------- | ----------------------- | --------------------------------------------------------- |
+| `task create`          | Task Manager → wazuh-db | Persist a new task row                                    |
+| `task get_pending`     | Task Manager → wazuh-db | Fetch pending tasks for an agent                          |
+| `task mark_delivered`  | Task Manager → wazuh-db | Record `delivery_time` for a task                         |
+| `task cleanup_expired` | Task Manager → wazuh-db | Mark tasks older than `task_ttl` as expired               |
+| `task delete_old`      | Task Manager → wazuh-db | Remove tasks older than one day from the expiration point |
+| `task sql VACUUM;`     | Task Manager → wazuh-db | Daily database compaction                                 |
+
+See the [Wazuh DB module documentation](../wazuh_db/README.md) for the underlying schema.
 
 ---
 
 ## Configuration
 
-For complete configuration options, see:
-- [Task Manager Configuration Reference](configuration.md)
+For every option and defaults, see the [Task Manager Configuration Reference](configuration.md).
 
-Quick configuration example:
+Minimal example:
 
 ```xml
 <task-manager>
-  <enabled>yes</enabled>
-  <max_tasks>100</max_tasks>
-  <task_timeout>300</task_timeout>
-  <cleanup_time>86400</cleanup_time>
+  <task_ttl>3600</task_ttl>
+  <cleanup_interval>300</cleanup_interval>
+  <max_payload_bytes>1048576</max_payload_bytes>
+  <max_tasks_per_poll>100</max_tasks_per_poll>
 </task-manager>
 ```
 
 ---
 
-## Task Types
+## Architecture
 
-### Agent Upgrade Tasks
+The Task Manager uses a multi-threaded architecture similar to WazuhDB:
 
-Upgrade one or more agents to a new version.
+- **Dealer thread** (`wm_task_manager_dealer`): Accepts incoming socket connections and adds them to a `wnotify` notification queue
+- **Worker pool** (`wm_task_manager_worker`): 8 worker threads wait on the notification queue, process requests concurrently, and maintain persistent connections by re-adding peers to the queue after serving responses
+- **Main thread** (`wm_task_manager_main`): Initializes the notification queue and starts the dealer and worker threads
 
-**Created by:** Agent upgrade module
-**Target:** Specific agents or groups
-**Duration:** Variable (depends on package size and agent count)
-
-### Custom Command Tasks
-
-Execute custom commands or scripts on agents.
-
-**Created by:** API or wodle-command
-**Target:** Specific agents
-**Duration:** Defined by command timeout
-
-### Configuration Update Tasks
-
-Push configuration changes to agents.
-
-**Created by:** Centralized configuration module
-**Target:** Agents in specific groups
-**Duration:** Short (seconds)
+This design allows multiple concurrent connections from remoted's `/control` endpoint and other IPC clients, improving throughput and responsiveness.
 
 ---
 
-## Task Management
+## Key source files
 
-### Via API
-
-Create a task:
-```bash
-curl -k -X POST "https://manager:55000/tasks" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"command":"upgrade","agent":"001","version":"4.10.0"}'
-```
-
-List tasks:
-```bash
-curl -k -X GET "https://manager:55000/tasks" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Get task status:
-```bash
-curl -k -X GET "https://manager:55000/tasks/123" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Via Database
-
-Task information is stored in the Wazuh database:
-
-```sql
--- View active tasks
-SELECT * FROM tasks WHERE status = 'In progress';
-
--- View task history
-SELECT * FROM tasks ORDER BY create_time DESC LIMIT 10;
-```
-
----
-
-## Monitoring
-
-### Task Status Values
-
-- **Pending:** Task queued, waiting for agent
-- **In progress:** Task executing on agent
-- **Done:** Task completed successfully
-- **Failed:** Task failed or timed out
-- **Timeout:** Task exceeded maximum execution time
-- **Cancelled:** Task cancelled by user
-
-### Check Task Manager Status
-
-```bash
-# Check module is running
-/var/wazuh-manager/bin/wazuh-modulesd --test
-
-# View task manager logs
-tail -f /var/wazuh-manager/logs/ossec.log | grep task-manager
-```
-
----
-
-## Troubleshooting
-
-### Tasks Not Executing
-
-Check configuration:
-```bash
-/var/wazuh-manager/bin/wazuh-logtest-config
-```
-
-Check task manager is enabled:
-```bash
-grep -A5 "task-manager" /var/wazuh-manager/etc/wazuh-manager.conf
-```
-
-Verify agents are connected:
-```bash
-/var/wazuh-manager/bin/wazuh-control status
-/var/wazuh-manager/bin/agent_control -l
-```
-
-### Tasks Timing Out
-
-Increase timeout in configuration:
-```xml
-<task-manager>
-  <task_timeout>600</task_timeout>  <!-- Increase to 10 minutes -->
-</task-manager>
-```
-
-Check agent logs for execution errors:
-```bash
-# On agent
-tail -f /var/ossec/logs/ossec.log
-```
-
-### High Task Queue
-
-Increase max concurrent tasks:
-```xml
-<task-manager>
-  <max_tasks>200</max_tasks>  <!-- Increase from default -->
-</task-manager>
-```
-
-Or reduce task creation rate from API/modules.
-
----
-
-## Performance Considerations
-
-### Resource Usage
-
-- Each task consumes memory for state tracking
-- Concurrent task limit prevents resource exhaustion
-- Cleanup interval affects database size
-
-### Tuning
-
-For high-volume environments:
-```xml
-<task-manager>
-  <enabled>yes</enabled>
-  <max_tasks>500</max_tasks>           <!-- More concurrent tasks -->
-  <task_timeout>600</task_timeout>     <!-- Longer timeout for complex tasks -->
-  <cleanup_time>43200</cleanup_time>   <!-- Cleanup every 12 hours -->
-</task-manager>
-```
-
-For low-volume environments:
-```xml
-<task-manager>
-  <enabled>yes</enabled>
-  <max_tasks>50</max_tasks>            <!-- Fewer concurrent tasks -->
-  <task_timeout>300</task_timeout>     <!-- Shorter timeout -->
-  <cleanup_time>86400</cleanup_time>   <!-- Cleanup daily -->
-</task-manager>
-```
+| File                         | Purpose                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `wm_task_manager.c`          | Module entry point, dealer thread, worker pool, and multi-threaded dispatcher |
+| `wm_task_manager_parsing.c`  | JSON request parsing and response building                                   |
+| `wm_task_manager_commands.c` | Wazuh DB IPC, `create_task` and `get_pending_tasks` handlers, cleanup thread |
+| `wm_task_manager_tasks.c`    | Deterministic task ID generation and in-memory task cache                    |
 
 ---
 
 ## See Also
 
-- [Task Manager Configuration Reference](configuration.md) - Complete configuration options
-- [Agent Upgrade](../agent_upgrade/index.html) - Agent upgrade tasks
-- [Wazuh API](../../api/index.html) - Task management via API
-- [Agent Management](../agent-management/index.html) - Agent lifecycle management
+- [Task Manager Configuration Reference](configuration.md)
+- [Agent Upgrade Module](../agent_upgrade/README.md) — main producer of `remote_upgrade` tasks
+- [Wazuh DB Module](../wazuh_db/README.md) — persistence backend

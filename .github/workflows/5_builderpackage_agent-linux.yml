@@ -797,7 +797,7 @@ jobs:
         with:
           modules-config: .github/test_modules_linux.json
           none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"","pytest_extra_args":"","pytest_tier_args":"","pre_install":"","setup_aws_credentials":false,"timeout_minutes":1}]}'
-          field-defaults: '{"pytest_extra_args":"","pre_install":"","setup_aws_credentials":false,"timeout_minutes":120}'
+          field-defaults: '{"pytest_extra_args":"","pre_install":"","setup_aws_credentials":false,"timeout_minutes":150}'
 
   run-integration-tests:
     needs: [upload-deb-to-s3, detect-changes]

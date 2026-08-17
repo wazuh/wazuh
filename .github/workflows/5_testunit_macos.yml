@@ -19,9 +19,8 @@ on:
       - "!src/wazuh_db/src/**"
       - "!src/wazuh_db/schemas/**"
       - "!src/shared_modules/content_manager/src/**"
-      - "!src/shared_modules/router/src/**"
       - "!src/wazuh_modules/vulnerability_scanner/src/**"
-      - "!src/wazuh_modules/inventory_sync/src/**"
+      - "!src/wazuh_modules/inventory_sync_server/src/**"
   workflow_dispatch:
 
 concurrency:

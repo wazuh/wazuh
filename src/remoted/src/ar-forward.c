@@ -104,7 +104,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 char *endptr;
                 errno = 0;
                 payload_size = strtoll(payload_size_offset, &endptr, 10);
-                
+
                 /* Validate strtoll conversion */
                 if (errno == ERANGE) {
                     mwarn("Payload size value out of range: %s. Dropping message.", payload_size_offset);
@@ -118,10 +118,10 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     mwarn("Invalid payload size format: %s. Dropping message.", payload_size_offset);
                     continue;
                 }
-                
+
                 /* Validate payload size range */
                 if (payload_size < 0 || payload_size >= OS_MAXSTR) {
-                    mwarn("Invalid payload size: %ld. Must be between 0 and %d. Dropping message.", 
+                    mwarn("Invalid payload size: %ld. Must be between 0 and %d. Dropping message.",
                           payload_size, OS_MAXSTR - 1);
                     continue;
                 }
@@ -145,14 +145,14 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     header_size = snprintf(msg_to_send, OS_MAXSTR, "%s%s ",
                              CONTROL_HEADER,
                              module_name);
-                                               
+
                     /* Validate payload size to prevent buffer overflow */
                     if ((size_t)(header_size + payload_size) >= OS_MAXSTR) {
-                        mwarn("Message size (%ld + %ld) exceeds maximum allowed size (%d). Dropping message.", 
+                        mwarn("Message size (%ld + %ld) exceeds maximum allowed size (%d). Dropping message.",
                               header_size, payload_size, OS_MAXSTR);
                         continue;
                     }
-                    
+
                     /* Copy the payload to the message */
                     memcpy(msg_to_send + header_size, tmp_str, payload_size);
                 } else {
@@ -181,7 +181,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
                         if (send_msg(agent_id, msg_to_send, -1) >= 0) {
-                            rem_inc_send_ar(agent_id);
+                            rem_inc_send_ar();
                         }
                         key_lock_read();
                     }
@@ -193,12 +193,12 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Send to the remote agent that generated the event or to a pre-defined agent */
             else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT)) {
                 if (send_msg(ar_agent_id, msg_to_send, -1) >= 0) {
-                    rem_inc_send_ar(ar_agent_id);
+                    rem_inc_send_ar();
                 }
             }
             else if (ar_location & SPECIFIC_AGENT_SIZED) {
                 if (send_msg(ar_agent_id, msg_to_send, payload_size + header_size) >= 0) {
-                    rem_inc_send_ar(ar_agent_id);
+                    rem_inc_send_ar();
                 }
             }
         }

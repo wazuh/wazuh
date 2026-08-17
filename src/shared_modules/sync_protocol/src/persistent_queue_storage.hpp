@@ -58,9 +58,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @param batch Vector of messages to persist atomically.
         void submitBatch(const std::vector<PersistedData>& batch) override;
 
-        /// @brief Fetches a batch of pending messages and marks them as SYNCING.
+        /// @brief Fetches a batch of pending messages up to a byte budget and marks them as SYNCING.
+        /// @param maxBytes Maximum estimated payload size to collect. 0 means no byte cap.
         /// @return A vector of messages now marked as SYNCING.
-        std::vector<PersistedData> fetchAndMarkForSync() override;
+        std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) override;
 
         /// @brief Fetches pending items without marking them for sync.
         /// @param onlyDataValues If true, only returns items with is_data_context=false
@@ -96,6 +97,16 @@ class PersistentQueueStorage : public IPersistentQueueStorage
 
         /// @brief Filesystem wrapper for operations
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+
+        /// @brief Id of the pending item currently stuck as a lone oversized block, if any.
+        std::string m_oversizedItemId;
+
+        /// @brief Consecutive fetchAndMarkForSync() calls in which m_oversizedItemId was
+        ///        resent alone because it exceeds the byte cap on its own. Reset once a
+        ///        different item takes its place. Past MAX_OVERSIZED_ATTEMPTS the item is
+        ///        dropped instead of resent, so a size it can never fit into cannot block
+        ///        every item behind it forever.
+        unsigned int m_oversizedItemAttempts = 0;
 
         /// @brief Creates the persistent_queue table if it doesn't already exist.
         void createTableIfNotExists();

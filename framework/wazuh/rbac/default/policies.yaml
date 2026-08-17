@@ -17,7 +17,6 @@ default_policies:
           - agent:read
           - agent:delete
           - agent:modify_group
-          - agent:reconnect
           - agent:restart
           - agent:reload
           - agent:upgrade
@@ -156,16 +155,6 @@ default_policies:
           - cluster:read
         resources:
           - node:id:*
-        effect: allow
-
-  task_status:
-    description: Provide permissions to check the status of tasks
-    policies:
-      task:
-        actions:
-          - task:status
-        resources:
-          - '*:*:*'
         effect: allow
 
   security_read:

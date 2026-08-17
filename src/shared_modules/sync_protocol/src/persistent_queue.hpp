@@ -59,9 +59,10 @@ class PersistentQueue : public IPersistentQueue
                     uint64_t version,
                     bool isDataContext = false) override;
 
-        /// @brief Fetches a batch of pending messages and marks them for synchronization.
+        /// @brief Fetches a batch of pending messages up to a byte budget and marks them for synchronization.
+        /// @param maxBytes Maximum estimated payload size to collect. 0 means no byte cap.
         /// @return A vector of messages now marked as SYNCING.
-        std::vector<PersistedData> fetchAndMarkForSync() override;
+        std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) override;
 
         /// @brief Fetches pending items without marking them for sync.
         /// @param onlyDataValues If true, only returns items with is_data_context=false

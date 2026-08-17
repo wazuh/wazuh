@@ -2,12 +2,12 @@
 
 Complete configuration reference for the Agent Upgrade module.
 
-The agent upgrade module handles remote agent upgrades using WPK (Wazuh Package) files. Configuration differs between manager and agent:
+The Agent Upgrade module handles remote agent upgrades using WPK files. Configuration differs between manager and agent:
 
-- **Manager:** Controls WPK distribution, transfer, and upgrade orchestration
-- **Agent:** Controls whether the agent accepts upgrades and notification behavior
+- **Manager:** Enables the module and optionally overrides the WPK repository URL. The manager no longer configures per-transfer parameters (chunk size, worker threads) — the manager only creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md); the WPK is served over the manager's HTTPS interface when the agent requests it. For agents older than v5.0.0, `remoted`'s own legacy task delivery poller (see [`remoted.legacy_task_polling_interval`](../remoted/configuration.md)) pushes the task instead, over the agent's existing 1514 session — that path does reintroduce WPK chunking, but as a fixed internal 32768-byte constant, not a user-facing option, so no new per-transfer knob is exposed either way.
+- **Agent:** Enables the module and controls WPK signature verification.
 
-For module overview and architecture, see [Agent Upgrade Module](index.html).
+For module overview and architecture, see [Agent Upgrade Module](README.md).
 
 ---
 
@@ -19,39 +19,20 @@ For module overview and architecture, see [Agent Upgrade Module](index.html).
 
 **Internal Options:** None
 
-The manager-side configuration controls how the manager distributes WPK packages to agents.
-
 ### enabled
 
-Enable or disable the agent upgrade module.
+Enable or disable the agent upgrade module on the manager.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Disabling prevents all agent upgrade operations
+- **Note:** When disabled, the module exits at startup and the manager will not accept upgrade requests.
 
 ### wpk_repository
 
-Base URL from which WPK upgrade packages are downloaded.
+Base URL from which WPK upgrade packages are fetched. Only applies to the manager.
 
-- **Default value:** none (auto-derived as `packages.wazuh.com/<major>.x/wpk/` using manager version)
-- **Allowed values:** Any valid URL
-- **Note:** A trailing `/` is added automatically at runtime if absent
-
-### chunk_size
-
-Size in bytes of each chunk sent to the agent during WPK transfer.
-
-- **Default value:** `32768` (32 KB)
-- **Allowed values:** Integer from `64` to `60000`
-- **Note:** Smaller chunks reduce memory usage but increase transfer overhead
-
-### max_threads
-
-Maximum number of simultaneous upgrade operations.
-
-- **Default value:** `8`
-- **Allowed values:** `0` (use CPU count) or integer from `1` to `256`
-- **Note:** Set to `0` to automatically use the number of available CPU cores
+- **Default value:** none — the module falls back to `packages.wazuh.com/<major>.x/wpk/`, derived from the manager version.
+- **Allowed values:** any valid URL. A trailing `/` is added automatically if absent.
 
 ---
 
@@ -59,19 +40,17 @@ Maximum number of simultaneous upgrade operations.
 
 ### Default Configuration
 
-Standard upgrade settings for most deployments:
+Standard configuration for most deployments:
 
 ```xml
 <agent-upgrade>
   <enabled>yes</enabled>
-  <chunk_size>32768</chunk_size>
-  <max_threads>8</max_threads>
 </agent-upgrade>
 ```
 
 ### Custom WPK Repository
 
-Use an internal or custom WPK repository instead of the official Wazuh repository:
+Use an internal or mirrored WPK repository instead of the official Wazuh one:
 
 ```xml
 <agent-upgrade>
@@ -80,33 +59,7 @@ Use an internal or custom WPK repository instead of the official Wazuh repositor
 </agent-upgrade>
 ```
 
-### Large Deployments
-
-High-performance configuration for upgrading many agents simultaneously:
-
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-  <chunk_size>60000</chunk_size>
-  <max_threads>0</max_threads>  <!-- Use all CPU cores -->
-</agent-upgrade>
-```
-
-### Low-Bandwidth Networks
-
-Optimize for bandwidth-constrained or unreliable networks:
-
-```xml
-<agent-upgrade>
-  <enabled>yes</enabled>
-  <chunk_size>8192</chunk_size>
-  <max_threads>2</max_threads>
-</agent-upgrade>
-```
-
-### Disable Remote Upgrades
-
-Prevent all remote agent upgrades on the manager:
+### Disable Remote Upgrades on the Manager
 
 ```xml
 <agent-upgrade>
@@ -124,7 +77,7 @@ Prevent all remote agent upgrades on the manager:
 
 **Internal Options:** None
 
-The agent-side configuration controls whether the agent accepts remote upgrades from the manager.
+The agent-side configuration controls whether the agent accepts remote upgrades and how the incoming WPK is validated.
 
 ### enabled
 
@@ -132,57 +85,49 @@ Allow or prevent this agent from being upgraded remotely.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** When disabled, the agent rejects all upgrade commands from the manager
+- **Note:** When disabled, the agent-side upgrade listener replies with the error `Upgrade module is disabled or not ready yet` to every incoming command.
 
 ### ca_verification
 
-Verify WPK package digital signature before installation.
+Container element for WPK signature verification settings.
+
+**Sub-options:**
+
+#### enabled (inside `<ca_verification>`)
+
+Verify the WPK package digital signature before running the installer.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** Disabling verification is not recommended as it allows unsigned packages
-
-**Sub-option:**
+- **Note:** Disabling signature verification is strongly discouraged. When disabled, the CA store is cleared and the agent will execute any WPK it receives without cryptographic validation.
 
 #### ca_store
 
-Custom path(s) to CA certificate file(s) for WPK signature verification.
+Path to a CA certificate file used to verify the WPK signature. The tag can be repeated to accept multiple CAs.
 
-- **Default value:** Built-in CA certificates
-- **Allowed values:** Valid file path (tag can be repeated for multiple certificates)
-- **Note:** Only effective when `ca_verification` is `yes`; allows using custom CA for WPK signing
+- **Default value:** the packaged Wazuh CA certificate.
+- **Allowed values:** valid absolute paths.
+- **Note:** Only effective when `ca_verification` is enabled.
 
-**Format for multiple certificates:**
+Complete `ca_verification` block:
+
 ```xml
 <ca_verification>
-  <ca_store>/etc/ssl/certs/ca1.pem</ca_store>
-  <ca_store>/etc/ssl/certs/ca2.pem</ca_store>
+  <enabled>yes</enabled>
+  <ca_store>/etc/ssl/certs/wazuh_ca.pem</ca_store>
+  <ca_store>/etc/ssl/certs/internal_ca.pem</ca_store>
 </ca_verification>
 ```
 
-### notification_wait_start
+### Deprecated options
 
-Initial wait time (in seconds) before the agent notifies the manager of upgrade results.
+The following tags are still accepted for backwards compatibility with 4.x configuration files but are ignored by the current implementation. Each occurrence produces a deprecation warning at startup:
 
-- **Default value:** `60`
-- **Allowed values:** Positive integer
-- **Note:** Used for exponential backoff when manager is unreachable
+- `notification_wait_start`
+- `notification_wait_max`
+- `notification_wait_factor`
 
-### notification_wait_max
-
-Maximum wait time (in seconds) between notification retry attempts.
-
-- **Default value:** `3600` (1 hour)
-- **Allowed values:** Positive integer
-- **Note:** Prevents infinite retry delays
-
-### notification_wait_factor
-
-Exponential backoff multiplier for notification retries.
-
-- **Default value:** `2`
-- **Allowed values:** Positive integer
-- **Note:** Each retry waits `previous_wait * factor`, capped at `notification_wait_max`
+They can be safely removed from the configuration.
 
 ---
 
@@ -190,12 +135,12 @@ Exponential backoff multiplier for notification retries.
 
 ### Default Configuration
 
-Standard agent upgrade settings:
-
 ```xml
 <agent-upgrade>
   <enabled>yes</enabled>
-  <ca_verification>yes</ca_verification>
+  <ca_verification>
+    <enabled>yes</enabled>
+  </ca_verification>
 </agent-upgrade>
 ```
 
@@ -209,161 +154,75 @@ Prevent this specific agent from being upgraded remotely:
 </agent-upgrade>
 ```
 
-### Custom Notification Timing
+### Custom CA Store
 
-Adjust notification retry behavior for unreliable networks:
+Use one or more custom CAs to sign WPK packages:
 
 ```xml
 <agent-upgrade>
   <enabled>yes</enabled>
-  <ca_verification>yes</ca_verification>
-  <notification_wait_start>30</notification_wait_start>
-  <notification_wait_max>1800</notification_wait_max>
-  <notification_wait_factor>3</notification_wait_factor>
+  <ca_verification>
+    <enabled>yes</enabled>
+    <ca_store>/etc/ssl/certs/wazuh_internal_ca.pem</ca_store>
+  </ca_verification>
 </agent-upgrade>
-```
-
----
-
-## Upgrade Process
-
-### Manager-Side Flow
-
-1. **API request:** Upgrade initiated via Wazuh API or CLI
-2. **Task creation:** Task Manager creates upgrade task
-3. **WPK download:** Manager downloads WPK from repository (if not cached)
-4. **WPK transfer:** Manager transfers WPK to agent in chunks
-5. **Execution trigger:** Manager signals agent to execute upgrade
-6. **Status monitoring:** Manager monitors upgrade task status
-7. **Completion:** Task marked as complete or failed
-
-### WPK Cache
-
-Downloaded WPKs are cached in `/var/wazuh-manager/var/upgrade/`:
-
-```bash
-ls -lh /var/wazuh-manager/var/upgrade/
-```
-
----
-
-## Performance Considerations
-
-### Simultaneous Upgrades
-
-**Small deployments (<100 agents):**
-```xml
-<max_threads>4</max_threads>
-```
-
-**Medium deployments (100-1000 agents):**
-```xml
-<max_threads>8</max_threads>
-```
-
-**Large deployments (1000+ agents):**
-```xml
-<max_threads>0</max_threads>  <!-- Use all CPU cores -->
-```
-
-### Transfer Chunk Size
-
-**High bandwidth:**
-```xml
-<chunk_size>60000</chunk_size>
-```
-
-**Low bandwidth or unreliable networks:**
-```xml
-<chunk_size>8192</chunk_size>
-```
-
-**Balanced (default):**
-```xml
-<chunk_size>32768</chunk_size>
 ```
 
 ---
 
 ## Monitoring
 
-### Check Upgrade Status
-
-Via API:
-```bash
-curl -k -X GET "https://localhost:55000/agents/upgrade" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Via CLI:
-```bash
-/var/wazuh-manager/bin/agent_upgrade -l
-```
-
-### View Upgrade Logs
+### Check module status on the manager
 
 ```bash
-# Manager upgrade logs
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep agent-upgrade
-
-# Task manager logs
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep task-manager
 ```
 
-### Check WPK Cache
+Successful upgrade requests produce log lines from the `agent-upgrade` and `task-manager` module tags: `agent-upgrade` validates the request and creates a task, `task-manager` only stores/tracks it — it never delivers anything itself. For upgrades to an agent below v5.0.0, `remoted`'s own task-polling thread also logs under its own tag, since it — not `agent-upgrade` or `task-manager` — is what actually delivers the WPK to that agent.
+
+### Inspect pending upgrade tasks
+
+Since upgrade requests end up as `remote_upgrade` rows in `tasks.db`, task state can be inspected the same way as any other task type. See the [Task Manager configuration reference](../task_manager/configuration.md) for the query examples.
+
+### View agent-side upgrade logs
 
 ```bash
-# List cached WPK files
-ls -lh /var/wazuh-manager/var/upgrade/
+# Linux/Unix
+tail -f /var/ossec/logs/ossec.log | grep agent-upgrade
+```
 
-# Check disk usage
-du -sh /var/wazuh-manager/var/upgrade/
+```powershell
+# Windows
+Get-Content 'C:\Program Files (x86)\ossec-agent\ossec.log' -Wait | Select-String agent-upgrade
 ```
 
 ---
 
 ## Troubleshooting
 
-### Upgrade Fails to Start
+### Upgrade requests are rejected on the manager
 
-**Check module is enabled:**
+Verify the module is enabled:
+
 ```bash
-grep -A5 "<agent-upgrade>" /var/wazuh-manager/etc/wazuh-manager.conf
+grep -A 3 "<agent-upgrade>" /var/wazuh-manager/etc/wazuh-manager.conf
 ```
 
-**Verify WPK repository:**
-```bash
-# Test repository URL
-curl -I https://packages.wazuh.com/4.x/wpk/
-```
+Verify the target version is compatible (see [Version constraints](README.md#version-constraints)).
 
-### WPK Download Failures
+### WPK download failures on the manager
 
-**Check network connectivity:**
-```bash
-curl -v https://packages.wazuh.com/
-```
+Confirm the manager has outbound HTTPS access to the WPK repository configured in `wpk_repository`, or place the WPK manually under `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade API endpoint.
 
-**Verify firewall rules allow outbound HTTPS:**
-```bash
-iptables -L OUTPUT -n -v | grep 443
-```
+### Upgrades never complete
 
-### Upgrade Timeouts
-
-Increase task timeout in Task Manager configuration:
-
-```xml
-<task-manager>
-  <task_timeout>30m</task_timeout>  <!-- Increase from 15m default -->
-</task-manager>
-```
+The manager only records that a task was created. Whether the agent picked it up, downloaded the WPK, and executed the installer is visible in the agent-side log and in the `delivery_time` column of the `tasks.db` row. If a task remains in the `pending` state past `task_ttl` (default 1 h), it will be marked `expired` by the Task Manager cleanup thread.
 
 ---
 
 ## See Also
 
-- [Agent Upgrade Module](index.html) - Module overview and architecture
-- [Task Manager Configuration](../task_manager/configuration.md) - Task lifecycle management
-- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
-- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options
+- [Agent Upgrade Module](README.md) — Module overview and architecture
+- [Task Manager Configuration](../task_manager/configuration.md) — Backing store for upgrade tasks
+- [Manager Configuration Reference](../../configuration/manager/README.md)
+- [Agent Configuration Reference](../../configuration/agent/README.md)

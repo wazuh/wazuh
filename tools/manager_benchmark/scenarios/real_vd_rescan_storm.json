@@ -1,0 +1,54 @@
+{
+  "name": "real_vd_rescan_storm",
+  "description": "TWO SHAPE DECISIONS MEASURED, NOT GUESSED. (1) The VD lane is a bare `delta`, not a `full_resync`: a VDFirst `Cleans` session is isVD too, so it queues in the VD scan lane and waits its turn there WITHOUT scanning anything -- with 100 agents that doubled the lane's pressure for zero inventory, and a first connection has nothing to clean anyway. (2) retry.max_attempts is 120 (60s of re-sending) because 100 agents arriving at once DO saturate that lane (thousands of bare 503s from vd.capacity.503.total, one indexer connector and one scan at a time). With the default 10 attempts, ~85 VDFirst sessions exhausted their budget and the manager then correctly SKIPPED those agents' re-scans ('no package inventory available (first scan not completed yet, VDFirst will cover the updated feed)') -- the storm answered 100x 200 while only a third of the scans ran. If a target still exhausts the budget, that IS the finding: the VD scan lane, not /scan/vd, is what a 100-agent first connect hits first. 100 agents (50 Windows + 50 Linux) that first sync their WHOLE inventory - real captured FIM, syscollector, SCA and syscollector_vd payloads, each as a first-connection full_resync - and only then, once the documents have had time to land in the indexer, all ask for a vulnerability re-scan at once: POST /scan/vd {\"type\":\"feed_update\"} with the feed_offset each agent learned from /control. Two DIFFERENT manager paths in the order a real agent walks them: the VDFirst session scans the inventory it carries through inventory_sync_server's VD scan lane, then /scan/vd re-scans that same, already-indexed inventory through remoted's worker pool into the VD module. The 90s initial_delay on the scan_vd step is the gap between indexing and re-scanning; the storm itself is deliberately unshaped (requests_per_second 0), so the 100 requests arrive together and queue against a VD module that scans ONE agent at a time (ScanOrchestrator holds an exclusive lock). Sender-side the run only sees admissions (200 = queued, not scanned): the scans themselves are visible in modulesd's log as 'reason=feed_update', one per agent, distinct from the 'option=VDFirst' one its session triggered; an agent whose VDFirst never landed is skipped there instead, which is the manager being right and the run being under-provisioned. Needs a target whose CVE feed has finished loading, or every scan_vd answers 409 version_mismatch against offset 0 - see tool_simulator/docu/14-scan-vd.md.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" },
+    "retry": { "enabled": true, "interval": "500ms", "max_attempts": 120 }
+  },
+  "lanes": {
+    "fim_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/fim_first_sync_windows.json" }
+    ],
+    "syscollector_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/syscollector_sync_windows.json" }
+    ],
+    "sca_windows": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/sca_full_windows.json" }
+    ],
+    "vd_windows": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_first_windows.json" },
+      { "kind": "scan_vd", "initial_delay": "90s" }
+    ],
+    "fim_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/fim_first_sync_ubuntu.json" }
+    ],
+    "syscollector_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/syscollector_sync_debian.json" }
+    ],
+    "sca_linux": [
+      { "kind": "full_resync", "dump": "../sample_payloads/dumps/sca_full_ubuntu.json" }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "dump": "../sample_payloads/dumps/vd_first_debian.json" },
+      { "kind": "scan_vd", "initial_delay": "90s" }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 50, "first_id": 48000,
+      "lanes": ["fim_windows", "syscollector_windows", "sca_windows", "vd_windows"],
+      "start": { "osname": "Microsoft Windows 11 Enterprise Evaluation", "osplatform": "windows", "ostype": "windows", "osversion": "10.0.26200", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "linux", "agents": 50, "first_id": 48100,
+      "lanes": ["fim_linux", "syscollector_linux", "sca_linux", "vd_linux"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "300s" },
+  "expected": {
+    "sessions": { "ok": { "eq": 700 }, "documents_sent": { "gte": 92850 }, "retries_exhausted": { "eq": 0 },
+                  "s400": { "eq": 0 }, "s403": { "eq": 0 }, "s409": { "eq": 0 }, "s413": { "eq": 0 }, "s500": { "eq": 0 } },
+    "scan": { "sent": { "eq": 100 }, "other": { "eq": 0 } },
+    "control": { "startup_err": { "eq": 0 } },
+    "transport_errors": { "eq": 0 }
+  }
+}

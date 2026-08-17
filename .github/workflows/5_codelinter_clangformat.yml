@@ -6,11 +6,10 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - .clang-format
-      - src/shared_modules/router/**
       - src/shared_modules/indexer_connector/**
       - src/shared_modules/content_manager/**
       - src/shared_modules/utils/**
-      - src/wazuh_modules/inventory_sync/**
+      - src/wazuh_modules/inventory_sync_server/**
       - src/wazuh_modules/vulnerability_scanner/**
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
@@ -41,17 +40,6 @@ jobs:
         with:
           submodules: recursive
 
-      # Router
-      - name: Router - Coding style
-        id: router_style
-        continue-on-error: true
-        uses: ./.github/actions/clang_format
-        with:
-          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
-          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          path: src/shared_modules/router
-          id: router
-
       # Indexer Connector
       - name: Indexer connector - Coding style
         id: indexer_connector_style
@@ -74,16 +62,16 @@ jobs:
           path: src/shared_modules/content_manager
           id: content_manager
 
-      # Inventory Sync
-      - name: Inventory sync - Coding style
-        id: inventory_sync_style
+      # Inventory Sync Server
+      - name: Inventory sync server - Coding style
+        id: inventory_sync_server_style
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          path: src/wazuh_modules/inventory_sync
-          id: inventory_sync
+          path: src/wazuh_modules/inventory_sync_server
+          id: inventory_sync_server
 
       # Vulnerability Scanner
       - name: Vulnerability scanner - Coding style
@@ -112,10 +100,6 @@ jobs:
         run: |
           FAILED_STEPS=""
 
-          if [ "${{ steps.router_style.outcome }}" != "success" ]; then
-            FAILED_STEPS="$FAILED_STEPS Router"
-          fi
-
           if [ "${{ steps.indexer_connector_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS IndexerConnector"
           fi
@@ -124,8 +108,8 @@ jobs:
             FAILED_STEPS="$FAILED_STEPS ContentManager"
           fi
 
-          if [ "${{ steps.inventory_sync_style.outcome }}" != "success" ]; then
-            FAILED_STEPS="$FAILED_STEPS InventorySync"
+          if [ "${{ steps.inventory_sync_server_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS InventorySyncServer"
           fi
 
           if [ "${{ steps.vulnerability_scanner_style.outcome }}" != "success" ]; then

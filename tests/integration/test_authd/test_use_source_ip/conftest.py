@@ -14,8 +14,8 @@ def configure_receiver_sockets(request, test_metadata):
     Get configurations from the module and set receiver sockets.
     """
     if test_metadata['ipv6'] == 'yes':
-        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET6', 'SSL_TLSv1_2')]
+        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET6', 'ssl_tls')]
     else:
-        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'ssl_tls')]
 
     setattr(request.module, 'receiver_sockets_params', receiver_sockets_params)

@@ -20,7 +20,8 @@ For module overview and architecture, see [Remoted Module](index.html).
 
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
-### port
+
+### legacy.port
 
 Listening port for agent connections.
 
@@ -28,7 +29,7 @@ Listening port for agent connections.
 - **Allowed values:** Integer from `1` to `65535`
 - **Note:** Standard port for Wazuh agent-manager communication
 
-### protocol
+### legacy.protocol
 
 Communication protocol(s) to accept from agents.
 
@@ -36,7 +37,7 @@ Communication protocol(s) to accept from agents.
 - **Allowed values:** `tcp`, `udp`, or `tcp,udp`
 - **Note:** TCP is recommended for reliable delivery; UDP may be used for low-latency environments
 
-### queue_size
+### legacy.queue_size
 
 Message queue size for incoming agent messages.
 
@@ -44,7 +45,7 @@ Message queue size for incoming agent messages.
 - **Allowed values:** Positive integer
 - **Note:** Values greater than `262144` will generate a warning; adjust based on agent count and event rate
 
-### allow_higher_versions
+### agents.allow_higher_versions
 
 Accept connections from agents running a Wazuh version higher than the manager.
 
@@ -52,7 +53,7 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Allowed values:** `yes`, `no`
 - **Note:** Enable when upgrading agents before the manager
 
-### ipv6
+### legacy.ipv6
 
 Enable IPv6 support for agent connections.
 
@@ -60,15 +61,19 @@ Enable IPv6 support for agent connections.
 - **Allowed values:** `yes`, `no`
 - **Note:** Allows agents to connect using IPv6 addresses
 
-### local_ip
+### legacy.local_ip
 
 Bind remoted to a specific local IP address.
 
-- **Default value:** All interfaces (`0.0.0.0` for IPv4, `::` for IPv6)
+- **Default value:** `127.0.0.1` (loopback-only) when `ipv6` is `no`; all IPv6 interfaces (`::`)
+  when `ipv6` is `yes` (the `127.0.0.1` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on specified interface
+- **Note:** Restricts remoted to listen only on the specified interface. Set to `0.0.0.0` to
+  accept agent connections from any IPv4 interface. The shipped `wazuh-manager.conf` and
+  install-time template ship the loopback-only default as-is; an operator who wants
+  remote agents must add `<local_ip>0.0.0.0</local_ip>` after install.
 
-### rids_closing_time
+### legacy.rids_closing_time
 
 Time to keep agent session IDs (RIDs) cached after agent disconnects.
 
@@ -77,13 +82,113 @@ Time to keep agent session IDs (RIDs) cached after agent disconnects.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 - **Note:** Prevents rapid reconnection issues; agent must wait this period before reusing same ID
 
-### connection_overtake_time
+### legacy.connection_overtake_time
 
 Time in seconds before allowing a new connection to overtake an existing agent connection with the same ID.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
 - **Note:** Set to `0` to disable overtake protection (allows immediate reconnection); higher values provide more protection against connection hijacking while requiring longer wait for legitimate agent restarts
+
+---
+
+## HTTPS Configuration
+
+**XML Section:** `<remote><https>`
+
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always attempts to start, and self-gates on the presence of a valid certificate/key.
+
+### https.port
+
+HTTPS listening port.
+
+- **Default value:** `1517`
+- **Allowed values:** Integer from `1` to `65535`
+
+### https.bind_addr
+
+Address the HTTPS listener binds to.
+
+- **Default value:** `127.0.0.1`
+- **Allowed values:** Valid IPv4 or IPv6 address
+- **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
+  accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
+  [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
+  for the full explanation.
+
+### https.dual_stack
+
+Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
+(the `IPV6_V6ONLY` socket option).
+
+- **Default value:** `no` (force IPv6-only)
+- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
+- **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
+  `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
+
+### https.certificate
+
+Path to the TLS certificate chain (PEM) presented by the server.
+
+- **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
+
+### https.key
+
+Path to the TLS private key (PEM) matching `certificate`.
+
+- **Default value:** `etc/certs/remoted-key.pem` (relative to the manager's chroot)
+
+### https.ca
+
+Path to a CA bundle (PEM) used to verify client (agent) certificates.
+
+- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot)
+- **Note:** Only actually read when `verification_mode` is `certificate`; harmless
+  if left at its default and `verification_mode` stays `none`. See the special case below.
+
+### https.verification_mode
+
+Client-certificate verification strictness.
+
+- **Default value:** `none`
+- **Allowed values:**
+  - `none` — the client certificate is not verified.
+  - `certificate` — the client certificate chain is validated against `ca`.
+  - `full` — same as `certificate`, plus the address the peer connects from must appear as an
+    IP entry in that certificate's Subject Alternative Name. A connection whose certificate is
+    valid but lists a different address is answered `403` on every route, including the
+    unauthenticated health probe, and a throttled warning naming the address is logged.
+- **What these modes authenticate:** whoever **opens the connection**. On a direct
+  agent-to-manager connection that is the agent. Behind a TLS-terminating reverse proxy or
+  load balancer it is the **proxy**, because the agent's TLS session ends there and a new one
+  is opened towards the manager — the agent's certificate cannot cross that boundary. In that
+  topology `certificate` is still valuable (only your proxy can reach the listener), but it
+  does **not** authenticate agents: an agent presenting no certificate at all is still
+  accepted. Requiring certificates from agents behind a proxy is configured on the proxy.
+- **Before choosing `full`:** for the same reason, the address it checks is the **proxy's**
+  whenever one terminates TLS, so behind a proxy the mode constrains where your proxy may
+  connect from, not where agents may. It fits a direct deployment, or one where the balancer
+  preserves the client address at network level. It also requires every agent certificate to
+  carry the agent's address in its SAN, which has to be reissued whenever that address changes.
+- **Note:** any other value is ignored with a warning, leaving `verification_mode` as if it had
+  not been configured.
+- **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
+
+### https.ciphers
+
+TLS 1.3 ciphersuite override for the HTTPS listener (`SSL_CTX_set_ciphersuites()` naming
+scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its minimum
+protocol version.
+
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string
+
+### https.max_body_size
+
+Maximum accepted HTTP request body size.
+
+- **Default value:** `20MB`
+- **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
 
 ---
 
@@ -102,6 +207,11 @@ Debug logging level for remoted module.
 - **Default value:** `0`
 - **Allowed values:** `0` (disabled), `1` (basic), `2` (verbose)
 - **Note:** Use `debug2` for troubleshooting; generates significant log volume
+- **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
+  (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
+  controls how many it can trigger; conditions an operator can act on are logged as warnings
+  regardless of this setting. See
+  [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
 
 ### remoted.receive_chunk
 
@@ -175,12 +285,31 @@ Agent metadata cache expiration time in seconds.
 - **Allowed values:** Integer from `60` to `86400`
 - **Note:** Entries older than this threshold are cleaned up periodically; adjust based on agent stability (ephemeral: `300`, stable: `600-1800`)
 
+### remoted.legacy_task_polling_interval
+
+Interval in seconds between polls of the Task Manager's pending tasks on behalf of connected
+agents older than v5.0.0. Every cycle, `remoted` checks each connected agent's self-reported
+version and, for agents confirmed below v5.0.0, asks the Task Manager for pending tasks and
+delivers any `remote_upgrade` (WPK) one over the agent's existing session — see
+[Remote agent upgrade](/guide/migration/remote-agent-upgrade.md) for the full delivery flow.
+
+- **Default value:** `900` (15 minutes)
+- **Allowed values:** Integer from `300` to `86400`
+- **Note:** Must be configured comfortably smaller than the Task Manager's own `task-manager.task_ttl`
+  (default `3600`s, see [Task Manager configuration](../task_manager/configuration.md)) — a task created just
+  after a poll cycle must still be `pending` when the next cycle runs, or it can flip to `expired` before
+  ever being delivered.
+
 ### remoted.keyupdate_interval
 
-Interval in seconds for reloading agent key files.
+Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
+`remoted_module` C++ `Keystore` (see [HTTPS Events API](https-events-api.md)): it hot-reloads
+`client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
+periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
+introducing a second one for the same concept.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `3600`
 - **Note:** Lower values detect new agents faster but increase I/O overhead
 
 ### remoted.rlimit_nofile
@@ -190,14 +319,6 @@ Maximum number of open file descriptors for the remoted process.
 - **Default value:** `458752`
 - **Allowed values:** Positive integer
 - **Note:** Increase for large agent counts (e.g., `131072` for >10K agents); default supports ~200K concurrent connections
-
-### remoted.state_interval
-
-Interval in seconds for writing statistics to the state file.
-
-- **Default value:** `5`
-- **Allowed values:** `0` (disabled) or positive integer
-- **Note:** Set to `0` to disable statistics; lower values provide more frequent updates
 
 ### remoted.send_chunk
 
@@ -270,14 +391,6 @@ Allow remoted to start even if client.keys file is empty.
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 - **Note:** Useful for fresh installations; disable in production for security
-
-### remoted.router_forwarding_disabled
-
-Disable forwarding messages to the router component.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Set to `yes` to disable router integration (standalone manager mode)
 
 ### remoted.request_pool
 
@@ -375,6 +488,261 @@ Event count threshold for logging compression statistics.
 - **Allowed values:** Integer from `10` to `999999` (event count)
 - **Note:** Compression stats logged after this many events processed
 
+### HTTPS Agent Server (`remoted_module`)
+
+Advanced tuning for the experimental HTTPS agent server (see
+[HTTPS Events API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
+downstream UDS client and auth middleware tunables (`remoted.downstream_*`, `remoted.auth_*`,
+further down this section). None of these are part of the regular `<remote>` configuration --
+bind address, port and max body size are regular `<remote>` settings instead (see
+[HTTPS Events API](https-events-api.md#configuration)). An option present in
+`wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
+`remoted` from starting, same as every other internal option.
+
+#### remoted.http_io_threads
+
+Number of I/O threads (accept + read/write) for the HTTPS agent server.
+
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`, the number of CPUs available to the
+  process -- cgroup-aware on Linux)
+- **Allowed values:** Integer from `0` to `64`
+
+#### remoted.http_worker_threads
+
+Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
+
+- **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
+  work can block on AES-CMAC verification and `client.keys` file I/O)
+- **Allowed values:** Integer from `0` to `256`
+
+#### remoted.http_read_timeout
+
+Seconds to wait for a full request to arrive on a connection.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** The clock starts as soon as the connection is established, so this also bounds a
+  stalled TLS handshake -- there is no separate handshake timeout
+
+#### remoted.http_write_timeout
+
+Seconds to wait for a response write to complete.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `300`
+
+#### remoted.http_request_timeout
+
+Seconds a request may take to be handled end-to-end.
+
+- **Default value:** `30`
+- **Allowed values:** Integer from `1` to `600`
+
+#### remoted.http_max_url_size
+
+Maximum accepted URL size, in bytes.
+
+- **Default value:** `2048`
+- **Allowed values:** Integer from `1` to `65536`
+
+#### remoted.http_max_header_name_size
+
+Maximum accepted HTTP header name size, in bytes.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `8192`
+
+#### remoted.http_max_header_value_size
+
+Maximum accepted HTTP header value size, in bytes.
+
+- **Default value:** `8192`
+- **Allowed values:** Integer from `1` to `65536`
+
+#### remoted.http_max_header_count
+
+Maximum number of HTTP headers accepted per request.
+
+- **Default value:** `64`
+- **Allowed values:** Integer from `1` to `1024`
+
+#### remoted.http_max_pipelined_requests
+
+Maximum in-flight unanswered requests per connection (HTTP pipelining depth).
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.http_concurrent_accepts
+
+Maximum concurrent in-progress TCP accepts for the HTTPS agent server.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.http_buffer_size
+
+Socket read buffer size for the HTTPS agent server, in bytes.
+
+- **Default value:** `8192`
+- **Allowed values:** Integer from `1` to `1048576` (1 MiB)
+
+#### remoted.max_inflight_bytes
+
+Maximum in-flight (unprocessed) request payload bytes before the HTTPS server sheds load with HTTP 503.
+
+- **Default value:** `268435456` (256 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB)
+- **Note:** The C++ side clamps this up to at least one max-size request at startup, so a too-small
+  value cannot reject everything. This is NOT `legacy.queue_size` (that is an event COUNT, not bytes).
+
+#### remoted.max_parallel_connections
+
+Maximum simultaneous HTTPS connections.
+
+- **Default value:** `512`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
+  the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
+  `remoted.http_write_timeout` per chunk, so a slow-but-steady reader can hold a transfer open
+  indefinitely and there is no per-stream limiter. A mass upgrade (the whole fleet fetching a WPK
+  at once, many over slow links) is therefore bounded only by this value.
+
+#### remoted.max_deferred_requests
+
+Maximum requests parked awaiting a downstream service before replying with HTTP 503.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** No `Retry-After` header is sent; the agent runs its own retry/backoff on a 503. If you
+  see warnings about this limit being reached, consider increasing it or investigating why the
+  downstream service is slow.
+
+#### remoted.http_stream_chunk_size
+
+Bytes per chunk when streaming a response body (`POST /download`).
+
+- **Default value:** `65536` (64 KiB)
+- **Allowed values:** Integer from `4096` to `1048576` (1 MiB)
+- **Note:** Charged per *in-flight transfer*, so the worst case is roughly this value times the
+  number of simultaneous downloads. A larger chunk buys fewer read/write round trips (less CPU per
+  byte) at the cost of more memory while transfers are running. It does not change the bytes
+  delivered -- only how they are framed on the wire.
+
+> **The three timeouts below are sequential phases of one request, and the sum matters.**
+> `remoted.http_request_timeout` bounds the *whole* request and its clock starts before the
+> downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request
+> down before the downstream deadline is ever reached. `remoted` logs a warning at startup when that
+> is the case. Each phase has its own log message naming its own setting, so the log tells you which
+> one elapsed.
+
+#### remoted.http_content_encoding_enabled
+
+Whether the HTTPS listener accepts request bodies compressed with `Content-Encoding: zstd`. When
+disabled, a request carrying that header is rejected with `415 Unsupported Content-Encoding`, the
+same as any unrecognized encoding. Bodies sent without a `Content-Encoding` header are unaffected
+either way.
+
+Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
+from the configuration file resolves to the default (enabled) on the C side before it reaches the
+module.
+
+- **Default value:** `1` (enabled)
+- **Allowed values:** `0` (disabled) or `1` (enabled)
+
+#### remoted.downstream_connect_timeout
+
+Seconds to wait for the downstream UDS connect (to the engine's event ingress) to complete.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `60`
+- **Note:** Exceeding it logs *"Timed out connecting to the downstream service"*. A connection
+  *refused* immediately (rather than timing out) means nothing is listening on the socket and is
+  reported differently.
+
+#### remoted.downstream_write_timeout
+
+Seconds to wait for the request body write to the downstream service to complete.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** Only reached when the downstream service accepts the connection but does not drain its
+  socket. Without this bound such a peer would pin the request's deferred-work slot indefinitely.
+
+#### remoted.downstream_response_timeout
+
+Seconds to wait for the downstream service's response after the write completes.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
+  declare its own deadline instead of forcing this value up for every endpoint (which would delay
+  detection of a genuinely hung downstream on the fast ones).
+
+#### remoted.downstream_stateful_response_timeout
+
+Seconds to wait for the inventory sync server's answer to a relayed `POST /stateful` request.
+
+- **Default value:** `20`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** Dedicated to the `/stateful` route: a synchronization session is validated, indexed and
+  flushed to the indexer WITHIN the request, so it cannot ride the global 5-second default. The
+  default keeps the total downstream budget (connect + write + response = 2+5+20 s) inside
+  `remoted.http_request_timeout`'s default (30 s); raising it past that requires raising the
+  request cap too, or the HTTP server cuts the request off first (remoted warns at startup when
+  the deadlines cannot be honored).
+
+#### remoted.downstream_io_threads
+
+Number of threads running the downstream UDS client's `io_context`.
+
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`)
+- **Allowed values:** Integer from `0` to `256`
+
+#### remoted.downstream_post_process_threads
+
+Number of threads running the per-endpoint post-processors (build/deliver the reply once the
+downstream service answers).
+
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`)
+- **Allowed values:** Integer from `0` to `256`
+
+#### remoted.downstream_max_response_body_size
+
+Cap on a downstream response body, in bytes.
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+
+#### remoted.auth_max_request_age
+
+How far in the past (seconds) a request's timestamp may be before the auth middleware rejects it
+as expired.
+
+- **Default value:** `300`
+- **Allowed values:** Integer from `1` to `3600`
+
+#### remoted.auth_max_future_skew
+
+How far in the future (seconds) a request's timestamp may be before the auth middleware rejects
+it.
+
+- **Default value:** `30`
+- **Allowed values:** Integer from `1` to `300`
+
+#### remoted.auth_max_body_size
+
+Hard cap on the authenticated request body size, in bytes (checked by the auth middleware,
+independent of the transport's own body cap -- `http_max_body_size`, a regular `<remote>` setting,
+not an internal option).
+
+Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
+once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
+see [HTTPS Events API](https-events-api.md#content-encoding-zstd).
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+
 ---
 
 ## Configuration Examples
@@ -386,9 +754,11 @@ Standard settings for most deployments:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>no</allow_higher_versions>
     </agents>
@@ -403,9 +773,11 @@ Accept agent connections via both TCP and UDP protocols:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp,udp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp,udp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -417,9 +789,11 @@ Optimized for high agent counts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -439,9 +813,11 @@ Optimized for high event rates:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -462,9 +838,11 @@ Reduced memory footprint for resource-constrained systems:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>65536</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>65536</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -485,9 +863,11 @@ Optimized for ephemeral or containerized agents with frequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -510,9 +890,11 @@ Optimized for stable, long-running agents with infrequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -535,12 +917,40 @@ Allow agents with newer Wazuh versions to connect during rolling upgrades:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>yes</allow_higher_versions>
     </agents>
+  </remote>
+</wazuh_config>
+```
+
+### HTTPS with Mutual TLS
+
+Require and validate agent client certificates, including a full IP-to-certificate match:
+
+```xml
+<wazuh_config>
+  <remote>
+    <https>
+      <port>1517</port>
+      <bind_addr>0.0.0.0</bind_addr>
+      <certificate>etc/certs/remoted.pem</certificate>
+      <key>etc/certs/remoted-key.pem</key>
+      <ca>etc/certs/root-ca.pem</ca>
+      <verification_mode>certificate</verification_mode>
+      <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
+      <max_body_size>20MB</max_body_size>
+    </https>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -552,9 +962,11 @@ Limit memory consumption with byte caps regardless of event count:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -650,17 +1062,12 @@ Metadata cache bucket count (requires recompile of `src/remoted/agent_metadata_d
 
 ## Monitoring
 
-### Enable Statistics
+### View Statistics
 
-Enable statistics in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
+Query remoted's statistics on demand via the API:
 
-```conf
-remoted.state_interval=5
-```
-
-View statistics:
 ```bash
-cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
+GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
 ```
 
 ### Enable Debug Logging

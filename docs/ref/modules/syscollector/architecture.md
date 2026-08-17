@@ -383,14 +383,17 @@ When a checksum mismatch is detected for a table:
 1. **Version Increment**: All entries in the table have their version incremented by 1
    - Uses DBSync's `increaseEachEntryVersion()` method
 2. **Data Extraction**: All elements are retrieved from the affected table
-3. **Memory Preparation**: In-memory sync data is cleared via `clearInMemoryData()`
+3. **Index Clear**: The manager's index for this table is cleared via `notifyDataClean()` — there
+   is no full-replace mode; recovery is a `DataClean` followed by an ordinary delta sync of the
+   fresh snapshot (a byte-capped `Mode::FULL` used to make the manager unconditionally
+   `deleteByQuery` the whole index, which could permanently drop whatever didn't fit in one
+   session)
 4. **Stateful Message Rebuild**: Each inventory item is:
    - Converted to ECS format
    - Wrapped in stateful message structure
-   - Persisted to sync protocol memory with CREATE operation
-5. **Full Synchronization**: A FULL mode synchronization is triggered
-   - Sends all data for the affected table to manager
-   - Manager replaces its entire state for that index
+   - Persisted to the sync protocol's queue with CREATE operation via `persistDifference()`
+5. **Delta Synchronization**: A `Mode::DELTA` synchronization is triggered
+   - Sends all data for the affected table to the manager, safely split across sessions if needed
 6. **Timestamp Update**: `last_sync_time` is updated to current timestamp
 
 ### Recovery Flow Diagram
@@ -903,7 +906,7 @@ if (!validationPassed)
 
 if (shouldPersist)
 {
-    m_spSyncProtocol->persistDifferenceInMemory(
+    m_spSyncProtocol->persistDifference(
         calculateHashId(item, tableName),
         Operation::CREATE,
         index,
@@ -914,7 +917,7 @@ if (shouldPersist)
 ```
 
 **Key characteristics:**
-- Validation before in-memory persistence
+- Validation before persistence to the sync protocol's persistent queue
 - Invalid items are skipped (not persisted)
 - Prevents synchronizing invalid recovery data
 

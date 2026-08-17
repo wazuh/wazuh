@@ -4,7 +4,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Configuration file:** `/var/ossec/etc/ossec.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\ossec.conf` (Windows)
 
-**XML Sections:** `<client>`, `<client_buffer>`, `<anti_tampering>`
+**XML Sections:** `<agent>`, `<anti_tampering>`
 
 **Module:** Agent-only
 
@@ -14,13 +14,15 @@ For module overview and architecture, see [Client Module](index.html).
 
 ---
 
-## Client Configuration (`<client>`)
+## Agent Configuration (`<agent>`)
 
 Configures the agent's connection to the Wazuh manager.
 
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0. A configuration left by a 4.X agent still starts: `<server><address>` is read from `<client>` and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent>` to keep them all.
+
 ### server
 
-Manager server configuration block. Multiple `<server>` blocks can be defined for failover.
+Manager server configuration block.
 
 **Sub-options:**
 
@@ -34,11 +36,12 @@ Manager IP address or hostname.
 
 #### port
 
-Manager port number.
+Manager port number for the agent's HTTPS connection.
 
-- **Default value:** `1514`
+- **Default value:** `1517`
 - **Allowed values:** Valid port number (1-65535)
-- **Example:** `1514`
+- **Example:** `1517`
+- **Note:** A `<port>` inside a legacy `<client><server>` block is not read.
 
 #### protocol
 
@@ -181,11 +184,11 @@ Agent's IP address to use for enrollment (overrides auto-detected address).
 
 #### ssl_cipher
 
-SSL/TLS cipher suite for enrollment connection.
+TLS 1.3 ciphersuite list for the enrollment connection. Enrollment requires TLS 1.3, so this must be a colon-separated list of TLS 1.3 ciphersuite names.
 
-- **Default value:** System default
-- **Allowed values:** Valid OpenSSL cipher string
-- **Example:** `HIGH:!aNULL:!MD5`
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** Colon-separated TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`)
+- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 
 #### server_ca_path
 
@@ -209,14 +212,6 @@ Path to agent's private key for mutual TLS authentication during enrollment.
 - **Default value:** None
 - **Allowed values:** Valid file path
 - **Note:** Must correspond to `agent_certificate_path`
-
-#### auto_method
-
-Automatic enrollment method selection.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agent automatically selects best enrollment method
 
 #### delay_after_enrollment
 
@@ -246,34 +241,9 @@ Network interface index to bind for enrollment connection.
 
 ## Client Buffer Configuration (`<client_buffer>`)
 
-Configures event buffering when the manager is unreachable.
-
-### disabled
-
-Enable or disable client buffering.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** When enabled (`no`), events are buffered during manager disconnections
-
-### queue_size
-
-Maximum number of events to buffer.
-
-- **Default value:** `5000`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Maximum:** System memory dependent
-- **Note:** Events exceeding this limit are dropped
-
-### events_per_second
-
-Maximum events per second to send when reconnecting (rate limiting).
-
-- **Default value:** `500`
-- **Allowed values:** Positive integer
-- **Minimum:** `1`
-- **Note:** Prevents overwhelming manager during reconnection
+Removed in 5.0.0: buffering and pacing belong to the HTTPS transport's
+accumulator, configured under `<agent><batch>`. The section is still accepted
+and ignored, with a warning.
 
 ---
 
@@ -390,10 +360,10 @@ monitord.rotate_log=1
 Single manager, standard settings:
 
 ```xml
-<client>
+<agent>
   <server>
     <address>10.0.0.10</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
   </server>
   <config-profile>webserver,production</config-profile>
@@ -401,36 +371,7 @@ Single manager, standard settings:
   <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
   <crypto_method>aes</crypto_method>
-</client>
-```
-
-### Failover Configuration
-
-Multiple managers for high availability:
-
-```xml
-<client>
-  <server>
-    <address>manager1.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <server>
-    <address>manager2.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <server>
-    <address>manager3.example.com</address>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <max_retries>3</max_retries>
-  </server>
-  <notify_time>30</notify_time>
-  <time-reconnect>30</time-reconnect>
-</client>
+</agent>
 ```
 
 ### Auto-Enrollment Configuration
@@ -438,7 +379,7 @@ Multiple managers for high availability:
 Automatic agent registration:
 
 ```xml
-<client>
+<agent>
   <enrollment>
     <enabled>yes</enabled>
     <manager_address>manager.example.com</manager_address>
@@ -449,10 +390,10 @@ Automatic agent registration:
   </enrollment>
   <server>
     <address>manager.example.com</address>
-    <port>1514</port>
+    <port>1517</port>
     <protocol>tcp</protocol>
   </server>
-</client>
+</agent>
 ```
 
 ### Client Buffer Configuration
@@ -460,11 +401,12 @@ Automatic agent registration:
 High-volume environment:
 
 ```xml
-<client_buffer>
-  <disabled>no</disabled>
-  <queue_size>50000</queue_size>
-  <events_per_second>1000</events_per_second>
-</client_buffer>
+<agent>
+  <batch>
+    <size>10MB</size>
+    <interval>5s</interval>
+  </batch>
+</agent>
 ```
 
 ### Anti-Tampering Configuration
@@ -483,18 +425,10 @@ Full example with all sections:
 
 ```xml
 <ossec_config>
-  <client>
+  <agent>
     <server>
       <address>manager1.example.com</address>
-      <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
-    </server>
-    <server>
-      <address>manager2.example.com</address>
-      <port>1514</port>
-      <protocol>tcp</protocol>
-      <max_retries>5</max_retries>
+      <port>1517</port>
     </server>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
@@ -507,13 +441,7 @@ Full example with all sections:
       <port>1515</port>
       <groups>webservers,production</groups>
     </enrollment>
-  </client>
-
-  <client_buffer>
-    <disabled>no</disabled>
-    <queue_size>10000</queue_size>
-    <events_per_second>600</events_per_second>
-  </client_buffer>
+  </agent>
 
   <anti_tampering>
     <package_uninstallation>yes</package_uninstallation>
@@ -531,7 +459,7 @@ Full example with all sections:
 
 ### disable-active-response
 
-**DEPRECATED:** The `<disable-active-response>` tag within `<client>` is parsed but has no effect.
+**DEPRECATED:** The `<disable-active-response>` tag within `<agent>` is parsed but has no effect.
 
 - **Status:** Deprecated silent no-op
 - **Behavior:** Parser accepts the tag but does not use the value

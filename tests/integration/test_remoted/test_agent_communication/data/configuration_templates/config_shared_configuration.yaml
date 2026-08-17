@@ -1,7 +1,9 @@
 - sections:
     - section: remote
       elements:
-        - port:
-            value: '1514'
-        - protocol:
-            value: 'PROTOCOL'
+        - legacy:
+            elements:
+              - port:
+                  value: '1514'
+              - protocol:
+                  value: 'PROTOCOL'

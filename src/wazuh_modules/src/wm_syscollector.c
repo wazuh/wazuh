@@ -120,9 +120,6 @@ syscollector_set_agentd_query_func_ptr syscollector_set_agentd_query_func_setter
 
 unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
 uint32_t sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sync_end_delay = 1;                 // Database synchronization end delay in seconds (default value)
-uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
-long sync_max_eps = 50;                     // Database synchronization number of events per second (default value)
 uint32_t integrity_interval = 86400;         // Integrity check interval in seconds (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)
@@ -448,16 +445,6 @@ static void wm_sys_log_config(wm_sys_t* sys)
     }
 }
 
-static int wm_sys_startmq(const char* key, short type, short attempts)
-{
-    return StartMQPredicated(key, type, attempts, &is_shutdown_process_started);
-}
-
-static int wm_sys_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
-{
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
-}
-
 static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
 {
 
@@ -505,12 +492,7 @@ static void wm_handle_sys_disabled_and_notify_data_clean(wm_sys_t* sys)
                               sys->flags.browser_extensions,
                               sys->flags.notify_first_scan);
 
-        MQ_Functions mq_funcs =
-        {
-            .start = wm_sys_startmq,
-            .send_binary = wm_sys_send_binary_msg
-        };
-        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+        syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
                                    integrity_interval);
 
         if (syscollector_notify_data_clean_ptr && syscollector_delete_database_ptr)
@@ -654,9 +636,6 @@ void* wm_sys_main(wm_sys_t* sys)
         if (enable_synchronization)
         {
             sync_interval = sys->sync.sync_interval;
-            sync_end_delay = sys->sync.sync_end_delay;
-            sync_response_timeout = sys->sync.sync_response_timeout;
-            sync_max_eps = sys->sync.sync_max_eps;
             integrity_interval = sys->sync.integrity_interval;
         }
 
@@ -705,12 +684,7 @@ void* wm_sys_main(wm_sys_t* sys)
         // Initialize sync protocol AFTER init (so logger is available)
         if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr)
         {
-            MQ_Functions mq_funcs =
-            {
-                .start = wm_sys_startmq,
-                .send_binary = wm_sys_send_binary_msg
-            };
-            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH,
                                        integrity_interval);
 #ifndef WIN32
             // Launch inventory synchronization thread as joinable so we can wait for it
@@ -918,7 +892,6 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     cJSON_AddStringToObject(synchronization, "enabled", sys->sync.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", sys->sync.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
-    cJSON_AddNumberToObject(synchronization, "response_timeout", sys->sync.sync_response_timeout);
     cJSON_AddNumberToObject(synchronization, "sync_end_delay", sys->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "integrity_interval", sys->sync.integrity_interval);
 

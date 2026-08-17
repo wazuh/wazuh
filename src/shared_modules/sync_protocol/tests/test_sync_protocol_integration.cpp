@@ -64,14 +64,6 @@ class SyncProtocolIntegrationTest : public ::testing::Test
             };
 
             // Create MQ functions (mock for now, but could be real)
-            mqFuncs.start = [](const char*, short, short)
-            {
-                return 0;
-            };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-            {
-                return 0;
-            };
         }
 
         void TearDown() override
@@ -88,7 +80,6 @@ class SyncProtocolIntegrationTest : public ::testing::Test
 
         std::string testDbPath;
         LoggerFunc logger;
-        MQ_Functions mqFuncs;
 };
 
 // ========================================
@@ -220,17 +211,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_PersistAndFetch)
      */
 
     // Create real AgentSyncProtocol with real database
-    AgentSyncProtocol protocol(
-        "syscollector_vd",
-        testDbPath,
-        mqFuncs,
-        logger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(3),
-        1,
-        100,
-        nullptr  // Let protocol create its own PersistentQueue
-    );
+    AgentSyncProtocol protocol("syscollector_vd", testDbPath, logger, nullptr);
 
     // Persist some data
     std::string packageId = "pkg_001";
@@ -269,17 +250,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_VDWorkflow_ClearAndFetch)
      * 5. Verify correct behavior
      */
 
-    AgentSyncProtocol protocol(
-        "syscollector_vd",
-        testDbPath,
-        mqFuncs,
-        logger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(3),
-        1,
-        100,
-        nullptr
-    );
+    AgentSyncProtocol protocol("syscollector_vd", testDbPath, logger, nullptr);
 
     // Step 1: Persist DataValue items
     protocol.persistDifference("pkg1", Operation::CREATE,
@@ -326,17 +297,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_MultipleIndices)
      * 3. Verifies correct index assignment
      */
 
-    AgentSyncProtocol protocol(
-        "syscollector_vd",
-        testDbPath,
-        mqFuncs,
-        logger,
-        std::chrono::seconds(1),
-        std::chrono::seconds(3),
-        1,
-        100,
-        nullptr
-    );
+    AgentSyncProtocol protocol("syscollector_vd", testDbPath, logger, nullptr);
 
     // Persist to packages index
     protocol.persistDifference("item1", Operation::CREATE,
@@ -385,17 +346,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_DataPersistenceAcrossInsta
 
     // Create first instance and persist data
     {
-        AgentSyncProtocol protocol1(
-            "syscollector_vd",
-            testDbPath,
-            mqFuncs,
-            logger,
-            std::chrono::seconds(1),
-            std::chrono::seconds(3),
-            1,
-            100,
-            nullptr
-        );
+        AgentSyncProtocol protocol1("syscollector_vd", testDbPath, logger, nullptr);
 
         protocol1.persistDifference("persistent_item", Operation::CREATE,
                                     "wazuh-states-vulnerabilities-packages",
@@ -405,17 +356,7 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_DataPersistenceAcrossInsta
 
     // Create second instance with same database
     {
-        AgentSyncProtocol protocol2(
-            "syscollector_vd",
-            testDbPath,
-            mqFuncs,
-            logger,
-            std::chrono::seconds(1),
-            std::chrono::seconds(3),
-            1,
-            100,
-            nullptr
-        );
+        AgentSyncProtocol protocol2("syscollector_vd", testDbPath, logger, nullptr);
 
         // Fetch items - should still have the item from protocol1
         auto items = protocol2.fetchPendingItems(true);

@@ -1,22 +1,14 @@
     - sections:
-      - section: client
+      - section: agent
         elements:
             - notify_time:
                 value: 10
-            - time-reconnect:
-                value: 60
             - auto_restart:
                 value: 'yes'
-            - manager:
+            - server:
                 elements:
                 - address:
                     value: 127.0.0.1
-                - protocol:
-                    value: 'tcp'
-                - max_retries:
-                    value: 1
-                - retry_interval:
-                    value: 1
             - enrollment:
                 elements:
                 - enabled:

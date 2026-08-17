@@ -9,7 +9,7 @@ services:
       - "55000:55000"
     volumes:
       - api_security:/var/wazuh-manager/api/configuration/security
-      - api_ssl:/var/wazuh-manager/api/configuration/ssl
+      - api_ssl:/var/wazuh-manager/etc/certs
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:
@@ -25,7 +25,7 @@ services:
       - "55001:55000"
     volumes:
       - api_security:/var/wazuh-manager/api/configuration/security
-      - api_ssl:/var/wazuh-manager/api/configuration/ssl
+      - api_ssl:/var/wazuh-manager/etc/certs
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:
@@ -43,7 +43,7 @@ services:
       - "55002:55000"
     volumes:
       - api_security:/var/wazuh-manager/api/configuration/security
-      - api_ssl:/var/wazuh-manager/api/configuration/ssl
+      - api_ssl:/var/wazuh-manager/etc/certs
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
     entrypoint:

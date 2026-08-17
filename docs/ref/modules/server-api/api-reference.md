@@ -109,7 +109,7 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `status`, `os.platform`, `os.name`, `os.version`, `manager`, `version`, `group`, `node_name`, `name`, `ip`, `older_than`.
+Key filters: `status`, `os.platform`, `os.name`, `os.version`, `manager`, `version`, `group`, `name`, `ip`, `older_than`.
 
 #### Add agent
 
@@ -173,18 +173,15 @@ curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=t
   -H "Authorization: Bearer $TOKEN"
 ```
 
-#### Reload agents in node
-
-**`PUT /agents/node/{node_id}/reload`** — Reload configuration on all agents connected to a cluster node. Requires agent v5.0.0+.
-
-```bash
-curl -k -X PUT "https://localhost:55000/agents/node/worker-01/reload?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
 #### Delete agents
 
 **`DELETE /agents`** — Delete agents by ID or criteria. Requires `agents_list` and `status`.
+
+Deleting an agent also removes its documents from the Wazuh Indexer (inventory state, reported
+configuration and statistics), which is why its data disappears from the dashboard. That cleanup is
+performed by `wazuh-manager-authd` after this call returns; if the indexer is unhealthy at that
+moment the documents can survive and authd logs an error naming the agent — see the
+[Inventory Sync Server FAQ](../inventory-sync-server/README.md) for the recovery.
 
 ```bash
 # Delete disconnected agents older than 30 days
@@ -316,17 +313,6 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 
 ---
 
-### Tasks
-
-**`GET /tasks/status`** — Check the status of async tasks (upgrades, etc.).
-
-```bash
-curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
 ## Full Endpoint Index
 
 <details>
@@ -351,23 +337,16 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
-| GET | `/agents/{agent_id}/config/{component}/{configuration}` | Active config |
-| GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
-| GET | `/agents/{agent_id}/stats/{component}` | Component stats |
 | PUT | `/agents/restart` | Restart all (v5.0.0+) |
 | PUT | `/agents/reload` | Reload all agents config (v5.0.0+) |
-| PUT | `/agents/reconnect` | Force reconnect |
 | PUT | `/agents/group` | Bulk assign to group |
 | DELETE | `/agents/group` | Bulk remove from group |
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
 | PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
-| PUT | `/agents/node/{node_id}/restart` | Restart by node (v5.0.0+) |
-| PUT | `/agents/node/{node_id}/reload` | Reload node agents config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
-| GET | `/agents/upgrade_result` | Upgrade result |
 | GET | `/agents/uninstall` | Uninstall agents |
 | GET | `/agents/stats/distinct` | Distinct fields |
 | GET | `/agents/summary` | Summary |
@@ -454,11 +433,10 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/mitre/references` | References |
 | GET | `/mitre/metadata` | Metadata |
 
-### Events, Overview & Tasks
+### Events & Overview
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/overview/agents` | Agent overview |
-| GET | `/tasks/status` | Task status |
 
 </details>
 

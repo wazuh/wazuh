@@ -11,8 +11,16 @@ list(APPEND shared_libs "../../wrappers/wazuh/wazuh_modules/wm_control_wrappers.
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_control")
-list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_systemd \
-                         -Wl,--wrap,fork -Wl,--wrap,getpid -Wl,--wrap,access -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose \
+# read models the helper status pipe; close also isolates the fake control socket
+# descriptors used by the peer authorization tests. wm_control_execute_action is
+# wrapped to expose __real_wm_control_execute_action; calls from wm_control_dispatch
+# stay inside the same translation unit and therefore exercise the real function.
+list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_systemd -Wl,--wrap,wm_control_execute_action \
+                         -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,wm_select_interruptible \
+                         -Wl,--wrap,accept -Wl,--wrap,getsockopt -Wl,--wrap,getuid -Wl,--wrap,OS_RecvUnix -Wl,--wrap,OS_SendUnix \
+                         -Wl,--wrap,fork -Wl,--wrap,pipe -Wl,--wrap,poll -Wl,--wrap,read -Wl,--wrap,close \
+                         -Wl,--wrap,waitpid -Wl,--wrap,kill -Wl,--wrap,CreateThread \
+                         -Wl,--wrap,getpid -Wl,--wrap,access -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose \
                          -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                          -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 1)

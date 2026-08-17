@@ -87,7 +87,6 @@ w_enrollment_cert *w_enrollment_cert_init(){
     cert_cfg->agent_cert = NULL;
     cert_cfg->agent_key = NULL;
     cert_cfg->ca_cert = NULL;
-    cert_cfg->auto_method = 0;
     return cert_cfg;
 }
 
@@ -207,7 +206,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 
     /* Start SSL */
     SSL_CTX *ctx = os_ssl_keys(0, NULL, cfg->cert_cfg->ciphers,
-        cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert, cfg->cert_cfg->auto_method);
+        cfg->cert_cfg->agent_cert, cfg->cert_cfg->agent_key, cfg->cert_cfg->ca_cert);
     if (!ctx) {
         merror("Could not set up SSL connection! Check certification configuration.");
         os_free(ip_address);

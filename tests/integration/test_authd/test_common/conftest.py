@@ -18,11 +18,9 @@ def clean_agents_ctx(stop_authd):
     file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
     utils.clean_rids()
     utils.clean_agents_timestamp()
-    utils.clean_diff()
 
     yield
 
     file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
     utils.clean_rids()
     utils.clean_agents_timestamp()
-    utils.clean_diff()
