@@ -17,6 +17,7 @@ static char exec_cmd[MAX_AR + 1][OS_FLSIZE + 1];
 static int  exec_timeout[MAX_AR + 1];
 static int  exec_size = 0;
 static int  f_time_reading = 1;
+static int  f_max_reported = 0;
 
 
 /* Read the shared exec config
@@ -25,7 +26,7 @@ static int  f_time_reading = 1;
  */
 int ReadExecConfig()
 {
-    int i = 0, j = 0, dup_entry = 0;
+    int i = 0, j = 0, dup_entry = 0, truncated = 0;
     FILE *fp;
     FILE *process_file;
     char buffer[OS_MAXSTR + 1];
@@ -49,13 +50,6 @@ int ReadExecConfig()
     while (fgets(buffer, OS_MAXSTR, fp) != NULL) {
         char *str_pt;
         char *tmp_str;
-
-        // No room left in the command table
-
-        if (exec_size >= MAX_AR) {
-            merror(EXEC_MAX_AR, MAX_AR, DEFAULTAR);
-            break;
-        }
 
         str_pt = buffer;
 
@@ -147,13 +141,28 @@ int ReadExecConfig()
             exec_cmd[exec_size][0] = '\0';
             exec_names[exec_size][0] = '\0';
             exec_timeout[exec_size] = 0;
-        } else {
+        } else if (exec_size < MAX_AR) {
             exec_size++;
+        } else {
+            // No room left in the command table
+
+            exec_cmd[exec_size][0] = '\0';
+            exec_names[exec_size][0] = '\0';
+            exec_timeout[exec_size] = 0;
+            truncated = 1;
+            break;
         }
     }
 
     fclose(fp);
     f_time_reading = 0;
+
+    /* Report only when the configuration starts being truncated */
+    if (truncated && !f_max_reported) {
+        merror(EXEC_MAX_AR, MAX_AR, DEFAULTAR);
+    }
+
+    f_max_reported = truncated;
 
     return (1);
 }

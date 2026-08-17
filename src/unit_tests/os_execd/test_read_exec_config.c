@@ -47,6 +47,22 @@ static void write_ar_conf(int entries) {
     fclose(fp);
 }
 
+/* Append a raw line to the generated ar.conf */
+static void append_ar_line(const char *line) {
+    FILE *fp = fopen(DEFAULTAR, "a");
+
+    assert_non_null(fp);
+    assert_true(fprintf(fp, "%s", line) > 0);
+    fclose(fp);
+}
+
+static void expect_max_ar_error(void) {
+    char expected_msg[OS_MAXSTR];
+
+    snprintf(expected_msg, sizeof(expected_msg), EXEC_MAX_AR, MAX_AR, DEFAULTAR);
+    expect_string(__wrap__merror, formatted_msg, expected_msg);
+}
+
 /* Assert that the entry number 'index' was loaded */
 static void assert_entry_loaded(int index) {
     char name[OS_FLSIZE];
@@ -136,15 +152,30 @@ static void test_read_exec_config_at_limit(void **state) {
     assert_entry_not_loaded(MAX_AR);
 }
 
-/* Beyond MAX_AR commands the remaining entries are reported and discarded */
-static void test_read_exec_config_above_limit(void **state) {
+/* A line that consumes no slot must not be reported as an exceeding entry */
+static void test_read_exec_config_at_limit_trailing_junk(void **state) {
     (void)state;
     char expected_msg[OS_MAXSTR];
 
+    write_ar_conf(MAX_AR);
+    append_ar_line("\n");
+
+    snprintf(expected_msg, sizeof(expected_msg), EXEC_INV_CONF, DEFAULTAR);
+    expect_string(__wrap__merror, formatted_msg, expected_msg);
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(MAX_AR - 1);
+    assert_entry_not_loaded(MAX_AR);
+}
+
+/* Beyond MAX_AR commands the remaining entries are reported and discarded */
+static void test_read_exec_config_above_limit(void **state) {
+    (void)state;
+
     write_ar_conf(MAX_AR + 32);
 
-    snprintf(expected_msg, sizeof(expected_msg), EXEC_MAX_AR, MAX_AR, DEFAULTAR);
-    expect_string(__wrap__merror, formatted_msg, expected_msg);
+    expect_max_ar_error();
 
     assert_int_equal(ReadExecConfig(), 1);
 
@@ -154,11 +185,38 @@ static void test_read_exec_config_above_limit(void **state) {
     assert_entry_not_loaded(MAX_AR + 31);
 }
 
+/* The table is reloaded on every unresolved command, so the condition is
+ * reported once and not again until the configuration is corrected
+ */
+static void test_read_exec_config_reported_once(void **state) {
+    (void)state;
+    int i;
+
+    /* Still truncated: no further report */
+    for (i = 0; i < 3; i++) {
+        assert_int_equal(ReadExecConfig(), 1);
+    }
+
+    /* Corrected configuration: nothing to report, and the condition is re-armed */
+    write_ar_conf(MAX_AR);
+    assert_int_equal(ReadExecConfig(), 1);
+
+    /* Truncated again: reported again */
+    write_ar_conf(MAX_AR + 1);
+    expect_max_ar_error();
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(MAX_AR - 1);
+    assert_entry_not_loaded(MAX_AR);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_exec_config_below_limit),
         cmocka_unit_test(test_read_exec_config_at_limit),
+        cmocka_unit_test(test_read_exec_config_at_limit_trailing_junk),
         cmocka_unit_test(test_read_exec_config_above_limit),
+        cmocka_unit_test(test_read_exec_config_reported_once),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
