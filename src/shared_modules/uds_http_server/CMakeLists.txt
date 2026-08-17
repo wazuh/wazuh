@@ -22,6 +22,28 @@ set_target_properties(wazuh_uds_http_server PROPERTIES CXX_STANDARD 17 CXX_STAND
 # every copy to log through its own module's sink.
 set_target_properties(wazuh_uds_http_server PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Nothing in this archive is an export: every consumer embeds its own private copy, so any
+# dynamic symbol that escapes a consumer .so is a defect waiting to happen -- measured in the
+# wild before this was enforced, libinventory_sync_server.so ended up binding llhttp_execute
+# from libvulnerability_scanner.so at runtime because VD exported it first and the linker never
+# pulled inventory's own llhttp members. Two layers, because each covers what the other cannot:
+#  - hidden visibility on the archive's OWN TUs kills its strong function/vtable exports, its
+#    internal lambdas and its GNU-unique statics (which would otherwise be process-wide across
+#    DSOs and pin dlclose);
+#  - --exclude-libs, propagated to every embedder's link via INTERFACE, localizes whatever
+#    still arrives from the archives -- crucially including llhttp, which may be a PRECOMPILED
+#    imported archive (external/CMakeLists.txt) that no compile flag of ours can reach.
+# Deliberately NOT hidden: the vague-linkage (weak) instantiations consumer TUs create from
+# these headers. Hiding those (a header-wide visibility pragma) clamps every module function
+# whose SIGNATURE mentions a lib type -- including sanctioned cross-boundary calls like
+# content_manager::dispatchOnDemand and the module APIs the unit-test binaries link against --
+# and identical weak template code collapsing across DSOs is ABI-normal C++, not a leak.
+# LogThrottle marks itself hidden in its own header (its inline statics would export as
+# GNU-unique from every consumer otherwise).
+target_compile_options(wazuh_uds_http_server PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
+target_link_options(wazuh_uds_http_server INTERFACE "LINKER:--exclude-libs,libwazuh_uds_http_server.a"
+                    "LINKER:--exclude-libs,libllhttp.a")
+
 target_include_directories(
   wazuh_uds_http_server
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include

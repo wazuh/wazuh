@@ -38,7 +38,12 @@ namespace wazuh::uds_http
      *
      * Lock-free and safe to share across threads.
      */
-    class LogThrottle final
+    // Hidden explicitly: its static constexpr members (kDefaultWindow*) are inline variables,
+    // which under default visibility export as GNU-unique -- process-wide across every .so
+    // that embeds this header and a pin against dlclose. The class never crosses a DSO
+    // boundary (each consumer keeps its own throttles), so each .so keeping a private copy is
+    // exactly the intent.
+    class __attribute__((visibility("hidden"))) LogThrottle final
     {
     public:
         /// One window per condition. 90 s matches the manager's existing throttles.
