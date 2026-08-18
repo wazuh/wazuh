@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.9]
 
+### Manager
+
+#### Fixed
+
+- Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
+
 ### Agent
 
 #### Fixed
