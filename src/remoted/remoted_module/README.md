@@ -961,8 +961,8 @@ default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1
 protocol constant, not an ops tuning knob. See *Configuration* above.
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
-`keystore_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
-scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
+`keystore_test.cpp`, `addressRule_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware`
+against a scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
 in-memory stand-in.
 
 **Agent key lookup:** `Keystore` reads `etc/client.keys` directly and parses it
@@ -975,6 +975,29 @@ lowercase hex and hex-decoded as-is (no further derivation); it must decode to 1
 work as an AES-CMAC key. client.keys has no "disabled but present" state -- a removed entry is simply
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
+
+**Registered-address enforcement:** the `ip` column is parsed into an `AddressRule`
+(`auth/addressRule.hpp`) and evaluated by `IAgentKeystore::lookup()`, which resolves the agent's key
+and its address verdict in the same pass -- so the two answers always describe the same entry, even if
+the file is reloaded mid-request. `AuthMiddleware` acts on the verdict before initializing the
+AES-CMAC. An
+agent registered with a fixed address or a range authenticates only from it; `any` accepts every
+peer. The accepted forms match the manager's own `OS_IsValidIP()`/`OS_IPFound()`
+(`shared/src/validate_op.c`): `any`, an IPv4 address alone or with `/CIDR` (0-32) or a dotted
+`/mask`, an IPv6 address alone or with `/prefix` (0-128), and the `::ffff:a.b.c.d` v4-mapped form,
+unmapped before use -- the transport unmaps the peer address the same way in
+`normalizeRemoteAddress()`, so both sides of the comparison agree on the representation. A dotted
+mask is applied as written, with no contiguity check. A leading `!` is stripped and the remainder read
+positively -- it is not a negation, matching the legacy keystore, where `OS_IsValidIP()` drops the `!`
+before storing the text so `OS_IPFound()`'s negation branch can never fire; keeping it identical is what
+lets a `client.keys` migrated from 4.x authorize the same agents it did there. A line whose `ip` column
+does not parse is skipped with a warning, like any other malformed line, rather than being loaded
+without a restriction. The peer address is **not** part of the signed canonical request, so a NAT rewrite
+between agent and manager does not invalidate a signature. A mismatch resolves to
+`AuthError::AddressNotAllowed`, which `publicErrorFor()` folds into the same generic 401 as the other
+credential failures; `AuthMiddleware` reports it with a throttled warning naming the agent id and the
+peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
+is not emitted twice.
 
 **Hot-reload:** `Keystore` runs a background watcher thread (RAII -- started at the end of the
 constructor, stopped and joined in the destructor) so an agent enrolled or removed after startup is

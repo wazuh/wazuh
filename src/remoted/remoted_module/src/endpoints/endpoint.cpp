@@ -63,6 +63,9 @@ namespace
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
+            // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
+            // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
+            case remoted::auth::AuthError::AddressNotAllowed: return RejectionKind::ClientFault;
             default: return RejectionKind::ClientFault;
         }
     }

@@ -70,11 +70,13 @@ namespace
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
+        // Registered as `any`: the known agent may connect from any address.
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId agentId,
+                                                         std::string_view) const override
         {
             if (agentId == 7)
             {
-                return std::vector<std::uint8_t>(16, 0x0B);
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0B), true};
             }
             return std::nullopt;
         }
@@ -332,7 +334,7 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
     config.privateKeyPath = cert.keyPath;
     server->start(config);
 
-    const std::vector<std::uint8_t> key(16, 0x0B); // matches FakeKeystore::keyFor(7)
+    const std::vector<std::uint8_t> key(16, 0x0B); // matches FakeKeystore::lookup(7)
     std::thread clientThread([&] { sendSignedRequestFireAndForget(config.port, key, "H {}\nE test\n"); });
 
     // Wait until the request has genuinely reached the downstream -- i.e. it is sitting exactly in

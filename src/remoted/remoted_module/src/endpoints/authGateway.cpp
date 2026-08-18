@@ -149,6 +149,7 @@ namespace remoted::endpoints
                                                           authorization,
                                                           methodStr,
                                                           request->target,
+                                                          request->remoteIp,
                                                           static_cast<std::int64_t>(std::time(nullptr)));
 
                     if (std::holds_alternative<remoted::auth::AuthError>(begin))

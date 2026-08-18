@@ -47,7 +47,14 @@ Register agents using their source IP address instead of `any`.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agents can only connect from the IP they enrolled from
+- **Note:** When enabled, agents can only connect from the IP they enrolled from. Both listeners
+  enforce this: the classic one via `OS_IsAllowedDynamicID()`, and the HTTPS one via the `ip` column
+  check described in
+  [Registered address](../remoted/https-events-api.md#registered-address-ip-column).
+- **Note:** Do not enable this when agents reach the manager through a **NAT or a load balancer**. The
+  address recorded at enrollment is the one the manager observes, which is the proxy's rather than the
+  agent's, and it is not necessarily the address the event listener will observe for the same agent if
+  the two are reached over different paths. In proxied deployments, register agents with `any`.
 
 ### purge
 

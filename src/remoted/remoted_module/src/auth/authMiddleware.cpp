@@ -41,6 +41,15 @@ namespace remoted::auth
             static remoted::common::LogThrottle instance;
             return instance;
         }
+
+        // An agent whose address stopped matching retries on its own schedule, indefinitely. Reported
+        // from here, rather than from the endpoints' rejection funnel, because this is the only scope
+        // that knows both the resolved agent id and the peer address.
+        remoted::common::LogThrottle& addressNotAllowedThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
     } // namespace
 
     const char* toString(AuthError err)
@@ -54,6 +63,7 @@ namespace remoted::auth
             case AuthError::MalformedAuthorization: return "malformed_authorization";
             case AuthError::UnknownAgent: return "unknown_agent";
             case AuthError::MissingKey: return "missing_key";
+            case AuthError::AddressNotAllowed: return "address_not_allowed";
             case AuthError::ExpiredRequest: return "expired_request";
             case AuthError::FutureRequest: return "future_request";
             case AuthError::InvalidMac: return "invalid_mac";
@@ -77,8 +87,8 @@ namespace remoted::auth
             case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
-            // ExpiredRequest, FutureRequest, InvalidMac: collapse to one generic 401
-            // so the client can never distinguish the reason.
+            // AddressNotAllowed, ExpiredRequest, FutureRequest, InvalidMac: collapse to one
+            // generic 401 so the client can never distinguish the reason.
             default: return {401, "Invalid client authentication"};
         }
     }
@@ -194,6 +204,7 @@ namespace remoted::auth
                                  std::string_view authorizationHeader,
                                  std::string_view method,
                                  std::string_view requestTarget,
+                                 std::string_view peerIp,
                                  std::int64_t currentUnixTimeSeconds) const
     {
         // Step 1: protocol version. An empty value here must mean "absent or
@@ -249,14 +260,40 @@ namespace remoted::auth
         {
             return AuthError::UnknownAgent;
         }
-        const auto agentKey = m_keystore->keyFor(numericAgentId);
-        if (!agentKey)
+        // One lookup resolves the key AND evaluates the client.keys ip column against the peer, so both
+        // answers always describe the same entry even if the file is reloaded mid-request.
+        //
+        // The address check happens here, before the CMAC is set up, so a peer that cannot use this
+        // identity costs neither the MAC setup nor a pass over the body. The address is NOT part of the
+        // signed canonical request and must not be added to it: a NAT rewrite would then invalidate
+        // every signature. It gates authorization, not authentication.
+        const auto agent = m_keystore->lookup(numericAgentId, peerIp);
+        if (!agent)
         {
             return AuthError::UnknownAgent;
         }
-        if (agentKey->empty())
+        if (agent->key.empty())
         {
             return AuthError::MissingKey;
+        }
+        if (!agent->addressAllowed)
+        {
+            // INFO, not WARN: the condition is a property of the agent's registration, not a fault in
+            // the manager. Arguments stay allocation-free -- an integer and a view printed with "%.*s".
+            if (const auto d = addressNotAllowedThrottle().record())
+            {
+                LOGFN_INFO(logFn(),
+                           "Rejected %llu request(s) in the last %d s coming from an address the agent is not "
+                           "registered with (most recently agent %u from '%.*s'). client.keys restricts that agent to "
+                           "a fixed address; re-enroll it with the address it actually connects from, or with 'any' if "
+                           "that address changes or the agent reaches the manager through a load balancer.",
+                           static_cast<unsigned long long>(d.total),
+                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           numericAgentId,
+                           static_cast<int>(peerIp.size()),
+                           peerIp.data());
+            }
+            return AuthError::AddressNotAllowed;
         }
 
         // Step 5: initialize AES-CMAC with the canonical prefix. The timestamp and the agent id are
@@ -279,7 +316,7 @@ namespace remoted::auth
 
         try
         {
-            session.m_cmac = std::make_unique<Cmac>(*agentKey);
+            session.m_cmac = std::make_unique<Cmac>(agent->key);
         }
         catch (const CmacKeyError&)
         {

@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "addressRule.hpp"        // Value type only; pulls no I/O headers.
 #include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "iAgentKeystore.hpp"
 
@@ -47,7 +48,13 @@ namespace remoted::auth
      * manage_agents/authd); it is hex-decoded into raw bytes and used as-is,
      * with no further derivation. It must decode to 16, 24 or 32 bytes to be
      * usable as an AES-CMAC key; AuthMiddleware reports AuthError::MissingKey
-     * for an agent whose key does not (see keyFor()).
+     * for an agent whose key does not (see lookup()).
+     *
+     * The ip column is parsed into an AddressRule and enforced through
+     * lookup(), replicating the legacy remoted's own check so one
+     * client.keys authorizes the same peers on both pipelines. A line whose ip
+     * column does not parse is skipped, like the other malformed-line cases
+     * above -- it is not fatal to the load (see reload()).
      *
      * Hot-reload: a background thread watches the file (inotify, with a
      * periodic fallback poll -- see the classic pipeline's equivalent,
@@ -105,16 +112,28 @@ namespace remoted::auth
         static constexpr int kReloadUnstable {-2};   ///< Kept changing across every read attempt.
 
         /**
-         * @brief Look up an agent's key in the in-memory copy of client.keys.
+         * @brief Look up an agent in the in-memory copy of client.keys.
          *
          * @param agentId Agent id, as it appears (numerically) in client.keys' first column.
-         * @return std::nullopt if the id is not present (including removed/disabled
-         *         entries, and entries whose id column isn't numeric -- see reload()).
-         *         Otherwise the agent's key, empty if the on-disk key column failed to hex-decode.
+         * @param peerIp  Textual peer address as observed on the socket.
+         * @return std::nullopt if the id is not present (including removed/disabled entries, entries
+         *         whose id column isn't numeric, and entries whose ip column didn't parse -- see
+         *         reload()). Otherwise the agent's key, empty if the key column failed to hex-decode,
+         *         plus whether @p peerIp satisfies the ip column.
          */
-        std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
+        std::optional<AgentLookup> lookup(AgentId agentId, std::string_view peerIp) const override;
 
     private:
+        /// One client.keys line's worth of state.
+        struct AgentEntry
+        {
+            /// Raw AES key bytes; empty when the key column did not hex-decode -- that distinction is
+            /// what lets AuthMiddleware answer MissingKey instead of UnknownAgent (see lookup()).
+            std::vector<std::uint8_t> key;
+            /// Parsed ip column. Always present: a line whose column failed to parse is not loaded.
+            AddressRule address;
+        };
+
         /// Watcher thread entry point: an exception barrier around watcherLoopBody(). A throw
         /// escaping a bare std::thread would terminate the whole remoted daemon.
         void watcherLoop();
@@ -140,7 +159,7 @@ namespace remoted::auth
 
         std::string m_path;
         mutable std::mutex m_mutex;
-        std::unordered_map<AgentId, std::vector<std::uint8_t>> m_keys;
+        std::unordered_map<AgentId, AgentEntry> m_keys;
 
         // Hot-reload: background watcher (inotify + periodic fallback poll via poll()'s timeout).
         int m_refreshIntervalSeconds;

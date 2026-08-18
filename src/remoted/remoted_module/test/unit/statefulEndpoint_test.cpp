@@ -355,11 +355,13 @@ namespace
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
+        // Registered as `any`: the known agent may connect from any address.
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId agentId,
+                                                         std::string_view) const override
         {
             if (agentId == 1)
             {
-                return std::vector<std::uint8_t>(16, 0x0A);
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
             }
             return std::nullopt;
         }

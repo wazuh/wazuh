@@ -65,9 +65,9 @@ with no extra configuration). A few things to know before choosing one:
   today.
 - Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
   an "IPv4-mapped IPv6" address (`::ffff:10.0.0.5`), not the plain `10.0.0.5` form. `remoted_module`
-  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), so any
-  future code comparing it against a plain IPv4 address (such as the IP column in `client.keys`)
-  doesn't need to handle the mapped form itself.
+  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), which is
+  what lets the registered-address check below compare it against the `ip` column in `client.keys`
+  without either side having to handle the mapped form.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
@@ -119,6 +119,55 @@ WAZUH-REQUEST\n
 The manager resolves the agent key by reading `etc/client.keys` directly (the same id/name/ip/key
 format `OS_ReadKeys()` uses); the key column is lowercase hex and must decode to 16, 24 or 32 bytes.
 A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
+
+### Registered address (`ip` column)
+
+The same lookup also enforces the entry's `ip` column, matching what the classic listener does through
+`OS_IsAllowedDynamicID()`: an agent registered with a fixed address or a range authenticates **only**
+from it, while `any` — what `authd` writes when no address was requested — accepts every peer.
+
+The address is checked after the key is resolved and **before** the AES-CMAC is initialized, so a peer
+that cannot use that identity never costs a MAC computation. On a mismatch the request is rejected
+with the same generic `401` as any other credential failure.
+
+Accepted forms in the column:
+
+| Column | Matches |
+|---|---|
+| `any` | every peer, both families |
+| `10.0.0.5` | that address only (an implicit `/32`) |
+| `10.0.0.0/24` | the range |
+| `10.0.0.0/255.255.255.0` | the same range, mask written in full |
+| `2001:db8::/64` | the IPv6 range (dotted masks are IPv4-only) |
+| `::ffff:10.0.0.5` | equivalent to `10.0.0.5`; the mapped form is unmapped before comparing |
+
+Notes:
+
+- Host bits are masked off, so `10.0.0.7/24` describes the `10.0.0.0/24` range rather than matching
+  nothing.
+- A dotted mask is applied exactly as written, with no contiguity check.
+- **A leading `!` is not a negation.** `!10.0.0.5` is read as plain `10.0.0.5`, so the agent is allowed
+  *from* that address rather than excluded from it. There is no way to express an exclusion in this
+  column.
+
+  This is the classic listener's behavior, kept identical on purpose: `OS_IsValidIP()` strips the `!`
+  before storing the address, so `OS_IPFound()`'s negation branch can never fire, and `!IP` has always
+  meant positive `IP`. A `client.keys` carried over from 4.x therefore authorizes exactly the same
+  agents here — a line that worked before an upgrade does not start being rejected after it.
+
+  `authd` never writes such a value anyway: enrolling with `IP:'!10.0.0.5'` stores `10.0.0.5`, so the
+  form only survives in a hand-edited file.
+- An agent of one address family never matches an entry of the other.
+- A line whose `ip` column is not a valid address or range is **skipped**, with a warning naming the
+  line number, and that agent is then treated as unknown. The rest of the file still loads.
+- The peer address is **not** part of the signed canonical byte sequence above. A NAT rewrite between
+  agent and manager therefore does not invalidate a signature; the address gates authorization on top
+  of authentication, it is not part of it.
+
+> An agent reaching the manager through a **NAT or a load balancer** must be registered with `any` (or
+> with the proxy's address): the address the manager observes is the proxy's, not the agent's. This is
+> also true of the classic listener; it only becomes visible here because a mismatched fixed address is
+> now actually rejected.
 
 ### Content-Encoding (zstd)
 
@@ -187,7 +236,7 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 |---|---|---|
 | Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
-| Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
+| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
 | Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
 | `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
@@ -391,6 +440,17 @@ investigate why the downstream service is not keeping up.
 | Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
 | Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
+
+Two more, about a registered address that no longer matches, both collapsed on the same 90-second
+window as everything above:
+
+- **`Rejected N request(s) … from an address the agent is not registered with`** (INFO) names the agent
+  id and the address it connected from, and is the line to look for when an agent that used to work
+  starts getting `401`s after its address changed. INFO rather than WARNING: the condition is a
+  property of the agent's registration, not a fault on the manager side.
+- **`client.keys line N: the address '<value>' registered for agent M is not a valid address or
+  range`** (WARNING) means that line was skipped, so that agent is now treated as unknown. Fix the
+  column or re-enroll the agent.
 
 Three more that are not about tuning:
 

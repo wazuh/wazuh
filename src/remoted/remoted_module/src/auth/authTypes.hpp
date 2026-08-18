@@ -120,6 +120,9 @@ namespace remoted::auth
         MalformedAuthorization,
         UnknownAgent,
         MissingKey,
+        AddressNotAllowed, ///< The peer address does not satisfy the agent's client.keys ip column
+                           ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
+                           ///< generic 401: a distinct status would confirm that the agent id exists.
         ExpiredRequest,
         FutureRequest,
         InvalidMac,
