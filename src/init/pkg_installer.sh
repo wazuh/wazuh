@@ -19,11 +19,9 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 OS=$(uname)
 WAZUH_HOME=$(pwd)
 
-# Pure-shell check for a matching package, so branch selection does not depend on
-# an external tool like `find` (absent on minimal container/cloud images).
 pkg_exists() {
-    for f in "$@"; do
-        [ -f "$f" ] && return 0
+    for file in "$@"; do
+        [ -f "$file" ] && return 0
     done
     return 1
 }
