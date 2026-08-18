@@ -68,6 +68,10 @@ def test_read_cluster_config():
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
 
+    # The cached entry aliases default_cluster_config, mutated above. Evict it so the rest of the
+    # session does not read a config with node_type 'client'.
+    utils.read_config.cache_clear()
+
 
 @patch('wazuh.core.cluster.utils.read_config', return_value={'node_type': 'master'})
 def test_get_manager_status(mock_read_config):

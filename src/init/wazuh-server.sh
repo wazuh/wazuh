@@ -172,7 +172,7 @@ disable()
 
 get_node_type()
 {
-    grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} 2>/dev/null | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' '
+    sed -n 's/.*<node_type>\([^<]*\)<\/node_type>.*/\1/p' ${DIR}/etc/${WAZUH_CONF} 2>/dev/null | tr -d ' '
 }
 
 status()
