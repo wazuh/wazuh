@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include <csignal>
+#include <signal.h>
 #include <stdlib.h>
 #include "wmodules_def.h"
 #include "syscollector.h"

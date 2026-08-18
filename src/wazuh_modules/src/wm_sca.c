@@ -14,7 +14,7 @@
 #include "wmodules.h"
 #include "module_query_errors.h"
 #include "os_net.h"
-#include <csignal>
+#include <signal.h>
 #include <sys/stat.h>
 #include "sha256_op.h"
 #include "expression.h"
