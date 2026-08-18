@@ -970,6 +970,8 @@ void test_audit_parse_chmod(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
+    expect_string(__wrap_realpath, path, "/root/test/file");
+    will_return(__wrap_realpath, strdup("/root/test/file"));
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
