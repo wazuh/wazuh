@@ -355,8 +355,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
 
         /// Built-in ceiling on one session, used until a daemon calls
-        /// setSessionMaxBytes() with what <agent><batch><size> says.
-        static constexpr size_t FULLSESSION_MAX_BYTES = 5U * 1024U * 1024U;
+        /// Same 1 MiB the HTTPS transport applies to a /stateless request by default.
+        static constexpr size_t FULLSESSION_MAX_BYTES = 1U * 1024U * 1024U;
 
         /// Process-wide, because the limit is one agent-wide decision and the modules
         /// that build these instances have no configuration of their own to carry it.

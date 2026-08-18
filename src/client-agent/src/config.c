@@ -72,6 +72,7 @@ int ClientConf(const char *cfgfile)
     agt->stats_report.interval = 60;
     agt->config_report.interval = 3600;
 
+    agt->batch.size = 1024 * 1024;
     agt->batch.interval = 10;
 
 #ifndef WIN32
