@@ -273,18 +273,6 @@ jobs:
         run: |
           sudo journalctl -xeu wazuh-agent.service || true
           sudo tail -n 200 /var/ossec/logs/ossec.log || true
-          # TEMP(diagnostic, revert before review): the fixtures truncate ossec.log
-          # between test steps, so the tail above only captures teardown noise. The fim
-          # pre_install mirrors the log with `tail -F` into /tmp/ossec_full.log, which
-          # survives truncation; print it so the FIM event flow is visible in the job log.
-          if [ -f /tmp/ossec_full.log ]; then
-            echo "===== BEGIN mirrored ossec.log ====="
-            sudo grep -aE "Sending FIM event|audit_event|Audit rule|Whodata|whodata|scan ended|Cannot get the real path|Startup hash gate|6247|6321|6213" /tmp/ossec_full.log || true
-            echo "===== END mirrored ossec.log ====="
-            echo "mirrored line count: $(sudo wc -l < /tmp/ossec_full.log)"
-          else
-            echo "no mirrored log at /tmp/ossec_full.log"
-          fi
 
       - name: Upload failed test results
         if: failure()
