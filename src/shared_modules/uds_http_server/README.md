@@ -71,10 +71,10 @@ sequenceDiagram
     S->>S: resume, read body (chunks of bufferSize)
     S->>H: dispatch(request, responder)
     H->>W: enqueue work, return immediately
-    Note over S: read buffer shrunk; response timer armed (504 backstop);<br/>1-byte peer-gone watch armed
+    Note over S: read buffer shrunk. response timer armed (504 backstop).<br/>1-byte peer-gone watch armed
     W-->>S: responder->send(response)  [any thread, any time]
     S->>P: response head+body, then close
-    Note over S: dropping the REQUEST releases payload+reservation;<br/>a responder dropped unanswered ⇒ 503
+    Note over S: dropping the REQUEST releases payload+reservation.<br/>a responder dropped unanswered ⇒ 503
 ```
 
 Two-phase shutdown — the S1/S2/S3 guarantees:

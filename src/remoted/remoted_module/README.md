@@ -574,7 +574,7 @@ sequenceDiagram
     SH-->>EP: Accepted
     EP-->>Ag: 200 OK {}
 
-    Note over VD: VD's single worker runs the scan later;<br/>its outcome lands in modulesd's log
+    Note over VD: VD's single worker runs the scan later.<br/>its outcome lands in modulesd's log
 ```
 
 The whole exchange is synchronous: remoted holds no scan state and relays VD's **admission**
