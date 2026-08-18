@@ -16,6 +16,7 @@
 #include <rpm/rpmdb.h>
 #include <rpm/rpmlib.h>
 #include <rpm/rpmts.h>
+#include <rpm/rpmmacro.h>
 #include <db.h>
 
 
@@ -48,6 +49,7 @@ class RpmLibMock
     public:
         MOCK_METHOD(int, rpmReadConfigFiles, (const char* file, const char* target));
         MOCK_METHOD(void, rpmFreeRpmrc, ());
+        MOCK_METHOD(void, rpmFreeMacros, ());
         MOCK_METHOD(rpmtd, rpmtdNew, ());
         MOCK_METHOD(rpmtd, rpmtdFree, (rpmtd td));
         MOCK_METHOD(rpmts, rpmtsCreate, ());
@@ -78,6 +80,11 @@ int rpmReadConfigFiles(const char* file, const char* target)
 void rpmFreeRpmrc()
 {
     gs_rpm_mock->rpmFreeRpmrc();
+}
+void rpmFreeMacros(rpmMacroContext mc)
+{
+    (void)mc;
+    gs_rpm_mock->rpmFreeMacros();
 }
 rpmtd rpmtdNew()
 {
@@ -402,6 +409,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     EXPECT_CALL(*rpm_mock, rpmtdFree(_)).Times(1).WillOnce(Return(nullptr));
     EXPECT_CALL(*rpm_mock, rpmdbFreeIterator(_)).Times(1).WillOnce(Return(nullptr));
     EXPECT_CALL(*rpm_mock, rpmFreeRpmrc());
+    EXPECT_CALL(*rpm_mock, rpmFreeMacros());
 
     EXPECT_CALL(*rpm_mock, headerGet(_, _, _, _)).Times(AnyNumber()).WillRepeatedly(Return(1));
 
