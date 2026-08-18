@@ -169,6 +169,41 @@ TEST_F(SysInfoWinTest, WmiExecuteQuery)
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
 
+// Regression test for issue #38370: a Winmgmt that never signals end-of-enumeration
+// (previously: Next(WBEM_INFINITE, ...) blocking the syscollector worker thread forever)
+// must make QueryWMIHotFixes give up and throw once the overall ceiling is exceeded,
+// not hang. Tiny timeouts keep this test fast instead of waiting on the multi-second
+// production defaults.
+TEST_F(SysInfoWinTest, WmiHotfixEnumerationTimeoutThrows)
+{
+    MockComHelper mockComHelper;
+    MockEnumWbemClassObject mockEnum;
+    std::set<std::string> hotfixSet;
+
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_))
+    .WillOnce(testing::DoAll(
+                  testing::SetArgReferee<1>(&mockEnum),
+                  testing::Return(S_OK)));
+
+    // Every call times out with no object ready -- never signals completion
+    // (uReturn == 0 with a non-timeout HRESULT), so the only way out is the new
+    // cumulative-elapsed-time ceiling.
+    EXPECT_CALL(mockEnum, Next(testing::_, testing::_, testing::_, testing::_))
+    .WillRepeatedly(testing::Return(WBEM_S_TIMEDOUT));
+
+    EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper, /*perCallTimeoutMs*/ 1, /*overallTimeoutMs*/ 5),
+                 std::runtime_error);
+}
+
 TEST_F(SysInfoWinTest, WmiPopulatesWMIHotfixSetCorrectly)
 {
     std::set<std::string> hotfixSet;

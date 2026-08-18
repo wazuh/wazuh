@@ -150,30 +150,36 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
     IWbemClassObject* pclsObj = NULL;
     ULONG uReturn = 0;
-    const auto enumStart = std::chrono::steady_clock::now();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(overallTimeoutMs);
 
     while (pEnumerator)
     {
-        const HRESULT nextRes = pEnumerator->Next(perCallTimeoutMs, 1, &pclsObj, &uReturn);
+        // Re-checked every iteration (success or timeout) so a Winmgmt that keeps
+        // returning objects without ever finishing can't block forever either
+        // (see #38370: previously WBEM_INFINITE let this block forever).
+        const auto now = std::chrono::steady_clock::now();
+
+        if (now >= deadline)
+        {
+            pEnumerator->Release();
+            pSvc->Release();
+            pLoc->Release();
+            oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
+                << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
+            throw std::runtime_error(oss.str());
+        }
+
+        // Clamp the per-call wait to whatever time remains so a single Next() call
+        // can never push total elapsed time past overallTimeoutMs.
+        const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count();
+        const long callTimeoutMs = static_cast<long>(std::min<long long>(perCallTimeoutMs, remainingMs));
+
+        const HRESULT nextRes = pEnumerator->Next(callTimeoutMs, 1, &pclsObj, &uReturn);
 
         if (nextRes == WBEM_S_TIMEDOUT)
         {
-            // No object was ready within perCallTimeoutMs -- Winmgmt is slow, not
-            // necessarily done enumerating. Keep retrying until overallTimeoutMs is
-            // exhausted (see #38370: previously WBEM_INFINITE let this block forever).
-            const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                       std::chrono::steady_clock::now() - enumStart).count();
-
-            if (elapsedMs >= overallTimeoutMs)
-            {
-                pEnumerator->Release();
-                pSvc->Release();
-                pLoc->Release();
-                oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
-                    << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
-                throw std::runtime_error(oss.str());
-            }
-
+            // No object was ready within callTimeoutMs -- Winmgmt is slow, not
+            // necessarily done enumerating. Loop head re-checks the deadline.
             continue;
         }
 
