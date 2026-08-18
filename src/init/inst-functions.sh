@@ -658,6 +658,7 @@ ValidateRemoteVars()
         esac
     fi
 
+    CheckRemoteYesNo "WAZUH_REMOTE_LEGACY_ENABLED" "${WAZUH_REMOTE_LEGACY_ENABLED}"
     CheckRemotePort "WAZUH_REMOTE_LEGACY_PORT" "${WAZUH_REMOTE_LEGACY_PORT}"
     CheckRemoteProtocol "WAZUH_REMOTE_LEGACY_PROTOCOL" "${WAZUH_REMOTE_LEGACY_PROTOCOL}"
     CheckRemoteYesNo "WAZUH_REMOTE_LEGACY_IPV6" "${WAZUH_REMOTE_LEGACY_IPV6}"
@@ -715,6 +716,7 @@ WriteRemote()
     echo "    </https>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
     echo "    <legacy>" >> $NEWCONFIG
+    echo "      <enabled>${WAZUH_REMOTE_LEGACY_ENABLED:-yes}</enabled>" >> $NEWCONFIG
     echo "      <port>${WAZUH_REMOTE_LEGACY_PORT:-1514}</port>" >> $NEWCONFIG
     echo "      <protocol>${WAZUH_REMOTE_LEGACY_PROTOCOL:-tcp}</protocol>" >> $NEWCONFIG
     if [ -n "${WAZUH_REMOTE_LEGACY_IPV6}" ]; then
