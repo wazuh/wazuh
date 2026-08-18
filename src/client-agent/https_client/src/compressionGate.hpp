@@ -12,6 +12,9 @@
 #ifndef _HC_COMPRESSION_GATE_HPP
 #define _HC_COMPRESSION_GATE_HPP
 
+#include "loggerHelper.h"
+#include "moduleLog.hpp"
+
 #include <atomic>
 
 /**
@@ -30,7 +33,10 @@ class CompressionGate final
         /// A compressed attempt got a 415. Idempotent; safe from any thread.
         void reportRejected()
         {
-            m_disabled.store(true, std::memory_order_relaxed);
+            if (!m_disabled.exchange(true, std::memory_order_relaxed))
+            {
+                LOGFN_WARN(m_logFn, "Manager rejected 'zstd' compression. HTTPS traffic will be uncompressed until the next restart.");
+            }
         }
 
         bool disabled() const
@@ -39,6 +45,7 @@ class CompressionGate final
         }
 
     private:
+        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::atomic<bool> m_disabled {false};
 };
 
