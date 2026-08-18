@@ -69,9 +69,26 @@ class EXPORTED ComHelper : public IComHelper
         HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override;
 };
 
+// Per-call timeout passed to IEnumWbemClassObject::Next() (milliseconds) -- replaces
+// the previous WBEM_INFINITE, which let a slow/unresponsive Winmgmt block the
+// syscollector worker thread forever (issue #38370).
+constexpr long WMI_HOTFIX_NEXT_TIMEOUT_MS = 5000;
+
+// Cumulative ceiling (milliseconds) across the whole enumeration loop: a Winmgmt that
+// answers just slowly enough to always return within WMI_HOTFIX_NEXT_TIMEOUT_MS on each
+// individual call, but never actually finishes, would otherwise still block forever one
+// bounded call at a time. Comfortably under stop_wmodules()'s 20 s join budget so this
+// can never itself become the dominant cause of a shutdown timeout.
+constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 15000;
+
 // Queries Windows Management Instrumentation (WMI) to retrieve installed hotfixes
-//  and stores them in the provided set.
-EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
+//  and stores them in the provided set. Bounded: gives up and throws std::runtime_error
+//  if Winmgmt does not respond within overallTimeoutMs, instead of blocking forever.
+//  Default arguments are what production code should use; the timeout parameters exist
+//  so tests can exercise the timeout path without a real multi-second wait.
+EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
+                                long perCallTimeoutMs = WMI_HOTFIX_NEXT_TIMEOUT_MS,
+                                long overallTimeoutMs = WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS);
 
 
 // Queries Windows Update Agent (WUA) for installed update history,

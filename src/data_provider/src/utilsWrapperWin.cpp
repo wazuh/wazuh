@@ -15,6 +15,7 @@
 #include <stdexcept>      // For std::runtime_error
 #include <string>         // For std::string and std::wstring
 #include <locale>         // For localization utilities (if needed for string conversion)
+#include <chrono>         // For the bounded WMI enumeration wait (issue #38370)
 
 #include "utilsWrapperWin.hpp"
 #include <shellapi.h>
@@ -96,7 +97,8 @@ std::string BstrToString(BSTR bstr)
     return converter.to_bytes(wstr);
 }
 
-void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
+                       long perCallTimeoutMs, long overallTimeoutMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -148,10 +150,32 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     IWbemClassObject* pclsObj = NULL;
     ULONG uReturn = 0;
+    const auto enumStart = std::chrono::steady_clock::now();
 
     while (pEnumerator)
     {
-        pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+        const HRESULT nextRes = pEnumerator->Next(perCallTimeoutMs, 1, &pclsObj, &uReturn);
+
+        if (nextRes == WBEM_S_TIMEDOUT)
+        {
+            // No object was ready within perCallTimeoutMs -- Winmgmt is slow, not
+            // necessarily done enumerating. Keep retrying until overallTimeoutMs is
+            // exhausted (see #38370: previously WBEM_INFINITE let this block forever).
+            const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::steady_clock::now() - enumStart).count();
+
+            if (elapsedMs >= overallTimeoutMs)
+            {
+                pEnumerator->Release();
+                pSvc->Release();
+                pLoc->Release();
+                oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
+                    << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
+                throw std::runtime_error(oss.str());
+            }
+
+            continue;
+        }
 
         if (0 == uReturn)
         {
