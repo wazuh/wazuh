@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <cerrno>
 #include "igroup_wrapper.hpp"
 #include "ipasswd_wrapper.hpp"
 #include "isystem_wrapper.hpp"
@@ -372,4 +373,281 @@ TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidMultipleGids)
 
     free(pwd1.pw_name);
     free(pwd2.pw_name);
+}
+
+// A gid shared by several users must cost one group lookup for the whole call, not one
+// per user that belongs to it. On a host whose group database is served by a network
+// directory, each lookup is a round trip, so the call count is the property under test.
+TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidResolvesEachGidOnce)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
+
+    const uid_t uidA = 1001;
+    const uid_t uidB = 1002;
+    const char* nameA = "usera";
+    const char* nameB = "userb";
+    // Both users belong to 100 and 101, so three users' worth of membership resolves to
+    // two distinct gids.
+    const gid_t sharedGid1 = 100;
+    const gid_t sharedGid2 = 101;
+
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameA);
+        pwd->pw_uid = uidA;
+        pwd->pw_gid = sharedGid1;
+        *result = pwd;
+        return 0;
+    }));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameB);
+        pwd->pw_uid = uidB;
+        pwd->pw_gid = sharedGid1;
+        *result = pwd;
+        return 0;
+    }));
+
+    const auto bothGroups = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = sharedGid1;
+        groups[1] = sharedGid2;
+        *ngroups = 2;
+        return 2;
+    };
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameA), sharedGid1, _, _)).WillOnce(Invoke(bothGroups));
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameB), sharedGid1, _, _)).WillOnce(Invoke(bothGroups));
+
+    // Two users times two groups is four (user, group) pairs but only two distinct gids.
+    // Times(1) is the whole point of the test: a second lookup for the same gid is a
+    // failure, not an optimisation that happens to be missing.
+    EXPECT_CALL(*mockGroup, getgrgid_r(sharedGid1, _, _, _, _))
+    .Times(1)
+    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
+    {
+        grp->gr_name = const_cast<char*>("groupone");
+        *result = grp;
+        return 0;
+    }));
+
+    EXPECT_CALL(*mockGroup, getgrgid_r(sharedGid2, _, _, _, _))
+    .Times(1)
+    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
+    {
+        grp->gr_name = const_cast<char*>("grouptwo");
+        *result = grp;
+        return 0;
+    }));
+
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
+
+    auto result = provider.getGroupNamesByUid({uidA, uidB});
+
+    // Fewer lookups must not mean fewer or different names reported.
+    ASSERT_TRUE(result.is_object());
+    ASSERT_TRUE(result.contains(std::to_string(uidA)));
+    ASSERT_TRUE(result.contains(std::to_string(uidB)));
+    EXPECT_EQ(result[std::to_string(uidA)], nlohmann::json::array({"groupone", "grouptwo"}));
+    EXPECT_EQ(result[std::to_string(uidB)], nlohmann::json::array({"groupone", "grouptwo"}));
+}
+
+// A gid the group database cannot resolve must also be looked up only once. Without
+// memoising the failures, an unresolvable gid shared by many users costs a lookup per
+// user, which is the case that hurts most on a directory-backed host.
+TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesUnresolvableGidOnlyOnce)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
+
+    const uid_t uidA = 1001;
+    const uid_t uidB = 1002;
+    const char* nameA = "usera";
+    const char* nameB = "userb";
+    const gid_t missingGid = 500;
+
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameA);
+        pwd->pw_uid = uidA;
+        pwd->pw_gid = missingGid;
+        *result = pwd;
+        return 0;
+    }));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameB);
+        pwd->pw_uid = uidB;
+        pwd->pw_gid = missingGid;
+        *result = pwd;
+        return 0;
+    }));
+
+    const auto onlyMissing = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = missingGid;
+        *ngroups = 1;
+        return 1;
+    };
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameA), missingGid, _, _)).WillOnce(Invoke(onlyMissing));
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameB), missingGid, _, _)).WillOnce(Invoke(onlyMissing));
+
+    EXPECT_CALL(*mockGroup, getgrgid_r(missingGid, _, _, _, _))
+    .Times(1)
+    .WillOnce(Invoke([](gid_t, struct group*, char*, size_t, struct group** result)
+    {
+        *result = nullptr;
+        return 0;
+    }));
+
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
+
+    auto result = provider.getGroupNamesByUid({uidA, uidB});
+
+    // An unresolvable gid contributes no name, exactly as before.
+    ASSERT_TRUE(result.is_object());
+    EXPECT_EQ(result[std::to_string(uidA)], nlohmann::json::array());
+    EXPECT_EQ(result[std::to_string(uidB)], nlohmann::json::array());
+}
+
+// The single uid call returns a bare array of names, and callers depend on that shape.
+// Batching several uids into one call must not change it.
+TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidKeepsArrayShapeForOneUid)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
+
+    const uid_t uid = 1001;
+    const gid_t gid = 100;
+    const char* name = "usera";
+
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uid, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(name);
+        pwd->pw_uid = uid;
+        pwd->pw_gid = gid;
+        *result = pwd;
+        return 0;
+    }));
+
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(name), gid, _, _))
+    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = gid;
+        *ngroups = 1;
+        return 1;
+    }));
+
+    EXPECT_CALL(*mockGroup, getgrgid_r(gid, _, _, _, _))
+    .Times(1)
+    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
+    {
+        grp->gr_name = const_cast<char*>("groupone");
+        *result = grp;
+        return 0;
+    }));
+
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
+
+    auto result = provider.getGroupNamesByUid({uid});
+
+    ASSERT_TRUE(result.is_array());
+    EXPECT_EQ(result, nlohmann::json::array({"groupone"}));
+}
+
+// A failed lookup, as opposed to an authoritative "no such group", may be transient when the
+// group database is served over the network. It must not be remembered for the rest of the
+// scan, so a later user belonging to the same gid attempts it again.
+TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesGidAfterAFailedLookup)
+{
+    auto mockGroup = std::make_shared<MockGroupWrapper>();
+    auto mockPasswd = std::make_shared<MockPasswdWrapper>();
+    auto mockSys = std::make_shared<MockSystemWrapper>();
+
+    const uid_t uidA = 1001;
+    const uid_t uidB = 1002;
+    const char* nameA = "usera";
+    const char* nameB = "userb";
+    const gid_t flakyGid = 700;
+
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameA);
+        pwd->pw_uid = uidA;
+        pwd->pw_gid = flakyGid;
+        *result = pwd;
+        return 0;
+    }));
+
+    EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
+    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
+    {
+        pwd->pw_name = const_cast<char*>(nameB);
+        pwd->pw_uid = uidB;
+        pwd->pw_gid = flakyGid;
+        *result = pwd;
+        return 0;
+    }));
+
+    const auto onlyFlaky = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    {
+        groups[0] = flakyGid;
+        *ngroups = 1;
+        return 1;
+    };
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameA), flakyGid, _, _)).WillOnce(Invoke(onlyFlaky));
+    EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameB), flakyGid, _, _)).WillOnce(Invoke(onlyFlaky));
+
+    // First attempt fails with an error, second succeeds. Memoising the failure would make
+    // this a single call and lose the name for both users.
+    {
+        InSequence seq;
+
+        EXPECT_CALL(*mockGroup, getgrgid_r(flakyGid, _, _, _, _))
+        .WillOnce(Invoke([](gid_t, struct group*, char*, size_t, struct group** result)
+        {
+            *result = nullptr;
+            return EIO;
+        }));
+
+        EXPECT_CALL(*mockGroup, getgrgid_r(flakyGid, _, _, _, _))
+        .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
+        {
+            grp->gr_name = const_cast<char*>("flakygroup");
+            *result = grp;
+            return 0;
+        }));
+    }
+
+    UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
+
+    auto result = provider.getGroupNamesByUid({uidA, uidB});
+
+    ASSERT_TRUE(result.is_object());
+    // The user whose lookup failed reports no name, the retry recovers it for the other.
+    EXPECT_EQ(result[std::to_string(uidA)], nlohmann::json::array());
+    EXPECT_EQ(result[std::to_string(uidB)], nlohmann::json::array({"flakygroup"}));
 }
