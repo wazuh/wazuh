@@ -729,7 +729,10 @@ nlohmann::json SysInfo::getUsers() const
 
         if (groupsByUid.is_object())
         {
-            const auto entry = groupsByUid.find(std::to_string(user["uid"].get<int>()));
+            // Keyed exactly as getGroupNamesByUid() built it, from uid_t. Formatting the
+            // narrowed int instead would look up "-2" for uid 4294967294 and find nothing.
+            const auto uid = static_cast<uid_t>(user["uid"].get<int>());
+            const auto entry = groupsByUid.find(std::to_string(uid));
 
             if (entry != groupsByUid.end())
             {

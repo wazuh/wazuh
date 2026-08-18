@@ -109,17 +109,30 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
         }
 
         struct group grp {};
+
         struct group* grpResult = nullptr;
+
         auto groupBuf = std::make_unique<char[]>(bufSize);
 
-        if (m_groupWrapper->getgrgid_r(gid, &grp, groupBuf.get(), bufSize, &grpResult) == 0 && grpResult != nullptr)
+        const auto result = m_groupWrapper->getgrgid_r(gid, &grp, groupBuf.get(), bufSize, &grpResult);
+
+        if (result == 0 && grpResult != nullptr)
         {
             name = grpResult->gr_name;
             gidToName.emplace(gid, name);
             return true;
         }
 
-        unresolvableGids.insert(gid);
+        // Only an authoritative answer is remembered. A return of 0 with no entry means the
+        // group database does not know this gid, which will not change within one scan. A
+        // non-zero return is a failed lookup, which may be transient on a host whose group
+        // database is served over the network, so it is left unmemoized and the next user
+        // that belongs to this gid attempts it again, as it did before this change.
+        if (result == 0)
+        {
+            unresolvableGids.insert(gid);
+        }
+
         return false;
     };
 
