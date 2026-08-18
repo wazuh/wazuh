@@ -32,6 +32,69 @@ TEST(SystemClockTest, WallAndSteadyAdvanceMonotonically)
     EXPECT_GE(clock.steadyNow(), steady1);
 }
 
+TEST(SkewCorrectedClockTest, DefaultsToNoCorrectionAndMirrorsTheBaseClock)
+{
+    SystemClock base;
+    SkewCorrectedClock clock {base};
+    EXPECT_EQ(base.wallSeconds(), clock.wallSeconds());
+}
+
+TEST(SkewCorrectedClockTest, AppliedOffsetShiftsWallSecondsOnly)
+{
+    class FixedClock final : public IClock
+    {
+        public:
+            std::time_t wallSeconds() const override
+            {
+                return 1700000000;
+            }
+
+            std::chrono::steady_clock::time_point steadyNow() const override
+            {
+                return m_steady;
+            }
+
+        private:
+            std::chrono::steady_clock::time_point m_steady {std::chrono::steady_clock::now()};
+    };
+
+    FixedClock base;
+    SkewCorrectedClock clock {base};
+
+    clock.applyOffsetSeconds(-36000); // 10 h ahead, corrected back.
+    EXPECT_EQ(1700000000 - 36000, clock.wallSeconds());
+    EXPECT_EQ(base.steadyNow(), clock.steadyNow()); // Cadence timing untouched.
+}
+
+TEST(SkewCorrectedClockTest, ANewOffsetAccumulatesOnTopOfAnyPriorCorrection)
+{
+    // The caller (RetrySender) always measures its delta against THIS
+    // clock's own (possibly already-corrected) wallSeconds() -- so a second,
+    // independent correction must fold onto the existing offset rather than
+    // replace it. Replacing would silently discard the first correction,
+    // reintroducing exactly the bug this clock exists to fix.
+    class FixedClock final : public IClock
+    {
+        public:
+            std::time_t wallSeconds() const override
+            {
+                return 1700000000;
+            }
+
+            std::chrono::steady_clock::time_point steadyNow() const override
+            {
+                return {};
+            }
+    };
+
+    FixedClock base;
+    SkewCorrectedClock clock {base};
+
+    clock.applyOffsetSeconds(-100);
+    clock.applyOffsetSeconds(-50); // A later, independent measurement adds to it -- not replaces it.
+    EXPECT_EQ(1700000000 - 150, clock.wallSeconds());
+}
+
 TEST(Mt19937RandomTest, YieldsValuesInUnitInterval)
 {
     Mt19937Random random;

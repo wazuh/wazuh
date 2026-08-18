@@ -17,6 +17,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <string>
@@ -81,7 +82,16 @@ class ICurlHandle
         ///         silently not be in effect.
         virtual bool captureResponseBody(std::string* output) = 0;
         virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
-        virtual bool captureRetryAfter(long* output) = 0;
+
+        /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
+        /// handle: retryAfter receives the parsed Retry-After header (0 =
+        /// absent), serverDate receives the parsed Date header (0 =
+        /// absent/unparsed) -- the manager's own transport stamps Date on
+        /// every response it builds, including every 401, which is what lets
+        /// the agent detect and correct clock skew instead of assuming a 401
+        /// always means a dead credential.
+        virtual bool captureResponseHeaders(long* retryAfter, std::time_t* serverDate) = 0;
+
         virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
         virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;
 

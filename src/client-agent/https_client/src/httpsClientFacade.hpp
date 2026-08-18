@@ -88,7 +88,14 @@ class HttpsClientFacade final
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         // Seams (built once; stable references handed to the streams).
-        SystemClock m_clock;
+        // m_clock wraps m_systemClock with a runtime-correctable offset: every
+        // stream below is handed IClock& m_clock, so a skew RetrySender learns
+        // from any one manager response corrects every sender's signing
+        // timestamp from the next request on (#37828 follow-up). Declaration
+        // order matters here -- m_systemClock must construct before m_clock,
+        // which holds a reference to it.
+        SystemClock m_systemClock;
+        SkewCorrectedClock m_clock {m_systemClock};
         Mt19937Random m_random;
         FsProbe m_fsProbe;
         ConfigKeyProvider m_keyProvider;

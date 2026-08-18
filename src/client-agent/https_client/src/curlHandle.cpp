@@ -116,15 +116,38 @@ namespace
         return wrote;
     }
 
+    /// Bundles both headers this trampoline cares about: libcurl allows only
+    /// one HEADERFUNCTION/HEADERDATA pair per handle, so both live behind one
+    /// userData pointer instead of two.
+    struct HeaderCapture
+    {
+        long* retryAfter {nullptr};
+        std::time_t* serverDate {nullptr};
+    };
+
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
-        auto* retryAfter = static_cast<long*>(userData);
-        constexpr size_t prefixLength = 12; // "Retry-After:"
+        auto* capture = static_cast<HeaderCapture*>(userData);
+        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
+        constexpr size_t datePrefixLength = 5;        // "Date:"
 
-        if (total > prefixLength && strncasecmp(data, "Retry-After:", prefixLength) == 0)
+        if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
-            *retryAfter = std::strtol(data + prefixLength, nullptr, 10);
+            *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
+        {
+            // curl_getdate() parses RFC 1123/850 and asctime formats and
+            // returns -1 on failure; a null-terminated copy is required since
+            // the header line is not itself nul-terminated by libcurl.
+            const std::string value(data + datePrefixLength, total - datePrefixLength);
+            const time_t parsed = curl_getdate(value.c_str(), nullptr);
+
+            if (parsed != -1)
+            {
+                *capture->serverDate = parsed;
+            }
         }
 
         return total;
@@ -237,10 +260,11 @@ namespace
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
-            bool captureRetryAfter(long* output) override
+            bool captureResponseHeaders(long* retryAfter, std::time_t* serverDate) override
             {
+                m_headerCapture = HeaderCapture {retryAfter, serverDate};
                 return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output) == CURLE_OK;
+                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
             }
 
             bool streamBodyFromFile(std::FILE* file, uint64_t size) override
@@ -291,6 +315,7 @@ namespace
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
+            HeaderCapture m_headerCapture {};
     };
 } // namespace
 
