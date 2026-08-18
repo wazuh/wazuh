@@ -51,6 +51,9 @@ else()
 
     list(APPEND execd_names "test_get_command_by_name")
     list(APPEND execd_flags "${DEBUG_OP_WRAPPERS}")
+
+    list(APPEND execd_names "test_read_exec_config")
+    list(APPEND execd_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH execd_names count)

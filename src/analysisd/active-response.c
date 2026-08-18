@@ -16,6 +16,13 @@
 #include <grp.h>
 #endif
 
+/* The lines that AR_ReadConfig() always writes hold two distinct names, and every
+ * platform ships at most one of the executables of each, so the agents keep two
+ * entries out of them. Should a platform ever ship two executables of the same
+ * name, that name would take one further entry.
+ */
+#define AR_DEFAULT_COMMANDS 2
+
 /* Active response commands */
 OSList *ar_commands;
 OSList *active_responses;
@@ -75,6 +82,13 @@ int AR_ReadConfig(const char *cfgfile)
     /* Read configuration */
     if (ReadConfig(modules, cfgfile, ar_commands, active_responses) < 0) {
         return (OS_INVALID);
+    }
+
+    /* The entries above plus one per active response make up the shared file */
+    const int total_commands = AR_DEFAULT_COMMANDS + active_responses->currently_size;
+
+    if (total_commands > MAX_AR) {
+        mwarn(AR_MAX_COMMANDS, total_commands, MAX_AR, DEFAULTAR);
     }
 
     return (0);
