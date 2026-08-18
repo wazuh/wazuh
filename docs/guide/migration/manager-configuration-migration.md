@@ -440,10 +440,21 @@ The 5.0 defaults resolve to `etc/certs/apid.pem`, `etc/certs/apid-key.pem` and `
 
 ### Simplified `upload_configuration`
 
-The `upload_configuration` section has been reduced. The following subsections are no longer valid in 5.0 and must be removed if present:
+The `upload_configuration.integrations.virustotal` subsection is no longer valid in 5.0 and must be removed if present:
 
 ```yaml
 # Removed in 5.0:
+upload_configuration:
+  integrations:
+    virustotal:
+      public_key:
+        allow: yes
+        minimum_quota: 240
+```
+
+`remote_commands.{localfile,wodle_command}` and `limits.eps` are still valid in 5.0. The options that remain valid are:
+
+```yaml
 upload_configuration:
   remote_commands:
     localfile:
@@ -455,17 +466,6 @@ upload_configuration:
   limits:
     eps:
       allow: yes
-  integrations:
-    virustotal:
-      public_key:
-        allow: yes
-        minimum_quota: 240
-```
-
-The options that remain valid are:
-
-```yaml
-upload_configuration:
   agents:
     allow_higher_versions:
       allow: yes

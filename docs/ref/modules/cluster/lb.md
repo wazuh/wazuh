@@ -2,6 +2,12 @@
 
 A load balancer distributes workloads across multiple resources. In a Wazuh server cluster, it distributes Wazuh agents among worker nodes to improve scalability, availability, and performance.
 
+> **Note:** The `<cluster>` XML section referenced throughout the cluster
+> docs is not parsed or validated by the shared C configuration library — it
+> is recognized but otherwise ignored at that layer, with all parsing and
+> validation performed later in Python. See
+> [Cluster Configuration](configuration.md) for details.
+
 ## Overview
 
 Load balancers allow agents to enroll and report to different Wazuh server nodes transparently. If a node becomes unavailable, agents reconnect to another available node.
