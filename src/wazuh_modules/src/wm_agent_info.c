@@ -62,6 +62,7 @@ void* agent_info_module = NULL;
 agent_info_start_func agent_info_start_ptr = NULL;
 agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_cleanup_func agent_info_cleanup_ptr = NULL;
+agent_info_release_resources_func agent_info_release_resources_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
@@ -814,6 +815,28 @@ int wm_agent_info_sync_message(const char* command, size_t command_len)
 }
 
 // Main module function
+// Release the agent-info instance's resources from the module thread, so the DBSync
+// and sync-protocol connections are closed before this thread returns and therefore
+// before whoever joins it observes the module as stopped. Must cover the early-exit
+// paths too: agent_info_task_registry_init() may have already constructed the
+// instance (and opened agent_info.db) before the handshake wait, so returning from
+// those paths without this would leave the database open until process teardown --
+// i.e. past the point where the replacement agent starts.
+//
+// Releases the resources, it does NOT destroy the instance: agent_info_cleanup()
+// resets the global with no lock, while agent_info_parse_response() (sync dispatcher
+// thread) and agent_info_task_check_and_record() (/control thread) only null-check it
+// before use, so destroying it from here would be a check-then-use use-after-free.
+// The destruction stays in wm_agent_info_destroy(), which runs after those threads
+// are gone.
+static void wm_agent_info_release(void)
+{
+    if (agent_info_release_resources_ptr)
+    {
+        agent_info_release_resources_ptr();
+    }
+}
+
 #ifdef WIN32
 DWORD WINAPI wm_agent_info_main(void* arg)
 {
@@ -857,6 +880,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
         agent_info_cleanup_ptr = so_get_function_sym(agent_info_module, "agent_info_cleanup");
+        agent_info_release_resources_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_release_resources");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
@@ -975,6 +1000,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     if (wm_agent_info_is_shutting_down())
     {
         mdebug1("Shutdown requested during handshake wait, exiting.");
+        wm_agent_info_release();
         return NULL;
     }
 
@@ -988,11 +1014,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     else
     {
         merror("agent_info_start function not available.");
+        wm_agent_info_release();
         return NULL;
     }
 
-    // The module has completed its initialization and metadata collection
-    // The thread will now exit as agent-info is a one-time collection module
+    // The module has completed its initialization and metadata collection.
+    // Release before returning: the thread exit is what the shutdown loop joins on.
+    wm_agent_info_release();
     return NULL;
 }
 
