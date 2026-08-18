@@ -77,8 +77,8 @@ struct ModuleConfig
         std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
         // zstd-compress in-memory request bodies before signing/sending.
-        // internal_options.conf (agent.https_compression_enabled), off by default.
-        bool httpsCompressionEnabled {false};
+        // internal_options.conf (agent.https_compression_enabled), on by default.
+        bool httpsCompressionEnabled {true};
 
         // Always "https" in production (fromC never changes it); the component
         // test overrides it to "http" to drive the real curl path against a

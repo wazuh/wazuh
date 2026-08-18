@@ -174,7 +174,7 @@ typedef struct hc_config_t
 
     /// zstd-compress in-memory request bodies before signing/sending.
     /// internal_options.conf (agent.https_compression_enabled), not a <client>
-    /// XML setting -- OFF by default.
+    /// XML setting -- ON by default.
     bool https_compression_enabled;
 } hc_config_t;
 
