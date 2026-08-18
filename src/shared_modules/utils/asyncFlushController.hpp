@@ -12,6 +12,8 @@
 #ifndef ASYNC_FLUSH_CONTROLLER_HPP
 #define ASYNC_FLUSH_CONTROLLER_HPP
 
+#include <chrono>
+#include <condition_variable>
 #include <exception>
 #include <functional>
 #include <mutex>
@@ -126,27 +128,50 @@ namespace Utils
             }
         }
 
-        /// @brief Waits until the current flush worker finishes.
+        /// @brief Waits until the current flush worker finishes, or until timeout elapses.
         ///
-        /// This method only joins the worker thread. It does not cancel the
-        /// flush. Callers should stop their module or sync protocol first when
-        /// they need the flush to exit early.
-        void waitForFlushToFinish()
+        /// This method only joins the worker thread once it has actually finished; it
+        /// never cancels the flush, and it never abandons the underlying std::thread --
+        /// on a timeout the worker is left exactly as it was (still owned by this
+        /// controller, still running), so a later call (with or without a timeout, or
+        /// the destructor) can still reclaim and join it. Callers should stop their
+        /// module or sync protocol first when they need the flush to exit early.
+        /// @param timeout Maximum time to wait. Defaults to waiting indefinitely.
+        /// @return true if idle or the flush finished before timeout; false if it is
+        ///         still running when the timeout elapses.
+        bool waitForFlushToFinish(std::chrono::milliseconds timeout = std::chrono::milliseconds::max())
         {
+            std::unique_lock<std::mutex> lock {m_mutex};
+
+            const auto notRunning = [this]
+            {
+                return m_workerState != WorkerState::RUNNING;
+            };
+
+            const bool finished = (timeout == std::chrono::milliseconds::max())
+                                  ? (m_doneCv.wait(lock, notRunning), true)
+                                  : m_doneCv.wait_for(lock, timeout, notRunning);
+
+            if (!finished)
+            {
+                return false;
+            }
+
             std::thread worker;
 
+            if (m_worker.joinable())
             {
-                std::lock_guard<std::mutex> lock {m_mutex};
-                if (m_worker.joinable())
-                {
-                    worker = std::move(m_worker);
-                }
+                worker = std::move(m_worker);
             }
+
+            lock.unlock();
 
             if (worker.joinable())
             {
                 worker.join();
             }
+
+            return true;
         }
 
     private:
@@ -183,6 +208,8 @@ namespace Utils
                 std::lock_guard<std::mutex> lock {m_mutex};
                 m_workerState = (result == 0) ? WorkerState::SUCCEEDED : WorkerState::FAILED;
             }
+
+            m_doneCv.notify_all();
         }
 
         /// @brief Sends a message to the optional logger.
@@ -198,6 +225,7 @@ namespace Utils
         FlushFunction m_flushFunction;
         LogFunction m_logFunction;
         mutable std::mutex m_mutex;
+        std::condition_variable m_doneCv;
         std::thread m_worker;
         WorkerState m_workerState {WorkerState::IDLE};
     };

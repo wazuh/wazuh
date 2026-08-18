@@ -181,3 +181,42 @@ TEST_F(AsyncFlushControllerTest, ShutdownWaitsForInFlightWorker)
 
     EXPECT_EQ(waitFuture.wait_for(std::chrono::seconds(1)), std::future_status::ready);
 }
+
+TEST_F(AsyncFlushControllerTest, BoundedWaitReturnsFalseWithoutAbandoningWorker)
+{
+    std::promise<void> started;
+    std::promise<void> release;
+    std::shared_future<void> releaseFuture = release.get_future().share();
+    std::atomic<bool> firstStartSignaled {false};
+    std::atomic<int> callCount {0};
+
+    Utils::AsyncFlushController controller {"test",
+                                            [&]()
+                                            {
+                                                ++callCount;
+
+                                                if (!firstStartSignaled.exchange(true))
+                                                {
+                                                    started.set_value();
+                                                }
+
+                                                releaseFuture.wait();
+                                                return 0;
+                                            }};
+
+    EXPECT_TRUE(controller.startFlush());
+    started.get_future().wait();
+
+    // The worker is still running: a bounded wait must give up and report it, not block.
+    EXPECT_FALSE(controller.waitForFlushToFinish(std::chrono::milliseconds(50)));
+
+    // Still running, and the worker was NOT abandoned: getFlushStatus still sees it, and a
+    // later call (bounded or not) can still reclaim and join it once it actually finishes.
+    EXPECT_TRUE(controller.getFlushStatus().running);
+
+    release.set_value();
+
+    EXPECT_TRUE(controller.waitForFlushToFinish(std::chrono::seconds(1)));
+    EXPECT_EQ(callCount.load(), 1);
+    EXPECT_TRUE(controller.getFlushStatus().successful);
+}

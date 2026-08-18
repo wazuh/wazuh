@@ -773,9 +773,35 @@ void Syscollector::releaseResources()
     // The controller is joined, not destroyed: it is created once in the constructor of
     // this singleton, so destroying it would leave the module permanently unable to flush
     // for the rest of the process lifetime.
-    if (m_asyncFlushController)
+    //
+    // Bounded, not indefinite: this runs on the module's own worker thread, which is
+    // exactly what stop_wmodules() (Windows) / the SIGTERM handler (POSIX) is joining
+    // under their own shutdown budget (see #38370). An in-flight flush is expected to
+    // notice m_stopping/shouldStop() and unwind in well under a second; a flush stuck
+    // past this bound is already misbehaving; skipping the reset below is the safer
+    // choice at that point (see comment before the early return).
+    constexpr auto RELEASE_RESOURCES_FLUSH_TIMEOUT = std::chrono::seconds(5);
+
+    if (m_asyncFlushController &&
+        !m_asyncFlushController->waitForFlushToFinish(RELEASE_RESOURCES_FLUSH_TIMEOUT))
     {
-        m_asyncFlushController->waitForFlushToFinish();
+        // The flush worker is still inside the sync protocol after the bound elapsed.
+        // Resetting m_spSyncProtocol/m_spDBSync out from under it here would be exactly
+        // the use-after-free #38312 fixed, so leave every member untouched and return:
+        // this thread (and therefore stop_wmodules()'s join) unblocks immediately instead
+        // of hanging on this wait, at the cost of reverting to the pre-#38312 residual
+        // risk (a static-destruction-order race, not a same-thread race) for this one
+        // cycle. A later call to releaseResources() -- or process exit -- still has to
+        // deal with the same worker, which by then has very likely finished.
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_WARNING,
+                          "Syscollector async flush did not finish within " +
+                          std::to_string(RELEASE_RESOURCES_FLUSH_TIMEOUT.count()) +
+                          "s of module teardown; resources left in place for the next cycle.");
+        }
+
+        return;
     }
 
     // Explicitly release all resources to ensure clean state between tests
