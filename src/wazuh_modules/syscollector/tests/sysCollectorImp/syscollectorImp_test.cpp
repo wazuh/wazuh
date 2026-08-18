@@ -3028,8 +3028,21 @@ TEST_F(SyscollectorImpTest, releaseResourcesReturnsWithinBoundWhenFlushWorkerNev
                                   SYSCOLLECTOR_DB_PATH,
                                   "",
                                   "",
-                                  3600, false, false, false, false, false, false,
-                                  false, false, false, false, false, false, false, false);
+                                  3600,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false,
+                                  false);
 
     MQ_Functions blockingMq {};
     blockingMq.start = [](const char*, short, short) -> int
@@ -3071,11 +3084,14 @@ TEST_F(SyscollectorImpTest, releaseResourcesReturnsWithinBoundWhenFlushWorkerNev
     // This is the actual regression check: before the bounded wait, this call to
     // releaseResources() would never return, and this test would hang instead of failing
     // cleanly. std::async + wait_for turns that into a reportable failure either way.
-    auto releaseFuture = std::async(std::launch::async, []() { Syscollector::instance().releaseResources(); });
+    auto releaseFuture = std::async(std::launch::async, []()
+    {
+        Syscollector::instance().releaseResources();
+    });
 
     EXPECT_EQ(releaseFuture.wait_for(std::chrono::seconds(6)), std::future_status::ready)
             << "releaseResources() did not return within the bounded timeout while the flush "
-               "worker was stuck -- the shutdown-budget regression from #38370 is back.";
+            "worker was stuck -- the shutdown-budget regression from #38370 is back.";
 
     // Let the stuck worker go so the test process doesn't leak a running thread, then bring
     // the singleton back to a clean state for the next test.

@@ -111,7 +111,7 @@ void stop_wmodules()
     // handler sets this; on Windows shutdown flows through here instead.
     wm_shutdown_requested = 1;
 
-    wmodule * cur_module;
+    wmodule* cur_module;
 
     // Phase 1: signal every module to stop before joining any of them, mirroring the
     // POSIX SIGTERM handler (wazuh_modules/src/main.c). A module's own stop() callback
@@ -121,8 +121,10 @@ void stop_wmodules()
     // (see #38370: syscollector's ~10 s stop() plus ~10 s of what was left of the join
     // budget always summed to the full 20 s). By the time phase 2 starts, a module whose
     // internal wait already resolved here typically has nothing left to join.
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->stop) {
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+    {
+        if (cur_module->context->stop)
+        {
             cur_module->context->stop(cur_module->data);
         }
     }
@@ -138,7 +140,8 @@ void stop_wmodules()
     const DWORD MODULE_JOIN_BUDGET_MS = 20000;
     const ULONGLONG budget_start = GetTickCount64();
 
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+    {
         if (cur_module->win_thread) {
             const ULONGLONG elapsed = GetTickCount64() - budget_start;
             const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;

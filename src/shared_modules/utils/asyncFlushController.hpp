@@ -149,8 +149,8 @@ namespace Utils
             };
 
             const bool finished = (timeout == std::chrono::milliseconds::max())
-                                  ? (m_doneCv.wait(lock, notRunning), true)
-                                  : m_doneCv.wait_for(lock, timeout, notRunning);
+                                      ? (m_doneCv.wait(lock, notRunning), true)
+                                      : m_doneCv.wait_for(lock, timeout, notRunning);
 
             if (!finished)
             {

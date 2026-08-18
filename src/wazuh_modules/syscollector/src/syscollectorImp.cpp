@@ -782,8 +782,7 @@ void Syscollector::releaseResources()
     // choice at that point (see comment before the early return).
     constexpr auto RELEASE_RESOURCES_FLUSH_TIMEOUT = std::chrono::seconds(5);
 
-    if (m_asyncFlushController &&
-        !m_asyncFlushController->waitForFlushToFinish(RELEASE_RESOURCES_FLUSH_TIMEOUT))
+    if (m_asyncFlushController && !m_asyncFlushController->waitForFlushToFinish(RELEASE_RESOURCES_FLUSH_TIMEOUT))
     {
         // The flush worker is still inside the sync protocol after the bound elapsed.
         // Resetting m_spSyncProtocol/m_spDBSync out from under it here would be exactly
