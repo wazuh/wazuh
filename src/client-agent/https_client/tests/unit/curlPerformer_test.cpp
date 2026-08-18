@@ -494,6 +494,24 @@ TEST(CurlPerformerTest, RejectedResponseCaptureAbortsBeforePerforming)
     EXPECT_EQ(TransportStatus::OtherError, response.status);
 }
 
+TEST(CurlPerformerTest, RejectedFileResponseCaptureAbortsBeforePerforming)
+{
+    const std::string path = ::testing::TempDir() + "hc_curl_performer_rejected_response.tmp";
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, captureResponseToFile(NotNull(), _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    HttpRequestSpec spec;
+    spec.responseFilePath = path;
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    const auto response = performer.perform(spec);
+    EXPECT_EQ(TransportStatus::OtherError, response.status);
+    std::remove(path.c_str());
+}
+
 TEST(CurlPerformerTest, RejectedRetryAfterCaptureAbortsBeforePerforming)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
