@@ -61,12 +61,13 @@ including `stats-api-inventory-sync.csv` (the module's `GET /metrics`, one row p
 The same `monitor/` directory carries `stats-api-remoted-module.csv`, the remoted C++ module's
 `GET /metrics` over its admin socket (`queue/sockets/remoted-module.sock`): the `remoted.control.*`
 and `remoted.scanvd.*` counters plus the admin server's own transport gauges. The scan-vd family
-is what a saturation run is read on — an admission split, `scanvd_queue_full` against
-`scanvd_accepted` and `scanvd_vd_error`, says how many re-scans VD queued versus refused; the
-charts render it as `remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full /
-vd_error / version_mismatch), and it counts the same admissions the sender's `scan_200`/`scan_503`
-do, so the two sides finally mean the same thing. Remoted's **C** statistics keep
-their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
+is what a saturation run is read on — an admission split, `scanvd_queue_full` and
+`scanvd_indexer_unavailable` against `scanvd_accepted` and `scanvd_vd_error`, says how many
+re-scans VD queued versus refused; the charts render it as
+`remoted_module_scanvd_funnel_<label>.png` (requests / accepted / queue_full /
+indexer_unavailable / vd_error / version_mismatch), and it counts the same admissions the sender's
+`scan_200`/`scan_503` do, so the two sides finally mean the same thing. Remoted's **C** statistics
+keep their own file (`stats-api-remoted.csv`, the legacy framed `getstats` socket); the two are
 disjoint. Both inventory sync and the admin server also report their route-class connection
 counts and in-flight byte budget, so a shed session can be attributed to the budget or to a class
 cap rather than guessed at.

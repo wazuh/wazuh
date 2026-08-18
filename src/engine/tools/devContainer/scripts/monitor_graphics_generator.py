@@ -411,6 +411,7 @@ REMOTED_MODULE_METRICS = [
     ("scanvd_requests_total",     "VD Scan Requests Received",            "Count"),
     ("scanvd_accepted",           "VD Scan Requests Queued by VD",        "Count"),
     ("scanvd_queue_full",         "VD Scan Requests Shed (lane full)",    "Count"),
+    ("scanvd_indexer_unavailable", "VD Scan Requests Shed (indexer unavailable)", "Count"),
     ("scanvd_vd_error",           "VD Scan Relay Failures (VD unreachable/not ready)", "Count"),
     ("scanvd_version_mismatch",   "VD Scan Requests Rejected (offset mismatch)", "Count"),
     ("control_notify",            "Control — Keepalive Requests",         "Count"),
@@ -426,11 +427,13 @@ REMOTED_MODULE_METRICS = [
 # synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
 # and every rejection was VISIBLE to the agent (a 503 its next notify retries) -- a healthy
 # saturated run shows accepted at the lane's capacity and queue_full absorbing the excess,
-# with vd_error flat.
+# with vd_error flat. An indexer outage moves the shed to indexer_unavailable (VD's own
+# reported cause, like queue_full) while VD holds what it already queued.
 _SCANVD_FUNNEL_COLS = [
     "scanvd_requests_total",
     "scanvd_accepted",
     "scanvd_queue_full",
+    "scanvd_indexer_unavailable",
     "scanvd_vd_error",
     "scanvd_version_mismatch",
 ]

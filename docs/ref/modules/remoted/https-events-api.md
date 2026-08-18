@@ -245,7 +245,7 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   current offset **and** the VD module queued the scan — the `200` is a promise that the scan will
   run; **`409 Conflict`** (carrying the real offset to retry with) on a mismatch, **`400`** on
   malformed requests, **`401`** on auth failures, or **`503`** when VD did not queue it (dispatch
-  lane full, feed mid-update, module stopping or unreachable). See
+  lane full, feed mid-update, module stopping or unreachable, no indexer host available). See
   [Scan endpoint](#scan-endpoint-post-scanvd) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
@@ -681,14 +681,16 @@ local value with an older `current_version`.
 | Missing or non-unsigned `feed_offset` | `400` | `missing_feed_offset` |
 | `feed_offset` != current offset | `409` | `version_mismatch` (carries `current_version`) |
 | VD's scan dispatch lane at capacity | `503` | `scan_queue_full` |
+| Indexer not usable (no healthy host) | `503` | `indexer_unavailable` |
 | VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
 | VD stopping or unreachable, or the relay failed | `503` | `shutting_down` / `vd_unreachable` / `vd_error` |
 
 Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
 and its pending state survives; the `error` code exists so an operator reading the exchange sees
-the actual cause. Auth failures (`401`) reuse the same responses as `/stateless`. This endpoint's
-body cap (4 KiB) is far tighter than `/control`'s (64 KiB) since a scan request only ever carries
-`type` and `feed_offset`.
+the actual cause. During a long indexer outage the agent keeps re-requesting on each notify and
+the scan runs once the indexer becomes available again. Auth failures (`401`) reuse the same
+responses as `/stateless`. This endpoint's body cap (4 KiB) is far tighter than `/control`'s
+(64 KiB) since a scan request only ever carries `type` and `feed_offset`.
 
 ### Scan dispatch
 
@@ -696,10 +698,20 @@ remoted holds no scan state: after the offset gate it makes one inline
 `POST /vulnerability-detector/scan` to the `vulnerability_scanner` module (over the same UDS
 socket `VdClient` uses), which answers at **admission** into its bounded dispatch lane — a
 64-slot queue drained by a single worker (scans are serialized by the scanner's own global lock
-regardless). VD deduplicates repeated requests for an agent already waiting in the lane, and a
-queued scan cannot go stale: the request carries no offset, so the scan always runs against the
-feed that is current at execution time. remoted relays VD's answer verbatim and never retries —
-the agent's notify cycle is the retry loop, with no second one hidden behind it.
+regardless). VD's admission preflight also checks the indexer's health
+(`IndexerConnectorSync::isAvailable()`, a per-host `GET /_cat/health` poll every 60 s; healthy
+means at least one host green or yellow) — with no healthy host it answers `503
+indexer_unavailable` instead of queueing. VD deduplicates repeated requests for an agent already
+waiting in the lane, and a queued scan cannot go stale: the request carries no offset, so the scan
+always runs against the feed that is current at execution time. remoted relays VD's answer
+verbatim and never retries — the agent's notify cycle is the retry loop, with no second one hidden
+behind it.
+
+An indexer outage does not drain what VD already queued: the dispatch worker HOLDS the front of
+the lane (nothing popped, nothing dropped) and re-checks availability every 30 s, resuming as soon
+as a host answers healthy again; new requests keep getting `indexer_unavailable` at admission
+meanwhile, so held work stays bounded by the lane's 64 slots. Only a manager shutdown sheds a held
+queue.
 
 Duplicate scans across different nodes (the agent asks node A, doesn't get a timely reply, and asks
 node B too) are accepted as a rare, low-impact trade-off rather than solved with cross-node

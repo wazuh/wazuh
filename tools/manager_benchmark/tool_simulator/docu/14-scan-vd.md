@@ -53,7 +53,7 @@ different offsets:
 |---|---|---|---|
 | Queued | `200 {}` | `scan_200` | no |
 | `feed_offset` != the node's offset | `409 {"error":"version_mismatch","current_version":N}` | `scan_409` | no |
-| VD did not queue it | `503 {"error":"<cause>"}` — `scan_queue_full` (dispatch lane at capacity) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `shutting_down` \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
+| VD did not queue it | `503 {"error":"<cause>"}` — `scan_queue_full` (dispatch lane at capacity) \| `indexer_unavailable` (no healthy indexer host) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `shutting_down` \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
 | Malformed request (`invalid_body`/`invalid_json`/`invalid_type`/`missing_feed_offset`/`invalid_agent_id`) | `400` | `scan_other` | **yes** |
 | Credentials (keys not loaded yet, bad MAC) | `401` | `scan_other` | **yes** |
 
@@ -72,9 +72,12 @@ The one server value that does steer the sender is still notify's `vd_feed_offse
 
 remoted is a synchronous passthrough of VD's **admission**: it validates the agent id and the
 offset, makes one inline `POST /vulnerability-detector/scan` over the modulesd UDS, and relays the
-answer. VD answers at admission into its bounded dispatch queue (64 slots, per-agent dedup of
-queued items, a single worker), so a `200 {}` means "VD queued the scan and it **will** run" — only
-a manager shutdown sheds it. There is no tracking table, no worker pool and no retry in remoted;
+answer. VD's own preflight also requires a healthy indexer host, answering `503
+indexer_unavailable` instead of queueing when none is; a scan already queued when the indexer goes
+down is HELD, not dropped, and resumes once a host answers healthy again. Otherwise, VD answers at
+admission into its bounded dispatch queue (64 slots, per-agent dedup of queued items, a single
+worker), so a `200 {}` means "VD queued the scan and it **will** run" — only a manager shutdown
+sheds it. There is no tracking table, no worker pool and no retry in remoted;
 any VD refusal or a failed round trip is an honest `503` naming the cause. Two consequences the
 report must respect:
 
@@ -86,8 +89,9 @@ report must respect:
 
 What became of the scans **is** observable, on two channels. remoted's admin socket exposes the
 admission split over `GET /metrics` — `remoted.scanvd.requests.total`, `remoted.scanvd.accepted`,
-`remoted.scanvd.queue_full`, `remoted.scanvd.version_mismatch`, `remoted.scanvd.invalid_agent`,
-`remoted.scanvd.vd_error` — and the per-agent outcomes are in modulesd's log
+`remoted.scanvd.queue_full`, `remoted.scanvd.indexer_unavailable`,
+`remoted.scanvd.version_mismatch`, `remoted.scanvd.invalid_agent`, `remoted.scanvd.vd_error` —
+and the per-agent outcomes are in modulesd's log
 (`wazuh-manager-modulesd:vulnerability_scanner`: `VD scan succeeded for agent N` /
 `VD scan failed for agent N: ...`, plus the scan lines themselves):
 

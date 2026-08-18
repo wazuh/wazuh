@@ -579,10 +579,10 @@ sequenceDiagram
 
 The whole exchange is synchronous: remoted holds no scan state and relays VD's **admission**
 answer. A `200` therefore genuinely promises the scan will run; anything VD refuses (dispatch
-lane full, feed mid-update, module stopping) or a failed round trip becomes an honest `503` the
-agent's next `/control` notify retries. The previous design — a tracking table plus a worker
-pool retrying with backoff *behind an already-sent 200* — could exhaust its retries and silently
-drop scans the agent believed were handled.
+lane full, feed mid-update, module stopping, no indexer host available) or a failed round trip
+becomes an honest `503` the agent's next `/control` notify retries. The previous design — a
+tracking table plus a worker pool retrying with backoff *behind an already-sent 200* — could
+exhaust its retries and silently drop scans the agent believed were handled.
 
 ### Components
 
@@ -594,8 +594,8 @@ response:
 - `Accepted` → `200 {}` (VD queued the scan)
 - `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
 - `VdRejected` → `503 {"error":<VD's own cause>}` — `scan_queue_full`, `feed_not_ready`,
-  `scanner_not_ready`, `vd_not_initialized`, `shutting_down`, or `vd_unreachable`/`vd_error`
-  when the relay leg itself failed
+  `scanner_not_ready`, `vd_not_initialized`, `shutting_down`, `indexer_unavailable`, or
+  `vd_unreachable`/`vd_error` when the relay leg itself failed
 - `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
 - Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
   `feed_offset`) → `400` with a specific `error` code (see
@@ -616,7 +616,9 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
   answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
   items), so the round trip is inline route work measured in milliseconds, never a scan.
 - Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
-  VD's own error code; an unreachable socket or unexpected status → `VdRejected` with
+  VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
+  own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
+  below; an unreachable socket or unexpected status → `VdRejected` with
   `vd_unreachable`/`vd_error` (logged throttled, one line per 90 s window with its count).
 - **No retry, by design**: the agent's pending state survives a `503` and its next `/control`
   notify re-requests — retrying here would only duplicate that loop with a worse deadline.
@@ -646,10 +648,12 @@ since it's the same client instance — this is the rest of its contract. `getOf
 `ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
 admission decisions only, since that is all this handler does: `requests.total`,
 `version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
-it), `vd_error` (any other relayed 503: unreachable, not ready, stopping). Resolved from the
-facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and incremented inline at each
-outcome — same shape (and same null-object contract) as `ControlMetrics`. What became of an
-accepted scan is the VD module's to report (it logs each outcome per agent).
+it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
+Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
+incremented inline at each outcome — same shape (and same null-object contract) as
+`ControlMetrics`. What became of an accepted scan is the VD module's to report (it logs each
+outcome per agent).
 
 ### Lifecycle
 
@@ -1142,7 +1146,8 @@ failure state), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a 
 (the synchronous admission passthrough against a real `VdClient` + fake VD backend: version
 mismatch and invalid-agent gates, VD's 200 relayed as exactly one POST with no retry, VD's
 capacity/readiness rejections passed through with their error codes, an unreachable VD answered
-as an honest `vd_unreachable` 503, and the wire shape of the scan POST), and
+as an honest `vd_unreachable` 503, VD's `indexer_unavailable` cause kept off the `vd_error`
+counter, and the wire shape of the scan POST), and
 `controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
 `RestinioHttpServer` + real `AuthGateway` + real `ControlHandler`/`ScanVdHandlerImpl`, with only
 wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409/503

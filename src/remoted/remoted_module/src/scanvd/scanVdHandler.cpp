@@ -100,6 +100,14 @@ namespace remoted::scanvd
             {
                 incQueueFull(m_metrics);
             }
+            else if (vdAnswer.second == "indexer_unavailable")
+            {
+                // VD's own reported, VD-logged cause -- exactly like scan_queue_full, and NOT a
+                // relay failure. Folding it into the vd_error window below would let a
+                // fleet-wide indexer outage bury a genuine vd_unreachable (the window's only
+                // cause detail is its LAST error) and send the operator to the wrong subsystem.
+                incIndexerUnavailable(m_metrics);
+            }
             else
             {
                 incVdError(m_metrics);

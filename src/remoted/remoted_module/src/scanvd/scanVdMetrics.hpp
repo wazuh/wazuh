@@ -38,6 +38,7 @@ namespace remoted::scanvd
     constexpr auto METRIC_INVALID_AGENT {"remoted.scanvd.invalid_agent"};
     constexpr auto METRIC_ACCEPTED {"remoted.scanvd.accepted"};
     constexpr auto METRIC_VD_ERROR {"remoted.scanvd.vd_error"};
+    constexpr auto METRIC_INDEXER_UNAVAILABLE {"remoted.scanvd.indexer_unavailable"};
 
     /**
      * @brief The /scan/vd counter set, pre-resolved from one manager.
@@ -54,6 +55,9 @@ namespace remoted::scanvd
         std::shared_ptr<wazuh::metrics::ICounter> accepted;        ///< 200s: VD queued the scan -- it will run.
         std::shared_ptr<wazuh::metrics::ICounter> vdError;         ///< 503s for any other reason: VD unreachable, not
                                                                    ///< ready, stopping, or an unexpected answer.
+        std::shared_ptr<wazuh::metrics::ICounter> indexerUnavailable; ///< 503s: VD refused because no indexer host is
+                                                                      ///< healthy. VD's own reported cause (like
+                                                                      ///< queueFull), NOT a relay failure.
     };
 
     /// Resolves the remoted.scanvd.* family on @p manager (creating it on first call; totals
@@ -69,7 +73,9 @@ namespace remoted::scanvd
             manager.getOrCreateCounter(METRIC_INVALID_AGENT, "400 rejections: agentId 0 reached the handler", "count"),
             manager.getOrCreateCounter(METRIC_ACCEPTED, "200 acceptances: VD queued the scan", "count"),
             manager.getOrCreateCounter(
-                METRIC_VD_ERROR, "503s relayed for non-capacity reasons: VD unreachable, not ready, ...", "count")};
+                METRIC_VD_ERROR, "503s relayed for non-capacity reasons: VD unreachable, not ready, ...", "count"),
+            manager.getOrCreateCounter(
+                METRIC_INDEXER_UNAVAILABLE, "503 rejections: VD reports no healthy indexer host", "count")};
     }
 
     inline void incRequests(ScanVdMetrics& m)
@@ -112,6 +118,13 @@ namespace remoted::scanvd
         if (m.vdError)
         {
             m.vdError->add();
+        }
+    }
+    inline void incIndexerUnavailable(ScanVdMetrics& m)
+    {
+        if (m.indexerUnavailable)
+        {
+            m.indexerUnavailable->add();
         }
     }
 

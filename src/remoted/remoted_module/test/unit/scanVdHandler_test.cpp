@@ -131,6 +131,25 @@ TEST(ScanVdHandlerTest, AVdCapacityRejectionPassesThroughAsQueueFull)
     EXPECT_EQ(rig.server.scanRequestCount(), 1u) << "no retry: the agent's next notify is the retry";
 }
 
+TEST(ScanVdHandlerTest, AVdIndexerOutageKeepsItsOwnCounterOffTheRelayWindow)
+{
+    Rig rig {"idxdown"};
+    rig.server.setScanHandler(
+        [](const httplib::Request&, httplib::Response& res)
+        {
+            res.status = 503;
+            res.set_content(R"({"error":"indexer_unavailable","retryable":true})", "application/json");
+        });
+
+    const auto response = callSync(rig.handler, 7, 100);
+    EXPECT_EQ(response.outcome, ScanVdOutcome::VdRejected);
+    EXPECT_EQ(response.errorCode, "indexer_unavailable") << "the agent-facing body carries VD's actual cause";
+    EXPECT_EQ(rig.metrics.indexerUnavailable->get(), 1u) << "VD's own reported cause keeps its own counter";
+    EXPECT_EQ(rig.metrics.vdError->get(), 0u)
+        << "an indexer outage must not masquerade as a remoted<->VD relay failure";
+    EXPECT_EQ(rig.metrics.queueFull->get(), 0u);
+}
+
 TEST(ScanVdHandlerTest, AVdReadinessRejectionPassesItsCodeThrough)
 {
     Rig rig {"notready"};

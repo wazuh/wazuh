@@ -174,7 +174,8 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
 #
 # The scanvd family is admission-only: remoted is a synchronous passthrough of VD's admission,
 # so a request either came back 200 (accepted = VD queued it and WILL run it) or an honest 503
-# (queue_full = VD's lane at capacity, vd_error = anything else). What became of an accepted
+# (queue_full = VD's lane at capacity, indexer_unavailable = VD reports no healthy indexer
+# host, vd_error = anything else). What became of an accepted
 # scan is VD's to report -- the sender's scan_200/scan_503 columns now mean the same thing this
 # family does, which is the whole point of the redesign.
 _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
@@ -190,6 +191,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.scanvd.version_mismatch", "scanvd_version_mismatch"),
     ("remoted.scanvd.invalid_agent", "scanvd_invalid_agent"),
     ("remoted.scanvd.vd_error", "scanvd_vd_error"),
+    ("remoted.scanvd.indexer_unavailable", "scanvd_indexer_unavailable"),
     # The admin server dogfooding its own transport. Both its routes are liveness-class, so
     # the budget and the data/control lanes are structurally zero -- only sessions.live and
     # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.
@@ -1204,11 +1206,12 @@ def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path:
                 # The admission split, in the order a saturation run is read: what arrived,
                 # what VD queued (and will run), and what was shed -- by capacity or otherwise.
                 logger.info(
-                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d vd_err=%d mismatch=%d | "
-                    "control notify=%d wdb_err=%d | admin sessions=%d",
+                    "[remoted-module] scanvd req=%d accepted=%d queue_full=%d idx_unavail=%d vd_err=%d "
+                    "mismatch=%d | control notify=%d wdb_err=%d | admin sessions=%d",
                     _as_int(row.get("scanvd_requests_total")),
                     _as_int(row.get("scanvd_accepted")),
                     _as_int(row.get("scanvd_queue_full")),
+                    _as_int(row.get("scanvd_indexer_unavailable")),
                     _as_int(row.get("scanvd_vd_error")),
                     _as_int(row.get("scanvd_version_mismatch")),
                     _as_int(row.get("control_notify")),
