@@ -72,7 +72,6 @@ int ClientConf(const char *cfgfile)
     agt->stats_report.interval = 60;
     agt->config_report.interval = 3600;
 
-    agt->batch.size = 1024 * 1024;
     agt->batch.interval = 10;
 
 #ifndef WIN32
@@ -227,7 +226,12 @@ cJSON *getAgentConfig(void) {
 
     // <batch>
     cJSON *batch = cJSON_CreateObject();
-    cJSON_AddNumberToObject(batch, "size", agt->batch.size);
+    /* Zero means <size> was never configured, and every reader of that zero applies
+     * DEFAULT_BATCH_SIZE_BYTES, so the report states the cap actually in force rather
+     * than the sentinel. Not seeded into agt: that value is passed on to
+     * asp_set_session_max_bytes(), where a seed would read as an explicit setting. */
+    cJSON_AddNumberToObject(batch, "size",
+                            agt->batch.size > 0 ? agt->batch.size : DEFAULT_BATCH_SIZE_BYTES);
     cJSON_AddNumberToObject(batch, "interval", agt->batch.interval);
     cJSON_AddItemToObject(agent_config, "batch", batch);
 

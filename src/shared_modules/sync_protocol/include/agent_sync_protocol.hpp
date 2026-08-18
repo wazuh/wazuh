@@ -354,8 +354,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
 
-        /// Built-in ceiling on one session, used until a daemon calls
-        /// Same 1 MiB the HTTPS transport applies to a /stateless request by default.
+        /// Built-in ceiling on one session, used until a daemon calls setSessionMaxBytes()
+        /// with what <agent><batch><size> says. Same 1 MiB the HTTPS transport applies to
+        /// a /stateless request when that option is unset, so the limit is one number
+        /// agent-wide however it is reached.
         static constexpr size_t FULLSESSION_MAX_BYTES = 1U * 1024U * 1024U;
 
         /// Process-wide, because the limit is one agent-wide decision and the modules

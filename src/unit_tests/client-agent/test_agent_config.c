@@ -41,7 +41,6 @@ static int setup_agent(void **state)
      * is the same struct an agent with an untouched ossec.conf ends up running on. */
     test_agt.flags.auto_restart = 1;
     test_agt.ssl.verification_mode = AGENT_VERIFY_NONE;
-    test_agt.batch.size = 1024 * 1024;
     test_agt.batch.interval = 10;
     test_agt.stats_report.interval = 60;
     test_agt.config_report.enabled = 1;
@@ -369,9 +368,9 @@ static void test_reports_configured_batch_limits(void **state)
     cJSON_Delete(root);
 }
 
-/* Unconfigured is the pair ClientConf() seeds, and it is what both readers of <size>
- * apply: 1 MiB for a /stateless request and for one sync session. */
-static void test_reports_seeded_batch_defaults(void **state)
+/* Unconfigured <size> is reported as the cap every reader applies to its zero, 1 MiB,
+ * without seeding it into agt; <interval> is the value ClientConf() seeds. */
+static void test_reports_batch_defaults(void **state)
 {
     (void)state;
     cJSON *root = NULL;
@@ -429,7 +428,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reports_default_ssl_posture, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_full_verification_mode, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_configured_batch_limits, setup_agent, teardown_agent),
-        cmocka_unit_test_setup_teardown(test_reports_seeded_batch_defaults, setup_agent, teardown_agent),
+        cmocka_unit_test_setup_teardown(test_reports_batch_defaults, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_reports_both_periodic_pushes, setup_agent, teardown_agent),
         cmocka_unit_test_setup_teardown(test_no_config_returns_null, setup_agent, teardown_agent),
     };

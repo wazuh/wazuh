@@ -1599,10 +1599,12 @@ static bool bridge_build_config(hc_config_t *config)
     config->notify_interval_s = (uint32_t)agt->notify_time;
     strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
 
-    /* <client><batch>: the /stateless payload limit and flush window. Left at
-     * zero when unset, which the module reads as "use the default" (1 MiB,
-     * 10 s). buffer_cap_multiplier has no configuration surface yet, so the
-     * accumulator keeps its own 4x default. */
+    /* <client><batch>: the /stateless payload limit and flush window. <interval>
+     * defaults to its effective value (10 s) in ClientConf(), so this copy is never
+     * zero; <size> is left at zero when unset and the module applies the same
+     * DEFAULT_BATCH_SIZE_BYTES the rest of the agent expands it to.
+     * buffer_cap_multiplier has no configuration surface yet, so the accumulator
+     * keeps its own 4x default. */
     config->batch_size_bytes = (uint64_t)agt->batch.size;
     config->batch_interval_ms = (uint32_t)(agt->batch.interval * 1000);
 
