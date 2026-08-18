@@ -104,13 +104,12 @@ def test_path_suffix(
     only_logs_after = metadata['only_logs_after']
     path_suffix = metadata['path_suffix']
     expected_results = metadata['expected_results']
-    # The module reports "no data" for an empty path_suffix in one of two valid ways, depending on whether
-    # the per-run namespace prefix ('<run>/', issue #38194) has any sibling content when check_bucket runs:
-    #   - find_account_ids: "No logs found in '<run>/AWSLogs/<suffix>/'. Check the provided prefix" (the
-    #     base prefix lists no account), or
-    #   - check_bucket: "No files were found in '<bucket>/<run>/<suffix>/'. No logs will be processed" (the
-    #     run prefix itself lists empty, e.g. the empty cases upload nothing).
-    # Accept either. '.*' before the suffix tolerates the '<run>/' prefix; both match locally (no namespace).
+    # The module signals an empty path_suffix with one of two messages depending on the runtime: the
+    # manager path emits find_account_ids' "No logs found ... Check the provided prefix"; the agent path
+    # emits check_bucket's "No files were found ... No logs will be processed" even in a healthy run.
+    # Accept either. This is safe against a broken/unseeded namespace: _copy_seeds_into_namespace fails the
+    # session fast if nothing seeds, so a run that reaches here always has the AWSLogs/ structure. '.*'
+    # before the suffix tolerates the '<run>/' prefix (issue #38194); both match locally (no namespace).
     pattern = (
         fr".*WARNING: Bucket:  -  (?:"
         fr"No logs found in '.*AWSLogs/{path_suffix}/'. Check the provided prefix"

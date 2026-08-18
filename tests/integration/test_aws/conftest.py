@@ -8,6 +8,7 @@ This module contains all necessary components (fixtures, classes, methods) to co
 
 import os
 import time
+import random
 import pytest
 import boto3
 from datetime import datetime, timedelta, timezone
@@ -90,12 +91,23 @@ def _copy_seeds_into_namespace(s3_client, bucket_name):
     """
     if not _RUN_ID:
         return
+    copied = 0
     for key in _PERMANENT_SEED_KEYS:
         try:
             s3_client.Object(bucket_name, f"{_RUN_ID}/{key}").copy_from(
                 CopySource={'Bucket': bucket_name, 'Key': key})
+            copied += 1
         except Exception as exc:
-            logger.warning("Could not copy seed '%s' into run namespace: %s", key, exc)
+            # A single missing seed is tolerated (e.g. the ELB seed is not always present): any one seed
+            # under AWSLogs/ gives the module's check_bucket the CommonPrefix it needs.
+            logger.warning("Could not copy seed '%s' into run namespace '%s/': %s", key, _RUN_ID, exc)
+    if not copied:
+        # Nothing seeded: the module's check_bucket/find_account_ids would find no AWSLogs/ structure and
+        # the suite would fail with unrelated messages. Fail fast, here, instead of masking it downstream.
+        raise RuntimeError(
+            f"No permanent seed could be copied into run namespace '{_RUN_ID}/' "
+            f"(all {len(_PERMANENT_SEED_KEYS)} failed); the namespace has no AWSLogs/ structure to read."
+        )
 
 
 def _delete_run_namespace(s3_client, bucket_name):
@@ -127,15 +139,41 @@ def _prefixes_overlap(a, b):
     return a.startswith(b) or b.startswith(a)
 
 
-def _merge_queue_configs(cfg, keep_rule=None, add_rule=None):
-    """Rebuild a bucket notification config from an existing one: drop our own rule and any rule whose
-    prefix filter OVERLAPS ours (a legacy no-filter rule or a stale one - S3 forbids overlapping prefixes
-    for the same event), optionally add ours, and preserve Topic/Lambda/EventBridge configs so we never
-    clobber unrelated notifications. Distinct '<run>/' prefixes never overlap, so concurrent runs survive."""
+def _queue_exists(sqs_client, queue_arn):
+    """True if the SQS queue behind an ARN still exists. S3 validates EVERY destination on a notification
+    PUT, so a single dangling destination (a queue swept after its run was hard-cancelled) rejects the
+    whole config with InvalidArgument, bricking the shared bucket until someone edits it by hand."""
+    if not queue_arn:
+        return False
+    try:
+        sqs_client.get_queue_url(QueueName=queue_arn.rsplit(':', 1)[-1])
+        return True
+    except ClientError as exc:
+        # Only a confirmed 'gone' drops a foreign rule; any other error keeps it.
+        return not exc.response['Error']['Code'].endswith('NonExistentQueue')
+
+
+def _merge_queue_configs(cfg, add_rule=None, sqs_client=None):
+    """Rebuild a bucket notification config from an existing one: drop our own rule, any rule whose prefix
+    OVERLAPS ours (a legacy no-filter rule; S3 forbids overlapping prefixes for the same event), and any
+    stale per-run rule whose SQS queue no longer exists (left by a hard-cancelled run; keeping it makes
+    every later PUT fail). Optionally add ours; preserve Topic/Lambda/EventBridge configs. Distinct
+    '<run>/' prefixes never overlap, so concurrent runs survive."""
     rule_id = _notif_rule_id()
     own_prefix = f"{_RUN_ID}/"
-    queues = [q for q in cfg.get('QueueConfigurations', [])
-              if q.get('Id') != rule_id and not _prefixes_overlap(_rule_prefix(q), own_prefix)]
+    queues = []
+    for q in cfg.get('QueueConfigurations', []):
+        if q.get('Id') == rule_id:
+            continue
+        if _prefixes_overlap(_rule_prefix(q), own_prefix):
+            logger.warning("Dropping notification rule %s: its prefix overlaps ours (S3 forbids "
+                           "overlapping prefixes for the same event)", q.get('Id'))
+            continue
+        if (sqs_client is not None and str(q.get('Id', '')).startswith('wazuh-it-')
+                and not _queue_exists(sqs_client, q.get('QueueArn', ''))):
+            logger.warning("Dropping stale notification rule %s (its SQS queue no longer exists)", q.get('Id'))
+            continue
+        queues.append(q)
     if add_rule:
         queues.append(add_rule)
     out = {'QueueConfigurations': queues}
@@ -145,14 +183,46 @@ def _merge_queue_configs(cfg, keep_rule=None, add_rule=None):
     return out
 
 
-def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn):
+def _rule_ids(cfg):
+    return {q.get('Id') for q in cfg.get('QueueConfigurations', [])}
+
+
+def _put_notification(client, bucket_name, sqs_client, want_rule=None):
+    """Read-modify-write the shared bucket->SQS notification config, converging on a concurrent run's
+    racing put. S3 has no conditional/ETag put here, so verify BOTH directions: our own rule landed (or
+    was removed) AND every foreign rule we snapshotted is still present; if a racing put clobbered one,
+    retry and the merge restores it from a fresh snapshot. This narrows but does NOT fully close the
+    window - a per-run bucket or an external lock would; good enough for the handful of concurrent AWS IT
+    runs. Returns True on success."""
+    rule_id = _notif_rule_id()
+    for attempt in range(5):
+        try:
+            cfg = client.get_bucket_notification_configuration(Bucket=bucket_name)
+            keep = _rule_ids(_merge_queue_configs(cfg, sqs_client=sqs_client))
+            client.put_bucket_notification_configuration(
+                Bucket=bucket_name,
+                NotificationConfiguration=_merge_queue_configs(cfg, add_rule=want_rule, sqs_client=sqs_client))
+            seen = _rule_ids(client.get_bucket_notification_configuration(Bucket=bucket_name))
+        except ClientError as exc:
+            # A racing run can delete its queue between our GET and PUT, leaving a dangling destination
+            # S3 rejects; retrying re-reads and drops it. Never fail setup/teardown on a transient error.
+            logger.warning("Notification put attempt %s failed for run %s: %s", attempt, _RUN_ID, exc)
+            time.sleep(1 + attempt + random.random())
+            continue
+        own_ok = (rule_id in seen) if want_rule else (rule_id not in seen)
+        if own_ok and keep <= seen:
+            return True
+        time.sleep(1 + attempt + random.random())  # jitter so two runs don't lock-step
+    return False
+
+
+def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn, sqs_client):
     """Concurrency-safe bucket->SQS notification for the custom-bucket tests (issue #38194).
 
     The bucket notification config is a single shared resource and the framework helper REPLACES it, so
     two concurrent runs clobber each other. Instead register THIS run's queue with a '<run>/' prefix
-    filter, merged into the existing config, so each run is only notified of its own uploads. Read-modify-
-    write with a verify+retry loop to converge if a concurrent run's put races ours. Locally (no run id)
-    fall back to a plain single-queue put (original behaviour).
+    filter, merged into the existing config (dropping stale rules), so each run is only notified of its
+    own uploads. Locally (no run id) fall back to a plain single-queue put (original behaviour).
     """
     client = s3_resource.meta.client
     if not _RUN_ID:
@@ -163,35 +233,17 @@ def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn):
         return
     rule = {'Id': _notif_rule_id(), 'QueueArn': sqs_queue_arn, 'Events': ['s3:ObjectCreated:*'],
             'Filter': {'Key': {'FilterRules': [{'Name': 'prefix', 'Value': f'{_RUN_ID}/'}]}}}
-    for _ in range(5):
-        cfg = client.get_bucket_notification_configuration(Bucket=bucket_name)
-        client.put_bucket_notification_configuration(
-            Bucket=bucket_name, NotificationConfiguration=_merge_queue_configs(cfg, add_rule=rule))
-        check = client.get_bucket_notification_configuration(Bucket=bucket_name)
-        if any(q.get('Id') == rule['Id'] for q in check.get('QueueConfigurations', [])):
-            return
-    logger.warning("Could not persist bucket notification rule for run %s", _RUN_ID)
+    if not _put_notification(client, bucket_name, sqs_client, want_rule=rule):
+        logger.warning("Could not persist bucket notification rule for run %s", _RUN_ID)
 
 
-def _remove_run_bucket_notification(s3_resource, bucket_name):
-    """Remove THIS run's notification rule at teardown, preserving other runs' rules. Read-modify-write
-    with a verify+retry loop so a concurrent run's racing put does not resurrect our rule or drop theirs."""
+def _remove_run_bucket_notification(s3_resource, bucket_name, sqs_client):
+    """Remove THIS run's notification rule at teardown, preserving other runs' rules (verify+retry via
+    _put_notification, which also drops stale rules whose queue is gone)."""
     if not _RUN_ID:
         return
-    client = s3_resource.meta.client
-    rule_id = _notif_rule_id()
-    for _ in range(5):
-        try:
-            cfg = client.get_bucket_notification_configuration(Bucket=bucket_name)
-            client.put_bucket_notification_configuration(
-                Bucket=bucket_name, NotificationConfiguration=_merge_queue_configs(cfg))
-            check = client.get_bucket_notification_configuration(Bucket=bucket_name)
-            if not any(q.get('Id') == rule_id for q in check.get('QueueConfigurations', [])):
-                return
-        except Exception as exc:
-            logger.warning("Could not remove bucket notification rule for run %s: %s", _RUN_ID, exc)
-            return
-    logger.warning("Bucket notification rule for run %s may persist after teardown", _RUN_ID)
+    if not _put_notification(s3_resource.meta.client, bucket_name, sqs_client, want_rule=None):
+        logger.warning("Bucket notification rule for run %s may persist after teardown", _RUN_ID)
 
 
 _GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
@@ -593,7 +645,7 @@ def create_test_bucket(metadata: dict, test_configuration: dict, aws_run_namespa
 
 
 @pytest.fixture
-def manage_bucket_files(metadata: dict, s3_client, ec2_client):
+def manage_bucket_files(metadata: dict, s3_client, ec2_client, create_test_bucket):
     """Upload a file to S3 bucket and delete after the test ends.
 
     Args:
@@ -942,7 +994,7 @@ def manage_log_group_events(metadata: dict, logs_clients):
 
 
 @pytest.fixture
-def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
+def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client, create_test_bucket) -> None:
     """Create a test SQS queue.
 
     Args:
@@ -976,7 +1028,7 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
                        client=sqs_client)
 
         # Set bucket notification configuration (per-run, prefix-filtered, merged - see helper).
-        _set_run_bucket_notification(s3_client, bucket_name, sqs_queue_arn)
+        _set_run_bucket_notification(s3_client, bucket_name, sqs_queue_arn, sqs_client)
 
     except ClientError as error:
         # Check if the sqs exist
@@ -992,7 +1044,7 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client) -> None:
     yield
 
     # Remove only this run's notification rule so a concurrent run's rule survives.
-    _remove_run_bucket_notification(s3_client, bucket_name)
+    _remove_run_bucket_notification(s3_client, bucket_name, sqs_client)
 
 
 """DB fixtures"""
