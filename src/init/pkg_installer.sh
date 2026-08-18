@@ -19,6 +19,15 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 OS=$(uname)
 WAZUH_HOME=$(pwd)
 
+# Pure-shell check for a matching package, so branch selection does not depend on
+# an external tool like `find` (absent on minimal container/cloud images).
+pkg_exists() {
+    for f in "$@"; do
+        [ -f "$f" ] && return 0
+    done
+    return 1
+}
+
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -45,7 +54,7 @@ fi
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
-    if find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.rpm" | read; then
+    if pkg_exists ./var/upgrade/*.rpm; then
         if command -v rpm >/dev/null 2>&1; then
             rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
@@ -54,7 +63,7 @@ elif [[ "$OS" == "Linux" ]]; then
             rm -f $LOCK
             exit 1
         fi
-    elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
+    elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
             dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
@@ -63,7 +72,7 @@ elif [[ "$OS" == "Linux" ]]; then
             rm -f $LOCK
             exit 1
         fi
-    elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.apk" | read; then
+    elif pkg_exists ./var/upgrade/*.apk; then
         if command -v apk >/dev/null 2>&1; then
             apk add --allow-untrusted --force ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
