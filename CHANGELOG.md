@@ -134,4 +134,5 @@
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failure on shutdown, which logged "Invalid handle value", crashed the process and left a stale PID file. |
 | [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
+| [#35481](https://github.com/wazuh/wazuh/issues/35481) | Fixed FIM whodata missing modification events for files reached through a monitored symbolic link, because the single-PATH-record branch of the audit parser did not resolve the reported path. |
 
