@@ -13,7 +13,6 @@
 #include "os_net.h"
 #include <request_op.h>
 #include "remoted.h"
-#include "state.h"
 #include "wmodules.h"
 
 #define COUNTER_LENGTH 64
@@ -148,8 +147,6 @@ void * req_dispatch(req_node_t * node) {
             merror("Cannot send request to agent '%s'", agentid);
             OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR);
             goto cleanup;
-        } else {
-            rem_inc_send_request();
         }
 
         // Wait for ACK or response, only in UDP mode
@@ -202,9 +199,7 @@ void * req_dispatch(req_node_t * node) {
         // Example: #!-req 16 ack
         mdebug2("Sending ack (%s).", node->counter);
         snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
-        if (send_msg(agentid, response, -1) >= 0) {
-            rem_inc_send_request();
-        }
+        send_msg(agentid, response, -1);
     }
 
     // Send response to local peer
