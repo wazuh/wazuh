@@ -613,7 +613,7 @@ static void test_fresh_install_template_shape(void **state) {
     assert_string_equal(cfg.profile, "debian, debian8");
     assert_int_equal(cfg.notify_time, 0);        /* ClientConf turns 0 into NOTIFY_TIME. */
     assert_int_equal(cfg.batch.size, 0);         /* Module default (1 MiB / 5 MiB). */
-    assert_int_equal(cfg.batch.interval, 0);
+    assert_int_equal(cfg.batch.interval, 0);     /* ClientConf turns 0 into 10 s. */
 
     cleanup(&xml, nodes, &cfg);
 }

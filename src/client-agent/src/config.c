@@ -72,6 +72,8 @@ int ClientConf(const char *cfgfile)
     agt->stats_report.interval = 60;
     agt->config_report.interval = 3600;
 
+    agt->batch.interval = 10;
+
 #ifndef WIN32
     atc->package_uninstallation = false;
 #endif
@@ -131,6 +133,21 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     }
 
     return true;
+}
+
+// Helper for translating the verification_mode enum to a string for JSON output.
+static const char *w_agent_verify_mode_str(int verification_mode)
+{
+    switch (verification_mode) {
+    case AGENT_VERIFY_FULL:
+        return "full";
+    case AGENT_VERIFY_CERT:
+        return "certificate";
+    case AGENT_VERIFY_NONE:
+        return "none";
+    default:
+        return "unknown";
+    }
 }
 
 cJSON *getAgentConfig(void) {
@@ -198,6 +215,21 @@ cJSON *getAgentConfig(void) {
 
         cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
     }
+    // <ssl>
+    cJSON *ssl = cJSON_CreateObject();
+    cJSON_AddStringToObject(ssl, "verification_mode", w_agent_verify_mode_str(agt->ssl.verification_mode));
+    if (agt->ssl.certificate) cJSON_AddStringToObject(ssl, "certificate", agt->ssl.certificate);
+    if (agt->ssl.key) cJSON_AddStringToObject(ssl, "key", agt->ssl.key);
+    if (agt->ssl.certificate_authorities) cJSON_AddStringToObject(ssl, "certificate_authorities", agt->ssl.certificate_authorities);
+    if (agt->ssl.ciphers) cJSON_AddStringToObject(ssl, "ciphers", agt->ssl.ciphers);
+    cJSON_AddItemToObject(agent_config, "ssl", ssl);
+
+    // <batch>
+    cJSON *batch = cJSON_CreateObject();
+    cJSON_AddNumberToObject(batch, "size", agt->batch.size);
+    cJSON_AddNumberToObject(batch, "interval", agt->batch.interval);
+    cJSON_AddItemToObject(agent_config, "batch", batch);
+
     /* The two periodic report pushes (#37843). Reported so the /config document
      * says whether the agent is reporting, and on what cadence. */
     cJSON *stats_report = cJSON_CreateObject();
