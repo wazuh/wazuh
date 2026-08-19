@@ -1,5 +1,15 @@
 name: 5.X - VD Scanner tools Delivery
 on:
+  push:
+    branches:
+      - 5.0.0
+    paths:
+      - "src/wazuh_modules/vulnerability_scanner/testtool/**"
+      - "src/wazuh_modules/vulnerability_scanner/src/**"
+      - "src/wazuh_modules/vulnerability_scanner/include/**"
+      - "src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "src/wazuh_modules/inventory_sync_server/**"
+      - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
@@ -105,7 +115,7 @@ jobs:
 
       # Upload vdscanner tools
       - name: Upload vdscanner tools
-        if: ${{ success() && github.event_name == 'workflow_dispatch' }}
+        if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         uses: ./.github/actions/upload_s3_artifact
         with:
           aws_region: ${{ secrets.CI_AWS_REGION }}
