@@ -115,6 +115,15 @@ void sender_init();
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);
 
+/* Acquire/release the same mutex send_msg() uses around agt->sock, so
+ * connect_server() can mutate agt->sock without racing a concurrent sender. */
+void send_mutex_lock(void);
+void send_mutex_unlock(void);
+
+/* Common reconnect sequence: toggle the wait/status flags around start_agent(0).
+ * Callers keep their own log messages before/after; only the boilerplate is shared. */
+void reconnect_to_server(void);
+
 /* Extract the shared files */
 char *getsharedfiles(void);
 

@@ -37,6 +37,7 @@ int receive_msg()
     char buffer[OS_MAXSTR + 1];
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
+    const int sock = atomic_int_get(&agt->sock);
 
     memset(cleartext, '\0', OS_MAXSTR + 1);
     memset(buffer, '\0', OS_MAXSTR + 1);
@@ -49,7 +50,7 @@ int receive_msg()
                 break;
             }
 
-            recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
+            recv_b = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR);
 
             // Manager disconnected or error
 
@@ -79,7 +80,7 @@ int receive_msg()
                 return -1;
             }
         } else {
-            recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
+            recv_b = recv(sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
 
             if (recv_b <= 0) {
                 break;
@@ -123,14 +124,7 @@ int receive_msg()
             else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
                 /* Set lock and wait for it */
                 minfo("Wazuh Agent will be reconnected because a reconnect message was received");
-                os_setwait();
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-
-                /* Send sync message */
-                start_agent(0);
-
-                os_delwait();
-                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+                reconnect_to_server();
                 continue;
             }
 
@@ -349,23 +343,47 @@ int receiver_messages()
             ExecdTimeoutRun();
         }
 
+#ifndef ONEWAY_ENABLED
         /* sock must be set */
-        if (agt->sock == -1) {
-            sleep(5);
+        int sock = atomic_int_get(&agt->sock);
+        if (sock == -1) {
+            merror(LOST_ERROR);
+            reconnect_to_server();
+            minfo(SERVER_UP);
             continue;
         }
+#else
+        /* start_agent() never actually connects under ONEWAY_ENABLED (see
+         * start_agent.c), so agt->sock never leaves -1 -- checking it here
+         * would spin this loop at 100% CPU instead of being paced by
+         * select()'s timeout below, same reasoning as the Linux monitor
+         * loop in agentd.c. */
+        int sock = atomic_int_get(&agt->sock);
+#endif
 
         run_notify();
 
+#ifndef ONEWAY_ENABLED
+        /* run_notify() may also invalidate the socket (it calls send_msg()
+         * for the keep-alive); re-check before FD_SET() needs it, same as
+         * the Linux monitor loop in agentd.c. */
+        sock = atomic_int_get(&agt->sock);
+        if (sock < 0) {
+            continue;
+        }
+#else
+        sock = atomic_int_get(&agt->sock);
+#endif
+
         FD_ZERO(&fdset);
-        FD_SET(agt->sock, &fdset);
+        FD_SET(sock, &fdset);
 
         /* Wait for 1 second */
         selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
-        rc = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
+        rc = select(sock + 1, &fdset, NULL, NULL, &selecttime);
         if (rc == -1) {
             merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
@@ -375,13 +393,9 @@ int receiver_messages()
         }
 
         if (receive_msg() < 0) {
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
             merror(LOST_ERROR);
-            os_setwait();
-            start_agent(0);
+            reconnect_to_server();
             minfo(SERVER_UP);
-            os_delwait();
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
         }
     }
 
