@@ -2,6 +2,14 @@
 
 `wazuh-manager-authd` handles agent enrollment. It listens for agent registration requests over TLS, validates credentials, generates cryptographic keys, and writes the resulting entries to the agent keystore.
 
+Agents can also enroll over HTTPS, through `remoted_module`'s `POST /enroll` (port 1517) — see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll). That endpoint
+is a bridge, not a second implementation: it forwards to this same daemon's local socket (see
+[Local socket enrollment protocol](#local-socket-enrollment-protocol) below), so every enrollment —
+however it arrives — goes through the one business-logic path documented on this page. Port 1515
+(this document) remains fully supported for legacy 4.x agents; `/enroll` is the manager's intended
+long-term enrollment path going forward.
+
 Source: `src/os_auth/`
 
 For configuration options see [Authd Configuration](configuration.md).
@@ -34,7 +42,7 @@ For configuration options see [Authd Configuration](configuration.md).
 
 | Thread | Role |
 |--------|------|
-| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` is `yes`) |
+| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth` |
 | Writer | Periodically flushes the in-memory key queue to `client.keys` on disk, and — for each removed agent — asks the [Inventory Sync Server](../inventory-sync-server/README.md) to delete that agent's documents from the indexer |
 
@@ -76,10 +84,16 @@ The `<force>` sub-block controls when an agent may overwrite an existing registr
 ## Local socket enrollment protocol
 
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
-the Unix domain socket `queue/sockets/auth`. This is what `manage_agents` and the API's agent
-registration endpoints use to add, remove, and query agents without going through TLS or the
-enrollment password. It is only served on the master node — a worker rejects any JSON request here
-(error `9015`, "Cannot execute this request on a worker node").
+the Unix domain socket `queue/sockets/auth`. This is what `manage_agents`, the API's agent
+registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
+remove, and query agents without going through TLS or the enrollment password directly.
+
+On a cluster **worker** node: `add` requests are forwarded to the master over the same cluster
+protocol port 1515's own worker-to-master enrollment forwarding already uses, and answered with the
+master's result — a transport failure during that forward answers `9016` ("Cannot communicate with
+master node"). `remove` and `get` are **not** forwarded: a worker rejects both outright with `9015`
+("Cannot execute this request on a worker node").
 
 A request is a single-line JSON object:
 

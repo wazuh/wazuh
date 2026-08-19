@@ -90,7 +90,13 @@ the `wazuh-manager` user (e.g. via the same ownership/mode) or the module fails 
 
 ## Authentication (AES-CMAC)
 
-Every request MUST carry two headers:
+**Single exception: `POST /enroll`.** Every other endpoint on this page requires the agent<->manager
+AES-CMAC scheme described in this section, keyed by an agent's pre-shared `client.keys` entry. An
+enrolling agent has no such entry yet, so `/enroll` cannot use it — it authenticates with an
+independent, per-listener credential instead (a client certificate, a shared password, or neither).
+See [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
+
+Every other request MUST carry two headers:
 
 ```text
 protocol-version: 1
@@ -297,6 +303,13 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   malformed requests, **`401`** on auth failures, or **`503`** when VD did not queue it (dispatch
   lane full, feed mid-update, module stopping or unreachable, no indexer host available). See
   [Scan endpoint](#scan-endpoint-post-scanvd) below for details.
+- **`POST /enroll`** — bridges a new agent's self-enrollment request to `authd` (see
+  [Authd](../authd/README.md)), which owns all enrollment business logic. Unlike every other
+  authenticated endpoint above, it does **not** use the agent<->manager AES-CMAC scheme — the agent
+  has no key yet — and it is **always registered**, answering **`403`** rather than a bare `404`
+  when enrollment is administratively disabled. Returns **`200 OK`** with the new agent's
+  `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
+  [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -406,6 +419,28 @@ a purely async I/O reactor or documented as non-blocking work). The downstream c
 socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVersion` are not
 internal options -- the former is an installation detail (mirrors the classic C forwarder's
 socket), the latter a protocol constant.
+
+### Enrollment bridge (`POST /enroll`)
+
+A fifth, small group of internal options tunes the `/enroll`-to-`authd` bridge
+(`AuthdClient`/`PasswordKeySource`, see [Enrollment endpoint](#enrollment-endpoint-post-enroll)
+below). Same resolution pattern: `secure.c` reads each option and passes it through the C-ABI
+struct.
+
+| Setting                                     | Default                                                | Internal option                          |
+| -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| `etc/authd.pass` hot-reload poll interval     | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
+| `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
+| `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
+| Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
+
+The response timeout's worker default is longer than the master's on purpose: on a worker, `authd`'s
+own forward to the master can retry internally for several seconds before answering, and a shorter
+client-side timeout here would cut off a legitimate, still-in-progress worker enrollment as a
+spurious `503`. All other enrollment behavior (whether it's enabled, whether a password/client
+certificate is required, which agent versions are accepted) is deliberately **not** a separate
+`remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
+can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
 ### client.keys hot-reload
 
@@ -783,6 +818,147 @@ endpoint themselves) are not covered by `/scan/vd` at all — they're swept sepa
 update, by the cluster's master node only (`VulnerabilityScannerFacade::rescanDisconnectedAgents()`
 in the `vulnerability_scanner` module).
 
+## Enrollment endpoint (`POST /enroll`)
+
+`/enroll` lets a new agent register over the same HTTPS channel (port 1517) it uses for everything
+else afterward, instead of falling back to legacy `authd` on port 1515. It is a **bridge, not a
+second implementation**: `authd` keeps 100% of enrollment business logic (name/version/group
+validation, key generation, duplicate handling, cluster forwarding on a worker); this endpoint only
+authenticates the request and relays it to `authd`'s existing local socket
+(`queue/sockets/auth`) — the same interface `manage_agents` and the API's agent-registration
+endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
+that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
+operator can retire port 1515 while keeping `/enroll` (or disable both together via
+`remote_enrollment`).
+
+**The route is always registered**, regardless of configuration. When enrollment is
+administratively disabled (`<auth><disabled>yes</disabled>`, or `<auth><remote_enrollment>no</auth>`),
+it answers **`403`** rather than disappearing — a missing route (`404`) would mean "this manager
+doesn't support enrollment at all," which is a different, more permanent statement than "an operator
+turned this off."
+
+### Authentication
+
+Unlike every other endpoint on this page, `/enroll` cannot use the agent<->manager AES-CMAC scheme
+(see [Authentication](#authentication-aes-cmac) above) — an enrolling agent has no `client.keys`
+entry yet to sign with. Two credential checks apply instead, decided once at manager startup and
+**independently** of each other (an operator can require either, both, or neither — see below):
+
+- **Client certificate** — purely a property of the HTTPS listener's own `verification_mode`
+  (`certificate` or `full`; see [Configuration](configuration.md#https-configuration)). When
+  configured, the TLS handshake validates the agent's certificate against the manager's CA
+  **before the request ever reaches this endpoint** — there is nothing further for `/enroll` itself
+  to check.
+- **Password** — required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password)
+  is enabled. The request must carry:
+
+  ```text
+  Authorization: WazuhEnroll <unix-timestamp>:<mac>
+  ```
+
+  `<mac>` is a 32-character lowercase-hex AES-256-CMAC, keyed by a 32-byte key derived from
+  `authd`'s enrollment password (`etc/authd.pass`) via **HKDF-SHA256** (empty salt,
+  `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`) — never the password bytes themselves. The timestamp
+  accepts the same window as the AES-CMAC scheme above (300 s past, 30 s future). The MAC covers a
+  canonical byte sequence deliberately similar to the AES-CMAC scheme's, minus the agent-id field
+  (an enrolling agent doesn't have one):
+
+  ```text
+  WAZUH-ENROLL\n
+  1\n
+  <uppercase-method>\n
+  <request-target>\n      (raw path + query, exactly as sent)
+  <unix-timestamp>\n
+  <request-body>          (exact body bytes, no trailing newline)
+  ```
+
+  A missing/unreadable/invalid password file fails **closed** — every request is rejected, never
+  silently treated as if no password were required.
+
+Both checks failing to apply (no client-certificate requirement, no password configured) means the
+request needs no credential at all, matching `authd`'s own behavior on port 1515 in that
+configuration.
+
+Every auth rejection collapses to the same generic response, so a client cannot tell which check
+failed: `401` with `{"error":{"code":0,"message":"Invalid client authentication"}}`.
+
+**Worked example** (verified known-answer vector, useful as a cross-implementation test):
+
+| Input | Value |
+| --- | --- |
+| Password | `MyEnrollmentSecret123` |
+| HKDF-SHA256 derived key | `2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e` |
+| Canonical string | `WAZUH-ENROLL\n1\nPOST\n/enroll\n1739999999\n{"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"}` |
+| AES-256-CMAC | `dc07d78fc156a1944f4fb02b91da7d01` |
+| Resulting header | `Authorization: WazuhEnroll 1739999999:dc07d78fc156a1944f4fb02b91da7d01` |
+
+There is no per-request nonce, so a captured request could in principle be replayed inside its
+freshness window — bounded in practice by `authd`'s own duplicate-name/IP rejection (unless
+force-replace is configured to permit it). This mirrors the threat model the AES-CMAC scheme above
+already accepts, with TLS protecting the transport either way.
+
+### Request
+
+```json
+{
+  "name": "web-server-01",
+  "version": "5.0.0",
+  "groups": "default,web-servers",
+  "ip": "10.0.0.15"
+}
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | yes | Non-empty, ≤128 chars; `authd` re-validates independently and more strictly. |
+| `version` | yes | Rejected if newer than the manager's unless `<remote><agents><allow_higher_versions>` is `yes` — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `groups` | no | Comma-separated, passed through unchanged. |
+| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or the literal `any`; see IP resolution below. |
+| `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
+
+`force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
+for admin/restore use (`manage_agents`): `/enroll` is exclusively for a brand-new agent
+self-enrolling, which always gets an auto-assigned ID and an `authd`-generated key.
+
+**IP resolution** mirrors `authd`'s own [`use_source_ip`](../authd/configuration.md#use_source_ip):
+if enabled, the HTTPS connection's observed peer address is used, overriding anything the body
+claims; otherwise the body's `ip` is used if present; otherwise `any`.
+
+### Responses
+
+**Success (`200 OK`):**
+
+```json
+{
+  "id": "003",
+  "name": "web-server-01",
+  "ip": "10.0.0.15",
+  "key": "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"
+}
+```
+
+Verbatim from `authd` — the `key` the agent must store and use to sign every subsequent request
+(via the AES-CMAC scheme above) with its new numeric `id`.
+
+### Error handling
+
+| Condition | HTTP | Notes |
+| --- | --- | --- |
+| Enrollment administratively disabled | `403` | Route always exists; see above. |
+| Missing/invalid credential | `401` | Collapsed to one generic message; see Authentication above. |
+| Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
+| Agent version newer than allowed | `400` | See `version` in the request table above. |
+| `authd` bad function/args/name/ip/groups (9003–9006, 9014) | `400` | Passed through with `authd`'s own message. |
+| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
+| `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
+| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
+| Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
+| `authd` unreachable, or its reply was unparseable/timed out | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}` |
+
+Every business-rejection error body has the shape `{"error":{"code":<authd-code>,"message":"<text>"}}`
+— distinct from every other endpoint's flat `{"error":"<message>","code":<status>}` shape, since
+this one passes through `authd`'s own numeric codes for diagnostics.
+
 ## Testing
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
@@ -824,5 +1000,8 @@ python3 send_scan_vd.py --all
 - [Event Protocol Specification](event-protocol.md) — the `H`/`E` wire format for event batches.
 - [Configuration](configuration.md) — classic `remoted` (`<remote>`) options and internal options.
 - [Architecture](architecture.md) — where the HTTPS listener sits in the `remoted` pipeline.
+- [Authd](../authd/README.md) / [Authd Configuration](../authd/configuration.md) — the enrollment
+  service `/enroll` bridges to, and the `remote_enrollment`/`legacy_enrollment` flags that gate
+  both enrollment paths.
 - Endpoint contract: [`stateless-api.yaml`](stateless-api.yaml) /
   [ReDoc reference](stateless-api-reference.html).

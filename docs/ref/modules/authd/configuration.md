@@ -105,7 +105,30 @@ The agent reads the password from `etc/authd.pass` (relative to its install dire
 
 ### remote_enrollment
 
-Accept enrollment requests over the network (port 1515). Disable to restrict enrollment to the local socket only.
+Master switch for **all** remote (network) self-enrollment — both this daemon's own TCP/TLS
+listener on port 1515 and the HTTPS `POST /enroll` bridge served by `remoted_module` (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Disabling it
+turns off both at once; use [`legacy_enrollment`](#legacy_enrollment) to turn off only port 1515
+while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth`) used by
+`manage_agents`/the API stays available regardless of this setting.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+
+### legacy_enrollment
+
+Narrows `remote_enrollment` further, without affecting it: when `remote_enrollment` is `yes`, this
+flag controls whether port 1515's TCP/TLS listener specifically starts. Set to `no` to retire
+legacy 1515 while keeping `/enroll` — the manager's intended long-term enrollment path — available.
+Has no effect when `remote_enrollment` is `no` (both paths are already off), and no effect on
+`/enroll` at all, which this flag exists specifically to leave alone.
+
+| `disabled` | `remote_enrollment` | `legacy_enrollment`  | Port 1515 | `POST /enroll` |
+| ---------- | -------------------- | --------------------- | --------- | -------------- |
+| `yes`      | –                    | –                     | off       | off            |
+| `no`       | `no`                 | –                     | off       | off            |
+| `no`       | `yes`                | `yes` (default)       | on        | on             |
+| `no`       | `yes`                | `no`                  | off       | **on**         |
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
