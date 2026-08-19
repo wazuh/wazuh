@@ -112,12 +112,14 @@ fi
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking connectivity to ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 
-if ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
+if [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" = "1" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager connectivity check skipped (test mode)." >> ./logs/upgrade.log
+elif ! probe_server "${SERVER_ADDRESS}" "${SERVER_PORT}"; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The manager is not reachable at ${SERVER_ADDRESS}:${SERVER_PORT}, interrupting upgrade." >> ./logs/upgrade.log
     abort_upgrade "2"
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 fi
-
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
 
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
