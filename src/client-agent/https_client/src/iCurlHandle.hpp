@@ -75,11 +75,15 @@ class ICurlHandle
         virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
         virtual void appendHeader(const std::string& header) = 0;
 
-        virtual void captureResponseBody(std::string* output) = 0;
-        virtual void captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
-        virtual void captureRetryAfter(long* output) = 0;
-        virtual void streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
-        virtual void wireAbort(const std::atomic<bool>* abortFlag) = 0;
+        /// @return false if the underlying option(s) were rejected by libcurl;
+        ///         the caller must not proceed to perform() in that case, since
+        ///         the requested behavior (e.g. capturing the response) would
+        ///         silently not be in effect.
+        virtual bool captureResponseBody(std::string* output) = 0;
+        virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
+        virtual bool captureRetryAfter(long* output) = 0;
+        virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
+        virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;
 
         virtual TransportStatus perform() = 0;
         virtual long responseCode() = 0;

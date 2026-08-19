@@ -160,7 +160,10 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
     }
 
     const auto timestamp = m_clock.wallSeconds();
-    const auto headers =
+    // Bind by reference: both branches return std::optional<SignedHeaders> by
+    // value, and `headers` is only read locally below, well within the
+    // ternary temporary's extended lifetime -- no need to copy it. (CID 562606)
+    const auto& headers =
         attempt.bodyFilePath.empty()
         ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
         : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
