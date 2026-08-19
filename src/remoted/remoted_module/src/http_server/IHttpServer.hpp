@@ -335,6 +335,13 @@ namespace remoted::http
          * lifetime to whatever the reserved bytes actually back -- bundle it into that data's own
          * keep-alive to hold it, or let it fall out of scope to release it.
          *
+         * This is an auxiliary (bytes-only) reservation for a request that was already admitted:
+         * it neither counts toward the budget's in-flight request count nor, on failure, toward
+         * its shed total -- the caller answers its own request (e.g. 413), it does not turn a new
+         * one away. If the reservation later becomes the request's resident body (the wire buffer
+         * is dropped in its favor), call InFlightBudget::Reservation::promoteToRequest() on it so
+         * the request keeps counting as exactly one.
+         *
          * @param bytes Bytes to reserve up front (0 is always granted).
          * @return An engaged reservation on success, `std::nullopt` if the budget doesn't have
          *         that much room right now, or if there is no live budget to reserve against (the

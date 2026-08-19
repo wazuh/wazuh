@@ -973,9 +973,9 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
 }
 
 // diagnostics() is the source of the remoted.server.budget.* pull metrics: all zeros before
-// start() (the documented quiescent value), live budget state while running, and -- because the
-// budget survives a normal stop() -- the cumulative shed total remains visible afterwards, which
-// is what lets the facade's final stop() dump still report it.
+// start() (the documented quiescent value), live budget state while running. Auxiliary
+// reservations (tryReserveInFlightBytes()) belong to already-admitted requests, so they must show
+// up ONLY as bytes -- never as in-flight requests, and their refusal is never a shed.
 TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
 {
     constexpr std::size_t MiB = 1024U * 1024U;
@@ -1007,13 +1007,13 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     {
         auto reservation = server->tryReserveInFlightBytes(10U * MiB);
         ASSERT_TRUE(reservation.has_value());
-        EXPECT_FALSE(server->tryReserveInFlightBytes(50U * MiB).has_value()); // shed
+        EXPECT_FALSE(server->tryReserveInFlightBytes(50U * MiB).has_value()); // refused, not shed
 
         d = server->diagnostics();
         EXPECT_EQ(d.budgetAvailableBytes, 40U * MiB);
         EXPECT_EQ(d.budgetInFlightBytes, 10U * MiB);
-        EXPECT_EQ(d.budgetInFlightCount, 1U);
-        EXPECT_EQ(d.budgetRejectedTotal, 1U);
+        EXPECT_EQ(d.budgetInFlightCount, 0U); // auxiliary bytes are not requests
+        EXPECT_EQ(d.budgetRejectedTotal, 0U); // and refusing them turned no request away
     }
 
     server->stop();
@@ -1021,7 +1021,57 @@ TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
     d = server->diagnostics();
     EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB); // reservation released
     EXPECT_EQ(d.budgetInFlightCount, 0U);
-    EXPECT_EQ(d.budgetRejectedTotal, 1U); // cumulative total outlives the run
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+}
+
+// The shed total moves only when the transport refuses to ADMIT a request, so driving it takes a
+// real one: hold the whole budget through an auxiliary reservation, watch an actual request
+// bounce off admission with a 503 without its handler ever running, and -- because the budget
+// survives a normal stop() -- see the cumulative total still reported afterwards, which is what
+// lets the facade's final stop() dump report it.
+TEST(HttpServerTest, DiagnosticsCountARealAdmissionShed)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    std::atomic_bool handlerRan {false}; // declared before the server: its route holds a reference
+    auto server = makeHttpServer();
+
+    server->addRoute(
+        Method::Post,
+        "/events",
+        [&handlerRan](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerRan = true;
+            responder->send(HttpResponse::json(200, "{}"));
+        },
+        /*countAgainstBudget=*/true,
+        ResponseMode::Buffered);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(26000 + (::getpid() % 5000));
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    auto whole = server->tryReserveInFlightBytes(50U * MiB);
+    ASSERT_TRUE(whole.has_value()); // the budget is now fully held
+
+    const auto raw = remoted::test::sendSignedRequest(config.port, remoted::test::testAgentKey(), "/events", "{}");
+    whole.reset();
+    server->stop();
+
+    ASSERT_FALSE(raw.empty()) << "no response from the server";
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_NE(head.find("503"), std::string::npos) << head;
+    EXPECT_FALSE(handlerRan.load()) << "a shed request must never reach its route handler";
+
+    const auto d = server->diagnostics();
+    EXPECT_EQ(d.budgetRejectedTotal, 1U); // exactly the one refused admission
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
 }
 
 // ---------------------------------------------------------------------------

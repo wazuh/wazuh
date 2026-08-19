@@ -1129,7 +1129,9 @@ namespace remoted::http
         {
             return std::nullopt;
         }
-        return budget->tryReserve(bytes);
+        // Uncounted: this reserves auxiliary memory for an already-admitted request, so it must
+        // not inflate the in-flight request count nor register its failures as admission sheds.
+        return budget->tryReserveUncounted(bytes);
     }
 
     TransportDiagnostics RestinioHttpServer::diagnostics() const

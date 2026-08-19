@@ -46,6 +46,9 @@ namespace
     // Keep-alive for a decoded body: the bytes plus the reservation charging them against the
     // in-flight budget, so both are released together (RAII) when the Payload holding them is
     // dropped. Bundling them is what ties "these bytes are in memory" to "these bytes are charged".
+    // The reservation is also promoted to carry the request's in-flight count: once the wire
+    // buffer (and its admission reservation) is dropped in favor of this body, this is the token
+    // that keeps the request counted as resident.
     struct DecodedBody
     {
         std::string bytes;
@@ -155,6 +158,11 @@ namespace remoted::decoding
         // wire body's own in-flight reservation -- it is no longer needed.
         auto body = std::make_shared<DecodedBody>(
             DecodedBody {std::move(std::get<std::string>(decoded)), std::move(outputReservation)});
+        // Promote BEFORE the swap: the wire reservation carried the request's in-flight count and
+        // dies in the assignment below, so the decoded body's reservation takes that identity over
+        // first. The overlap double-counts the request for an instant -- deliberately preferred
+        // over the swap-then-promote order, which would let a live request momentarily count zero.
+        body->reservation->promoteToRequest();
         const std::string_view view {body->bytes};
         payload = remoted::auth::Payload {view, std::move(body)};
 

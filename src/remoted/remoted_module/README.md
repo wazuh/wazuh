@@ -107,6 +107,13 @@ src/http_server/
        holds up to three concurrent reservations — wire body, decoder buffers, decoded output — which
        is correct: all three are genuinely in memory at that moment. Exhausting the budget there
        answers **`413`** (the request is too big for the capacity free *right now*), not `503`.
+       Only the *admission* reservation carries the request-level accounting: decoder reservations
+       are uncounted (`InFlightBudget::tryReserveUncounted()` — bytes only, and their refusal is
+       not a shed), and when the wire buffer is dropped in favor of the decoded body, the output
+       reservation is promoted (`Reservation::promoteToRequest()`) to inherit the request's
+       identity. That keeps `budget.inflight.requests` at exactly one per admitted request and
+       `budget.rejected.total` moving only on admission sheds — the decoder's `413` is counted in
+       `remoted.auth.reject.body_too_large` instead.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
        early by closing the connection). *Note:* RESTinio 0.7.9 has no dynamic pre-body hook, so the
        budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
@@ -1601,7 +1608,9 @@ linked into the settings' own documentation — is the official docs page:
 
 **Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
 the transport I/O thread BEFORE any route runs — it appears ONLY in
-`remoted.server.budget.rejected.total`, never in a `responses.*` cell. A deferred-limiter shed
+`remoted.server.budget.rejected.total`, never in a `responses.*` cell. The converse holds too:
+an *admitted* compressed request whose decode does not fit the budget is answered `413` and
+counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
 is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
 `remoted.forwarder.deferred.rejected.total`. Auth-gateway rejections happen before any handler
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,

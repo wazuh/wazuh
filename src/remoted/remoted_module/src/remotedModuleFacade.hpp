@@ -901,12 +901,12 @@ private:
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.bytes",
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
-            "Bytes currently reserved by admitted public requests",
+            "Bytes currently reserved by admitted public requests (payloads plus zstd decode scratch)",
             "bytes");
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.inflight.requests",
             [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
-            "Public requests currently holding a budget reservation",
+            "Admitted public requests currently resident (one per request, compressed or not)",
             "requests");
         m_metricsManager->registerPullMetric(
             "remoted.server.budget.rejected.total",

@@ -26,7 +26,7 @@ namespace remoted::http
      * The transport reserves bytes the moment a request is admitted and holds the
      * reservation for the request's whole in-flight life (queued on the worker pool
      * + running the handler + waiting on a deferred response). When the budget is
-     * exhausted the transport rejects new requests with 429 instead of letting the
+     * exhausted the transport rejects new requests with 503 instead of letting the
      * worker-pool queue grow without bound -- the backpressure the raw asio pool
      * lacks.
      *
@@ -57,9 +57,11 @@ namespace remoted::http
             Reservation(Reservation&& other) noexcept
                 : m_owner {other.m_owner}
                 , m_bytes {other.m_bytes}
+                , m_countsRequest {other.m_countsRequest}
             {
                 other.m_owner = nullptr;
                 other.m_bytes = 0;
+                other.m_countsRequest = false;
             }
 
             Reservation& operator=(Reservation&& other) noexcept
@@ -69,8 +71,10 @@ namespace remoted::http
                     releaseIfOwned();
                     m_owner = other.m_owner;
                     m_bytes = other.m_bytes;
+                    m_countsRequest = other.m_countsRequest;
                     other.m_owner = nullptr;
                     other.m_bytes = 0;
+                    other.m_countsRequest = false;
                 }
                 return *this;
             }
@@ -132,12 +136,32 @@ namespace remoted::http
                 return true;
             }
 
+            /**
+             * @brief Make this reservation carry the "one admitted request" count.
+             *
+             * Auxiliary reservations (tryReserveUncounted()) track bytes only. When one of
+             * them becomes the request's resident body -- the decoder swaps the wire buffer
+             * for the decoded one, whose reservation must inherit the request's identity --
+             * promoting it keeps inFlightCount() at exactly one per request while the
+             * original admission reservation is released. Idempotent; no-op on an empty or
+             * already-counting token.
+             */
+            void promoteToRequest() noexcept
+            {
+                if (m_owner != nullptr && !m_countsRequest)
+                {
+                    m_owner->m_inFlightCount.fetch_add(1, std::memory_order_relaxed);
+                    m_countsRequest = true;
+                }
+            }
+
         private:
             friend class InFlightBudget;
 
-            Reservation(InFlightBudget* owner, std::size_t bytes) noexcept
+            Reservation(InFlightBudget* owner, std::size_t bytes, bool countsRequest) noexcept
                 : m_owner {owner}
                 , m_bytes {bytes}
+                , m_countsRequest {countsRequest}
             {
             }
 
@@ -145,14 +169,16 @@ namespace remoted::http
             {
                 if (m_owner != nullptr)
                 {
-                    m_owner->release(m_bytes);
+                    m_owner->release(m_bytes, m_countsRequest);
                     m_owner = nullptr;
                     m_bytes = 0;
+                    m_countsRequest = false;
                 }
             }
 
             InFlightBudget* m_owner {nullptr};
             std::size_t m_bytes {0};
+            bool m_countsRequest {false}; ///< True only for request-admission reservations.
         };
 
         /**
@@ -170,7 +196,11 @@ namespace remoted::http
         InFlightBudget& operator=(const InFlightBudget&) = delete;
 
         /**
-         * @brief Try to reserve @p bytes for one request.
+         * @brief Try to reserve @p bytes for one request (admission).
+         *
+         * This is the request-admission path and the only one that touches the request
+         * ledgers: success counts one more in-flight request, failure counts one shed
+         * (rejectedTotal()) -- the decision the transport turns into a 503.
          *
          * @return An engaged reservation on success, std::nullopt when admitting the
          *         request would exceed the budget. When the budget is disabled the
@@ -178,30 +208,22 @@ namespace remoted::http
          */
         std::optional<Reservation> tryReserve(std::size_t bytes) noexcept
         {
-            if (m_maxBytes == 0)
-            {
-                // Budget disabled: admit unconditionally, still count the request.
-                m_inFlightCount.fetch_add(1, std::memory_order_relaxed);
-                return Reservation {this, 0};
-            }
+            return tryReserveImpl(bytes, /*countsRequest=*/true);
+        }
 
-            std::size_t current = m_availableBytes.load(std::memory_order_relaxed);
-            do
-            {
-                if (bytes > current)
-                {
-                    // Counted here and only here: this is the shed decision the transport turns
-                    // into a 503. Reservation::grow() failing is deliberately NOT counted -- a
-                    // denied grow is not a shed request. Touched only on the rejection path, so
-                    // admissions stay at their current cost.
-                    m_rejectedTotal.fetch_add(1, std::memory_order_relaxed);
-                    return std::nullopt; // would exceed the budget
-                }
-            } while (!m_availableBytes.compare_exchange_weak(
-                current, current - bytes, std::memory_order_acq_rel, std::memory_order_relaxed));
-
-            m_inFlightCount.fetch_add(1, std::memory_order_relaxed);
-            return Reservation {this, bytes};
+        /**
+         * @brief Try to reserve @p bytes of auxiliary memory for an already-admitted request.
+         *
+         * Same byte ledger as tryReserve(), but touches neither request ledger: success does
+         * not count an extra in-flight request (the request already holds its admission
+         * reservation) and failure is not a shed -- the caller answers the admitted request
+         * itself (e.g. 413 when a decompression window does not fit), it does not turn away a
+         * new one. Promote the token (Reservation::promoteToRequest()) if it later becomes
+         * the request's resident body.
+         */
+        std::optional<Reservation> tryReserveUncounted(std::size_t bytes) noexcept
+        {
+            return tryReserveImpl(bytes, /*countsRequest=*/false);
         }
 
         /// @brief Remaining budget in bytes (meaningless while the budget is disabled).
@@ -210,7 +232,8 @@ namespace remoted::http
             return m_availableBytes.load(std::memory_order_relaxed);
         }
 
-        /// @brief Number of requests currently in memory (reserved but not yet released).
+        /// @brief Admitted requests currently in memory. Counts requests, not reservations:
+        ///        auxiliary (uncounted) reservations never show here unless promoted.
         std::size_t inFlightCount() const noexcept
         {
             return m_inFlightCount.load(std::memory_order_relaxed);
@@ -222,7 +245,8 @@ namespace remoted::http
             return m_maxBytes;
         }
 
-        /// @brief Requests tryReserve() has refused since construction (0 while disabled).
+        /// @brief Requests tryReserve() has refused to admit since construction (0 while
+        ///        disabled). Uncounted reservations and denied grows never show here.
         std::uint64_t rejectedTotal() const noexcept
         {
             return m_rejectedTotal.load(std::memory_order_relaxed);
@@ -235,19 +259,60 @@ namespace remoted::http
         }
 
     private:
-        void release(std::size_t bytes) noexcept
+        std::optional<Reservation> tryReserveImpl(std::size_t bytes, bool countsRequest) noexcept
+        {
+            if (m_maxBytes == 0)
+            {
+                // Budget disabled: admit unconditionally, still count admitted requests.
+                if (countsRequest)
+                {
+                    m_inFlightCount.fetch_add(1, std::memory_order_relaxed);
+                }
+                return Reservation {this, 0, countsRequest};
+            }
+
+            std::size_t current = m_availableBytes.load(std::memory_order_relaxed);
+            do
+            {
+                if (bytes > current)
+                {
+                    // Counted here and only here, and only for admissions: this is the shed
+                    // decision the transport turns into a 503. An uncounted (auxiliary)
+                    // reservation failing is not a shed -- the admitted request is answered by
+                    // its caller -- and neither is a denied Reservation::grow(). Touched only
+                    // on the rejection path, so admissions stay at their current cost.
+                    if (countsRequest)
+                    {
+                        m_rejectedTotal.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    return std::nullopt; // would exceed the budget
+                }
+            } while (!m_availableBytes.compare_exchange_weak(
+                current, current - bytes, std::memory_order_acq_rel, std::memory_order_relaxed));
+
+            if (countsRequest)
+            {
+                m_inFlightCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            return Reservation {this, bytes, countsRequest};
+        }
+
+        void release(std::size_t bytes, bool countsRequest) noexcept
         {
             if (bytes != 0)
             {
                 m_availableBytes.fetch_add(bytes, std::memory_order_acq_rel);
             }
-            m_inFlightCount.fetch_sub(1, std::memory_order_relaxed);
+            if (countsRequest)
+            {
+                m_inFlightCount.fetch_sub(1, std::memory_order_relaxed);
+            }
         }
 
         const std::size_t m_maxBytes;              ///< 0 => budget disabled.
         std::atomic<std::size_t> m_availableBytes; ///< Remaining bytes.
         std::atomic<std::size_t> m_inFlightCount {0};
-        std::atomic<std::uint64_t> m_rejectedTotal {0}; ///< Requests refused by tryReserve().
+        std::atomic<std::uint64_t> m_rejectedTotal {0}; ///< Admissions refused by tryReserve().
     };
 
 } // namespace remoted::http

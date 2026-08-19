@@ -96,6 +96,80 @@ TEST(InFlightBudget, RejectedTotalCountsOnlyTryReserveRefusals)
     EXPECT_EQ(disabled.rejectedTotal(), 0U); // disabled budget never sheds
 }
 
+// tryReserveUncounted() is the decoder's path: auxiliary memory for a request that was already
+// admitted. It contends for the same bytes but must be invisible to both request ledgers -- its
+// success is not another in-flight request and its failure is not a shed (the caller answers the
+// admitted request with 413, it does not turn a new one away).
+TEST(InFlightBudget, UncountedReservationTracksBytesOnly)
+{
+    InFlightBudget budget(100);
+
+    {
+        auto aux = budget.tryReserveUncounted(60);
+        ASSERT_TRUE(aux.has_value());
+        EXPECT_EQ(aux->bytes(), 60U);
+        EXPECT_EQ(budget.availableBytes(), 40U); // the bytes ARE charged...
+        EXPECT_EQ(budget.inFlightCount(), 0U);   // ...but no request is counted
+
+        EXPECT_FALSE(budget.tryReserveUncounted(41).has_value());
+        EXPECT_EQ(budget.rejectedTotal(), 0U); // a refused auxiliary reservation is not a shed
+
+        ASSERT_TRUE(aux->grow(40)); // grows against the same byte ledger
+        EXPECT_EQ(budget.availableBytes(), 0U);
+        EXPECT_EQ(budget.inFlightCount(), 0U);
+    }
+
+    // Released like any reservation; the request count was never touched either way.
+    EXPECT_EQ(budget.availableBytes(), 100U);
+    EXPECT_EQ(budget.inFlightCount(), 0U);
+    EXPECT_EQ(budget.rejectedTotal(), 0U);
+
+    InFlightBudget disabled(0);
+    auto aux = disabled.tryReserveUncounted(1U << 30);
+    ASSERT_TRUE(aux.has_value());
+    EXPECT_EQ(disabled.inFlightCount(), 0U); // disabled path is uncounted too
+}
+
+// promoteToRequest() hands an uncounted reservation the request's identity: the decoder promotes
+// the decoded body's reservation right before the wire reservation (which carried the admission
+// count) is dropped, so a compressed request keeps counting as exactly one for its whole life.
+TEST(InFlightBudget, PromoteToRequestCarriesTheRequestCount)
+{
+    InFlightBudget budget(100);
+
+    auto wire = budget.tryReserve(30); // the admission reservation
+    ASSERT_TRUE(wire.has_value());
+    auto decoded = budget.tryReserveUncounted(50); // the decoded body's reservation
+    ASSERT_TRUE(decoded.has_value());
+    EXPECT_EQ(budget.inFlightCount(), 1U); // only the admission counts
+
+    decoded->promoteToRequest();
+    EXPECT_EQ(budget.inFlightCount(), 2U); // the promote/drop overlap double-counts for an instant
+    decoded->promoteToRequest();
+    EXPECT_EQ(budget.inFlightCount(), 2U); // idempotent
+
+    wire.reset(); // the wire buffer is dropped in the decoded body's favor
+    EXPECT_EQ(budget.availableBytes(), 50U);
+    EXPECT_EQ(budget.inFlightCount(), 1U); // the promoted reservation carries the request now
+
+    InFlightBudget::Reservation moved {std::move(*decoded)};
+    EXPECT_EQ(budget.inFlightCount(), 1U); // the move transfers the request count, not duplicates it
+    decoded->promoteToRequest();           // moved-from token: must be a safe no-op
+    EXPECT_EQ(budget.inFlightCount(), 1U);
+
+    {
+        InFlightBudget::Reservation sink {std::move(moved)};
+    }
+    EXPECT_EQ(budget.availableBytes(), 100U);
+    EXPECT_EQ(budget.inFlightCount(), 0U); // releasing the promoted reservation ends the request
+
+    InFlightBudget disabled(0);
+    auto aux = disabled.tryReserveUncounted(123);
+    ASSERT_TRUE(aux.has_value());
+    aux->promoteToRequest();
+    EXPECT_EQ(disabled.inFlightCount(), 1U); // promotion counts even with the byte limit off
+}
+
 TEST(InFlightBudget, MoveConstructTransfersOwnershipAndReleasesOnce)
 {
     InFlightBudget budget(100);

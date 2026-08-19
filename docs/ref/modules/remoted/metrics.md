@@ -77,9 +77,9 @@ never in the per-endpoint `remoted.http.*.responses.*` cells (see
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.server.budget.available.bytes` | gauge (pull) | bytes | Bytes the budget can still admit | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
-| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved by admitted requests | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
-| `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Requests currently holding a reservation | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
-| `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads plus zstd decompression scratch) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Admitted requests currently resident — exactly one per request, compressed or not | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
+| `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503, admission only) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 
 Running with `inflight.bytes` near the configured cap at peak, or `rejected.total` moving,
 means the budget is the active bottleneck: raise
@@ -267,7 +267,10 @@ every `uds_http_server` consumer reports the same vocabulary.
 These rules say what sums to what — read them before comparing families:
 
 - A request shed by the **byte budget** is refused before any route runs: it appears **only**
-  in `remoted.server.budget.rejected.total`, never in a `responses.*` cell.
+  in `remoted.server.budget.rejected.total`, never in a `responses.*` cell. The converse also
+  holds: an *admitted* compressed request whose zstd window or decoded output does not fit the
+  budget is answered **413** and counted only in `remoted.auth.reject.body_too_large` —
+  `budget.rejected.total` is exclusively admission sheds.
 - A **deferred-limiter** shed is the endpoint's answer: it counts **both** as that endpoint's
   `responses.503` and in `remoted.forwarder.deferred.rejected.total`.
 - **Auth-gateway rejections** (401s, 413 at authentication, bad encoding) happen before any
