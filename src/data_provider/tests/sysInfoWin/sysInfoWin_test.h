@@ -60,16 +60,37 @@ class MockEnumWbemClassObject : public IEnumWbemClassObject
 
             return E_NOTIMPL;
         }
-        ULONG STDMETHODCALLTYPE AddRef() override { return 1; }
-        ULONG STDMETHODCALLTYPE Release() override { return 1; }
+        ULONG STDMETHODCALLTYPE AddRef() override
+        {
+            return 1;
+        }
+        ULONG STDMETHODCALLTYPE Release() override
+        {
+            return 1;
+        }
 
         // IEnumWbemClassObject -- only Next() is exercised by QueryWMIHotFixes.
+        // Calltype(STDMETHODCALLTYPE) is required: IEnumWbemClassObject::Next is declared
+        // STDMETHODCALLTYPE (__stdcall), and without a matching call type here the mock's
+        // override has a conflicting calling convention -- a hard compile error under mingw.
         MOCK_METHOD(HRESULT, Next, (long lTimeout, ULONG uCount, IWbemClassObject** apObjects, ULONG* puReturned),
-                    (override));
-        HRESULT STDMETHODCALLTYPE NextAsync(ULONG, IWbemObjectSink*) override { return E_NOTIMPL; }
-        HRESULT STDMETHODCALLTYPE Clone(IEnumWbemClassObject**) override { return E_NOTIMPL; }
-        HRESULT STDMETHODCALLTYPE Skip(long, ULONG) override { return E_NOTIMPL; }
-        HRESULT STDMETHODCALLTYPE Reset() override { return E_NOTIMPL; }
+                    (Calltype(STDMETHODCALLTYPE), override));
+        HRESULT STDMETHODCALLTYPE NextAsync(ULONG, IWbemObjectSink*) override
+        {
+            return E_NOTIMPL;
+        }
+        HRESULT STDMETHODCALLTYPE Clone(IEnumWbemClassObject**) override
+        {
+            return E_NOTIMPL;
+        }
+        HRESULT STDMETHODCALLTYPE Skip(long, ULONG) override
+        {
+            return E_NOTIMPL;
+        }
+        HRESULT STDMETHODCALLTYPE Reset() override
+        {
+            return E_NOTIMPL;
+        }
 };
 
 

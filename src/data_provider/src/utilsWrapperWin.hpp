@@ -88,8 +88,8 @@ constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 15000;
 //  Default arguments are what production code should use; the timeout parameters exist
 //  so tests can exercise the timeout path without a real multi-second wait.
 EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                                long perCallTimeoutMs = WMI_HOTFIX_NEXT_TIMEOUT_MS,
-                                long overallTimeoutMs = WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS);
+                               long perCallTimeoutMs = WMI_HOTFIX_NEXT_TIMEOUT_MS,
+                               long overallTimeoutMs = WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS);
 
 
 // Queries Windows Update Agent (WUA) for installed update history,

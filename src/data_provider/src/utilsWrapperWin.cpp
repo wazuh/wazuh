@@ -98,7 +98,7 @@ std::string BstrToString(BSTR bstr)
 }
 
 void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                       long perCallTimeoutMs, long overallTimeoutMs)
+                      long perCallTimeoutMs, long overallTimeoutMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -148,8 +148,6 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         throw std::runtime_error(oss.str());
     }
 
-    IWbemClassObject* pclsObj = NULL;
-    ULONG uReturn = 0;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(overallTimeoutMs);
 
     while (pEnumerator)
@@ -162,8 +160,11 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         if (now >= deadline)
         {
             pEnumerator->Release();
-            pSvc->Release();
-            pLoc->Release();
+
+            if (pSvc) pSvc->Release();
+
+            if (pLoc) pLoc->Release();
+
             oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
                 << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
             throw std::runtime_error(oss.str());
@@ -174,6 +175,11 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count();
         const long callTimeoutMs = static_cast<long>(std::min<long long>(perCallTimeoutMs, remainingMs));
 
+        // Declared fresh each iteration so a provider that fails without touching
+        // these out-params can't leave a stale, already-Release()'d pclsObj or a
+        // stale nonzero uReturn behind from the previous iteration.
+        IWbemClassObject* pclsObj = NULL;
+        ULONG uReturn = 0;
         const HRESULT nextRes = pEnumerator->Next(callTimeoutMs, 1, &pclsObj, &uReturn);
 
         if (nextRes == WBEM_S_TIMEDOUT)
@@ -181,6 +187,18 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
             // No object was ready within callTimeoutMs -- Winmgmt is slow, not
             // necessarily done enumerating. Loop head re-checks the deadline.
             continue;
+        }
+
+        if (FAILED(nextRes))
+        {
+            pEnumerator->Release();
+
+            if (pSvc) pSvc->Release();
+
+            if (pLoc) pLoc->Release();
+
+            oss << "WMI: hotfix enumeration failed. Code: " << std::hex << nextRes;
+            throw std::runtime_error(oss.str());
         }
 
         if (0 == uReturn)

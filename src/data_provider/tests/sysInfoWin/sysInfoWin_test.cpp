@@ -204,6 +204,35 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationTimeoutThrows)
                  std::runtime_error);
 }
 
+// Regression test: a hard COM failure from Next() (e.g. a dropped remote WMI transport
+// mid-enumeration) must make QueryWMIHotFixes give up and throw immediately, not fall
+// through to the uReturn==0 check with stale state from a prior iteration.
+TEST_F(SysInfoWinTest, WmiHotfixEnumerationNextFailureThrows)
+{
+    MockComHelper mockComHelper;
+    MockEnumWbemClassObject mockEnum;
+    std::set<std::string> hotfixSet;
+
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
+    .WillOnce(testing::Return(S_OK));
+
+    EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_))
+    .WillOnce(testing::DoAll(
+                  testing::SetArgReferee<1>(&mockEnum),
+                  testing::Return(S_OK)));
+
+    EXPECT_CALL(mockEnum, Next(testing::_, testing::_, testing::_, testing::_))
+    .WillOnce(testing::Return(WBEM_E_TRANSPORT_FAILURE));
+
+    EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
+}
+
 TEST_F(SysInfoWinTest, WmiPopulatesWMIHotfixSetCorrectly)
 {
     std::set<std::string> hotfixSet;
