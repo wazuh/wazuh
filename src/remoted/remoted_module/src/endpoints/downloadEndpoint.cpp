@@ -11,7 +11,10 @@
 
 #include "downloadEndpoint.hpp"
 
+#include "auth/wpkId.hpp"
 #include "loggerHelper.h"
+
+#include <chrono>
 
 #include <rapidjson/document.h>
 
@@ -110,6 +113,20 @@ namespace
     const char* resourceTypeName(remoted::endpoints::download::ResourceType type)
     {
         return type == remoted::endpoints::download::ResourceType::Config ? RESOURCE_TYPE_CONFIG : RESOURCE_TYPE_WPK;
+    }
+
+    /// The authenticated agent id as a number. The middleware already validated it, so a parse
+    /// failure is unreachable; 0 is safe either way, since nothing is ever issued to agent 0.
+    std::uint32_t parseAgentId(const std::string& agentId)
+    {
+        try
+        {
+            return static_cast<std::uint32_t>(std::stoul(agentId));
+        }
+        catch (...)
+        {
+            return 0;
+        }
     }
 
     /// errno -> the error a failed open maps to. Absent or wrong-typed is a plain 404; anything
@@ -321,6 +338,50 @@ namespace remoted::endpoints::download
         }
 
         return name;
+    }
+
+    /**
+     * @brief Resolve a signed identifier, if that is what the agent presented.
+     *
+     * A signed identifier is a legal WPK filename by construction, so it arrives through the
+     * ordinary `wpk` form and the parser is untouched. Resolution differs: the package is found
+     * from the signed TASK ID, not from a name the agent chose. Every node that fetched the package
+     * for that task also linked it under `<wpkDir>/<task_id>.wpk`, so this is a plain open with no
+     * database behind it -- the property #38022 established stays intact.
+     *
+     * @return true if @p request was a signed identifier, in which case @p out is the answer,
+     *         including the 404 that every failure collapses to.
+     */
+    bool resolveSignedId(const DownloadRequest& request,
+                         const std::string& agentId,
+                         const ResourcePaths& paths,
+                         LocateResult& out)
+    {
+        if (request.type != ResourceType::Wpk || !remoted::auth::looksLikeSignedId(request.resourceId))
+        {
+            return false;
+        }
+
+        const auto now = static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count());
+
+        remoted::auth::WpkIdClaims claims;
+        if (!remoted::auth::wpkIdKey().verify(request.resourceId, parseAgentId(agentId), now, claims))
+        {
+            // Forged, expired, issued to somebody else, or simply a package whose name happens to
+            // look like this. One answer for all of them, indistinguishable from a missing file.
+            // Client-controlled in volume, so DEBUG2 and unthrottled.
+            LOGFN_DEBUG2(logFn(), "Agent '%s' presented an identifier that did not verify.", agentId.c_str());
+            out = LocateResult {{}, LocateError::NotFound};
+            return true;
+        }
+
+        const std::string task = remoted::auth::taskIdToString(claims.taskId);
+        LOGFN_DEBUG1(logFn(), "Agent '%s' redeemed an identifier for task '%s'.", agentId.c_str(), task.c_str());
+
+        out = LocateResult {joinPath(paths.wpkDir, task + ".wpk"), LocateError::None};
+        return true;
     }
 
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths)
@@ -536,7 +597,17 @@ namespace remoted::endpoints::download
             const auto& downloadRequest = std::get<DownloadRequest>(parsed);
             const std::string agentId = request->agentId;
 
-            const auto located = locateResource(downloadRequest, paths);
+            LocateResult located;
+            if (!resolveSignedId(downloadRequest, agentId, paths, located))
+            {
+                located = locateResource(downloadRequest, paths);
+            }
+
+            if (located.error != LocateError::None)
+            {
+                responder->send(errorResponseFor(located.error));
+                return;
+            }
 
             // The body has served its purpose. Releasing here -- rather than letting the request die
             // with the handler -- returns its in-flight byte reservation before a transfer that may

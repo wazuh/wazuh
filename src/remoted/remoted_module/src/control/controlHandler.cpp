@@ -10,6 +10,7 @@
  */
 
 #include "controlHandler.hpp"
+#include "auth/wpkId.hpp"
 #include "common/logThrottle.hpp"
 #include "common/vdClient.hpp"
 #include "json.hpp"
@@ -21,6 +22,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <thread>
 #include <utility>
 
@@ -116,6 +118,132 @@ namespace remoted::control
                     return 1;
             }
             return 0;
+        }
+
+        /// The 16 raw bytes a UUID-shaped task id renders. Zeroes if it does not parse, which
+        /// only costs the correlation handle in a log line.
+        std::array<std::uint8_t, 16> rawTaskDigest(const std::string& id)
+        {
+            std::array<std::uint8_t, 16> raw {};
+            std::size_t written {0};
+            int high {-1};
+            for (const char c : id)
+            {
+                if (c == '-')
+                {
+                    continue;
+                }
+                int nibble;
+                if (c >= '0' && c <= '9')
+                {
+                    nibble = c - '0';
+                }
+                else if (c >= 'a' && c <= 'f')
+                {
+                    nibble = c - 'a' + 10;
+                }
+                else if (c >= 'A' && c <= 'F')
+                {
+                    nibble = c - 'A' + 10;
+                }
+                else
+                {
+                    return {};
+                }
+                if (high < 0)
+                {
+                    high = nibble;
+                }
+                else
+                {
+                    if (written == raw.size())
+                    {
+                        return {};
+                    }
+                    raw[written++] = static_cast<std::uint8_t>((high << 4) | nibble);
+                    high = -1;
+                }
+            }
+            return (written == raw.size() && high < 0) ? raw : std::array<std::uint8_t, 16> {};
+        }
+
+        /**
+         * @brief Link the package under its task id, so /download can resolve without a lookup.
+         *
+         * A HARD link, not a symlink: `/download` opens with `O_NOFOLLOW`, which refuses a symlink
+         * outright. A hard link is another name for the same inode, indistinguishable from the
+         * original, so nothing downstream changes.
+         *
+         * In production this belongs where the node fetches the package for the task. Doing it at
+         * delivery is a prototype stand-in that keeps the PoC to one module. Because the task id is
+         * derived from shared inputs, every node names its own copy identically, which is what lets
+         * whichever node answers `/download` redeem what another node issued.
+         */
+        bool linkPackageForTask(const std::string& wpkDir, const std::string& wpkFile, const std::string& taskId)
+        {
+            const std::string target = wpkDir + "/" + wpkFile;
+            const std::string alias = wpkDir + "/" + taskId + ".wpk";
+
+            if (::link(target.c_str(), alias.c_str()) == 0 || errno == EEXIST)
+            {
+                return true;
+            }
+            LOGFN_DEBUG1(logFn(), "Could not link '%s' as '%s': %s.", target.c_str(), alias.c_str(), strerror(errno));
+            return false;
+        }
+
+        /**
+         * @brief Replace `wpk_file` with a signed identifier for the same package.
+         *
+         * No gate: the identifier is spelled as a legal WPK filename, so every deployed agent
+         * already handles it. Nothing to negotiate, no version to compare, and so no way to guess
+         * wrong and cost an agent an upgrade it will never be re-offered.
+         *
+         * Done at DELIVERY, not at task creation, so the STORED row keeps the real filename. That
+         * is what leaves the 4.x push path untouched, and it starts the expiry clock when the agent
+         * actually receives the work.
+         *
+         * Fails toward the plain filename whenever it cannot sign or cannot link, which makes an
+         * unusable cluster key a degradation rather than an outage.
+         */
+        bool substituteSignedId(AgentId id, const Task& task, const std::string& wpkDir, nlohmann::json& payload)
+        {
+            if (task.type != "remote_upgrade" || !payload.is_object())
+            {
+                return false;
+            }
+            const auto wpkFile = payload.find("wpk_file");
+            if (wpkFile == payload.end() || !wpkFile->is_string())
+            {
+                return false;
+            }
+
+            const auto& key = remoted::auth::wpkIdKey();
+            if (!key.usable())
+            {
+                return false;
+            }
+
+            remoted::auth::WpkIdClaims claims;
+            claims.subject = id;
+            claims.expiresAt = static_cast<std::uint32_t>(getWallSec() + remoted::auth::kIdTtlSeconds);
+            claims.taskId = rawTaskDigest(task.id);
+
+            if (!linkPackageForTask(wpkDir, wpkFile->get<std::string>(), task.id))
+            {
+                return false;
+            }
+
+            const std::string signed_ = key.sign(claims);
+            if (signed_.empty())
+            {
+                return false;
+            }
+
+            // Never both: sending the name beside the identifier would hand back what the
+            // identifier exists to withhold.
+            payload["wpk_file"] = signed_;
+            return true;
         }
 
         // Rebuild the raw group CSV wdb returned (no URL-encoding, matches wdb).
@@ -472,7 +600,8 @@ namespace remoted::control
 
             m_taskClient->getPendingTasks(
                 id,
-                [this, refreshedEntry, callback = std::move(callback)](SocketError, std::vector<Task> tasks) mutable
+                [this, id, refreshedEntry, callback = std::move(callback)](SocketError,
+                                                                            std::vector<Task> tasks) mutable
                 {
                     const std::string groupsCsv = toGroupsCsv(refreshedEntry->groups);
                     const std::string mergedPath = m_hashCache->getMergedMgPath(groupsCsv);
@@ -491,10 +620,20 @@ namespace remoted::control
                     nlohmann::json tasksJson = nlohmann::json::array();
                     for (const auto& task : tasks)
                     {
+                        nlohmann::json payload = task.payload;
+
+                        if (substituteSignedId(id, task, "var/upgrade", payload))
+                        {
+                            LOGFN_DEBUG1(logFn(),
+                                         "Agent %u: issued a signed identifier for task %s.",
+                                         id,
+                                         task.id.c_str());
+                        }
+
                         nlohmann::json taskJson;
                         taskJson["task_id"] = task.id;
                         taskJson["task_type"] = task.type;
-                        taskJson["payload"] = task.payload;
+                        taskJson["payload"] = std::move(payload);
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
