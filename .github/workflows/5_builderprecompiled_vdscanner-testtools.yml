@@ -7,7 +7,7 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/include/**"
       - "src/wazuh_modules/vulnerability_scanner/qa/**"
-      - "src/wazuh_modules/inventory_sync/**"
+      - "src/wazuh_modules/inventory_sync_server/**"
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
   workflow_dispatch:
 
@@ -48,10 +48,10 @@ jobs:
       - name: Build external dependencies
         uses: ./.github/actions/build_external_deps
 
-      - name: Build inventory_sync testtool
+      - name: Build inventory_sync_server testtool
         uses: ./.github/actions/build_target_cpp
         with:
-          target: "inventory_sync_testtool"
+          target: "inventory_sync_server_testtool"
           test: "false"
           asan: "false"
 
@@ -61,13 +61,12 @@ jobs:
           mkdir -p ${TOOLS_STAGING}/scanner
 
           # Copy binaries
-          cp ${{ env.BUILD_DIR }}/bin/inventory_sync_testtool ${TOOLS_STAGING}/scanner/
+          cp ${{ env.BUILD_DIR }}/bin/inventory_sync_server_testtool ${TOOLS_STAGING}/scanner/
 
           # Copy shared libraries from build/lib
           for lib in \
-            libinventory_sync.so \
+            libinventory_sync_server.so \
             libvulnerability_scanner.so \
-            librouter.so \
             libindexer_connector.so \
             libwazuhext.so \
             libcontent_manager.so \
