@@ -31,6 +31,7 @@ namespace remoted::control
         uint64_t lastKeepaliveUpdateSec = 0;
         uint64_t lastActivitySec = 0;
         uint64_t createdAtSec = 0;
+        bool hostPersisted = false;
     };
 
     class AgentRegistry

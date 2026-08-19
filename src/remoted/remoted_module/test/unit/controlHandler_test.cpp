@@ -184,9 +184,15 @@ namespace
         std::shared_ptr<remoted::common::VdClient> vdClient;
         std::unique_ptr<ControlHandler> handler;
 
-        HandlerFixture(std::shared_ptr<WdbRouter> wdb, std::function<std::string(const std::string&)> taskResp)
+        HandlerFixture(std::shared_ptr<WdbRouter> wdb,
+                       std::function<std::string(const std::string&)> taskResp,
+                       std::function<void(Config&)> tweakCfg = {})
             : cfg(makeConfig(env))
         {
+            if (tweakCfg)
+            {
+                tweakCfg(cfg);
+            }
             wdbServer = std::make_unique<FakeUdsServer>(env.wdbPath, [wdb](const std::string& r) { return (*wdb)(r); });
             taskServer = std::make_unique<FakeUdsServer>(env.taskPath, std::move(taskResp));
 
@@ -308,6 +314,48 @@ TEST(ControlHandlerTest, StartupHappyPathReturns200WithGroupsAndClusterEnvelope)
     auto entry = h.registry->get(42);
     ASSERT_TRUE(entry);
     EXPECT_EQ(entry->groups.size(), 2U);
+}
+
+TEST(ControlHandlerTest, StartupPersistsAcceptedVersionWithOkStatusCode)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; });
+
+    StartupData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(7, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    // Three commands expected: select-agent-group plus the two fire-and-forget
+    // writes (pending keepalive and status-code/version persistence).
+    for (int i = 0; i < 200 && wdb->commands().size() < 3; ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    bool sawPendingKeepalive = false;
+    bool sawVersionPersist = false;
+    for (const auto& c : wdb->commands())
+    {
+        if (c.find("global update-keepalive") != std::string::npos &&
+            c.find("\"connection_status\":\"pending\"") != std::string::npos)
+        {
+            sawPendingKeepalive = true;
+        }
+        // The accepted version must land in wdb at startup: the notify path only
+        // persists it together with host metadata, which the agent may take a
+        // while to report, and GET /agents must not show a versionless agent.
+        if (c.find("global update-status-code") != std::string::npos &&
+            c.find("\"status_code\":0") != std::string::npos &&
+            c.find("\"version\":\"5.0.0\"") != std::string::npos)
+        {
+            sawVersionPersist = true;
+        }
+    }
+    EXPECT_TRUE(sawPendingKeepalive);
+    EXPECT_TRUE(sawVersionPersist);
 }
 
 TEST(ControlHandlerTest, StartupFallsBackToDefaultGroupOnEmptyWdbCsv)
@@ -440,6 +488,79 @@ TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
     auto j = nlohmann::json::parse(w.value.body);
     // sha256("hello") -- verifies the hash cache picks up the file we wrote.
     EXPECT_EQ(j["agent"]["config_hash"], "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+}
+
+TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    HandlerFixture h(
+        wdb,
+        [](const std::string&) { return "{\"status\":\"ok\",\"tasks\":[]}"; },
+        [](Config& c) { c.keepaliveThrottleSec = 3600; });
+
+    // First notify carries no host metadata (agent_info has not populated it
+    // yet): a lightweight keepalive is written and stamps the throttle window.
+    NotifyData bare;
+    bare.version = "5.0.0";
+    Waiter<HttpResponse> w1;
+    h.handler->handleNotify(1, bare, [&](const HttpResponse& r) { w1.complete(r); });
+    ASSERT_TRUE(w1.wait(3000ms));
+    EXPECT_EQ(w1.value.status, 200);
+
+    NotifyData withHost;
+    withHost.version = "5.0.0";
+    HostInfo host;
+    host.hostname = "mac01";
+    host.ip = "127.0.0.1";
+    host.osName = "macOS";
+    host.osVersion = "26.0";
+    host.osPlatform = "darwin";
+    host.architecture = "arm64";
+    host.osType = "macos";
+    withHost.host = host;
+
+    // Second notify brings host metadata inside the throttle window: it must
+    // still produce a full update, or the agent stays without version/os data
+    // in the API until the window expires.
+    Waiter<HttpResponse> w2;
+    h.handler->handleNotify(1, withHost, [&](const HttpResponse& r) { w2.complete(r); });
+    ASSERT_TRUE(w2.wait(3000ms));
+    EXPECT_EQ(w2.value.status, 200);
+
+    // Third notify with host inside the window: host data is persisted now, so
+    // the throttle applies again and no further write is issued.
+    Waiter<HttpResponse> w3;
+    h.handler->handleNotify(1, withHost, [&](const HttpResponse& r) { w3.complete(r); });
+    ASSERT_TRUE(w3.wait(3000ms));
+    EXPECT_EQ(w3.value.status, 200);
+
+    // Expected wdb traffic: one select per notify (groupsRefreshIntervalSec=0),
+    // one lightweight keepalive and exactly one full update.
+    for (int i = 0; i < 200 && wdb->commands().size() < 5; ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    std::this_thread::sleep_for(50ms); // settle so a stray extra write would be visible
+
+    size_t fullUpdates = 0;
+    size_t lightweightKeepalives = 0;
+    for (const auto& c : wdb->commands())
+    {
+        if (c.find("global update-agent-data") != std::string::npos)
+        {
+            ++fullUpdates;
+            EXPECT_NE(c.find("\"version\":\"5.0.0\""), std::string::npos);
+            EXPECT_NE(c.find("\"os_name\":\"macOS\""), std::string::npos);
+        }
+        if (c.find("global update-keepalive") != std::string::npos &&
+            c.find("\"connection_status\":\"active\"") != std::string::npos)
+        {
+            ++lightweightKeepalives;
+        }
+    }
+    EXPECT_EQ(fullUpdates, 1U);
+    EXPECT_EQ(lightweightKeepalives, 1U);
 }
 
 // =============================================================================

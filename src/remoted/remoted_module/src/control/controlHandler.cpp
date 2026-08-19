@@ -273,6 +273,14 @@ namespace remoted::control
                                                 m_config.isWorkerNode ? "syncreq_status" : "synced";
                                             m_wdbClient->updateKeepalive(id, "pending", syncStatus, [](SocketError) {});
 
+                                            // The accepted version is persisted here and not left to the notify
+                                            // path: notify only writes it alongside host metadata, which the agent
+                                            // omits until agent_info populates it, so the agent would otherwise be
+                                            // visible through the API without a version for the first keepalives.
+                                            // This also clears any status_code left by a previously rejected startup.
+                                            m_wdbClient->updateStatusCode(
+                                                id, AgentStatusCode::Ok, version, syncStatus, [](SocketError) {});
+
                                             nlohmann::json response;
                                             response["limits"] = m_config.limits;
                                             response["cluster"]["name"] = m_config.clusterName;
@@ -431,10 +439,15 @@ namespace remoted::control
 
                     if (data.host)
                     {
-                        // Always write host info if throttle has expired
-                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        // The first host-carrying notify bypasses the throttle: the agent may
+                        // send its first notifies without host metadata (agent_info populates
+                        // it asynchronously), and those lightweight writes must not delay the
+                        // first full update, or the agent stays without os data in the API for
+                        // a whole throttle window.
+                        if (!e->hostPersisted || now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
                         {
                             e->lastKeepaliveUpdateSec = now;
+                            e->hostPersisted = true;
                             doWrite = true;
                             doFullUpdate = true;
                         }
