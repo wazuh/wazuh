@@ -14,6 +14,7 @@
 #include "wmodules.h"
 #include "module_query_errors.h"
 #include "os_net.h"
+#include <signal.h>
 #include <sys/stat.h>
 #include "sha256_op.h"
 #include "expression.h"
@@ -899,6 +900,10 @@ int wm_sca_sync_message(const char *command, size_t command_len) {
 DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 #endif
     bool first_sync_completed = false;
     bool wait_before_sync = true;

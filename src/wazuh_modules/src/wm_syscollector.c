@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <signal.h>
 #include <stdlib.h>
 #include "wmodules_def.h"
 #include "syscollector.h"
@@ -976,6 +977,10 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void* args)
 #else
 void* wm_sync_module(__attribute__((unused)) void* args)
 {
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 #endif
     bool first_sync_completed = false;
     bool wait_before_sync = true;

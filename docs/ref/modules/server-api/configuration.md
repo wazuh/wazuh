@@ -110,7 +110,7 @@ cors:
   allow_headers: "*"
   allow_credentials: false
 access:
-  max_login_attempts: 5
+  max_login_attempts: 50
   block_time: 300
   max_request_per_minute: 300
 upload_configuration:
@@ -193,6 +193,27 @@ auth_token_exp_timeout: 1800  # 30 minutes
 rbac_mode: white
 ```
 
+### Upload Configuration: Remote Commands
+
+In addition to `agents.allow_higher_versions` and `indexer.allow`, `upload_configuration` also accepts a `remote_commands` block that controls whether remote configuration changes are allowed to enable `localfile` commands and `wodle` `command` blocks on agents. Each sub-option takes an `allow` boolean and an optional `exceptions` list of strings that are exempted from the `allow` setting:
+
+```yaml
+upload_configuration:
+  remote_commands:
+    localfile:
+      allow: false
+      exceptions:
+        - "/path/to/allowed/command"
+    wodle_command:
+      allow: false
+      exceptions:
+        - "allowed-wodle-command"
+```
+
+- **`remote_commands.localfile.allow`** / **`remote_commands.wodle_command.allow`** — when `false`, remotely pushed `<localfile>` command directives or `<wodle command>` blocks are rejected unless they match an entry in `exceptions`.
+- **`remote_commands.localfile.exceptions`** / **`remote_commands.wodle_command.exceptions`** — list of commands allowed even when `allow` is `false`.
+- There is no built-in default for `remote_commands`; like the rest of `upload_configuration`, it must be explicitly configured to take effect.
+
 ---
 
 ## Framework Configuration
@@ -273,6 +294,8 @@ cache:
   enabled: true
   time: 0.750  # 750ms cache lifetime
 ```
+
+**Note:** Unlike the other settings on this page, `cache` has no entry in the API's built-in defaults — it is entirely opt-in and has no effect unless it is explicitly added to `api.yaml` with `enabled: true`.
 
 **Recommendations:**
 - Enable for production environments

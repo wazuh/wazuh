@@ -32,7 +32,7 @@
 | [#35881](https://github.com/wazuh/wazuh/issues/35881) | Reduced `wazuh-manager` Debian package dependencies, removed `adduser`, `lsb-release`, `debconf`, and `libc6`. |
 | [#29734](https://github.com/wazuh/wazuh/issues/29734) | Upgraded external dependencies: `curl`, `sqlite`, `xz`, and `libarchive`. |
 | [#34479](https://github.com/wazuh/wazuh/issues/34479) | Implemented cooperative-cancellation graceful termination for `wmodules`. |
-| [#35358](https://github.com/wazuh/wazuh/pull/35358) | Included source IP in `wazuh-remoted` log messages. |
+| [#35358](https://github.com/wazuh/wazuh/pull/35358) | Included source IP in `wazuh-manager-remoted` log messages. |
 | [#35478](https://github.com/wazuh/wazuh/issues/35478) | Preserved manager configuration files during package upgrades. |
 | [#35479](https://github.com/wazuh/wazuh/issues/35479) | Improved Wazuh server directory layout. |
 | [#35525](https://github.com/wazuh/wazuh/issues/35525) | Updated manager index names to align with the new sync model. |
@@ -40,9 +40,10 @@
 | [#36805](https://github.com/wazuh/wazuh/issues/36805) | Randomized the cluster key generated during manager installation instead of using a hardcoded default. |
 | [#36311](https://github.com/wazuh/wazuh/issues/36311) | Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. |
 | [#36705](https://github.com/wazuh/wazuh/issues/36705) | Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. |
-| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
+| [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-manager-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
+| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Renamed the communications metrics data stream to `wazuh-metrics-comms-v4`. It holds the statistics of the legacy communication protocol, which only agents below v5.0.0 use. |
 
 #### Removed
 
@@ -56,6 +57,7 @@
 | [#28425](https://github.com/wazuh/wazuh/issues/28425) | Removed legacy API security configuration endpoints. |
 | [#35908](https://github.com/wazuh/wazuh/issues/35908) | Removed SELinux integration from the manager. |
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
+| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Removed the `states`, `sent_breakdown.ar` and `sent_breakdown.request` counters from the `wazuh-manager-remoted` statistics served by `GET /cluster/{node_id}/daemons/stats`. None of them has a writer left in 5.0, so all three reported a constant zero. |
 
 #### Fixed
 
@@ -63,10 +65,11 @@
 |-------|---------|
 | [#31746](https://github.com/wazuh/wazuh/issues/31746) | Fixed Vulnerability Detector version matcher logic for improved detection accuracy. |
 | [#33108](https://github.com/wazuh/wazuh/issues/33108) | Fixed Cloudtrail log ingestion parsing errors. |
-| [#34082](https://github.com/wazuh/wazuh/issues/34082) | Fixed `wazuh-db` error assigning groups by avoiding the keyentries counter as index. |
+| [#34082](https://github.com/wazuh/wazuh/issues/34082) | Fixed `wazuh-manager-db` error assigning groups by avoiding the keyentries counter as index. |
 | [#35043](https://github.com/wazuh/wazuh/issues/35043) | Fixed token validation race condition after revoke. |
 | [#35638](https://github.com/wazuh/wazuh/issues/35638) | Handled the stop signal during vulnerability feed download. |
 | [#37521](https://github.com/wazuh/wazuh/issues/37521) | Fixed `GET /cluster/{node_id}/daemons/stats` always returning error 1014 for `wazuh-manager-analysisd` due to a protocol mismatch between `WazuhSocketJSON` and the engine's HTTP API socket. |
+| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Fixed the `upgrade_ack` counter in `wazuh-manager-remoted` statistics, which reported a constant zero because its increment function was missing. |
 
 ### Agent
 
@@ -133,4 +136,5 @@
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failure on shutdown, which logged "Invalid handle value", crashed the process and left a stale PID file. |
 | [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
+| [#38065](https://github.com/wazuh/wazuh/issues/38065) | Fixed SCA and Syscollector sync threads not blocking `SIGTERM`, which could cause the shutdown handler to run on a module thread instead of the main thread and time out joining it. |
 

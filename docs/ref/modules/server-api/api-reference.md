@@ -347,7 +347,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
-| GET | `/agents/uninstall` | Uninstall agents |
+| GET | `/agents/uninstall` | Check whether the calling user has permission to uninstall the given agents |
 | GET | `/agents/stats/distinct` | Distinct fields |
 | GET | `/agents/summary` | Summary |
 | GET | `/agents/summary/os` | OS summary |

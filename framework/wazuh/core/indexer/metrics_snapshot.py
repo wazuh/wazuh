@@ -185,7 +185,7 @@ class MetricsSnapshotTasks:
         Returns
         -------
         list of dict
-            Documents ready for bulk indexing into ``wazuh-metrics-comms``.
+            Documents ready for bulk indexing into ``wazuh-metrics-comms-v4``.
             Each document contains the remoted stats fields plus the metadata
             fields ``@timestamp``, ``wazuh.cluster.node``, and
             ``wazuh.cluster.name``.
@@ -399,7 +399,7 @@ class MetricsSnapshotTasks:
         Returns
         -------
         dict
-            Normalized document ready for indexing into ``wazuh-metrics-comms``.
+            Normalized document ready for indexing into ``wazuh-metrics-comms-v4``.
         """
         # v5.0 nests stats under "metrics"; fall back to flat keys for compat
         m = doc.get("metrics", {})
@@ -418,7 +418,6 @@ class MetricsSnapshotTasks:
         raw_tcp_sessions = m.get("tcp_sessions")
         raw_evt_total = msgs_recv.get("events")
         raw_evt_failed = msgs_recv.get("events_failed")
-        raw_states = msgs_recv.get("states")
         raw_upgrade_ack = msgs_recv.get("upgrade_ack")
         raw_discarded = msgs_recv.get("discarded")
         raw_sent_bytes = bytes_info.get("sent")
@@ -508,7 +507,6 @@ class MetricsSnapshotTasks:
                             else doc.get("ctrl_msg_processed")
                         },
                     },
-                    "states": {"total": raw_states},
                     "upgrades": {"total": raw_upgrade_ack},
                 },
             }
@@ -659,7 +657,7 @@ class MetricsSnapshotTasks:
             )
         if comms_schema:
             comms_docs = self._validate_documents(
-                comms_docs, comms_schema, "wazuh-metrics-comms"
+                comms_docs, comms_schema, "wazuh-metrics-comms-v4"
             )
         if normalization_schema:
             normalization_docs = self._validate_documents(
@@ -672,7 +670,7 @@ class MetricsSnapshotTasks:
                     "wazuh-metrics-agents", agent_docs, self.bulk_size
                 ),
                 indexer.metrics.bulk_index(
-                    "wazuh-metrics-comms", comms_docs, self.bulk_size
+                    "wazuh-metrics-comms-v4", comms_docs, self.bulk_size
                 ),
                 indexer.metrics.bulk_index(
                     "wazuh-metrics-normalization", normalization_docs, self.bulk_size

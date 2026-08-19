@@ -2242,6 +2242,11 @@ bool __wrap_legacy_task_process_upgrade_ack(const char *agent_id, const char *ac
 /* The agent's upgrade ack must now fall through to the normal event path (like any other
  * agent message) instead of being discarded. Covers all three known ack shapes -- the interception
  * in discard_legacy_agent_message() is header-prefix-only, so all three must behave identically. */
+/* When batch_queue_enqueue_ex is mocked as successful the production code
+ * relinquishes ownership of the evt_item; capture it here so the test can
+ * dispose it after HandleSecureMessage returns. */
+static evt_item_t *g_captured_evt_item;
+
 static int check_evt_item_matches_ack(const LargestIntegralType value,
                                       const LargestIntegralType check_value_data) {
     evt_item_t *e = (evt_item_t *)(uintptr_t)value;
@@ -2250,10 +2255,11 @@ static int check_evt_item_matches_ack(const LargestIntegralType value,
     assert_non_null(e->raw);
     assert_int_equal(e->len, strlen(expected));
     assert_memory_equal(e->raw, expected, e->len);
+    g_captured_evt_item = e;
     return 1;
 }
 
-static void run_upgrade_ack_forwarded_test(const char *ack_json) {
+static void run_upgrade_ack_forwarded_test(const char *ack_json, int enqueue_rc) {
     char buffer[OS_MAXSTR + 1];
     snprintf(buffer, sizeof(buffer), "u:upgrade_module:%s", ack_json);
     message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
@@ -2307,21 +2313,34 @@ static void run_upgrade_ack_forwarded_test(const char *ack_json) {
     expect_string(__wrap_legacy_task_process_upgrade_ack, ack_json, ack_json);
     will_return(__wrap_legacy_task_process_upgrade_ack, true);
 
+    expect_function_call(__wrap_rem_inc_recv_upgrade_ack);
+
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Upgrade acknowledgment from agent '001' routed to the normal event path");
 
     // discard_legacy_agent_message() returns false for this header -> falls through to the
     // ordinary batch_queue_enqueue_ex path, with the exact raw message unmodified.
+    g_captured_evt_item = NULL;
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_matches_ack,
                  (LargestIntegralType)(uintptr_t)buffer);
-    will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_value(__wrap_time, time, NULL);
-    will_return(__wrap_time, 0);
-    expect_function_call(__wrap_rem_inc_recv_events_failed);
+    will_return(__wrap_batch_queue_enqueue_ex, enqueue_rc);
+    if (enqueue_rc < 0) {
+        expect_value(__wrap_time, time, NULL);
+        will_return(__wrap_time, 0);
+        expect_function_call(__wrap_rem_inc_recv_events_failed);
+    } else {
+        expect_function_call(__wrap_rem_inc_recv_events);
+    }
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    /* The mocked queue did not actually take ownership; release the item. */
+    if (enqueue_rc >= 0 && g_captured_evt_item) {
+        dispose_evt_item(g_captured_evt_item);
+        g_captured_evt_item = NULL;
+    }
 
     os_free(key->id);
     os_free(key->name);
@@ -2337,7 +2356,7 @@ void test_HandleSecureMessage_upgrade_ack_success_forwarded(void** state)
     (void) state;
     run_upgrade_ack_forwarded_test(
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
-        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}", -1);
 }
 
 void test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded(void** state)
@@ -2345,7 +2364,7 @@ void test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded(void** st
     (void) state;
     run_upgrade_ack_forwarded_test(
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":1,"
-        "\"message\":\"Upgrade failed due missing dependency\",\"status\":\"Failed\"}}");
+        "\"message\":\"Upgrade failed due missing dependency\",\"status\":\"Failed\"}}", -1);
 }
 
 void test_HandleSecureMessage_upgrade_ack_failed_forwarded(void** state)
@@ -2353,7 +2372,17 @@ void test_HandleSecureMessage_upgrade_ack_failed_forwarded(void** state)
     (void) state;
     run_upgrade_ack_forwarded_test(
         "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,"
-        "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
+        "\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}", -1);
+}
+
+/* The ack is counted twice on purpose: once as an upgrade ack, and once as an event, because after
+ * being processed it travels the ordinary event path. This is the enqueue-succeeds side of it. */
+void test_HandleSecureMessage_upgrade_ack_enqueued_counted_as_event(void** state)
+{
+    (void) state;
+    run_upgrade_ack_forwarded_test(
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}", 0);
 }
 
 /* Companion test: discard_legacy_agent_message() itself must return false for this header (callers
@@ -2369,6 +2398,25 @@ void test_discard_legacy_agent_message_upgrade_ack_returns_false(void** state)
                   "{\"command\":\"upgrade_update_status\",\"parameters\":"
                   "{\"error\":0,\"message\":\"Upgrade was successful\",\"status\":\"Done\"}}");
     will_return(__wrap_legacy_task_process_upgrade_ack, true);
+
+    expect_function_call(__wrap_rem_inc_recv_upgrade_ack);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Upgrade acknowledgment from agent '001' routed to the normal event path");
+
+    assert_false(discard_legacy_agent_message(msg, "001"));
+}
+
+/* A message carrying the ack header but not a well-formed upgrade_update_status must not be
+ * counted. No expectation is set on the counter wrapper, so cmocka fails if it fires. */
+void test_discard_legacy_agent_message_upgrade_ack_malformed_not_counted(void** state)
+{
+    (void) state;
+    char msg[] = "u:upgrade_module:{\"command\":\"not_an_upgrade_ack\"}";
+
+    expect_string(__wrap_legacy_task_process_upgrade_ack, agent_id, "001");
+    expect_string(__wrap_legacy_task_process_upgrade_ack, ack_json, "{\"command\":\"not_an_upgrade_ack\"}");
+    will_return(__wrap_legacy_task_process_upgrade_ack, false);
 
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Upgrade acknowledgment from agent '001' routed to the normal event path");
@@ -2527,11 +2575,6 @@ static int check_evt_item_sentinel(const LargestIntegralType value,
     assert_int_equal('\0', e->raw[e->len]);
     return 1;
 }
-
-/* When batch_queue_enqueue_ex is mocked as successful the production code
- * relinquishes ownership of the evt_item; capture it here so the test can
- * dispose it after HandleSecureMessage returns. */
-static evt_item_t *g_captured_evt_item;
 
 static int check_evt_item_capture(const LargestIntegralType value,
                                   const LargestIntegralType check_value_data) {
@@ -3502,7 +3545,9 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_success_forwarded),
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_missing_dependency_forwarded),
         cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_failed_forwarded),
+        cmocka_unit_test(test_HandleSecureMessage_upgrade_ack_enqueued_counted_as_event),
         cmocka_unit_test(test_discard_legacy_agent_message_upgrade_ack_returns_false),
+        cmocka_unit_test(test_discard_legacy_agent_message_upgrade_ack_malformed_not_counted),
         cmocka_unit_test(test_HandleSecureMessage_event_enqueue_failed),
         cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
         cmocka_unit_test(test_HandleSecureMessage_event_without_trailing_null),
