@@ -910,6 +910,17 @@ void fim_checker(const char *path,
         return;
     }
 
+    /* A scheduled scan holds fim_scan_mutex for its whole walk, and the shutdown teardown needs
+     * that mutex to release the database contexts in a controlled order. Pruning the walk here
+     * (every recursion step returns at once) frees the mutex in about a second instead of the
+     * minutes a large tree takes, so the stop does not have to choose between waiting for the scan
+     * and leaving the databases open (issue #38212). Placed after the checks above that do not read
+     * evt_data: fim_db_process_missing_entry() reaches this with a NULL event, and returns at the
+     * configuration lookup before anything dereferences it. */
+    if (evt_data->mode == FIM_SCHEDULED && fim_shutdown_process_on()) {
+        return;
+    }
+
     if (parent_configuration == NULL) {
         // First time entering
         // It's dangerous to go alone! Take this.
@@ -1293,6 +1304,17 @@ void fim_file_scan() {
     // database down.
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
+    /* Re-checked now that this thread owns the mutex: the shutdown teardown may have released the
+     * database context while this scan was waiting, and a transaction started against it would run
+     * on freed memory (issue #38212). */
+    if (fim_shutdown_process_on()) {
+        mdebug1("Shutdown in progress: skipping the file scan.");
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
+        OSList_Destroy(failed_paths);
+        OSList_Destroy(pending_sync_updates);
+        return;
+    }
+
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
@@ -1335,14 +1357,25 @@ void fim_file_scan() {
 
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+    if (fim_shutdown_process_on()) {
+        /* The walk above was pruned by the shutdown, so most of the tree was never visited: the
+         * deleted rows operation would report every path it did not reach as deleted. The trailing
+         * writes are skipped for a related reason, they write row by row while still holding
+         * fim_scan_mutex, which is what the teardown is waiting for, and the next scan recomputes
+         * them. */
+        mdebug1("Shutdown in progress: closing the scan transaction without the deleted rows stage.");
+        fim_db_transaction_close(db_transaction_handle);
+        OSList_Destroy(failed_paths);
+    } else {
+        fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
 
-    // Delete files that failed schema validation (outside transaction)
-    cleanup_failed_fim_files(failed_paths);
-    OSList_Destroy(failed_paths);
+        // Delete files that failed schema validation (outside transaction)
+        cleanup_failed_fim_files(failed_paths);
+        OSList_Destroy(failed_paths);
 
-    // Process pending sync flag updates now that transaction is committed
-    process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        // Process pending sync flag updates now that transaction is committed
+        process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+    }
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 

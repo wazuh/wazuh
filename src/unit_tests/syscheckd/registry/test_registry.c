@@ -898,7 +898,6 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -951,6 +950,9 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
 
+    // Unlocked after the transactions close, which now happens inside the scan mutex
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     // process_pending_sync_updates is called twice: once for keys, once for values
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
@@ -964,7 +966,6 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     syscheck.registry = default_config;
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Set value of FirstSubKey
     wchar_t *value_name = L"test_value";
@@ -1041,6 +1042,9 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
 
+    // Unlocked after the transactions close, which now happens inside the scan mutex
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     // process_pending_sync_updates is called twice: once for keys, once for values
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
@@ -1070,10 +1074,12 @@ static void test_fim_registry_scan_RegOpenKeyExW_fail(void **state) {
                              KEY_READ | KEY_WOW64_64KEY, NULL, -1);
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
+
+    // Unlocked after the transactions close, which now happens inside the scan mutex
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Test
 
@@ -1104,10 +1110,12 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
 
     // Expect pthread calls from C++ singletons and syscheck mutexes
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
+
+    // Unlocked after the transactions close, which now happens inside the scan mutex
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Test
     fim_registry_scan();
