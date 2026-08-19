@@ -503,6 +503,14 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
+    auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
+
+    // Locked from here on (CID 562800): scanHardware()/scanOs()/.../runRecoveryProcess()
+    // read these same fields while the scan/recovery paths hold m_scan_mutex, so every write
+    // below has to happen under it too, not just the ones that used to follow this point.
+    std::unique_lock<std::mutex> lock{m_scan_mutex};
+
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
     m_persistDiffFunction = std::move(persistDiffFunction);
@@ -522,11 +530,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_users = users;
     m_services = services;
     m_browserExtensions = browserExtensions;
-
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
-    auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
-
-    std::unique_lock<std::mutex> lock{m_scan_mutex};
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
@@ -4543,7 +4546,12 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
     if (indexIt != INDEX_MAP.end())
     {
         const std::string& index = indexIt->second;
-        size_t documentLimit = m_documentLimits[index];
+        size_t documentLimit = 0;
+        {
+            // m_documentLimits is written under m_limitsMutex by setDocumentLimits() (CID 562797).
+            std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+            documentLimit = m_documentLimits[index];
+        }
 
         if (documentLimit > 0)
         {
@@ -4781,7 +4789,12 @@ void Syscollector::runRecoveryProcess()
                 // Determine if we need to filter by sync=1
                 // Only filter when document limits are configured (limit > 0)
                 // If limit == 0 (unlimited), recover all items without filtering
-                size_t documentLimit = m_documentLimits[index];
+                size_t documentLimit = 0;
+                {
+                    // m_documentLimits is written under m_limitsMutex by setDocumentLimits() (CID 562797).
+                    std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+                    documentLimit = m_documentLimits[index];
+                }
                 std::string rowFilterClause;
 
                 try

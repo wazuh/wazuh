@@ -431,7 +431,10 @@ class EXPORTED Syscollector final
 
         AgentdQueryFunc                                                          m_agentdQuery;
         unsigned int                                                             m_intervalValue;
-        uint32_t                                                                 m_integrityIntervalValue;
+        // Written under m_resourcesMutex (initSyncProtocol), read without any lock from the
+        // recovery path (runRecoveryProcess/recoveryIntervalHasEllapsed) -- atomic instead of
+        // adding a lock there, to avoid a new cross-mutex dependency (CID 562797).
+        std::atomic<uint32_t>                                                    m_integrityIntervalValue;
         bool                                                                     m_scanOnStart;
         bool                                                                     m_hardware;
         bool                                                                     m_os;
@@ -451,8 +454,11 @@ class EXPORTED Syscollector final
         bool                                                                     m_users;
         bool                                                                     m_services;
         bool                                                                     m_browserExtensions;
-        unsigned int                                                             m_dataCleanRetries;
-        bool                                                                     m_allCollectorsDisabled;
+        // Written under m_scan_mutex (init) and under m_resourcesMutex (initSyncProtocol), read
+        // without any lock from handleNotifyDataClean -- atomic instead of picking one of the
+        // two mutexes (which would leave the other writer still racing) (CID 562800/562799).
+        std::atomic<unsigned int>                                                m_dataCleanRetries;
+        std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
