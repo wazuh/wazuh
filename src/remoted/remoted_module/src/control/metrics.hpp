@@ -25,6 +25,7 @@
  * debug log on stop()).
  */
 
+#include <cstdint>
 #include <memory>
 
 #include <wazuh_metrics/iManager.hpp>
@@ -39,6 +40,8 @@ namespace remoted::control
     constexpr auto METRIC_WDB_ERROR {"remoted.control.wdb_error"};
     constexpr auto METRIC_TASK_FETCH {"remoted.control.task_fetch"};
     constexpr auto METRIC_TASK_FETCH_ERROR {"remoted.control.task_fetch_error"};
+    constexpr auto METRIC_REJECTED {"remoted.control.rejected"};
+    constexpr auto METRIC_WDB_LATENCY {"remoted.control.wdb.latency"};
 
     /**
      * @brief The /control counter set, pre-resolved from one manager.
@@ -55,6 +58,12 @@ namespace remoted::control
         std::shared_ptr<wazuh::metrics::ICounter> wdbError;
         std::shared_ptr<wazuh::metrics::ICounter> taskFetch;
         std::shared_ptr<wazuh::metrics::ICounter> taskFetchError;
+        std::shared_ptr<wazuh::metrics::ICounter> rejected; ///< 400s: malformed /control (version drift signal).
+        /// Successful wazuh-db round-trip time, microseconds. Timeouts are deliberately NOT
+        /// observed -- wdbError already counts them -- so the histogram means "how long a
+        /// healthy round trip takes", the number that sizes wdbRoundtripDeadlineMs and
+        /// wdbRequestConnections.
+        std::shared_ptr<wazuh::metrics::IHistogram> wdbLatency;
     };
 
     /// Resolves the remoted.control.* family on @p manager (creating it on first call; totals
@@ -67,7 +76,10 @@ namespace remoted::control
             manager.getOrCreateCounter(METRIC_SHUTDOWN, "Shutdown control requests handled", "count"),
             manager.getOrCreateCounter(METRIC_WDB_ERROR, "wazuh-db round trips that failed", "count"),
             manager.getOrCreateCounter(METRIC_TASK_FETCH, "Pending-task fetches that succeeded", "count"),
-            manager.getOrCreateCounter(METRIC_TASK_FETCH_ERROR, "Pending-task fetches that failed", "count")};
+            manager.getOrCreateCounter(METRIC_TASK_FETCH_ERROR, "Pending-task fetches that failed", "count"),
+            manager.getOrCreateCounter(
+                METRIC_REJECTED, "400 rejections: malformed /control body/JSON/agent-id/type", "count"),
+            manager.getOrCreateHistogram(METRIC_WDB_LATENCY, "Successful wazuh-db round-trip time", "microseconds")};
     }
 
     inline void incStartup(ControlMetrics& m)
@@ -110,6 +122,23 @@ namespace remoted::control
         if (m.taskFetchError)
         {
             m.taskFetchError->add();
+        }
+    }
+    /// const&: called from the /control endpoint's value-capturing (non-mutable) lambda; add()
+    /// mutates the counter, not the struct.
+    inline void incRejected(const ControlMetrics& m)
+    {
+        if (m.rejected)
+        {
+            m.rejected->add();
+        }
+    }
+    /// Records one SUCCESSFUL wazuh-db round trip (see the wdbLatency member note).
+    inline void observeWdbLatency(const ControlMetrics& m, std::uint64_t micros)
+    {
+        if (m.wdbLatency)
+        {
+            m.wdbLatency->observe(micros);
         }
     }
 

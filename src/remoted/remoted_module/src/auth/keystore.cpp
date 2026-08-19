@@ -449,12 +449,14 @@ namespace remoted::auth
                 // Missing/unreadable, not a torn read -- nothing to retry. Deliberately NOT logged
                 // here: reload() is called both once at startup and repeatedly by the watcher, which
                 // need different messages and different throttling. Both call sites report it.
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
             std::ifstream file(m_path);
             if (!file.is_open())
             {
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
@@ -543,6 +545,11 @@ namespace remoted::auth
                 }
                 m_hasBaseline = true;
                 m_lastHash = *preHash;
+                // Health counters (the remoted.auth.keystore.* pulls): the LEVEL tracks what the
+                // table now holds, the total answers "did the hot-reload actually pick my
+                // re-enrolls up".
+                m_agentsLoaded.store(static_cast<std::size_t>(count), std::memory_order_relaxed);
+                m_reloadsTotal.fetch_add(1, std::memory_order_relaxed);
                 return count;
             }
 
@@ -558,6 +565,7 @@ namespace remoted::auth
 
         LOGFN_WARN(
             logFn(), "client.keys kept changing across %d attempts; keeping the previous table.", kMaxReadAttempts);
+        m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
         return kReloadUnstable;
     }
 

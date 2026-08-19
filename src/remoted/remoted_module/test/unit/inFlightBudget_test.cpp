@@ -67,6 +67,35 @@ TEST(InFlightBudget, ExactFitSucceedsOversizeFails)
     EXPECT_TRUE(budget.tryReserve(10).has_value());
 }
 
+// rejectedTotal() is the shed counter the facade publishes as remoted.server.budget.rejected.total:
+// it moves ONLY when tryReserve() refuses a request -- never on admission, release, or a denied
+// grow() (a denied grow is not a shed request), and never while the budget is disabled.
+TEST(InFlightBudget, RejectedTotalCountsOnlyTryReserveRefusals)
+{
+    InFlightBudget budget(100);
+    EXPECT_EQ(budget.rejectedTotal(), 0U);
+    EXPECT_EQ(budget.maxBytes(), 100U);
+
+    {
+        auto a = budget.tryReserve(90);
+        ASSERT_TRUE(a.has_value());
+        EXPECT_EQ(budget.rejectedTotal(), 0U); // admission does not count
+
+        EXPECT_FALSE(budget.tryReserve(20).has_value());
+        EXPECT_FALSE(budget.tryReserve(11).has_value());
+        EXPECT_EQ(budget.rejectedTotal(), 2U); // one per refused request
+
+        EXPECT_FALSE(a->grow(20));
+        EXPECT_EQ(budget.rejectedTotal(), 2U); // a denied grow is not a shed
+    }
+
+    EXPECT_EQ(budget.rejectedTotal(), 2U); // cumulative: release does not roll it back
+
+    InFlightBudget disabled(0);
+    EXPECT_TRUE(disabled.tryReserve(1U << 30).has_value());
+    EXPECT_EQ(disabled.rejectedTotal(), 0U); // disabled budget never sheds
+}
+
 TEST(InFlightBudget, MoveConstructTransfersOwnershipAndReleasesOnce)
 {
     InFlightBudget budget(100);

@@ -15,7 +15,6 @@
 #include "http_server/httpServerFactory.hpp"
 #include "proc.hpp"
 
-
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
@@ -32,15 +31,15 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <istream>
-#include <cstring>
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <istream>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -150,7 +149,7 @@ namespace
             m_keyPath = m_dir + "/key.pem";
 
             const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
-                                     m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+                                    m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
             if (std::system(cmd.c_str()) != 0)
             {
                 ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
@@ -164,8 +163,14 @@ namespace
             rmdir(m_dir.c_str());
         }
 
-        const std::string& certPath() const { return m_certPath; }
-        const std::string& keyPath() const { return m_keyPath; }
+        const std::string& certPath() const
+        {
+            return m_certPath;
+        }
+        const std::string& keyPath() const
+        {
+            return m_keyPath;
+        }
 
     private:
         std::string m_dir;
@@ -556,8 +561,8 @@ namespace
             char dirTemplate[] = "/tmp/httpServerFullModeXXXXXX";
             m_dir = mkdtemp(dirTemplate);
 
-            run("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test-ca -keyout " + key("ca") +
-                " -out " + cert("ca"));
+            run("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test-ca -keyout " + key("ca") + " -out " +
+                cert("ca"));
 
             issue("server", "test-server", "IP:127.0.0.1,DNS:localhost");
             issue("matching", "agent-matching", "IP:127.0.0.1");
@@ -575,8 +580,14 @@ namespace
             rmdir(m_dir.c_str());
         }
 
-        std::string cert(const std::string& name) const { return m_dir + "/" + name + ".crt"; }
-        std::string key(const std::string& name) const { return m_dir + "/" + name + ".key"; }
+        std::string cert(const std::string& name) const
+        {
+            return m_dir + "/" + name + ".crt";
+        }
+        std::string key(const std::string& name) const
+        {
+            return m_dir + "/" + name + ".key";
+        }
 
     private:
         void issue(const std::string& name, const std::string& commonName, const std::string& san)
@@ -792,11 +803,12 @@ TEST(FullModeTest, CertificateListingThePeerAddressIsServed)
     auto server = makeHttpServer();
     const auto port = static_cast<std::uint16_t>(34517);
 
-    server->addRoute(Method::Get,
-                     "/",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                     /*countAgainstBudget=*/false);
+    server->addRoute(
+        Method::Get,
+        "/",
+        [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+        /*countAgainstBudget=*/false);
 
     ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
 
@@ -820,11 +832,12 @@ TEST(FullModeTest, CertificateListingAnotherAddressIsRefusedOnEveryRoute)
     const auto port = static_cast<std::uint16_t>(34518);
 
     // The unauthenticated liveness probe: the route most likely to leak a rejected connection.
-    server->addRoute(Method::Get,
-                     "/",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                     /*countAgainstBudget=*/false);
+    server->addRoute(
+        Method::Get,
+        "/",
+        [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+        /*countAgainstBudget=*/false);
 
     ASSERT_NO_THROW(server->start(fullModeConfig(pki, port)));
 
@@ -860,11 +873,12 @@ namespace
         FullModePki pki;
         auto server = makeHttpServer();
 
-        server->addRoute(Method::Get,
-                         "/",
-                         [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                         { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
-                         /*countAgainstBudget=*/false);
+        server->addRoute(
+            Method::Get,
+            "/",
+            [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+            { responder->send(HttpResponse::json(200, R"({"status":"ok"})")); },
+            /*countAgainstBudget=*/false);
 
         auto config = fullModeConfig(pki, port);
         config.verificationMode = mode;
@@ -956,6 +970,58 @@ TEST(HttpServerTest, ReserveInFlightBytesEnforcesConfiguredCapacityAfterStart)
     EXPECT_TRUE(server->tryReserveInFlightBytes(50U * 1024U * 1024U).has_value());
 
     server->stop();
+}
+
+// diagnostics() is the source of the remoted.server.budget.* pull metrics: all zeros before
+// start() (the documented quiescent value), live budget state while running, and -- because the
+// budget survives a normal stop() -- the cumulative shed total remains visible afterwards, which
+// is what lets the facade's final stop() dump still report it.
+TEST(HttpServerTest, DiagnosticsReportZerosBeforeStartAndTrackTheBudgetAfter)
+{
+    constexpr std::size_t MiB = 1024U * 1024U;
+    TempCert cert;
+    auto server = makeHttpServer();
+
+    auto d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+
+    HttpServerConfig config;
+    config.port = 0; // ephemeral
+    config.certificatePath = cert.certPath();
+    config.privateKeyPath = cert.keyPath();
+    // Same clamp-avoidance as the reservation test above: keep the configured capacity in charge.
+    config.maxBodySize = 1U * MiB;
+    config.maxInFlightBytes = 50U * MiB;
+
+    ASSERT_NO_THROW(server->start(config));
+
+    d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB);
+    EXPECT_EQ(d.budgetInFlightBytes, 0U);
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 0U);
+
+    {
+        auto reservation = server->tryReserveInFlightBytes(10U * MiB);
+        ASSERT_TRUE(reservation.has_value());
+        EXPECT_FALSE(server->tryReserveInFlightBytes(50U * MiB).has_value()); // shed
+
+        d = server->diagnostics();
+        EXPECT_EQ(d.budgetAvailableBytes, 40U * MiB);
+        EXPECT_EQ(d.budgetInFlightBytes, 10U * MiB);
+        EXPECT_EQ(d.budgetInFlightCount, 1U);
+        EXPECT_EQ(d.budgetRejectedTotal, 1U);
+    }
+
+    server->stop();
+
+    d = server->diagnostics();
+    EXPECT_EQ(d.budgetAvailableBytes, 50U * MiB); // reservation released
+    EXPECT_EQ(d.budgetInFlightCount, 0U);
+    EXPECT_EQ(d.budgetRejectedTotal, 1U); // cumulative total outlives the run
 }
 
 // ---------------------------------------------------------------------------

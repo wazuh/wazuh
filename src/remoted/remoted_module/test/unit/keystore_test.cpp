@@ -93,6 +93,31 @@ namespace
         EXPECT_EQ(key->size(), 32u);
     }
 
+    // The health counters behind the remoted.auth.keystore.* pulls: the LEVEL follows each
+    // successful load, the totals accumulate successes and failures separately, and a failed
+    // reload keeps the previous level (the table is untouched). GE where the background watcher
+    // could legitimately add reloads of its own.
+    TEST_F(KeystoreTest, HealthCountersTrackLoadsAndFailures)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 1U); // the startup load
+        EXPECT_GE(keystore.reloadsTotal(), 1U);
+        EXPECT_EQ(keystore.reloadFailuresTotal(), 0U);
+
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "3825 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        EXPECT_EQ(keystore.reload(), 2);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U);
+        EXPECT_GE(keystore.reloadsTotal(), 2U);
+
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_GE(keystore.reloadFailuresTotal(), 1U);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U); // previous table (and its level) kept
+    }
+
     TEST_F(KeystoreTest, UnknownAgentIsNullopt)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");

@@ -168,8 +168,8 @@ namespace remoted::endpoints::download
         while (true)
         {
             const auto separator = selector.find(GROUP_SEPARATOR, start);
-            const auto entry =
-                selector.substr(start, separator == std::string_view::npos ? std::string_view::npos : separator - start);
+            const auto entry = selector.substr(
+                start, separator == std::string_view::npos ? std::string_view::npos : separator - start);
 
             if (!isValidGroupName(entry))
             {
@@ -517,11 +517,11 @@ namespace remoted::endpoints::download
     // Handler
     // -----------------------------------------------------------------------
 
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths)
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths, DownloadMetrics metrics)
     {
-        return [paths = std::move(paths)](
-                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [paths = std::move(paths),
+                metrics = std::move(metrics)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                                              std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             const auto parsed = parseRequest(request->payload.bytes());
 
@@ -529,6 +529,7 @@ namespace remoted::endpoints::download
             {
                 // Client fault, fully attacker-controlled in volume: debug only.
                 LOGFN_DEBUG2(logFn(), "Rejected a /download request from agent '%s'.", request->agentId.c_str());
+                incRejected(metrics);
                 responder->send(errorResponseFor(*error));
                 return;
             }
@@ -557,6 +558,7 @@ namespace remoted::endpoints::download
 
                 if (mapped == LocateError::Internal)
                 {
+                    incOpenError(metrics);
                     LOGFN_ERROR(logFn(),
                                 "Could not open '%s' to serve a /download request from agent '%s': %s.",
                                 located.path.c_str(),
@@ -565,6 +567,9 @@ namespace remoted::endpoints::download
                 }
                 else
                 {
+                    // 404s: the group/WPK the agent keeps asking for doesn't exist -- the config
+                    // drift that turns into an agent retry storm, visible here as a rate.
+                    incNotFound(metrics);
                     LOGFN_DEBUG2(logFn(),
                                  "Resource '%s' is unavailable for agent '%s': %s.",
                                  located.path.c_str(),
@@ -582,6 +587,10 @@ namespace remoted::endpoints::download
                          static_cast<unsigned long long>((*source)->size()),
                          agentId.c_str(),
                          resourceTypeName(downloadRequest.type));
+
+            // Counted at start (bytes = the size being offered), BEFORE the pump runs: the
+            // per-chunk loop stays uninstrumented by design (see downloadMetrics.hpp).
+            incStarted(metrics, (*source)->size());
 
             remoted::http::StreamResponse response;
             response.status = 200;

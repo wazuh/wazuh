@@ -45,6 +45,31 @@ TEST(DeferredWorkLimiter, AcquireUpToCapacityThenFail)
     EXPECT_EQ(limiter.inFlight(), 2U); // the rejected attempt did not count
 }
 
+// rejectedTotal() is the shed counter the facade publishes as
+// remoted.forwarder.deferred.rejected.total: it moves ONLY when tryAcquire() refuses a slot --
+// never on admission or release, and never while the limiter is disabled.
+TEST(DeferredWorkLimiter, RejectedTotalCountsOnlyTryAcquireRefusals)
+{
+    DeferredWorkLimiter limiter(1);
+    EXPECT_EQ(limiter.rejectedTotal(), 0U);
+
+    {
+        auto a = limiter.tryAcquire();
+        ASSERT_TRUE(a.has_value());
+        EXPECT_EQ(limiter.rejectedTotal(), 0U); // admission does not count
+
+        EXPECT_FALSE(limiter.tryAcquire().has_value());
+        EXPECT_FALSE(limiter.tryAcquire().has_value());
+        EXPECT_EQ(limiter.rejectedTotal(), 2U); // one per refused request
+    }
+
+    EXPECT_EQ(limiter.rejectedTotal(), 2U); // cumulative: release does not roll it back
+
+    DeferredWorkLimiter disabled(0);
+    EXPECT_TRUE(disabled.tryAcquire().has_value());
+    EXPECT_EQ(disabled.rejectedTotal(), 0U); // disabled limiter never sheds
+}
+
 TEST(DeferredWorkLimiter, ReleaseFreesASlot)
 {
     DeferredWorkLimiter limiter(1);

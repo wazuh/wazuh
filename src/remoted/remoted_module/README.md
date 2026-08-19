@@ -507,7 +507,7 @@ Built via `remoted::control::buildControlConfig()` in the facade's startup.
 
 ### Metrics
 
-`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` counter family, resolved from the
+`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` family, resolved from the
 facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeControlMetrics()`:
 - `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
 - `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
@@ -515,13 +515,20 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
 - `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
 - `remoted.control.task_fetch` — successful task fetches from task-manager
 - `remoted.control.task_fetch_error` — task-manager operation failures
+- `remoted.control.rejected` — the endpoint's own 400s (invalid body/JSON/agent-id/type), one
+  counter for all four paths: it answers "are agents sending malformed control traffic"
+  (agent/manager version drift); the throttled logs keep the which-field detail
+- `remoted.control.wdb.latency` — histogram (µs) of SUCCESSFUL wazuh-db round trips (timeouts
+  are wdb_error's, so the histogram keeps meaning "how long a healthy round trip takes" — the
+  number that sizes `wdbRoundtripDeadlineMs`/`wdbRequestConnections`)
+- `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
+  the facade; weak target, quiesces to 0 once the control plane is torn down)
 
 Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
 all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
 log when the module stops; it is NEVER exposed through the public HTTPS endpoint (agent-facing,
-not an admin plane). Natural future candidates on the same registry: per-status passthrough
-counters for `/stateful`/`/stateless`, CMAC-gateway 401s, and the `AgentRegistry` size as a pull
-metric.
+not an admin plane). The full per-family catalog, including the data-plane and backpressure
+families, lives in **Metrics catalog** below.
 
 ### Error handling
 
@@ -1532,6 +1539,43 @@ try/catch frame at ~30 per-request call sites, measurable even when the body doe
 forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
 (request target, header values), so using it as a format would be a remote format-string bug.
 
+## Metrics catalog
+
+Everything lives on the facade's single `wazuh_metrics` registry and is observable in two
+places: `GET /metrics` on the local admin socket (below) and the debug-log dump on `stop()`.
+Design rules shared by every family: names are the only dimension (closed sets pre-resolved
+into structs, selected by `switch` — the hot path never formats a name); update cost is one
+relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a
+default-constructed struct is a null object that counts nothing; pull metrics read weak
+targets repointed per start and quiesce to 0 after teardown (`IManager` has no unregister).
+
+| Family | What it answers | Counted at |
+|---|---|---|
+| `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
+| `remoted.control.registry.agents` (pull) | registry TTL/eviction sizing | `AgentRegistry::size()` |
+| `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
+| `remoted.auth.reject.{unknown_agent, invalid_mac, clock_skew, unusable_key, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY agents fail auth, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel; installed process-wide via `installAuthRejectMetrics()` |
+| `remoted.auth.keystore.{agents, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable | atomics maintained by `Keystore::reload()` |
+| `remoted.http.<stateless\|stateful\|stats\|config>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each forwarded endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400 |
+| `remoted.http.<stateless\|stateful>.latency` (histograms, µs) | end-to-end time, gateway receipt → response delivery; sizes the worker pool / `downstream_stateful_response_timeout` | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
+| `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
+| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
+| `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
+| `remoted.admin.server.*` (7 pulls) | the admin transport dogfooding itself | `IUdsHttpServer::diagnostics()` |
+
+**Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
+the transport I/O thread BEFORE any route runs — it appears ONLY in
+`remoted.server.budget.rejected.total`, never in a `responses.*` cell. A deferred-limiter shed
+is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
+`remoted.forwarder.deferred.rejected.total`. Auth-gateway rejections happen before any handler
+and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
+payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
+`remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
+the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
+per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
+catalogs consume.
+
 ## Local admin socket — `queue/sockets/remoted-module.sock`
 
 The module's management plane: a second, independent HTTP server (the shared
@@ -1543,7 +1587,7 @@ byte budget):
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
-| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`), same envelope as inventory sync's `/metrics` |
+| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 
 Contract points:
 

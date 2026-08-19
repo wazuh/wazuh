@@ -14,6 +14,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 namespace remoted::http
@@ -189,6 +190,11 @@ namespace remoted::http
             {
                 if (bytes > current)
                 {
+                    // Counted here and only here: this is the shed decision the transport turns
+                    // into a 503. Reservation::grow() failing is deliberately NOT counted -- a
+                    // denied grow is not a shed request. Touched only on the rejection path, so
+                    // admissions stay at their current cost.
+                    m_rejectedTotal.fetch_add(1, std::memory_order_relaxed);
                     return std::nullopt; // would exceed the budget
                 }
             } while (!m_availableBytes.compare_exchange_weak(
@@ -210,6 +216,18 @@ namespace remoted::http
             return m_inFlightCount.load(std::memory_order_relaxed);
         }
 
+        /// @brief Configured maximum in-flight payload bytes (0 == limit disabled).
+        std::size_t maxBytes() const noexcept
+        {
+            return m_maxBytes;
+        }
+
+        /// @brief Requests tryReserve() has refused since construction (0 while disabled).
+        std::uint64_t rejectedTotal() const noexcept
+        {
+            return m_rejectedTotal.load(std::memory_order_relaxed);
+        }
+
         /// @brief Whether the byte limit is enforced (false when constructed with 0).
         bool enabled() const noexcept
         {
@@ -229,6 +247,7 @@ namespace remoted::http
         const std::size_t m_maxBytes;              ///< 0 => budget disabled.
         std::atomic<std::size_t> m_availableBytes; ///< Remaining bytes.
         std::atomic<std::size_t> m_inFlightCount {0};
+        std::atomic<std::uint64_t> m_rejectedTotal {0}; ///< Requests refused by tryReserve().
     };
 
 } // namespace remoted::http

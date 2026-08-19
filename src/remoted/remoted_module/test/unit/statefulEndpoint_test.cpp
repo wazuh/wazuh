@@ -17,11 +17,14 @@
 #include "endpoints/statefulEndpoint.hpp"
 
 #include "auth/cmac.hpp"
+#include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -293,6 +296,46 @@ TEST(StatefulMakeHandler, EmptyBodyShortCircuitsBeforeForward)
     EXPECT_EQ(response.status, 400);
     EXPECT_EQ(response.body, R"({"error":"Empty request body","code":400})");
     EXPECT_FALSE(client->called()); // forward() must never run for an empty body
+}
+
+// With a metric set wired in, the handler's own empty-body 400 and the forwarder-delivered
+// passthrough status each land in the endpoint's responses family -- "every response this
+// endpoint sent", whichever code path sent it.
+TEST(StatefulMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = remoted::metrics::makeEndpointHttpMetrics(manager, "stateful", /*withLatency=*/true);
+
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+    auto handler = stateful::makeHandler(forwarder, "queue/sockets/inventory-sync.sock", 20000, &metrics);
+
+    {
+        auto fixture = makeAuthReq("", "1001"); // empty body: answered 400 by the handler itself
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 400);
+    }
+    EXPECT_EQ(metrics.responses.c400->get(), 1U);
+    EXPECT_FALSE(client->called());
+
+    {
+        auto fixture = makeAuthReq("\x01\x02binary-fullsession-bytes", "1001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_TRUE(client->called());
+        // 409 checksum mismatch is part of the sync contract: passed through AND counted in
+        // its own cell -- the cell that exists precisely because /stateful can answer it.
+        client->fire(DownstreamError::None, DownstreamResponse {409, R"({"reason":"checksum"})"});
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 409);
+    }
+    EXPECT_EQ(metrics.responses.c409->get(), 1U);
+    EXPECT_EQ(metrics.responses.c400->get(), 1U); // untouched by the contract answer
 }
 
 TEST(StatefulMakeHandler, ForwardsTheOpaqueSessionWithAgentIdAndDedicatedTimeoutThenPassesThrough)

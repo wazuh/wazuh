@@ -34,12 +34,12 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-#include <unordered_set>
-#include <variant>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace
@@ -304,7 +304,7 @@ namespace
 
             // Owning handle: SSL_get1_peer_certificate() bumps the reference count.
             std::unique_ptr<X509, decltype(&X509_free)> peerCertificate {SSL_get1_peer_certificate(tls.native_handle()),
-                                                                        &X509_free};
+                                                                         &X509_free};
 
             if (remoted::http::certificateMatchesPeerIp(peerCertificate.get(), peerIp))
             {
@@ -797,9 +797,9 @@ namespace
                 return;
             }
 
-            auto builder = m_request->create_response(
-                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
-                                              reasonPhrase(response.status)});
+            auto builder = m_request->create_response(restinio::http_status_line_t {
+                restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                reasonPhrase(response.status)});
             m_request.reset();
 
             builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
@@ -831,9 +831,9 @@ namespace
                 return;
             }
 
-            auto builder = m_request->create_response<restinio::chunked_output_t>(
-                restinio::http_status_line_t {restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
-                                              reasonPhrase(response.status)});
+            auto builder = m_request->create_response<restinio::chunked_output_t>(restinio::http_status_line_t {
+                restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
+                reasonPhrase(response.status)});
             m_request.reset();
 
             builder.append_header(restinio::http_field::server, "wazuh-manager-remoted");
@@ -850,8 +850,7 @@ namespace
             // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
             const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
 
-            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)
-                ->start();
+            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)->start();
         }
 
     private:
@@ -958,7 +957,8 @@ namespace remoted::http
                             {
                                 return request->create_response(restinio::status_forbidden())
                                     .append_header(restinio::http_field::content_type, "application/json")
-                                    .set_body(R"({"error":"Client certificate does not match the peer address","code":403})")
+                                    .set_body(
+                                        R"({"error":"Client certificate does not match the peer address","code":403})")
                                     .connection_close()
                                     .done();
                             }
@@ -1012,7 +1012,8 @@ namespace remoted::http
                                 // and creates the builder when it answers, which means RESTinio's
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
-                                responder = std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+                                responder =
+                                    std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
                             }
                             else
                             {
@@ -1104,12 +1105,8 @@ namespace remoted::http
         stop();
     }
 
-    void
-    RestinioHttpServer::addRoute(Method method,
-                                 const std::string& path,
-                                 RouteHandler handler,
-                                 bool countAgainstBudget,
-                                 ResponseMode mode)
+    void RestinioHttpServer::addRoute(
+        Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget, ResponseMode mode)
     {
         std::lock_guard<std::mutex> lock {m_impl->m_mutex};
 
@@ -1135,6 +1132,25 @@ namespace remoted::http
         return budget->tryReserve(bytes);
     }
 
+    TransportDiagnostics RestinioHttpServer::diagnostics() const
+    {
+        // Dump-cadence only, so the lock is fine: it serializes against start() assigning
+        // m_budget (a dump can race a facade restart retry). The budget itself survives a normal
+        // stop() -- it is only reset by a failed start -- so post-stop dumps still see the totals.
+        std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+        const auto* budget = m_impl->m_budget.get();
+        if (budget == nullptr)
+        {
+            return {};
+        }
+        TransportDiagnostics d;
+        d.budgetAvailableBytes = budget->availableBytes();
+        d.budgetInFlightBytes = budget->maxBytes() - budget->availableBytes();
+        d.budgetInFlightCount = budget->inFlightCount();
+        d.budgetRejectedTotal = budget->rejectedTotal();
+        return d;
+    }
+
     void RestinioHttpServer::start(const HttpServerConfig& config)
     {
         std::lock_guard<std::mutex> lock {m_impl->m_mutex};
@@ -1155,9 +1171,8 @@ namespace remoted::http
 
         // Only Full needs somewhere to record rejected connections. Left null otherwise, which is
         // what makes the connection-state listener a no-op in the other two modes.
-        m_impl->m_rejectedConnections = config.verificationMode == ClientVerificationMode::Full
-                                            ? std::make_shared<RejectedConnections>()
-                                            : nullptr;
+        m_impl->m_rejectedConnections =
+            config.verificationMode == ClientVerificationMode::Full ? std::make_shared<RejectedConnections>() : nullptr;
 
         // In-flight byte budget. Clamp it to at least one max-size request (+overhead) so a
         // misconfigured tiny value can't reject every request; 0 leaves the limit disabled.

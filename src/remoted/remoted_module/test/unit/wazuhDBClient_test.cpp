@@ -452,6 +452,33 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::Timeout);
     EXPECT_GE(metrics.wdbError->get(), 1U);
+    // A timeout is already accounted by wdbError; observing it would poison the latency
+    // histogram's "healthy round trip" meaning with deadline-shaped values.
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// -----------------------------------------------------------------------------
+// Latency: one observation per SUCCESSFUL round trip -- the histogram is the
+// number that sizes wdbRoundtripDeadlineMs, so failures must never feed it.
+// -----------------------------------------------------------------------------
+TEST(WazuhDBClientTest, SuccessfulRoundTripObservesLatencyOnce)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_lat");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> w;
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+
+    const auto snapshot = metrics.wdbLatency->snapshot();
+    EXPECT_EQ(snapshot.count, 1U);
+    EXPECT_EQ(metrics.wdbError->get(), 0U);
 }
 
 // -----------------------------------------------------------------------------

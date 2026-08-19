@@ -177,7 +177,9 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
 {
     startModule();
 
-    struct stat socketStat {};
+    struct stat socketStat
+    {
+    };
     ASSERT_EQ(::stat(kAdminSocketPath, &socketStat), 0) << "admin socket was not bound at the fixed path";
     EXPECT_TRUE(S_ISSOCK(socketStat.st_mode));
     EXPECT_EQ(socketStat.st_mode & 0777U, 0660U);
@@ -194,8 +196,10 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
 }
 
 // GET /metrics dumps the module's whole registry: the E6a families (remoted.control.*,
-// remoted.scanvd.*) exist from facade construction -- no traffic needed -- and the admin
-// server's own transport diagnostics ride along as remoted.admin.server.* pulls (U10).
+// remoted.scanvd.*) exist from facade construction -- no traffic needed -- the admin
+// server's own transport diagnostics ride along as remoted.admin.server.* pulls (U10), and the
+// PUBLIC transport's backpressure state as remoted.server.budget.* / remoted.forwarder.deferred.*
+// pulls, live-wired: the deferred capacity must read the actual configured cap, not a quiesced 0.
 TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
 {
     startModule();
@@ -209,6 +213,43 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
     EXPECT_NE(response->body.find("remoted.control.startup"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("remoted.scanvd.requests.total"), std::string::npos) << response->body;
     EXPECT_NE(response->body.find("remoted.admin.server.sessions.live"), std::string::npos) << response->body;
+
+    // One representative name per new family (their full member<->name pairings are pinned by
+    // metrics_test.cpp and the per-component tests; this asserts they all reach ONE dump).
+    for (const auto* name : {"remoted.server.budget.available.bytes",
+                             "remoted.server.budget.inflight.bytes",
+                             "remoted.server.budget.inflight.requests",
+                             "remoted.server.budget.rejected.total",
+                             "remoted.forwarder.deferred.inflight",
+                             "remoted.forwarder.deferred.capacity",
+                             "remoted.forwarder.deferred.rejected.total",
+                             "remoted.auth.reject.invalid_mac",
+                             "remoted.auth.keystore.agents",
+                             "remoted.http.stateless.responses.2xx",
+                             "remoted.http.stateless.latency",
+                             "remoted.http.stateful.responses.409",
+                             "remoted.http.stats.responses.400",
+                             "remoted.http.config.responses.503",
+                             "remoted.forwarder.error.connect",
+                             "remoted.forwarder.downstream_5xx",
+                             "remoted.forwarder.route_mismatch",
+                             "remoted.control.rejected",
+                             "remoted.control.wdb.latency",
+                             "remoted.control.registry.agents",
+                             "remoted.download.started",
+                             "remoted.download.bytes.total"})
+    {
+        EXPECT_NE(response->body.find(name), std::string::npos) << name;
+    }
+
+    // Live value, not a quiesced 0: the config left max_deferred_requests unset, so the limiter
+    // runs at (and the pull must report) the module's default cap of 256. Scoped to the entry
+    // itself (the dump is sorted by name, one compact object per metric) so a stray "256"
+    // elsewhere in the body can't satisfy it.
+    const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
+    ASSERT_NE(capacityAt, std::string::npos);
+    const auto capacityEntry = response->body.substr(capacityAt, 200);
+    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
 }
 
 // Routing is exact-match: an unknown path is a 404, and a known path with the wrong verb is a
@@ -272,4 +313,11 @@ TEST_F(AdminServerTest, StopUnlinksTheSocketAndARestartBringsItBack)
     ASSERT_TRUE(response) << "GET /metrics after restart failed: " << httplib::to_string(response.error());
     EXPECT_EQ(response->status, 200);
     EXPECT_NE(response->body.find("remoted.admin.server.sessions.live"), std::string::npos) << response->body;
+    // The public-transport pulls survive the once-per-process registration being skipped too,
+    // and their weak targets were repointed at the SECOND server/limiter: capacity reads the
+    // live default again, not the quiesced 0 of the stopped first instance.
+    const auto capacityAt = response->body.find("remoted.forwarder.deferred.capacity");
+    ASSERT_NE(capacityAt, std::string::npos) << response->body;
+    const auto capacityEntry = response->body.substr(capacityAt, 200);
+    EXPECT_NE(capacityEntry.find("\"value\":256"), std::string::npos) << capacityEntry;
 }
