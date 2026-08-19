@@ -63,6 +63,15 @@ inline constexpr long TLS_MIN_VERSION_1_3 {7};
 /// like the version above.
 inline constexpr long TLS_NATIVE_CA_STORE {1L << 4};
 
+/// Output slots for captureResponseHeaders(): libcurl allows only one
+/// HEADERFUNCTION/HEADERDATA pair per handle, so both captured headers live
+/// behind one struct instead of two separate parameters.
+struct HeaderCapture
+{
+    long* retryAfter {nullptr};
+    std::time_t* serverDate {nullptr};
+};
+
 /**
  * @brief One HTTP transfer, at the option level.
  *
@@ -91,13 +100,15 @@ class ICurlHandle
         virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
 
         /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
-        /// handle: retryAfter receives the parsed Retry-After header (0 =
-        /// absent), serverDate receives the parsed Date header (0 =
-        /// absent/unparsed) -- the manager's own transport stamps Date on
-        /// every response it builds, including every 401, which is what lets
-        /// the agent detect and correct clock skew instead of assuming a 401
-        /// always means a dead credential.
-        virtual bool captureResponseHeaders(long* retryAfter, std::time_t* serverDate) = 0;
+        /// handle: capture.retryAfter receives the parsed Retry-After header
+        /// (0 = absent), capture.serverDate receives the parsed Date header
+        /// (0 = absent/unparsed) -- the manager's own transport stamps Date
+        /// on every response it builds, including every 401, which is what
+        /// lets the agent detect and correct clock skew instead of assuming
+        /// a 401 always means a dead credential.
+        /// @return false if the underlying option(s) were rejected by libcurl;
+        ///         the caller must not proceed to perform() in that case.
+        virtual bool captureResponseHeaders(HeaderCapture capture) = 0;
 
         virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
         virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;

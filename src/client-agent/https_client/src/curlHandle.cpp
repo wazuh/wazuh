@@ -117,15 +117,6 @@ namespace
         return wrote;
     }
 
-    /// Bundles both headers this trampoline cares about: libcurl allows only
-    /// one HEADERFUNCTION/HEADERDATA pair per handle, so both live behind one
-    /// userData pointer instead of two.
-    struct HeaderCapture
-    {
-        long* retryAfter {nullptr};
-        std::time_t* serverDate {nullptr};
-    };
-
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
@@ -272,9 +263,9 @@ namespace
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
-            bool captureResponseHeaders(long* retryAfter, std::time_t* serverDate) override
+            bool captureResponseHeaders(HeaderCapture capture) override
             {
-                m_headerCapture = HeaderCapture {retryAfter, serverDate};
+                m_headerCapture = capture;
                 return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
                        curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
             }

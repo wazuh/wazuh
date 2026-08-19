@@ -26,7 +26,9 @@
 #include <fstream>
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::DoAll;
+using ::testing::Field;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::NotNull;
@@ -88,7 +90,8 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_CALL(*handle, appendHeader("Authorization: Wazuh 001:1:aa"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::TimeoutMs, 1234L));
     EXPECT_CALL(*handle, captureResponseBody(NotNull()));
-    EXPECT_CALL(*handle, captureResponseHeaders(NotNull(), NotNull()));
+    EXPECT_CALL(*handle, captureResponseHeaders(AllOf(Field(&HeaderCapture::retryAfter, NotNull()),
+                                                      Field(&HeaderCapture::serverDate, NotNull()))));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
@@ -145,18 +148,16 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     auto* handle = mock.get();
 
     std::string* bodyOut = nullptr;
-    long* retryAfterOut = nullptr;
-    std::time_t* serverDateOut = nullptr;
+    HeaderCapture captureOut {};
     EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
-    EXPECT_CALL(*handle, captureResponseHeaders(_, _))
-    .WillOnce(DoAll(SaveArg<0>(&retryAfterOut), SaveArg<1>(&serverDateOut), Return(true)));
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&captureOut), Return(true)));
     EXPECT_CALL(*handle, perform())
     .WillOnce(Invoke(
                   [&]() -> TransportStatus
     {
         *bodyOut = "{\"ok\":true}";
-        *retryAfterOut = 7;
-        *serverDateOut = 1755000000;
+        *captureOut.retryAfter = 7;
+        *captureOut.serverDate = 1755000000;
         return TransportStatus::Ok;
     }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
@@ -540,7 +541,7 @@ TEST(CurlPerformerTest, RejectedResponseHeadersCaptureAbortsBeforePerforming)
     auto* handle = mock.get();
     allowOtherOptions(*handle);
 
-    EXPECT_CALL(*handle, captureResponseHeaders(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(Return(false));
     EXPECT_CALL(*handle, perform()).Times(0);
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
