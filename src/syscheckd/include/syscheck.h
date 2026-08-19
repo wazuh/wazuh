@@ -34,6 +34,21 @@
 #define FIM_SYNC_PROTOCOL_DB_PATH   "queue/fim/db/fim_sync.db"
 #define FIM_SYNC_RETRIES 3
 
+/* How long fim_shutdown_waiter() waits for the inventory synchronization thread to exit before
+ * giving up on the database teardown. */
+#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
+
+#ifdef WIN32
+/* Windows cannot afford the POSIX bound. The teardown runs inside the service control handler,
+ * which has to return well within the 30 seconds the SCM allows for it, and wm_kill_children()
+ * plus stop_wmodules() already ran by then. The whole teardown is therefore budgeted, and the
+ * SCM wait hint is derived from that budget rather than guessed. */
+#define FIM_SYNC_EXIT_TIMEOUT_WIN_MS 7000
+#define FIM_SCAN_MUTEX_WAIT_MS       3000
+#define FIM_SCAN_MUTEX_POLL_MS       100
+#define FIM_TEARDOWN_BUDGET_MS       (FIM_SYNC_EXIT_TIMEOUT_WIN_MS + (2 * FIM_SCAN_MUTEX_WAIT_MS))
+#endif
+
 #define FIM_FILES_SYNC_INDEX         "wazuh-states-fim-files"
 #ifdef WIN32
 #define FIM_REGISTRY_KEYS_SYNC_INDEX   "wazuh-states-fim-registry-keys"
@@ -74,6 +89,7 @@ extern int ebpf_kernel_queue_full_reported;
 extern int synced_docs_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
+extern volatile bool is_fim_shutdown;
 
 typedef enum fim_event_type
 {
@@ -807,6 +823,17 @@ void fim_diff_folder_size();
  * @return Process shutdown flag.
  */
 bool fim_shutdown_process_on();
+
+#ifdef WIN32
+/**
+ * @brief Registers the FIM database teardown hook that closes the inventory synchronization
+ *        database on the service stop path (issue #38212).
+ *
+ * Call it as soon as the synchronization handle exists, so a stop arriving before the
+ * synchronization thread is launched still closes fim_sync.db.
+ */
+void fim_sync_register_teardown_hook(void);
+#endif
 
 #ifdef __linux__
 #ifdef ENABLE_AUDIT

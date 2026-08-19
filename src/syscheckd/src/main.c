@@ -28,11 +28,6 @@
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
-/* Milliseconds fim_shutdown_waiter() waits for the synchronization thread to report its
- * exit before giving up on the teardown; wazuh-control escalates to SIGKILL after ~30
- * seconds (MAX_KILL_TRIES in init/wazuh-client.sh), so stay well under that. */
-#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
-
 // LCOV_EXCL_START
 
 /* Print help statement */
@@ -52,7 +47,6 @@ __attribute__((noreturn)) static void help_syscheckd()
     exit(1);
 }
 
-extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
 extern pthread_t fim_sync_thread;
 extern bool fim_sync_thread_initialized;

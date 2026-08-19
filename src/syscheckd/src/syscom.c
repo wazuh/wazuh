@@ -69,6 +69,11 @@ int fim_execute_is_pause_completed(void) {
         return 0;
     }
 
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: pause acknowledgment refused.");
+        return 0;
+    }
+
     // Use trylock so the IPC thread never blocks. fim_run_integrity holds
     // fim_scan_mutex only for the integrity/recovery loop (asp_sync_module now
     // runs unlocked), which can still take minutes on large trees. Blocking here
@@ -158,6 +163,11 @@ int fim_execute_is_flush_completed(void) {
 int fim_execute_get_version(void) {
     mdebug1("FIM agent info: get_version command received");
 
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: get_version command ignored.");
+        return 0;
+    }
+
     int max_version_file = fim_db_get_max_version_file();
     int max_version = max_version_file;
 
@@ -171,6 +181,11 @@ int fim_execute_get_version(void) {
 
 int fim_execute_set_version(int version) {
     mdebug1("FIM agent info: set_version command received, version=%d", version);
+
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: set_version command ignored.");
+        return 0;
+    }
 
     int result_file = fim_db_set_version_file(version);
 
