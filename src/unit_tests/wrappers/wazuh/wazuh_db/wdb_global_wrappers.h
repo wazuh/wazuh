@@ -35,7 +35,7 @@ int __wrap_wdb_global_update_agent_connection_status(
     wdb_t* wdb, int id, char* connection_status, char* sync_status, int status_code);
 
 int __wrap_wdb_global_update_agent_status_code(
-    wdb_t* wdb, int id, int status_code, const char* version, const char* sync_status);
+    wdb_t* wdb, int id, int status_code, const char* version, const char* connection_status, const char* sync_status);
 
 int __wrap_wdb_global_delete_agent(wdb_t* wdb, int id);
 

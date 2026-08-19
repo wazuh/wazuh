@@ -395,7 +395,7 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
-    client.updateStatusCode(3, AgentStatusCode::InvalidVersion, "v0", "synced", [&](SocketError e) { w.complete(e); });
+    client.updateStatusCode(3, AgentStatusCode::InvalidVersion, "v0", "", "synced", [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
 
     std::string got;
@@ -407,6 +407,20 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     // InvalidVersion == 1.
     EXPECT_NE(got.find("\"status_code\":1"), std::string::npos);
     EXPECT_NE(got.find("\"version\":\"v0\""), std::string::npos);
+    // An empty connectionStatus must not reach the wire: without the key, wdb
+    // keeps the plain status-code statement and does not touch the keepalive.
+    EXPECT_EQ(got.find("connection_status"), std::string::npos);
+
+    Waiter<SocketError> w2;
+    client.updateStatusCode(3, AgentStatusCode::Ok, "v5.0.0", "pending", "synced", [&](SocketError e) { w2.complete(e); });
+    ASSERT_TRUE(w2.wait(3000ms));
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got = received;
+    }
+    EXPECT_NE(got.find("\"status_code\":0"), std::string::npos);
+    EXPECT_NE(got.find("\"version\":\"v5.0.0\""), std::string::npos);
+    EXPECT_NE(got.find("\"connection_status\":\"pending\""), std::string::npos);
 }
 
 // -----------------------------------------------------------------------------

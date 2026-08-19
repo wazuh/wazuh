@@ -208,7 +208,7 @@ namespace remoted::control
                 // this manager's policy is safe to persist as-is and worth keeping visible.
                 const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, versionToStore, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
                 HttpResponse response;
                 response.status = 400;
@@ -269,17 +269,16 @@ namespace remoted::control
                                                                    return updated;
                                                                });
 
+                                            // A single write persists the accepted version together with the
+                                            // pending keepalive. The version is not left to the notify path:
+                                            // notify only writes it alongside host metadata, which the agent
+                                            // omits until agent_info populates it, so the agent would otherwise
+                                            // be visible through the API without a version for the first
+                                            // keepalives.
                                             const std::string syncStatus =
                                                 m_config.isWorkerNode ? "syncreq_status" : "synced";
-                                            m_wdbClient->updateKeepalive(id, "pending", syncStatus, [](SocketError) {});
-
-                                            // The accepted version is persisted here and not left to the notify
-                                            // path: notify only writes it alongside host metadata, which the agent
-                                            // omits until agent_info populates it, so the agent would otherwise be
-                                            // visible through the API without a version for the first keepalives.
-                                            // This also clears any status_code left by a previously rejected startup.
                                             m_wdbClient->updateStatusCode(
-                                                id, AgentStatusCode::Ok, version, syncStatus, [](SocketError) {});
+                                                id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
 
                                             nlohmann::json response;
                                             response["limits"] = m_config.limits;

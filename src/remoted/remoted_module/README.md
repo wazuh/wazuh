@@ -313,8 +313,8 @@ sequenceDiagram
     WDB-->>CH: groups
     CH->>AR: update(id, metadata)
     Note over AR: Sharded map insert/update
-    CH->>WDB: updateKeepalive(id, "pending") + updateStatusCode(id, Ok, version)
-    Note over WDB: Fire-and-forget async writes
+    CH->>WDB: updateStatusCode(id, Ok, version, "pending")
+    Note over WDB: Fire-and-forget async write (version + pending keepalive)
     CH->>TC: getPendingTasks(id)
     TC-->>TM: async UDS query
     TM-->>TC: [task1, task2, ...]

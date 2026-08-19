@@ -329,32 +329,28 @@ TEST(ControlHandlerTest, StartupPersistsAcceptedVersionWithOkStatusCode)
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.status, 200);
 
-    // Three commands expected: select-agent-group plus the two fire-and-forget
-    // writes (pending keepalive and status-code/version persistence).
-    for (int i = 0; i < 200 && wdb->commands().size() < 3; ++i)
+    // Two commands expected: select-agent-group plus a single fire-and-forget
+    // write persisting the version, the pending status and the keepalive.
+    for (int i = 0; i < 200 && wdb->commands().size() < 2; ++i)
     {
         std::this_thread::sleep_for(5ms);
     }
-    bool sawPendingKeepalive = false;
     bool sawVersionPersist = false;
     for (const auto& c : wdb->commands())
     {
-        if (c.find("global update-keepalive") != std::string::npos &&
-            c.find("\"connection_status\":\"pending\"") != std::string::npos)
-        {
-            sawPendingKeepalive = true;
-        }
         // The accepted version must land in wdb at startup: the notify path only
         // persists it together with host metadata, which the agent may take a
         // while to report, and GET /agents must not show a versionless agent.
         if (c.find("global update-status-code") != std::string::npos &&
             c.find("\"status_code\":0") != std::string::npos &&
-            c.find("\"version\":\"5.0.0\"") != std::string::npos)
+            c.find("\"version\":\"5.0.0\"") != std::string::npos &&
+            c.find("\"connection_status\":\"pending\"") != std::string::npos)
         {
             sawVersionPersist = true;
         }
+        EXPECT_EQ(c.find("global update-keepalive"), std::string::npos)
+            << "startup must issue a single wdb write, got: " << c;
     }
-    EXPECT_TRUE(sawPendingKeepalive);
     EXPECT_TRUE(sawVersionPersist);
 }
 

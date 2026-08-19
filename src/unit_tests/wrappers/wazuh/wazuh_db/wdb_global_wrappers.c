@@ -87,10 +87,12 @@ int __wrap_wdb_global_update_agent_status_code(__attribute__((unused)) wdb_t *wd
                                                    int id,
                                                    int status_code,
                                                    const char *version,
+                                                   const char *connection_status,
                                                    const char *sync_status) {
     check_expected(id);
     check_expected(status_code);
     check_expected(version);
+    check_expected_ptr(connection_status);
     check_expected(sync_status);
     return mock();
 }
