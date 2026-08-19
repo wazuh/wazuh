@@ -149,9 +149,9 @@ STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
 
-/* Start every subsystem that only serves 4.x agents (queues, caches, and every thread that
- * only reads/writes them). No-op when <remote><legacy> is absent or disabled. Called after
- * OS_ReadKeys() so close_fp_main() can join the rest without its own separate gate. */
+/* Start every subsystem that only serves 4.x agents (queues, caches, the legacy AES keystore,
+ * and every thread that only reads/writes them). No-op when <remote><legacy> is absent or
+ * disabled. */
 static void start_legacy_subsystems(void);
 
 /* Log remoted's startup line: the classic listener's port/protocol when legacy is enabled,
@@ -495,18 +495,6 @@ void HandleSecure()
 
     log_secure_startup_message();
 
-    /* Read authentication keys */
-    mdebug1(ENC_READ);
-
-    key_lock_write();
-    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
-    key_unlock();
-
-    OS_StartCounter(&keys);
-
-    // Key reloader thread: keystore is shared with the HTTPS CMAC auth middleware.
-    w_create_thread(rem_keyupdate_main, NULL);
-
     start_legacy_subsystems();
 
     /* Set up peer size */
@@ -645,8 +633,18 @@ static void start_legacy_subsystems(void) {
         }
     }
 
+    mdebug1(ENC_READ);
+
+    key_lock_write();
+    OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);
+    key_unlock();
+
+    OS_StartCounter(&keys);
+
+    w_create_thread(rem_keyupdate_main, NULL);
+
     // fp closer thread: manages fds for legacy TCP connections only. 'keys' is already
-    // loaded by the time this runs (called after OS_ReadKeys() in HandleSecure()).
+    // loaded by the time this runs.
     w_create_thread(close_fp_main, &keys);
 }
 
