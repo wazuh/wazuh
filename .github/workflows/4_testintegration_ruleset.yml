@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

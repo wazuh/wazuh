@@ -32,7 +32,7 @@ jobs:
       # Manifest of every S3 key the tests upload, so the always() cleanup step can delete them
       # even if the job is cancelled before pytest teardown runs.
       AWS_IT_CLEANUP_MANIFEST: ${{ github.workspace }}/aws_it_uploaded_keys.txt
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
