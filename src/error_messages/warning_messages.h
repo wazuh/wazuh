@@ -13,6 +13,7 @@
 
 /* Active Response */
 #define AR_SERVER_AGENT "(1306): Invalid agent ID. Use location=server to run AR on the manager."
+#define AR_MAX_COMMANDS "(1307): Defined %d active response commands, more than the maximum of %d. The exceeding entries of '%s' may not be loaded by the agents."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"

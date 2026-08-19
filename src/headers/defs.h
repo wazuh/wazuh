@@ -161,6 +161,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 #define AR_BINDIR       "active-response/bin"
+/* Maximum number of active response commands that an agent can load */
+#define MAX_AR          64
 #ifndef WIN32
 #define DEFAULTAR       "etc/shared/" DEFAULTAR_FILE
 #define AGENTCONFIG     "etc/shared/agent.conf"
