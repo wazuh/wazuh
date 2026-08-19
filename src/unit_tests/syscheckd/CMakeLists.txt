@@ -252,6 +252,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
                          -Wl,--wrap,w_query_agentd -Wl,--wrap,OS_ConnectUnixDomain \
+                         -Wl,--wrap,fim_db_count_synced_docs \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")

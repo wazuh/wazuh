@@ -517,14 +517,19 @@ void fim_initialize() {
     syscheck.file_limit = 0;
     syscheck.registry_key_limit = 0;
     syscheck.registry_value_limit = 0;
-    while (!fetch_document_limits_from_agentd())
-    {
-        mdebug1("Trying to fetch limits from agentd...");
+
+    // Only document promotion and the scan paths read these limits, and neither runs when the
+    // module is disabled: retrying here would hold back the DataClean notification.
+    if (!syscheck.disabled) {
+        while (!fetch_document_limits_from_agentd())
+        {
+            mdebug1("Trying to fetch limits from agentd...");
 #ifdef WIN32
-        Sleep(1000);
+            Sleep(1000);
 #else
-        sleep(1);
+            sleep(1);
 #endif // WIN32
+        }
     }
 
     // Initialize locks before sync handle creation
@@ -546,102 +551,104 @@ void fim_initialize() {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
 
-// Check for limit changes
+// Check for limit changes.
+    if (!syscheck.disabled) {
 #ifdef WIN32
-    int table_count = 3;
-    char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
+        int table_count = 3;
+        char* table_names[3] = {FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME, FIMDB_REGISTRY_VALUE_TABLENAME};
 #else
-    int table_count = 1;
-    char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
+        int table_count = 1;
+        char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
 
-    for (int i = 0; i < table_count; i++) {
-        char* table_name = table_names[i];
+        for (int i = 0; i < table_count; i++) {
+            char* table_name = table_names[i];
 
-        // Get the appropriate limit and synced_docs pointer for this table
-        int limit = 0;
-        int* synced_docs_ptr = NULL;
-        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            limit = syscheck.file_limit;
-            synced_docs_ptr = &synced_docs_files;
-        } else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
-            limit = syscheck.registry_key_limit;
-            synced_docs_ptr = &synced_docs_registry_keys;
-        } else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
-            limit = syscheck.registry_value_limit;
-            synced_docs_ptr = &synced_docs_registry_values;
-        }
-
-        if (synced_docs_ptr == NULL) {
-            mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
-            continue;
-        }
-
-        *synced_docs_ptr = fim_db_count_synced_docs(table_name);
-        if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
-            if (limit == 0) { // If moving from limited agent to unlimited, promote everything
-                limit = INT_MAX;
+            // Get the appropriate limit and synced_docs pointer for this table
+            int limit = 0;
+            int* synced_docs_ptr = NULL;
+            if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+                limit = syscheck.file_limit;
+                synced_docs_ptr = &synced_docs_files;
+            } else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+                limit = syscheck.registry_key_limit;
+                synced_docs_ptr = &synced_docs_registry_keys;
+            } else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+                limit = syscheck.registry_value_limit;
+                synced_docs_ptr = &synced_docs_registry_values;
             }
-            if (*synced_docs_ptr < limit) { // Limit might have increased
-                int document_count = limit - *synced_docs_ptr;
-                cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
-                if (docs_to_promote) { // Limit has increased
-                    // Drop rows whose path is no longer covered by the current FIM
-                    // configuration (e.g. a group with a realtime rule was removed).
-                    // The scheduled scan that follows handles them via the orphan-delete path.
-                    drop_orphaned_promoted_documents(table_name, docs_to_promote);
+            if (synced_docs_ptr == NULL) {
+                mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
+                continue;
+            }
 
-                    // Send promoted documents to persistent queue as CREATE events
-                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
-                    persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
-
-                    OSList* pending_sync_updates = OSList_Create();
-                    if (pending_sync_updates) {
-                        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
-
-                        // Iterate through full documents and extract primary keys for sync flag update
-                        cJSON* full_doc = NULL;
-                        cJSON_ArrayForEach(full_doc, docs_to_promote) {
-                            cJSON* primary_keys = extract_primary_keys(table_name, full_doc);
-                            if (primary_keys) {
-                                add_pending_sync_item(pending_sync_updates, primary_keys, 1);
-                                cJSON_Delete(primary_keys);
-                                (*synced_docs_ptr)++;
-                            }
-                        }
-
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
-                        OSList_Destroy(pending_sync_updates);
-                    }
-                    cJSON_Delete(docs_to_promote);
+            *synced_docs_ptr = fim_db_count_synced_docs(table_name);
+            if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
+                if (limit == 0) { // If moving from limited agent to unlimited, promote everything
+                    limit = INT_MAX;
                 }
-            } else if (*synced_docs_ptr > limit) { // Limit might have decreased
-                int document_count = *synced_docs_ptr - limit;
-                cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
+                if (*synced_docs_ptr < limit) { // Limit might have increased
+                    int document_count = limit - *synced_docs_ptr;
+                    cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
-                if (docs_to_demote) { // Limit has decreased
-                    minfo("Document limit decreased from %d to %d for table %s. Currently synced documents: %d", document_count, limit, table_name, limit);
-                    // Send demoted documents to persistent queue as DELETE events
-                    persist_sync_documents(table_name, docs_to_demote, OPERATION_DELETE);
+                    if (docs_to_promote) { // Limit has increased
+                        // Drop rows whose path is no longer covered by the current FIM
+                        // configuration (e.g. a group with a realtime rule was removed).
+                        // The scheduled scan that follows handles them via the orphan-delete path.
+                        drop_orphaned_promoted_documents(table_name, docs_to_promote);
 
-                    OSList* pending_sync_updates = OSList_Create();
-                    if (pending_sync_updates) {
-                        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+                        // Send promoted documents to persistent queue as CREATE events
+                        mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
+                        persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
-                        // Iterate through the cJSON array and add to pending list
-                        cJSON* item = NULL;
-                        cJSON_ArrayForEach(item, docs_to_demote) {
-                            add_pending_sync_item(pending_sync_updates, item, 0);
-                            (*synced_docs_ptr)--;
+                        OSList* pending_sync_updates = OSList_Create();
+                        if (pending_sync_updates) {
+                            OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+                            // Iterate through full documents and extract primary keys for sync flag update
+                            cJSON* full_doc = NULL;
+                            cJSON_ArrayForEach(full_doc, docs_to_promote) {
+                                cJSON* primary_keys = extract_primary_keys(table_name, full_doc);
+                                if (primary_keys) {
+                                    add_pending_sync_item(pending_sync_updates, primary_keys, 1);
+                                    cJSON_Delete(primary_keys);
+                                    (*synced_docs_ptr)++;
+                                }
+                            }
+
+                            // Process pending sync updates
+                            process_pending_sync_updates(table_name, pending_sync_updates);
+                            OSList_Destroy(pending_sync_updates);
                         }
-
-                        // Process pending sync updates
-                        process_pending_sync_updates(table_name, pending_sync_updates);
-                        OSList_Destroy(pending_sync_updates);
+                        cJSON_Delete(docs_to_promote);
                     }
-                    cJSON_Delete(docs_to_demote);
+                } else if (*synced_docs_ptr > limit) { // Limit might have decreased
+                    int document_count = *synced_docs_ptr - limit;
+                    cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
+
+                    if (docs_to_demote) { // Limit has decreased
+                        minfo("Document limit decreased from %d to %d for table %s. Currently synced documents: %d", document_count, limit, table_name, limit);
+                        // Send demoted documents to persistent queue as DELETE events
+                        persist_sync_documents(table_name, docs_to_demote, OPERATION_DELETE);
+
+                        OSList* pending_sync_updates = OSList_Create();
+                        if (pending_sync_updates) {
+                            OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
+                            // Iterate through the cJSON array and add to pending list
+                            cJSON* item = NULL;
+                            cJSON_ArrayForEach(item, docs_to_demote) {
+                                add_pending_sync_item(pending_sync_updates, item, 0);
+                                (*synced_docs_ptr)--;
+                            }
+
+                            // Process pending sync updates
+                            process_pending_sync_updates(table_name, pending_sync_updates);
+                            OSList_Destroy(pending_sync_updates);
+                        }
+                        cJSON_Delete(docs_to_demote);
+                    }
                 }
             }
         }

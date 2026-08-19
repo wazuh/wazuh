@@ -103,6 +103,8 @@ void test_fim_initialize(void **state)
     syscheck_config *syscheck_conf = *state;
     syscheck.sync_end_delay = 1;
     syscheck.sync_max_eps = 3;
+    // Read_Syscheck_Config() always runs first in production and resolves syscheck.disabled to 0 or 1.
+    syscheck.disabled = 0;
 
 #ifdef TEST_WINAGENT
     expect_wrapper_fim_db_init(FIM_DB_DISK,
@@ -120,6 +122,10 @@ void test_fim_initialize(void **state)
     will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
+    // Document promotion runs while the module is enabled; nothing is synced yet.
+    expect_any_always(__wrap_fim_db_count_synced_docs, table_name);
+    will_return_always(__wrap_fim_db_count_synced_docs, 0);
+
     expect_string(__wrap_asp_create, module, "fim");
 
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
@@ -131,6 +137,42 @@ void test_fim_initialize(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     fim_initialize();
+}
+
+void test_fim_initialize_disabled(void **state)
+{
+    syscheck_config *syscheck_conf = *state;
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_max_eps = 3;
+    syscheck.disabled = 1;
+
+#ifdef TEST_WINAGENT
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
+                               syscheck_conf->file_entry_limit,
+                               syscheck_conf->db_entry_registry_limit);
+#else
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
+                               syscheck_conf->file_entry_limit,
+                               0);
+#endif
+
+    // The point of this test: while disabled, neither the document limits query nor document
+    // promotion may run. Queuing no expectations for w_query_agentd or fim_db_count_synced_docs
+    // means cmocka fails this test if either is called.
+
+    expect_string(__wrap_asp_create, module, "fim");
+
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
+    // Schema validator initialization
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    fim_initialize();
+
+    syscheck.disabled = 0;
 }
 
 void test_read_internal(void **state)
@@ -220,16 +262,19 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     will_return(__wrap_schema_validator_initialize, true);
     expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
-    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
-    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
-    will_return(__wrap_w_query_agentd, true);
+    // A corrupted configuration disables the module, so neither the document limits query
+    // nor document promotion run: no expectations are queued for w_query_agentd or
+    // fim_db_count_synced_docs, which makes calling either one fail this test.
 
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
+    // Document promotion runs while the module is enabled; nothing is synced yet.
+    expect_any_always(__wrap_fim_db_count_synced_docs, table_name);
+    will_return_always(__wrap_fim_db_count_synced_docs, 0);
+
     syscheck.directories = NULL;
     syscheck.registry = NULL;
     syscheck.disabled = 0;
@@ -277,6 +322,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
+    // Document promotion runs while the module is enabled; nothing is synced yet.
+    expect_any_always(__wrap_fim_db_count_synced_docs, table_name);
+    will_return_always(__wrap_fim_db_count_synced_docs, 0);
+
     directory_t EMPTY = { 0 };
     char info_msg[OS_MAXSTR];
 
@@ -322,6 +371,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 }
 
 void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
+    // Document promotion runs while the module is enabled; nothing is synced yet.
+    expect_any_always(__wrap_fim_db_count_synced_docs, table_name);
+    will_return_always(__wrap_fim_db_count_synced_docs, 0);
+
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -407,6 +460,10 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 }
 
 void test_Start_win32_Syscheck_whodata_active(void **state) {
+    // Document promotion runs while the module is enabled; nothing is synced yet.
+    expect_any_always(__wrap_fim_db_count_synced_docs, table_name);
+    will_return_always(__wrap_fim_db_count_synced_docs, 0);
+
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -631,6 +688,7 @@ int main(void) {
     int ret;
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
+            cmocka_unit_test_setup_teardown(test_fim_initialize_disabled, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
             cmocka_unit_test(test_fetch_document_limits_success),
