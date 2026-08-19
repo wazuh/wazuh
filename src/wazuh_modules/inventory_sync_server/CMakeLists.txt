@@ -37,11 +37,14 @@ target_include_directories(
           # that one TU (see vd/vdScannerFactory.hpp).
           ${SRC_FOLDER})
 
-# ext_asio: header-only standalone Asio (INTERFACE target). ext_llhttp: static HTTP parser.
-# Both are linked PRIVATE and confined to the .cpp files behind the PImpl, so neither leaks
-# into this module's public headers -- which is what keeps the transport swappable.
-# Neither pulls in RESTinio, fmt or OpenSSL.
-#
+# The HTTP-over-UDS transport is the shared wazuh_uds_http_server archive (extracted from this
+# module): asio/llhttp stay PRIVATE inside it and never leak here. Guarded add_subdirectory so
+# this module still configures standalone.
+if(NOT TARGET wazuh_uds_http_server)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/uds_http_server
+                   ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
+endif()
+
 # wazuhext provides cJSON (bundled whole-archive, see external/CMakeLists.txt): the extern "C" shim
 # calls cJSON_Print/cJSON_free to convert the borrowed <indexer> subtree. Taking it from the shared
 # library rather than linking ext_cjson statically avoids a second copy of cJSON inside this .so,
@@ -55,11 +58,7 @@ target_include_directories(
 target_link_libraries(
   inventory_sync_server
   PUBLIC wazuh_metrics
-  PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector vulnerability_scanner)
-
-# Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides Boost,
-# so leaving it to be inferred just makes the build depend on what happens to be installed.
-target_compile_definitions(inventory_sync_server PRIVATE ASIO_STANDALONE)
+  PRIVATE pthread wazuh_uds_http_server wazuhext indexer_connector vulnerability_scanner)
 
 set_target_properties(inventory_sync_server PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                       BUILD_RPATH "$ORIGIN/../lib")

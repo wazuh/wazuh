@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "http_server/inFlightBudget.hpp"
+#include "inFlightBudget.hpp"
 
 #include <gtest/gtest.h>
 
@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-using invsync::http::InFlightBudget;
+using wazuh::uds_http::InFlightBudget;
 
 TEST(InFlightBudgetTest, ReservesAndReleasesAutomatically)
 {

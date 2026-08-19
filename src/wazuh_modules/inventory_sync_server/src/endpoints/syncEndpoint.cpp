@@ -11,9 +11,9 @@
 
 #include "syncEndpoint.hpp"
 
-#include "common/logThrottle.hpp"
 #include "loggerHelper.h"
 #include "sync/fullSessionValidator.hpp"
+#include <uds_http_server/logThrottle.hpp>
 
 #include <chrono>
 #include <string>
@@ -32,37 +32,37 @@ namespace
         return instance;
     }
 
-    invsync::http::HttpResponse errorResponse(int status, const std::string& reason)
+    wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return invsync::http::HttpResponse::json(
+        return wazuh::uds_http::HttpResponse::json(
             status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
     }
 
     /// One body for every 503 cause on purpose: "stopping", "indexer unreachable" and "no
     /// capacity" are all "retry later" to the agent, and telling them apart would leak internal
     /// state. The causes are distinguished in the logs instead.
-    invsync::http::HttpResponse serviceUnavailable()
+    wazuh::uds_http::HttpResponse serviceUnavailable()
     {
-        return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        return wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
     }
 } // namespace
 
 namespace invsync::endpoints::sync
 {
 
-    http::RouteHandler makeHandler(Dependencies dependencies)
+    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies)
     {
-        return [deps = std::move(dependencies)](std::shared_ptr<const http::HttpRequest> request,
-                                                std::shared_ptr<http::IHttpResponder> responder)
+        return [deps = std::move(dependencies)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                                std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local: an agent (through remoted) controls how often these
             // fire, so one line per request would be a log-amplification vector. One slot per
             // condition, so a persistent one cannot mask a newly-appearing different one.
-            static invsync::common::LogThrottle rejectedThrottle;
-            static invsync::common::LogThrottle identityThrottle;
-            static invsync::common::LogThrottle vdThrottle;
-            static invsync::common::LogThrottle unavailableThrottle;
-            static invsync::common::LogThrottle capacityThrottle;
+            static wazuh::uds_http::LogThrottle rejectedThrottle;
+            static wazuh::uds_http::LogThrottle identityThrottle;
+            static wazuh::uds_http::LogThrottle vdThrottle;
+            static wazuh::uds_http::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle capacityThrottle;
 
             if (!request)
             {
@@ -104,7 +104,7 @@ namespace invsync::endpoints::sync
                                    "Rejected %llu request(s) with 403 in the last %d s: the session's identity does "
                                    "not match the authenticated one (last: agent '%s').",
                                    static_cast<unsigned long long>(decision.total),
-                                   invsync::common::LogThrottle::kDefaultWindowSeconds,
+                                   wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
                                    agentIdIt->second.c_str());
                     }
                 }
@@ -113,7 +113,7 @@ namespace invsync::endpoints::sync
                     LOGFN_DEBUG1(logFn(),
                                  "Rejected %llu invalid session(s) with 400 in the last %d s (last: %s).",
                                  static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds,
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
                                  failure->reason.c_str());
                 }
                 deps.requestCounters.count(failure->status);
@@ -148,7 +148,7 @@ namespace invsync::endpoints::sync
                                      "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
                                      "last %d s: the CVE feed is not ready.",
                                      static_cast<unsigned long long>(decision.total),
-                                     invsync::common::LogThrottle::kDefaultWindowSeconds);
+                                     wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                     }
                     auto response = errorResponse(503, "vulnerability feed not ready");
                     response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));
@@ -178,7 +178,7 @@ namespace invsync::endpoints::sync
                                        "the scan lane queue is full (scans are slow; the agents retry next cycle). "
                                        "Consider raising 'inventory_sync_server_vd_scan_queue_slots'.",
                                        static_cast<unsigned long long>(decision.total),
-                                       invsync::common::LogThrottle::kDefaultWindowSeconds);
+                                       wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                         }
                         // The lane itself counts vd.capacity.503.total at the refusal.
                         deps.requestCounters.count(503);
@@ -211,7 +211,7 @@ namespace invsync::endpoints::sync
                                "Rejected %llu session(s) with 503 in the last %d s: no configured indexer host is "
                                "currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               invsync::common::LogThrottle::kDefaultWindowSeconds);
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
@@ -242,7 +242,7 @@ namespace invsync::endpoints::sync
                                "Consider raising 'inventory_sync_server_sync_workers' or "
                                "'inventory_sync_server_sync_queue_bytes'.",
                                static_cast<unsigned long long>(decision.total),
-                               invsync::common::LogThrottle::kDefaultWindowSeconds);
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 // The pipeline itself counts sync.pipeline.shed.total at the refusal.
                 deps.requestCounters.count(503);

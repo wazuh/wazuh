@@ -29,9 +29,6 @@
 #include <variant>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
 using invsync::sync::SyncPipeline;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
@@ -41,6 +38,9 @@ using invsync::test::ValueSpec;
 using invsync::vd::AgentInFlightRegistry;
 using invsync::vd::VdScanLane;
 using invsync::vd::VdScanLaneConfig;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
 
 namespace
 {

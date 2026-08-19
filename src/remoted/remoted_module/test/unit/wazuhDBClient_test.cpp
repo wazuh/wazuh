@@ -13,6 +13,8 @@
 #include "control/wazuhDBClient.hpp"
 #include "fakeUdsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -131,7 +133,8 @@ TEST(WazuhDBClientTest, QueryRoundTripsCommandAndResponse)
 TEST(WazuhDBClientTest, GetAgentGroupsParsesCsvFromWdbResponse)
 {
     const auto path = remoted::test::makeUniqueSocketPath("wdb_grp");
-    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok [{\"group\":\"default,web,dmz\"}]"; });
+    FakeUdsServer server(path,
+                         [](const std::string&) -> std::string { return "ok [{\"group\":\"default,web,dmz\"}]"; });
 
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
@@ -304,8 +307,10 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got1 = received;
     }
-    EXPECT_NE(got1.find("\"os_major\":\"22\""), std::string::npos) << "Ubuntu 22.04 should parse major=22, got: " << got1;
-    EXPECT_NE(got1.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 22.04 should parse minor=04, got: " << got1;
+    EXPECT_NE(got1.find("\"os_major\":\"22\""), std::string::npos)
+        << "Ubuntu 22.04 should parse major=22, got: " << got1;
+    EXPECT_NE(got1.find("\"os_minor\":\"04\""), std::string::npos)
+        << "Ubuntu 22.04 should parse minor=04, got: " << got1;
 
     // Test SUSE version format
     HostInfo host2;
@@ -324,7 +329,8 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got2 = received;
     }
-    EXPECT_NE(got2.find("\"os_major\":\"15\""), std::string::npos) << "SUSE 15-SP7 should parse major=15, got: " << got2;
+    EXPECT_NE(got2.find("\"os_major\":\"15\""), std::string::npos)
+        << "SUSE 15-SP7 should parse major=15, got: " << got2;
     EXPECT_NE(got2.find("\"os_minor\":\"7\""), std::string::npos) << "SUSE 15-SP7 should parse minor=7, got: " << got2;
 
     // Test version with patch number
@@ -344,8 +350,10 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         std::lock_guard<std::mutex> lock(mu);
         got3 = received;
     }
-    EXPECT_NE(got3.find("\"os_major\":\"20\""), std::string::npos) << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
-    EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos) << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
+    EXPECT_NE(got3.find("\"os_major\":\"20\""), std::string::npos)
+        << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
+    EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos)
+        << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
 }
 
 TEST(WazuhDBClientTest, UpdateAgentDataOmitsOsTypeWhenEmpty)
@@ -419,7 +427,9 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     // Short deadline so the test doesn't wait forever.
     WazuhDBClient client(path, 1, /*deadlineMs*/ 100, 100, metrics);
 
@@ -427,7 +437,7 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::Timeout);
-    EXPECT_GE(metrics.wdbErrorCount.load(), 1U);
+    EXPECT_GE(metrics.wdbError->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -442,7 +452,9 @@ TEST(WazuhDBClientTest, QueueFullRejectsSynchronously)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     // 1 worker, queue depth 2. QueueFull is decided synchronously in query()
     // without touching the worker, so the deadline doesn't race the check --
     // we keep it small so the dtor does not have to wait for an in-flight
@@ -485,7 +497,7 @@ TEST(WazuhDBClientTest, QueueFullRejectsSynchronously)
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_GE(queueFull.load(), 3);
-    EXPECT_GE(metrics.wdbErrorCount.load(), 3U);
+    EXPECT_GE(metrics.wdbError->get(), 3U);
 }
 
 // -----------------------------------------------------------------------------

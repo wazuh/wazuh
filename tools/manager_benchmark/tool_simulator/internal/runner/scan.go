@@ -14,8 +14,9 @@ import (
 // It is NOT the scan a VDFirst/VDSync session triggers. That one rides the
 // inventory the session carries, through the inventory_sync_server's VD scan
 // lane; this one asks the manager to re-scan the inventory it already holds,
-// through remoted's own worker pool. A lane that does `full_resync` (VD dump)
-// then `scan_vd` therefore walks BOTH paths in the order a real agent does.
+// through remoted's passthrough into VD's dispatch queue. A lane that does
+// `full_resync` (VD dump) then `scan_vd` therefore walks BOTH paths in the
+// order a real agent does.
 //
 // The recorded latency is admission only — a 200 means "queued", and the scan
 // runs afterward, one agent at a time inside the VD module. Whether it actually

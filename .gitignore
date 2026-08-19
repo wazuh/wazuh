@@ -176,3 +176,9 @@ src/result-*.txt
 
 # Tool files
 tools/repository_bumper_*
+src/build-tsan/*
+src/build-e6a/*
+# Runtime artifacts of daemons/testtools run from src/ during development
+src/queue/
+src/temp/
+src/feed_temp/

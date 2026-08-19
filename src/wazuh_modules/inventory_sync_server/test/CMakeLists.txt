@@ -40,6 +40,11 @@ target_include_directories(
   inventory_sync_server_utest
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
           ${CMAKE_CURRENT_LIST_DIR}/../src # submodule headers by prefix: http_server/, endpoints/, common/
+          # The extracted transport: its public headers (via the transitional shims under src/)
+          # and its test fixtures (udsTestClient.hpp, borrowed by the E2E suite).
+          ${SRC_FOLDER}/shared_modules/uds_http_server/include
+          ${SRC_FOLDER}/shared_modules/uds_http_server/src # white-box: udsHttpServerConfig_test pins parser limits
+          ${SRC_FOLDER}/shared_modules/uds_http_server/test/unit
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp, proc.hpp
           ${SRC_FOLDER}/shared_modules/common
           ${SRC_FOLDER}/external/cJSON

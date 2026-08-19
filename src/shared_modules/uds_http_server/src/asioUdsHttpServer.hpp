@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,15 +9,15 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_ASIO_UDS_HTTP_SERVER_HPP
-#define _INVSYNC_ASIO_UDS_HTTP_SERVER_HPP
+#ifndef _WAZUH_ASIO_UDS_HTTP_SERVER_HPP
+#define _WAZUH_ASIO_UDS_HTTP_SERVER_HPP
 
-#include "IUdsHttpServer.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <memory>
 #include <string>
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /**
@@ -40,17 +40,18 @@ namespace invsync::http
         AsioUdsHttpServer(const AsioUdsHttpServer&) = delete;
         AsioUdsHttpServer& operator=(const AsioUdsHttpServer&) = delete;
 
-        void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) override;
+        using IUdsHttpServer::addRoute; // the bool compatibility spelling
+        void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options) override;
         void start(const UdsHttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;
+        TransportDiagnostics diagnostics() const noexcept override;
 
     private:
         struct Impl;
         std::unique_ptr<Impl> m_impl;
     };
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_ASIO_UDS_HTTP_SERVER_HPP
+#endif // _WAZUH_ASIO_UDS_HTTP_SERVER_HPP

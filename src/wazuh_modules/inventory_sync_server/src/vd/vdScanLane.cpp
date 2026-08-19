@@ -198,7 +198,7 @@ namespace invsync::vd
                                          .count();
                 m_laneTime->observe(static_cast<uint64_t>(elapsed));
             }
-            item.responder->send(http::HttpResponse::json(status, body));
+            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
         }
     }
 
@@ -295,7 +295,7 @@ namespace invsync::vd
             // (a new feed download started). Rejected without processing, with the Retry-After.
             if (!m_scanner->feedReady())
             {
-                auto response = http::HttpResponse::json(503, FEED_NOT_READY_BODY);
+                auto response = wazuh::uds_http::HttpResponse::json(503, FEED_NOT_READY_BODY);
                 response.headers.emplace_back("Retry-After", std::to_string(m_config.retryAfterSeconds));
                 if (item.responder)
                 {

@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * August 1, 2026.
  *
@@ -9,11 +9,10 @@
  * Foundation.
  */
 
-#include "http_server/IUdsHttpServer.hpp"
-#include "http_server/udsHttpServerFactory.hpp"
-#include "inventory_sync_server.h"
 #include "testLogRecorder.hpp"
 #include "udsTestClient.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -31,17 +30,17 @@
 #include <thread>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
-using invsync::http::makeUdsHttpServer;
-using invsync::http::Method;
-using invsync::http::UdsHttpServerConfig;
-using invsync::test::LogRecorder;
-using invsync::test::peerRequest;
-using invsync::test::sendRaw;
-using invsync::test::testLogCallback;
-using invsync::test::uniqueSocketPath;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
+using wazuh::uds_http::makeUdsHttpServer;
+using wazuh::uds_http::Method;
+using wazuh::uds_http::UdsHttpServerConfig;
+using wazuh::uds_http::test::LogRecorder;
+using wazuh::uds_http::test::peerRequest;
+using wazuh::uds_http::test::sendRaw;
+using wazuh::uds_http::test::testLogCallback;
+using wazuh::uds_http::test::uniqueSocketPath;
 
 namespace
 {
@@ -64,7 +63,7 @@ namespace
         std::vector<std::shared_ptr<IHttpResponder>> responders;
         std::atomic<int> dispatched {0};
 
-        invsync::http::RouteHandler handler()
+        wazuh::uds_http::RouteHandler handler()
         {
             return [this](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
             {
@@ -113,24 +112,13 @@ namespace
  * Diagnosability of the transport: every rejection an operator may need to explain must leave a
  * (throttled) trace, and a peer that disappears must not pin resources.
  *
- * The suite starts and stops the module once so the .so's hidden log sink points at LogRecorder;
- * without that, LOGFN_* from a directly-constructed server goes nowhere (see testLogRecorder.hpp).
+ * The sink needs no module bootstrap here: this binary owns its Log::GLOBAL_LOG_FUNCTION (the
+ * library is linked as a static archive), and testMain.cpp points it at LogRecorder before any
+ * test runs.
  */
 class ServerDiagnosticsTest : public ::testing::Test
 {
 protected:
-    static void SetUpTestSuite()
-    {
-        inventory_sync_server_config_t config {};
-        const auto path = uniqueSocketPath("diag_sink");
-        std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", path.c_str());
-        config.io_threads = 1;
-        config.drain_timeout = 1;
-        inventory_sync_server_start(testLogCallback, &config);
-        LogRecorder::waitForMessageContaining("worker thread running");
-        inventory_sync_server_stop();
-    }
-
     void SetUp() override
     {
         LogRecorder::clear();

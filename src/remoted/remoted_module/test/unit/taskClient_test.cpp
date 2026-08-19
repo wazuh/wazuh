@@ -13,6 +13,8 @@
 #include "control/taskClient.hpp"
 #include "fakeUdsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -76,7 +78,9 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
                              return out.dump();
                          });
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, /*concurrency*/ 1, /*deadlineMs*/ 1000, /*maxQueueSize*/ 100, metrics);
 
     Waiter<std::pair<SocketError, std::vector<Task>>> w;
@@ -96,7 +100,7 @@ TEST(TaskClientTest, GetPendingTasksParsesTasksArray)
     EXPECT_EQ(req.value("action", ""), "get_pending_tasks");
     EXPECT_EQ(req.value("agent_id", ""), "042");
 
-    EXPECT_GE(metrics.taskFetchCount.load(), 1U);
+    EXPECT_GE(metrics.taskFetch->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -143,14 +147,16 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnErrorField)
     const auto path = remoted::test::makeUniqueSocketPath("task_err");
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"error\":\"boom\"}"; });
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
     client.getPendingTasks(1, [&](SocketError e, std::vector<Task>) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::ProtocolError);
-    EXPECT_GE(metrics.taskFetchErrorCount.load(), 1U);
+    EXPECT_GE(metrics.taskFetchError->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -162,14 +168,16 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnBadStatus)
     const auto path = remoted::test::makeUniqueSocketPath("task_bad");
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "{\"status\":\"nope\"}"; });
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
     client.getPendingTasks(1, [&](SocketError e, std::vector<Task>) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::ProtocolError);
-    EXPECT_GE(metrics.taskFetchErrorCount.load(), 1U);
+    EXPECT_GE(metrics.taskFetchError->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -180,14 +188,16 @@ TEST(TaskClientTest, GetPendingTasksProtocolErrorOnMalformedJson)
     const auto path = remoted::test::makeUniqueSocketPath("task_mal");
     FakeUdsServer server(path, [](const std::string&) -> std::string { return "not json at all"; });
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
     client.getPendingTasks(1, [&](SocketError e, std::vector<Task>) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::ProtocolError);
-    EXPECT_GE(metrics.taskFetchErrorCount.load(), 1U);
+    EXPECT_GE(metrics.taskFetchError->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -199,14 +209,16 @@ TEST(TaskClientTest, GetPendingTasksTimeoutIncrementsMetric)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, 1, /*deadlineMs*/ 100, 100, metrics);
 
     Waiter<SocketError> w;
     client.getPendingTasks(1, [&](SocketError e, std::vector<Task>) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::Timeout);
-    EXPECT_GE(metrics.taskFetchErrorCount.load(), 1U);
+    EXPECT_GE(metrics.taskFetchError->get(), 1U);
 }
 
 // -----------------------------------------------------------------------------
@@ -218,7 +230,9 @@ TEST(TaskClientTest, QueueFullRejectsSynchronously)
     FakeUdsServer server(path, [](const std::string&) -> std::string { return ""; });
     server.setDropResponses(true);
 
-    ControlMetrics metrics;
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
     TaskClient client(path, /*concurrency*/ 1, /*deadlineMs*/ 200, /*maxQueueSize*/ 2, metrics);
 
     // Let the worker connect and dequeue the first request.
@@ -247,7 +261,7 @@ TEST(TaskClientTest, QueueFullRejectsSynchronously)
         std::this_thread::sleep_for(5ms);
     }
     EXPECT_GE(queueFull.load(), 3);
-    EXPECT_GE(metrics.taskFetchErrorCount.load(), 3U);
+    EXPECT_GE(metrics.taskFetchError->get(), 3U);
 }
 
 // -----------------------------------------------------------------------------

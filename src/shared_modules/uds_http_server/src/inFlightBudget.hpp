@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,14 +9,14 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_HTTP_IN_FLIGHT_BUDGET_HPP
-#define _INVSYNC_HTTP_IN_FLIGHT_BUDGET_HPP
+#ifndef _WAZUH_UDS_HTTP_IN_FLIGHT_BUDGET_HPP
+#define _WAZUH_UDS_HTTP_IN_FLIGHT_BUDGET_HPP
 
 #include <atomic>
 #include <cstddef>
 #include <optional>
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /**
@@ -179,6 +179,13 @@ namespace invsync::http
             return m_maxBytes != 0;
         }
 
+        /// @brief Configured ceiling in bytes (0 while disabled). With availableBytes() this
+        ///        yields the in-flight total, snapshot-consistent enough for diagnostics.
+        std::size_t capacityBytes() const noexcept
+        {
+            return m_maxBytes;
+        }
+
     private:
         void release(std::size_t bytes) noexcept
         {
@@ -194,6 +201,6 @@ namespace invsync::http
         std::atomic<std::size_t> m_inFlightCount {0};
     };
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_HTTP_IN_FLIGHT_BUDGET_HPP
+#endif // _WAZUH_UDS_HTTP_IN_FLIGHT_BUDGET_HPP

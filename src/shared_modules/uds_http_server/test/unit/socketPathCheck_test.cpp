@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 30, 2026.
  *
@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "common/socketPathCheck.hpp"
+#include <uds_http_server/socketPathCheck.hpp>
 
 #include <gtest/gtest.h>
 
@@ -22,7 +22,7 @@
 #include <fstream>
 #include <string>
 
-using invsync::common::socketPathIsUsable;
+using wazuh::uds_http::socketPathIsUsable;
 
 namespace
 {

@@ -37,6 +37,8 @@
 #include "scanvd/scanVdMetrics.hpp"
 #include "testTlsServer.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -65,8 +67,10 @@ namespace
         std::string taskPath;
         std::string vdSocketPath;
         Config cfg;
-        ControlMetrics controlMetrics;
-        remoted::scanvd::ScanVdMetrics scanVdMetrics;
+        // One manager for both families, like the facade; the E2E assertions read the counters.
+        wazuh::metrics::Manager metricsManager;
+        ControlMetrics controlMetrics {makeControlMetrics(metricsManager)};
+        remoted::scanvd::ScanVdMetrics scanVdMetrics {remoted::scanvd::makeScanVdMetrics(metricsManager)};
         std::unique_ptr<remoted::test::FakeUdsServer> wdbServer;
         std::unique_ptr<remoted::test::FakeUdsServer> taskServer;
         std::unique_ptr<remoted::test::FakeVdServer> vdServer;
@@ -227,7 +231,7 @@ TEST(ControlScanVdE2ETest, ScanVdMatchingOffsetReturns200OverRealHttp)
 
     ASSERT_NE(head.find("200"), std::string::npos) << "raw response head: " << head;
     EXPECT_EQ(respBody, "{}");
-    EXPECT_EQ(f.scanVdMetrics.acceptedCount.load(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.accepted->get(), 1u);
 }
 
 TEST(ControlScanVdE2ETest, ScanVdMismatchedOffsetReturns409OverRealHttp)
@@ -246,5 +250,33 @@ TEST(ControlScanVdE2ETest, ScanVdMismatchedOffsetReturns409OverRealHttp)
     const auto json = nlohmann::json::parse(respBody);
     EXPECT_EQ(json.at("error").get<std::string>(), "version_mismatch");
     EXPECT_EQ(json.at("current_version").get<uint64_t>(), 12345u);
-    EXPECT_EQ(f.scanVdMetrics.versionMismatchCount.load(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.versionMismatch->get(), 1u);
+}
+
+TEST(ControlScanVdE2ETest, ScanVdRefusedByVdIsAnHonest503OverRealHttp)
+{
+    ControlScanVdE2EFixture f;
+    if (!f.start())
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+
+    // The negative twin of the 200 case: VD refuses at admission, and the agent must SEE that
+    // -- the old design answered 200 here and dropped the scan later if retries ran out.
+    f.vdServer->setScanHandler(
+        [](const httplib::Request&, httplib::Response& res)
+        {
+            res.status = 503;
+            res.set_content(R"({"error":"scan_queue_full","retryable":true})", "application/json");
+        });
+
+    const std::string body = R"({"type":"feed_update","feed_offset":12345})";
+    const auto raw = remoted::test::sendSignedRequest(f.port, remoted::test::testAgentKey(), "/scan/vd", body);
+    const auto [head, respBody] = remoted::test::splitResponse(raw);
+
+    ASSERT_NE(head.find("503"), std::string::npos) << "raw response head: " << head;
+    const auto json = nlohmann::json::parse(respBody);
+    EXPECT_EQ(json.at("error").get<std::string>(), "scan_queue_full") << "VD's cause travels to the agent";
+    EXPECT_EQ(f.scanVdMetrics.queueFull->get(), 1u);
+    EXPECT_EQ(f.scanVdMetrics.accepted->get(), 0u);
 }

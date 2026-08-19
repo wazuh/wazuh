@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,15 +9,15 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_COMMON_LOG_THROTTLE_HPP
-#define _INVSYNC_COMMON_LOG_THROTTLE_HPP
+#ifndef _WAZUH_UDS_HTTP_LOG_THROTTLE_HPP
+#define _WAZUH_UDS_HTTP_LOG_THROTTLE_HPP
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <limits>
 
-namespace invsync::common
+namespace wazuh::uds_http
 {
 
     /**
@@ -38,7 +38,12 @@ namespace invsync::common
      *
      * Lock-free and safe to share across threads.
      */
-    class LogThrottle final
+    // Hidden explicitly: its static constexpr members (kDefaultWindow*) are inline variables,
+    // which under default visibility export as GNU-unique -- process-wide across every .so
+    // that embeds this header and a pin against dlclose. The class never crosses a DSO
+    // boundary (each consumer keeps its own throttles), so each .so keeping a private copy is
+    // exactly the intent.
+    class __attribute__((visibility("hidden"))) LogThrottle final
     {
     public:
         /// One window per condition. 90 s matches the manager's existing throttles.
@@ -127,6 +132,6 @@ namespace invsync::common
         std::atomic<std::uint64_t> m_pending {0};
     };
 
-} // namespace invsync::common
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_COMMON_LOG_THROTTLE_HPP
+#endif // _WAZUH_UDS_HTTP_LOG_THROTTLE_HPP

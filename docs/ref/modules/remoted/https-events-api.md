@@ -241,10 +241,11 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   (`Content-Encoding: zstd`); remoted decompresses before relaying.
 - **`POST /scan/vd`** — authenticated on-demand Vulnerability Detection re-scan request, sent by an
   agent once it notices (via `notify`'s `vd_feed_offset`) that this node's feed has moved past what
-  it last synced against. Returns **`200 OK`** (queued) when the request's `feed_offset` matches
-  this node's current offset, **`409 Conflict`** (carrying the real offset to retry with) on a
-  mismatch, **`400`** on malformed requests, **`401`** on auth failures, or **`503`** when the
-  manager-side scan tracking table is full. See
+  it last synced against. Returns **`200 OK`** when the request's `feed_offset` matches this node's
+  current offset **and** the VD module queued the scan — the `200` is a promise that the scan will
+  run; **`409 Conflict`** (carrying the real offset to retry with) on a mismatch, **`400`** on
+  malformed requests, **`401`** on auth failures, or **`503`** when VD did not queue it (dispatch
+  lane full, feed mid-update, module stopping or unreachable, no indexer host available). See
   [Scan endpoint](#scan-endpoint-post-scanvd) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
@@ -584,7 +585,7 @@ The `/control` endpoint integrates with two backend services over Unix-domain so
   agent via JSON API (`{"action":"get_pending_tasks","agent_id":"001"}`). Returned tasks are
   included in the response. Task state is local to the node; cluster broadcast is handled separately
   by the task-manager service.
-- **vulnerability_scanner module** (`queue/sockets/modulesd`, `GET /vulnerability-detector/offset`):
+- **vulnerability_scanner module** (`queue/sockets/vd.sock`, `GET /vulnerability-detector/offset`):
   queried by `VdClient` (`remoted_module/src/common/vdClient.hpp`) to populate `vd_feed_offset`.
   Cached with a short TTL and a single-flight refresh (only one caller ever performs the actual UDS
   round trip; every concurrent caller gets the last-known-good value instead of blocking) so a slow
@@ -648,8 +649,10 @@ from `/control`.
 {}
 ```
 
-The request is queued (see [Manager-side queue](#manager-side-queue) below) and the agent should
-consider the offset it sent as handled — it clears any persisted retry state for that offset.
+The scan is queued in the VD module's bounded dispatch lane and **will run** (see
+[Scan dispatch](#scan-dispatch) below) — the `200` is relayed from VD's own admission answer,
+never invented on this side. The agent should consider the offset it sent as handled — it clears
+any persisted retry state for that offset.
 
 **Version mismatch (`409 Conflict`):**
 ```json
@@ -677,26 +680,38 @@ local value with an older `current_version`.
 | `type` other than `"feed_update"` | `400` | `invalid_type` |
 | Missing or non-unsigned `feed_offset` | `400` | `missing_feed_offset` |
 | `feed_offset` != current offset | `409` | `version_mismatch` (carries `current_version`) |
-| Scan tracking table at capacity | `503` | `scan_queue_full` |
+| VD's scan dispatch lane at capacity | `503` | `scan_queue_full` |
+| Indexer not usable (no healthy host) | `503` | `indexer_unavailable` |
+| VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
+| VD stopping or unreachable, or the relay failed | `503` | `shutting_down` / `vd_unreachable` / `vd_error` |
 
-Auth failures (`401`) reuse the same responses as `/stateless`. This endpoint's body cap (4 KiB) is
-far tighter than `/control`'s (64 KiB) since a scan request only ever carries `type` and
-`feed_offset`.
+Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
+and its pending state survives; the `error` code exists so an operator reading the exchange sees
+the actual cause. During a long indexer outage the agent keeps re-requesting on each notify and
+the scan runs once the indexer becomes available again. Auth failures (`401`) reuse the same
+responses as `/stateless`. This endpoint's body cap (4 KiB) is far tighter than `/control`'s
+(64 KiB) since a scan request only ever carries `type` and `feed_offset`.
 
-### Manager-side queue
+### Scan dispatch
 
-Accepting a request does not scan synchronously — `scanVdHandler.cpp` maintains a per-agent state
-table and a small pool of worker threads (sized to the host's available CPUs) that:
+remoted holds no scan state: after the offset gate it makes one inline
+`POST /vulnerability-detector/scan` to the `vulnerability_scanner` module (over the same UDS
+socket `VdClient` uses), which answers at **admission** into its bounded dispatch lane — a
+64-slot queue drained by a single worker (scans are serialized by the scanner's own global lock
+regardless). VD's admission preflight also checks the indexer's health
+(`IndexerConnectorSync::isAvailable()`, a per-host `GET /_cat/health` poll every 60 s; healthy
+means at least one host green or yellow) — with no healthy host it answers `503
+indexer_unavailable` instead of queueing. VD deduplicates repeated requests for an agent already
+waiting in the lane, and a queued scan cannot go stale: the request carries no offset, so the scan
+always runs against the feed that is current at execution time. remoted relays VD's answer
+verbatim and never retries — the agent's notify cycle is the retry loop, with no second one hidden
+behind it.
 
-1. Re-validate the offset immediately before dispatching the scan to the `vulnerability_scanner`
-   module (`POST /vulnerability-detector/scan` over the same UDS socket `VdClient` uses). The feed
-   may have moved on again while the request was queued; a stale task is discarded, not run — the
-   agent will notice the newer offset on its next `/control` notify and re-request.
-2. Retry a *retryable* failure (e.g. the scanner briefly unready) with exponential backoff (1s, 2s,
-   4s), up to 3 attempts, then give up and let the agent's next notify cycle re-trigger it.
-3. Collapse duplicate requests for the same agent into one another: a fresh request for an
-   already-tracked agent just updates the tracked offset (retrying immediately if the agent was
-   mid-backoff) rather than queuing a second entry.
+An indexer outage does not drain what VD already queued: the dispatch worker HOLDS the front of
+the lane (nothing popped, nothing dropped) and re-checks availability every 30 s, resuming as soon
+as a host answers healthy again; new requests keep getting `indexer_unavailable` at admission
+meanwhile, so held work stays bounded by the lane's 64 slots. Only a manager shutdown sheds a held
+queue.
 
 Duplicate scans across different nodes (the agent asks node A, doesn't get a timely reply, and asks
 node B too) are accepted as a rare, low-impact trade-off rather than solved with cross-node

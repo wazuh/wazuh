@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_TEST_UDS_TEST_CLIENT_HPP
-#define _INVSYNC_TEST_UDS_TEST_CLIENT_HPP
+#ifndef _WAZUH_UDS_TEST_UDS_TEST_CLIENT_HPP
+#define _WAZUH_UDS_TEST_UDS_TEST_CLIENT_HPP
 
 #include <asio.hpp>
 
@@ -21,7 +21,7 @@
 #include <thread>
 #include <unistd.h>
 
-namespace invsync::test
+namespace wazuh::uds_http::test
 {
     using stream_protocol = asio::local::stream_protocol;
 
@@ -156,6 +156,6 @@ namespace invsync::test
         return head + body;
     }
 
-} // namespace invsync::test
+} // namespace wazuh::uds_http::test
 
-#endif // _INVSYNC_TEST_UDS_TEST_CLIENT_HPP
+#endif // _WAZUH_UDS_TEST_UDS_TEST_CLIENT_HPP

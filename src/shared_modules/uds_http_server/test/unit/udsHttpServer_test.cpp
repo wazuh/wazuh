@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#include "http_server/IUdsHttpServer.hpp"
-#include "http_server/udsHttpServerFactory.hpp"
 #include "udsTestClient.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <gtest/gtest.h>
 
@@ -29,20 +29,20 @@
 #include <thread>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
-using invsync::http::makeUdsHttpServer;
-using invsync::http::Method;
-using invsync::http::UdsHttpServerConfig;
-using invsync::test::peerRequest;
-using invsync::test::sendRaw;
-using invsync::test::uniqueSocketPath;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
+using wazuh::uds_http::makeUdsHttpServer;
+using wazuh::uds_http::Method;
+using wazuh::uds_http::UdsHttpServerConfig;
+using wazuh::uds_http::test::peerRequest;
+using wazuh::uds_http::test::sendRaw;
+using wazuh::uds_http::test::uniqueSocketPath;
 
 namespace
 {
     /// Answers 200 with a fixed body, inline.
-    invsync::http::RouteHandler echoHandler(std::string body = R"({"ok":true})")
+    wazuh::uds_http::RouteHandler echoHandler(std::string body = R"({"ok":true})")
     {
         return [body](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
         {
@@ -179,8 +179,8 @@ TEST(UdsHttpServerTest, StartUnlinksAStaleSocketFile)
     // descriptor does not remove the file, so this is exactly the on-disk state after a hard kill.
     {
         asio::io_context ioc;
-        invsync::test::stream_protocol::acceptor acceptor {ioc};
-        const invsync::test::stream_protocol::endpoint endpoint {path};
+        wazuh::uds_http::test::stream_protocol::acceptor acceptor {ioc};
+        const wazuh::uds_http::test::stream_protocol::endpoint endpoint {path};
         acceptor.open(endpoint.protocol());
         acceptor.bind(endpoint);
         acceptor.listen();
@@ -431,7 +431,7 @@ TEST(UdsHttpServerTest, ThreeHundredConcurrentDeferralsOnTwoIoThreads)
 
     // Fire every request concurrently; each blocks in its own thread waiting for a reply that only
     // comes once ALL of them are parked, so they genuinely overlap.
-    std::vector<std::future<invsync::test::Response>> pending;
+    std::vector<std::future<wazuh::uds_http::test::Response>> pending;
     pending.reserve(CONCURRENCY);
     for (int i = 0; i < CONCURRENCY; ++i)
     {
@@ -979,8 +979,8 @@ TEST(UdsHttpServerTest, APeerThatClosesMidRequestReleasesItsSessionPromptly)
     for (int i = 0; i < 5; ++i)
     {
         asio::io_context ioc;
-        invsync::test::stream_protocol::socket socket {ioc};
-        socket.connect(invsync::test::stream_protocol::endpoint {path});
+        wazuh::uds_http::test::stream_protocol::socket socket {ioc};
+        socket.connect(wazuh::uds_http::test::stream_protocol::endpoint {path});
         const std::string partial {"POST /inventory/sync HTTP/1.1\r\nHost: local"};
         asio::write(socket, asio::buffer(partial));
         socket.close(); // EOF, mid-head
