@@ -65,7 +65,8 @@ namespace
             {CurlOption::SslCiphers, CURLOPT_TLS13_CIPHERS},
             {CurlOption::SslOptions, CURLOPT_SSL_OPTIONS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
-            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}
+            {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
+            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS}
         };
         return *map;
     }
@@ -138,15 +139,26 @@ namespace
         }
         else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
         {
-            // curl_getdate() parses RFC 1123/850 and asctime formats and
-            // returns -1 on failure; a null-terminated copy is required since
-            // the header line is not itself nul-terminated by libcurl.
-            const std::string value(data + datePrefixLength, total - datePrefixLength);
-            const time_t parsed = curl_getdate(value.c_str(), nullptr);
-
-            if (parsed != -1)
+            // curl callbacks are C: nothing may throw across them (see
+            // writeTrampoline above) -- std::string construction from
+            // unvalidated header bytes can throw std::bad_alloc under memory
+            // pressure, so guard it the same way.
+            try
             {
-                *capture->serverDate = parsed;
+                // curl_getdate() parses RFC 1123/850 and asctime formats and
+                // returns -1 on failure; a null-terminated copy is required
+                // since the header line is not itself nul-terminated by libcurl.
+                const std::string value(data + datePrefixLength, total - datePrefixLength);
+                const time_t parsed = curl_getdate(value.c_str(), nullptr);
+
+                if (parsed != -1)
+                {
+                    *capture->serverDate = parsed;
+                }
+            }
+            catch (...)
+            {
+                return 0; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
             }
         }
 

@@ -230,6 +230,13 @@ void RetrySender::correctClockIfSkewed(const HttpResponse& response)
         return; // No Date captured/parsed: nothing to measure skew against.
     }
 
+    // This read is only a heuristic pre-check (noise floor + log message):
+    // it can race against another sender's concurrent correction and see a
+    // stale wallSeconds(), but that only risks skipping/duplicating a log
+    // line or a redundant call below -- m_clock.correctToServerTime()
+    // recomputes the actual offset itself, from its own raw clock read
+    // taken at commit time, so a stale `delta` here never corrupts the
+    // applied correction (see IClock::correctToServerTime's contract).
     const auto delta = static_cast<std::int64_t>(response.serverDateSeconds) -
                        static_cast<std::int64_t>(m_clock.wallSeconds());
 
@@ -238,7 +245,7 @@ void RetrySender::correctClockIfSkewed(const HttpResponse& response)
         return; // Aligned enough: leave the clock alone, the 401 is likely a dead key.
     }
 
-    m_clock.applyOffsetSeconds(delta);
+    m_clock.correctToServerTime(response.serverDateSeconds);
     LOGFN_INFO(m_logFn,
                "https_client: clock skew of %lld s detected against the manager's response "
                "(Date header); correcting the signing timestamp for this and future requests.",

@@ -29,22 +29,26 @@ class IClock
         virtual std::time_t wallSeconds() const = 0;
         virtual std::chrono::steady_clock::time_point steadyNow() const = 0;
 
-        /// Pushes a measured clock-skew correction (signed seconds) into this
-        /// clock, applied to every wallSeconds() call from here on;
+        /// Corrects this clock so wallSeconds() reports serverWallSeconds
+        /// "now" and every subsequent wallSeconds() call from here on;
         /// steadyNow() (cadence) is never affected. Default no-op: only a
         /// clock that supports runtime correction (SkewCorrectedClock) needs
         /// to override it -- SystemClock and every test double that does not
         /// care about skew correction inherit this and stay unaffected.
         ///
-        /// Contract for an overriding clock: the correction MUST accumulate,
-        /// not replace. The caller always measures its delta against THIS
-        /// clock's own (possibly already-corrected) wallSeconds(), so a
-        /// second, independent skew event landing on top of an existing
-        /// correction must fold its delta onto the prior offset rather than
-        /// overwrite it -- replacing would silently undo the earlier
-        /// correction by exactly its own magnitude. See SkewCorrectedClock's
+        /// Contract for an overriding clock: this MUST be safe to call
+        /// concurrently from multiple threads (every HTTPS sender shares one
+        /// SkewCorrectedClock instance, and a real clock jump can make more
+        /// than one of them observe a 401 around the same moment). The
+        /// implementation must derive the new correction from its OWN raw
+        /// clock read taken at commit time, not from a delta the caller
+        /// computed earlier against a (possibly already stale, or
+        /// concurrently-corrected) wallSeconds() reading -- otherwise two
+        /// racing callers each read the same pre-correction time, each
+        /// compute ~the same delta, and both apply it, overcorrecting by
+        /// roughly double instead of converging. See SkewCorrectedClock's
         /// implementation comment for the algebra.
-        virtual void applyOffsetSeconds(std::int64_t /*offsetSeconds*/) {}
+        virtual void correctToServerTime(std::time_t /*serverWallSeconds*/) {}
 };
 
 /// Uniform randomness source for the full-jitter backoff.
@@ -94,27 +98,29 @@ class SkewCorrectedClock final : public IClock
             return m_base.steadyNow(); // Cadence timing is never skew-corrected.
         }
 
-        void applyOffsetSeconds(std::int64_t offsetSeconds) override
+        void correctToServerTime(std::time_t serverWallSeconds) override
         {
-            // Accumulate, don't replace: the caller (RetrySender) measures
-            // its delta against THIS clock's own wallSeconds() -- i.e.
-            // against a reading that already includes any prior offset. A
-            // second, independent skew event (further drift, or a second
-            // clock jump, after the agent has already self-corrected once)
-            // therefore yields a delta relative to the already-corrected
-            // baseline, not to the raw one. Replacing here would discard the
-            // earlier correction and leave the clock off by exactly its
-            // magnitude; accumulating folds the new delta on top and lands
-            // on the same result as re-measuring from the raw clock and
-            // overwriting, algebraically: offset_new = offset_old + (server
-            // - corrected) = offset_old + (server - raw - offset_old) =
-            // server - raw.
-            m_offsetSeconds.fetch_add(offsetSeconds, std::memory_order_relaxed);
+            // Recompute the offset from the RAW base clock read at commit
+            // time, under a lock, rather than accepting a delta the caller
+            // measured earlier against wallSeconds() (this clock's own,
+            // possibly already-corrected or concurrently-changing reading).
+            // That makes every call idempotent and race-safe: no matter how
+            // many threads call this at nearly the same moment (a real clock
+            // jump can make more than one of the shared HTTPS senders 401
+            // around the same time), each one lands on essentially the same
+            // offset_new = serverWallSeconds - raw -- never a sum of two
+            // callers' deltas. The lock only serializes rare correction
+            // events; wallSeconds() stays lock-free.
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            const auto raw = static_cast<std::int64_t>(m_base.wallSeconds());
+            m_offsetSeconds.store(static_cast<std::int64_t>(serverWallSeconds) - raw,
+                                  std::memory_order_relaxed);
         }
 
     private:
         IClock& m_base;
         std::atomic<std::int64_t> m_offsetSeconds {0};
+        std::mutex m_mutex;
 };
 
 class Mt19937Random final : public IRandom

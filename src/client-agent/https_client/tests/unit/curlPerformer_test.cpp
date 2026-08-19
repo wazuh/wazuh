@@ -184,9 +184,27 @@ TEST(CurlPerformerTest, TlsFullMode)
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ca.pem"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::FollowLocation, 0L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::NoSignal, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L));
 
     auto performer = makePerformer(config, std::move(mock));
     performer.perform(HttpRequestSpec {});
+}
+
+TEST(CurlPerformerTest, RejectedSuppressConnectHeadersOptionAbortsBeforePerforming)
+{
+    // Fail-closed like every other hardening option in applyTls(): if this
+    // curl build somehow can't honor it, refuse to send rather than risk a
+    // forward-proxy's CONNECT Date being mistaken for the manager's.
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
 }
 
 TEST(CurlPerformerTest, TlsCertModeDisablesHostnameOnly)

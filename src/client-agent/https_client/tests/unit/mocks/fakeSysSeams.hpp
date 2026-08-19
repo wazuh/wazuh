@@ -38,9 +38,13 @@ class FakeClock final : public IClock
             return m_baseSteady + std::chrono::milliseconds {m_elapsedMs};
         }
 
-        void applyOffsetSeconds(std::int64_t offsetSeconds) override
+        void correctToServerTime(std::time_t serverWallSeconds) override
         {
-            m_appliedOffsetSeconds = offsetSeconds;
+            // Mirrors SkewCorrectedClock's contract: compute fresh from this
+            // clock's own raw (uncorrected) reading, not from any
+            // previously applied offset.
+            const auto raw = m_baseWall + static_cast<std::time_t>(m_elapsedMs / 1000);
+            m_appliedOffsetSeconds = static_cast<std::int64_t>(serverWallSeconds) - static_cast<std::int64_t>(raw);
             m_offsetApplyCount++;
         }
 

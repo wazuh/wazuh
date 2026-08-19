@@ -40,7 +40,14 @@ enum class CurlOption
     SslCiphers,     ///< string TLS 1.3 ciphersuite list
     SslOptions,     ///< long, the TLS behaviour bitmask
     FollowLocation, ///< long, always 0 (H4: no redirects)
-    NoSignal        ///< long, always 1 (H6)
+    NoSignal,       ///< long, always 1 (H6)
+    /// long, always 1: never deliver a forward-proxy's CONNECT-tunnel
+    /// response headers to the header callback. Without this, a proxy's own
+    /// Date could be captured as if it were the manager's (headerTrampoline
+    /// in curlHandle.cpp does not distinguish which hop a header block came
+    /// from), undermining the clock-skew correction's premise of trusting
+    /// only whoever completed the TLS handshake to the manager.
+    SuppressConnectHeaders
 };
 
 /// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.
