@@ -1098,6 +1098,9 @@ Attributes are configuration details and metadata about the asset. Every asset s
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
 - **`id`**: A UUIDv4 string that uniquely identifies the asset across the system.
 - **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
+  The policy's root decoder is the one exception: because it anchors the whole decoder tree, the build
+  fails with an explicit error if it is disabled, belongs only to disabled integrations, or is not
+  referenced by any integration of the policy.
 - **`metadata`**: Descriptive information about the asset. Common sub-fields include `module`, `title`, `description`,
   `compatibility`, `versions`, `author`, and `references`.
 - **`parents`**: Lists the parent asset names that define the asset's position in the asset graph.
