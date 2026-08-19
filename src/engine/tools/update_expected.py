@@ -3,6 +3,7 @@
 from pathlib import Path
 from argparse import ArgumentParser
 from typing import Callable
+import shlex
 import subprocess
 import time
 from json import dumps, loads
@@ -21,7 +22,7 @@ def get_executor(test_command: str, output: Path):
         # Set up command
         output_file = output / file.with_name(
             file.stem.replace('input', 'expected') + '.json').name
-        command = f'cat {file} | {test_command}'
+        command = f'cat {shlex.quote(str(file))} | {test_command}'
 
         try:
             # Execute command
