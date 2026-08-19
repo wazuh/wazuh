@@ -67,6 +67,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
     class ServerMock:
         def __init__(self):
             self.connection_counts = {}
+            self.total_connections = 0
 
     def get_extra_info(self, name):
         return ["peername", "mock"]
@@ -85,6 +86,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
                 assert abstract_server_handler.transport == transport
                 assert abstract_server_handler._counted_connection is True
                 assert server_mock.connection_counts == {"peername": 1}
+                assert server_mock.total_connections == 1
                 mock_logger.assert_called_once_with("Connection from ['peername', 'mock']")
 
     # Verify that a second handler from the same IP up to the limit is accepted,
@@ -103,6 +105,105 @@ def test_AbstractServerHandler_connection_made(event_loop):
         assert rejected_handler._counted_connection is False
         # Count must not have been incremented for the rejected connection.
         assert server_mock2.connection_counts["1.2.3.4"] == MAX_CONNECTIONS_PER_IP
+        assert server_mock2.total_connections == 0
+
+
+def test_AbstractServerHandler_connection_made_total_limit(event_loop):
+    """Check that a connection is rejected when the global connection limit is reached."""
+
+    class ServerMock:
+        def __init__(self):
+            self.connection_counts = {}
+            self.total_connections = MAX_TOTAL_CONNECTIONS
+
+    logger = Logger("test_connection_made_total_limit")
+    server_mock = ServerMock()
+    with patch("logging.getLogger", return_value=logger):
+        handler = AbstractServerHandler(server=server_mock, loop=event_loop, fernet_key=fernet_key,
+                                        cluster_items={"test": "server"})
+        transport = Mock()
+        transport.get_extra_info = lambda name: ["5.6.7.8", 9999]
+        handler.connection_made(transport=transport)
+
+        transport.close.assert_called_once()
+        assert handler._counted_connection is False
+        # A source IP under its own limit must not be counted when the global limit is reached.
+        assert server_mock.connection_counts == {}
+        assert server_mock.total_connections == MAX_TOTAL_CONNECTIONS
+        assert handler._handshake_deadline is None
+
+
+def test_AbstractServerHandler_handshake_deadline(event_loop):
+    """Check that a connection that never completes the handshake is closed by the deadline."""
+
+    class ServerMock:
+        def __init__(self):
+            self.connection_counts = {}
+            self.total_connections = 0
+            self.clients = {}
+            self.configuration = {"node_name": "master"}
+
+    logger = Logger("test_handshake_deadline")
+    with patch("logging.getLogger", return_value=logger):
+        handler = AbstractServerHandler(server=ServerMock(), loop=event_loop, fernet_key=fernet_key,
+                                        cluster_items={"test": "server"})
+        assert handler._handshake_deadline is None
+
+        handler.loop = Mock()
+        transport = Mock()
+        transport.get_extra_info = lambda name: ["1.2.3.4", 9999]
+        handler.connection_made(transport=transport)
+
+        # The deadline is armed as soon as the connection is accepted.
+        handler.loop.call_later.assert_called_once_with(c_common.PRE_AUTH_PAYLOAD_TIMEOUT,
+                                                        handler._close_on_handshake_deadline)
+        assert handler._handshake_deadline is not None
+
+        # A connection with no completed handshake is closed when the deadline expires.
+        handler._close_on_handshake_deadline()
+        transport.close.assert_called_once()
+        assert handler._handshake_deadline is None
+
+        # A connection that completed the handshake is not closed.
+        handler.name = "worker1"
+        transport.close.reset_mock()
+        handler._close_on_handshake_deadline()
+        transport.close.assert_not_called()
+
+
+def test_AbstractServerHandler_handshake_deadline_cancelled(event_loop):
+    """Check that the handshake deadline is cancelled after 'hello' and when the connection is lost."""
+
+    class ServerMock:
+        def __init__(self):
+            self.connection_counts = {"1.2.3.4": 1}
+            self.total_connections = 1
+            self.clients = {}
+            self.configuration = {"node_name": "master"}
+
+    logger = Logger("test_handshake_deadline_cancelled")
+    with patch("logging.getLogger", return_value=logger):
+        handler = AbstractServerHandler(server=ServerMock(), loop=event_loop, fernet_key=fernet_key,
+                                        cluster_items={"test": "server"})
+        handler.loop = Mock()
+        handler.broadcast_reader = Mock()
+        handler.ip = "1.2.3.4"
+        handler._counted_connection = True
+        deadline = Mock()
+        handler._handshake_deadline = deadline
+
+        # A completed handshake disarms the deadline.
+        handler.hello(b"worker1")
+        deadline.cancel.assert_called_once()
+        assert handler._handshake_deadline is None
+
+        # A lost connection disarms the deadline and releases the global slot.
+        handler._handshake_deadline = deadline = Mock()
+        handler.connection_lost(exc=None)
+        deadline.cancel.assert_called_once()
+        assert handler._handshake_deadline is None
+        assert handler.server.total_connections == 0
+        assert "1.2.3.4" not in handler.server.connection_counts
 
 
 @pytest.mark.asyncio
@@ -242,6 +343,7 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
             self.clients = {}
             self.configuration = {"node_name": "elif_test"}
             self.connection_counts = {"1.2.3.4": 3}
+            self.total_connections = 3
 
     with patch("logging.getLogger", return_value=logger):
         counted_handler = AbstractServerHandler(server=ServerMockCounts(), loop=event_loop,
@@ -251,12 +353,14 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
         counted_handler._counted_connection = True
         counted_handler.connection_lost(exc=None)
         assert counted_handler.server.connection_counts["1.2.3.4"] == 2
+        assert counted_handler.server.total_connections == 2
 
         # When count reaches 1, the key is removed entirely.
         counted_handler.server.connection_counts["1.2.3.4"] = 1
         counted_handler._counted_connection = True
         counted_handler.connection_lost(exc=None)
         assert "1.2.3.4" not in counted_handler.server.connection_counts
+        assert counted_handler.server.total_connections == 1
 
 
 @pytest.mark.asyncio
@@ -326,6 +430,7 @@ def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
         assert abstract_server.logger == logger
         assert abstract_server.broadcast_results == {}
         assert abstract_server.connection_counts == {}
+        assert abstract_server.total_connections == 0
 
 
 @patch("asyncio.get_running_loop", new=Mock())

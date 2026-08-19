@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
+- Fixed the cluster server keeping pre-authentication connections open indefinitely by adding a handshake deadline and a global connection limit. ([#38449](https://github.com/wazuh/wazuh/pull/38449))
 
 ### Agent
 
