@@ -171,6 +171,13 @@ class SecurityConfigurationAssessment
         /// @brief Cached first-sync completion state used to gate initial stateful publication.
         std::atomic<bool> m_firstSyncCompleted {false};
 
+        /// @brief Cached first-scan completion state, persisted independent of
+        /// first_sync_completed. Its absence means a scan_on_start scan is still
+        /// owed -- e.g. an earlier Run() got interrupted before completing one
+        /// (issue 38428) -- so the next opportunity retries it immediately
+        /// instead of waiting a full m_scanInterval.
+        std::atomic<bool> m_firstScanCompleted {false};
+
         /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
         /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the
         /// first snapshot before any check has had a chance to run. Note that "Not run" rows
@@ -227,6 +234,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Refresh the cached first-sync completion flag from metadata.
         void refreshFirstSyncCompletedState();
+
+        /// @brief Refresh the cached first-scan completion flag from metadata.
+        void refreshFirstScanCompletedState();
 
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
