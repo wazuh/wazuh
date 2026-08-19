@@ -22,6 +22,8 @@
 #include "batch_queue_op.h"
 #include "http_op.h"
 #include "legacy_task_delivery.h"
+#include "config.h"
+#include "authd-config.h"
 
 // REMOTED_HTTPS_VERIFY_* (remote-config.h, via remoted.h) and REMOTED_MODULE_HTTPS_VERIFY_*
 // (remoted_module.h) are two independently-maintained mirrors of the same values, since
@@ -323,6 +325,52 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
 }
 
 /**
+ * @brief Read authd's own <auth> config block (NOT logr's <remote> settings) into the
+ *        enrollment fields of the C-ABI struct, plus the `remoted.enroll_*`/`remoted.authd_*`
+ *        internal options for the bridge's operational knobs.
+ *
+ *        Deliberately sources the behavioral flags from authd's config rather than remoted's
+ *        own, so POST /enroll and legacy port 1515 can never disagree on whether password
+ *        auth is required or which agent versions are acceptable.
+ */
+STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
+    authd_config_t authd_cfg;
+    memset(&authd_cfg, 0, sizeof(authd_cfg));
+
+    if (ReadConfig(CAUTHD, WAZUHCONF, &authd_cfg, NULL) == 0) {
+        // authd_cfg.flags.disabled behaves as a plain boolean in current authd builds: 0
+        // (enabled) unless <auth><disabled>yes</disabled> is explicit -- see the Agent
+        // enrollment chapter of remoted_module/README.md for the verified analysis.
+        rm_config->enrollment_enabled = !authd_cfg.flags.disabled && authd_cfg.flags.remote_enrollment;
+        rm_config->enroll_use_password = authd_cfg.flags.use_password;
+        rm_config->enroll_use_source_ip = authd_cfg.flags.use_source_ip;
+        // NOT logr->allow_higher_versions: that is a separate, independently configured
+        // <remote> setting used by /control. /enroll reads authd's own <agents> setting so
+        // it agrees with legacy port 1515 on which agent versions are acceptable.
+        rm_config->enroll_allow_higher_versions = authd_cfg.allow_higher_versions;
+    } else {
+        // authd's <auth> block could not be parsed at all -- fail closed rather than
+        // silently enabling enrollment with unknown password/version requirements.
+        rm_config->enrollment_enabled = false;
+    }
+
+    os_free(authd_cfg.ciphers);
+    os_free(authd_cfg.agent_ca);
+    os_free(authd_cfg.manager_cert);
+    os_free(authd_cfg.manager_key);
+
+    rm_config->enroll_password_refresh_interval =
+        getDefine_Int_default("remoted", "enroll_password_refresh_interval", 1, 3600, 10);
+    rm_config->authd_connect_timeout = getDefine_Int_default("remoted", "authd_connect_timeout", 1, 60, 2);
+    // authd_response_timeout: <=0 here means "worker-aware default", resolved on the C++ side
+    // (short on the master, long enough to outlast authd's own internal worker-to-master
+    // cluster retry budget on a worker) -- not a fixed constant, since the right default
+    // depends on rm_config->worker_node.
+    rm_config->authd_response_timeout = getDefine_Int_default("remoted", "authd_response_timeout", 0, 120, 0);
+    rm_config->authd_max_queue_size = getDefine_Int_default("remoted", "authd_max_queue_size", 1, 65536, 256);
+}
+
+/**
  * @brief Build the config struct passed to remoted_module_start(), combining the
  *        `remoted.http_*` internal options (see remoted_module_https_config()) with
  *        the `<remote><https>` settings parsed into `logr`, plus the memory-management
@@ -338,6 +386,7 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     // back to its own default.
     rm_config->port = logr->https.port;
     remoted_module_https_config(rm_config);
+    remoted_enrollment_config(rm_config);
     rm_config->keystore_refresh_interval = keyupdate_interval;
     rm_config->worker_node = logr->worker_node;
     rm_config->verification_mode = logr->https.verification_mode;

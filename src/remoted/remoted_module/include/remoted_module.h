@@ -123,8 +123,8 @@ extern "C"
         /// "unset" sentinel: getDefine_Int_default() always resolves the final 0/1 value (defaulting
         /// to enabled) on the C side, so this field always carries the real value.
         bool http_content_encoding_enabled;
-        long long max_inflight_bytes;    ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
-        int max_parallel_connections;    ///< HTTPS max simultaneous connections (<=0 -> module default).
+        long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
+        int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
 
         // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
@@ -166,9 +166,34 @@ extern "C"
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
         int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
         int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 200).
-        int tm_max_queue_size; ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
+        int tm_max_queue_size;      ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
         int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
                                     ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
+
+        // Enrollment (POST /enroll bridging to authd) configuration. Unlike every other group
+        // above, the behavioral flags here are NOT sourced from <remote><https> or a dedicated
+        // XML tag: they are copied verbatim from authd's own <auth> config block, so /enroll and
+        // legacy port 1515 can never disagree on whether password auth is required or which
+        // agent versions are acceptable. Only the operational knobs are remoted-owned internal
+        // options.
+        bool enrollment_enabled;              ///< !authd's <disabled> && authd's <remote_enrollment>.
+                                              ///< Gates only the /enroll response (403 when false) --
+                                              ///< the route itself is always registered.
+        bool enroll_use_password;             ///< authd's <use_password>: Password mode requires this.
+        bool enroll_use_source_ip;            ///< authd's <use_source_ip>: governs /enroll's IP resolution.
+        bool enroll_allow_higher_versions;    ///< authd's OWN <agents><allow_higher_versions> --
+                                              ///< deliberately NOT the allow_higher_versions field
+                                              ///< above, which is a separate, independently
+                                              ///< configured <remote> setting used by /control.
+        int enroll_password_refresh_interval; ///< Seconds between etc/authd.pass change checks
+                                              ///< (hot-reload poll fallback). <=0 -> module default.
+        int authd_connect_timeout;            ///< Seconds to wait for the authd local-socket connect. <=0 -> default.
+        int authd_response_timeout;           ///< Seconds to wait for authd's reply to an enrollment request.
+                                              ///< <=0 -> module default, which is worker-aware (longer on a
+                                              ///< cluster worker, to outlast authd's own internal
+                                              ///< worker-to-master retry budget).
+        int authd_max_queue_size;             ///< AuthdClient request queue high-water mark; QueueFull over it
+                                              ///< (<=0 -> default).
     } remoted_module_config_t;
 
     /**
