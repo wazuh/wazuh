@@ -65,7 +65,8 @@ namespace
             {CurlOption::SslCiphers, CURLOPT_TLS13_CIPHERS},
             {CurlOption::SslOptions, CURLOPT_SSL_OPTIONS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
-            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}
+            {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
+            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS}
         };
         return *map;
     }
@@ -119,12 +120,37 @@ namespace
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
-        auto* retryAfter = static_cast<long*>(userData);
-        constexpr size_t prefixLength = 12; // "Retry-After:"
+        auto* capture = static_cast<HeaderCapture*>(userData);
+        constexpr size_t retryAfterPrefixLength = 12; // "Retry-After:"
+        constexpr size_t datePrefixLength = 5;        // "Date:"
 
-        if (total > prefixLength && strncasecmp(data, "Retry-After:", prefixLength) == 0)
+        if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {
-            *retryAfter = std::strtol(data + prefixLength, nullptr, 10);
+            *capture->retryAfter = std::strtol(data + retryAfterPrefixLength, nullptr, 10);
+        }
+        else if (total > datePrefixLength && strncasecmp(data, "Date:", datePrefixLength) == 0)
+        {
+            // curl callbacks are C: nothing may throw across them (see
+            // writeTrampoline above) -- std::string construction from
+            // unvalidated header bytes can throw std::bad_alloc under memory
+            // pressure, so guard it the same way.
+            try
+            {
+                // curl_getdate() parses RFC 1123/850 and asctime formats and
+                // returns -1 on failure; a null-terminated copy is required
+                // since the header line is not itself nul-terminated by libcurl.
+                const std::string value(data + datePrefixLength, total - datePrefixLength);
+                const time_t parsed = curl_getdate(value.c_str(), nullptr);
+
+                if (parsed != -1)
+                {
+                    *capture->serverDate = parsed;
+                }
+            }
+            catch (...)
+            {
+                return 0; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
+            }
         }
 
         return total;
@@ -237,10 +263,11 @@ namespace
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
-            bool captureRetryAfter(long* output) override
+            bool captureResponseHeaders(HeaderCapture capture) override
             {
+                m_headerCapture = capture;
                 return curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline) == CURLE_OK &&
-                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output) == CURLE_OK;
+                       curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, &m_headerCapture) == CURLE_OK;
             }
 
             bool streamBodyFromFile(std::FILE* file, uint64_t size) override
@@ -291,6 +318,7 @@ namespace
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
             FileSink m_fileSink {};
+            HeaderCapture m_headerCapture {};
     };
 } // namespace
 

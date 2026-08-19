@@ -37,7 +37,7 @@ class MockCurlHandle : public ICurlHandle
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, captureResponseToFile(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
-            ON_CALL(*this, captureRetryAfter(::testing::_))
+            ON_CALL(*this, captureResponseHeaders(::testing::_))
             .WillByDefault(::testing::Return(true));
             ON_CALL(*this, streamBodyFromFile(::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(true));
@@ -51,7 +51,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(void, appendHeader, (const std::string& header), (override));
         MOCK_METHOD(bool, captureResponseBody, (std::string* output), (override));
         MOCK_METHOD(bool, captureResponseToFile, (std::FILE* file, uint64_t maxBytes), (override));
-        MOCK_METHOD(bool, captureRetryAfter, (long* output), (override));
+        MOCK_METHOD(bool, captureResponseHeaders, (HeaderCapture capture), (override));
         MOCK_METHOD(bool, streamBodyFromFile, (std::FILE* file, uint64_t size), (override));
         MOCK_METHOD(bool, wireAbort, (const std::atomic<bool>* abortFlag), (override));
         MOCK_METHOD(TransportStatus, perform, (), (override));

@@ -64,6 +64,9 @@ namespace
             case CurlOption::NoSignal:
                 return "NOSIGNAL";
 
+            case CurlOption::SuppressConnectHeaders:
+                return "SUPPRESS_CONNECT_HEADERS";
+
             default:
                 return "unknown"; // LCOV_EXCL_LINE: applyTls sets none of the rest.
         }
@@ -252,7 +255,7 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
 
-    if (!handle.captureRetryAfter(&response.retryAfterSeconds))
+    if (!handle.captureResponseHeaders({&response.retryAfterSeconds, &response.serverDateSeconds}))
     {
         return false;
     }
@@ -283,7 +286,11 @@ bool CurlPerformer::applyTls(ICurlHandle& handle) const
            && applyClientCertificate(handle)
            && applyCiphers(handle)
            && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
-           && setMandatoryOption(handle, CurlOption::NoSignal, 1L);      // H6.
+           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)       // H6.
+           // Never let a forward-proxy's CONNECT-tunnel response headers reach
+           // headerTrampoline: without this, a proxy's own Date could be
+           // captured as if it were the manager's (#38439 clock-skew fix).
+           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L);
 }
 
 bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const

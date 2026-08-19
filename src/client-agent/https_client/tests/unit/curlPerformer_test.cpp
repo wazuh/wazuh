@@ -26,7 +26,9 @@
 #include <fstream>
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::DoAll;
+using ::testing::Field;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::NotNull;
@@ -88,7 +90,8 @@ TEST(CurlPerformerTest, MemoryBodyMapsToExactOptions)
     EXPECT_CALL(*handle, appendHeader("Authorization: Wazuh 001:1:aa"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::TimeoutMs, 1234L));
     EXPECT_CALL(*handle, captureResponseBody(NotNull()));
-    EXPECT_CALL(*handle, captureRetryAfter(NotNull()));
+    EXPECT_CALL(*handle, captureResponseHeaders(AllOf(Field(&HeaderCapture::retryAfter, NotNull()),
+                                                      Field(&HeaderCapture::serverDate, NotNull()))));
     EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
 
@@ -145,15 +148,16 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     auto* handle = mock.get();
 
     std::string* bodyOut = nullptr;
-    long* retryAfterOut = nullptr;
+    HeaderCapture captureOut {};
     EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(DoAll(SaveArg<0>(&bodyOut), Return(true)));
-    EXPECT_CALL(*handle, captureRetryAfter(_)).WillOnce(DoAll(SaveArg<0>(&retryAfterOut), Return(true)));
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&captureOut), Return(true)));
     EXPECT_CALL(*handle, perform())
     .WillOnce(Invoke(
                   [&]() -> TransportStatus
     {
         *bodyOut = "{\"ok\":true}";
-        *retryAfterOut = 7;
+        *captureOut.retryAfter = 7;
+        *captureOut.serverDate = 1755000000;
         return TransportStatus::Ok;
     }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
@@ -164,6 +168,7 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     const auto response = performer.perform(spec);
     EXPECT_EQ("{\"ok\":true}", response.body);
     EXPECT_EQ(7, response.retryAfterSeconds);
+    EXPECT_EQ(1755000000, response.serverDateSeconds);
     EXPECT_EQ(503, response.httpCode);
 }
 
@@ -180,9 +185,27 @@ TEST(CurlPerformerTest, TlsFullMode)
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ca.pem"));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::FollowLocation, 0L));
     EXPECT_CALL(*handle, setOptionLong(CurlOption::NoSignal, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L));
 
     auto performer = makePerformer(config, std::move(mock));
     performer.perform(HttpRequestSpec {});
+}
+
+TEST(CurlPerformerTest, RejectedSuppressConnectHeadersOptionAbortsBeforePerforming)
+{
+    // Fail-closed like every other hardening option in applyTls(): if this
+    // curl build somehow can't honor it, refuse to send rather than risk a
+    // forward-proxy's CONNECT Date being mistaken for the manager's.
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SuppressConnectHeaders, 1L)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).Times(0);
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
+    const auto response = performer.perform(HttpRequestSpec {});
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
 }
 
 TEST(CurlPerformerTest, TlsCertModeDisablesHostnameOnly)
@@ -512,13 +535,13 @@ TEST(CurlPerformerTest, RejectedFileResponseCaptureAbortsBeforePerforming)
     std::remove(path.c_str());
 }
 
-TEST(CurlPerformerTest, RejectedRetryAfterCaptureAbortsBeforePerforming)
+TEST(CurlPerformerTest, RejectedResponseHeadersCaptureAbortsBeforePerforming)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
     auto* handle = mock.get();
     allowOtherOptions(*handle);
 
-    EXPECT_CALL(*handle, captureRetryAfter(_)).WillOnce(Return(false));
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(Return(false));
     EXPECT_CALL(*handle, perform()).Times(0);
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));

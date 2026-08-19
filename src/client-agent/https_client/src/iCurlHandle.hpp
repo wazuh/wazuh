@@ -17,6 +17,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <string>
@@ -39,7 +40,14 @@ enum class CurlOption
     SslCiphers,     ///< string TLS 1.3 ciphersuite list
     SslOptions,     ///< long, the TLS behaviour bitmask
     FollowLocation, ///< long, always 0 (H4: no redirects)
-    NoSignal        ///< long, always 1 (H6)
+    NoSignal,       ///< long, always 1 (H6)
+    /// long, always 1: never deliver a forward-proxy's CONNECT-tunnel
+    /// response headers to the header callback. Without this, a proxy's own
+    /// Date could be captured as if it were the manager's (headerTrampoline
+    /// in curlHandle.cpp does not distinguish which hop a header block came
+    /// from), undermining the clock-skew correction's premise of trusting
+    /// only whoever completed the TLS handshake to the manager.
+    SuppressConnectHeaders
 };
 
 /// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.
@@ -54,6 +62,15 @@ inline constexpr long TLS_MIN_VERSION_1_3 {7};
 /// Numerically libcurl's CURLSSLOPT_NATIVE_CA, static_asserted in curlHandle.cpp
 /// like the version above.
 inline constexpr long TLS_NATIVE_CA_STORE {1L << 4};
+
+/// Output slots for captureResponseHeaders(): libcurl allows only one
+/// HEADERFUNCTION/HEADERDATA pair per handle, so both captured headers live
+/// behind one struct instead of two separate parameters.
+struct HeaderCapture
+{
+    long* retryAfter {nullptr};
+    std::time_t* serverDate {nullptr};
+};
 
 /**
  * @brief One HTTP transfer, at the option level.
@@ -81,7 +98,18 @@ class ICurlHandle
         ///         silently not be in effect.
         virtual bool captureResponseBody(std::string* output) = 0;
         virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
-        virtual bool captureRetryAfter(long* output) = 0;
+
+        /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
+        /// handle: capture.retryAfter receives the parsed Retry-After header
+        /// (0 = absent), capture.serverDate receives the parsed Date header
+        /// (0 = absent/unparsed) -- the manager's own transport stamps Date
+        /// on every response it builds, including every 401, which is what
+        /// lets the agent detect and correct clock skew instead of assuming
+        /// a 401 always means a dead credential.
+        /// @return false if the underlying option(s) were rejected by libcurl;
+        ///         the caller must not proceed to perform() in that case.
+        virtual bool captureResponseHeaders(HeaderCapture capture) = 0;
+
         virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
         virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;
 

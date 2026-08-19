@@ -44,6 +44,13 @@ namespace
         return value;
     }
 
+    HttpResponse authFailWithServerDate(std::time_t serverDateSeconds)
+    {
+        HttpResponse value = response(TransportStatus::Ok, 401);
+        value.serverDateSeconds = serverDateSeconds;
+        return value;
+    }
+
     std::string writeTempFile(const std::string& name, const std::string& contents)
     {
         const std::string path = ::testing::TempDir() + name;
@@ -208,6 +215,152 @@ TEST_F(RetrySenderTest, AuthFailureRecoversWithAFreshTimestamp)
     ASSERT_EQ(2u, authorizations.size());
     EXPECT_NE(authorizations[0], authorizations[1]); // Retry was freshly signed.
     EXPECT_TRUE(m_waiter.requestedDelays().empty());  // No backoff between the two.
+}
+
+TEST_F(RetrySenderTest, SkewedClockIsCorrectedFromServerDateAndRetrySucceeds)
+{
+    // Agent clock 10 h ahead of the manager (the reported Windows defect: VM
+    // snapshot restore / dead CMOS / no NTP). The manager's Date header on the
+    // 401 carries its real time; the one-shot retry must land on it.
+    m_clock.setWall(1700036000);
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFailWithServerDate(1700000000)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(-36000, m_clock.appliedOffsetSeconds());
+    EXPECT_EQ(1, m_clock.offsetApplyCount());
+    EXPECT_EQ(1700000000, m_clock.wallSeconds()); // Corrected: now matches the manager.
+}
+
+TEST_F(RetrySenderTest, BehindClockIsCorrectedForwardFromServerDateAndRetrySucceeds)
+{
+    // Mirror of the test above with the skew direction reversed: agent clock
+    // 10 h BEHIND the manager (e.g. a VM paused/suspended past its snapshot
+    // time). The correction must move the clock FORWARD (positive delta) --
+    // proves correctClockIfSkewed() doesn't implicitly assume "ahead", since
+    // every other coverage in this file (and every live E2E run) only ever
+    // exercised the agent-ahead direction.
+    m_clock.setWall(1700000000);
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFailWithServerDate(1700036000)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(36000, m_clock.appliedOffsetSeconds());
+    EXPECT_EQ(1, m_clock.offsetApplyCount());
+    EXPECT_EQ(1700036000, m_clock.wallSeconds()); // Corrected: now matches the manager.
+}
+
+TEST_F(RetrySenderTest, SmallDateGapWithinNoiseFloorIsNotTreatedAsSkew)
+{
+    // A 2 s gap is plausibly RTT/Date's 1 s granularity, not real skew: the
+    // agent must not perturb its own correct clock over it, and the 401 is
+    // left to escalate exactly as before this fix (likely a dead key).
+    m_clock.setWall(1700000000);
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillRepeatedly(Return(authFailWithServerDate(1700000002)));
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ(0, m_clock.offsetApplyCount());
+}
+
+TEST_F(RetrySenderTest, MissingServerDateNeverAppliesACorrection)
+{
+    // No Date captured (old manager, or a proxy stripped it): today's
+    // fresh-timestamp-only retry still happens, just uncorrected -- no crash,
+    // no spurious offset.
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(2)
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 401))); // serverDateSeconds defaults to 0.
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ(0, m_clock.offsetApplyCount());
+}
+
+TEST_F(RetrySenderTest, CorrectedRetryStillFailingEscalatesAsKeyFailure)
+{
+    // Real skew corrected (the retry is on an aligned clock), but the
+    // corrected retry STILL 401s: clock skew has now been ruled out, so the
+    // only remaining explanation is a genuinely bad/revoked key.
+    m_clock.setWall(1700036000);
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFailWithServerDate(1700000000)))
+    .WillOnce(Return(authFailWithServerDate(1700000005))); // Corrected retry: still 401.
+
+    const auto result = m_sender.send(makeSpec(), m_waiter, 4);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ(1, m_clock.offsetApplyCount()); // Correction applied once (the one-shot retry).
+    EXPECT_TRUE(m_waiter.requestedDelays().empty()); // AuthFail is never itself retried with a delay.
+}
+
+TEST_F(RetrySenderTest, CorrectionPersistsForSubsequentSendsAfterTheIncidentEnds)
+{
+    // Step 3 of the target design ("apply the correction to a second query
+    // and onward"): once learned, a later, independent send() on the same
+    // (shared) clock must never need to re-learn it -- proven here by a
+    // second send() that never even sees a 401.
+    m_clock.setWall(1700036000);
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFailWithServerDate(1700000000)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto first = m_sender.send(makeSpec(), m_waiter, 4);
+    EXPECT_EQ(OutcomeClass::Ok, first.outcome);
+    EXPECT_EQ(1700000000, m_clock.wallSeconds());
+
+    const auto second = m_sender.send(makeSpec(), m_waiter, 4);
+    EXPECT_EQ(OutcomeClass::Ok, second.outcome);
+    EXPECT_EQ(1, m_clock.offsetApplyCount()); // Learned once; never needed to re-learn.
+}
+
+TEST_F(RetrySenderTest, SecondIndependentSkewEventConvergesOnTopOfAnExistingCorrection)
+{
+    // Regression test for a review-caught bug: applying a SECOND correction
+    // on top of an already-corrected clock must account for the clock
+    // ALREADY including the first offset -- otherwise the second correction
+    // under/over-shoots by exactly the magnitude of the first one, which can
+    // land the agent right back in the original loop. Uses a REAL
+    // SkewCorrectedClock wrapping a fake raw clock (not FakeClock's own
+    // bookkeeping) so this exercises the actual production accumulation
+    // logic in sysSeams.hpp, not a re-implementation of it.
+    FakeClock rawClock;
+    rawClock.setWall(1700036000); // Agent's raw clock: 36000s (10h) ahead of true time 1700000000.
+    SkewCorrectedClock correctedClock {rawClock};
+    RetrySender sender {m_performer, m_signer, correctedClock, m_backoff, false};
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFailWithServerDate(1700000000)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)))
+    // A second, independent skew event: the raw clock is now only 20000s
+    // ahead of a LATER true time (1700010000) -- a smaller, unrelated skew,
+    // not a continuation of the first one.
+    .WillOnce(Return(authFailWithServerDate(1700010000)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto first = sender.send(makeSpec(), m_waiter, 4);
+    ASSERT_EQ(OutcomeClass::Ok, first.outcome);
+    ASSERT_EQ(1700000000, correctedClock.wallSeconds()); // Fully corrected after the first event.
+
+    rawClock.setWall(1700030000); // Simulates the underlying clock drifting/jumping again.
+
+    const auto second = sender.send(makeSpec(), m_waiter, 4);
+    EXPECT_EQ(OutcomeClass::Ok, second.outcome);
+    // Must land on the manager's second reported time, not on
+    // 1700000000 + 36000 = 1700036000 (what a REPLACING offset would give:
+    // it would silently discard the first correction).
+    EXPECT_EQ(1700010000, correctedClock.wallSeconds());
 }
 
 TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
