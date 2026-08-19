@@ -22,6 +22,9 @@ def get_executor(test_command: str, output: Path):
         # Set up command
         output_file = output / file.with_name(
             file.stem.replace('input', 'expected') + '.json').name
+        if output.resolve() not in output_file.resolve().parents:
+            print(f'{file.name} -> output path outside {output}, skipped')
+            return
         command = f'cat {shlex.quote(str(file))} | {test_command}'
 
         try:
