@@ -138,6 +138,11 @@ void w_read_agent_batch(const char *cfgfile, const char *sharedcfg, agent_batch 
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10
 
+/* The /stateless payload cap that applies when <agent><batch><size> is unset. Both
+ * readers of that zero expand it to this same number: the transport module
+ * (https_client/src/moduleConfig.cpp) and the sync protocol (FULLSESSION_MAX_BYTES). */
+#define DEFAULT_BATCH_SIZE_BYTES (1024 * 1024)
+
 /* Port used when <server><port> is unspecified. Must mirror the manager's
  * DEFAULT_HTTPS_PORT (src/remoted/remoted_module/src/http_server/httpServerConfig.cpp)
  * since the agent has no legacy-transport fallback to default to instead. */
