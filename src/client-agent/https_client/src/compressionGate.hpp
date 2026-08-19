@@ -35,7 +35,7 @@ class CompressionGate final
         {
             if (!m_disabled.exchange(true, std::memory_order_relaxed))
             {
-                LOGFN_WARN(m_logFn, "Manager rejected 'zstd' compression. HTTPS traffic will be uncompressed until the next restart.");
+                LOGFN_INFO(m_logFn, "Manager rejected 'zstd' compression. HTTPS traffic will be uncompressed until the next restart.");
             }
         }
 
