@@ -546,6 +546,13 @@ void fim_initialize() {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
 
+#ifdef WIN32
+    /* Registered here, not where the synchronization thread is launched: fim_sync.db is open from
+     * this point on, and the stop can arrive before start_daemon() gets to the thread (issue
+     * #38212, the install then uninstall window). */
+    fim_sync_register_teardown_hook();
+#endif
+
 // Check for limit changes
 #ifdef WIN32
     int table_count = 3;
