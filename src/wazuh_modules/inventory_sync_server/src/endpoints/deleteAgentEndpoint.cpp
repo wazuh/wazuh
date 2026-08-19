@@ -46,6 +46,9 @@ namespace invsync::endpoints::delete_agent
         {
             if (!request)
             {
+                // Each inline rejection is counted here, the site that sends it; an enqueued
+                // deletion's terminal response is the pipeline's to count (see Dependencies).
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Empty request"));
                 return;
             }
@@ -56,6 +59,7 @@ namespace invsync::endpoints::delete_agent
             const auto agentIdIt = request->headers.find(sync::agentIdHeader());
             if (agentIdIt == request->headers.end() || !invsync::sync::isNumericAgentId(agentIdIt->second))
             {
+                deps.requestCounters.count(400);
                 responder->send(errorResponse(400, "Missing or non-numeric agent id header"));
                 return;
             }
@@ -66,6 +70,7 @@ namespace invsync::endpoints::delete_agent
             const auto indexer = deps.indexer.lock();
             if (!indexer || !indexer->isAvailable())
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
             }
@@ -73,6 +78,7 @@ namespace invsync::endpoints::delete_agent
             const auto pipeline = deps.pipeline.lock();
             if (!pipeline)
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
                 return;
             }
@@ -90,6 +96,7 @@ namespace invsync::endpoints::delete_agent
 
             if (!pipeline->enqueue(std::move(item)))
             {
+                deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
             }
         };

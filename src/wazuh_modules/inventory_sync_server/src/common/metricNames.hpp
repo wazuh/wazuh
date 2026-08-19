@@ -72,6 +72,20 @@ namespace invsync::metrics
     }
 
     /**
+     * @brief Resolves vd.retry_after.total -- the ONE registration of its strings.
+     *
+     * Two components increment it (the sync endpoint's strand-side feed gate and the VD lane's
+     * dispatch-time re-check), and Manager::getOrCreate keeps only the FIRST registration's
+     * description/unit. Both resolve through this helper so there is no second copy of the
+     * strings to silently drift.
+     */
+    inline std::shared_ptr<wazuh::metrics::ICounter> makeVdRetryAfterCounter(wazuh::metrics::IManager& manager)
+    {
+        return manager.getOrCreateCounter(
+            VD_RETRY_AFTER_TOTAL, "503 responses carrying a Retry-After header (the CVE feed was not ready)", "count");
+    }
+
+    /**
      * @brief The `sync.requests.total.<code>` counter family, pre-resolved.
      *
      * One counter per contract status, selected by a switch -- the hot path never
@@ -98,7 +112,9 @@ namespace invsync::metrics
             const auto counter = [&manager](const char* code)
             {
                 return manager.getOrCreateCounter(std::string {REQUESTS_TOTAL_PREFIX} + code,
-                                                  "POST /stateful (and deletion) responses sent with this status",
+                                                  "POST /stateful and agent-deletion responses the handlers sent "
+                                                  "with this status (transport-level answers -- 413, 504, malformed "
+                                                  "HTTP -- are not counted)",
                                                   "count");
             };
             return RequestCounters {counter("200"),

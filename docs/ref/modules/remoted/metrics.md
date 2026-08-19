@@ -137,8 +137,8 @@ once, at the single place it is sent. All units are `count`; all are counters.
 |---|---|---|
 | `2xx` | Success (202 for `/stateless`, 200 elsewhere) | — |
 | `400` | Client fault: empty body, bad batch, payload-identity mismatch | diagnostic — agent-side content |
-| `403` | Identity rejection relayed from the sync server (`/stateful` contract) | diagnostic |
-| `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic |
+| `403` | Identity rejection relayed from the sync server (`/stateful` contract) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode) |
+| `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
@@ -159,7 +159,7 @@ no new signal.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.http.stateless.latency` | histogram | microseconds | The event-ingestion hot path, gateway receipt → response delivery | [`remoted.http_worker_threads`](configuration.md#remotedhttp_worker_threads), [`remoted.http_io_threads`](configuration.md#remotedhttp_io_threads), [`remoted.downstream_post_process_threads`](configuration.md#remoteddownstream_post_process_threads), [`remoted.downstream_io_threads`](configuration.md#remoteddownstream_io_threads) |
-| `remoted.http.stateful.latency` | histogram | microseconds | A sync session indexes within the request, so this is the number that sizes its dedicated deadline | [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout), plus the thread settings above |
+| `remoted.http.stateful.latency` | histogram | microseconds | A sync session indexes within the request, so this is the number that sizes its dedicated deadline. The server-side half of the same span is [`sync.session.duration.*`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration) on the sync server | [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout), plus the thread settings above |
 
 Both are bounded by
 [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout): a p99 creeping

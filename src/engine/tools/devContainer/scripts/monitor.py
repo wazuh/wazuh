@@ -156,10 +156,12 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
     ("vd.scans.skipped", "vd_scans_skipped"),
     ("vd.capacity.503.total", "vd_capacity_503_total"),
     ("vd.retry_after.total", "vd_retry_after_total"),
+    ("vd.offset_mismatch.total", "vd_offset_mismatch_total"),
     # Transport diagnostics of the shared UDS server itself: a snapshot of the in-flight byte
     # budget and of how many connections each route class is holding. These are the numbers
     # that say WHY a session was shed -- budget exhausted vs a class at its cap -- and they
-    # are instantaneous gauges, not counters, so read them as levels rather than as growth.
+    # are instantaneous levels (dump type string: "pull"), not counters, so read them as
+    # levels rather than as growth.
     ("server.budget.available.bytes", "server_budget_available_bytes"),
     ("server.budget.inflight.bytes", "server_budget_inflight_bytes"),
     ("server.budget.inflight.requests", "server_budget_inflight_requests"),

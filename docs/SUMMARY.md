@@ -125,6 +125,7 @@
     - [Architecture](ref/modules/inventory-sync-server/architecture.md)
     - [API Reference](ref/modules/inventory-sync-server/api-reference.md)
     - [Configuration](ref/modules/inventory-sync-server/configuration.md)
+    - [Metrics](ref/modules/inventory-sync-server/metrics.md)
     - [Schemas](ref/modules/inventory-sync-server/flatbuffers.md)
     - [Test Tools](ref/modules/inventory-sync-server/test-tools.md)
   - [Remoted](ref/modules/remoted/README.md)

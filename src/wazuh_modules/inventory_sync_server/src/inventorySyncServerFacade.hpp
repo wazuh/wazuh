@@ -371,8 +371,7 @@ namespace invsync
                 wazuh::uds_http::Method::Get,
                 "/",
                 [](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
-                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
-                {
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder) {
                     responder->send(wazuh::uds_http::HttpResponse::json(
                         200, R"({"status":"ok","module":"inventory_sync_server"})"));
                 },
@@ -400,22 +399,23 @@ namespace invsync
 
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
-            m_httpServer->addRoute(
-                invsync::endpoints::sync::method(),
-                invsync::endpoints::sync::path(),
-                invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                    m_syncPipeline,
-                    m_indexerConnectorSync,
-                    clusterIdentity,
-                    m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
-                                                             : DEFAULT_VD_RETRY_AFTER_SECS,
-                    m_vdScanLane,
-                    m_vdScanner,
-                    invsync::metrics::RequestCounters::make(*m_metricsManager),
-                    m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
-                                                         "503 responses carrying a Retry-After header",
-                                                         "count")}),
-                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
+            m_httpServer->addRoute(invsync::endpoints::sync::method(),
+                                   invsync::endpoints::sync::path(),
+                                   invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                                       m_syncPipeline,
+                                       m_indexerConnectorSync,
+                                       clusterIdentity,
+                                       m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
+                                                                                : DEFAULT_VD_RETRY_AFTER_SECS,
+                                       m_vdScanLane,
+                                       m_vdScanner,
+                                       invsync::metrics::RequestCounters::make(*m_metricsManager),
+                                       // The shared helper, NOT a getOrCreateCounter with its own strings: the lane
+                                       // registers this counter too, and getOrCreate keeps only the first
+                                       // registration's metadata -- a second copy of the strings here would be dead
+                                       // text that silently drifts.
+                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager)}),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
             // rather than sharing one handler because their real payloads will diverge. DATA class
@@ -438,8 +438,11 @@ namespace invsync
             // ingest budget must never fail deletions that cost it no payload memory; their real
             // capacity control stays in the pipeline.
             {
-                const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
-                                                                                 m_indexerConnectorSync};
+                // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
+                // name): the deletion plane's inline 400/503 rejections count into the same
+                // sync.requests.total.* cells its pipeline-answered responses already use.
+                const invsync::endpoints::delete_agent::Dependencies deleteDeps {
+                    m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps),
@@ -520,7 +523,8 @@ namespace invsync
             m_metricsManager->registerPullMetric(
                 invsync::metrics::SERVER_SESSIONS_LIVE,
                 [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
-                "Open transport connections, deferred replies included",
+                "Open transport connections, deferred replies included (superset: the per-class "
+                "counts exclude connections still reading their head)",
                 "connections");
             m_metricsManager->registerPullMetric(
                 invsync::metrics::SERVER_SESSIONS_DATA,
@@ -906,8 +910,7 @@ namespace invsync
                 !buildAndPublish(m_indexerSession,
                                  FailureStage::IndexerSession,
                                  generation,
-                                 [&]
-                                 {
+                                 [&] {
                                      return sessionFactory(
                                          rawIndexerConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
@@ -1287,7 +1290,9 @@ namespace invsync
 
         IndexerSessionFactory m_indexerSessionFactory {
             [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
+            {
+                return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging));
+            }};
 
         /*
          * The production connector factories are the only place that knows the seam it is handed wraps
@@ -1304,7 +1309,10 @@ namespace invsync
                     config, adapter.session(), std::move(logging));
             }};
 
-        VdScannerFactory m_vdScannerFactory {[]() { return invsync::vd::makeProductionVdScanner(); }};
+        VdScannerFactory m_vdScannerFactory {[]()
+                                             {
+                                                 return invsync::vd::makeProductionVdScanner();
+                                             }};
 
         IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)

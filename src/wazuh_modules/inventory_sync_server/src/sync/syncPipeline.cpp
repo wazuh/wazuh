@@ -57,11 +57,18 @@ namespace invsync::sync
         }
 
         m_requestCounters = invsync::metrics::RequestCounters::make(*m_metrics);
-        m_shedTotal = m_metrics->getOrCreateCounter(
-            invsync::metrics::PIPELINE_SHED_TOTAL, "Sessions refused because the pipeline queue was full", "count");
-        m_bulkFlushes = m_metrics->getOrCreateCounter(invsync::metrics::BULK_FLUSHES, "Group-commit flushes", "count");
+        m_shedTotal =
+            m_metrics->getOrCreateCounter(invsync::metrics::PIPELINE_SHED_TOTAL,
+                                          "Enqueue refusals: the pipeline queue byte cap "
+                                          "('wazuh_modules.inventory_sync_server_sync_queue_bytes') was reached",
+                                          "count");
+        m_bulkFlushes = m_metrics->getOrCreateCounter(
+            invsync::metrics::BULK_FLUSHES, "Successful pipeline group-commit flushes", "count");
         m_bulkBytesTotal = m_metrics->getOrCreateCounter(
-            invsync::metrics::BULK_BYTES_TOTAL, "Payload bytes flushed by group commits", "bytes");
+            invsync::metrics::BULK_BYTES_TOTAL,
+            "Request payload bytes of the sessions flushed by group commits (wire FlatBuffer "
+            "bytes; the serialized indexer bytes are sync.bytes.ingested)",
+            "bytes");
         m_bulkSessionsTotal = m_metrics->getOrCreateCounter(
             invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered by group-commit flushes", "count");
         m_durationBulk = m_metrics->getOrCreateHistogram(
