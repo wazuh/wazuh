@@ -441,22 +441,30 @@ void HandleSecure()
     const int protocol = logr.proto;
     int n_events = 0;
 
-    agent_metadata_init();
     if (logr.legacy_enabled) {
+        // agent_metadata cache, control_msg_queue/events_queue, the legacy event-forwarder's
+        // HTTP client, and the classic socket's input queue all have exactly one writer/reader
+        // set between them, and every one of those threads is itself gated below -- so none of
+        // this is reachable when legacy is disabled. Skip allocating it too.
+        agent_metadata_init();
         legacy_task_delivery_init();
+
+        control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+        indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
+        indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+        events_queue = batch_queue_init(batch_events_capacity);
+        batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+        batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
+        batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+        batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
+
+        uhttp_global_init();
+
+        // Initialize message queue
+        rem_msginit(logr.queue_size);
+        rem_set_input_queue_max_bytes(queue_max_bytes);
     }
-
-    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
-    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
-    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
-
-    events_queue = batch_queue_init(batch_events_capacity);
-    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
-    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
-    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
-
-    uhttp_global_init();
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -466,10 +474,6 @@ void HandleSecure()
 
     /* Initialize manager */
     manager_init();
-
-    // Initialize message queue
-    rem_msginit(logr.queue_size);
-    rem_set_input_queue_max_bytes(queue_max_bytes);
 
     /* Initialize the agent key table mutex */
     key_lock_init();
