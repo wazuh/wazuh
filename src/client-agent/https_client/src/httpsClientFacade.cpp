@@ -108,10 +108,11 @@ bool HttpsClientFacade::start()
     }
 
     LOGFN_INFO(m_logFn,
-               "Starting https_client (server=%s:%u, agent=%s).",
+               "Starting https_client (server=%s:%u, agent=%s, body compression %s).",
                m_config.serverHost.c_str(),
                m_config.serverPort,
-               m_config.agentId.c_str());
+               m_config.agentId.c_str(),
+               m_config.httpsCompressionEnabled ? "enabled" : "disabled");
     m_started = true;
     m_dispatcher.start();
     m_dispatcher.onStateChange(HC_STATE_STARTING);
