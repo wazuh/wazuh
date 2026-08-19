@@ -45,6 +45,11 @@
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
+#include "enrollment/authdClient.hpp"
+#include "enrollment/enrollmentAuthenticator.hpp"
+#include "enrollment/enrollmentConfig.hpp"
+#include "enrollment/enrollmentEndpoint.hpp"
+#include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -214,11 +219,22 @@ public:
             // the same io_context runtime via the response send path.
             m_controlHandler.reset();
             m_scanVdHandler.reset();
+            // /enroll has no async callback machinery of its own to race with a wdb-worker join
+            // (unlike ControlHandler above) -- reset here anyway, alongside every other
+            // per-request handler object, once stopAccepting() guarantees nothing can still call in.
+            m_enrollmentAuthenticator.reset();
 
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
+            // m_authdClient->stop() belongs in this phase for the same reason: it fails any
+            // queued/in-flight /enroll->authd request right away rather than let it linger, and
+            // the resulting responder->send() calls are still safe here (phase 4 hasn't run).
             if (m_downstreamClient)
             {
                 m_downstreamClient->stop();
+            }
+            if (m_authdClient)
+            {
+                m_authdClient->stop();
             }
 
             // Phase 3: drain the post-processing pool. Anything that was mid-flight when phase 1
@@ -227,6 +243,7 @@ public:
             m_forwarder.reset();
             m_downstreamClient.reset();
             m_deferredLimiter.reset();
+            m_authdClient.reset();
 
             // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
             // runtime). Nothing can still be touching a responder: worker pool B was drained in
@@ -459,6 +476,47 @@ private:
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
+        // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
+        // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
+        // because an enrolling agent has no client.keys entry yet, so the agent<->manager
+        // AES-CMAC protocol cannot authenticate it. Always registered, regardless of
+        // enrollment_enabled: the handler itself answers 403 when enrollment is administratively
+        // disabled, so the route is never a bare 404.
+        //
+        // The listener's own client-certificate requirement (config.verificationMode, set below
+        // via buildHttpServerConfig()) and authd's <use_password> are independent gates -- exactly
+        // like legacy authd, which already enforces its own <ssl_verify_host> at the TLS handshake
+        // and <use_password> while parsing the enrollment message as two separate checks on the
+        // same connection (main-server.c). So EnrollmentAuthenticator only ever needs to know
+        // whether it must additionally require the WazuhEnroll CMAC; it has no notion of "mTLS
+        // mode" at all, because a client certificate is never its concern -- the TLS listener
+        // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
+        // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
+        // background watcher thread's lifetime is tied to the authenticator's.
+        const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
+
+        std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
+        if (enrollConfig.usePassword)
+        {
+            enrollPasswordKeySource = std::make_shared<remoted::auth::PasswordKeySource>(
+                remoted::auth::PasswordKeySource::kDefaultPath, enrollConfig.passwordRefreshIntervalSec);
+        }
+
+        m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
+            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword}, enrollPasswordKeySource);
+
+        m_authdClient =
+            std::make_unique<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
+                                                               m_config.worker_node,
+                                                               enrollConfig.authdConnectTimeoutMs,
+                                                               enrollConfig.authdResponseTimeoutMs,
+                                                               enrollConfig.authdMaxQueueSize);
+
+        m_httpServer->addRoute(remoted::http::Method::Post,
+                               "/enroll",
+                               remoted::enrollment::makeHandler(
+                                   *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics));
+
         m_httpServer->start(config);
     }
 
@@ -683,13 +741,19 @@ private:
         // ScanVdHandlerImpl is stateless (a synchronous passthrough of VD's admission), but the
         // next retry constructs a fresh one, so drop the old instance alongside its siblings.
         m_scanVdHandler.reset();
+        m_enrollmentAuthenticator.reset();
         if (m_downstreamClient)
         {
             m_downstreamClient->stop();
         }
+        if (m_authdClient)
+        {
+            m_authdClient->stop();
+        }
         m_forwarder.reset();
         m_downstreamClient.reset();
         m_deferredLimiter.reset();
+        m_authdClient.reset();
         m_authGateway.reset();
         m_keystore.reset();
     }
@@ -790,6 +854,15 @@ private:
     remoted::scanvd::ScanVdMetrics m_scanVdMetrics {
         remoted::scanvd::makeScanVdMetrics(*m_metricsManager)};          ///< /scan/vd counters.
     std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
+
+    // /enroll lifecycle: bridges agent self-enrollment to authd's local socket. Metric struct on
+    // the facade for the same reason as m_controlMetrics/m_scanVdMetrics. m_enrollmentAuthenticator
+    // owns the PasswordKeySource (Password mode only; null otherwise) constructed for it in
+    // startHttpServer() -- its background watcher thread's lifetime is tied to the authenticator's.
+    remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
+        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
+    std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
+    std::unique_ptr<remoted::enrollment::AuthdClient> m_authdClient;                         ///< Bridge to authd.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
