@@ -70,10 +70,9 @@ with no extra configuration). A few things to know before choosing one:
   without either side having to handle the mapped form.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
-`.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
-`authd` uses for `authd.pem`/`authd-key.pem` — now shared code, invoked through remoted's
-own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read it once
-`remoted` drops privileges:
+`.deb` and `.rpm` all wire this in) via the shared `generate_cert()` routine, invoked through
+remoted's own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read
+it once `remoted` drops privileges:
 
 ```bash
 wazuh-manager-remoted -C 365 -B 2048 \
@@ -182,12 +181,12 @@ its default level zstd beats gzip's default on all three axes at once, so there 
 weigh — and decompression speed is the side that matters here, since agents compress while the
 manager decompresses:
 
-| Codec | Compressed | Compress | Decompress |
-|---|---|---|---|
-| `gzip-6` (default) | 4.25 MB | 224 ms | 44.2 ms |
-| `gzip-9` (max) | 4.10 MB | 429 ms | 43.1 ms |
+| Codec                  | Compressed  | Compress  | Decompress  |
+| ---------------------- | ----------- | --------- | ----------- |
+| `gzip-6` (default)     | 4.25 MB     | 224 ms    | 44.2 ms     |
+| `gzip-9` (max)         | 4.10 MB     | 429 ms    | 43.1 ms     |
 | **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
-| `zstd-9` | 3.44 MB | 157 ms | 24.3 ms |
+| `zstd-9`               | 3.44 MB     | 157 ms    | 24.3 ms     |
 
 Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
 two test matrices for a codec that is dominated on this workload.
@@ -234,18 +233,18 @@ two test matrices for a codec that is dominated on this workload.
 On rejection the body is `{"error":"<message>","code":<status>}`. Credential-related failures all
 collapse to a **single generic `401`** so a client cannot tell which specific check failed.
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
-| Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
-| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
-| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
-| `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
-| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
-| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
-| Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
-| Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
-| Endpoint handler raised an unexpected error | `500` | `Internal server error` |
+| Condition                                                                                                                                                                               | HTTP  | `error` message                             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----- | ------------------------------------------- |
+| Missing `protocol-version` header                                                                                                                                                       | `400` | `Missing required header: protocol-version` |
+| Unsupported `protocol-version`                                                                                                                                                          | `400` | `Unsupported protocol-version`              |
+| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC                        | `401` | `Invalid client authentication`             |
+| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
+| `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
+| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id`                                                                        | `400` | `Invalid event batch`                       |
+| Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
+| Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
+| Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
 
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
@@ -312,21 +311,21 @@ non-numeric) prevents `remoted` from starting, same as every other internal opti
 [Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
 notes).
 
-| Setting | Default | Internal option |
-|---|---|---|
-| I/O threads | `cpp_get_nproc()` | `remoted.http_io_threads` |
-| Handler worker threads | `2 * cpp_get_nproc()` | `remoted.http_worker_threads` |
-| Read / handshake timeout | `10 s` | `remoted.http_read_timeout` |
-| Write timeout | `10 s` | `remoted.http_write_timeout` |
-| Request timeout | `30 s` | `remoted.http_request_timeout` |
-| Max URL size | `2048 B` | `remoted.http_max_url_size` |
-| Max header name size | `256 B` | `remoted.http_max_header_name_size` |
-| Max header value size | `8192 B` | `remoted.http_max_header_value_size` |
-| Max header count | `64` | `remoted.http_max_header_count` |
-| Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
-| Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
-| Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
-| Accept `Content-Encoding: zstd` | enabled | `remoted.http_content_encoding_enabled` |
+| Setting                               | Default               | Internal option                         |
+| ------------------------------------- | --------------------- | --------------------------------------- |
+| I/O threads                           | `cpp_get_nproc()`     | `remoted.http_io_threads`               |
+| Handler worker threads                | `2 * cpp_get_nproc()` | `remoted.http_worker_threads`           |
+| Read / handshake timeout              | `10 s`                | `remoted.http_read_timeout`             |
+| Write timeout                         | `10 s`                | `remoted.http_write_timeout`            |
+| Request timeout                       | `30 s`                | `remoted.http_request_timeout`          |
+| Max URL size                          | `2048 B`              | `remoted.http_max_url_size`             |
+| Max header name size                  | `256 B`               | `remoted.http_max_header_name_size`     |
+| Max header value size                 | `8192 B`              | `remoted.http_max_header_value_size`    |
+| Max header count                      | `64`                  | `remoted.http_max_header_count`         |
+| Max pipelined requests per connection | `4`                   | `remoted.http_max_pipelined_requests`   |
+| Concurrent TCP accepts                | `2`                   | `remoted.http_concurrent_accepts`       |
+| Socket read buffer size               | `8192 B`              | `remoted.http_buffer_size`              |
+| Accept `Content-Encoding: zstd`       | enabled               | `remoted.http_content_encoding_enabled` |
 
 I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
 set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
@@ -345,17 +344,17 @@ built-in default below. See
 `http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
 above).
 
-| Setting | `<https>` tag | Default |
-|---|---|---|
-| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
-| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
-| Port | `port` | `1517` |
-| Transport max body size | `max_body_size` | `20 MiB` |
-| TLS certificate chain | `certificate` | `etc/certs/remoted.pem` |
-| TLS private key | `key` | `etc/certs/remoted-key.pem` |
-| Client CA bundle | `ca` | `etc/certs/root-ca.pem` |
-| Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
-| TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| Setting                                                                          | `<https>` tag       | Default                                                                                       |
+| -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `127.0.0.1`                                                                                   |
+| Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
+| Port                                                                             | `port`              | `1517`                                                                                        |
+| Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |
+| TLS certificate chain                                                            | `certificate`       | `etc/certs/remoted.pem`                                                                       |
+| TLS private key                                                                  | `key`               | `etc/certs/remoted-key.pem`                                                                   |
+| Client CA bundle                                                                 | `ca`                | `etc/certs/root-ca.pem`                                                                       |
+| Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
+| TLS 1.3 ciphersuites                                                             | `ciphers`           | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`                  |
 
 > There is no `enabled` toggle: the listener always attempts to start and self-gates on the
 > presence of a valid certificate/key, same as before this configuration surface existed.
@@ -366,11 +365,11 @@ deliberately **not** internal options -- they bound in-memory resource usage rat
 transport, so they don't go through `remoted_module_https_config()`/the internal-options table
 above.
 
-| Setting | Default | Source |
-|---|---|---|
-| Max in-flight payload bytes (→ `503`) | `256 MiB` | remoted config `max_inflight_bytes` |
-| Max simultaneous connections | `512` | remoted config `max_parallel_connections` |
-| Max deferred requests awaiting downstream (→ `503`) | `256` | remoted config `max_deferred_requests` |
+| Setting                                             | Default   | Source                                    |
+| --------------------------------------------------- | --------- | ----------------------------------------- |
+| Max in-flight payload bytes (→ `503`)               | `256 MiB` | remoted config `max_inflight_bytes`       |
+| Max simultaneous connections                        | `512`     | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `256`     | remoted config `max_deferred_requests`    |
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
 (RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
@@ -389,17 +388,17 @@ reads each `remoted.*` option and passes it through the C-ABI struct;
 built-in default on `<=0`. The three timeouts are configured in **seconds** and converted to
 milliseconds internally.
 
-| Setting | Default | Internal option |
-|---|---|---|
-| Downstream connect timeout | `2 s` | `remoted.downstream_connect_timeout` |
-| Downstream write timeout | `5 s` | `remoted.downstream_write_timeout` |
-| Downstream response timeout | `5 s` | `remoted.downstream_response_timeout` |
-| Downstream client I/O threads | `cpp_get_nproc()` | `remoted.downstream_io_threads` |
-| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads` |
-| Max downstream response body | `10 MiB` | `remoted.downstream_max_response_body_size` |
-| Auth max request age | `300 s` | `remoted.auth_max_request_age` |
-| Auth max future skew | `30 s` | `remoted.auth_max_future_skew` |
-| Auth max body size | `10 MiB` | `remoted.auth_max_body_size` |
+| Setting                            | Default           | Internal option                             |
+| ---------------------------------- | ----------------- | ------------------------------------------- |
+| Downstream connect timeout         | `2 s`             | `remoted.downstream_connect_timeout`        |
+| Downstream write timeout           | `5 s`             | `remoted.downstream_write_timeout`          |
+| Downstream response timeout        | `5 s`             | `remoted.downstream_response_timeout`       |
+| Downstream client I/O threads      | `cpp_get_nproc()` | `remoted.downstream_io_threads`             |
+| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads`   |
+| Max downstream response body       | `10 MiB`          | `remoted.downstream_max_response_body_size` |
+| Auth max request age               | `300 s`           | `remoted.auth_max_request_age`              |
+| Auth max future skew               | `30 s`            | `remoted.auth_max_future_skew`              |
+| Auth max body size                 | `10 MiB`          | `remoted.auth_max_body_size`                |
 
 The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
 `http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
@@ -433,15 +432,15 @@ request(s) with 503 in the last 90 s. Consider increasing the value of 'max_defe
 investigate why the downstream service is not keeping up.
 ```
 
-| Symptom in `wazuh-manager.log ` | Setting to review |
-|---|---|
-| In-flight request memory budget exhausted | `max_inflight_bytes` |
-| Deferred-work slots exhausted | `max_deferred_requests` |
-| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
-| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
-| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
-| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
+| Symptom in `wazuh-manager.log `                                           | Setting to review                                                                                    |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| In-flight request memory budget exhausted                                 | `max_inflight_bytes`                                                                                 |
+| Deferred-work slots exhausted                                             | `max_deferred_requests`                                                                              |
+| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout`                          |
+| Downstream response exceeded the configured cap                           | `remoted.downstream_max_response_body_size`                                                          |
+| Timestamps outside the accepted window (agent clock drift)                | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew`                                       |
+| Body exceeded the authenticated-body cap (413)                            | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
+| Downstream timeouts add up past `http_request_timeout`                    | `remoted.http_request_timeout`                                                                       |
 
 Two more, about a registered address that no longer matches, both collapsed on the same 90-second
 window as everything above:
@@ -664,15 +663,15 @@ timestamp, last keepalive update timestamp) to minimize wazuh-db round-trips dur
 Errors follow the same pattern as `/stateless` (see [Error responses](#error-responses) above).
 Control-specific conditions:
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Body empty or exceeds 64 KiB | `400` | `invalid_body` |
-| Malformed JSON body | `400` | `invalid_json` |
-| Invalid agent ID format | `400` | `invalid_agent_id` |
-| Unknown message type | `400` | `unknown_message_type` |
-| Invalid agent version (startup only) | `400` | `invalid_version` |
-| Invalid host info format (notify only) | `400` | `invalid_host_info` |
-| wazuh-db error during startup (get groups) | `500` | `database_error` |
+| Condition                                  | HTTP  | `error` message        |
+| ------------------------------------------ | ----- | ---------------------- |
+| Body empty or exceeds 64 KiB               | `400` | `invalid_body`         |
+| Malformed JSON body                        | `400` | `invalid_json`         |
+| Invalid agent ID format                    | `400` | `invalid_agent_id`     |
+| Unknown message type                       | `400` | `unknown_message_type` |
+| Invalid agent version (startup only)       | `400` | `invalid_version`      |
+| Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
+| wazuh-db error during startup (get groups) | `500` | `database_error`       |
 
 Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the same responses as
 `/stateless`. Throttled logging (one message per 90 seconds per condition) prevents log flooding
@@ -733,19 +732,19 @@ local value with an older `current_version`.
 
 ### Error handling
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Body empty or exceeds 4 KiB | `400` | `invalid_body` |
-| Malformed JSON body | `400` | `invalid_json` |
-| Invalid agent ID format | `400` | `invalid_agent_id` |
-| Missing or non-string `type` | `400` | `missing_type` |
-| `type` other than `"feed_update"` | `400` | `invalid_type` |
-| Missing or non-unsigned `feed_offset` | `400` | `missing_feed_offset` |
-| `feed_offset` != current offset | `409` | `version_mismatch` (carries `current_version`) |
-| VD's scan dispatch lane at capacity | `503` | `scan_queue_full` |
-| Indexer not usable (no healthy host) | `503` | `indexer_unavailable` |
+| Condition                                        | HTTP  | `error` message                                               |
+| ------------------------------------------------ | ----- | ------------------------------------------------------------- |
+| Body empty or exceeds 4 KiB                      | `400` | `invalid_body`                                                |
+| Malformed JSON body                              | `400` | `invalid_json`                                                |
+| Invalid agent ID format                          | `400` | `invalid_agent_id`                                            |
+| Missing or non-string `type`                     | `400` | `missing_type`                                                |
+| `type` other than `"feed_update"`                | `400` | `invalid_type`                                                |
+| Missing or non-unsigned `feed_offset`            | `400` | `missing_feed_offset`                                         |
+| `feed_offset` != current offset                  | `409` | `version_mismatch` (carries `current_version`)                |
+| VD's scan dispatch lane at capacity              | `503` | `scan_queue_full`                                             |
+| Indexer not usable (no healthy host)             | `503` | `indexer_unavailable`                                         |
 | VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
-| VD stopping or unreachable, or the relay failed | `503` | `shutting_down` / `vd_unreachable` / `vd_error` |
+| VD stopping or unreachable, or the relay failed  | `503` | `shutting_down` / `vd_unreachable` / `vd_error`               |
 
 Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
 and its pending state survives; the `error` code exists so an operator reading the exchange sees

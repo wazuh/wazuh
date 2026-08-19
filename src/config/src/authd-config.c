@@ -110,8 +110,13 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
 
-    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/authd.pem");
-    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/authd-key.pem");
+    /* Manager's unified TLS identity (see shared/include/ssl_op.h's CERTFILE/KEYFILE): authd no
+     * longer generates or owns a separate certificate, so this default now matches the one
+     * remoted_module's HTTPS server (/enroll's mTLS mode) presents. Read_Authd() is only ever
+     * called from manager binaries (wazuh-manager-authd, wazuh-manager-remoted) -- there is no
+     * agent-side caller this default would need to serve differently. */
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/certs/remoted.pem");
+    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/certs/remoted-key.pem");
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */

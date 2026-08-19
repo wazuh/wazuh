@@ -6109,8 +6109,8 @@ paths:
                         use_password: "no"
                         ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/certs/authd.pem"
-                        ssl_manager_key: "etc/certs/authd-key.pem"
+                        ssl_manager_cert: "etc/certs/remoted.pem"
+                        ssl_manager_key: "etc/certs/remoted-key.pem"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"
