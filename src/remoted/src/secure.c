@@ -149,6 +149,15 @@ STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
 
+/* Start every subsystem that only serves 4.x agents (queues, caches, and every thread that
+ * only reads/writes them). No-op when <remote><legacy> is absent or disabled. Called after
+ * OS_ReadKeys() so close_fp_main() can join the rest without its own separate gate. */
+static void start_legacy_subsystems(void);
+
+/* Log remoted's startup line: the classic listener's port/protocol when legacy is enabled,
+ * or a one-line notice that it's disabled. */
+static void log_secure_startup_message(void);
+
 /* Family address reference */
 #define FAMILY_ADDRESS_SIZE 46
 char *str_family_address[FAMILY_ADDRESS_SIZE] = {
@@ -441,31 +450,6 @@ void HandleSecure()
     const int protocol = logr.proto;
     int n_events = 0;
 
-    if (logr.legacy_enabled) {
-        // agent_metadata cache, control_msg_queue/events_queue, the legacy event-forwarder's
-        // HTTP client, and the classic socket's input queue all have exactly one writer/reader
-        // set between them, and every one of those threads is itself gated below -- so none of
-        // this is reachable when legacy is disabled. Skip allocating it too.
-        agent_metadata_init();
-        legacy_task_delivery_init();
-
-        control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
-        indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
-        indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
-
-        events_queue = batch_queue_init(batch_events_capacity);
-        batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-        batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
-        batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
-        batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
-
-        uhttp_global_init();
-
-        // Initialize message queue
-        rem_msginit(logr.queue_size);
-        rem_set_input_queue_max_bytes(queue_max_bytes);
-    }
-
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
 
@@ -478,12 +462,6 @@ void HandleSecure()
     /* Initialize the agent key table mutex */
     key_lock_init();
 
-    if (logr.legacy_enabled) {
-        /* Create current timestamp getter thread (only used by the legacy
-         * connection-overtake logic) */
-        w_create_thread(current_timestamp, NULL);
-    }
-
     /* Create shared file updating thread. Always on: the HTTPS /download endpoint reads
      * merged.mg/group files from disk regardless of the legacy flag. */
     w_create_thread(update_shared_files, NULL);
@@ -493,19 +471,6 @@ void HandleSecure()
 
     // Create com request thread
     w_create_thread(remcom_main, NULL);
-
-    if (logr.legacy_enabled) {
-        // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
-        w_create_thread(legacy_upgrade_task_delivery, NULL);
-
-        /* Create wait_for_msgs threads: legacy push-only merged.mg delivery. 5.x agents
-         * pull it themselves via POST /download. */
-        mdebug2("Creating %d sender threads.", sender_pool);
-
-        for (int i = 0; i < sender_pool; i++) {
-            w_create_thread(wait_for_msgs, NULL);
-        }
-    }
 
     // Reset all the agents' connection status in Wazuh DB
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
@@ -528,52 +493,7 @@ void HandleSecure()
         atexit(remoted_module_stop);
     }
 
-    if (logr.legacy_enabled) {
-        // Create upsert control message thread: control_msg_queue is only ever fed by
-        // legacy text keepalive parsing.
-        w_create_thread(save_control_thread, (void *) control_msg_queue);
-
-        // Create dispatch events thread: events_queue is only fed by the legacy socket
-        // path; 5.x events go straight to downstream via POST /stateless.
-        w_create_thread(dispach_events_thread, (void *) events_queue);
-
-        /* Create agent metadata cache cleanup thread (after events_queue is initialized).
-         * Its cache's only writer is the legacy keepalive parser. */
-        w_create_thread(agent_meta_cleanup_thread, events_queue);
-
-        rem_handler_args_t *worker_args;
-        os_malloc(sizeof(*worker_args), worker_args);
-        worker_args->control_msg_queue = control_msg_queue;
-        worker_args->events_queue      = events_queue;
-        // Create message handler thread pool: processes messages read off the legacy socket.
-        {
-            // Initialize FD list and counter.
-            global_counter = 0;
-            rem_initList(FD_LIST_INIT_VALUE);
-            for (int i = 0; i < worker_pool; i++) {
-                w_create_thread(rem_handler_main, worker_args);
-            }
-        }
-    }
-
-    /* Start up message */
-    if (logr.legacy_enabled) {
-        char *_protocol = NULL;
-        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
-        }
-        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
-        }
-        minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
-            (int)getpid(),
-            logr.port,
-            _protocol ? _protocol : "unknown");
-        os_free(_protocol);
-    } else {
-        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
-            (int)getpid());
-    }
+    log_secure_startup_message();
 
     /* Read authentication keys */
     mdebug1(ENC_READ);
@@ -587,10 +507,7 @@ void HandleSecure()
     // Key reloader thread: keystore is shared with the HTTPS CMAC auth middleware.
     w_create_thread(rem_keyupdate_main, NULL);
 
-    if (logr.legacy_enabled) {
-        // fp closer thread: manages fds for legacy TCP connections only.
-        w_create_thread(close_fp_main, &keys);
-    }
+    start_legacy_subsystems();
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -661,6 +578,97 @@ void HandleSecure()
     }
 
     manager_free();
+}
+
+static void start_legacy_subsystems(void) {
+    if (!logr.legacy_enabled) {
+        return;
+    }
+
+    agent_metadata_init();
+    legacy_task_delivery_init();
+
+    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
+    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+    events_queue = batch_queue_init(batch_events_capacity);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
+    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
+
+    uhttp_global_init();
+
+    // Initialize message queue
+    rem_msginit(logr.queue_size);
+    rem_set_input_queue_max_bytes(queue_max_bytes);
+
+    /* Create current timestamp getter thread (only used by the legacy
+     * connection-overtake logic) */
+    w_create_thread(current_timestamp, NULL);
+
+    // Create legacy (< v5.0.0) remote_upgrade task delivery poller thread
+    w_create_thread(legacy_upgrade_task_delivery, NULL);
+
+    /* Create wait_for_msgs threads: legacy push-only merged.mg delivery. 5.x agents
+     * pull it themselves via POST /download. */
+    mdebug2("Creating %d sender threads.", sender_pool);
+
+    for (int i = 0; i < sender_pool; i++) {
+        w_create_thread(wait_for_msgs, NULL);
+    }
+
+    // Create upsert control message thread: control_msg_queue is only ever fed by
+    // legacy text keepalive parsing.
+    w_create_thread(save_control_thread, (void *) control_msg_queue);
+
+    // Create dispatch events thread: events_queue is only fed by the legacy socket
+    // path; 5.x events go straight to downstream via POST /stateless.
+    w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    /* Create agent metadata cache cleanup thread (after events_queue is initialized).
+     * Its cache's only writer is the legacy keepalive parser. */
+    w_create_thread(agent_meta_cleanup_thread, events_queue);
+
+    rem_handler_args_t *worker_args;
+    os_malloc(sizeof(*worker_args), worker_args);
+    worker_args->control_msg_queue = control_msg_queue;
+    worker_args->events_queue      = events_queue;
+    // Create message handler thread pool: processes messages read off the legacy socket.
+    {
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
+        for (int i = 0; i < worker_pool; i++) {
+            w_create_thread(rem_handler_main, worker_args);
+        }
+    }
+
+    // fp closer thread: manages fds for legacy TCP connections only. 'keys' is already
+    // loaded by the time this runs (called after OS_ReadKeys() in HandleSecure()).
+    w_create_thread(close_fp_main, &keys);
+}
+
+static void log_secure_startup_message(void) {
+    if (!logr.legacy_enabled) {
+        minfo(STARTUP_MSG " Legacy listener disabled ('<remote><legacy>' absent or disabled).",
+            (int)getpid());
+        return;
+    }
+
+    char *_protocol = NULL;
+    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
+    }
+    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+        wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
+    }
+    minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
+        (int)getpid(),
+        logr.port,
+        _protocol ? _protocol : "unknown");
+    os_free(_protocol);
 }
 
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info)
