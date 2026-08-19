@@ -341,14 +341,13 @@ public:
                     }
 
                     // If the thread is not stopped, check the health of the servers.
-                    if (!m_stop)
+                    for (auto& [serverAddress, serverStatus] : m_servers)
                     {
-                        // Check the health of the servers. Iterating by reference to publish into each
-                        // host's atomic; the map's structure is fixed, so this never inserts.
-                        for (auto& [serverAddress, serverStatus] : m_servers)
+                        if (m_stop)
                         {
-                            healthCheck(serverAddress, serverStatus, authentication);
+                            break;
                         }
+                        healthCheck(serverAddress, serverStatus, authentication);
                     }
                 }
             });
