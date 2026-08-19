@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -53,7 +54,7 @@ def main(environment, output):
 
         engine_pid = engine_handler.get_pid()
 
-        command = f"perf record -g -p {engine_pid} -o {perf_report.as_posix()} "
+        command = f"perf record -g -p {engine_pid} -o {shlex.quote(perf_report.as_posix())} "
         click.echo(f"Running: {command}")
         result = subprocess.Popen(command, shell=True)
 
@@ -70,15 +71,18 @@ def main(environment, output):
         click.echo(f"Output written to {output}/perf.data")
 
         click.echo("Generating flamegraph")
-        stack_collapse_script = files('engine_bench.scripts').joinpath('stackcollapse-perf.pl')
-        flamegraph_script = files('engine_bench.scripts').joinpath('flamegraph.pl')
-        command = f"perf script -i {perf_report.as_posix()} > {output}/perf.script"
+        stack_collapse_script = shlex.quote(str(files('engine_bench.scripts').joinpath('stackcollapse-perf.pl')))
+        flamegraph_script = shlex.quote(str(files('engine_bench.scripts').joinpath('flamegraph.pl')))
+        perf_script = shlex.quote((output / 'perf.script').as_posix())
+        perf_folded = shlex.quote((output / 'perf.folded').as_posix())
+        flamegraph_svg = shlex.quote((output / 'flamegraph.svg').as_posix())
+        command = f"perf script -i {shlex.quote(perf_report.as_posix())} > {perf_script}"
 
         subprocess.run(command, shell=True, check=True)
         subprocess.run(
-            f"perl {stack_collapse_script} {output}/perf.script > {output}/perf.folded", shell=True, check=True)
+            f"perl {stack_collapse_script} {perf_script} > {perf_folded}", shell=True, check=True)
         subprocess.run(
-            f"perl {flamegraph_script} {output}/perf.folded > {output}/flamegraph.svg", shell=True, check=True)
+            f"perl {flamegraph_script} {perf_folded} > {flamegraph_svg}", shell=True, check=True)
         click.echo(f"Flamegraph generated at {output}/flamegraph.svg")
 
     except subprocess.CalledProcessError as e:
