@@ -92,7 +92,6 @@
 | [#35330](https://github.com/wazuh/wazuh/issues/35330) | Increased default limits for agent event throughput and inventory message sizes. |
 | [#35880](https://github.com/wazuh/wazuh/issues/35880) | Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. |
 | [#35471](https://github.com/wazuh/wazuh/issues/35471) | Standardized agent-start and buffer-status events to a WCS-aligned JSON format. |
-| [#37189](https://github.com/wazuh/wazuh/issues/37189) | Restored the FIM whodata integration tests on Linux, excluded during the CodeBuild runner migration. |
 
 #### Removed
 
@@ -134,5 +133,4 @@
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. |
 | [#37993](https://github.com/wazuh/wazuh/issues/37993) | Fixed `wazuh-syscheckd` failure on shutdown, which logged "Invalid handle value", crashed the process and left a stale PID file. |
 | [#38163](https://github.com/wazuh/wazuh/issues/38163) | Fixed `wazuh-agentd` crashing on start when the agent metadata segment could only be opened read-only, which happens whenever a root process creates it before the daemon drops privileges. |
-| [#35481](https://github.com/wazuh/wazuh/issues/35481) | Fixed FIM whodata missing modification events for files reached through a monitored symbolic link, because the single-PATH-record branch of the audit parser did not resolve the reported path. |
 
