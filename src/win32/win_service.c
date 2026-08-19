@@ -277,11 +277,14 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
-                ossecServiceStatus.dwWaitHint               = 0;
+                /* The stop path below blocks: wm_kill_children(), stop_wmodules() and the FIM
+                 * database teardown (FIM_TEARDOWN_BUDGET_MS). The wait hint provides a best-effort
+                 * estimate to the SCM covering teardown and module shutdowns. */
+                ossecServiceStatus.dwWaitHint               = FIM_TEARDOWN_BUDGET_MS + 10000;
 
                 plain_minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
-                extern bool is_fim_shutdown;
+                extern volatile bool is_fim_shutdown;
 
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
@@ -293,6 +296,8 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 is_fim_shutdown = true;
                 fim_db_teardown();
 #endif
+                // A stopped service has no transition left to describe.
+                ossecServiceStatus.dwWaitHint               = 0;
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Exit completed successfully.");
