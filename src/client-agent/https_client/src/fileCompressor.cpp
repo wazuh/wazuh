@@ -64,8 +64,6 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
     if (!dest)
     {
         closeExclusiveTempFile(destFd); // fdopen() failed: the fd is still ours to close.
-        // Best-effort cleanup on every error path below (CID 562795): a failed remove()
-        // just leaves a stale temp file behind, nothing worth failing the caller over.
         (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: fdopen() on a just-opened fd doesn't fail in practice.
     }

@@ -506,9 +506,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
-    // Locked from here on (CID 562800): scanHardware()/scanOs()/.../runRecoveryProcess()
-    // read these same fields while the scan/recovery paths hold m_scan_mutex, so every write
-    // below has to happen under it too, not just the ones that used to follow this point.
     std::unique_lock<std::mutex> lock{m_scan_mutex};
 
     m_spInfo = spInfo;
@@ -4548,7 +4545,6 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
         const std::string& index = indexIt->second;
         size_t documentLimit = 0;
         {
-            // m_documentLimits is written under m_limitsMutex by setDocumentLimits() (CID 562797).
             std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
             documentLimit = m_documentLimits[index];
         }
@@ -4791,7 +4787,6 @@ void Syscollector::runRecoveryProcess()
                 // If limit == 0 (unlimited), recover all items without filtering
                 size_t documentLimit = 0;
                 {
-                    // m_documentLimits is written under m_limitsMutex by setDocumentLimits() (CID 562797).
                     std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
                     documentLimit = m_documentLimits[index];
                 }

@@ -2657,9 +2657,6 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // O_NONBLOCK has no effect on a regular file, but the stream is expected to behave like fopen's.
     if (flags = fcntl(fd, F_GETFL), flags != -1) {
-        // Best-effort (CID 562796): failure here would just leave O_NONBLOCK set on a
-        // regular file, which has no observable effect on the stdio stream fdopen() builds
-        // below, so there is nothing to fail this call over.
         (void)fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
     }
 
