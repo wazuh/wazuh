@@ -546,7 +546,7 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
-    if (config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
         g_epfd = epoll_create1(0);
 
         if (g_epfd < 0) {
@@ -662,7 +662,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    if (config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
 
         if (status = pthread_create(&thread_remote_server, NULL, (void *)&run_remote_server, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
@@ -689,7 +689,7 @@ int main(int argc, char **argv)
 
     /* Join threads */
     pthread_join(thread_local_server, NULL);
-    if (config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
         pthread_join(thread_remote_server, NULL);
     }
     if (!config.worker_node) {
@@ -797,7 +797,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }

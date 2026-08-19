@@ -101,6 +101,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_remote_enrollment = "remote_enrollment";
+    static const char *xml_legacy_enrollment = "legacy_enrollment";
     static const char *xml_agents = "agents";
 
     authd_config_t *config = (authd_config_t *)d1;
@@ -127,6 +128,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
     config->flags.remote_enrollment = 1;
+    config->flags.legacy_enrollment = 1;
     config->force_options.enabled = true;
     config->force_options.key_mismatch = true;
     config->force_options.disconnected_time_enabled = true;
@@ -217,6 +219,15 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.remote_enrollment = b;
+        } else if (!strcmp(node[i]->element, xml_legacy_enrollment)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.legacy_enrollment = b;
         } else if (!strcmp(node[i]->element, xml_ciphers)) {
             if (w_authd_validate_ciphers(node[i]->content) == OS_INVALID) {
                 return OS_INVALID;

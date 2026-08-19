@@ -31,7 +31,8 @@ typedef enum auth_local_err {
     EDUPID,
     EAGLIM,
     EINVGROUP,
-    ENOMASTER
+    ENOMASTER,
+    ENOMASTERCOMM
 } auth_local_err;
 
 
@@ -53,11 +54,15 @@ static const struct {
     { 9012, "Duplicate ID" },
     { 9013, "Maximum number of agents reached" },
     { 9014, "Invalid Group(s) Name(s)" },
-    { 9015, "Cannot execute this request on a worker node" }
+    { 9015, "Cannot execute this request on a worker node" },
+    { 9016, "Cannot communicate with master node" }
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
+
+// local_add_clustered() is declared in auth.h (like local_add()) since it's genuinely
+// externally linked -- see the definition below for details.
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
@@ -178,11 +183,6 @@ char* local_dispatch(const char *input) {
     char *groups = NULL;
 
     if (input[0] == '{') {
-        if (config.worker_node) {
-            ierror = ENOMASTER;
-            goto fail;
-        }
-
         const char *jsonErrPtr;
         if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
@@ -278,12 +278,25 @@ char* local_dispatch(const char *input) {
                 }
             }
 
-            response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+            if (config.worker_node) {
+                // The force registration settings (and any caller-supplied id/key) are
+                // ignored for workers, exactly like the network (port 1515) enrollment
+                // path -- the master always assigns the ID, generates the key, and
+                // decides force-replace using its own configuration.
+                response = local_add_clustered(name, ip, groups, key_hash);
+            } else {
+                response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+            }
 
             os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
             int purge;
+
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
                 ierror = ENOARGUMENT;
@@ -300,6 +313,11 @@ char* local_dispatch(const char *input) {
             response = local_remove(item->valuestring, purge);
         } else if (!strcmp(function->valuestring, "get")) {
             cJSON *item;
+
+            if (config.worker_node) {
+                ierror = ENOMASTER;
+                goto fail;
+            }
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
                 ierror = ENOARGUMENT;
@@ -462,6 +480,46 @@ fail:
     w_mutex_unlock(&mutex_keys);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     os_free(str_result);
+    return response;
+}
+
+// Forward an "add" request to the master node over the cluster (worker nodes only)
+cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash) {
+    char *new_id = NULL;
+    char *new_key = NULL;
+    char err_response[OS_SIZE_2048] = {0};
+    int master_error_code = 0;
+    int result;
+    cJSON *response = NULL;
+
+    mdebug2("add_clustered(%s)", name);
+    minfo("Dispatching enrollment request to master node");
+
+    result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
+                                            &new_id, &new_key, NULL, NULL, &master_error_code);
+
+    if (result == 0) {
+        response = local_create_agent_response(new_id, name, ip, new_key);
+    } else if (master_error_code > 0) {
+        // The master responded with a well-formed business rejection; surface its exact code
+        // so the bridge can map it precisely instead of a generic failure. err_response always
+        // carries a "ERROR: " prefix here (see w_parse_agent_add_response) -- drop it, since the
+        // numeric code already conveys the outcome.
+        const char *message = err_response;
+        if (!strncmp(message, "ERROR: ", 7)) {
+            message += 7;
+        }
+        merror("ERROR %d: %s.", master_error_code, message);
+        response = local_create_error_response(master_error_code, message);
+    } else {
+        // Transport failure, or a malformed/unparseable response from the master -- either
+        // way, the cluster forward did not produce a clean answer.
+        merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+        response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+    }
+
+    os_free(new_id);
+    os_free(new_key);
     return response;
 }
 
