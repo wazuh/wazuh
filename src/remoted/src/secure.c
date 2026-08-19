@@ -619,15 +619,19 @@ static void start_legacy_subsystems(void) {
      * Its cache's only writer is the legacy keepalive parser. */
     w_create_thread(agent_meta_cleanup_thread, events_queue);
 
-    rem_handler_args_t *worker_args;
-    os_malloc(sizeof(*worker_args), worker_args);
-    worker_args->control_msg_queue = control_msg_queue;
-    worker_args->events_queue      = events_queue;
+    // Initialize FD list and counter.
+    global_counter = 0;
+    rem_initList(FD_LIST_INIT_VALUE);
+
     // Create message handler thread pool: processes messages read off the legacy socket.
-    {
-        // Initialize FD list and counter.
-        global_counter = 0;
-        rem_initList(FD_LIST_INIT_VALUE);
+    // worker_args is only allocated when it will actually be handed to a thread -- worker_pool
+    // is clamped to >= 1 by config, but nothing here should rely on that to avoid a leak.
+    if (worker_pool > 0) {
+        rem_handler_args_t *worker_args;
+        os_malloc(sizeof(*worker_args), worker_args);
+        worker_args->control_msg_queue = control_msg_queue;
+        worker_args->events_queue      = events_queue;
+
         for (int i = 0; i < worker_pool; i++) {
             w_create_thread(rem_handler_main, worker_args);
         }

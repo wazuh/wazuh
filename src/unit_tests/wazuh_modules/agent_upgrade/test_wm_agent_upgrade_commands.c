@@ -226,17 +226,12 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, agent_task->task_info->command);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
-    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
-    expect_value(__wrap_ReadConfig, modules, CREMOTE);
-    will_return(__wrap_ReadConfig, 0);
-    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
-    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
-
+    // Legacy delivery + HTTPS verification_mode gates share a single ReadConfig() call.
     // HTTPS verification_mode gate: runs unconditionally for custom WPK now, regardless of filename.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE);
-    will_return(__wrap_ReadConfig, 1);
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
 
     // wm_agent_upgrade_validate_wpk_custom
 
@@ -1223,17 +1218,12 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_value(__wrap_wm_agent_upgrade_validate_version, command, WM_UPGRADE_UPGRADE_CUSTOM);
     will_return(__wrap_wm_agent_upgrade_validate_version, WM_UPGRADE_SUCCESS);
 
-    // Legacy delivery gate: agent below v5.0.0, must not be silently stranded.
-    expect_value(__wrap_ReadConfig, modules, CREMOTE);
-    will_return(__wrap_ReadConfig, 0);
-    will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE); // unused by this check, placeholder
-    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
-
+    // Legacy delivery + HTTPS verification_mode gates share a single ReadConfig() call.
     // HTTPS verification_mode gate: runs unconditionally for custom WPK now, regardless of filename.
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
     will_return(__wrap_ReadConfig, 0);
     will_return(__wrap_ReadConfig, REMOTED_HTTPS_VERIFY_NONE);
-    will_return(__wrap_ReadConfig, 1);
+    will_return(__wrap_ReadConfig, 1); // legacy_enabled = true: not what this test is about
 
     // wm_agent_upgrade_validate_wpk_custom
 
