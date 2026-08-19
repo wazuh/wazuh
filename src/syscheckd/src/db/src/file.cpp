@@ -217,7 +217,7 @@ int fim_db_get_count_file_inode()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_INODE);
+        count = DB::countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_INODE);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -236,7 +236,7 @@ int fim_db_get_count_file_entry()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_ALL);
+        count = DB::countEntries(FIMDB_FILE_TABLE_NAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -421,7 +421,7 @@ int fim_db_get_max_version_file()
 
     try
     {
-        maxVersion = DB::instance().maxVersion(FIMDB_FILE_TABLE_NAME);
+        maxVersion = DB::maxVersion(FIMDB_FILE_TABLE_NAME);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -440,7 +440,7 @@ int fim_db_set_version_file(int version)
 
     try
     {
-        retval = DB::instance().updateVersion(FIMDB_FILE_TABLE_NAME, version);
+        retval = DB::updateVersion(FIMDB_FILE_TABLE_NAME, version);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
