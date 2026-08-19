@@ -55,9 +55,10 @@ void __wrap_hc_destroy(hc_handle *handle)
     check_expected_ptr(handle);
 }
 
-bool __wrap_hc_set_agent_key(hc_handle *handle, const char *key_hex)
+bool __wrap_hc_set_agent_identity(hc_handle *handle, const char *agent_id, const char *key_hex)
 {
     check_expected_ptr(handle);
+    check_expected(agent_id);
     check_expected(key_hex);
     return mock();
 }
@@ -77,10 +78,35 @@ bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t leng
     return mock();
 }
 
-int __wrap_try_enroll_to_server(const char *server_rip, uint32_t network_interface)
+int __wrap_try_enroll_to_server(void)
 {
-    check_expected(server_rip);
-    check_expected(network_interface);
+    return mock();
+}
+
+/* hc_enroll mock (#38465): captures the transport config and the request
+ * bridge_build_transport_config()/w_https_client_enroll() built, so tests can
+ * assert /enroll dials the exact same server/TLS material as every other
+ * endpoint, and never the agent's identity (agent_id/agent_key stay empty --
+ * an enrolling agent has neither yet). */
+static hc_config_t g_captured_enroll_config;
+static hc_enroll_request_t g_captured_enroll_request;
+static bool g_captured_enroll_valid = false;
+
+bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *request,
+                      hc_enroll_result_t *result)
+{
+    check_expected_ptr(config);
+    if (config) {
+        g_captured_enroll_config = *config;
+        g_captured_enroll_valid = true;
+    }
+    if (request) {
+        g_captured_enroll_request = *request;
+    }
+    if (result) {
+        memset(result, 0, sizeof(*result));
+        result->http_code = mock_type(long);
+    }
     return mock();
 }
 
@@ -295,17 +321,13 @@ static void set_agent_key(const char *id, const char *raw_key)
     keys.keysize = 1;
 }
 
-/* Allocates agt->enrollment_cfg with enabled=true; when manager_name is
- * non-NULL also sets an enrollment target (the address tried first). Mirrors
- * the shape start_agent.c/register_configure_agent.sh build at runtime. */
-static void enable_enrollment(const char *manager_name)
+/* Enables auto-enrollment (#38465: agt->enrollment is a by-value struct now,
+ * no separate enrollment target to configure -- try_enroll_to_server()
+ * always dials agt->server[0], the same single target every other HTTPS
+ * endpoint already uses). */
+static void enable_enrollment(void)
 {
-    agt->enrollment_cfg = (w_enrollment_ctx *)calloc(1, sizeof(w_enrollment_ctx));
-    agt->enrollment_cfg->enabled = true;
-    if (manager_name) {
-        agt->enrollment_cfg->target_cfg = (w_enrollment_target *)calloc(1, sizeof(w_enrollment_target));
-        os_strdup(manager_name, agt->enrollment_cfg->target_cfg->manager_name);
-    }
+    agt->enrollment.enabled = true;
 }
 
 static int setup_test(void **state)
@@ -345,13 +367,10 @@ static int teardown_test(void **state)
         os_free(agt->ssl.key);
         os_free(agt->ssl.certificate_authorities);
         os_free(agt->ssl.ciphers);
-        if (agt->enrollment_cfg) {
-            if (agt->enrollment_cfg->target_cfg) {
-                os_free(agt->enrollment_cfg->target_cfg->manager_name);
-                free(agt->enrollment_cfg->target_cfg);
-            }
-            free(agt->enrollment_cfg);
-        }
+        os_free(agt->enrollment.agent_name);
+        os_free(agt->enrollment.groups);
+        os_free(agt->enrollment.agent_address);
+        os_free(agt->enrollment.authorization_pass_path);
         free(agt);
         agt = NULL;
     }
@@ -490,6 +509,58 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     assert_string_equal(g_captured_config.ciphers, "HIGH:!aNULL");
 
     w_https_client_stop();
+}
+
+/* w_https_client_enroll() / bridge_build_transport_config() (#38465): /enroll
+ * must dial the exact same server/TLS material as every other endpoint, and
+ * must never carry the agent's identity (agent_id/agent_key) -- an enrolling
+ * agent has neither yet, regardless of whatever client.keys already holds. */
+
+static void test_enroll_reuses_transport_config_not_identity(void **state)
+{
+    (void)state;
+    os_strdup("/etc/wazuh/ca.pem", agt->ssl.certificate_authorities);
+    os_strdup("/etc/wazuh/agent.pem", agt->ssl.certificate);
+    os_strdup("/etc/wazuh/agent.key", agt->ssl.key);
+    os_strdup("HIGH:!aNULL", agt->ssl.ciphers);
+    agt->ssl.verification_mode = AGENT_VERIFY_FULL;
+
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "", &result);
+
+    assert_true(g_captured_enroll_valid);
+    assert_string_equal(g_captured_enroll_config.server_host, "10.0.0.1");
+    assert_int_equal(g_captured_enroll_config.server_port, 8443);
+    assert_int_equal(g_captured_enroll_config.verify_mode, HC_VERIFY_FULL);
+    assert_string_equal(g_captured_enroll_config.ca_path, "/etc/wazuh/ca.pem");
+    assert_string_equal(g_captured_enroll_config.client_cert, "/etc/wazuh/agent.pem");
+    assert_string_equal(g_captured_enroll_config.client_key, "/etc/wazuh/agent.key");
+    assert_string_equal(g_captured_enroll_config.ciphers, "HIGH:!aNULL");
+
+    /* The point of the split: no identity, even though setup_test() already
+     * populated a syntactically valid client.keys entry via set_agent_key(). */
+    assert_string_equal(g_captured_enroll_config.agent_id, "");
+    assert_string_equal(g_captured_enroll_config.agent_key, "");
+}
+
+static void test_enroll_passes_body_and_password_through(void **state)
+{
+    (void)state;
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    const bool sent = w_https_client_enroll("{\"name\":\"agent01\"}", "s3cr3t", &result);
+
+    assert_true(sent);
+    assert_int_equal(result.http_code, 200);
+    assert_string_equal(g_captured_enroll_request.body_json, "{\"name\":\"agent01\"}");
+    assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
 }
 
 static void test_config_checksum_is_sha256_of_local_merged_file(void **state)
@@ -699,7 +770,7 @@ static void test_reenroll_callback_disabled_enrollment_logs_error_only(void **st
 static void test_reenroll_callback_enabled_enrollment_only_warns(void **state)
 {
     (void)state;
-    enable_enrollment("enroll.example.com");
+    enable_enrollment();
     start_client_successfully();
 
     expect_string(__wrap__mwarn, formatted_msg, "https_client: credential rejected (401); re-enrolling.");
@@ -718,33 +789,15 @@ static void test_reenroll_callback_enabled_enrollment_only_warns(void **state)
 static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
 {
     (void)state;
-    enable_enrollment("enroll.example.com");
+    enable_enrollment();
 
-    expect_string(__wrap_try_enroll_to_server, server_rip, "enroll.example.com");
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
     will_return(__wrap_try_enroll_to_server, 0);
-    expect_value(__wrap_hc_set_agent_key, handle, FAKE_HANDLE);
-    expect_string(__wrap_hc_set_agent_key, key_hex, keys.keyentries[0]->raw_key);
-    will_return(__wrap_hc_set_agent_key, true);
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, true);
     expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: re-enrollment succeeded; reloading the signing key.");
-
-    bridge_reenroll_thread(FAKE_HANDLE);
-}
-
-static void test_reenroll_thread_falls_back_to_server_without_enrollment_target(void **state)
-{
-    (void)state;
-    enable_enrollment(NULL); /* enrollment_cfg->target_cfg stays NULL */
-
-    expect_string(__wrap_try_enroll_to_server, server_rip, "10.0.0.1"); /* agt->server[0], from setup_test */
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
-    will_return(__wrap_try_enroll_to_server, 0);
-    expect_value(__wrap_hc_set_agent_key, handle, FAKE_HANDLE);
-    expect_string(__wrap_hc_set_agent_key, key_hex, keys.keyentries[0]->raw_key);
-    will_return(__wrap_hc_set_agent_key, true);
-    expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: re-enrollment succeeded; reloading the signing key.");
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
 }
@@ -752,33 +805,26 @@ static void test_reenroll_thread_falls_back_to_server_without_enrollment_target(
 static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state)
 {
     (void)state;
-    enable_enrollment("enroll.example.com");
+    enable_enrollment();
 
-    /* First pass: the enrollment target fails, so (mirroring
-     * w_agentd_keys_init) the same pass also falls back to agt->server[0]
-     * before ever sleeping -- only a whole failed pass waits. */
-    expect_string(__wrap_try_enroll_to_server, server_rip, "enroll.example.com");
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
-    will_return(__wrap_try_enroll_to_server, -1);
-
-    expect_string(__wrap_try_enroll_to_server, server_rip, "10.0.0.1"); /* agt->server[0], from setup_test */
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
+    /* First pass fails (#38465: a single unconditional target now --
+     * agt->server[0] via the shared transport config -- so one failure is
+     * one whole pass, unlike the old dual-target loop). */
     will_return(__wrap_try_enroll_to_server, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "https_client: re-enrollment attempt failed; retrying in 5 seconds.");
     expect_value(__wrap_sleep, seconds, 5); /* first back-off step */
 
-    /* Second pass: the enrollment target succeeds immediately, no fallback. */
-    expect_string(__wrap_try_enroll_to_server, server_rip, "enroll.example.com");
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
+    /* Second pass succeeds. */
     will_return(__wrap_try_enroll_to_server, 0);
 
-    expect_value(__wrap_hc_set_agent_key, handle, FAKE_HANDLE);
-    expect_string(__wrap_hc_set_agent_key, key_hex, keys.keyentries[0]->raw_key);
-    will_return(__wrap_hc_set_agent_key, true);
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, true);
     expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: re-enrollment succeeded; reloading the signing key.");
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
 }
@@ -786,7 +832,7 @@ static void test_reenroll_thread_retries_with_backoff_then_succeeds(void **state
 static void test_reenroll_thread_aborts_when_stopping_flag_already_set(void **state)
 {
     (void)state;
-    enable_enrollment("enroll.example.com");
+    enable_enrollment();
 
     w_https_client_stop(); /* g_https_client is NULL here, so no hc_destroy call; only sets the flag. */
 
@@ -794,24 +840,23 @@ static void test_reenroll_thread_aborts_when_stopping_flag_already_set(void **st
                   "https_client: agent shutting down; abandoning re-enrollment.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
-    /* No try_enroll_to_server/hc_set_agent_key expectation: must not be reached. */
+    /* No try_enroll_to_server/hc_set_agent_identity expectation: must not be reached. */
 }
 
 static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void **state)
 {
     (void)state;
-    enable_enrollment("enroll.example.com");
+    enable_enrollment();
 
-    expect_string(__wrap_try_enroll_to_server, server_rip, "enroll.example.com");
-    expect_value(__wrap_try_enroll_to_server, network_interface, 0);
     will_return(__wrap_try_enroll_to_server, 0);
-    expect_value(__wrap_hc_set_agent_key, handle, FAKE_HANDLE);
-    expect_string(__wrap_hc_set_agent_key, key_hex, keys.keyentries[0]->raw_key);
-    will_return(__wrap_hc_set_agent_key, false);
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, keys.keyentries[0]->id);
+    expect_string(__wrap_hc_set_agent_identity, key_hex, keys.keyentries[0]->raw_key);
+    will_return(__wrap_hc_set_agent_identity, false);
     expect_string(__wrap__minfo, formatted_msg,
-                  "https_client: re-enrollment succeeded; reloading the signing key.");
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
     expect_string(__wrap__merror, formatted_msg,
-                  "https_client: re-enrolled, but the new key failed validation; traffic stays paused.");
+                  "https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
 
     bridge_reenroll_thread(FAKE_HANDLE);
 }
@@ -2221,6 +2266,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),
@@ -2233,7 +2280,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_reenroll_thread_falls_back_to_server_without_enrollment_target, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_aborts_when_stopping_flag_already_set, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),

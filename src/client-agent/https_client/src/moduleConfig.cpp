@@ -80,7 +80,7 @@ bool ModuleConfig::validate(const IFsProbe& fsProbe, const LogFn& logFn) const
         return false;
     }
 
-    return validateTiming(logFn) && validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
+    return validateTiming(logFn) && validateTransport(fsProbe, logFn);
 }
 
 bool ModuleConfig::validateTiming(const LogFn& logFn) const
@@ -100,6 +100,11 @@ bool ModuleConfig::validateTiming(const LogFn& logFn) const
     }
 
     return true;
+}
+
+bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const
+{
+    return validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
 }
 
 bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const

@@ -250,3 +250,34 @@ TEST(ModuleConfigTest, ClientCertValidWhenBothReadable)
     EXPECT_CALL(fsProbe, isReadableFile("/etc/agent.key")).WillOnce(Return(true));
     EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
+
+// validateTransport() (#38465): the same TLS/client-cert matrix as validate(),
+// but callable with no agent_id -- an enrolling agent has none yet.
+
+TEST(ModuleConfigTest, ValidateTransportIgnoresMissingAgentId)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.server_host[0] = '\0';
+    EXPECT_TRUE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillFailsClosedWithoutCa)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    config.verify_mode = HC_VERIFY_FULL;
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, ValidateTransportStillRequiresBothClientCertHalves)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    ON_CALL(fsProbe, isReadableFile(::testing::_)).WillByDefault(Return(true));
+    auto config = minimalConfig();
+    config.agent_id[0] = '\0';
+    std::strncpy(config.client_cert, "/etc/agent.pem", sizeof(config.client_cert) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validateTransport(fsProbe, TEST_LOG));
+}

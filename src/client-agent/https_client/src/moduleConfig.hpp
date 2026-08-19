@@ -99,6 +99,12 @@ struct ModuleConfig
 
         bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
 
+        /// The TLS half of validate() alone (fail-closed CA check + client-cert
+        /// pairing), without the serverHost/agentId precondition -- an
+        /// enrolling agent has no agentId yet, but the same TLS matrix still
+        /// has to hold before its /enroll request goes out (#38465).
+        bool validateTransport(const IFsProbe& fsProbe, const LogFn& logFn) const;
+
         std::string baseUrl() const;
 
     private:

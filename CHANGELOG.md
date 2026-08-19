@@ -83,6 +83,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#37831](https://github.com/wazuh/wazuh/issues/37831) | Changed the agent transport to HTTPS for all server communication, removing the legacy TCP data path and its internal-option fallback. |
+| [#38465](https://github.com/wazuh/wazuh/issues/38465) | Changed agent enrollment to consume the manager's HTTPS `POST /enroll` endpoint instead of the legacy `A:`/`K:` protocol over TCP/1515, reusing the same `<agent><ssl>`/`<agent><server>` transport as the rest of the agent's HTTPS traffic. |
 | [#33378](https://github.com/wazuh/wazuh/issues/33378) | Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. |
 | [#34849](https://github.com/wazuh/wazuh/issues/34849) | Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. |
 | [#33199](https://github.com/wazuh/wazuh/issues/33199) | Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. |
@@ -100,6 +101,7 @@
 | [#30435](https://github.com/wazuh/wazuh/issues/30435) | Removed deprecated agent binaries and legacy modules as part of the Wazuh 5.0 agent cleanup. |
 | [#31582](https://github.com/wazuh/wazuh/issues/31582) | Removed NSIS-based Windows agent installer; Windows agent now ships exclusively as an MSI package. |
 | [#38091](https://github.com/wazuh/wazuh/issues/38091) | Removed the `<enrollment><auto_method>` option; enrollment now always requires TLS 1.3, so there is nothing left for it to negotiate down to. The `ssl_cipher` option now expects a TLS 1.3 ciphersuite list instead of an OpenSSL cipher-list string. |
+| [#38465](https://github.com/wazuh/wazuh/issues/38465) | Removed the `<enrollment>` `manager_address`, `port`, `interface_index`, `ssl_cipher`, `server_certificate_path`, `agent_certificate_path`, and `agent_key_path` options; enrollment now always targets the same manager and TLS configuration as the rest of the agent's HTTPS traffic. A 4.x `ossec.conf` carrying them still parses without error after an in-place upgrade. |
 
 #### Fixed
 

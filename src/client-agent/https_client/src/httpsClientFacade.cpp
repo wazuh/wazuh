@@ -428,16 +428,21 @@ void HttpsClientFacade::notifyNow()
     }
 }
 
-bool HttpsClientFacade::setAgentKey(const char* keyHex)
+bool HttpsClientFacade::setAgentIdentity(const char* agentId, const char* keyHex)
 {
     // Callback-safe (no lifecycle lock): the natural flow is to call this from
-    // inside on_reenroll_required. It swaps the CMAC key, clears the auth pause
-    // and (via the gate's wake) drives the control loop to re-register.
-    if (keyHex == nullptr || !m_keyProvider.setKey(keyHex))
+    // inside on_reenroll_required. It swaps the CMAC key and id together (a
+    // re-enroll response, #38465, can hand back a new numeric id along with
+    // the new key -- the two must move as one, or subsequent traffic would
+    // sign under an id the manager no longer associates with this key),
+    // clears the auth pause, and (via the gate's wake) drives the control
+    // loop to re-register.
+    if (agentId == nullptr || keyHex == nullptr || !m_keyProvider.setKey(keyHex))
     {
-        return false; // Invalid material: the previous key stays in place.
+        return false; // Invalid material: the previous identity stays in place.
     }
 
+    m_signer.setAgentId(agentId);
     m_authGate.release();
     return true;
 }

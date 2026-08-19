@@ -63,7 +63,7 @@ typedef enum hc_conn_state_t
     HC_STATE_REGISTERED,   ///< Startup accepted; streams running.
     HC_STATE_REJECTED,     ///< Startup rejected (e.g. version); slow retry.
     HC_STATE_AUTH_ERROR    ///< Credential rejected (401): all traffic paused
-    ///< until hc_set_agent_key() supplies a new key.
+    ///< until hc_set_agent_identity() supplies a new identity.
 } hc_conn_state_t;
 
 /* Occupancy level of the stateless accumulator. Replaces the legacy client
@@ -250,8 +250,8 @@ typedef struct hc_callbacks_t
     /// The signing credential was rejected (401 on any endpoint), so the
     /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
     /// Fired once per incident from the dispatcher thread. Re-enroll out of
-    /// band (the authd flow, caller-owned retries) and call hc_set_agent_key()
-    /// with the new key to resume.
+    /// band (the /enroll flow, caller-owned retries) and call
+    /// hc_set_agent_identity() with the new id/key to resume.
     void (*on_reenroll_required)(void* user_data);
     void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
                     void* user_data);
@@ -455,16 +455,69 @@ HC_EXPORTED void hc_notify_now(hc_handle* handle);
 HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
 
 /**
- * @brief Swap the AES-CMAC credential at runtime (hex; 16/24/32 bytes decoded)
- *        after a re-enrollment. Like hc_set_config_hash this is callback-safe
- *        (it only touches an internal guarded key). It clears the auth pause
- *        and forces a fresh Startup (re-registration). Returns false on a NULL
- *        handle or invalid key material, leaving the previous key in place.
+ * @brief Swap the agent id and AES-CMAC credential at runtime (key: hex;
+ *        16/24/32 bytes decoded) after a re-enrollment (#38465's POST /enroll
+ *        response can hand back a different numeric id along with the new
+ *        key -- the two are set together so no request is ever signed with
+ *        one half stale). Like hc_set_config_hash this is callback-safe (it
+ *        only touches internal guarded state). It clears the auth pause and
+ *        forces a fresh Startup (re-registration). Returns false on a NULL
+ *        handle, NULL id, or invalid key material, leaving the previous
+ *        identity in place.
  */
-HC_EXPORTED bool hc_set_agent_key(hc_handle* handle, const char* key_hex);
+HC_EXPORTED bool hc_set_agent_identity(hc_handle* handle, const char* agent_id, const char* key_hex);
 
 /** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
 HC_EXPORTED int hc_get_state(const hc_handle* handle);
+
+/* ---- enrollment (#38465) ---- */
+
+#define HC_MAX_ENROLL_BODY 4096
+#define HC_MAX_ENROLL_PASSWORD 256
+
+/**
+ * @brief One /enroll request (#38438's contract), built entirely by the C
+ *        caller (client-agent/src/enrollment.c): the module treats body_json
+ *        as opaque bytes and never inspects its fields.
+ */
+typedef struct hc_enroll_request_t
+{
+    char body_json[HC_MAX_ENROLL_BODY];    ///< The already-validated JSON body.
+    char password[HC_MAX_ENROLL_PASSWORD]; ///< Empty -> no WazuhEnroll header
+    ///< (mTLS/open enrollment): a client cert (if `config` carries one) and
+    ///< a password may both be set; there is no precedence between them,
+    ///< each authenticates independently (confirmed with the server team).
+    full_log_fnc_t log; ///< This call's log sink. hc_enroll() may run before
+    ///< hc_create() ever does (first-boot enrollment has no handle yet), so
+    ///< it cannot rely on a sink already being assigned.
+} hc_enroll_request_t;
+
+/** @brief Result of one /enroll attempt. */
+typedef struct hc_enroll_result_t
+{
+    long http_code;           ///< 0 = no HTTP response at all (transport/config
+    ///< failure -- see hc_enroll()'s return value).
+    long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
+    char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
+} hc_enroll_result_t;
+
+/**
+ * @brief Perform exactly one /enroll HTTP request. Handle-less and
+ *        synchronous, like hc_send_sync_session: usable before hc_create()
+ *        (first-boot enrollment) or standalone (re-enrollment after a 401).
+ *        No retry loop and no shared CompressionGate/AuthGate -- the C
+ *        caller already owns backoff/retry one layer up.
+ * @param config Only the transport half is read (host, port, TLS material,
+ *        timeout, compression toggle); agent_id/agent_key are ignored, since
+ *        an enrolling agent has neither yet.
+ * @return true once a request was actually sent and answered, whatever the
+ *         HTTP status (including 4xx/5xx: result->http_code carries it, for
+ *         the caller to interpret). false when nothing was ever sent -- an
+ *         invalid transport config (fail-closed TLS policy) or a NULL
+ *         argument; result->http_code stays 0 in that case.
+ */
+HC_EXPORTED bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
+                           hc_enroll_result_t* result);
 
 #ifdef __cplusplus
 }

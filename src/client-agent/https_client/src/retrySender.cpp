@@ -11,18 +11,14 @@
 
 #include "retrySender.hpp"
 
+#include "bodyCompressor.hpp"
+
 #include <algorithm>
 #include <cstdlib>
 #include <vector>
 
-#include <zstd.h>
-
 namespace
 {
-    // Matches the level the manager's own test-only compressor
-    // (zstdTestHelper.hpp's zstdCompress()) uses to build its zstd fixtures.
-    constexpr int kCompressionLevel = 3;
-
     // Below this, a Date-vs-local gap is plausibly network latency or Date's
     // 1 s granularity, not real clock skew -- applying a correction for noise
     // this small would only ever matter within the 300 s CMAC window this
@@ -142,13 +138,9 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 
     if (m_compressionEnabled && gateAllowsCompression && attempt.bodyFilePath.empty() && attempt.bodyLength > 0)
     {
-        compressedBody.resize(ZSTD_compressBound(attempt.bodyLength));
-        const size_t written = ZSTD_compress(compressedBody.data(), compressedBody.size(), attempt.body,
-                                             attempt.bodyLength, kCompressionLevel);
-
-        if (!ZSTD_isError(written))
+        if (auto compressed = compressBody(attempt.body, attempt.bodyLength))
         {
-            compressedBody.resize(written);
+            compressedBody = std::move(*compressed);
             attempt.body = compressedBody.data();
             attempt.bodyLength = compressedBody.size();
             attempt.headers.push_back("Content-Encoding: zstd");

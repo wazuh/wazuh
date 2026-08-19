@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "enrollment.h"
 #include "https_client_bridge.h"
 #include "metadata_provider.h"
 
@@ -68,34 +69,24 @@ static void w_agentd_keys_init (void) {
 
     if (keys.keysize == 0) {
         /* Check if we can auto-enroll */
-        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
-            int registration_status = -1;
+        if (agt->enrollment.enabled) {
             int delay_sleep = 0;
-            while (registration_status != 0) {
-                int rc = 0;
-                if (agt->enrollment_cfg->target_cfg->manager_name) {
-                    /* Configured enrollment server */
-                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name, agt->enrollment_cfg->target_cfg->network_interface);
+            while (try_enroll_to_server() != 0) {
+                /* #38465: a single unconditional target now (agt->server[0] via
+                 * the shared transport config), so the dual-target loop this
+                 * used to have (a configured enrollment server, then each
+                 * agt->server[rc] in turn) is gone -- see plan.md's D4/Q6. The
+                 * retry ramp itself is unchanged and still shared with
+                 * bridge_reenroll_thread()'s loop via the same internal options. */
+                const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
+                                                           ENROLLMENT_RETRY_TIME_MAX_DEFAULT);
+                const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
+                                                             ENROLLMENT_RETRY_TIME_DELTA_DEFAULT);
+                if (delay_sleep < retry_max) {
+                    delay_sleep += retry_delta;
                 }
-
-                /* Try to enroll to server list */
-                while (agt->server[rc].rip && (registration_status != 0)) {
-                    registration_status = try_enroll_to_server(agt->server[rc].rip, agt->server[rc].network_interface);
-                    rc++;
-                }
-
-                /* Sleep between retries */
-                if (registration_status != 0) {
-                    const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
-                                                               ENROLLMENT_RETRY_TIME_MAX_DEFAULT);
-                    const int retry_delta = getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600,
-                                                                 ENROLLMENT_RETRY_TIME_DELTA_DEFAULT);
-                    if (delay_sleep < retry_max) {
-                        delay_sleep += retry_delta;
-                    }
-                    mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
-                    sleep(delay_sleep);
-                }
+                mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
+                sleep(delay_sleep);
             }
         }
         /* If autoenrollment is disabled, stop daemon */
@@ -116,18 +107,37 @@ static void w_agentd_keys_init (void) {
     mdebug1("Using AES as encryption method.");
 }
 
-int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
-    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip, network_interface);
-    if (enroll_result == 0) {
-        /* Wait for key update on agent side */
-        mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
-        sleep(agt->enrollment_cfg->delay_after_enrollment);
-        /* Successfull enroll, read keys */
-        OS_UpdateKeys(&keys);
-        /* Set the crypto method for the agent */
-        os_set_agent_crypto_method(&keys, W_METH_AES);
+/* Orchestrates one enrollment attempt over HTTPS (#38465): agentd builds the
+ * request, sends it via the shared transport, and parses the response --
+ * enrollment.c and https_client_bridge.c never call each other directly.
+ * There is no per-attempt server selection any more (unlike the legacy
+ * multi-target loop this replaces): w_https_client_enroll() always dials
+ * agt->server[0], the same single target every other HTTPS endpoint already
+ * uses (agt->server[] beyond index 0 has had no real failover behavior since
+ * the HTTPS migration -- confirmed against main.c's own startup validation
+ * and bridge_build_transport_config(), both of which only ever look at [0]). */
+int try_enroll_to_server(void) {
+    w_enroll_request_t request = {0};
+    if (w_enrollment_build_request(&request) != 0) {
+        return -1;
     }
-    return enroll_result;
+
+    hc_enroll_result_t result;
+    w_https_client_enroll(request.body_json, request.password, &result);
+    w_enroll_request_destroy(&request);
+
+    if (w_enrollment_process_response(&result) != W_ENROLL_OK) {
+        return -1;
+    }
+
+    /* Wait for key update on agent side */
+    mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment.delay_after_enrollment);
+    sleep(agt->enrollment.delay_after_enrollment);
+    /* Successful enroll, read keys */
+    OS_UpdateKeys(&keys);
+    /* Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys, W_METH_AES);
+    return 0;
 }
 
 /* Populate shared memory with agent metadata so the first keepalive already

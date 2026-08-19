@@ -28,4 +28,16 @@ std::vector<uint8_t> buildCanonicalRequest(const std::string& method, const std:
                                            const std::string& agentId, std::time_t timestamp,
                                            const uint8_t* body, size_t bodyLength);
 
+/// The #38438 enrollment canonical request head: "WAZUH-ENROLL\n1\nMETHOD\ntarget\nts\n".
+/// Omits the agent-id line the normal request head carries (canonicalRequestHead
+/// above): an enrolling agent has no id yet. Used only for the password-mode
+/// WazuhEnroll signature (EnrollSigner); mTLS/open enrollment sign nothing.
+std::string enrollCanonicalRequestHead(const std::string& method, const std::string& target,
+                                       std::time_t timestamp);
+
+/// Head + body in one buffer, enrollment variant (memory-body convenience).
+std::vector<uint8_t> buildEnrollCanonicalRequest(const std::string& method, const std::string& target,
+                                                 std::time_t timestamp, const uint8_t* body,
+                                                 size_t bodyLength);
+
 #endif // _HC_CANONICAL_REQUEST_HPP
