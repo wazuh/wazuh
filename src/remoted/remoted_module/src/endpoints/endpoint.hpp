@@ -92,8 +92,8 @@ namespace remoted::endpoints
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_INVALID_MAC, "Rejections: the request's AES-CMAC did not verify", "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_CLOCK_SKEW,
-                                       "Rejections: timestamp outside the window set by 'auth_max_request_age' and "
-                                       "'auth_max_future_skew'",
+                                       "Rejections: timestamp outside the window set by "
+                                       "'remoted.auth_max_request_age' and 'remoted.auth_max_future_skew'",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_UNUSABLE_KEY,
                                        "Rejections: the agent's client.keys entry does not decode to a usable AES key",
@@ -103,7 +103,8 @@ namespace remoted::endpoints
                 "Rejections: an authenticated agent submitted a payload claiming another agent id (security signal)",
                 "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BODY_TOO_LARGE,
-                                       "Rejections: body over the cap set by 'auth_max_body_size'",
+                                       "Rejections: body over 'remoted.auth_max_body_size', or a zstd frame that "
+                                       "did not fit the 'remoted.max_inflight_bytes' budget",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BAD_ENCODING,
                                        "Rejections: unsupported or undecodable Content-Encoding (zstd)",

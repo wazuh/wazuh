@@ -242,7 +242,8 @@ namespace remoted::control
                     {
                         // Observed only on success: wdbError already counts the failures, so the
                         // histogram means "how long a HEALTHY round trip takes" -- the number that
-                        // sizes wdbRoundtripDeadlineMs. Worker-thread-only, dump-independent.
+                        // sizes 'remoted.control_wdb_roundtrip_deadline'. Worker-thread-only,
+                        // dump-independent.
                         observeWdbLatency(
                             m_metrics,
                             static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(

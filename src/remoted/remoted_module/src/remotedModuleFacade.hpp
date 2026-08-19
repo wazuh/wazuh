@@ -644,8 +644,9 @@ private:
      * Same wiring as the transport diagnostics: weak target repointed per start, registered
      * once. The registry is OWNED by m_controlHandler (reset in stop() phase 1b), so the pull
      * quiesces to 0 as soon as the control plane is torn down. size() sums the shards under
-     * shared locks -- dump-cadence only. Answers "how many agents does this node currently
-     * track", the number that sizes the registry TTL/eviction settings.
+     * shared locks -- dump-cadence only. Purely diagnostic: it answers "how many agents does
+     * this node currently track"; there is no knob behind it (the registry TTL and eviction
+     * cadence are compile-time constants -- see controlConfig.hpp).
      */
     void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry)
     {
@@ -927,7 +928,8 @@ private:
                 const auto l = limiter();
                 return l ? static_cast<uint64_t>(l->capacity()) : 0U;
             },
-            "Configured deferred-work slot cap, 'max_deferred_requests' (0 = unlimited)",
+            "Configured deferred-work slot cap, 'remoted.max_deferred_requests' (reads 0 only while the module is "
+            "stopped)",
             "requests");
         m_metricsManager->registerPullMetric(
             "remoted.forwarder.deferred.rejected.total",

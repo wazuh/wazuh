@@ -61,8 +61,8 @@ namespace remoted::control
         std::shared_ptr<wazuh::metrics::ICounter> rejected; ///< 400s: malformed /control (version drift signal).
         /// Successful wazuh-db round-trip time, microseconds. Timeouts are deliberately NOT
         /// observed -- wdbError already counts them -- so the histogram means "how long a
-        /// healthy round trip takes", the number that sizes wdbRoundtripDeadlineMs and
-        /// wdbRequestConnections.
+        /// healthy round trip takes", the number that sizes the internal options
+        /// 'remoted.control_wdb_roundtrip_deadline' and 'remoted.control_wdb_request_connections'.
         std::shared_ptr<wazuh::metrics::IHistogram> wdbLatency;
     };
 

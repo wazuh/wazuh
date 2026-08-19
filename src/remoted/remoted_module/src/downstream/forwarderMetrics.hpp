@@ -79,17 +79,22 @@ namespace remoted::downstream
         m.byError[static_cast<std::size_t>(DownstreamError::Connect)] = manager.getOrCreateCounter(
             METRIC_FWD_ERROR_CONNECT, "Could not connect to the downstream socket (nothing listening)", "count");
         m.byError[static_cast<std::size_t>(DownstreamError::ConnectTimeout)] = manager.getOrCreateCounter(
-            METRIC_FWD_ERROR_CONNECT_TIMEOUT, "'downstream_connect_timeout' elapsed", "count");
+            METRIC_FWD_ERROR_CONNECT_TIMEOUT, "'remoted.downstream_connect_timeout' elapsed", "count");
         m.byError[static_cast<std::size_t>(DownstreamError::WriteTimeout)] = manager.getOrCreateCounter(
-            METRIC_FWD_ERROR_WRITE_TIMEOUT, "'downstream_write_timeout' elapsed (peer not reading)", "count");
+            METRIC_FWD_ERROR_WRITE_TIMEOUT, "'remoted.downstream_write_timeout' elapsed (peer not reading)", "count");
         m.byError[static_cast<std::size_t>(DownstreamError::ResponseTimeout)] = manager.getOrCreateCounter(
-            METRIC_FWD_ERROR_RESPONSE_TIMEOUT, "The post-send response deadline elapsed", "count");
+            METRIC_FWD_ERROR_RESPONSE_TIMEOUT,
+            "'remoted.downstream_response_timeout' (or 'remoted.downstream_stateful_response_timeout' for /stateful) "
+            "elapsed",
+            "count");
         m.byError[static_cast<std::size_t>(DownstreamError::Transport)] = manager.getOrCreateCounter(
             METRIC_FWD_ERROR_TRANSPORT, "Downstream socket read/write error or unexpected close", "count");
         m.byError[static_cast<std::size_t>(DownstreamError::Protocol)] = manager.getOrCreateCounter(
             METRIC_FWD_ERROR_PROTOCOL, "The downstream response was not valid HTTP", "count");
-        m.byError[static_cast<std::size_t>(DownstreamError::ResponseTooLarge)] = manager.getOrCreateCounter(
-            METRIC_FWD_ERROR_RESPONSE_TOO_LARGE, "Downstream response body over the configured cap", "count");
+        m.byError[static_cast<std::size_t>(DownstreamError::ResponseTooLarge)] =
+            manager.getOrCreateCounter(METRIC_FWD_ERROR_RESPONSE_TOO_LARGE,
+                                       "Downstream response body over 'remoted.downstream_max_response_body_size'",
+                                       "count");
         m.routeMismatch = manager.getOrCreateCounter(
             METRIC_FWD_ROUTE_MISMATCH,
             "Downstream answered 404/405: mismatched route contract (versions/configuration)",
