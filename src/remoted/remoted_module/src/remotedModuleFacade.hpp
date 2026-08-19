@@ -740,6 +740,7 @@ private:
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
+            config.reservedControlConnections = 16;
             m_adminServer->start(config);
 
             registerAdminTransportDiagnostics();

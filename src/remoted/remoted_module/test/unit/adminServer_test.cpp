@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 #include <httplib.h>
 
+#include <chrono>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -193,6 +194,13 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
     EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
     // The injected identity of a NEW server with no prior wire contract.
     EXPECT_EQ(response->get_header_value("Server"), "wazuh-remoted");
+
+    // A default start must be warning-free: the facade sets reservedControlConnections to the
+    // value the library's quarter-of-the-cap clamp would pick anyway (16 of 64), so the
+    // "clamping to" WARNING must never fire on a default install. startModule() is synchronous
+    // through startAdminServer(), so by now the warning would already be recorded.
+    EXPECT_FALSE(remoted::test::LogRecorder::waitForMessageContaining("clamping to", std::chrono::milliseconds {200}))
+        << "the admin server's default sizing must not trip the library's reservation clamp";
 }
 
 // GET /metrics dumps the module's whole registry: the E6a families (remoted.control.*,
