@@ -21,6 +21,22 @@ For module overview and architecture, see [Remoted Module](index.html).
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
 
+### legacy.enabled
+
+Enable the classic TCP/UDP listener and every subsystem that only serves 4.x agents
+(the legacy `remote_upgrade` task-delivery poller, the `merged.mg` push, the
+control/event dispatch threads, the per-agent metadata cache cleanup thread, the
+message-handler worker pool, and the fd closer thread).
+
+- **Default value:** `yes` when `<legacy>` is present; absence of the whole `<legacy>`
+  block is equivalent to `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** With `no`, remoted binds no legacy socket and starts no legacy thread; only
+  5.x agents (served over `<https>`) can connect. `merged.mg`/group generation stays on
+  regardless, since the HTTPS `/download` endpoint also serves it to 5.x agents.
+  Disabling this also causes `remote_upgrade` task creation for agents below v5.0.0 to be
+  rejected at creation time, since there is no delivery path for them anymore.
+
 ### legacy.port
 
 Listening port for agent connections.

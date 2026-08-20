@@ -85,6 +85,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcasecmp(node[i]->element, xml_remote_legacy) == 0) {
+            logr->legacy_enabled = true;
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children != NULL) {
                 int ret = w_remoted_parse_legacy(children, logr);
@@ -115,19 +116,29 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         i++;
     }
 
-    /* Set port in here */
-    if (logr->port == 0) {
-        logr->port = DEFAULT_REMOTE_PORT;
-    }
+    /* These settings only make sense for the classic listener; keeping them at their
+     * disabled state (0/NULL) when <legacy> is absent or disabled is what keeps
+     * HandleRemote() from binding it and secure.c's protocol-gated wnotify_add() from
+     * touching a socket that was never bound. */
+    if (logr->legacy_enabled) {
+        /* Set port in here */
+        if (logr->port == 0) {
+            logr->port = DEFAULT_REMOTE_PORT;
+        }
 
-    /* Set protocol in here */
-    if (logr->proto == 0) {
-        logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
-    }
+        /* Set protocol in here */
+        if (logr->proto == 0) {
+            logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
+        }
 
-    /* Set local ip in here */
-    if (logr->lip == NULL && !logr->ipv6) {
-        os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
+        /* Set local ip in here */
+        if (logr->lip == NULL && !logr->ipv6) {
+            os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
+        }
+    } else {
+        logr->port = 0;
+        logr->proto = 0;
+        os_free(logr->lip);
     }
 
     return (0);
@@ -141,6 +152,7 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
+    const char *xml_remote_enabled = "enabled";
 
     int i = 0;
 
@@ -223,6 +235,14 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
                 } else {
                     logr->connection_overtake_time = connection_overtake_time;
                 }
+            }
+        } else if (strcasecmp(node[i]->element, xml_remote_enabled) == 0) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                logr->legacy_enabled = true;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->legacy_enabled = false;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_remote_enabled);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
