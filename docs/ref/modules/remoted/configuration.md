@@ -148,6 +148,8 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
+- **Note:** at startup the manager warns if this certificate has expired or expires within 30 days,
+  so a silent outage for verifying agents can be prevented before it happens.
 
 ### https.key
 
