@@ -131,7 +131,6 @@ namespace remoted::auth
         UnsupportedContentEncoding, ///< Content-Encoding present but not (case-insensitively) "zstd".
         MalformedContentEncoding,   ///< Content-Encoding: zstd, but the body isn't a valid/complete
                                     ///< zstd frame (bad magic, truncated, oversized window, ...).
-        SourceIpNotAllowed, ///< Authenticated, but the peer is outside the agent's client.keys address range.
     };
 
     /**

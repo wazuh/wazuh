@@ -37,13 +37,11 @@ namespace
 
     // Writes a one-agent client.keys to a scratch path so Keystore has
     // something real to parse, instead of a stub built just for tests.
-    std::string writeClientKeysFile(const std::string& agentId,
-                                    const std::vector<std::uint8_t>& key,
-                                    const std::string& address = "any")
+    std::string writeClientKeysFile(const std::string& agentId, const std::vector<std::uint8_t>& key)
     {
         const std::string path = "/tmp/authMiddleware_test_" + std::to_string(getpid()) + ".keys";
         std::ofstream file(path);
-        file << agentId << " test-agent " << address << " " << toLowerHex(key.data(), key.size()) << "\n";
+        file << agentId << " test-agent any " << toLowerHex(key.data(), key.size()) << "\n";
         return path;
     }
 
@@ -319,58 +317,6 @@ namespace
         // Both remain std::exception, so existing generic handlers keep working.
         EXPECT_TRUE((std::is_base_of_v<std::exception, CmacKeyError>));
         EXPECT_TRUE((std::is_base_of_v<std::exception, CmacProviderError>));
-    }
-
-    // --- Source-address authorization (checkSourceAddress) --------------------------------------
-
-    TEST(AuthMiddlewareSourceAddress, AnyAllowsEveryPeer)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "any");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "10.0.0.5").has_value());
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, CidrRejectsPeerOutsideRange)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "10.99.0.0/16");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "10.99.0.1").has_value());
-
-        const auto rejected = middleware.checkSourceAddress("001", "10.100.0.1");
-        ASSERT_TRUE(rejected.has_value());
-        EXPECT_EQ(*rejected, AuthError::SourceIpNotAllowed);
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, SingleIpRejectsOtherPeer)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "192.168.1.10");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "192.168.1.10").has_value());
-
-        const auto rejected = middleware.checkSourceAddress("001", "192.168.1.11");
-        ASSERT_TRUE(rejected.has_value());
-        EXPECT_EQ(*rejected, AuthError::SourceIpNotAllowed);
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, UnknownAgentIsUnrestricted)
-    {
-        // A missing address (agent gone from client.keys after the key check) is not enforced --
-        // the key lookup is the authoritative gate; see AuthMiddleware::checkSourceAddress.
-        const auto path = writeClientKeysFile("001", kKey, "10.99.0.0/16");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("999", "203.0.113.1").has_value());
-        std::remove(path.c_str());
     }
 
 } // namespace

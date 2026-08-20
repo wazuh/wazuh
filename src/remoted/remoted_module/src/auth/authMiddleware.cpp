@@ -13,7 +13,6 @@
 
 #include "common/logThrottle.hpp"
 #include "loggerHelper.h"
-#include "sourceAddress.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -62,7 +61,6 @@ namespace remoted::auth
             case AuthError::BodyTooLarge: return "body_too_large";
             case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
             case AuthError::MalformedContentEncoding: return "malformed_content_encoding";
-            case AuthError::SourceIpNotAllowed: return "source_ip_not_allowed";
         }
         return "unknown";
     }
@@ -77,8 +75,6 @@ namespace remoted::auth
             case AuthError::BodyTooLarge: return {413, "Request payload is too large"};
             case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body"};
             case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
-            // 403, not the generic 401: credentials are valid, the source address is what is refused.
-            case AuthError::SourceIpNotAllowed: return {403, "Source address not authorized"};
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
             // ExpiredRequest, FutureRequest, InvalidMac: collapse to one generic 401
@@ -328,27 +324,6 @@ namespace remoted::auth
         session.m_cmac->update("\n");
 
         return session;
-    }
-
-    std::optional<AuthError> AuthMiddleware::checkSourceAddress(std::string_view agentId,
-                                                               std::string_view peerAddress) const
-    {
-        AgentId numericAgentId = 0;
-        const auto [end, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), numericAgentId);
-        if (ec != std::errc {} || end != agentId.data() + agentId.size())
-        {
-            return AuthError::SourceIpNotAllowed; // unparseable id (can't happen post-auth): fail closed
-        }
-
-        // A now-absent entry (client.keys reloaded) is treated as unrestricted: the key lookup is
-        // the authoritative gate, so don't lock out a just-verified agent.
-        const auto allowed = m_keystore->allowedAddressFor(numericAgentId);
-        if (!allowed || sourceAddressAllowed(*allowed, peerAddress))
-        {
-            return std::nullopt;
-        }
-
-        return AuthError::SourceIpNotAllowed;
     }
 
     AuthError AuthMiddleware::Session::update(const std::uint8_t* data, std::size_t len)

@@ -87,29 +87,6 @@ namespace
         EXPECT_FALSE(keystore.keyFor(9999).has_value());
     }
 
-    TEST_F(KeystoreTest, AllowedAddressForReturnsTheAddressColumn)
-    {
-        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
-                  "3825 debian11 10.99.0.0/16 ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        Keystore keystore(m_path);
-
-        const auto anyAddress = keystore.allowedAddressFor(3824);
-        ASSERT_TRUE(anyAddress.has_value());
-        EXPECT_EQ(*anyAddress, "any");
-
-        const auto cidrAddress = keystore.allowedAddressFor(3825);
-        ASSERT_TRUE(cidrAddress.has_value());
-        EXPECT_EQ(*cidrAddress, "10.99.0.0/16");
-    }
-
-    TEST_F(KeystoreTest, AllowedAddressForUnknownAgentIsNullopt)
-    {
-        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        Keystore keystore(m_path);
-
-        EXPECT_FALSE(keystore.allowedAddressFor(9999).has_value());
-    }
-
     TEST_F(KeystoreTest, NonNumericIdLineIsSkipped)
     {
         writeFile("abc debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");

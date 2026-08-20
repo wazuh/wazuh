@@ -135,17 +135,6 @@ namespace remoted::auth
                                                       std::string_view requestTarget,
                                                       std::int64_t currentUnixTimeSeconds) const;
 
-        /**
-         * @brief Authorize the peer against the agent's client.keys source-address column.
-         *
-         * Call only after finish() verified the MAC, so the ACL is never exposed to an unauthenticated peer.
-         *
-         * @param agentId     The authenticated agent id.
-         * @param peerAddress The peer's connection address (see HttpRequest::remoteIp).
-         * @return nullopt when allowed, or AuthError::SourceIpNotAllowed.
-         */
-        std::optional<AuthError> checkSourceAddress(std::string_view agentId, std::string_view peerAddress) const;
-
         /// @return The auth-protocol configuration this middleware was constructed with.
         const AuthConfig& config() const
         {

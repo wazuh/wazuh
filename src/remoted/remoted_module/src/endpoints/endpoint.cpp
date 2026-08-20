@@ -47,12 +47,11 @@ namespace
      */
     enum class RejectionKind
     {
-        ClientFault,        ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
-        ClockSkew,          ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
-        BodyTooLarge,       ///< Over the authenticated-body cap -> auth_max_body_size.
-        UnusableKey,        ///< The agent exists but its client.keys key does not decode.
-        AgentMismatch,      ///< An authenticated agent claimed a different agent's id (security signal).
-        SourceNotAuthorized, ///< Authenticated agent connecting from outside its client.keys range (security signal).
+        ClientFault,   ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
+        ClockSkew,     ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
+        BodyTooLarge,  ///< Over the authenticated-body cap -> auth_max_body_size.
+        UnusableKey,   ///< The agent exists but its client.keys key does not decode.
+        AgentMismatch, ///< An authenticated agent claimed a different agent's id (security signal).
     };
 
     RejectionKind classify(remoted::auth::AuthError err)
@@ -64,7 +63,6 @@ namespace
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
-            case remoted::auth::AuthError::SourceIpNotAllowed: return RejectionKind::SourceNotAuthorized;
             default: return RejectionKind::ClientFault;
         }
     }
@@ -78,7 +76,6 @@ namespace
         static LogThrottle bodyTooLargeThrottle;
         static LogThrottle unusableKeyThrottle;
         static LogThrottle agentMismatchThrottle;
-        static LogThrottle sourceNotAuthorizedThrottle;
 
         // NOTE: every argument below must stay allocation-free (literals and integers only). This
         // function runs on every rejected request, and LOGFN_DEBUG2's guard does NOT currently
@@ -130,20 +127,6 @@ namespace
                     LOGFN_WARN(logFn(),
                                "Rejected %llu authenticated request(s) in the last %d s whose payload claimed a "
                                "different agent id than the one that signed them (authenticated agent '%.*s').",
-                               static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds,
-                               static_cast<int>(agentContext.size()),
-                               agentContext.data());
-                }
-                break;
-
-            case RejectionKind::SourceNotAuthorized:
-                if (const auto d = sourceNotAuthorizedThrottle.record())
-                {
-                    // Security signal: an authenticated agent connecting from outside its client.keys range.
-                    LOGFN_WARN(logFn(),
-                               "Rejected %llu authenticated request(s) with 403 in the last %d s from an address "
-                               "outside the agent's authorized range in client.keys (agent '%.*s').",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                static_cast<int>(agentContext.size()),
