@@ -3,7 +3,6 @@ name: 4.X - Inventory Harvester - Integration tests
 on:
   workflow_dispatch:
   pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
   # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
   # Path filtering
@@ -19,7 +18,10 @@ on:
 jobs:
   inventory-harvester-qa:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Cancel previous runs
@@ -40,6 +42,21 @@ jobs:
       - name: Project dependencies
         uses: ./.github/actions/vulnerability_scanner_deps
 
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/4.14.8
       - name: Inventory harvester - Build tooling
         uses: ./.github/actions/build_target_cpp
         with:
@@ -66,3 +83,6 @@ jobs:
           cd src
           echo "{}" > states_update_mappings.json
           python -m pytest -vv wazuh_modules/inventory_harvester/qa/ --log-cli-level=DEBUG
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

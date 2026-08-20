@@ -107,7 +107,7 @@ jobs:
       SHOULD_UPLOAD: ${{ inputs.upload_package }}
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
 
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -171,14 +171,6 @@ jobs:
       - name: CodeBuild workarounds
         # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
         run: |
-          # 1. Docker daemon: CodeBuild has no systemd; VFS driver avoids overlay-on-overlay.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
           # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
           #    which the older git inside builder Docker images cannot read.
           git config core.repositoryformatversion 0
