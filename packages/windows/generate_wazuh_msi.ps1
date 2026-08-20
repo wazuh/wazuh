@@ -114,7 +114,7 @@ function ExtractDebugSymbols(){
 		$procArgs += $file.BaseName
 		$procArgs += ".pdb"
 
-		$processes += Start-Process -FilePath "cv2pdb.exe" -ArgumentList $procArgs -WindowStyle Hidden -PassThru
+		$processes += Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $procArgs -NoNewWindow -PassThru
 	}
 
   Write-Host "Waiting for processes to finish"
