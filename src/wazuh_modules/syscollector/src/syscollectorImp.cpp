@@ -2587,11 +2587,7 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         else if (indexIt != INDEX_MAP.end())
         {
             const std::string& index = indexIt->second;
-            size_t documentLimit = 0;
-            {
-                std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
-                documentLimit = m_documentLimits[index];
-            }
+            size_t documentLimit = getDocumentLimit(index);
 
             if (documentLimit > 0)
             {
@@ -4534,6 +4530,12 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
     }
 }
 
+size_t Syscollector::getDocumentLimit(const std::string& index)
+{
+    std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+    return m_documentLimits[index];
+}
+
 // LCOV_EXCL_START
 bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
@@ -4547,11 +4549,7 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
     if (indexIt != INDEX_MAP.end())
     {
         const std::string& index = indexIt->second;
-        size_t documentLimit = 0;
-        {
-            std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
-            documentLimit = m_documentLimits[index];
-        }
+        size_t documentLimit = getDocumentLimit(index);
 
         if (documentLimit > 0)
         {
@@ -4789,11 +4787,7 @@ void Syscollector::runRecoveryProcess()
                 // Determine if we need to filter by sync=1
                 // Only filter when document limits are configured (limit > 0)
                 // If limit == 0 (unlimited), recover all items without filtering
-                size_t documentLimit = 0;
-                {
-                    std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
-                    documentLimit = m_documentLimits[index];
-                }
+                size_t documentLimit = getDocumentLimit(index);
                 std::string rowFilterClause;
 
                 try

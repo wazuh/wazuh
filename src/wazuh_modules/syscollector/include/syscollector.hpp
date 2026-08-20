@@ -296,6 +296,14 @@ class EXPORTED Syscollector final
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
         /**
+         * @brief Get the configured document limit for a given index, thread-safely.
+         *
+         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
+         * @return The configured limit, or 0 if unlimited/not configured.
+         */
+        size_t getDocumentLimit(const std::string& index);
+
+        /**
          * @brief Validates a JSON message against schema and logs validation errors
          *
          * This helper function encapsulates the common pattern of schema validation
