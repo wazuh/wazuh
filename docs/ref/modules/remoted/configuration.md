@@ -759,6 +759,70 @@ see [HTTPS Events API](https-events-api.md#content-encoding-zstd).
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
 
+#### remoted.control_keepalive_throttle
+
+Minimum seconds between two wazuh-db keepalive writes for the same agent. `notify` requests
+arriving faster than this are answered normally but absorbed in memory without touching the
+database.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** This must stay at or above the agent's notify cadence, or every notify becomes a
+  database write. It must also stay well below `<global><agents_disconnection_time>` (default
+  `15m`), since a throttled notify is what refreshes `last_keepalive` -- set the throttle above
+  the disconnection time and active agents are reported as disconnected.
+
+#### remoted.control_groups_refresh_interval
+
+Seconds between refreshes of the cached shared-group listing used to answer `/control`.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** This is the propagation latency an agent sees for a centralised-configuration change.
+
+#### remoted.control_wdb_request_connections
+
+Size of the wazuh-db connection pool the control plane uses.
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.control_wdb_roundtrip_deadline
+
+Milliseconds a single wazuh-db round-trip may take before the control handler gives up.
+
+- **Default value:** `2000`
+- **Allowed values:** Integer from `100` to `30000`
+- **Note:** Exceeding it surfaces to the agent as a `503` on `/control`.
+
+#### remoted.control_wdb_max_queue_size
+
+High-water mark for queued wazuh-db requests; over it the handler reports QueueFull.
+
+- **Default value:** `10000`
+- **Allowed values:** Integer from `100` to `1000000`
+
+#### remoted.control_tm_concurrency
+
+Concurrent task-manager requests the control plane may have in flight.
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.control_tm_deadline
+
+Milliseconds a single task-manager round-trip may take.
+
+- **Default value:** `2000`
+- **Allowed values:** Integer from `100` to `30000`
+
+#### remoted.control_tm_max_queue_size
+
+High-water mark for queued task-manager requests.
+
+- **Default value:** `10000`
+- **Allowed values:** Integer from `100` to `1000000`
+
 ---
 
 ## Configuration Examples

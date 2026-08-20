@@ -15,7 +15,6 @@
 
 namespace
 {
-    constexpr uint32_t STATEFUL_MAX_ATTEMPTS = 5;
     constexpr size_t STATEFUL_MAX_QUEUE = 64;
 } // namespace
 
@@ -194,7 +193,7 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
                      static_cast<unsigned long long>(session.size));
     }
 
-    const auto result = m_sender.send(spec, waiter, STATEFUL_MAX_ATTEMPTS);
+    const auto result = m_sender.send(spec, waiter, m_config.statefulMaxAttempts);
     // The /stateful contract is interpreted from the raw HTTP status code and body by
     // agent_sync_protocol, not from the shared D9 OutcomeClass (see SendResult::httpCode).
     // result.response.httpCode is 0 when no HTTP response was received (m_sender's retry

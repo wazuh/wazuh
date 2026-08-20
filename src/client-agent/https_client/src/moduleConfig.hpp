@@ -60,10 +60,20 @@ struct ModuleConfig
         std::string configChecksum;
 
         uint32_t requestTimeoutMs {10000};
-        uint32_t statefulTimeoutMs {120000};
+        uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
         uint32_t drainTimeoutMs {5000};
+
+        // Per-stream retry budgets (total tries, not retries-after-the-first).
+        // Consumed only by Retryable/BackPressure outcomes.
+        uint32_t controlMaxAttempts {4};
+        uint32_t statelessMaxAttempts {5};
+        uint32_t statefulMaxAttempts {5};
+        uint32_t downloadMaxAttempts {2};
+
+        /// Consecutive undeliverable /control steps before producers pause.
+        uint32_t producerPauseThreshold {2};
 
         std::string spoolDir;
 
@@ -92,6 +102,7 @@ struct ModuleConfig
         std::string baseUrl() const;
 
     private:
+        bool validateTiming(const LogFn& logFn) const;
         bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
         bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };

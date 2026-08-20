@@ -428,6 +428,12 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     rm_config->tm_deadline_ms = getDefine_Int_default("remoted", "control_tm_deadline", 100, 30000, 2000);
     rm_config->tm_max_queue_size = getDefine_Int_default("remoted", "control_tm_max_queue_size", 100, 1000000, 10000);
 
+    // Keepalive write throttle: the manager half of the agent/manager timing contract. It bounds
+    // how often a notify reaches wazuh-db, so the wazuh-db write load it produces scales with the
+    // fleet -- it has to be settable before any notify cadence is agreed with the agent, and it
+    // must stay above whatever cadence the agent ships.
+    rm_config->keepalive_throttle_sec = getDefine_Int_default("remoted", "control_keepalive_throttle", 1, 3600, 60);
+
     extern module_limits_t manager_module_limits;
     extern bool manager_module_limits_enabled;
 

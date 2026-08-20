@@ -316,6 +316,67 @@ agent.min_eps=50
 agent.state_interval=5
 ```
 
+### HTTPS Connection Timing
+
+These control the agent's half of the HTTPS timing contract with the manager. Each one pairs with
+a manager-side deadline, so they should be changed together with the corresponding
+`remoted.*` option rather than on their own — see
+[remoted configuration](../remoted/configuration.md#https-agent-server-remoted_module).
+
+An attempt count is the **total** number of tries, not retries after the first: `1` means "send
+once, never retry". Only retryable failures and back-pressure (`503`) consume an attempt;
+authentication failures, permanent errors and version rejections stop immediately. A step's worst
+case is therefore about `attempts × timeout` plus the jittered backoff between tries — check that
+figure against `<global><agents_disconnection_time>` before raising either.
+
+```ini
+# Per-request budget for /control, /stateless, /stats and /config, in
+# milliseconds (default: 10000, range 1000-600000). Covers DNS, TCP, TLS and
+# transfer -- there is no separate connect or handshake timeout.
+agent.https_request_timeout=10000
+
+# Per-request budget for large transfers: /stateful and both POST /download
+# kinds, config and WPK (default: 90000, range 1000-3600000)
+agent.https_stateful_timeout=90000
+
+# Retry backoff, full jitter: the delay before attempt n is uniform in
+# [0, min(cap, base * 2^n)], reset on success, tracked per stream.
+agent.https_backoff_base=1000
+agent.https_backoff_cap=60000
+
+# Retry cadence for Startup after the manager rejects the agent's version,
+# in seconds (default: 60, range 1-86400)
+agent.https_rejected_retry_interval=60
+
+# Largest WPK accepted by a remote_upgrade download, in bytes
+# (default: 209715200 = 200 MiB)
+agent.https_wpk_max_download_bytes=209715200
+
+# Per-stream retry budgets, total tries (range 1-64)
+agent.https_control_attempts=4
+agent.https_stateless_attempts=5
+agent.https_stateful_attempts=5
+agent.https_download_attempts=2
+
+# Consecutive undeliverable /control steps before event producers pause;
+# one deliverable step releases the pause (default: 2, range 1-1000)
+agent.https_producer_pause_threshold=2
+```
+
+### Enrollment Retry
+
+Not part of the HTTPS request path, but it bounds how long the agent can be held up before it
+next talks to the manager.
+
+```ini
+# Enrollment retry ramp, shared by the initial-enrollment loop and the
+# https_client re-enrollment loop: the delay grows by <delta> seconds after
+# each failed attempt, up to <max>. Both loops read these same two options,
+# so they cannot drift apart.
+agent.enrollment_retry_delta=5
+agent.enrollment_retry_max=60
+```
+
 ### Buffer Settings
 
 ```ini

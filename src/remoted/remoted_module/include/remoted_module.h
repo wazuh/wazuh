@@ -167,6 +167,8 @@ extern "C"
         int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
         int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 200).
         int tm_max_queue_size; ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
+        int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
+                                    ///< notifies arriving faster are absorbed in memory (<=0 -> 60).
     } remoted_module_config_t;
 
     /**

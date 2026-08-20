@@ -331,6 +331,21 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 ---
 
+### wazuh_modules.inventory_sync_server_session_query_batch_size
+
+Indexer search page size used while draining a session.
+
+```ini
+wazuh_modules.inventory_sync_server_session_query_batch_size=0
+```
+
+- **Default value:** `0` (1000 documents)
+- **Allowed values:** 0 to 100000
+- **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
+  per query.
+
+---
+
 ### Indexer connectors (`indexer_sync_*` and `indexer_async_*`)
 
 The module builds BOTH a synchronous and an asynchronous connector over one shared indexer session, and

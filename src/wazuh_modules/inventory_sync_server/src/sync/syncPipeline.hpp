@@ -42,6 +42,8 @@ namespace invsync::sync
         /// Group-commit threshold: a worker flushes its open batch when the staged payload bytes
         /// reach this (mirrors the connector's own max_bulk_size) or when its queue drains.
         std::size_t bulkFlushBytes {10U * 1024U * 1024U};
+        /// Indexer search page size the session processor uses while draining a session.
+        int sessionQueryBatchSize {0}; ///< <=0 -> SessionProcessor's own default.
     };
 
     /**

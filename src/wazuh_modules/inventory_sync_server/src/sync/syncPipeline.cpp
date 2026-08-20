@@ -47,7 +47,7 @@ namespace invsync::sync
                                std::shared_ptr<wazuh::metrics::IManager> metrics)
         : m_config {config}
         , m_metrics {metrics ? std::move(metrics) : std::make_shared<wazuh::metrics::Manager>()}
-        , m_processor {std::move(managerClusterName), m_metrics}
+        , m_processor {std::move(managerClusterName), m_metrics, config.sessionQueryBatchSize}
         , m_registry {std::move(registry)}
         , m_connectors {std::move(connectors)}
     {
