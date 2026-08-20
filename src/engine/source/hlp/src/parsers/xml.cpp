@@ -28,7 +28,7 @@ bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
         }
         else
         {
-            path.append("/").append(name.as_string());
+            path.append(json::Json::formatJsonPath(name.as_string(), true));
             docJson.setString(node.text().as_string(), path);
         }
 

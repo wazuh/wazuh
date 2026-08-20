@@ -57,6 +57,12 @@ xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog" /></UserData
                67,
                getXMLParser,
                {NAME, TARGET, {""}, {}}),
+        ParseT(SUCCESS,
+               R"(<EventData><Data Name="x/3~label">value</Data></EventData>)",
+               j(fmt::format(R"({{"{}":{}}})", TARGET.substr(1), R"({"EventData":{"x/3~label":"value"}})")),
+               58,
+               getXMLParser,
+               {NAME, TARGET, {""}, {"windows"}}),
         ParseT(
             SUCCESS,
             R"(<EventData><Data
