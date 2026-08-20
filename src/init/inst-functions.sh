@@ -74,8 +74,13 @@ DisableAuthd()
     echo "    <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    echo "    <ssl_manager_cert>etc/certs/authd.pem</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>etc/certs/authd-key.pem</ssl_manager_key>" >> $NEWCONFIG
+    # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or
+    # owns its own cert/key pair, so even in this <disabled>yes</disabled> block these point at
+    # remoted's, keeping the value valid in the (rare) case an operator later flips <disabled> back
+    # to "no" by hand instead of regenerating the whole file. Same custom-certificate override as
+    # the enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
+    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
@@ -159,49 +164,16 @@ InstallSecurityConfigurationAssessmentFiles()
 }
 
 ##########
-# GenerateAuthCert()
-##########
-GenerateAuthCert()
-{
-    if [ "X$SSL_CERT" = "Xyes" ]; then
-        # Unified certificate directory: root-owned and sticky (drwxrwx--T). The server
-        # daemons run as ${WAZUH_USER} and regenerate their own self-signed certs here
-        # (group write), while the sticky bit keeps them from replacing the root-owned
-        # indexer trust material that shares the directory.
-        ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
-
-        # Generation auto-signed certificate if not exists
-        if [ ! -f "${INSTALLDIR}/etc/certs/authd-key.pem" ] && [ ! -f "${INSTALLDIR}/etc/certs/authd.pem" ]; then
-            if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                    if [ "X${INSTYPE}" = "Xagent" ]; then
-                        AUTHD_BIN="wazuh-authd"
-                    else
-                        AUTHD_BIN="wazuh-manager-authd"
-                    fi
-                    echo "Generating self-signed certificate for ${AUTHD_BIN}..."
-                    ${INSTALLDIR}/bin/${AUTHD_BIN} -C 365 -B 2048 -K ${INSTALLDIR}/etc/certs/authd-key.pem -X ${INSTALLDIR}/etc/certs/authd.pem -S "/C=US/ST=California/CN=wazuh/"
-            fi
-        fi
-
-        # Owned by ${WAZUH_USER}: authd drops privileges to that user and regenerates this
-        # cert/key at runtime, so it must own them. Re-applied unconditionally so upgrades
-        # from installs that left them root-owned also get corrected.
-        if [ -f "${INSTALLDIR}/etc/certs/authd-key.pem" ] && [ -f "${INSTALLDIR}/etc/certs/authd.pem" ]; then
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/authd-key.pem
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/authd.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/authd-key.pem
-            chmod 640 ${INSTALLDIR}/etc/certs/authd.pem
-        fi
-    fi
-}
-
-##########
 # GenerateHttpsManagerCert()
 ##########
 # Self-signed certificate for the HTTPS agent server (remoted_module). Manager
 # only -- the listener doesn't exist on agents. Uses wazuh-manager-remoted's own
-# -C/-B/-K/-X/-S flags (same generate_cert() used for authd cert/key, now
-# in shared/, exposed through remoted's own binary instead of authd's).
+# -C/-B/-K/-X/-S flags (same generate_cert() used for authd's cert/key, now in
+# shared/). This is now the manager's ONLY self-signed cert/key pair: authd no
+# longer generates or owns one of its own (its <ssl_manager_cert>/<ssl_manager_key>
+# point here too -- see auth.template and DisableAuthd() above), since /enroll's
+# mTLS mode treats "this certificate validated" as the enrollment credential and
+# both listeners must therefore present the same manager identity.
 GenerateHttpsManagerCert()
 {
     if [ "X${INSTYPE}" = "Xagent" ]; then
@@ -216,6 +188,14 @@ GenerateHttpsManagerCert()
     fi
 
     if [ "X$SSL_CERT" = "Xyes" ]; then
+        # Unified certificate directory: root-owned and sticky (drwxrwx--T). The server
+        # daemons run as ${WAZUH_USER} and regenerate their own self-signed certs here
+        # (group write), while the sticky bit keeps them from replacing the root-owned
+        # indexer trust material that shares the directory. Created here (rather than in a
+        # separate authd-specific step, now removed) since this is the first cert-generating
+        # step that runs on a manager install.
+        ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
+
         # Generation auto-signed certificate if not exists
         if [ ! -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ ! -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
@@ -225,8 +205,8 @@ GenerateHttpsManagerCert()
         fi
 
         # Owned by ${WAZUH_USER}: remoted drops to that user and regenerates these files at
-        # runtime (same reasoning as GenerateAuthCert() above for authd's cert/key). Re-applied
-        # unconditionally so upgrades from installs that left them root-owned also get corrected.
+        # runtime. Re-applied unconditionally so upgrades from installs that left them
+        # root-owned also get corrected.
         if [ -f "${INSTALLDIR}/etc/certs/remoted-key.pem" ] && [ -f "${INSTALLDIR}/etc/certs/remoted.pem" ]; then
             chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted-key.pem
             chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/remoted.pem
@@ -777,7 +757,18 @@ WriteManager()
 
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        # Same custom-certificate override WriteRemote()'s <https> block already honors (see
+        # GenerateHttpsManagerCert() above): authd's <ssl_manager_cert>/<ssl_manager_key> must
+        # point at whatever file the manager's HTTPS listener actually loads, or authd fails to
+        # start (ENOENT) whenever a custom certificate is supplied -- GenerateHttpsManagerCert()
+        # correctly skips generating the default etc/certs/remoted.pem in that case, but
+        # auth.template's cert paths used to stay hardcoded to it regardless.
+        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
+        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
+            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
+            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
+            "${AUTH_TEMPLATE}" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd
@@ -1553,7 +1544,6 @@ InstallServer()
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
     fi
 
-    GenerateAuthCert
     GenerateHttpsManagerCert
     SetIndexerCertsOwnership
 

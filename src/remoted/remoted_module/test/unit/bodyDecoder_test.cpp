@@ -22,9 +22,9 @@
 
 using remoted::auth::AuthError;
 using remoted::auth::Payload;
+using remoted::decoding::BodyDecoder;
 using remoted::decoding::ContentEncoding;
 using remoted::decoding::parseContentEncoding;
-using remoted::decoding::BodyDecoder;
 using remoted::testutil::FakeHttpServer;
 using remoted::testutil::zstdCompress;
 
@@ -247,4 +247,95 @@ TEST(BodyDecoderTest, AmpleBudgetAllowsTheSameLargeFrame)
 
     EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
     EXPECT_EQ(payload.bytes().size(), plain.size());
+}
+
+// ---------------------------------------------------------------------------
+// maxDecodedSize -- a SEPARATE, smaller self-imposed ceiling on top of the shared in-flight
+// budget, for routes (namely /enroll's Open mode) where an unauthenticated peer can reach
+// decode() at all. Regression guard: without this, a small, highly-compressed frame could hold as
+// much of the SHARED budget as it has room for, not just the tiny amount this route ever
+// legitimately needs.
+// ---------------------------------------------------------------------------
+
+TEST(BodyDecoderTest, MaxDecodedSizeRejectsOutputThatWouldExceedItEvenWithBudgetToSpare)
+{
+    // A huge shared budget -- the shared-budget checks above would all pass easily -- but a tiny
+    // self-imposed cap. The cap alone must be what rejects this, proving it is enforced
+    // independently of (and can be stricter than) the shared budget.
+    FakeHttpServer server {10U * 1024U * 1024U};
+    constexpr std::size_t kMaxDecodedSize = 1024;
+    const BodyDecoder decoder {server, /*enabled=*/true, kMaxDecodedSize};
+
+    const std::string plain(kMaxDecodedSize + 1, 'a'); // one byte over the cap
+    auto bytes = std::make_shared<std::string>(zstdCompress(plain));
+    auto payload = payloadOver(bytes);
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
+    // Refused before ever charging the shared budget for it.
+    EXPECT_EQ(server.m_budget.availableBytes(), 10U * 1024U * 1024U);
+}
+
+TEST(BodyDecoderTest, MaxDecodedSizeAllowsOutputAtOrUnderTheCap)
+{
+    FakeHttpServer server {10U * 1024U * 1024U};
+    constexpr std::size_t kMaxDecodedSize = 1024;
+    const BodyDecoder decoder {server, /*enabled=*/true, kMaxDecodedSize};
+
+    const std::string plain(kMaxDecodedSize, 'a'); // exactly at the cap
+    auto bytes = std::make_shared<std::string>(zstdCompress(plain));
+    auto payload = payloadOver(bytes);
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(payload.bytes().size(), kMaxDecodedSize);
+}
+
+TEST(BodyDecoderTest, DefaultMaxDecodedSizeOfZeroMeansNoExtraCapBeyondTheSharedBudget)
+{
+    // The default (no third constructor argument) must behave exactly as it did before this
+    // parameter existed -- every other test in this file relies on that already; this test states
+    // it explicitly for a body large enough that a mistakenly-nonzero default would reject it.
+    FakeHttpServer server;
+    const BodyDecoder decoder {server, /*enabled=*/true};
+
+    const std::string plain(256 * 1024, 'a');
+    auto bytes = std::make_shared<std::string>(zstdCompress(plain));
+    auto payload = payloadOver(bytes);
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+}
+
+TEST(BodyDecoderTest, MaxDecodedSizeAcceptsASmallStreamingCompressedBodyWithNoDeclaredSize)
+{
+    // Regression guard for the exact shape /enroll sees. A frame that declares no decompressed
+    // size takes zstdDecode()'s block-growth path, whose first growth request is a full 64 KiB
+    // regardless of how little the body really decodes to. With a cap smaller than that step
+    // (kMaxEnrollBodySize is 16 KiB) every such request used to come back BodyTooLarge -> 413,
+    // so an agent compressing its enrollment body on the fly could never enroll at all, while the
+    // same body compressed one-shot went through. The cap has to bound real decoded size, not the
+    // growth step.
+    FakeHttpServer server {10U * 1024U * 1024U};
+    constexpr std::size_t kMaxDecodedSize = 16U * 1024U;
+    const BodyDecoder decoder {server, /*enabled=*/true, kMaxDecodedSize};
+
+    const std::string plain = R"({"name":"agent1","version":"5.0.0"})";
+    auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
+    auto payload = payloadOver(bytes);
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(payload.bytes(), plain);
+}
+
+TEST(BodyDecoderTest, MaxDecodedSizeStillRejectsAnOverCapBodyWithNoDeclaredSize)
+{
+    // The other half: accepting the small streaming case must not have turned the cap off for the
+    // block-growth path.
+    FakeHttpServer server {10U * 1024U * 1024U};
+    constexpr std::size_t kMaxDecodedSize = 16U * 1024U;
+    const BodyDecoder decoder {server, /*enabled=*/true, kMaxDecodedSize};
+
+    const std::string plain(kMaxDecodedSize * 8, 'a');
+    auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
+    auto payload = payloadOver(bytes);
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
 }

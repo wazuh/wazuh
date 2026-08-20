@@ -30,8 +30,14 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#define KEYFILE             "etc/certs/authd-key.pem"
-#define CERTFILE            "etc/certs/authd.pem"
+/* Manager's unified TLS identity: authd and remoted_module's HTTPS server (/enroll's mTLS mode)
+ * present the same certificate, generated once by wazuh-manager-remoted. Only used as the -h
+ * help-text default in os_auth/src/main-server.c -- manager-only, no separate agent-side authd
+ * binary exists. Keep in sync with config/src/authd-config.c's Read_Authd(), which hardcodes the
+ * same path as the actual <ssl_manager_cert>/<ssl_manager_key> default (a separate literal, not
+ * sourced from these macros). */
+#define KEYFILE             "etc/certs/remoted-key.pem"
+#define CERTFILE            "etc/certs/remoted.pem"
 /* TLS 1.3 ciphersuite names (SSL_CTX_set_ciphersuites), not a legacy OpenSSL cipher list */
 #define DEFAULT_CIPHERS     "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 #define MAX_SSL_PACKET_SIZE 16384

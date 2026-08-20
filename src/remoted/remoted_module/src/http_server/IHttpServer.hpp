@@ -48,9 +48,15 @@ namespace remoted::http
     struct HttpRequest
     {
         Method method {Method::Get};
-        std::string target;                                   ///< Request path (without query).
-        std::string body;                                     ///< Raw request body.
-        std::unordered_map<std::string, std::string> headers; ///< Lower-cased header name -> value.
+        std::string target; ///< Request path (without query).
+        std::string body;   ///< Raw request body.
+        /// Header name -> value, EXACTLY as the transport reports it (a well-known field name like
+        /// "Authorization" or "Content-Type" is NOT necessarily lowercased -- see
+        /// RestinioHttpServer.cpp's makeHttpRequest()). Always look these up via
+        /// http_server/headerUtils.hpp's headerValue() (case-insensitive), never an exact-match
+        /// find(): an exact match only happens to work against a handcrafted request that inserted
+        /// an already-lowercase key directly, never having gone through the real transport.
+        std::unordered_map<std::string, std::string> headers;
         std::string remoteIp; ///< Client's connection IP (textual form; IPv4-mapped-IPv6 addresses
                               ///< are unmapped to plain IPv4 first). The auth gateway hands it to
                               ///< AuthMiddleware, which matches it against the agent's authorized

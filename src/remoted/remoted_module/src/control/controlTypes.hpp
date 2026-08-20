@@ -13,11 +13,13 @@
 #define _REMOTED_CONTROL_TYPES_HPP
 
 #include "json.hpp"
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
 #include <regex>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -84,6 +86,62 @@ namespace remoted::control
 
         static const std::regex versionRegex(R"(^[vV]?\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$)");
         return std::regex_match(version, versionRegex);
+    }
+
+    /**
+     * @brief Numeric-only comparison of MAJOR.MINOR.PATCH[.EXTRA] version strings.
+     *
+     * Everything after '-'/'+' is discarded, matching the legacy behavior of
+     * compare_wazuh_versions(..., ignore_stage=false). Shared by /control (its own
+     * allow_higher_versions check) and /enroll (authd's local `add` path has no version check
+     * at all, so remoted enforces it itself) -- kept in one place so the two enrollment paths
+     * can never silently diverge on what "too new" means.
+     *
+     * @return -1 if v1 < v2, 1 if v1 > v2, 0 if equal (each unparsed/missing part treated as 0).
+     */
+    inline int compareVersions(const std::string& v1, const std::string& v2)
+    {
+        auto parseParts = [](const std::string& v) -> std::array<int, 4>
+        {
+            std::array<int, 4> parts {0, 0, 0, 0};
+            // Strip leading 'v' or 'V' if present
+            std::string version = v;
+            if (!version.empty() && (version[0] == 'v' || version[0] == 'V'))
+            {
+                version = version.substr(1);
+            }
+
+            size_t pos = version.find_first_of("+-");
+            std::string numericPart = (pos != std::string::npos) ? version.substr(0, pos) : version;
+
+            std::istringstream iss(numericPart);
+            std::string token;
+            int i = 0;
+            while (std::getline(iss, token, '.') && i < static_cast<int>(parts.size()))
+            {
+                try
+                {
+                    parts[i++] = std::stoi(token);
+                }
+                catch (...)
+                {
+                    break;
+                }
+            }
+            return parts;
+        };
+
+        auto p1 = parseParts(v1);
+        auto p2 = parseParts(v2);
+
+        for (size_t i = 0; i < p1.size(); ++i)
+        {
+            if (p1[i] < p2[i])
+                return -1;
+            if (p1[i] > p2[i])
+                return 1;
+        }
+        return 0;
     }
 
     struct Task

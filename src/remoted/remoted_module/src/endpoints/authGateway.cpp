@@ -11,9 +11,9 @@
 
 #include "authGateway.hpp"
 
+#include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
-#include <cctype>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -22,6 +22,8 @@
 #include <string_view>
 #include <utility>
 #include <variant>
+
+using remoted::http::headerValue;
 
 namespace
 {
@@ -68,32 +70,6 @@ namespace
             case remoted::http::Method::Patch: return "PATCH";
         }
         return "GET";
-    }
-
-    // Case-insensitive header lookup (HTTP header names are case-insensitive).
-    std::string headerValue(const std::unordered_map<std::string, std::string>& headers, const std::string& lowerName)
-    {
-        for (const auto& [name, value] : headers)
-        {
-            if (name.size() != lowerName.size())
-            {
-                continue;
-            }
-            bool equal = true;
-            for (std::size_t i = 0; i < name.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(name[i]))) != lowerName[i])
-                {
-                    equal = false;
-                    break;
-                }
-            }
-            if (equal)
-            {
-                return value;
-            }
-        }
-        return {};
     }
 
 } // namespace

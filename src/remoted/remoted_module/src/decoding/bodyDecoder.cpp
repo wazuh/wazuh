@@ -69,14 +69,14 @@ namespace remoted::decoding
         return ContentEncoding::Unsupported;
     }
 
-    BodyDecoder::BodyDecoder(remoted::http::IHttpServer& server, bool enabled)
+    BodyDecoder::BodyDecoder(remoted::http::IHttpServer& server, bool enabled, std::size_t maxDecodedSize)
         : m_server {server}
         , m_enabled {enabled}
+        , m_maxDecodedSize {maxDecodedSize}
     {
     }
 
-    remoted::auth::AuthError BodyDecoder::decode(ContentEncoding encoding,
-                                                     remoted::auth::Payload& payload) const
+    remoted::auth::AuthError BodyDecoder::decode(ContentEncoding encoding, remoted::auth::Payload& payload) const
     {
         switch (encoding)
         {
@@ -108,14 +108,39 @@ namespace remoted::decoding
             // already freed the buffers it stood for, and holding it longer would starve the budget
             // for memory nobody is using.
             std::optional<remoted::http::InFlightBudget::Reservation> windowReservation;
+            // Tracked independently of outputReservation's own (shared-budget) size: m_maxDecodedSize
+            // is a SEPARATE, smaller ceiling this instance imposes on itself (see the constructor's
+            // doc comment) -- refusing growth here means the shared budget never sees the request at
+            // all past this point, not just that this decoder declines to use more of what's free.
+            std::size_t decodedSoFar = 0;
             decoded = remoted::common::zstdDecode(
                 payload.bytes(),
+                // Deliberately NOT bounded by m_maxDecodedSize: the window is the decoder's working
+                // buffer, whose size a streaming compressor picks from its compression level and
+                // not from how few bytes it happens to emit (zstd level 3 declares a 2 MiB window
+                // for a 200-byte body when the input size isn't pledged up front). Capping it at a
+                // 16 KiB decoded ceiling would reject every streaming-compressed /enroll request.
+                // The attacker-controlled part -- an arbitrarily large DECLARED window driving the
+                // reservation from a ~50-byte frame header -- is bounded instead by
+                // kMaxDeclaredWindowSize in zstdDecoder.cpp, before any allocation happens.
                 [this, &windowReservation](std::size_t bytes)
                 {
                     windowReservation = m_server.tryReserveInFlightBytes(bytes);
                     return windowReservation.has_value();
                 },
-                [&outputReservation](std::size_t more) { return outputReservation->grow(more); });
+                [this, &outputReservation, &decodedSoFar](std::size_t more)
+                {
+                    if (m_maxDecodedSize != 0 && decodedSoFar + more > m_maxDecodedSize)
+                    {
+                        return false;
+                    }
+                    if (!outputReservation->grow(more))
+                    {
+                        return false;
+                    }
+                    decodedSoFar += more;
+                    return true;
+                });
         }
 
         if (std::holds_alternative<remoted::common::ZstdDecodeError>(decoded))

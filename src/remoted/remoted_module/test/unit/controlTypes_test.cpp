@@ -75,6 +75,39 @@ TEST(ControlTypesTest, IsValidVersionRejectsMalformed)
 }
 
 // -----------------------------------------------------------------------------
+// compareVersions
+//
+// Shared by /control (allow_higher_versions) and /enroll (D8: reused, not
+// duplicated, since authd's own local `add` path performs no version check at all).
+// -----------------------------------------------------------------------------
+
+TEST(ControlTypesTest, CompareVersionsEqualIsZero)
+{
+    EXPECT_EQ(compareVersions("5.0.0", "5.0.0"), 0);
+    EXPECT_EQ(compareVersions("v5.0.0", "5.0.0"), 0); // leading 'v' ignored on either side
+    EXPECT_EQ(compareVersions("5", "5.0.0"), 0);      // missing parts treated as 0
+}
+
+TEST(ControlTypesTest, CompareVersionsOrdersNumerically)
+{
+    EXPECT_LT(compareVersions("5.0.0", "5.0.1"), 0);
+    EXPECT_LT(compareVersions("4.9.0", "5.0.0"), 0);
+    EXPECT_GT(compareVersions("5.1.0", "5.0.9"), 0); // per-component, not lexicographic
+    EXPECT_GT(compareVersions("5.0.10", "5.0.9"), 0);
+}
+
+TEST(ControlTypesTest, CompareVersionsIgnoresSuffix)
+{
+    EXPECT_EQ(compareVersions("5.0.0-alpha0", "5.0.0"), 0);
+    EXPECT_EQ(compareVersions("5.0.0+build.42", "5.0.0"), 0);
+}
+
+TEST(ControlTypesTest, CompareVersionsTreatsUnparsablePartsAsZero)
+{
+    EXPECT_EQ(compareVersions("not-a-version", "0.0.0"), 0);
+}
+
+// -----------------------------------------------------------------------------
 // isValidHostInfo
 //
 // Bounds-only check (no charset). Any field over its cap fails; sizes at the

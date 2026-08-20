@@ -21,6 +21,7 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
+│   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF-CMAC key, see Agent enrollment below
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below)
@@ -31,6 +32,7 @@ remoted_module/
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
 │   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd, see below)
+│   ├── enrollment/                 # ns remoted::enrollment — POST /enroll, bridges to authd (see below)
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
@@ -44,7 +46,8 @@ remoted_module/
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
 `"auth/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`", `"control/...`",
-`"downstream/...`" — since `src/` is on the include path). New endpoints get their own folder under `src/endpoints/<name>/`.
+`"downstream/...`", and `"enrollment/...`" — since `src/` is on the include path). New
+endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -406,8 +409,9 @@ agent includes host metadata in the notify request; lightweight keepalives (`upd
 sent otherwise. Both respect the `keepaliveThrottleSec` window (default 60s), except the first
 host-carrying notify (`hostPersisted` in `AgentEntry`), which always triggers a full update.
 
-Version comparison uses a local `compareVersions()` function for semantic versioning (e.g., `"v5.0.0"`
-vs `"v4.9.2"`), stripping leading `v`/`V` and ignoring everything after `-` or `+`.
+Version comparison uses `compareVersions()` (`control/controlTypes.hpp`, shared with `/enroll` -- see
+below) for semantic versioning (e.g., `"v5.0.0"` vs `"v4.9.2"`), stripping leading `v`/`V` and
+ignoring everything after `-` or `+`.
 
 #### AgentRegistry (`agentRegistry.hpp/.cpp`)
 
@@ -664,6 +668,440 @@ outcome per agent).
 `ScanVdHandlerImpl` shares its `VdClient` instance with `ControlHandler` (constructed once in
 `RemotedModuleFacade::start()` and passed to both), so the two endpoints never see different
 offsets due to independent cache state. It owns no threads and no queue — teardown is trivial.
+
+## Agent enrollment (`POST /enroll`) — `src/enrollment/`
+
+Every other authenticated route on this server requires the caller to already be a known agent with
+an entry in `etc/client.keys` — there is no such entry for an agent that has never enrolled. Today
+that agent falls back to a second protocol on a second port: legacy `wazuh-authd` on 1515, speaking
+the plaintext-inside-TLS `OSSEC A:'...'`/`OSSEC K:'...'` line format. `/enroll` lets it enroll over
+the same HTTPS channel (1517) it uses for everything else afterward.
+
+This is a **bridge, not a rewrite**: authd keeps owning every piece of enrollment business logic —
+name/IP/group validation, key generation, agent-ID assignment, force-replace decisions, `client.keys`
+and `wazuh-db` persistence, cluster forwarding. `enrollmentEndpoint` only authenticates the request,
+validates the handful of things authd's *local* interface doesn't check for it (see below), and
+relays the request to authd over its existing local Unix-domain socket — the same one `manage_agents`
+and the framework already use. Port 1515 is untouched and keeps working exactly as it does today, for
+legacy 4.x agents that never speak HTTPS. **`/enroll` is the intended long-term enrollment path**;
+1515 stays alive only for that backward-compatibility window, not as a permanent second design.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ag as New agent (no client.keys entry)
+    participant EP as POST /enroll<br/>(enrollmentEndpoint)
+    participant EA as EnrollmentAuthenticator
+    participant PK as PasswordKeySource<br/>(etc/authd.pass)
+    participant AC as AuthdClient
+    participant AD as authd<br/>(queue/sockets/auth UDS)
+
+    Ag->>EP: POST /enroll {"name":...,"version":...,"groups":...}
+    Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
+    Note over EP: If the listener requires a client cert, TLS already rejected the<br/>connection before this request could ever arrive here
+    EP->>EA: authenticate(authorizationHeader, method, target, body, now)
+    alt requirePassword
+        EA->>PK: currentKey()
+        PK-->>EA: HKDF-derived AES key (or nullopt)
+        Note over EA: recompute CMAC over WAZUH-ENROLL canonical string
+    else not requirePassword
+        Note over EA: always-pass -- nothing left for THIS class to check
+    end
+    EA-->>EP: ok / AuthError
+    Note over EP: parse JSON, validate name/version/groups/ip
+    EP->>AC: addAgent({name, ip, groups, key_hash})
+    AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
+    AD-->>AC: {"error":0,"data":{id,name,ip,key}} or {"error":90xx,...}
+    AC-->>EP: AuthdResult
+    EP-->>Ag: 200 {id,name,ip,key} / mapped 4xx/5xx
+```
+
+### Two independent authentication gates
+
+Unlike every other route, `/enroll` cannot be gated by `AuthGateway`'s `client.keys` lookup — the
+caller has no key yet. Two checks apply instead, decided once at facade startup from how the HTTPS
+listener and authd are each configured — never per request — and, critically, **independently of
+each other**:
+
+- **Client certificate** — purely a property of the HTTPS listener's `ClientVerificationMode`
+  (`Certificate` or `Full`). When set, the TLS handshake validates the agent's client certificate
+  against `root-ca.pem` **before the request ever reaches a handler** — `EnrollmentAuthenticator`
+  is never even consulted for this; it has no notion of a client certificate at all. Mirrors
+  authd's own `agent_ca`/`ssl_verify_host` mode.
+- **Password (`EnrollmentAuthConfig::requirePassword`)** — set whenever authd's `use_password`
+  flag is on, regardless of whether the listener also requires a client certificate. When set, the
+  request must carry `Authorization: WazuhEnroll <unix-ts>:<mac>`
+  (`<mac>` = 32 lowercase hex chars, AES-256-CMAC = 16 bytes), verified against the canonical string:
+
+  ```
+  "WAZUH-ENROLL\n" + "1" + "\n" + METHOD + "\n" + requestTarget + "\n" + timestamp + "\n" + <raw wire body bytes>
+  ```
+
+  Deliberately shaped like the existing `Wazuh <agent-id>:<ts>:<mac>` scheme used everywhere else in
+  this module — same freshness windows (300 s max age, 30 s max future skew), same incremental-CMAC
+  construction over the *wire* bytes, same `AuthError` taxonomy — minus the `agent-id` segment, since
+  an enrolling agent doesn't have one. A distinct scheme name (`WazuhEnroll` vs `Wazuh`) means the two
+  can never be confused by a parser.
+
+  The signing key is not the password itself: `PasswordKeySource` derives a 32-byte AES key from it
+  via **HKDF-SHA256** (empty salt, `info = "WAZUH-ENROLL-CMAC-KEY\x01"`), because `Cmac` needs an
+  exact 16/24/32-byte key and a password is arbitrary length. HKDF is deterministic and salt-free on
+  purpose, so a future agent-side implementation can reproduce it in a handful of OpenSSL calls; the
+  version byte in `info` reserves room to change the construction later without ambiguity. A memory-
+  hard KDF would add nothing here — the derived key is never persisted, so the offline-guessing
+  surface already matches authd's own plaintext-password-over-TLS on 1515.
+
+  **Worked, verified example** (a real computed vector, not just an illustrative shape — useful as a
+  cross-implementation known-answer test for the agent team):
+  - Password: `MyEnrollmentSecret123`
+  - Canonical string:
+    ```
+    WAZUH-ENROLL
+    1
+    POST
+    /enroll
+    1739999999
+    {"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"}
+    ```
+  - HKDF-SHA256 derived key: `2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e`
+  - AES-256-CBC-CMAC of the canonical string: `dc07d78fc156a1944f4fb02b91da7d01`
+  - Resulting header: `Authorization: WazuhEnroll 1739999999:dc07d78fc156a1944f4fb02b91da7d01`
+
+  (This vector is confirmed by three independent implementations: `PasswordKeySource`'s actual
+  C++/OpenSSL `EVP_KDF` code — see `passwordKeySource_test.cpp`'s
+  `HkdfMatchesTheVerifiedKnownAnswerVector` — Python's stdlib `hashlib`/`hmac` computing RFC 5869
+  HKDF-SHA256 from scratch, and the Python `cryptography` library's AES-CMAC. An earlier version of
+  this vector, computed via the `openssl kdf` CLI tool, did not match and has been corrected.)
+
+  There is no per-request nonce: a captured request could in principle be replayed inside its 300 s
+  window, bounded in practice by authd's own duplicate-name/IP rejection (unless force-replace is
+  configured to permit it). Accepted for v1 — the same threat model the existing agent CMAC scheme
+  already carries, with TLS protecting the transport — not something a nonce cache closes now.
+
+When `requirePassword` is false — whether because the listener requires a client certificate
+instead, or requires nothing at all — `EnrollmentAuthenticator` runs an always-pass check with no
+header required. This is not a new exposure: it reproduces authd's own behavior today, where a
+NULL password makes `w_auth_parse_data` skip the `PASS:` check entirely.
+
+**Both gates apply simultaneously when both are configured**, exactly as legacy authd already
+behaves: authd's own `check_x509_cert()` (at the TLS handshake) and its `use_password` check (while
+parsing the enrollment message, `main-server.c:601`/`:886`) are two independent checks on the same
+connection today, not a mutually-exclusive choice. `EnrollmentAuthConfig` models this the same way
+— `requirePassword` says nothing about client certificates, and the listener's
+`ClientVerificationMode` says nothing about passwords — so an operator who wants both enforced
+together (defense in depth for the endpoint that mints new agent identities and keys) simply
+configures both, and gets both. See `enrollmentMtlsE2E_test.cpp` for the combined case exercised
+end-to-end over a real TLS listener.
+
+A missing or unreadable `etc/authd.pass` while `requirePassword` is true fails **closed** — every
+enrollment attempt gets `401`, never silently falls back to skipping the password check. This
+mirrors authd itself: `etc/authd.pass` is one of the files the cluster's own integrity sync already
+replicates from master to every worker (`framework/wazuh/core/cluster/cluster.json`, alongside
+`client.keys`), and authd treats "password required but not yet synced" as a hard rejection, never
+as a fallback to the NULL-password path (`main-server.c:777-790`) — conflating the two would let an
+unsynced worker accept anyone. `PasswordKeySource` is **strictly read-only** on every node, master
+or worker alike: only authd's master ever generates the password file (`w_authd_load_password`); a
+worker only reads it, exactly as authd's own `run_authpass_watcher` does.
+
+### Components
+
+#### `PasswordKeySource` (`auth/passwordKeySource.hpp/.cpp`)
+
+Turns the authd password file into a CMAC-usable key, hot-reloaded without a restart. Mirrors
+`Keystore`'s watcher exactly (inotify + a poll fallback + content-hash change detection, so a rewrite
+landing mid-read can never be adopted torn) — the two files have the same operational shape, an
+operator-managed secret a running process must notice without a bounce. Parsing must byte-match
+authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, length `<= 2` or
+all-whitespace rejected, a 4096-byte cap — otherwise the manager's two enrollment paths could disagree
+about which password is valid. Derivation runs once per file change and is cached — never per
+request.
+
+#### `EnrollmentAuthenticator` (`enrollment/enrollmentAuthenticator.hpp/.cpp`)
+
+Implements the Password gate above, and nothing about client certificates at all — that's the TLS
+listener's exclusive concern, checked before any handler runs, which is exactly why this class has
+no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
+`maxRequestAgeSeconds`/`maxFutureSkewSeconds`/`maxBodySize` (the freshness window and body-size cap,
+sourced from the SAME `auth_max_request_age`/`auth_max_future_skew`/`auth_max_body_size` internal
+options the agent<->manager scheme reads, so the two never silently disagree). The body-size check
+runs first and unconditionally — in Open mode too — so an unauthenticated peer can never make this
+endpoint hash an arbitrarily large body before being rejected. Reuses `Cmac`, the timestamp/hex
+parsing, and the `AuthError` taxonomy from `auth/authTypes.hpp`, so a bad signature, a stale or
+future timestamp, and an oversized body all collapse through the same `publicErrorFor()` →
+`401`/`413` path every other route already uses. Because `AuthGateway` bakes the `client.keys`
+`Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
+`AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
+unauthenticated `GET /` liveness probe already uses) and drives this authenticator itself, with
+`countAgainstBudget=true` since, unlike the liveness probe, an enrollment request carries a real
+body and does real work.
+
+**No credential re-validation happens on authd's side, by design.** authd's local socket has never
+validated passwords or certificates for any caller, including today's `manage_agents`/API caller — it
+has always been "trust the caller, validate only business rules." Credential checking lives
+exclusively at each front door (1515's TLS+`PASS:` line, or here). authd structurally *can't*
+re-check either credential even if it wanted to: the plaintext password never leaves remoted, and no
+TLS session reaches the local socket. remoted and authd already run as the same OS service account
+(`Privsep_SetUser()` against the shared default `USER "wazuh"`), so the bridge crosses no new
+privilege boundary — it joins the same trust domain `manage_agents` already sits in.
+
+#### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
+
+The bridge to authd's local socket `queue/sockets/auth`, framed with `shared_modules/utils`'s
+`Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
+`OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
+it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the
+same underlying `Socket` class: authd closes the connection after **every** reply, so `AuthdClient`
+connects, sends one frame, awaits one frame, and closes — per request, on its own dedicated worker
+thread — rather than keeping a persistent, multi-request connection the way `SocketClient` is built
+for. `SocketClient::connect()` is asynchronous (it starts a background thread and returns before the
+connection exists), which is fine for `TaskClient`/`WazuhDBClient` — they connect once and only send
+much later, well after that thread has settled — but is exactly wrong for a connect-then-immediately-
+send-every-time client: an earlier version of this class did use `SocketClient` and lost that race
+far more often than not, so `authd` would receive and successfully process a request while the reply
+arrived on a connection nothing was listening on anymore, and the caller saw a spurious timeout for an
+enrollment that had actually already succeeded. `AuthdClient` instead calls `Socket::connect()`
+directly in **blocking** mode: it returns only once genuinely connected, or throws immediately on a
+real failure, with no race and no background thread — and, as a side effect, an absent authd is now
+distinguishable from a slow one (a fast "could not connect" instead of waiting out the full response
+timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
+side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
+
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...}}`.
+**`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
+authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
+authd's local path already falls back to `config.force_options` from `ossec.conf` when it's absent.
+This matches 1515's own agent-facing protocol exactly, not a new restriction: `w_auth_parse_data`
+(`os_auth/src/auth.c`) recognizes only `PASS:`, `A:` (name), `V:` (version), `G:` (groups), `IP:`, and
+`K:` — a **key hash**, feeding only the force/key-mismatch decision, never a raw key. There is no
+`ID:` token and no raw-key token in that parser either, and no wire field for `force` at all. This
+module's optional `key_hash` field is the direct equivalent of 1515's `K:` token.
+
+**Response timeout is worker-aware.** authd's own worker→master forward can legitimately take several
+seconds on a flaky cluster link: `w_request_agent_add_clustered` → `w_send_clustered_message` retries
+up to `CLUSTER_SEND_MESSAGE_ATTEMPTS = 10` times with a 1 s sleep between failures
+(`shared/src/agent_op.c`). If `AuthdClient`'s response timeout were shorter than that, a worker-node
+enrollment authd is legitimately still retrying would be cut off early as a spurious `503`. It reads
+the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a longer default (~15 s,
+covering the worst-case retry budget) on workers versus a short default (~5 s, matching
+`WazuhDBClient`/`TaskClient`, since there's no cluster hop on the master).
+
+**Fixed: this retry no longer serializes behind authd's local-socket dispatch.** `run_local_server`
+(`os_auth/src/local-server.c`) used to be a plain accept→recv→dispatch→send→close loop with no
+per-connection thread, so while one worker-node `add` was inside
+`w_request_agent_add_clustered`'s up-to-10-second retry budget, that ONE thread could not accept or
+serve ANY other local-socket client -- another queued `/enroll` request, `manage_agents`, or the
+API -- for the same window. This was not a risk this bridge introduced on its own: port 1515's own
+worker-node enrollment forwarding calls the exact same `w_request_agent_add_clustered` inline on its
+own single event loop (`run_remote_server`'s epoll thread, `main-server.c`), blocking every other
+concurrent 1515 connection the same way -- but the local socket previously had no such exposure at
+all (every `add` on a worker failed instantly with `9015`, before cluster forwarding existed for
+it), so `manage_agents`/the API/`/enroll` would have been newly subject to a latency class 1515 has
+already lived with. `run_local_server` now hands each accepted connection to its own detached
+thread (`handle_local_client`) instead of dispatching inline, so a single slow or stuck cluster
+forward only holds up the ONE connection waiting on it. This is safe to parallelize without any
+further locking changes: every `local_add()`/`local_remove()`/`local_get()` call already serializes
+access to the shared `keys` keystore (and `write_pending`/`cond_pending`) through the existing
+`mutex_keys`, which every one of those functions already takes. Port 1515's own equivalent blocking
+window (its epoll loop, not this one) is unchanged -- fixing that would be a separate, larger change
+to `run_remote_server`'s connection model and is out of scope here.
+
+**Bounded, not unbounded.** The number of connections serviced concurrently via a detached thread
+is capped at `MAX_LOCAL_CLIENT_THREADS` (128, matching `AUTH_LOCAL_SOCK`'s own listen backlog --
+there is no benefit to servicing more concurrently than that many could ever be queued at once).
+Without this cap, a burst of connections -- e.g. many cluster workers enrolling against one
+master's `authd` at the same time (`N` workers × up to `authd_worker_threads` each), or any local
+caller not otherwise rate-limited -- would spawn one thread per connection with no ceiling at all.
+At the cap, `run_local_server` falls back to servicing the connection synchronously, inline on the
+accept loop, exactly like every connection was handled before this change -- self-limiting by
+construction, rather than either growing the thread count without bound or dropping the client.
+
+#### `enrollmentEndpoint` (`enrollment/enrollmentEndpoint.hpp/.cpp`)
+
+The HTTP registration and glue: checks `enrollment_enabled` first (see *Enrollment scoping* below),
+runs the authenticator, parses the JSON body, validates fields authd's local interface does not (see
+below), resolves the agent's IP, calls `AuthdClient::addAgent`, and maps the result to an HTTP
+response.
+
+**Request** — `POST /enroll`, `application/json`:
+
+| field | required | notes |
+|---|---|---|
+| `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only -- byte-for-byte `OS_IsValidName()` (`shared/src/agent_validate_op.c`), the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same set of names. authd's local socket (`local-server.c`) separately enforces a deliberately looser *storage-safety* floor for all of its callers (`is_storable_agent_name()`: no whitespace or control bytes, no leading `#`/`!`, non-empty, <=128 chars) -- historically it trusted every caller to have validated the name, which was never true for /enroll, but it cannot adopt `OS_IsValidName()` itself without breaking `manage_agents`/API names that predate this endpoint (`%`, single-character, leading `.`). /enroll therefore holds the tighter line here rather than relying on that floor |
+| `version` | yes | authd's local `add` path has no version check at all, so remoted enforces `allow_higher_versions` itself, reusing `compareVersions()` (`control/controlTypes.hpp`) rather than duplicating it |
+| `groups` | no | comma-separated string, passed through unchanged — matches authd's own wire format and `w_auth_validate_groups` with zero transformation |
+| `ip` | no | syntactic IPv4/IPv6/CIDR check, or one of two sentinels (`any`, `src`); see IP resolution below |
+| `key_hash` | no | opaque passthrough that drives authd's own force/key-mismatch decision |
+
+**IP resolution** mirrors authd's `use_source_ip` flag: if it's set (manager-side), the connection's
+observed peer address wins over anything the body claims — read from `HttpRequest::remoteIp`
+(`http_server/IHttpServer.hpp`), which already exists (populated from RESTinio's
+`remote_endpoint().address()`) and is already unused by any handler today. Otherwise, a body `ip` of
+`"src"` (the agent-side sentinel — mirrors legacy port 1515's own `IP:'src'` wire convention,
+os_auth/src/auth.c:208, sent by an agent configured with its own client-side `<use_source_ip>`) ALSO
+resolves to the observed peer address, and is never forwarded to authd as the literal string "src":
+authd's local `add` path has no notion of that sentinel at all (only port 1515's TEXT-protocol
+parser does) and would reject it as an invalid IP (9006). Otherwise the body's `ip` is used if
+present; if none of the above applies, `"any"` is sent, matching authd's own literal handling of
+that value.
+
+**Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"..."}`, verbatim from authd's `data`.
+**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`.
+
+| authd code | meaning | HTTP |
+|---|---|---|
+| 9001 / 9002 / 9009 | internal / JSON-parse / key-generation failure | 500 |
+| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 (new) | bad function/args/name/ip/groups | 400 |
+| 9007 / 9008 / 9012 | duplicate ip/name/id | 409 |
+| 9013 | `max_agents` reached | 503 |
+| 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
+| 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
+| transport failure (authd unreachable) | — | 503 |
+| bad/missing/stale credential | — | 401 |
+| local schema or version validation failure | — | 400 |
+| enrollment administratively disabled | — | 403 |
+
+`9013`/`9016` map to `503` rather than `429`: both are server-side conditions an operator resolves
+(raise `max_agents`, fix the cluster link), not something the caller can fix by slowing down — `429`
+would suggest the wrong remedy. `9016` exists because a failed clustered forward previously had no
+dedicated code and fell through to generic `9001`/`500`, misrepresenting a transient cluster hiccup as
+a server bug.
+
+**`/enroll` is always registered — disabled enrollment answers `403`, never a missing route.**
+Considered making registration itself conditional on `enrollment_enabled` (404 when off), rejected
+because a 404 conflates two very different situations for both operators and an agent's own fallback
+logic: "this manager is too old to have `/enroll`" versus "this manager has it but an admin turned it
+off." `403` is also the more semantically precise status here: it signals a persistent policy decision
+("understood, not authorized, won't change without a config edit"), unlike this design's own `503`
+usage elsewhere (authd down, `max_agents`) which implies a transient condition that might resolve on
+its own — disabling enrollment via config isn't that. It also matches this module's existing
+philosophy of never letting a capability silently vanish, the same way `/scan/vd` always answers with
+an explicit rejection reason rather than disappearing when VD isn't ready.
+
+### authd-side change: cluster workers
+
+authd's local socket rejects every JSON function on a worker node (`error 9015`) before it even parses
+the request — only the 1515 network path knows how to forward enrollment to the master, via
+`w_request_agent_add_clustered` (`os_auth/src/main-server.c`). The fix lives in authd itself:
+`os_auth/src/local-server.c`'s worker gate moves to after the request is parsed, and on a worker,
+`"add"` specifically takes the same `w_request_agent_add_clustered` path 1515 already uses, returning
+the new `9016` when its transport leg fails; `"remove"`/`"get"` keep returning `9015` unchanged.
+remoted stays completely unaware of cluster topology — it always just talks to the local socket.
+
+**Cluster forwarding is gated on the request SHAPE, not just the function name.** `local_add_clustered()`
+has no `id`/`key` parameters at all -- it only ever produces a self-enrollment-shaped result (an
+auto-assigned ID, an authd-generated key), the same contract `/enroll` and port 1515 already have.
+`manage_agents`/`framework/wazuh/core/agent.py`, on the other hand, can supply a caller-chosen `id`
+and/or `key` on this same local socket (an admin/restore-style add, e.g. importing a specific agent
+record) -- before this fix, EVERY `add` on a worker got a blanket `9015`, so that shape was rejected
+too, just not distinguished from any other. Forwarding it through `local_add_clustered()` unchanged
+would silently drop the caller's `id`/`key` and return `200` with a DIFFERENT identity than the one
+requested, since nothing in that function's signature has anywhere to put them. So the gate now
+checks: if the parsed request carries an `id` or a `key`, it still gets the original `9015` (an
+honest "can't do this here" rather than a wrong answer); only the self-enrollment shape (`id`/`key`
+absent) reaches `local_add_clustered()`.
+
+This is a real, currently-hit gap for the self-enrollment shape specifically -- and a **net-new
+capability that regresses nothing else**: the API's `POST /agents`/`POST /agents/insert` dispatch
+through `DistributedAPI` with `request_type='local_master'`, which forwards the *entire HTTP request*
+to the master node first whenever the local node isn't the master (`core/cluster/dapi/dapi.py`) for
+that specific REST path -- but `core/agent.py`'s `add()` (the function that can attach `id`/`key`) is
+also reachable through other, non-DAPI-gated callers on a worker (`manage_agents`, or any future
+internal caller), which is exactly why the id/key-present shape keeps its own explicit `9015` above
+rather than assuming DAPI already filtered every possible caller. Mirroring DAPI's approach in
+remoted (detect worker, forward the whole HTTP request to the master's remoted) was considered and
+rejected: it would mean remoted reimplementing cross-node request forwarding — with its own auth — in
+C, for a problem the cluster's existing low-level socket protocol already solves more cheaply by
+fixing authd once.
+
+### Enrollment scoping — independent of legacy 1515
+
+Three flags in the existing `<auth>` config block, in order of precedence:
+
+| `disabled` | `remote_enrollment` | `legacy_enrollment` (new) | Port 1515 | `/enroll` |
+|---|---|---|---|---|
+| yes | – | – | off | off |
+| no | no | – | off | off |
+| no | yes | yes (default) | on | on |
+| no | yes | no | off | **on** |
+
+`<remote_enrollment>` is broadened from its current, narrower meaning ("start authd's TCP 1515
+listener") to a master switch for **all** remote self-enrollment, `/enroll` included — a deliberate,
+release-noted behavior change for any deployment already running with `remote_enrollment=no`. The new
+`<legacy_enrollment>` flag (default `yes`, so nothing changes for anyone who doesn't set it) is what
+lets an operator retire 1515 specifically while keeping HTTPS enrollment: `main-server.c`'s
+`thread_remote_server` (the 1515 listener) becomes gated by `remote_enrollment && legacy_enrollment`;
+`thread_local_server` (the UDS socket this bridge uses) stays gated only by `disabled`, unconditional
+otherwise — the bridge always has something to talk to as long as authd is running at all.
+`enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
+no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
+
+`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
+sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
+that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
+It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
+explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
+
+### Manager certificate unification
+
+authd used to serve its own certificate pair (`etc/certs/authd.pem`/`authd-key.pem`), a separate
+manager identity from the one this module's HTTPS server presents (`etc/certs/remoted.pem`/
+`remoted-key.pem`, CA `etc/certs/root-ca.pem`). Since a client certificate on `/enroll` (when the
+listener requires one) treats "this certificate validated" as an enrollment credential, both
+listeners now present the *same* identity: the install-time generation step
+(`GenerateAuthCert()` in `init/inst-functions.sh`, plus its RPM/DEB packaging equivalents) that used
+to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
+(`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
+points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
+same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
+`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+defaults change. Port 1515 keeps running with the unified certificate.
+
+Two compiled-in defaults exist alongside the generated config, both now updated to match:
+`shared/include/ssl_op.h`'s `CERTFILE`/`KEYFILE` macros (read only by `main-server.c`'s `-h` help
+text) and `config/src/authd-config.c`'s `Read_Authd()`, which hardcodes the same path as the actual
+runtime default `<ssl_manager_cert>`/`<ssl_manager_key>` fall back to when absent from
+`ossec.conf`. Both are manager-only in practice: `os_auth/CMakeLists.txt` builds exactly one
+executable (`wazuh-manager-authd`) from this module -- there is no separate agent-side `authd`
+binary, despite `ARGV0`/the CMake project name still being spelled `wazuh-authd` as a historical
+label, and every caller of `Read_Authd()`/`CAUTHD` (`os_auth/src/config.c`,
+`remoted/src/secure.c`) is itself a manager-only binary. So there was no agent-vs-manager
+conflict to avoid here, and no reason to leave a stale default in place. In practice this fallback
+is never reached on a fresh manager install anyway: `auth.template` always writes
+`<ssl_manager_cert>`/`<ssl_manager_key>` explicitly.
+
+### Configuration
+
+Unlike every other subsystem's tunables in this module, enrollment's *behavioral* flags do not come
+from a new `<https>` block or a new internal option: remoted's C side calls
+`ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)` — the `config` library is already linked into
+`remoted_lib` — and copies fields straight out of authd's own `<auth>` config (`use_password`,
+`use_source_ip`, `allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and
+1515 must agree on whether password auth is required and which versions are acceptable, and reading
+the *same* config block is what guarantees that rather than two settings that can drift apart. Only
+operational knobs (password-file poll interval, authd-socket connect/response timeouts, queue size)
+are new C-ABI fields with their own defaults, following this module's usual "`<=0` means default"
+convention. `enrollment_enabled` gates only the response the endpoint gives, never whether the route
+exists (see *Two independent authentication gates* above's `403` discussion).
+
+### Metrics
+
+Following `ControlMetrics`/`ScanVdMetrics`'s pattern (relaxed atomics on the shared `wazuh_metrics`
+registry, a silent no-op on a null-object instance): `remoted.enrollment.requests`,
+`remoted.enrollment.accepted`, `remoted.enrollment.auth_rejected` (401s — a spike here means a
+password rollout is out of sync between managers and agents), `remoted.enrollment.disabled` (403s —
+useful to notice an agent still trying an enrollment path an operator turned off),
+`remoted.enrollment.authd_error` (any 90xx), `remoted.enrollment.authd_unreachable` (transport
+failures).
+
+### Lifecycle
+
+Constructed in `RemotedModuleFacade::startHttpServer()` alongside the other endpoint dependencies:
+`PasswordKeySource` only when `requirePassword` is set, `AuthdClient` always (the route is always
+registered, so the client always exists even if `enrollment_enabled` is currently false — it simply
+goes unused while the endpoint short-circuits to `403`). Torn down in the same phase as
+`m_downstreamClient` — `AuthdClient::stop()` before the HTTP transport's final `stop()` releases its
+I/O runtime, matching the ordering documented in *Deferred forwarding* above.
 
 ## Streamed responses — `POST /download`
 

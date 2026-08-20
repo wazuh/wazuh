@@ -71,6 +71,7 @@ namespace remoted::auth
             case AuthError::BodyTooLarge: return "body_too_large";
             case AuthError::UnsupportedContentEncoding: return "unsupported_content_encoding";
             case AuthError::MalformedContentEncoding: return "malformed_content_encoding";
+            case AuthError::EnrollmentKeyUnavailable: return "enrollment_key_unavailable";
         }
         return "unknown";
     }
@@ -87,8 +88,8 @@ namespace remoted::auth
             case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding"};
             case AuthError::None: return {200, ""};
             // MissingAuthorization, MalformedAuthorization, UnknownAgent, MissingKey,
-            // AddressNotAllowed, ExpiredRequest, FutureRequest, InvalidMac: collapse to one
-            // generic 401 so the client can never distinguish the reason.
+            // AddressNotAllowed, ExpiredRequest, FutureRequest, InvalidMac, EnrollmentKeyUnavailable:
+            // collapse to one generic 401 so the client can never distinguish the reason.
             default: return {401, "Invalid client authentication"};
         }
     }

@@ -206,6 +206,12 @@ namespace remoted::auth
         // join() below can throw std::system_error, and the logging call allocates.
         try
         {
+            // Set unconditionally, BEFORE the eventfd write: the only reliable stop signal when
+            // eventfd() failed at construction (m_stopEventFd stays -1, so there's no fd to wake
+            // poll() early). In that case the loop still notices this within one more poll()
+            // timeout (at most m_refreshIntervalSeconds) instead of never -- see watcherLoopBody().
+            m_stopping.store(true);
+
             if (m_stopEventFd >= 0)
             {
                 const std::uint64_t one {1};
@@ -290,11 +296,34 @@ namespace remoted::auth
             {
                 if (errno == EINTR)
                 {
+                    // Checked here too, not just after a real poll() failure below: under a
+                    // persistent signal storm, every poll() call could keep returning EINTR
+                    // forever, and this `continue` would otherwise loop back to poll() again
+                    // without ever reaching the m_stopping checks further down -- the only way
+                    // this thread would then ever notice a pending stop is if the signal storm
+                    // happens to end at the exact moment a poll() call completes normally.
+                    if (m_stopping.load())
+                    {
+                        break;
+                    }
                     continue;
+                }
+                if (m_stopping.load())
+                {
+                    break;
                 }
                 LOGFN_WARN(logFn(), "poll() on the client.keys watcher failed (errno=%d).", errno);
                 std::this_thread::sleep_for(std::chrono::seconds(m_refreshIntervalSeconds));
                 continue;
+            }
+
+            // Checked on EVERY wakeup, not just the eventfd-signaled one: this is the fallback
+            // path when eventfd() failed at construction (m_stopEventFd stays -1, stopIdx stays -1
+            // below) -- poll() then has no fd to wake it early and just times out every
+            // m_refreshIntervalSeconds, which is enough to notice this flag within one more cycle.
+            if (m_stopping.load())
+            {
+                break;
             }
 
             if (stopIdx >= 0 && (fds[stopIdx].revents & POLLIN))

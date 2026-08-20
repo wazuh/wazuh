@@ -45,6 +45,11 @@
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
+#include "enrollment/authdClient.hpp"
+#include "enrollment/enrollmentAuthenticator.hpp"
+#include "enrollment/enrollmentConfig.hpp"
+#include "enrollment/enrollmentEndpoint.hpp"
+#include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -214,11 +219,22 @@ public:
             // the same io_context runtime via the response send path.
             m_controlHandler.reset();
             m_scanVdHandler.reset();
+            // /enroll has no async callback machinery of its own to race with a wdb-worker join
+            // (unlike ControlHandler above) -- reset here anyway, alongside every other
+            // per-request handler object, once stopAccepting() guarantees nothing can still call in.
+            m_enrollmentAuthenticator.reset();
 
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
+            // m_authdClient->stop() belongs in this phase for the same reason: it fails any
+            // queued/in-flight /enroll->authd request right away rather than let it linger, and
+            // the resulting responder->send() calls are still safe here (phase 4 hasn't run).
             if (m_downstreamClient)
             {
                 m_downstreamClient->stop();
+            }
+            if (m_authdClient)
+            {
+                m_authdClient->stop();
             }
 
             // Phase 3: drain the post-processing pool. Anything that was mid-flight when phase 1
@@ -227,6 +243,7 @@ public:
             m_forwarder.reset();
             m_downstreamClient.reset();
             m_deferredLimiter.reset();
+            m_authdClient.reset();
 
             // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
             // runtime). Nothing can still be touching a responder: worker pool B was drained in
@@ -295,14 +312,24 @@ private:
         m_keystore =
             std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
         // The Content-Encoding contract is composed in here rather than built into the gateway, so
-        // the auth layer stays about authentication only. Configured once on the gateway (not per
-        // route), so every authenticated endpoint gets it and none can accidentally opt out.
+        // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
+        // stateless -- see its own class comment) across every AuthGateway route, so they all get
+        // the same policy and none can accidentally opt out or drift out of sync with each other.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
-            authConfig,
-            m_keystore,
-            std::make_shared<const remoted::decoding::BodyDecoder>(*m_httpServer,
-                                                                   m_config.http_content_encoding_enabled));
+        const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+
+        // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
+        // route requires a verified credential before decode() ever runs, which closes the
+        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
+        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
+        // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
+        // shared in-flight byte budget (the same one /stateless and friends draw from) even
+        // briefly while decompressing -- see makeHandler()'s and BodyDecoder's own doc comments.
+        const auto enrollBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, remoted::enrollment::kMaxEnrollBodySize);
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
@@ -458,6 +485,72 @@ private:
                                              remoted::http::Method::Post,
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
+
+        // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
+        // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
+        // because an enrolling agent has no client.keys entry yet, so the agent<->manager
+        // AES-CMAC protocol cannot authenticate it. Always registered, regardless of
+        // enrollment_enabled: the handler itself answers 403 when enrollment is administratively
+        // disabled, so the route is never a bare 404.
+        //
+        // The listener's own client-certificate requirement (config.verificationMode, set below
+        // via buildHttpServerConfig()) and authd's <use_password> are independent gates -- exactly
+        // like legacy authd, which already enforces its own <ssl_verify_host> at the TLS handshake
+        // and <use_password> while parsing the enrollment message as two separate checks on the
+        // same connection (main-server.c). So EnrollmentAuthenticator only ever needs to know
+        // whether it must additionally require the WazuhEnroll CMAC; it has no notion of "mTLS
+        // mode" at all, because a client certificate is never its concern -- the TLS listener
+        // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
+        // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
+        // background watcher thread's lifetime is tied to the authenticator's.
+        const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
+
+        std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
+        if (enrollConfig.usePassword)
+        {
+            enrollPasswordKeySource = std::make_shared<remoted::auth::PasswordKeySource>(
+                remoted::auth::PasswordKeySource::kDefaultPath, enrollConfig.passwordRefreshIntervalSec);
+        }
+
+        m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
+            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
+                                                       enrollConfig.maxRequestAgeSeconds,
+                                                       enrollConfig.maxFutureSkewSeconds,
+                                                       enrollConfig.maxBodySize},
+            enrollPasswordKeySource);
+
+        m_authdClient =
+            std::make_unique<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
+                                                               m_config.worker_node,
+                                                               enrollConfig.authdConnectTimeoutMs,
+                                                               enrollConfig.authdResponseTimeoutMs,
+                                                               enrollConfig.authdMaxQueueSize,
+                                                               enrollConfig.authdWorkerThreads);
+
+        m_httpServer->addRoute(
+            remoted::http::Method::Post,
+            "/enroll",
+            remoted::enrollment::makeHandler(
+                *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics, enrollBodyDecoder));
+
+        // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
+        // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
+        // use, so it needs its own budget computed from AuthdClient's own (already worker-aware-
+        // resolved) timeouts rather than DownstreamConfig's. At MAXIMUM configured values
+        // (authd_connect_timeout=60s, authd_response_timeout=120s) this reaches 180s against a 30s
+        // http_request_timeout default -- silent with the defaults (2s + 5s/15s), so this only fires
+        // when an operator has pushed these up without also raising http_request_timeout.
+        const auto resolvedAuthdConnectTimeoutMs =
+            enrollConfig.authdConnectTimeoutMs != 0
+                ? static_cast<long long>(enrollConfig.authdConnectTimeoutMs)
+                : static_cast<long long>(remoted::enrollment::AuthdClient::kDefaultConnectTimeoutMs);
+        const auto resolvedAuthdResponseTimeoutMs =
+            static_cast<long long>(remoted::enrollment::AuthdClient::resolveResponseTimeoutMs(
+                enrollConfig.authdResponseTimeoutMs, enrollConfig.isWorkerNode));
+        warnIfBudgetExceedsRequestTimeout("/enroll",
+                                          "authd_connect_timeout'/'authd_response_timeout",
+                                          resolvedAuthdConnectTimeoutMs + resolvedAuthdResponseTimeoutMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         m_httpServer->start(config);
     }
@@ -655,17 +748,34 @@ private:
                                    downstreamConfig.writeTimeoutMs + responseTimeoutMs;
         const long long requestCapMs = static_cast<long long>(serverConfig.requestTimeoutSec) * 1000;
 
+        warnIfBudgetExceedsRequestTimeout(
+            path,
+            "downstream_connect_timeout'/'downstream_write_timeout'/'downstream_response_timeout",
+            budgetMs,
+            requestCapMs);
+    }
+
+    /// Shared core of warnIfDownstreamBudgetExceedsRequestTimeout(): pulled out so /enroll, whose
+    /// downstream is AuthdClient (a completely different config shape -- authd_connect_timeout +
+    /// authd_response_timeout, no write phase) rather than the DeferredForwarder/DownstreamConfig
+    /// pair every other endpoint here shares, can run the same sanity check without forcing that
+    /// shape onto it.
+    void warnIfBudgetExceedsRequestTimeout(const char* path,
+                                           const char* tunablesToReduce,
+                                           long long budgetMs,
+                                           long long requestCapMs)
+    {
         if (budgetMs > requestCapMs)
         {
             LOGFN_WARN(moduleLogFn(),
                        "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
                        "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
                        "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
-                       "reducing 'downstream_connect_timeout'/'downstream_write_timeout'/"
-                       "'downstream_response_timeout'.",
+                       "reducing '%s'.",
                        path,
                        budgetMs,
-                       requestCapMs);
+                       requestCapMs,
+                       tunablesToReduce);
         }
     }
 
@@ -683,13 +793,19 @@ private:
         // ScanVdHandlerImpl is stateless (a synchronous passthrough of VD's admission), but the
         // next retry constructs a fresh one, so drop the old instance alongside its siblings.
         m_scanVdHandler.reset();
+        m_enrollmentAuthenticator.reset();
         if (m_downstreamClient)
         {
             m_downstreamClient->stop();
         }
+        if (m_authdClient)
+        {
+            m_authdClient->stop();
+        }
         m_forwarder.reset();
         m_downstreamClient.reset();
         m_deferredLimiter.reset();
+        m_authdClient.reset();
         m_authGateway.reset();
         m_keystore.reset();
     }
@@ -790,6 +906,15 @@ private:
     remoted::scanvd::ScanVdMetrics m_scanVdMetrics {
         remoted::scanvd::makeScanVdMetrics(*m_metricsManager)};          ///< /scan/vd counters.
     std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
+
+    // /enroll lifecycle: bridges agent self-enrollment to authd's local socket. Metric struct on
+    // the facade for the same reason as m_controlMetrics/m_scanVdMetrics. m_enrollmentAuthenticator
+    // owns the PasswordKeySource (Password mode only; null otherwise) constructed for it in
+    // startHttpServer() -- its background watcher thread's lifetime is tied to the authenticator's.
+    remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
+        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
+    std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
+    std::unique_ptr<remoted::enrollment::AuthdClient> m_authdClient;                         ///< Bridge to authd.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

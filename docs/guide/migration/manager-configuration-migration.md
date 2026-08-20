@@ -201,12 +201,17 @@ The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum 
 ```xml
 <auth>
   ...
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
   ...
 </auth>
 ```
+
+`ssl_manager_cert`/`ssl_manager_key` now point at the same certificate the HTTPS agent server
+(`remoted_module`) presents, not a separate `authd.pem`/`authd-key.pem` pair -- authd no longer
+generates or owns a certificate of its own (see `ssl_manager_cert` in
+[authd/configuration.md](../../ref/modules/authd/configuration.md#ssl_manager_cert)).
 
 ### Sections to remove from `wazuh-manager.conf`
 
