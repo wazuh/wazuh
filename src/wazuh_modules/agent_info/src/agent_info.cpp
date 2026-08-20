@@ -378,6 +378,14 @@ void agent_info_cleanup()
     g_agent_info_impl.reset();
 }
 
+void agent_info_release_resources()
+{
+    if (g_agent_info_impl)
+    {
+        g_agent_info_impl->releaseResources();
+    }
+}
+
 void agent_info_init_sync_protocol(const char* module_name)
 {
     g_module_name = module_name;
