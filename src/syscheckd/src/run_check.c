@@ -770,6 +770,10 @@ STATIC void prime_fim_first_sync_from_marker(void) {
 
 void start_daemon()
 {
+    if (fim_shutdown_process_on()) {
+        return;
+    }
+
     int day_scanned = 0;
     int curr_day = 0;
     time_t curr_time = 0;
@@ -830,6 +834,10 @@ void start_daemon()
     }
 
     if (syscheck.disabled) {
+        if (fim_shutdown_process_on()) {
+            atomic_int_set(&syscheck.fim_first_sync_completed, 1);
+            return;
+        }
         handle_fim_disabled();
         atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         minfo("Syscheck is disabled. Exiting.");
@@ -1322,6 +1330,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
             // process, which reads and writes the file_entry table. Skipped once shutdown
+            // is in progress.
             if (sync_result.success && fim_sync_module_running &&
                 fim_sync_lock_scan_mutex()) {
                 for (int i = 0; i < table_count; i++) {

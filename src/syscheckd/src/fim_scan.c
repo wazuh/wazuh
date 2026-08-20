@@ -125,7 +125,7 @@ time_t fim_scan() {
 
     minfo(FIM_FREQUENCY_ENDED);
 
-    if (isDebug()) {
+    if (isDebug() && !fim_shutdown_process_on()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
     audit_queue_full_reported = 0;

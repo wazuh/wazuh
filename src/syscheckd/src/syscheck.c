@@ -519,12 +519,23 @@ void fim_initialize() {
     syscheck.registry_value_limit = 0;
     while (!fetch_document_limits_from_agentd())
     {
+        if (fim_shutdown_process_on()) {
+            mdebug1("Stop in progress: aborting the document limits wait.");
+            syscheck.disabled = 1;
+            return;
+        }
         mdebug1("Trying to fetch limits from agentd...");
 #ifdef WIN32
         Sleep(1000);
 #else
         sleep(1);
 #endif // WIN32
+    }
+
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: aborting FIM sync initialization.");
+        syscheck.disabled = 1;
+        return;
     }
 
     // Initialize locks before sync handle creation

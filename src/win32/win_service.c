@@ -284,16 +284,14 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 
                 plain_minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
-                extern volatile bool is_fim_shutdown;
-
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Set pending exit signal.");
 
+                is_fim_shutdown = true;
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
                 stop_wmodules();
-                is_fim_shutdown = true;
                 fim_db_teardown();
 #endif
                 // A stopped service has no transition left to describe.

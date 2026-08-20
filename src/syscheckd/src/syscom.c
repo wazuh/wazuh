@@ -35,19 +35,23 @@ extern void mock_assert(const int result, const char* const expression,
 
 /* FIM Agent Info Commands Implementation */
 
+static pthread_mutex_t fim_pause_cleanup_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void fim_syscom_cleanup_pause(void) {
     // Releases what fim_execute_is_pause_completed() acquired, on whichever thread gets here first:
     // the IPC thread through fim_execute_resume(), or the stop path, which cannot wait for a resume
     // that agent-info is no longer alive to send.
+    w_mutex_lock(&fim_pause_cleanup_mutex);
     if (atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
+        atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
 #ifdef WIN32
         w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
 #endif
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
-        atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
     }
     atomic_int_set(&syscheck.fim_pause_requested, 0);
+    w_mutex_unlock(&fim_pause_cleanup_mutex);
 }
 
 int fim_execute_pause(void) {
@@ -107,6 +111,7 @@ int fim_execute_is_pause_completed(void) {
     }
 #endif
 
+    w_mutex_lock(&fim_pause_cleanup_mutex);
     // Re-checked with the mutexes held: a stop landing between the trylocks above and the flag
     // below would find nothing to release in fim_syscom_cleanup_pause(), and fim_execute_resume()
     // is never coming because stop_wmodules() already killed agent-info.
@@ -116,11 +121,13 @@ int fim_execute_is_pause_completed(void) {
 #endif
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
+        w_mutex_unlock(&fim_pause_cleanup_mutex);
         mdebug1("Stop in progress: pause acknowledgment refused.");
         return -1;
     }
 
     atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
+    w_mutex_unlock(&fim_pause_cleanup_mutex);
     mdebug1("FIM pause acknowledged — scan mutexes acquired for coordination");
     // Ownership of the three mutexes passes to fim_execute_resume(), or to
     // fim_syscom_cleanup_pause() if the agent stops before the resume arrives.
@@ -158,7 +165,7 @@ int fim_execute_is_flush_completed(void) {
 
     if (fim_shutdown_process_on()) {
         mdebug1("Stop in progress: is_flush_completed command ignored.");
-        return -1;
+        return -2;
     }
 
     if (!syscheck.enable_synchronization) {

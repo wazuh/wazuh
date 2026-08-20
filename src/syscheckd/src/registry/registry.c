@@ -2049,6 +2049,10 @@ static void free_failed_registry_value(void *data) {
 }
 
 void fim_registry_scan() {
+    if (fim_shutdown_process_on()) {
+        return;
+    }
+
     HKEY root_key_handle = NULL;
     const char *sub_key = NULL;
     int i = 0;
@@ -2056,6 +2060,10 @@ void fim_registry_scan() {
     // Check if registries are configured - if syscheck.registry is NULL or empty,
     // but we have data in the database, we need to send DataClean for registry indices
     if (syscheck.registry == NULL || syscheck.registry[0].entry == NULL) {
+        if (fim_shutdown_process_on()) {
+            return;
+        }
+
         int registry_keys_count = fim_db_get_count_registry_key();
         int registry_values_count = fim_db_get_count_registry_data();
 
@@ -2107,29 +2115,38 @@ void fim_registry_scan() {
 
     // Create lists for deferred deletion of validation failures
     OSList *failed_keys = OSList_Create();
-    OSList *failed_values = OSList_Create();
-    if (!failed_keys || !failed_values) {
-        merror("Failed to create failed registry lists for schema validation cleanup");
-        if (failed_keys) OSList_Destroy(failed_keys);
-        if (failed_values) OSList_Destroy(failed_values);
+    if (!failed_keys) {
+        merror("Failed to create failed_keys list for schema validation cleanup");
         return;
     }
-    // Set free functions that will free the structures AND their string members
     OSList_SetFreeDataPointer(failed_keys, free_failed_registry_key);
+
+    OSList *failed_values = OSList_Create();
+    if (!failed_values) {
+        merror("Failed to create failed_values list for schema validation cleanup");
+        OSList_Destroy(failed_keys);
+        return;
+    }
     OSList_SetFreeDataPointer(failed_values, free_failed_registry_value);
 
     // Create lists for pending sync flag updates
     OSList *pending_sync_keys = OSList_Create();
-    OSList *pending_sync_values = OSList_Create();
-    if (!pending_sync_keys || !pending_sync_values) {
-        merror("Failed to create pending sync lists for registry");
-        if (pending_sync_keys) OSList_Destroy(pending_sync_keys);
-        if (pending_sync_values) OSList_Destroy(pending_sync_values);
-        if (failed_keys) OSList_Destroy(failed_keys);
-        if (failed_values) OSList_Destroy(failed_values);
+    if (!pending_sync_keys) {
+        merror("Failed to create pending sync keys list");
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
         return;
     }
     OSList_SetFreeDataPointer(pending_sync_keys, free_pending_sync_item);
+
+    OSList *pending_sync_values = OSList_Create();
+    if (!pending_sync_values) {
+        merror("Failed to create pending sync values list");
+        OSList_Destroy(pending_sync_keys);
+        OSList_Destroy(failed_keys);
+        OSList_Destroy(failed_values);
+        return;
+    }
     OSList_SetFreeDataPointer(pending_sync_values, free_pending_sync_item);
 
     /* The whole transaction lifecycle stays inside fim_registry_scan_mutex, like the file scan keeps
@@ -2161,7 +2178,12 @@ void fim_registry_scan() {
                                                              registry_value_transaction_callback, &txn_ctx_regval);
 
     if (regkey_txn_handler == NULL || regval_txn_handler == NULL) {
-        merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_KEY_TXN_TABLE);
+        if (regkey_txn_handler == NULL) {
+            merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_KEY_TXN_TABLE);
+        }
+        if (regval_txn_handler == NULL) {
+            merror(FIM_ERROR_TRANSACTION, FIMDB_REGISTRY_VALUE_TXN_TABLE);
+        }
         if (regkey_txn_handler != NULL) {
             fim_db_transaction_close(regkey_txn_handler);
         }

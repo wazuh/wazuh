@@ -1233,12 +1233,20 @@ void fim_handle_delete_by_path(const char *path,
 }
 
 void fim_file_scan() {
+    if (fim_shutdown_process_on()) {
+        return;
+    }
+
     OSListNode *node_it;
     directory_t *dir_it;
 
     // Check if directories are configured - if syscheck.directories is NULL or empty,
     // but we have data in the database, we need to send DataClean for files index
     if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
+        if (fim_shutdown_process_on()) {
+            return;
+        }
+
         int files_count = fim_db_get_count_file_entry();
 
         if (files_count > 0) {
@@ -1290,6 +1298,7 @@ void fim_file_scan() {
     OSList *pending_sync_updates = OSList_Create();
     if (!pending_sync_updates) {
         merror("Failed to create pending sync updates list");
+        OSList_Destroy(failed_paths);
         return;
     }
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
