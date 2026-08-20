@@ -910,8 +910,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     LPSTR gsid = "groupid";
     FILETIME last_write_time = { 0, 1000 };
 
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
@@ -1059,8 +1059,8 @@ static void test_fim_registry_scan_RegOpenKeyExW_fail(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
     TXN_HANDLE mock_handle;
 
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     expect_string(__wrap__mdebug1, formatted_msg, "(6920): Failed to open registry key: 'Software\\Classes\\batfile' (arch: '[x64]'). Error code: -1.");
     // process_pending_sync_updates is called twice: once for keys, once for values
@@ -1093,8 +1093,8 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
     TXN_HANDLE mock_handle;
 
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
-    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
     // process_pending_sync_updates is called twice: once for keys, once for values
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");

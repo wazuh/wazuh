@@ -216,11 +216,8 @@ static bool fim_sync_teardown(void) {
     }
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-    /* Same guard fim_shutdown_waiter() applies to fim.db: the scan transactions
-     * (fim_db_transaction_*) are not covered by FIMDB's internal guards and live entirely inside
-     * these mutexes, so tear the database down only once both are free. The scans prune themselves
-     * as soon as the shutdown starts, so the wait is short; if they somehow do not, leaving fim.db
-     * open is safe, closing it under a live transaction is not. */
+    fim_syscom_cleanup_pause();
+
     if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_scan_mutex, "file")) {
         return false;
     }
@@ -230,10 +227,6 @@ static bool fim_sync_teardown(void) {
         return false;
     }
 
-    /* Both mutexes are released again instead of being kept: this process stays alive after the SCM
-     * is told the service stopped, so a thread blocking on one of them would never wake up. Holding
-     * them is not what keeps database access away, is_fim_shutdown is: every holder of these
-     * mutexes (file scan, registry scan, syscom pause, and the integrity thread) checks it. */
     w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -251,13 +244,9 @@ bool fim_shutdown_process_on() {
 }
 
 /**
- * @brief Takes fim_scan_mutex for the integrity process without committing to a blocking wait.
+ * @brief Acquires FIM scan mutexes for integrity validation without blocking indefinitely during shutdown.
  *
- * A scan holds that mutex for minutes, while the shutdown only waits FIM_SYNC_EXIT_TIMEOUT_WIN_MS
- * for this thread to exit: blocking on it turns every stop that lands on a scan into a timed out
- * teardown, with both databases left open (issue #38212).
- *
- * @return true with the mutex held, false if the stop arrived and the mutex was not taken.
+ * @return true with mutexes held, false if shutdown is in progress.
  */
 static bool fim_sync_lock_scan_mutex(void) {
     while (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0) {
@@ -269,8 +258,34 @@ static bool fim_sync_lock_scan_mutex(void) {
         sleep(1);
     }
 
-    /* With mutex held: trylock might have succeeded on the first attempt during shutdown. */
+    while (pthread_mutex_trylock(&syscheck.fim_realtime_mutex) != 0) {
+        if (!fim_sync_module_running || fim_shutdown_process_on()) {
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+            mdebug2("Stop in progress: skipping the FIM integrity validation process.");
+            return false;
+        }
+
+        sleep(1);
+    }
+
+#ifdef WIN32
+    while (pthread_mutex_trylock(&syscheck.fim_registry_scan_mutex) != 0) {
+        if (!fim_sync_module_running || fim_shutdown_process_on()) {
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_unlock(&syscheck.fim_scan_mutex);
+            mdebug2("Stop in progress: skipping the FIM integrity validation process.");
+            return false;
+        }
+
+        sleep(1);
+    }
+#endif
+
     if (!fim_sync_module_running || fim_shutdown_process_on()) {
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug2("Stop in progress: skipping the FIM integrity validation process.");
         return false;
@@ -1307,15 +1322,8 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
             // process, which reads and writes the file_entry table. Skipped once shutdown
-            // starts: fim_scan_mutex can be held by an in-flight scan for minutes, and the
-            // shutdown waiter is waiting to join this thread.
             if (sync_result.success && fim_sync_module_running &&
                 fim_sync_lock_scan_mutex()) {
-                w_mutex_lock(&syscheck.fim_realtime_mutex);
-                #ifdef WIN32
-                w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-                #endif
-
                 for (int i = 0; i < table_count; i++) {
                     if (fim_shutdown_process_on()) {
                         break;
@@ -1329,8 +1337,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                                                                   syscheck.sync_handle,
                                                                   directories_snapshot);
                         }
-                        // Update the last sync time regardless of whether full sync was required
-                        // This ensures the integrity check doesn't run again until integrity_interval has elapsed
                         fim_db_update_last_sync_time(table_names[i]);
                     }
                 }

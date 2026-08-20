@@ -1358,11 +1358,6 @@ void fim_file_scan() {
     w_rwlock_unlock(&syscheck.directories_lock);
 
     if (fim_shutdown_process_on()) {
-        /* The walk above was pruned by the shutdown, so most of the tree was never visited: the
-         * deleted rows operation would report every path it did not reach as deleted. The trailing
-         * writes are skipped for a related reason, they write row by row while still holding
-         * fim_scan_mutex, which is what the teardown is waiting for, and the next scan recomputes
-         * them. */
         mdebug1("Shutdown in progress: closing the scan transaction without the deleted rows stage.");
         fim_db_transaction_close(db_transaction_handle);
         OSList_Destroy(failed_paths);

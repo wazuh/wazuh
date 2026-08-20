@@ -751,6 +751,18 @@ extern atomic_int_t fim_flush_result;       // 0 = success, -1 = error (valid on
 int fim_execute_pause(void);
 
 /**
+ * @brief Checks if FIM pause is completed
+ *
+ * @return 1 if pause in progress, 0 if completed, -1 on error
+ */
+int fim_execute_is_pause_completed(void);
+
+/**
+ * @brief Cleans up and releases scan mutexes held by pause
+ */
+void fim_syscom_cleanup_pause(void);
+
+/**
  * @brief Flushes FIM synchronization pending data (async)
  *
  * @return 0 on success (request accepted), -1 on error

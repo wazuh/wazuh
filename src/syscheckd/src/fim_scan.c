@@ -89,8 +89,6 @@ time_t fim_scan() {
     gettime(&end);
     end_of_scan = time(NULL);
 
-    /* Not while shutting down: the counts below would be answered by an already released database
-     * context, and recording that as the new state would log a database that is not there. */
     if (syscheck.file_limit_enabled && !fim_shutdown_process_on()) {
         int files_count = fim_db_get_count_file_entry();
         fim_check_db_state(syscheck.file_entry_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);

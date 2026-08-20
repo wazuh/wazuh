@@ -2195,8 +2195,6 @@ void fim_registry_scan() {
             *syscheck.registry[i].entry = '\0';
             continue;
         }
-        // Same pruning as the file scan: this loop holds fim_registry_scan_mutex, which the
-        // shutdown teardown needs to release the registry transaction contexts (issue #38212).
         if (fim_shutdown_process_on()) {
             break;
         }
@@ -2208,9 +2206,6 @@ void fim_registry_scan() {
     txn_ctx_regval.data = NULL;
 
     if (fim_shutdown_process_on()) {
-        /* The keys this scan never reached are not gone, so they must not be reported as deleted,
-         * and the trailing per-row writes below would keep this mutex, and with it both databases,
-         * for as long as they take. The next scan recomputes them. */
         mdebug1("Shutdown in progress: closing the registry scan transactions without the deleted rows stage.");
         fim_db_transaction_close(regval_txn_handler);
         fim_db_transaction_close(regkey_txn_handler);

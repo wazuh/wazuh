@@ -152,15 +152,8 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-        /* fim.db itself runs journal_mode=truncate (no -wal/-shm files): this teardown
-         * releases the DBSync context in a controlled order before exit(), it is not WAL
-         * cleanup. FIMDB's internal guards turn the event/query paths into graceful
-         * no-ops after it, but the scan transaction path (fim_db_transaction_*) is not
-         * covered by them. The scan transaction lives entirely inside fim_scan_mutex, so
-         * tear down only when no scan is in flight and keep the mutex so a new scan
-         * cannot start a transaction against the released context; otherwise skip it —
-         * exiting with fim.db open is safe (the truncate journal recovers on the next
-         * start), closing it under a live transaction is not. */
+        fim_syscom_cleanup_pause();
+
         if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0)
         {
             fim_db_teardown();

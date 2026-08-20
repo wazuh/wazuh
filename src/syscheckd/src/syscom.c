@@ -35,20 +35,35 @@ extern void mock_assert(const int result, const char* const expression,
 
 /* FIM Agent Info Commands Implementation */
 
+void fim_syscom_cleanup_pause(void) {
+    // Releases what fim_execute_is_pause_completed() acquired, on whichever thread gets here first:
+    // the IPC thread through fim_execute_resume(), or the stop path, which cannot wait for a resume
+    // that agent-info is no longer alive to send.
+    if (atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
+        atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
+    }
+    atomic_int_set(&syscheck.fim_pause_requested, 0);
+}
+
 int fim_execute_pause(void) {
     mdebug1("FIM agent info: pause command received");
 
-    // Check if already paused (atomic read, no mutex needed)
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: pause command ignored.");
+        return -1;
+    }
+
     if (atomic_int_get(&syscheck.fim_pause_requested)) {
         mdebug1("FIM scans are already paused or pause is in progress");
         return 0;
     }
 
-    // Reset the locks-held flag before requesting pause so that
-    // is_pause_completed and resume start from a clean state.
     atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
-
-    // Request pause (atomic write, no mutex needed)
     atomic_int_set(&syscheck.fim_pause_requested, 1);
 
     mdebug1("FIM pause requested (async), fim_pause_requested=1");
@@ -56,9 +71,12 @@ int fim_execute_pause(void) {
 }
 
 int fim_execute_is_pause_completed(void) {
-    // Idempotent: if we already hold the scan mutexes (e.g. IPC retry), report
-    // completed without re-locking. fim_pausing_is_allowed tracks whether the
-    // locks were actually acquired by this function.
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: pause acknowledgment refused.");
+        fim_syscom_cleanup_pause();
+        return -1;
+    }
+
     if (atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
         mdebug1("FIM pause already acknowledged, scan mutexes already held");
         return 0;
@@ -69,22 +87,6 @@ int fim_execute_is_pause_completed(void) {
         return 0;
     }
 
-    if (fim_shutdown_process_on()) {
-        mdebug1("Stop in progress: pause acknowledgment refused.");
-        return 0;
-    }
-
-    // Use trylock so the IPC thread never blocks. fim_run_integrity holds
-    // fim_scan_mutex only for the integrity/recovery loop (asp_sync_module now
-    // runs unlocked), which can still take minutes on large trees. Blocking here
-    // would reintroduce the pause window this PR is eliminating.
-    //
-    // If a scan is in progress, return 1 (in-progress) so pollFimPauseCompletion()
-    // retries in ~1 second. The mutex becomes free as soon as the current sync
-    // iteration ends; subsequent trylocks succeed quickly.
-    //
-    // Mutexes are held until fim_execute_resume() releases them, serializing
-    // agent-info's get_version / set_version IPCs against concurrent DB writes.
     if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) != 0) {
         mdebug2("FIM scan mutex busy, pause acknowledgment deferred");
         return 1;
@@ -105,10 +107,23 @@ int fim_execute_is_pause_completed(void) {
     }
 #endif
 
+    // Re-checked with the mutexes held: a stop landing between the trylocks above and the flag
+    // below would find nothing to release in fim_syscom_cleanup_pause(), and fim_execute_resume()
+    // is never coming because stop_wmodules() already killed agent-info.
+    if (fim_shutdown_process_on()) {
+#ifdef WIN32
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+#endif
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
+        mdebug1("Stop in progress: pause acknowledgment refused.");
+        return -1;
+    }
+
     atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
     mdebug1("FIM pause acknowledged — scan mutexes acquired for coordination");
-    // Locks are intentionally held here: ownership is transferred to fim_execute_resume(),
-    // which releases fim_scan_mutex (and fim_realtime_mutex / fim_registry_scan_mutex on WIN32).
+    // Ownership of the three mutexes passes to fim_execute_resume(), or to
+    // fim_syscom_cleanup_pause() if the agent stops before the resume arrives.
     // coverity[missing_unlock]
     return 0;
 }
@@ -116,18 +131,21 @@ int fim_execute_is_pause_completed(void) {
 int fim_execute_flush(void) {
     mdebug1("FIM agent info: flush command received");
 
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: flush command ignored.");
+        return -1;
+    }
+
     if (!syscheck.enable_synchronization) {
         mdebug1("FIM synchronization is disabled, flush command skipped");
         return 0;
     }
 
-    // Check if there's already a flush in progress (thread-safe read)
     if (atomic_int_get(&fim_flush_in_progress)) {
         mdebug1("Flush already in progress, request ignored");
         return 0;
     }
 
-    // Reset previous result and activate flush (thread-safe write)
     atomic_int_set(&fim_flush_result, 0);
     atomic_int_set(&fim_flush_in_progress, 1);
 
@@ -138,12 +156,16 @@ int fim_execute_flush(void) {
 int fim_execute_is_flush_completed(void) {
     mdebug2("FIM agent info: is_flush_completed command received");
 
-    if (!syscheck.enable_synchronization) {
-        mdebug1("FIM synchronization is disabled");
-        return 0;  // Return completed successfully (sync disabled)
+    if (fim_shutdown_process_on()) {
+        mdebug1("Stop in progress: is_flush_completed command ignored.");
+        return -1;
     }
 
-    // Read atomic variables (thread-safe read operations)
+    if (!syscheck.enable_synchronization) {
+        mdebug1("FIM synchronization is disabled");
+        return 0;
+    }
+
     int in_progress = atomic_int_get(&fim_flush_in_progress);
     int result = atomic_int_get(&fim_flush_result);
 
@@ -152,11 +174,10 @@ int fim_execute_is_flush_completed(void) {
 
     if (in_progress) {
         mdebug2("Flush still in progress");
-        return 1;  // In progress
+        return 1;
     } else {
         mdebug1("Flush completed with result=%d", result);
-        // Return the result directly: 0 = success, -1 = error
-        return result;  // 0 = success, -1 = error
+        return result;
     }
 }
 
@@ -165,7 +186,7 @@ int fim_execute_get_version(void) {
 
     if (fim_shutdown_process_on()) {
         mdebug1("Stop in progress: get_version command ignored.");
-        return 0;
+        return -1;
     }
 
     int max_version_file = fim_db_get_max_version_file();
@@ -184,7 +205,7 @@ int fim_execute_set_version(int version) {
 
     if (fim_shutdown_process_on()) {
         mdebug1("Stop in progress: set_version command ignored.");
-        return 0;
+        return -1;
     }
 
     int result_file = fim_db_set_version_file(version);
@@ -215,21 +236,7 @@ int fim_execute_resume(void) {
         return 0;
     }
 
-    // Only release the scan mutexes if is_pause_completed actually acquired them.
-    // This guards against resume being called before is_pause_completed ran
-    // (out-of-order IPC), which would otherwise unlock an unheld mutex.
-    if (atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
-#ifdef WIN32
-        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-#endif
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        w_mutex_unlock(&syscheck.fim_scan_mutex);
-        atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
-    } else {
-        mdebug1("FIM resume: scan mutexes were not held, skipping unlock");
-    }
-
-    atomic_int_set(&syscheck.fim_pause_requested, 0);
+    fim_syscom_cleanup_pause();
 
     mdebug1("FIM scans successfully resumed");
     return 0;
