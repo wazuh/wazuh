@@ -62,9 +62,27 @@ namespace remoted::enrollment
      * Connect-per-request, unlike WazuhDBClient/TaskClient's persistent connection: authd closes
      * its end of the socket after every single reply (see run_local_server's accept loop in
      * os_auth/src/local-server.c), so treating a post-reply disconnect as an error would
-     * misreport every successful call. A single dedicated worker thread pulls from a bounded
-     * queue, connecting fresh for each request in turn -- authd's own accept loop is
-     * single-threaded anyway, so a larger client-side pool would only queue up behind it.
+     * misreport every successful call.
+     *
+     * A small pool of dedicated worker threads (see workerThreads) pulls from one shared, bounded
+     * queue, each connecting fresh for each request it picks up. authd's own local-socket accept
+     * loop is single-threaded and fully synchronous (accept -> recv -> dispatch -> send -> close,
+     * one client at a time), so a pool does NOT raise authd's own processing rate -- that stays
+     * whatever authd's business logic costs per request, an upper bound this class cannot move.
+     * What a pool buys instead: with only one worker, authd's accept loop sits idle between
+     * closing one connection and this class noticing, reconnecting, and sending the next request
+     * -- a round trip of pure connection-setup latency added on top of authd's own processing time,
+     * for every single request, serialized. With several workers, by the time authd finishes one
+     * request and calls accept() again, another worker's connection (already sent, already
+     * awaiting a reply) is normally already sitting in authd's listen backlog (128 slots -- see
+     * OS_BindUnixDomainWithPerms in shared/os_net/os_net.c), so authd is essentially never left
+     * waiting on remoted for the next request. That closes the gap between this bridge's real
+     * throughput and authd's own dispatch-rate ceiling, without needing any change to authd itself.
+     *
+     * Because of this, addAgent()'s callback can now run on ANY of the pool's threads, including
+     * concurrently with another addAgent() call's callback on a different thread -- callers must
+     * be safe under that (the enrollment endpoint's own callback already is: IHttpResponder::send()
+     * is thread-safe by contract, and the metrics counters it also touches are relaxed atomics).
      *
      * The response timeout is worker-aware when the caller passes 0 (see
      * resolveResponseTimeoutMs()): authd's own worker-to-master cluster forward
@@ -72,13 +90,19 @@ namespace remoted::enrollment
      * (10) times with a 1 s sleep between failures on a flaky link, so a timeout shorter than
      * that would cut off a legitimate, still-in-progress worker enrollment as a spurious failure.
      *
-     * NOTE: an absent authd (nothing listening on socketPath at all) is NOT distinguishable from
-     * a slow/unresponsive one -- shared_modules/utils's SocketClient retries a failed connect()
-     * silently on its own background thread rather than surfacing it, so there is no synchronous
-     * "could not connect" signal to catch here. Both cases resolve only once the response timeout
-     * above elapses, with the same errorCode (-1) and a "timed out" message. This is a limitation
-     * of the shared primitive, not specific to AuthdClient -- WazuhDBClient/TaskClient have the
-     * same exposure and have simply never been tested against a truly absent server.
+     * Connect() is a plain, fully BLOCKING call (see authdClient.cpp's performRequest()) -- not
+     * shared_modules/utils's SocketClient, whose async connect() starts a background thread and
+     * returns before the connection exists. An earlier version of this class used SocketClient and
+     * called send() immediately after connect() with no synchronization between them, which lost
+     * the race against that background thread far more often than not: authd would receive and
+     * successfully process the request, but the reply arrived on a connection this class was no
+     * longer the one listening on (SocketClient had silently reconnected after treating the
+     * original attempt as merely "still pending"), producing a client-visible timeout for a request
+     * that actually succeeded. Blocking connect() has no such race: it returns only once truly
+     * connected, or throws immediately on a real failure (e.g. ENOENT if socketPath doesn't exist)
+     * -- so, unlike before, an absent authd IS now distinguishable from a slow/unresponsive one: it
+     * fails fast with a "could not connect" message rather than waiting out the full response
+     * timeout.
      */
     class AuthdClient
     {
@@ -88,40 +112,54 @@ namespace remoted::enrollment
         static constexpr std::uint32_t kMasterDefaultResponseTimeoutMs = 5000;
         static constexpr std::uint32_t kWorkerDefaultResponseTimeoutMs = 15000;
         static constexpr std::uint32_t kDefaultMaxQueueSize = 256;
+        /// Deliberately a small, fixed number, not CPU-scaled like this module's other worker
+        /// pools (e.g. http_worker_threads): authd's own accept loop is single-threaded regardless
+        /// of how many CPUs the manager has, so scaling this with core count would just leave
+        /// surplus workers unable to help. See the class comment for what this pool actually buys.
+        static constexpr std::uint32_t kDefaultWorkerThreads = 8;
 
         /**
          * @param socketPath Path to authd's local socket.
          * @param isWorkerNode Selects the worker-aware default when responseTimeoutMs is 0.
          * @param connectTimeoutMs 0 -> kDefaultConnectTimeoutMs. NOTE: currently accepted but not
-         *        enforced -- shared_modules/utils's SocketClient::connect() has no timeout hook,
-         *        the same limitation WazuhDBClient/TaskClient already live with for the identical
-         *        primitive. Kept in the signature so the ABI field it's sourced from
-         *        (authd_connect_timeout) has somewhere to go if that primitive gains one later.
+         *        enforced -- connect() is a plain blocking call (see the class comment) with no
+         *        per-call deadline hook short of a non-blocking-connect-plus-poll() rewrite. In
+         *        practice a Unix-domain connect() either resolves near-instantly or fails
+         *        near-instantly; the one scenario this doesn't bound is authd's accept() backlog
+         *        being saturated, which blocks the connecting side until a slot frees, with no
+         *        fixed limit. Kept in the signature so the ABI field it's sourced from
+         *        (authd_connect_timeout) has somewhere to go if that gap is closed later.
          * @param responseTimeoutMs 0 -> worker-aware default (see class comment and
          *        resolveResponseTimeoutMs()).
          * @param maxQueueSize 0 -> kDefaultMaxQueueSize; requests beyond this are rejected
          *        immediately with errorCode -1 rather than queued.
+         * @param workerThreads 0 -> kDefaultWorkerThreads. Keep well under authd's local-socket
+         *        listen backlog (128) -- see the class comment; there is no benefit to more
+         *        workers than that backlog can hold anyway.
          */
         explicit AuthdClient(std::string socketPath = kDefaultSocketPath,
                              bool isWorkerNode = false,
                              std::uint32_t connectTimeoutMs = 0,
                              std::uint32_t responseTimeoutMs = 0,
-                             std::uint32_t maxQueueSize = 0);
+                             std::uint32_t maxQueueSize = 0,
+                             std::uint32_t workerThreads = 0);
         ~AuthdClient();
 
         AuthdClient(const AuthdClient&) = delete;
         AuthdClient& operator=(const AuthdClient&) = delete;
 
-        /// Enqueues an "add" request; callback runs on the internal worker thread, exactly once,
-        /// even if the client is stopping or the queue is full (errorCode -1 in both cases).
+        /// Enqueues an "add" request; the callback runs exactly once, on whichever pool thread
+        /// picks the request up (see the class comment: with more than one worker, this may run
+        /// concurrently with another call's callback on a different thread) -- even if the client
+        /// is stopping or the queue is full (errorCode -1 in both cases).
         void addAgent(AuthdAddRequest request, std::function<void(AuthdResult)> callback);
 
         /// Resolves the effective response timeout for a configured value (0 = worker-aware
         /// default). A pure function of its arguments; exposed for unit testing.
         static std::uint32_t resolveResponseTimeoutMs(std::uint32_t configuredMs, bool isWorkerNode) noexcept;
 
-        /// Stops the worker thread and fails any still-queued requests with errorCode -1. Safe to
-        /// call more than once, and safe to skip -- the destructor calls it too.
+        /// Stops every worker thread and fails any still-queued requests with errorCode -1. Safe
+        /// to call more than once, and safe to skip -- the destructor calls it too.
         void stop();
 
     private:

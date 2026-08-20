@@ -194,6 +194,12 @@ extern "C"
                                               ///< worker-to-master retry budget).
         int authd_max_queue_size;             ///< AuthdClient request queue high-water mark; QueueFull over it
                                               ///< (<=0 -> default).
+        int authd_worker_threads;             ///< Number of concurrent connect-per-request workers bridging to
+                                              ///< authd's local socket. <=0 -> default. authd's own accept loop
+                                              ///< is single-threaded, so this does not raise authd's processing
+                                              ///< rate -- it overlaps remoted's own connect+send latency with
+                                              ///< authd's turnaround so authd is never left idle waiting on
+                                              ///< remoted for the next request.
     } remoted_module_config_t;
 
     /**

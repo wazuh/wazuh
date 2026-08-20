@@ -510,7 +510,8 @@ private:
                                                                m_config.worker_node,
                                                                enrollConfig.authdConnectTimeoutMs,
                                                                enrollConfig.authdResponseTimeoutMs,
-                                                               enrollConfig.authdMaxQueueSize);
+                                                               enrollConfig.authdMaxQueueSize,
+                                                               enrollConfig.authdWorkerThreads);
 
         m_httpServer->addRoute(remoted::http::Method::Post,
                                "/enroll",

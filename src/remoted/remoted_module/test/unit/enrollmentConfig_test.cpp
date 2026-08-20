@@ -44,6 +44,7 @@ TEST(EnrollmentConfigTest, ZeroedAbiMeansEverythingOffAndTimeoutsAtSentinel)
     EXPECT_EQ(cfg.authdConnectTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdResponseTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdMaxQueueSize, 0u);
+    EXPECT_EQ(cfg.authdWorkerThreads, 0u);
 }
 
 TEST(EnrollmentConfigTest, BooleanAndStringFieldsCopiedVerbatim)
@@ -83,11 +84,13 @@ TEST(EnrollmentConfigTest, AuthdTimeoutsConvertedFromSecondsToMilliseconds)
     c.authd_connect_timeout = 3;
     c.authd_response_timeout = 7;
     c.authd_max_queue_size = 128;
+    c.authd_worker_threads = 6;
 
     const auto cfg = buildEnrollmentConfig(c);
     EXPECT_EQ(cfg.authdConnectTimeoutMs, 3000u);
     EXPECT_EQ(cfg.authdResponseTimeoutMs, 7000u);
     EXPECT_EQ(cfg.authdMaxQueueSize, 128u);
+    EXPECT_EQ(cfg.authdWorkerThreads, 6u); // seconds/ms conversion does NOT apply here -- a plain count
 }
 
 TEST(EnrollmentConfigTest, NegativeAuthdKnobsFallBackToZeroSentinel)
@@ -96,9 +99,11 @@ TEST(EnrollmentConfigTest, NegativeAuthdKnobsFallBackToZeroSentinel)
     c.authd_connect_timeout = -1;
     c.authd_response_timeout = -1;
     c.authd_max_queue_size = -1;
+    c.authd_worker_threads = -1;
 
     const auto cfg = buildEnrollmentConfig(c);
     EXPECT_EQ(cfg.authdConnectTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdResponseTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdMaxQueueSize, 0u);
+    EXPECT_EQ(cfg.authdWorkerThreads, 0u);
 }

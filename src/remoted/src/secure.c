@@ -368,6 +368,10 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
     // depends on rm_config->worker_node.
     rm_config->authd_response_timeout = getDefine_Int_default("remoted", "authd_response_timeout", 0, 120, 0);
     rm_config->authd_max_queue_size = getDefine_Int_default("remoted", "authd_max_queue_size", 1, 65536, 256);
+    // Capped well under authd's own local-socket listen backlog (128, OS_BindUnixDomainWithPerms)
+    // -- authd's accept loop is single-threaded regardless, so a pool larger than the backlog can
+    // hold gains nothing and just leaves surplus workers unable to even connect.
+    rm_config->authd_worker_threads = getDefine_Int_default("remoted", "authd_worker_threads", 1, 32, 8);
 }
 
 /**

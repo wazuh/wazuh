@@ -47,6 +47,11 @@ namespace remoted::enrollment
         std::uint32_t authdConnectTimeoutMs {0};
         std::uint32_t authdResponseTimeoutMs {0};
         std::uint32_t authdMaxQueueSize {0};
+
+        /// Number of concurrent AuthdClient workers bridging to authd's local socket. 0 -> let
+        /// AuthdClient apply its own built-in default. See authdClient.hpp's class comment for why
+        /// more than one is worth having even though authd's own accept loop is single-threaded.
+        std::uint32_t authdWorkerThreads {0};
     };
 
     Config buildEnrollmentConfig(const remoted_module_config_t& c);

@@ -31,6 +31,7 @@ namespace remoted::enrollment
         cfg.authdResponseTimeoutMs =
             c.authd_response_timeout > 0 ? static_cast<std::uint32_t>(c.authd_response_timeout) * 1000U : 0U;
         cfg.authdMaxQueueSize = c.authd_max_queue_size > 0 ? static_cast<std::uint32_t>(c.authd_max_queue_size) : 0U;
+        cfg.authdWorkerThreads = c.authd_worker_threads > 0 ? static_cast<std::uint32_t>(c.authd_worker_threads) : 0U;
 
         return cfg;
     }

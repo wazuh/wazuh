@@ -3429,6 +3429,7 @@ void test_remoted_enrollment_config_enabled_and_flags_passed_through(void** stat
     will_return(__wrap_getDefine_Int_default, 3);   // authd_connect_timeout
     will_return(__wrap_getDefine_Int_default, 15);  // authd_response_timeout
     will_return(__wrap_getDefine_Int_default, 128); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 4);   // authd_worker_threads
 
     remoted_enrollment_config(&rm_config);
 
@@ -3440,6 +3441,7 @@ void test_remoted_enrollment_config_enabled_and_flags_passed_through(void** stat
     assert_int_equal(rm_config.authd_connect_timeout, 3);
     assert_int_equal(rm_config.authd_response_timeout, 15);
     assert_int_equal(rm_config.authd_max_queue_size, 128);
+    assert_int_equal(rm_config.authd_worker_threads, 4);
 }
 
 void test_remoted_enrollment_config_authd_disabled_wins(void** state)
@@ -3461,6 +3463,7 @@ void test_remoted_enrollment_config_authd_disabled_wins(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
 
     remoted_enrollment_config(&rm_config);
 
@@ -3486,6 +3489,7 @@ void test_remoted_enrollment_config_remote_enrollment_off(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
 
     remoted_enrollment_config(&rm_config);
 
@@ -3508,6 +3512,7 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 0);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
 
     remoted_enrollment_config(&rm_config);
 
@@ -3516,6 +3521,7 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
     assert_int_equal(rm_config.authd_connect_timeout, 2);
     assert_int_equal(rm_config.authd_response_timeout, 0);
     assert_int_equal(rm_config.authd_max_queue_size, 256);
+    assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
 /* Tests w_remoted_build_module_config */
@@ -3525,7 +3531,7 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
 // (13 http_*, then 3 memory-management, then 6 downstream_*, then 3 auth_*, in that
 // fixed order) as the remoted_module_https_config tests above, even though these
 // tests assert on the <https>-driven fields instead. Each also queues one
-// __wrap_ReadConfig scenario (see remoted_enrollment_config tests above) plus its 4
+// __wrap_ReadConfig scenario (see remoted_enrollment_config tests above) plus its 5
 // getDefine_Int_default calls.
 
 void test_w_remoted_build_module_config_all_fields_populated(void** state)
@@ -3590,6 +3596,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 2);   // authd_connect_timeout
     will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout (0 = worker-aware default)
     will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
 
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&test_logr, &rm_config);
@@ -3615,6 +3622,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.authd_connect_timeout, 2);
     assert_int_equal(rm_config.authd_response_timeout, 0);
     assert_int_equal(rm_config.authd_max_queue_size, 256);
+    assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
@@ -3662,6 +3670,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 2);   // authd_connect_timeout
     will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout
     will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
 
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&test_logr, &rm_config);

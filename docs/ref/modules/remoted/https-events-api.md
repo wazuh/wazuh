@@ -433,6 +433,7 @@ struct.
 | `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
 | `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
 | Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
+| Concurrent bridge worker threads              | `8`                                                      | `remoted.authd_worker_threads`             |
 
 The response timeout's worker default is longer than the master's on purpose: on a worker, `authd`'s
 own forward to the master can retry internally for several seconds before answering, and a shorter
@@ -441,6 +442,15 @@ spurious `503`. All other enrollment behavior (whether it's enabled, whether a p
 certificate is required, which agent versions are accepted) is deliberately **not** a separate
 `remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
 can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
+
+**Why more than one worker, when `authd`'s own local-socket accept loop is single-threaded.** A
+pool doesn't raise `authd`'s own processing rate — that ceiling is fixed by `authd`'s business
+logic regardless. What it removes is the connection-setup round trip (connect + send + await reply
++ close) sitting on the critical path *in addition to* `authd`'s processing time, for every single
+request, when only one worker exists: with several workers, another connection is normally already
+waiting in `authd`'s listen backlog (128 slots) by the time it finishes the current one and calls
+`accept()` again, so `authd` is essentially never left idle waiting on `remoted`. Keep this well
+under 128 — there's no benefit to more workers than that backlog can hold.
 
 ### client.keys hot-reload
 

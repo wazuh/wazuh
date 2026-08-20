@@ -841,12 +841,25 @@ privilege boundary — it joins the same trust domain `manage_agents` already si
 
 #### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
 
-The bridge to authd's local socket `queue/sockets/auth`, built the way `control/taskClient.cpp` and
-`control/wazuhDBClient.cpp` already talk to their own UDS peers — `shared_modules/utils`'s
-`Socket<OSPrimitives, SizeHeaderProtocol>` (a 4-byte little-endian length prefix, the exact framing
-`OS_SendSecureTCP`/`OS_RecvSecureTCP` use). The one way it differs from those two clients: authd
-closes the connection after **every** reply, so `AuthdClient` connects, sends one frame, awaits one
-frame, and closes — per request — rather than keeping a persistent, reconnect-on-error connection.
+The bridge to authd's local socket `queue/sockets/auth`, framed with `shared_modules/utils`'s
+`Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
+`OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
+it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the
+same underlying `Socket` class: authd closes the connection after **every** reply, so `AuthdClient`
+connects, sends one frame, awaits one frame, and closes — per request, on its own dedicated worker
+thread — rather than keeping a persistent, multi-request connection the way `SocketClient` is built
+for. `SocketClient::connect()` is asynchronous (it starts a background thread and returns before the
+connection exists), which is fine for `TaskClient`/`WazuhDBClient` — they connect once and only send
+much later, well after that thread has settled — but is exactly wrong for a connect-then-immediately-
+send-every-time client: an earlier version of this class did use `SocketClient` and lost that race
+far more often than not, so `authd` would receive and successfully process a request while the reply
+arrived on a connection nothing was listening on anymore, and the caller saw a spurious timeout for an
+enrollment that had actually already succeeded. `AuthdClient` instead calls `Socket::connect()`
+directly in **blocking** mode: it returns only once genuinely connected, or throws immediately on a
+real failure, with no race and no background thread — and, as a side effect, an absent authd is now
+distinguishable from a slow one (a fast "could not connect" instead of waiting out the full response
+timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
+side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 
 Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...}}`.
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an

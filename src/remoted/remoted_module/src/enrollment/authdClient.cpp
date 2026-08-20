@@ -11,18 +11,20 @@
 
 #include "authdClient.hpp"
 
+#include <sys/socket.h>
+#include <sys/time.h>
+
 #include <condition_variable>
 #include <cstring>
 #include <mutex>
 #include <queue>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "common/logThrottle.hpp"
-#include "epollWrapper.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
-#include "socketClient.hpp"
 #include "socketWrapper.hpp"
 
 namespace remoted::enrollment
@@ -89,13 +91,19 @@ namespace remoted::enrollment
              bool isWorkerNode,
              std::uint32_t connectTimeoutMs,
              std::uint32_t responseTimeoutMs,
-             std::uint32_t maxQueueSize)
+             std::uint32_t maxQueueSize,
+             std::uint32_t workerThreads)
             : m_socketPath(std::move(socketPath))
             , m_connectTimeoutMs(connectTimeoutMs != 0 ? connectTimeoutMs : AuthdClient::kDefaultConnectTimeoutMs)
             , m_responseTimeoutMs(AuthdClient::resolveResponseTimeoutMs(responseTimeoutMs, isWorkerNode))
             , m_maxQueueSize(maxQueueSize != 0 ? maxQueueSize : AuthdClient::kDefaultMaxQueueSize)
         {
-            m_worker = std::thread([this] { workerLoop(); });
+            const auto poolSize = workerThreads != 0 ? workerThreads : AuthdClient::kDefaultWorkerThreads;
+            m_workers.reserve(poolSize);
+            for (std::uint32_t i = 0; i < poolSize; ++i)
+            {
+                m_workers.emplace_back([this] { workerLoop(); });
+            }
         }
 
         ~Impl()
@@ -114,9 +122,12 @@ namespace remoted::enrollment
                 m_stopping = true;
             }
             m_cv.notify_all();
-            if (m_worker.joinable())
+            for (auto& worker : m_workers)
             {
-                m_worker.join();
+                if (worker.joinable())
+                {
+                    worker.join();
+                }
             }
 
             std::queue<Request> pending;
@@ -211,7 +222,6 @@ namespace remoted::enrollment
         AuthdResult performRequest(const AuthdAddRequest& request)
         {
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
-            using ClientType = SocketClient<SocketType, EpollWrapper>;
 
             AuthdResult result;
             result.errorCode = -1;
@@ -233,25 +243,29 @@ namespace remoted::enrollment
             payload["arguments"] = std::move(arguments);
             const std::string requestStr = payload.dump();
 
-            std::string response;
-            std::mutex responseMutex;
-            std::condition_variable responseCv;
-            bool responseReady = false;
-
-            std::unique_ptr<ClientType> client;
+            // Deliberately the bare Socket, not shared_modules/utils's SocketClient: SocketClient's
+            // connect() only starts a background thread that connects asynchronously and returns
+            // immediately, with no hook to learn when (or whether) it actually succeeded. An
+            // earlier version of this method called SocketClient::connect() and then send() on the
+            // very next line with no synchronization between them -- almost always losing the race
+            // against that background thread, which queued the request until a later, unrelated
+            // event flushed it (or didn't). Since this method already runs on this class's own
+            // dedicated worker thread (never an I/O thread), a plain BLOCKING connect() is both
+            // simpler and correct: it returns only once truly connected, or throws immediately on a
+            // real failure -- no race, no background thread, no epoll needed.
+            SocketType socket;
             try
             {
-                // Connect-per-request by construction: a fresh ClientType every call, dropped at
-                // the end of this function -- there is no persistent connection to reconnect.
-                client = std::make_unique<ClientType>(m_socketPath);
-                client->connect(
-                    [&](const char* body, uint32_t bodySize, const char*, uint32_t)
-                    {
-                        std::lock_guard<std::mutex> lock(responseMutex);
-                        response.assign(body, bodySize);
-                        responseReady = true;
-                        responseCv.notify_one();
-                    });
+                // Deliberately inlined into one expression, not split into a named UnixAddress
+                // local first: UnixAddress::builder()/.address()/.build() build up and hand back a
+                // reference into a temporary object whose SocketAddress::addr member self-points at
+                // its OWN sun_path buffer. Binding that through a `const auto` copy first would
+                // copy the SocketAddress struct's pointer value byte-for-byte -- still pointing at
+                // the ORIGINAL (about-to-be-destroyed) temporary's buffer, not the copy's own --
+                // turning connect()'s later dereference into a read of freed stack memory. Kept as
+                // one expression, the temporary stays alive for its whole evaluation, including
+                // this connect() call.
+                socket.connect(UnixAddress::builder().address(m_socketPath).build().data(), SOCK_STREAM);
                 LOGFN_DEBUG2(logFn(), "Connected to authd socket at %s.", m_socketPath.c_str());
             }
             catch (const std::exception& e)
@@ -268,25 +282,20 @@ namespace remoted::enrollment
                 return result;
             }
 
+            // Bounds both the send and the reply wait. Socket/OSPrimitives don't expose
+            // setsockopt() publicly (it's used internally for the send/receive buffer sizes only),
+            // so this is set directly on the raw fd via the standard POSIX call.
+            const struct timeval timeout
+            {
+                static_cast<time_t>(m_responseTimeoutMs / 1000),
+                    static_cast<suseconds_t>((m_responseTimeoutMs % 1000) * 1000)
+            };
+            ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
             try
             {
-                client->send(requestStr.data(), requestStr.size());
-
-                std::unique_lock<std::mutex> respLock(responseMutex);
-                if (!responseCv.wait_for(
-                        respLock, std::chrono::milliseconds(m_responseTimeoutMs), [&]() { return responseReady; }))
-                {
-                    result.message = "Timed out waiting for authd's reply";
-                    if (const auto throttle = timeoutThrottle().record())
-                    {
-                        LOGFN_WARN(logFn(),
-                                   "authd response timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
-                                   m_responseTimeoutMs,
-                                   throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
-                    }
-                    return result;
-                }
+                socket.send(requestStr.data(), requestStr.size());
             }
             catch (const std::exception& e)
             {
@@ -295,6 +304,54 @@ namespace remoted::enrollment
                 {
                     LOGFN_WARN(logFn(),
                                "authd socket I/O error: %llu error(s) in the last %d s.",
+                               throttle.total,
+                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                }
+                return result;
+            }
+
+            std::string response;
+            bool responseReceived = false;
+            try
+            {
+                // One call, blocking (bounded by SO_RCVTIMEO above) between the header and body
+                // reads. authd closes its end of the socket right after this one reply (see
+                // run_local_server's accept loop, os_auth/src/local-server.c), so the loop inside
+                // read() continuing on to look for a NEXT frame hits EOF and throws -- expected,
+                // not an error, once the callback below has already fired (see the catch below).
+                socket.read(
+                    [&](int, const char* body, uint32_t bodySize, const char*, uint32_t)
+                    {
+                        response.assign(body, bodySize);
+                        responseReceived = true;
+                    });
+            }
+            catch (const std::exception& e)
+            {
+                if (!responseReceived)
+                {
+                    result.message = std::string("I/O error talking to authd: ") + e.what();
+                    if (const auto throttle = ioErrorThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "authd socket I/O error: %llu error(s) in the last %d s.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    return result;
+                }
+                // else: the reply was already captured above; this is just authd closing the
+                // connection right afterward, surfacing as EOF on the next (never-coming) frame.
+            }
+
+            if (!responseReceived)
+            {
+                result.message = "Timed out waiting for authd's reply";
+                if (const auto throttle = timeoutThrottle().record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "authd response timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                               m_responseTimeoutMs,
                                throttle.total,
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
@@ -353,7 +410,7 @@ namespace remoted::enrollment
         std::uint32_t m_responseTimeoutMs;
         std::uint32_t m_maxQueueSize;
 
-        std::thread m_worker;
+        std::vector<std::thread> m_workers;
         std::queue<Request> m_queue;
         std::mutex m_mutex;
         std::condition_variable m_cv;
@@ -364,9 +421,10 @@ namespace remoted::enrollment
                              bool isWorkerNode,
                              std::uint32_t connectTimeoutMs,
                              std::uint32_t responseTimeoutMs,
-                             std::uint32_t maxQueueSize)
+                             std::uint32_t maxQueueSize,
+                             std::uint32_t workerThreads)
         : m_impl(std::make_unique<Impl>(
-              std::move(socketPath), isWorkerNode, connectTimeoutMs, responseTimeoutMs, maxQueueSize))
+              std::move(socketPath), isWorkerNode, connectTimeoutMs, responseTimeoutMs, maxQueueSize, workerThreads))
     {
     }
 
