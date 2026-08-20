@@ -2587,7 +2587,11 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         else if (indexIt != INDEX_MAP.end())
         {
             const std::string& index = indexIt->second;
-            size_t documentLimit = m_documentLimits[index];
+            size_t documentLimit = 0;
+            {
+                std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
+                documentLimit = m_documentLimits[index];
+            }
 
             if (documentLimit > 0)
             {
