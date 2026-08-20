@@ -53,7 +53,8 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.modules.agentd.configuration import (AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT,
+                                                        AGENTD_ENROLLMENT_RETRY_DELTA)
 from wazuh_testing.modules.agentd.patterns import AGENTD_ENROLLMENT_RETRY_BACKOFF
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
@@ -78,7 +79,7 @@ if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
-local_internal_options.update({AGENTD_TIMEOUT: '5'})
+local_internal_options.update({AGENTD_TIMEOUT: '5', AGENTD_ENROLLMENT_RETRY_DELTA: '1'})
 
 daemons_handler_configuration = {'all_daemons': True}
 
