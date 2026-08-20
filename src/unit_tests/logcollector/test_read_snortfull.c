@@ -90,6 +90,25 @@ static char * build_line(const char *prefix, char filler, size_t len) {
     return line;
 }
 
+/* Builds a date line whose first space sits at index space_idx. */
+static char * build_date_line(size_t space_idx, const char *tail) {
+    size_t tail_len = strlen(tail);
+    char *line;
+
+    assert_true(space_idx >= 6);
+
+    line = calloc(space_idx + tail_len + 3, sizeof(char));
+    assert_non_null(line);
+
+    memcpy(line, "01/13-", 6);
+    memset(line + 6, 'Z', space_idx - 6);
+    line[space_idx] = ' ';
+    memcpy(line + space_idx + 1, tail, tail_len);
+    line[space_idx + 1 + tail_len] = '\n';
+
+    return line;
+}
+
 static void expect_line(char *line) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
@@ -153,8 +172,7 @@ void test_read_snortfull_complete_record(void **state) {
 /**
  * Test: preprocessor record whose first line already fills f_msg.
  * The free space left after the first line is smaller than the preprocessor
- * label, so the second append must be bounded to zero bytes and f_msg must stay
- * at OS_MAX_LOG_SIZE - 1.
+ * label, so both appends must be bounded to what is left.
  */
 void test_read_snortfull_preprocessor_full_buffer(void **state) {
     logreader lf = {0};
@@ -171,7 +189,7 @@ void test_read_snortfull_preprocessor_full_buffer(void **state) {
     expect_line(line2);
 
     will_return(__wrap_check_ignore_and_restrict, false);
-    expect_value(__wrap_w_msg_hash_queues_push, size, OS_MAX_LOG_SIZE - 1);
+    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line2));
     will_return(__wrap_w_msg_hash_queues_push, 0);
 
     expect_epilogue();
@@ -220,6 +238,39 @@ void test_read_snortfull_third_line_full_buffer(void **state) {
 }
 
 /**
+ * Test: preprocessor record shorter than its own date line.
+ * The queued message must be sized from the line that is actually queued, so
+ * that the copy carries its terminator regardless of how long the composed
+ * record is.
+ */
+void test_read_snortfull_preprocessor_message_length(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [\n";
+    char *line2 = build_date_line(50, "abcde");
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+
+    will_return(__wrap_check_ignore_and_restrict, false);
+    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line2));
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+
+    free(line2);
+}
+
+/**
  * Test: several oversized records in a row.
  * Verifies the buffer state is reset between records and every append stays
  * within bounds when the sequence is repeated.
@@ -263,6 +314,7 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_complete_record),
         cmocka_unit_test(test_read_snortfull_preprocessor_full_buffer),
         cmocka_unit_test(test_read_snortfull_third_line_full_buffer),
+        cmocka_unit_test(test_read_snortfull_preprocessor_message_length),
         cmocka_unit_test(test_read_snortfull_consecutive_full_records),
     };
 
