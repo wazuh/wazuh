@@ -188,6 +188,7 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
+| Authenticated, but the peer address is outside the agent's authorized range in `client.keys` (third column) | `403` | `Source address not authorized` |
 | Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
 | `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
@@ -199,6 +200,13 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
+
+The source-address check runs **after** the MAC is verified, so it never reveals the ACL to an
+unauthenticated peer. It mirrors the legacy listener's `OS_IsAllowedIP`: the third `client.keys`
+column restricts the address an agent id may connect from — a single IP, a CIDR (`10.99.0.0/16`),
+or `any` (unrestricted, the default). An authenticated agent connecting from outside its range is
+answered `403 Source address not authorized`. The address is compared against the peer as remoted
+sees it, with IPv4-mapped IPv6 already unmapped to plain IPv4.
 
 Requests larger than the 20 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.

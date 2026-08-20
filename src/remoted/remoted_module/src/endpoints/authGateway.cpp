@@ -190,6 +190,14 @@ namespace remoted::endpoints
                     // -- dropping it (or calling payload.release()) then frees the buffer
                     // and restores the budget while the responder lives on to reply.
                     auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
+
+                    // Step 8: source-address authorization (only reached once the MAC has verified).
+                    if (const auto ipError = middleware->checkSourceAddress(authRequest.agentId, request->remoteIp))
+                    {
+                        responder->send(errorResponseFor(*ipError, authRequest.agentId));
+                        return;
+                    }
+
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
 

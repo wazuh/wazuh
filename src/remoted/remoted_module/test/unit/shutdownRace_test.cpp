@@ -70,6 +70,8 @@ namespace
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
+        std::optional<std::string> allowedAddressFor(remoted::auth::AgentId) const override { return std::nullopt; }
+
         std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
         {
             if (agentId == 7)

@@ -114,6 +114,9 @@ namespace remoted::auth
          */
         std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
 
+        /// @brief The agent's client.keys source-address column; nullopt if the id is absent.
+        std::optional<std::string> allowedAddressFor(AgentId agentId) const override;
+
     private:
         /// Watcher thread entry point: an exception barrier around watcherLoopBody(). A throw
         /// escaping a bare std::thread would terminate the whole remoted daemon.
@@ -140,7 +143,14 @@ namespace remoted::auth
 
         std::string m_path;
         mutable std::mutex m_mutex;
-        std::unordered_map<AgentId, std::vector<std::uint8_t>> m_keys;
+
+        /// One client.keys entry: AES key + authorized source-address column (3rd field).
+        struct AgentEntry
+        {
+            std::vector<std::uint8_t> key;
+            std::string address;
+        };
+        std::unordered_map<AgentId, AgentEntry> m_keys;
 
         // Hot-reload: background watcher (inotify + periodic fallback poll via poll()'s timeout).
         int m_refreshIntervalSeconds;

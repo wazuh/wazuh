@@ -154,6 +154,18 @@ paths:
               examples:
                 invalidAuthentication:
                   value: { error: "Invalid client authentication", code: 401 }
+        "403":
+          description: |
+            The request authenticated, but the peer connects from an address outside the range
+            authorized for this agent in `client.keys` (the third column: a single IP, a CIDR, or
+            `any`). Checked only after the MAC verifies, so it never reveals the ACL to an
+            unauthenticated peer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                sourceAddressNotAuthorized:
+                  value: { error: "Source address not authorized", code: 403 }
         "413":
           description: |
             The request body exceeds the configured auth body limit (10 MiB). For
