@@ -159,6 +159,17 @@ namespace
         EXPECT_FALSE(range.matches("2001:db8:0:8000::1"));
     }
 
+    TEST(AddressRuleV6, ZoneIdIsIgnored)
+    {
+        // A link-local peer can be reported with the interface it arrived on ("fe80::1%eth0"). The zone
+        // names a local interface, not the address, so it must not stop the entry from matching -- and
+        // an entry written with one must work too.
+        EXPECT_TRUE(rule("fe80::1").matches("fe80::1%eth0"));
+        EXPECT_TRUE(rule("fe80::1%eth0").matches("fe80::1"));
+        EXPECT_TRUE(rule("fe80::/64").matches("fe80::1%eth0"));
+        EXPECT_FALSE(rule("fe80::1").matches("fe80::2%eth0"));
+    }
+
     TEST(AddressRuleCrossFamily, AV4RuleRejectsAV6PeerAndViceVersa)
     {
         // The family is part of the rule, so a peer of the other family is a plain mismatch.

@@ -146,8 +146,10 @@ paths:
         "401":
           description: |
             Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-            header, an unknown agent, an unusable key, an out-of-window timestamp and an invalid MAC
-            all return the same response so the specific reason is not exposed.
+            header, an unknown agent, an unusable key, a peer address outside the one authorized for
+            the agent in `client.keys` (third column: an IP, a CIDR/netmask, or `any`), an
+            out-of-window timestamp and an invalid MAC all return the same response so the specific
+            reason is not exposed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }

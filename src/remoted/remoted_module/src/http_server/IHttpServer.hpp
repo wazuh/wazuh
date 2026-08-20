@@ -52,8 +52,9 @@ namespace remoted::http
         std::string body;                                     ///< Raw request body.
         std::unordered_map<std::string, std::string> headers; ///< Lower-cased header name -> value.
         std::string remoteIp; ///< Client's connection IP (textual form; IPv4-mapped-IPv6 addresses
-                              ///< are unmapped to plain IPv4 first). Not currently used by any
-                              ///< handler; available for a future cross-check against client.keys.
+                              ///< are unmapped to plain IPv4 first). The auth gateway hands it to
+                              ///< AuthMiddleware, which matches it against the agent's authorized
+                              ///< address (client.keys' third column) before verifying the MAC.
     };
 
     /**

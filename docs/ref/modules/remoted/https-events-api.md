@@ -158,6 +158,8 @@ Notes:
   `authd` never writes such a value anyway: enrolling with `IP:'!10.0.0.5'` stores `10.0.0.5`, so the
   form only survives in a hand-edited file.
 - An agent of one address family never matches an entry of the other.
+- An IPv6 zone id is ignored on both sides: a peer reported as `fe80::1%eth0` matches an entry written
+  as `fe80::1`, and vice versa. The zone names a local interface, not the address being compared.
 - A line whose `ip` column is not a valid address or range is **skipped**, with a warning naming the
   line number, and that agent is then treated as unknown. The rest of the file still loads.
 - The peer address is **not** part of the signed canonical byte sequence above. A NAT rewrite between

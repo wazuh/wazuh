@@ -42,9 +42,17 @@ namespace remoted::auth
         }
 
         /// Parses an address, collapsing the v4-mapped form to plain IPv4 so that `::ffff:10.0.0.5`
-        /// and `10.0.0.5` resolve to the same value.
+        /// and `10.0.0.5` resolve to the same value. A trailing IPv6 zone id (`fe80::1%eth0`) is
+        /// dropped: it names a local interface, not part of the address being compared, and a peer
+        /// reported with one must still match an entry written without it.
         std::optional<asio::ip::address> parseAddress(std::string_view text)
         {
+            const auto zone = text.find('%');
+            if (zone != std::string_view::npos)
+            {
+                text = text.substr(0, zone);
+            }
+
             asio::error_code ec;
             // make_address() takes a string, and the input is a view into a larger buffer.
             auto address = asio::ip::make_address(std::string {text}, ec);

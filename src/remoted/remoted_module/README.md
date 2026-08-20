@@ -985,7 +985,8 @@ agent registered with a fixed address or a range authenticates only from it; `an
 peer. The accepted forms match the manager's own `OS_IsValidIP()`/`OS_IPFound()`
 (`shared/src/validate_op.c`): `any`, an IPv4 address alone or with `/CIDR` (0-32) or a dotted
 `/mask`, an IPv6 address alone or with `/prefix` (0-128), and the `::ffff:a.b.c.d` v4-mapped form,
-unmapped before use -- the transport unmaps the peer address the same way in
+unmapped before use. An IPv6 zone id (`fe80::1%eth0`) is dropped on both sides of the comparison, since
+it names a local interface rather than part of the address -- the transport unmaps the peer address the same way in
 `normalizeRemoteAddress()`, so both sides of the comparison agree on the representation. A dotted
 mask is applied as written, with no contiguity check. A leading `!` is stripped and the remainder read
 positively -- it is not a negation, matching the legacy keystore, where `OS_IsValidIP()` drops the `!`
