@@ -819,10 +819,15 @@ request.
 #### `EnrollmentAuthenticator` (`enrollment/enrollmentAuthenticator.hpp/.cpp`)
 
 Implements the Password gate above, and nothing about client certificates at all — that's the TLS
-listener's exclusive concern, checked before any handler runs, which is exactly why this class'
-only configuration knob is `requirePassword` rather than a "mode" spanning both. Reuses `Cmac`, the
-timestamp/hex parsing, and the `AuthError` taxonomy from `auth/authTypes.hpp`, so a bad signature, a
-stale or future timestamp, and an oversized body all collapse through the same `publicErrorFor()` →
+listener's exclusive concern, checked before any handler runs, which is exactly why this class has
+no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
+`maxRequestAgeSeconds`/`maxFutureSkewSeconds`/`maxBodySize` (the freshness window and body-size cap,
+sourced from the SAME `auth_max_request_age`/`auth_max_future_skew`/`auth_max_body_size` internal
+options the agent<->manager scheme reads, so the two never silently disagree). The body-size check
+runs first and unconditionally — in Open mode too — so an unauthenticated peer can never make this
+endpoint hash an arbitrarily large body before being rejected. Reuses `Cmac`, the timestamp/hex
+parsing, and the `AuthError` taxonomy from `auth/authTypes.hpp`, so a bad signature, a stale or
+future timestamp, and an oversized body all collapse through the same `publicErrorFor()` →
 `401`/`413` path every other route already uses. Because `AuthGateway` bakes the `client.keys`
 `Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
 `AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
@@ -880,6 +885,36 @@ the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a lon
 covering the worst-case retry budget) on workers versus a short default (~5 s, matching
 `WazuhDBClient`/`TaskClient`, since there's no cluster hop on the master).
 
+**Fixed: this retry no longer serializes behind authd's local-socket dispatch.** `run_local_server`
+(`os_auth/src/local-server.c`) used to be a plain accept→recv→dispatch→send→close loop with no
+per-connection thread, so while one worker-node `add` was inside
+`w_request_agent_add_clustered`'s up-to-10-second retry budget, that ONE thread could not accept or
+serve ANY other local-socket client -- another queued `/enroll` request, `manage_agents`, or the
+API -- for the same window. This was not a risk this bridge introduced on its own: port 1515's own
+worker-node enrollment forwarding calls the exact same `w_request_agent_add_clustered` inline on its
+own single event loop (`run_remote_server`'s epoll thread, `main-server.c`), blocking every other
+concurrent 1515 connection the same way -- but the local socket previously had no such exposure at
+all (every `add` on a worker failed instantly with `9015`, before cluster forwarding existed for
+it), so `manage_agents`/the API/`/enroll` would have been newly subject to a latency class 1515 has
+already lived with. `run_local_server` now hands each accepted connection to its own detached
+thread (`handle_local_client`) instead of dispatching inline, so a single slow or stuck cluster
+forward only holds up the ONE connection waiting on it. This is safe to parallelize without any
+further locking changes: every `local_add()`/`local_remove()`/`local_get()` call already serializes
+access to the shared `keys` keystore (and `write_pending`/`cond_pending`) through the existing
+`mutex_keys`, which every one of those functions already takes. Port 1515's own equivalent blocking
+window (its epoll loop, not this one) is unchanged -- fixing that would be a separate, larger change
+to `run_remote_server`'s connection model and is out of scope here.
+
+**Bounded, not unbounded.** The number of connections serviced concurrently via a detached thread
+is capped at `MAX_LOCAL_CLIENT_THREADS` (128, matching `AUTH_LOCAL_SOCK`'s own listen backlog --
+there is no benefit to servicing more concurrently than that many could ever be queued at once).
+Without this cap, a burst of connections -- e.g. many cluster workers enrolling against one
+master's `authd` at the same time (`N` workers × up to `authd_worker_threads` each), or any local
+caller not otherwise rate-limited -- would spawn one thread per connection with no ceiling at all.
+At the cap, `run_local_server` falls back to servicing the connection synchronously, inline on the
+accept loop, exactly like every connection was handled before this change -- self-limiting by
+construction, rather than either growing the thread count without bound or dropping the client.
+
 #### `enrollmentEndpoint` (`enrollment/enrollmentEndpoint.hpp/.cpp`)
 
 The HTTP registration and glue: checks `enrollment_enabled` first (see *Enrollment scoping* below),
@@ -891,17 +926,22 @@ response.
 
 | field | required | notes |
 |---|---|---|
-| `name` | yes | non-empty, ≤128 chars, restricted charset checked here; authd re-validates independently |
+| `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only -- byte-for-byte `OS_IsValidName()` (`shared/src/agent_validate_op.c`), the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same set of names. authd's local socket (`local-server.c`) separately enforces a deliberately looser *storage-safety* floor for all of its callers (`is_storable_agent_name()`: no whitespace or control bytes, no leading `#`/`!`, non-empty, <=128 chars) -- historically it trusted every caller to have validated the name, which was never true for /enroll, but it cannot adopt `OS_IsValidName()` itself without breaking `manage_agents`/API names that predate this endpoint (`%`, single-character, leading `.`). /enroll therefore holds the tighter line here rather than relying on that floor |
 | `version` | yes | authd's local `add` path has no version check at all, so remoted enforces `allow_higher_versions` itself, reusing `compareVersions()` (`control/controlTypes.hpp`) rather than duplicating it |
 | `groups` | no | comma-separated string, passed through unchanged — matches authd's own wire format and `w_auth_validate_groups` with zero transformation |
-| `ip` | no | syntactic IPv4/IPv6/CIDR check; see IP resolution below |
+| `ip` | no | syntactic IPv4/IPv6/CIDR check, or one of two sentinels (`any`, `src`); see IP resolution below |
 | `key_hash` | no | opaque passthrough that drives authd's own force/key-mismatch decision |
 
-**IP resolution** mirrors authd's `use_source_ip` flag: if it's set, the connection's observed peer
-address wins over anything the body claims — read from `HttpRequest::remoteIp`
+**IP resolution** mirrors authd's `use_source_ip` flag: if it's set (manager-side), the connection's
+observed peer address wins over anything the body claims — read from `HttpRequest::remoteIp`
 (`http_server/IHttpServer.hpp`), which already exists (populated from RESTinio's
-`remote_endpoint().address()`) and is already unused by any handler today; otherwise the body's `ip`
-is used if present; if neither applies, `"any"` is sent, matching authd's own literal handling of
+`remote_endpoint().address()`) and is already unused by any handler today. Otherwise, a body `ip` of
+`"src"` (the agent-side sentinel — mirrors legacy port 1515's own `IP:'src'` wire convention,
+os_auth/src/auth.c:208, sent by an agent configured with its own client-side `<use_source_ip>`) ALSO
+resolves to the observed peer address, and is never forwarded to authd as the literal string "src":
+authd's local `add` path has no notion of that sentinel at all (only port 1515's TEXT-protocol
+parser does) and would reject it as an invalid IP (9006). Otherwise the body's `ip` is used if
+present; if none of the above applies, `"any"` is sent, matching authd's own literal handling of
 that value.
 
 **Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"..."}`, verbatim from authd's `data`.
@@ -910,10 +950,10 @@ that value.
 | authd code | meaning | HTTP |
 |---|---|---|
 | 9001 / 9002 / 9009 | internal / JSON-parse / key-generation failure | 500 |
-| 9003 / 9004 / 9005 / 9006 / 9014 | bad function/args/name/ip/groups | 400 |
+| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 (new) | bad function/args/name/ip/groups | 400 |
 | 9007 / 9008 / 9012 | duplicate ip/name/id | 409 |
 | 9013 | `max_agents` reached | 503 |
-| 9015 | worker rejection (after the authd-side fix below, only `remove`/`get` still hit this) | 503 |
+| 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | transport failure (authd unreachable) | — | 503 |
 | bad/missing/stale credential | — | 401 |
@@ -947,18 +987,31 @@ the request — only the 1515 network path knows how to forward enrollment to th
 the new `9016` when its transport leg fails; `"remove"`/`"get"` keep returning `9015` unchanged.
 remoted stays completely unaware of cluster topology — it always just talks to the local socket.
 
-This is a real, currently-hit gap for this bridge, but a **net-new capability that regresses nothing
-else**: the API's `POST /agents`/`POST /agents/insert` dispatch through `DistributedAPI` with
-`request_type='local_master'`, which forwards the *entire HTTP request* to the master node first
-whenever the local node isn't the master (`core/cluster/dapi/dapi.py`) — so `core/agent.py`'s call
-into this same local socket only ever executes **on the master** today. The API never actually
-reaches a worker's local authd socket, which is why the existing 9015 block has never been hit by that
-caller, confirmed by `tests/integration/test_authd/test_cluster/data/test_cases/cases_authd_worker.yaml`
-exercising only the 1515 network path's worker→master forwarding, never the local socket. Mirroring
-DAPI's approach in remoted (detect worker, forward the whole HTTP request to the master's remoted) was
-considered and rejected: it would mean remoted reimplementing cross-node request forwarding — with its
-own auth — in C, for a problem the cluster's existing low-level socket protocol already solves more
-cheaply by fixing authd once.
+**Cluster forwarding is gated on the request SHAPE, not just the function name.** `local_add_clustered()`
+has no `id`/`key` parameters at all -- it only ever produces a self-enrollment-shaped result (an
+auto-assigned ID, an authd-generated key), the same contract `/enroll` and port 1515 already have.
+`manage_agents`/`framework/wazuh/core/agent.py`, on the other hand, can supply a caller-chosen `id`
+and/or `key` on this same local socket (an admin/restore-style add, e.g. importing a specific agent
+record) -- before this fix, EVERY `add` on a worker got a blanket `9015`, so that shape was rejected
+too, just not distinguished from any other. Forwarding it through `local_add_clustered()` unchanged
+would silently drop the caller's `id`/`key` and return `200` with a DIFFERENT identity than the one
+requested, since nothing in that function's signature has anywhere to put them. So the gate now
+checks: if the parsed request carries an `id` or a `key`, it still gets the original `9015` (an
+honest "can't do this here" rather than a wrong answer); only the self-enrollment shape (`id`/`key`
+absent) reaches `local_add_clustered()`.
+
+This is a real, currently-hit gap for the self-enrollment shape specifically -- and a **net-new
+capability that regresses nothing else**: the API's `POST /agents`/`POST /agents/insert` dispatch
+through `DistributedAPI` with `request_type='local_master'`, which forwards the *entire HTTP request*
+to the master node first whenever the local node isn't the master (`core/cluster/dapi/dapi.py`) for
+that specific REST path -- but `core/agent.py`'s `add()` (the function that can attach `id`/`key`) is
+also reachable through other, non-DAPI-gated callers on a worker (`manage_agents`, or any future
+internal caller), which is exactly why the id/key-present shape keeps its own explicit `9015` above
+rather than assuming DAPI already filtered every possible caller. Mirroring DAPI's approach in
+remoted (detect worker, forward the whole HTTP request to the master's remoted) was considered and
+rejected: it would mean remoted reimplementing cross-node request forwarding — with its own auth — in
+C, for a problem the cluster's existing low-level socket protocol already solves more cheaply by
+fixing authd once.
 
 ### Enrollment scoping — independent of legacy 1515
 

@@ -546,6 +546,42 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
+    /* Enrollment password: loaded here -- and, on a master, GENERATED here if absent -- whenever
+     * shared-password enrollment is enabled, deliberately OUTSIDE the <legacy_enrollment> gate
+     * below. etc/authd.pass is a manager-wide enrollment credential, not a property of the legacy
+     * port-1515 listener: remoted's POST /enroll bridge reads the file directly (see
+     * PasswordKeySource in remoted_module). w_authd_load_password() is the only thing anywhere in
+     * the product that creates it -- no installer, package or framework step writes it -- so
+     * gating this on legacy_enrollment would leave an HTTPS-only manager (<legacy_enrollment>no,
+     * the very configuration that flag exists to enable) with a password file nothing ever
+     * creates, and every Password-mode /enroll request failing 401 permanently, cluster-wide.
+     * Gated on remote_enrollment alone: with that off, both enrollment paths are closed and no
+     * password is needed by either. */
+    if (config.flags.remote_enrollment && config.flags.use_password) {
+        if (config.worker_node) {
+            /* Owned by the master and synced to workers; never generated here.
+             * If not synced yet, picked up later in process_message. */
+            authpass = w_authd_read_password(AUTHD_PASS);
+
+            if (authpass) {
+                authpass_mtime = File_DateofChange(AUTHD_PASS);
+                minfo("Using the enrollment password synchronized from the master node.");
+            } else {
+                minfo("Shared-password enrollment is enabled but '%s' has not been synchronized from the master node yet. Enrollment requests will be rejected until it is available.", AUTHD_PASS);
+            }
+        } else {
+            bool pass_generated = false;
+
+            authpass = w_authd_load_password(AUTHD_PASS, &pass_generated);
+
+            if (pass_generated) {
+                minfo("A new enrollment password was generated and written to '%s'", AUTHD_PASS);
+            } else {
+                minfo("Using the existing enrollment password from '%s'. To rotate the password, delete the file and restart.", AUTHD_PASS);
+            }
+        }
+    }
+
     if (config.flags.remote_enrollment && config.flags.legacy_enrollment) {
         g_epfd = epoll_create1(0);
 
@@ -597,30 +633,11 @@ int main(int argc, char **argv)
             exit(1);
         }
 
-        /* Check if password is enabled */
+        /* The password itself was already loaded/generated above, before this block: it serves
+         * POST /enroll too, so it must not depend on this listener existing. Only the
+         * listener-specific announcement belongs here. */
         if (config.flags.use_password) {
-            if (config.worker_node) {
-                /* Owned by the master and synced to workers; never generated here.
-                 * If not synced yet, picked up later in process_message. */
-                authpass = w_authd_read_password(AUTHD_PASS);
-
-                if (authpass) {
-                    authpass_mtime = File_DateofChange(AUTHD_PASS);
-                    minfo("Accepting connections on port %hu. Using password synchronized from the master node.", config.port);
-                } else {
-                    minfo("Shared-password enrollment is enabled but '%s' has not been synchronized from the master node yet. Enrollment requests will be rejected until it is available.", AUTHD_PASS);
-                }
-            } else {
-                bool pass_generated = false;
-
-                authpass = w_authd_load_password(AUTHD_PASS, &pass_generated);
-
-                if (pass_generated) {
-                    minfo("Accepting connections on port %hu. A new authentication password was generated and written to '%s'", config.port, AUTHD_PASS);
-                } else {
-                    minfo("Accepting connections on port %hu. Using existing authentication password from '%s'. To rotate the password, delete the file and restart.", config.port, AUTHD_PASS);
-                }
-            }
+            minfo("Accepting connections on port %hu. Shared-password enrollment is required.", config.port);
         } else {
             mdebug1("Accepting connections on port %hu. No password required.", config.port);
         }

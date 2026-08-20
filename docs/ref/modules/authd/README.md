@@ -89,11 +89,15 @@ registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
 [HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
 remove, and query agents without going through TLS or the enrollment password directly.
 
-On a cluster **worker** node: `add` requests are forwarded to the master over the same cluster
-protocol port 1515's own worker-to-master enrollment forwarding already uses, and answered with the
-master's result — a transport failure during that forward answers `9016` ("Cannot communicate with
-master node"). `remove` and `get` are **not** forwarded: a worker rejects both outright with `9015`
-("Cannot execute this request on a worker node").
+On a cluster **worker** node: a self-enrollment-shaped `add` request (no caller-supplied `id` or
+`key` — the only shape `/enroll` and port 1515 ever produce) is forwarded to the master over the
+same cluster protocol port 1515's own worker-to-master enrollment forwarding already uses, and
+answered with the master's result — a transport failure during that forward answers `9016` ("Cannot
+communicate with master node"). An `add` that DOES carry a caller-chosen `id` and/or `key` (an
+admin/restore-style add — `manage_agents`/the API can send this shape, self-enrollment never does)
+is rejected outright with `9015`, same as `remove`/`get`: there is no cluster RPC to honor a
+caller-chosen identity on a worker, so this is an explicit rejection rather than silently returning a
+different id/key than the one requested.
 
 A request is a single-line JSON object:
 
@@ -106,6 +110,15 @@ A request is a single-line JSON object:
 - **`add`** — register a new agent (or replace an existing one, subject to the same duplicate
   ID/IP/name and `force` checks used by the network enrollment path). Arguments:
   - `name` (required), `ip` (required, or `"any"`)
+
+    The name must be *storable* in `client.keys`: non-empty, at most 128 characters, no whitespace
+    or control bytes, and not starting with `#` or `!`. A name violating any of these is rejected
+    with `9017` ("Invalid agent name") — distinct from `9005` ("No such name"), which means the
+    argument was absent. This is deliberately a narrower rule than the `OS_IsValidName()` charset
+    the two *enrollment* paths (port 1515 and `POST /enroll`) enforce on the names they mint: it
+    refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
+    `manage_agents` and the API have always accepted — containing `%`, a single character, or a
+    leading `.` — keep working.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
   - `groups` (optional) — comma-separated centralized group(s) to assign
   - `key` (optional) — a caller-supplied key instead of a randomly generated one

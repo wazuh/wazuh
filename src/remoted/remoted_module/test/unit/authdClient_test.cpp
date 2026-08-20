@@ -15,6 +15,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -423,4 +424,34 @@ TEST(AuthdClientTest, WorkerPoolProcessesRequestsConcurrently)
     // request's delay is enough to distinguish "ran in parallel" from "ran serialized" without
     // being flaky under scheduling jitter.
     EXPECT_LT(elapsed, kPerRequestDelay * 2);
+}
+
+TEST(AuthdClientTest, WorkerThreadSurvivesACallbackThatThrows)
+{
+    // Regression guard: workerLoop() runs req.callback(performRequest(...)) with no try/catch of
+    // its own, on a bare std::thread RestinioHttpServer's per-request exception guard never sees
+    // (that guard only covers the synchronous handler call; this callback fires later, from a
+    // different thread entirely). An uncaught exception escaping a std::thread's entry function
+    // terminates the whole process -- this proves the worker instead survives and keeps serving
+    // later requests, which it could only do if the exception was caught inside the loop.
+    const std::string path = makeUniqueSocketPath("authd_client_callback_throws");
+    FakeUdsServer server(
+        path, [](const std::string&) { return R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})"; });
+    server.setCloseAfterReply(true);
+
+    // workerThreads=1: guarantees the SAME worker thread that ran the throwing callback is the one
+    // that must still be alive and looping to pick up the second request below.
+    AuthdClient client(path,
+                       /*isWorkerNode=*/false,
+                       /*connectTimeoutMs=*/0,
+                       /*responseTimeoutMs=*/2000,
+                       /*maxQueueSize=*/0,
+                       /*workerThreads=*/1);
+
+    client.addAgent(makeRequest(), [](AuthdResult) { throw std::runtime_error("boom"); });
+
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback());
+    const auto result = waiter.wait(std::chrono::seconds(2));
+    EXPECT_EQ(result.errorCode, 0);
 }

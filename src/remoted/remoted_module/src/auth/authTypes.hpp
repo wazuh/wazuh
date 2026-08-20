@@ -134,6 +134,15 @@ namespace remoted::auth
         UnsupportedContentEncoding, ///< Content-Encoding present but not (case-insensitively) "zstd".
         MalformedContentEncoding,   ///< Content-Encoding: zstd, but the body isn't a valid/complete
                                     ///< zstd frame (bad magic, truncated, oversized window, ...).
+        EnrollmentKeyUnavailable,   ///< Raised ONLY by EnrollmentAuthenticator's Password mode
+                                    ///< (enrollmentAuthenticator.cpp): etc/authd.pass is missing,
+                                    ///< unreadable, invalid, or not yet synced from the master to this
+                                    ///< node, OR AES-CMAC is unavailable manager-wide. Deliberately
+                                    ///< distinct from MissingKey (a client.keys decode failure for an
+                                    ///< ALREADY-enrolled agent) -- collapsing the two would have
+                                    ///< logRejection() tell an operator to "re-enroll the affected
+                                    ///< agent(s)" for a condition where no agent, and no client.keys
+                                    ///< entry, exists yet at all.
     };
 
     /**

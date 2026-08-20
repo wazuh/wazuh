@@ -65,24 +65,30 @@ namespace remoted::enrollment
      * misreport every successful call.
      *
      * A small pool of dedicated worker threads (see workerThreads) pulls from one shared, bounded
-     * queue, each connecting fresh for each request it picks up. authd's own local-socket accept
-     * loop is single-threaded and fully synchronous (accept -> recv -> dispatch -> send -> close,
-     * one client at a time), so a pool does NOT raise authd's own processing rate -- that stays
-     * whatever authd's business logic costs per request, an upper bound this class cannot move.
-     * What a pool buys instead: with only one worker, authd's accept loop sits idle between
-     * closing one connection and this class noticing, reconnecting, and sending the next request
-     * -- a round trip of pure connection-setup latency added on top of authd's own processing time,
-     * for every single request, serialized. With several workers, by the time authd finishes one
-     * request and calls accept() again, another worker's connection (already sent, already
-     * awaiting a reply) is normally already sitting in authd's listen backlog (128 slots -- see
-     * OS_BindUnixDomainWithPerms in shared/os_net/os_net.c), so authd is essentially never left
-     * waiting on remoted for the next request. That closes the gap between this bridge's real
-     * throughput and authd's own dispatch-rate ceiling, without needing any change to authd itself.
+     * queue, each connecting fresh for each request it picks up. authd's local-socket accept loop
+     * (run_local_server, os_auth/src/local-server.c) hands each accepted connection to its own
+     * detached thread rather than dispatching inline, so authd itself can now process several
+     * requests concurrently too -- a single-worker AuthdClient would still only ever have ONE
+     * request in flight, no matter how parallel authd can go, and would still pay a round trip of
+     * pure connection-setup latency (connect + send + await reply + close) sitting on the critical
+     * path *in addition to* authd's processing time, for every single request, serialized. With
+     * several workers, authd can genuinely work on more than one at once, and another worker's
+     * connection (already sent, already awaiting a reply) is normally already sitting in authd's
+     * listen backlog (128 slots -- see OS_BindUnixDomainWithPerms in shared/os_net/os_net.c) by
+     * the time authd finishes one and calls accept() again, so authd is essentially never left
+     * idle waiting on remoted for the next request.
      *
      * Because of this, addAgent()'s callback can now run on ANY of the pool's threads, including
      * concurrently with another addAgent() call's callback on a different thread -- callers must
      * be safe under that (the enrollment endpoint's own callback already is: IHttpResponder::send()
      * is thread-safe by contract, and the metrics counters it also touches are relaxed atomics).
+     *
+     * Each worker thread also guards its own callback invocation with a catch-all (see
+     * authdClient.cpp's workerLoop()): this runs on a bare std::thread that RestinioHttpServer's
+     * own per-request try/catch never sees (addAgent() already returned by the time this fires,
+     * on a different thread), so an uncaught exception here -- from performRequest() itself or
+     * from the callback -- would otherwise std::terminate the entire remoted daemon instead of
+     * just failing the one request.
      *
      * The response timeout is worker-aware when the caller passes 0 (see
      * resolveResponseTimeoutMs()): authd's own worker-to-master cluster forward
@@ -115,9 +121,9 @@ namespace remoted::enrollment
         static constexpr std::uint32_t kWorkerDefaultResponseTimeoutMs = 15000;
         static constexpr std::uint32_t kDefaultMaxQueueSize = 256;
         /// Deliberately a small, fixed number, not CPU-scaled like this module's other worker
-        /// pools (e.g. http_worker_threads): authd's own accept loop is single-threaded regardless
-        /// of how many CPUs the manager has, so scaling this with core count would just leave
-        /// surplus workers unable to help. See the class comment for what this pool actually buys.
+        /// pools (e.g. http_worker_threads): bounded by authd's listen backlog (128 slots), not by
+        /// the manager's CPU count, so scaling this with core count would just leave surplus
+        /// workers unable to help. See the class comment for what this pool actually buys.
         static constexpr std::uint32_t kDefaultWorkerThreads = 8;
 
         /**

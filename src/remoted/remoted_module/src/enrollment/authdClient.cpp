@@ -219,7 +219,29 @@ namespace remoted::enrollment
                 m_queue.pop();
                 lock.unlock();
 
-                req.callback(performRequest(req.request));
+                // This runs on a bare std::thread (m_workers), not on the HTTP transport's own
+                // worker pool -- RestinioHttpServer's own try/catch around a route handler's
+                // SYNCHRONOUS call (see its comment about asio::thread_pool terminating on any
+                // escaping exception) does NOT cover this: addAgent() already returned by the
+                // time this runs, later, on a different thread entirely. An uncaught exception
+                // here -- from performRequest() itself (e.g. nlohmann::json::dump()/bad_alloc
+                // building the wire request, before its own try blocks even start) or from
+                // req.callback() (e.g. mapAuthdResult()'s JSON building, or IHttpResponder::send()
+                // racing an already-torn-down connection) -- would escape this thread's entry
+                // function and std::terminate the entire remoted daemon, taking down every other
+                // agent's connection along with the one enrollment request that triggered it.
+                try
+                {
+                    req.callback(performRequest(req.request));
+                }
+                catch (const std::exception& e)
+                {
+                    LOGFN_ERROR(logFn(), "AuthdClient worker thread caught an exception: %s", e.what());
+                }
+                catch (...)
+                {
+                    LOGFN_ERROR(logFn(), "AuthdClient worker thread caught a non-standard exception.");
+                }
             }
         }
 

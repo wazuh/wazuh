@@ -26,6 +26,13 @@ namespace remoted::enrollment
 
         cfg.passwordRefreshIntervalSec = c.enroll_password_refresh_interval;
 
+        // Same two ABI fields (and the same >0-else-default resolution) authTypes.cpp already
+        // applies for the agent<->manager scheme's AuthConfig -- see the field comment above.
+        cfg.maxRequestAgeSeconds = c.auth_max_request_age > 0 ? c.auth_max_request_age : 300;
+        cfg.maxFutureSkewSeconds = c.auth_max_future_skew > 0 ? c.auth_max_future_skew : 30;
+        cfg.maxBodySize =
+            c.auth_max_body_size > 0 ? static_cast<std::size_t>(c.auth_max_body_size) : (10U * 1024U * 1024U);
+
         cfg.authdConnectTimeoutMs =
             c.authd_connect_timeout > 0 ? static_cast<std::uint32_t>(c.authd_connect_timeout) * 1000U : 0U;
         cfg.authdResponseTimeoutMs =

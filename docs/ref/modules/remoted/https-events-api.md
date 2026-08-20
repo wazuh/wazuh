@@ -240,10 +240,10 @@ On rejection the body is `{"error":"<message>","code":<status>}`. Credential-rel
 collapse to a **single generic `401`** so a client cannot tell which specific check failed.
 
 | Condition                                                                                                                                                                               | HTTP  | `error` message                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----- | ------------------------------------------- |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------- |
 | Missing `protocol-version` header                                                                                                                                                       | `400` | `Missing required header: protocol-version` |
 | Unsupported `protocol-version`                                                                                                                                                          | `400` | `Unsupported protocol-version`              |
-| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC                        | `401` | `Invalid client authentication`             |
+| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC                         | `401` | `Invalid client authentication`             |
 | Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
@@ -443,13 +443,16 @@ certificate is required, which agent versions are accepted) is deliberately **no
 `remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
 can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
 
-**Why more than one worker, when `authd`'s own local-socket accept loop is single-threaded.** A
-pool doesn't raise `authd`'s own processing rate — that ceiling is fixed by `authd`'s business
-logic regardless. What it removes is the connection-setup round trip (connect + send + await reply
-+ close) sitting on the critical path *in addition to* `authd`'s processing time, for every single
-request, when only one worker exists: with several workers, another connection is normally already
-waiting in `authd`'s listen backlog (128 slots) by the time it finishes the current one and calls
-`accept()` again, so `authd` is essentially never left idle waiting on `remoted`. Keep this well
+**Why more than one worker.** `authd`'s local-socket accept loop hands each accepted connection to
+its own detached thread (`os_auth/src/local-server.c`'s `handle_local_client`), so several `add`
+requests -- including a worker's cluster-forwarded ones, which can legitimately take several
+seconds -- now genuinely run concurrently on `authd`'s side too, not just queue one-at-a-time behind
+a single dispatcher. A single-worker `remoted` would still only ever have ONE such request in
+flight at a time no matter how parallel `authd` itself can go, and would still pay the
+connection-setup round trip (connect + send + await reply + close) sitting on the critical path *in
+addition to* `authd`'s processing time, for every single request. With several workers, `authd` can
+actually work on more than one at once, and another connection is normally already waiting in its
+listen backlog (128 slots) by the time it finishes one and calls `accept()` again. Keep this well
 under 128 — there's no benefit to more workers than that backlog can hold.
 
 ### client.keys hot-reload
@@ -869,9 +872,13 @@ entry yet to sign with. Two credential checks apply instead, decided once at man
   `<mac>` is a 32-character lowercase-hex AES-256-CMAC, keyed by a 32-byte key derived from
   `authd`'s enrollment password (`etc/authd.pass`) via **HKDF-SHA256** (empty salt,
   `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`) — never the password bytes themselves. The timestamp
-  accepts the same window as the AES-CMAC scheme above (300 s past, 30 s future). The MAC covers a
-  canonical byte sequence deliberately similar to the AES-CMAC scheme's, minus the agent-id field
-  (an enrolling agent doesn't have one):
+  accepts the same window as the AES-CMAC scheme above (300 s past, 30 s future) -- tunable via the
+  SAME two internal options, `remoted.auth_max_request_age`/`remoted.auth_max_future_skew` (see the
+  table under [Authentication (AES-CMAC)](#authentication-aes-cmac) above). The request body is
+  also capped by the same `remoted.auth_max_body_size` (10 MiB default) that scheme enforces --
+  checked before anything else, in **every** mode including Open, so an oversized body is rejected
+  with `413` before it is ever hashed. The MAC covers a canonical byte sequence deliberately similar
+  to the AES-CMAC scheme's, minus the agent-id field (an enrolling agent doesn't have one):
 
   ```text
   WAZUH-ENROLL\n
@@ -920,10 +927,10 @@ already accepts, with TLS protecting the transport either way.
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `name` | yes | Non-empty, ≤128 chars; `authd` re-validates independently and more strictly. |
+| `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, `manage_agents` and the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
 | `version` | yes | Rejected if newer than the manager's unless `<remote><agents><allow_higher_versions>` is `yes` — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
 | `groups` | no | Comma-separated, passed through unchanged. |
-| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or the literal `any`; see IP resolution below. |
+| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
@@ -931,8 +938,11 @@ for admin/restore use (`manage_agents`): `/enroll` is exclusively for a brand-ne
 self-enrolling, which always gets an auto-assigned ID and an `authd`-generated key.
 
 **IP resolution** mirrors `authd`'s own [`use_source_ip`](../authd/configuration.md#use_source_ip):
-if enabled, the HTTPS connection's observed peer address is used, overriding anything the body
-claims; otherwise the body's `ip` is used if present; otherwise `any`.
+if enabled (manager-side), the HTTPS connection's observed peer address is used, overriding
+anything the body claims. Otherwise, a body `ip` of `src` (agent-side sentinel) also resolves to
+the observed peer address — never forwarded to `authd` literally, since its local socket has no
+notion of that sentinel at all (only port 1515's own wire parser does) and would reject it as an
+invalid IP. Otherwise the body's `ip` is used if present; otherwise `any`.
 
 ### Responses
 
@@ -956,18 +966,27 @@ Verbatim from `authd` — the `key` the agent must store and use to sign every s
 | --- | --- | --- |
 | Enrollment administratively disabled | `403` | Route always exists; see above. |
 | Missing/invalid credential | `401` | Collapsed to one generic message; see Authentication above. |
+| Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked BEFORE the CMAC runs (and before a credential check, in Open mode too) -- an oversized body is rejected without ever being hashed or reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
 | Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. |
-| `authd` bad function/args/name/ip/groups (9003–9006, 9014) | `400` | Passed through with `authd`'s own message. |
+| `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
 | `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
 | `authd` unreachable, or its reply was unparseable/timed out | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}` |
 
-Every business-rejection error body has the shape `{"error":{"code":<authd-code>,"message":"<text>"}}`
-— distinct from every other endpoint's flat `{"error":"<message>","code":<status>}` shape, since
-this one passes through `authd`'s own numeric codes for diagnostics.
+Every error the `/enroll` **endpoint itself** produces — every row in the table above, disabled/
+credential/body-size/validation/`authd` business and transport failures alike — has the shape
+`{"error":{"code":<code>,"message":"<text>"}}`, distinct from every other endpoint's flat
+`{"error":"<message>","code":<status>}` shape, since this one passes through `authd`'s own numeric
+codes for diagnostics (`code` is `0` for the non-`authd` rows, which carry no numeric code).
+
+A few conditions never reach the endpoint's own code at all — the shared HTTP transport rejects them
+first, in the same flat shape it uses for every route, `/enroll` included: an uncaught exception
+(`500`), capacity-based load shedding once the module's in-flight byte budget is exhausted (`503`),
+or (mTLS mode) a client certificate that doesn't match the connecting peer's address (`403`). These
+are the exception to the "always nested" rule above, not a second business-error shape.
 
 ## Testing
 

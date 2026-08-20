@@ -77,9 +77,10 @@ DisableAuthd()
     # Unified manager certificate (see GenerateHttpsManagerCert()): authd no longer generates or
     # owns its own cert/key pair, so even in this <disabled>yes</disabled> block these point at
     # remoted's, keeping the value valid in the (rare) case an operator later flips <disabled> back
-    # to "no" by hand instead of regenerating the whole file.
-    echo "    <ssl_manager_cert>etc/certs/remoted.pem</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>etc/certs/remoted-key.pem</ssl_manager_key>" >> $NEWCONFIG
+    # to "no" by hand instead of regenerating the whole file. Same custom-certificate override as
+    # the enabled path (see WriteAuthd's AUTH_TEMPLATE substitution above), for the same reason.
+    echo "    <ssl_manager_cert>${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}</ssl_manager_key>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 }
@@ -756,7 +757,18 @@ WriteManager()
 
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        # Same custom-certificate override WriteRemote()'s <https> block already honors (see
+        # GenerateHttpsManagerCert() above): authd's <ssl_manager_cert>/<ssl_manager_key> must
+        # point at whatever file the manager's HTTPS listener actually loads, or authd fails to
+        # start (ENOENT) whenever a custom certificate is supplied -- GenerateHttpsManagerCert()
+        # correctly skips generating the default etc/certs/remoted.pem in that case, but
+        # auth.template's cert paths used to stay hardcoded to it regardless.
+        WAZUH_AUTHD_SSL_MANAGER_CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
+        WAZUH_AUTHD_SSL_MANAGER_KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" \
+            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_CERT}|$WAZUH_AUTHD_SSL_MANAGER_CERT|g" \
+            -e "s|\${WAZUH_AUTHD_SSL_MANAGER_KEY}|$WAZUH_AUTHD_SSL_MANAGER_KEY|g" \
+            "${AUTH_TEMPLATE}" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
     else
         DisableAuthd

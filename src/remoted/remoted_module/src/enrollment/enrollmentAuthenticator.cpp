@@ -98,6 +98,17 @@ namespace remoted::enrollment
                                           std::string_view body,
                                           std::int64_t currentUnixTimeSeconds) const
     {
+        // Checked first, in EVERY mode (including Open): otherwise an unauthenticated peer could
+        // make this endpoint hold an arbitrarily large body -- up to the transport's own cap, not
+        // this class's -- in the in-flight budget shared with every other route, for however long
+        // parseAndValidateBody() takes to notice and reject it. Checking here also means an
+        // oversized body gets the same 413 every other endpoint returns, instead of falling
+        // through to parseAndValidateBody()'s own (much smaller) cap and a 400.
+        if (body.size() > m_config.maxBodySize)
+        {
+            return remoted::auth::AuthError::BodyTooLarge;
+        }
+
         if (!m_config.requirePassword)
         {
             return std::nullopt;
@@ -143,10 +154,14 @@ namespace remoted::enrollment
         // Fail-closed: Password mode active but the key is unavailable (file missing/unreadable/
         // invalid, or not yet synced from the master to a worker) -- never fall back to Open mode.
         // See PasswordKeySource's class comment for why conflating the two would be a security bug.
+        // EnrollmentKeyUnavailable, deliberately NOT MissingKey: MissingKey means an already-
+        // enrolled agent's client.keys entry doesn't decode, and logRejection() tells the operator
+        // to "re-enroll" for that -- nonsensical advice here, where there is no agent and no
+        // client.keys entry yet at all.
         const auto key = m_keySource ? m_keySource->currentKey() : std::nullopt;
         if (!key)
         {
-            return remoted::auth::AuthError::MissingKey;
+            return remoted::auth::AuthError::EnrollmentKeyUnavailable;
         }
 
         std::array<std::uint8_t, remoted::auth::Cmac::kMacSize> expectedMac {};
@@ -160,13 +175,13 @@ namespace remoted::enrollment
         {
             // The key is always exactly 32 bytes (HKDF's fixed output length -- see
             // PasswordKeySource), so CmacKeyError cannot fire here; a CmacProviderError means
-            // AES-CMAC itself is unavailable manager-wide, which collapses to the same
-            // MissingKey/401 AuthMiddleware uses for that condition.
+            // AES-CMAC itself is unavailable manager-wide -- same EnrollmentKeyUnavailable as
+            // above, since either way there is no usable key to check the MAC against.
             cmac = std::make_unique<remoted::auth::Cmac>(*key);
         }
         catch (const std::exception&)
         {
-            return remoted::auth::AuthError::MissingKey;
+            return remoted::auth::AuthError::EnrollmentKeyUnavailable;
         }
 
         cmac->update("WAZUH-ENROLL\n");

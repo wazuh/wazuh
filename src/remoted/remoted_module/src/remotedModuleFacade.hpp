@@ -313,13 +313,23 @@ private:
             std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
         // The Content-Encoding contract is composed in here rather than built into the gateway, so
         // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
-        // stateless -- see its own class comment) between AuthGateway (every client.keys-backed
-        // endpoint) and /enroll's own handler below, so every authenticated endpoint gets the same
-        // policy and none can accidentally opt out or drift out of sync with the others.
+        // stateless -- see its own class comment) across every AuthGateway route, so they all get
+        // the same policy and none can accidentally opt out or drift out of sync with each other.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
         const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
             *m_httpServer, m_config.http_content_encoding_enabled);
         m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+
+        // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
+        // route requires a verified credential before decode() ever runs, which closes the
+        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
+        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
+        // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
+        // shared in-flight byte budget (the same one /stateless and friends draw from) even
+        // briefly while decompressing -- see makeHandler()'s and BodyDecoder's own doc comments.
+        const auto enrollBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, remoted::enrollment::kMaxEnrollBodySize);
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
@@ -503,7 +513,11 @@ private:
         }
 
         m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
-            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword}, enrollPasswordKeySource);
+            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
+                                                       enrollConfig.maxRequestAgeSeconds,
+                                                       enrollConfig.maxFutureSkewSeconds,
+                                                       enrollConfig.maxBodySize},
+            enrollPasswordKeySource);
 
         m_authdClient =
             std::make_unique<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
@@ -517,7 +531,26 @@ private:
             remoted::http::Method::Post,
             "/enroll",
             remoted::enrollment::makeHandler(
-                *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics, bodyDecoder));
+                *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics, enrollBodyDecoder));
+
+        // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
+        // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
+        // use, so it needs its own budget computed from AuthdClient's own (already worker-aware-
+        // resolved) timeouts rather than DownstreamConfig's. At MAXIMUM configured values
+        // (authd_connect_timeout=60s, authd_response_timeout=120s) this reaches 180s against a 30s
+        // http_request_timeout default -- silent with the defaults (2s + 5s/15s), so this only fires
+        // when an operator has pushed these up without also raising http_request_timeout.
+        const auto resolvedAuthdConnectTimeoutMs =
+            enrollConfig.authdConnectTimeoutMs != 0
+                ? static_cast<long long>(enrollConfig.authdConnectTimeoutMs)
+                : static_cast<long long>(remoted::enrollment::AuthdClient::kDefaultConnectTimeoutMs);
+        const auto resolvedAuthdResponseTimeoutMs =
+            static_cast<long long>(remoted::enrollment::AuthdClient::resolveResponseTimeoutMs(
+                enrollConfig.authdResponseTimeoutMs, enrollConfig.isWorkerNode));
+        warnIfBudgetExceedsRequestTimeout("/enroll",
+                                          "authd_connect_timeout'/'authd_response_timeout",
+                                          resolvedAuthdConnectTimeoutMs + resolvedAuthdResponseTimeoutMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
 
         m_httpServer->start(config);
     }
@@ -715,17 +748,34 @@ private:
                                    downstreamConfig.writeTimeoutMs + responseTimeoutMs;
         const long long requestCapMs = static_cast<long long>(serverConfig.requestTimeoutSec) * 1000;
 
+        warnIfBudgetExceedsRequestTimeout(
+            path,
+            "downstream_connect_timeout'/'downstream_write_timeout'/'downstream_response_timeout",
+            budgetMs,
+            requestCapMs);
+    }
+
+    /// Shared core of warnIfDownstreamBudgetExceedsRequestTimeout(): pulled out so /enroll, whose
+    /// downstream is AuthdClient (a completely different config shape -- authd_connect_timeout +
+    /// authd_response_timeout, no write phase) rather than the DeferredForwarder/DownstreamConfig
+    /// pair every other endpoint here shares, can run the same sanity check without forcing that
+    /// shape onto it.
+    void warnIfBudgetExceedsRequestTimeout(const char* path,
+                                           const char* tunablesToReduce,
+                                           long long budgetMs,
+                                           long long requestCapMs)
+    {
         if (budgetMs > requestCapMs)
         {
             LOGFN_WARN(moduleLogFn(),
                        "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
                        "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
                        "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
-                       "reducing 'downstream_connect_timeout'/'downstream_write_timeout'/"
-                       "'downstream_response_timeout'.",
+                       "reducing '%s'.",
                        path,
                        budgetMs,
-                       requestCapMs);
+                       requestCapMs,
+                       tunablesToReduce);
         }
     }
 

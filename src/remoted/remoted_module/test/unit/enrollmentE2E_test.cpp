@@ -33,6 +33,7 @@
 #include <gtest/gtest.h>
 
 #include "auth/cmac.hpp"
+#include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
@@ -43,6 +44,8 @@ using namespace remoted::enrollment;
 using remoted::auth::Cmac;
 using remoted::auth::PasswordKeySource;
 using remoted::auth::toLowerHex;
+using remoted::decoding::ContentEncoding;
+using remoted::decoding::IBodyDecoder;
 using remoted::http::HttpRequest;
 using remoted::http::HttpResponse;
 using remoted::http::IHttpResponder;
@@ -54,6 +57,23 @@ using namespace std::chrono_literals;
 namespace
 {
     const std::string kBody = R"({"name":"agent1","version":"5.0.0"})";
+
+    // Inert stand-in for the real BodyDecoder (see enrollmentEndpoint_test.cpp's identical stub):
+    // these tests are about the auth/validation/authd pipeline, not Content-Encoding, so this
+    // just passes every body through untouched.
+    class PassthroughBodyDecoder final : public IBodyDecoder
+    {
+    public:
+        remoted::auth::AuthError decode(ContentEncoding, remoted::auth::Payload&) const override
+        {
+            return remoted::auth::AuthError::None;
+        }
+    };
+
+    std::shared_ptr<const IBodyDecoder> passthroughDecoder()
+    {
+        return std::make_shared<const PassthroughBodyDecoder>();
+    }
 
     // These tests drive the REAL endpoint handler, which checks the signed timestamp against the
     // actual wall clock (std::time(nullptr) in enrollmentEndpoint.cpp) -- unlike
@@ -151,7 +171,7 @@ TEST(EnrollmentE2ETest, PasswordModeCorrectlySignedRequestEnrollsSuccessfully)
     AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, 0, baseConfig().authdResponseTimeoutMs, 0);
     wazuh::metrics::Manager metricsManager;
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
-    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
 
     const auto key = keySource->currentKey();
     ASSERT_TRUE(key.has_value());
@@ -179,7 +199,7 @@ TEST(EnrollmentE2ETest, PasswordModeWrongSignatureIsRejected)
     AuthdClient authdClient(makeUniqueSocketPath("enrollment_e2e_password_reject"));
     wazuh::metrics::Manager metricsManager;
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
-    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
 
     HttpRequest request;
     request.method = Method::Post;
@@ -205,7 +225,7 @@ TEST(EnrollmentE2ETest, OpenModeUnauthenticatedRequestEnrollsSuccessfully)
     AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, 0, baseConfig().authdResponseTimeoutMs, 0);
     wazuh::metrics::Manager metricsManager;
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
-    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
 
     HttpRequest request;
     request.method = Method::Post;
@@ -228,7 +248,7 @@ TEST(EnrollmentE2ETest, AuthdDownMapsTo503)
         makeUniqueSocketPath("enrollment_e2e_authd_down"), /*isWorkerNode=*/false, 0, config.authdResponseTimeoutMs, 0);
     wazuh::metrics::Manager metricsManager;
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
-    auto handler = makeHandler(authenticator, authdClient, config, metrics);
+    auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
 
     HttpRequest request;
     request.method = Method::Post;
@@ -269,7 +289,7 @@ TEST(EnrollmentE2ETest, ReplayedSignedRequestWithinWindowIsNotStoppedByRemotedIt
     AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, 0, baseConfig().authdResponseTimeoutMs, 0);
     wazuh::metrics::Manager metricsManager;
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
-    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics);
+    auto handler = makeHandler(authenticator, authdClient, baseConfig(), metrics, passthroughDecoder());
 
     const auto key = keySource->currentKey();
     ASSERT_TRUE(key.has_value());

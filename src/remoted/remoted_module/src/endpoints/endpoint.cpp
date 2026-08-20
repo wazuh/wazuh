@@ -47,11 +47,14 @@ namespace
      */
     enum class RejectionKind
     {
-        ClientFault,   ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
-        ClockSkew,     ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
-        BodyTooLarge,  ///< Over the authenticated-body cap -> auth_max_body_size.
-        UnusableKey,   ///< The agent exists but its client.keys key does not decode.
-        AgentMismatch, ///< An authenticated agent claimed a different agent's id (security signal).
+        ClientFault,              ///< Malformed/unauthenticated request. DEBUG2, unthrottled.
+        ClockSkew,                ///< Timestamp outside the accepted window -> auth_max_request_age/_future_skew.
+        BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
+        UnusableKey,              ///< The agent exists but its client.keys key does not decode.
+        AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
+        EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or AES-CMAC
+                                  ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
+                                  ///< is no agent and no client.keys entry yet to "re-enroll".
     };
 
     RejectionKind classify(remoted::auth::AuthError err)
@@ -62,6 +65,7 @@ namespace
             case remoted::auth::AuthError::FutureRequest: return RejectionKind::ClockSkew;
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
+            case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;
             case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
             // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
             // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
@@ -79,6 +83,7 @@ namespace
         static LogThrottle bodyTooLargeThrottle;
         static LogThrottle unusableKeyThrottle;
         static LogThrottle agentMismatchThrottle;
+        static LogThrottle enrollmentKeyUnavailableThrottle;
 
         // NOTE: every argument below must stay allocation-free (literals and integers only). This
         // function runs on every rejected request, and LOGFN_DEBUG2's guard does NOT currently
@@ -117,6 +122,20 @@ namespace
                                "Rejected %llu request(s) in the last %d s from agent(s) whose key could not be used: "
                                "the key column in client.keys did not decode to a 16, 24 or 32-byte AES key. "
                                "Re-enroll the affected agent(s).",
+                               static_cast<unsigned long long>(d.total),
+                               LogThrottle::kDefaultWindowSeconds);
+                }
+                break;
+
+            case RejectionKind::EnrollmentKeyUnavailable:
+                if (const auto d = enrollmentKeyUnavailableThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu Password-mode /enroll request(s) in the last %d s: the enrollment "
+                               "password key is unavailable (etc/authd.pass is missing, unreadable, invalid, or -- "
+                               "on a cluster worker -- not yet synced from the master). Password-mode enrollment "
+                               "will keep failing until it becomes available; this is NOT an agent credential "
+                               "problem, so re-enrolling will not fix it.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
                 }

@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -167,6 +168,14 @@ namespace remoted::auth
         int m_watchDescriptor {-1};
         int m_stopEventFd {-1}; ///< Written by the destructor for an immediate cooperative wakeup.
         std::thread m_watcherThread;
+
+        /// Fallback stop signal, checked every loop iteration independent of m_stopEventFd: if
+        /// eventfd() failed at construction (m_stopEventFd stays -1), poll() has no fd to wake it
+        /// early, but this flag still gets noticed the next time poll()'s own timeout elapses (at
+        /// most m_refreshIntervalSeconds later) -- so the watcher thread is always joinable within
+        /// a bounded time, never permanently, which the destructor's join() would otherwise wait
+        /// on forever.
+        std::atomic<bool> m_stopping {false};
 
         // Serializes reload() (so at most one parse runs at a time, whether triggered by the
         // watcher or called directly) and guards the last-known content hash below, which

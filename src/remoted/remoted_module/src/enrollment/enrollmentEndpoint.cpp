@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <ctime>
 #include <optional>
@@ -62,11 +63,11 @@ namespace remoted::enrollment
             return instance;
         }
 
-        // Cap on the /enroll JSON body actually parsed -- an endpoint-local guard on top of the
-        // transport's own hard cap, same rationale as /control's kMaxControlBodySize. Applied
-        // AFTER decoding, so it bounds the decompressed size a decompression-bomb could otherwise
-        // produce, not just the (already zstd-bomb-guarded) compressed wire size.
-        constexpr std::size_t kMaxEnrollBodySize = 16U * 1024U;
+        // kMaxEnrollBodySize itself lives in enrollmentEndpoint.hpp now (public): remotedModuleFacade.hpp
+        // needs the SAME value to cap BodyDecoder's decoded-size for /enroll's dedicated instance
+        // (see makeHandler()'s doc comment on why Open mode needs that extra cap). Applied AFTER
+        // decoding here too, so together with that cap this bounds both the compressed wire size
+        // AND the decompressed size a decompression-bomb could otherwise produce.
         constexpr std::size_t kMaxNameLength = 128;
 
         remoted::http::HttpResponse errorResponse(int status, int code, std::string_view message)
@@ -90,30 +91,59 @@ namespace remoted::enrollment
 
         bool isValidName(std::string_view name)
         {
-            if (name.empty() || name.size() > kMaxNameLength)
+            // Mirrors OS_IsValidName() (shared/src/agent_validate_op.c) exactly, which is what the
+            // network (port 1515) enrollment path applies (auth.c) -- so both ways an agent can
+            // enroll accept exactly the same set of names, and neither mints a name the other
+            // would have refused.
+            //
+            // Note this is STRICTER than what authd's local socket enforces: that socket checks
+            // only the storage-safety invariant (is_storable_agent_name() in local-server.c),
+            // because its established callers -- manage_agents and the API -- have a longer-
+            // standing, more permissive contract that predates this endpoint and must keep
+            // working. Enrollment has no such obligation, so it holds the tighter line here rather
+            // than relying on the socket's floor. Rejecting locally also means never opening a
+            // connection to authd for a name it could not accept anyway.
+            //
+            // A name outside this charset could corrupt client.keys once written (a space splits
+            // into extra fields; a leading '#'/'!' collides with the removed-entry marker
+            // convention), or simply never round-trip to a name authd itself would accept.
+            if (name.size() < 2 || name.size() > kMaxNameLength)
             {
                 return false;
             }
-            // Reject control characters (wire-framing safety); authd re-validates independently
-            // and far more strictly -- this is only a cheap, local guard.
-            return std::none_of(name.begin(), name.end(), [](unsigned char c) { return c < 0x20 || c == 0x7F; });
+            if (name.front() == '.')
+            {
+                return false;
+            }
+            return std::all_of(name.begin(),
+                               name.end(),
+                               [](unsigned char c) { return std::isalnum(c) || c == '-' || c == '_' || c == '.'; });
         }
 
-        // Syntactic IPv4/IPv6/CIDR check, plus authd's own "any" sentinel (used when the manager
-        // should fall back to config.use_source_ip / no override). Not a semantic check -- authd's
-        // local `add` path re-validates independently.
+        // Syntactic IPv4/IPv6/CIDR check, plus two sentinels neither of which is a real address:
+        // "any" (authd's own "no override" value) and "src" (the legacy port 1515 wire protocol's
+        // "use the connection's actual source IP instead of whatever I put here" sentinel --
+        // os_auth/src/auth.c:208, `IP:'src'`; sent by an agent configured with <use_source_ip> on
+        // its own side, mirrored here for the same client-side setting). Not a semantic check --
+        // authd's local `add` path re-validates independently (and does NOT understand "src"
+        // itself -- see resolveIp() below, which must resolve it before ever reaching authd).
         bool isValidIpOrCidr(std::string_view value)
         {
-            if (value == "any")
+            if (value == "any" || value == "src")
             {
                 return true;
             }
 
             std::string addr(value);
-            std::string_view prefixPart;
+            std::string prefixPart;
             if (const auto slash = addr.find('/'); slash != std::string::npos)
             {
-                prefixPart = std::string_view {addr}.substr(slash + 1);
+                // Copied BEFORE resize(), not a string_view into addr's own buffer: resize() to a
+                // smaller size does not guarantee the bytes past the new length stay valid (it must
+                // rewrite the byte at the new size to '\0', and the standard leaves what's beyond
+                // that unspecified) -- a view taken first would work by accident on some libstdc++
+                // builds and read invalidated/annotated memory under ASan or a hardened one.
+                prefixPart = addr.substr(slash + 1);
                 addr.resize(slash);
             }
 
@@ -230,6 +260,14 @@ namespace remoted::enrollment
             {
                 return remoteIp;
             }
+            // "src" is never forwarded to authd literally: it is not an IP, and authd's local
+            // `add` path has no notion of it at all (that sentinel only exists in port 1515's own
+            // wire parser, auth.c:208) -- it means "use this HTTPS connection's actual peer
+            // address", the one thing /enroll always already knows.
+            if (bodyIp == "src")
+            {
+                return remoteIp;
+            }
             if (bodyIp)
             {
                 return *bodyIp;
@@ -248,7 +286,13 @@ namespace remoted::enrollment
                 case 9004:
                 case 9005:
                 case 9006:
-                case 9014: return 400;
+                case 9014:
+                case 9017: // invalid name format. Unreachable from here in practice: isValidName()
+                           // is strictly tighter than the local socket's storage-safety floor, so
+                           // any name authd would reject with 9017 was already refused locally with
+                           // a 400. Mapped for completeness, and so the status stays right if the
+                           // two checks ever diverge.
+                    return 400;
                 case 9007:
                 case 9008:
                 case 9012: return 409;

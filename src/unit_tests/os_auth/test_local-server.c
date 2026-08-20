@@ -158,11 +158,89 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     cJSON_Delete(response);
 }
 
+/* is_storable_agent_name() is STATIC in local-server.c (visible here under WAZUH_UNIT_TESTING).
+ * It guards the ONE invariant every caller of the local socket must satisfy: the name has to
+ * survive a round trip through client.keys' `<id> <name> <ip> <key>` line format. It is
+ * deliberately NOT OS_IsValidName()'s charset -- see the tests below for the names that
+ * distinction keeps working. */
+int is_storable_agent_name(const char *name);
+
+static void test_storable_agent_name_accepts_ordinary_names(void **state) {
+    (void) state;
+
+    assert_int_equal(is_storable_agent_name("agent1"), 1);
+    assert_int_equal(is_storable_agent_name("web-01.example.com"), 1);
+    assert_int_equal(is_storable_agent_name("host_name.2"), 1);
+}
+
+static void test_storable_agent_name_accepts_names_os_isvalidname_rejects(void **state) {
+    (void) state;
+
+    /* The whole point of not reusing OS_IsValidName() here: the API's own documented contract for
+     * `agent_name` is `^[\w\-.%]+$` with no minimum length, so all three of these have always been
+     * accepted through this socket by manage_agents/the API. None of them can corrupt client.keys,
+     * so rejecting them would be a regression for existing callers with no safety gain. */
+    assert_int_equal(is_storable_agent_name("a"), 1);          // single character
+    assert_int_equal(is_storable_agent_name("100%cpu"), 1);    // '%' is outside OS_IsValidName()
+    assert_int_equal(is_storable_agent_name(".hidden"), 1);    // leading '.'
+}
+
+static void test_storable_agent_name_rejects_whitespace_and_control_bytes(void **state) {
+    (void) state;
+
+    /* client.keys is whitespace-delimited, so any of these would split the name into extra fields
+     * and shift every later column -- the agent would be stored with a bogus IP and an undecodable
+     * key, then get 401 on every request it ever made. */
+    assert_int_equal(is_storable_agent_name("web 01"), 0);
+    assert_int_equal(is_storable_agent_name("web\t01"), 0);
+    assert_int_equal(is_storable_agent_name("web\n01"), 0);
+    assert_int_equal(is_storable_agent_name("web\r01"), 0);
+    assert_int_equal(is_storable_agent_name("web\x01" "01"), 0);
+    assert_int_equal(is_storable_agent_name("web\x7f" "01"), 0);
+    assert_int_equal(is_storable_agent_name(" leading"), 0);
+    assert_int_equal(is_storable_agent_name("trailing "), 0);
+}
+
+static void test_storable_agent_name_rejects_removed_entry_markers(void **state) {
+    (void) state;
+
+    /* Both OS_ReadKeys() and remoted's keystore treat a leading '#'/'!' on this field as the
+     * removed/disabled-entry marker and skip the line, silently dropping the agent. */
+    assert_int_equal(is_storable_agent_name("#agent"), 0);
+    assert_int_equal(is_storable_agent_name("!agent"), 0);
+
+    /* Only in the FIRST position -- these are storable. */
+    assert_int_equal(is_storable_agent_name("agent#1"), 1);
+    assert_int_equal(is_storable_agent_name("agent!1"), 1);
+}
+
+static void test_storable_agent_name_rejects_empty_and_overlong(void **state) {
+    (void) state;
+    char overlong[130];
+    char at_limit[129];
+
+    assert_int_equal(is_storable_agent_name(NULL), 0);
+    assert_int_equal(is_storable_agent_name(""), 0);
+
+    memset(at_limit, 'a', 128);
+    at_limit[128] = '\0';
+    assert_int_equal(is_storable_agent_name(at_limit), 1); // exactly 128 is allowed
+
+    memset(overlong, 'a', 129);
+    overlong[129] = '\0';
+    assert_int_equal(is_storable_agent_name(overlong), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_local_add_clustered_success),
         cmocka_unit_test(test_local_add_clustered_business_rejection_preserves_master_code),
         cmocka_unit_test(test_local_add_clustered_transport_failure_maps_to_9016),
+        cmocka_unit_test(test_storable_agent_name_accepts_ordinary_names),
+        cmocka_unit_test(test_storable_agent_name_accepts_names_os_isvalidname_rejects),
+        cmocka_unit_test(test_storable_agent_name_rejects_whitespace_and_control_bytes),
+        cmocka_unit_test(test_storable_agent_name_rejects_removed_entry_markers),
+        cmocka_unit_test(test_storable_agent_name_rejects_empty_and_overlong),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

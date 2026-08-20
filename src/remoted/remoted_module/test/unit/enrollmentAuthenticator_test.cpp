@@ -172,7 +172,10 @@ TEST_F(PasswordFixture, FutureTimestampIsRejected)
 TEST(EnrollmentAuthenticatorTest, PasswordModeMissingKeyFileFailsClosed)
 {
     // Points at a file that was never written: PasswordKeySource::currentKey() stays nullopt.
-    // Fail-closed is security-critical here -- must be MissingKey/401, never treated as Open mode.
+    // Fail-closed is security-critical here -- must be rejected/401, never treated as Open mode.
+    // EnrollmentKeyUnavailable, deliberately NOT MissingKey: MissingKey means an already-enrolled
+    // agent's client.keys entry doesn't decode (logRejection() tells the operator to "re-enroll"
+    // for that) -- nonsensical here, where no agent and no client.keys entry exist yet at all.
     auto keySource = std::make_shared<PasswordKeySource>("/tmp/enrollmentAuthenticator_test_absent.pass");
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {true}, keySource};
 
@@ -180,7 +183,7 @@ TEST(EnrollmentAuthenticatorTest, PasswordModeMissingKeyFileFailsClosed)
     const auto err =
         authenticator.authenticate("WazuhEnroll " + std::to_string(kNow) + ":" + mac, "POST", "/enroll", "{}", kNow);
     ASSERT_TRUE(err.has_value());
-    EXPECT_EQ(*err, AuthError::MissingKey);
+    EXPECT_EQ(*err, AuthError::EnrollmentKeyUnavailable);
 }
 
 // -----------------------------------------------------------------------------
@@ -195,4 +198,44 @@ TEST(EnrollmentAuthenticatorTest, RequirePasswordFalseAlwaysPasses)
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
     EXPECT_EQ(authenticator.authenticate("", "POST", "/enroll", "{}", kNow), std::nullopt);
     EXPECT_EQ(authenticator.authenticate("garbage", "POST", "/enroll", "{}", kNow), std::nullopt);
+}
+
+// -----------------------------------------------------------------------------
+// maxBodySize -- checked before anything else, in every mode. Regression guard: this class used
+// to have no body-size cap at all, so an unauthenticated peer could make it CMAC an arbitrarily
+// large body (up to the transport's own cap) before ever being rejected.
+// -----------------------------------------------------------------------------
+
+TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeAnythingElseInOpenMode)
+{
+    EnrollmentAuthConfig config {false};
+    config.maxBodySize = 10;
+    EnrollmentAuthenticator authenticator {config, nullptr};
+
+    const auto err = authenticator.authenticate("", "POST", "/enroll", std::string(11, 'a'), kNow);
+    ASSERT_TRUE(err.has_value());
+    EXPECT_EQ(*err, AuthError::BodyTooLarge);
+}
+
+TEST(EnrollmentAuthenticatorTest, BodyAtOrUnderTheCapIsNotRejectedOnSizeAloneInOpenMode)
+{
+    EnrollmentAuthConfig config {false};
+    config.maxBodySize = 10;
+    EnrollmentAuthenticator authenticator {config, nullptr};
+
+    EXPECT_EQ(authenticator.authenticate("", "POST", "/enroll", std::string(10, 'a'), kNow), std::nullopt);
+}
+
+TEST(EnrollmentAuthenticatorTest, OversizedBodyIsRejectedBeforeTheCmacRunsInPasswordMode)
+{
+    // No Authorization header at all, AND an oversized body: if this returned
+    // MissingAuthorization instead, the size check would be running after (or not at all before)
+    // the rest of authenticatePassword() -- BodyTooLarge proves it runs first.
+    EnrollmentAuthConfig config {true};
+    config.maxBodySize = 10;
+    EnrollmentAuthenticator authenticator {config, nullptr};
+
+    const auto err = authenticator.authenticate("", "POST", "/enroll", std::string(11, 'a'), kNow);
+    ASSERT_TRUE(err.has_value());
+    EXPECT_EQ(*err, AuthError::BodyTooLarge);
 }

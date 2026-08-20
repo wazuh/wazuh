@@ -45,6 +45,11 @@ TEST(EnrollmentConfigTest, ZeroedAbiMeansEverythingOffAndTimeoutsAtSentinel)
     EXPECT_EQ(cfg.authdResponseTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdMaxQueueSize, 0u);
     EXPECT_EQ(cfg.authdWorkerThreads, 0u);
+
+    // Same fallback defaults authTypes.cpp resolves for the agent<->manager scheme's AuthConfig --
+    // /enroll's WazuhEnroll freshness-window check must not silently diverge from them.
+    EXPECT_EQ(cfg.maxRequestAgeSeconds, 300);
+    EXPECT_EQ(cfg.maxFutureSkewSeconds, 30);
 }
 
 TEST(EnrollmentConfigTest, BooleanAndStringFieldsCopiedVerbatim)
@@ -106,4 +111,50 @@ TEST(EnrollmentConfigTest, NegativeAuthdKnobsFallBackToZeroSentinel)
     EXPECT_EQ(cfg.authdResponseTimeoutMs, 0u);
     EXPECT_EQ(cfg.authdMaxQueueSize, 0u);
     EXPECT_EQ(cfg.authdWorkerThreads, 0u);
+}
+
+TEST(EnrollmentConfigTest, ConfiguredRequestAgeAndFutureSkewArePassedThrough)
+{
+    // Regression guard: buildEnrollmentConfig() used to drop these two entirely -- remoted's own
+    // `auth_max_request_age`/`auth_max_future_skew` internal options had no effect on /enroll at
+    // all, silently contradicting send_enroll.py/https-events-api.md, which both document them as
+    // applying here too.
+    auto c = zeroedConfig();
+    c.auth_max_request_age = 600;
+    c.auth_max_future_skew = 60;
+
+    const auto cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.maxRequestAgeSeconds, 600);
+    EXPECT_EQ(cfg.maxFutureSkewSeconds, 60);
+}
+
+TEST(EnrollmentConfigTest, NonPositiveRequestAgeAndFutureSkewFallBackToDefaults)
+{
+    auto c = zeroedConfig();
+    c.auth_max_request_age = -1;
+    c.auth_max_future_skew = 0;
+
+    const auto cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.maxRequestAgeSeconds, 300);
+    EXPECT_EQ(cfg.maxFutureSkewSeconds, 30);
+}
+
+TEST(EnrollmentConfigTest, ConfiguredMaxBodySizeIsPassedThrough)
+{
+    // Regression guard: EnrollmentAuthConfig used to have no body-size cap counterpart to
+    // AuthConfig's at all, so /enroll never honored auth_max_body_size.
+    auto c = zeroedConfig();
+    c.auth_max_body_size = 1024 * 1024;
+
+    const auto cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.maxBodySize, 1024u * 1024u);
+}
+
+TEST(EnrollmentConfigTest, NonPositiveMaxBodySizeFallsBackToTenMebibytes)
+{
+    auto c = zeroedConfig();
+    c.auth_max_body_size = 0;
+
+    const auto cfg = buildEnrollmentConfig(c);
+    EXPECT_EQ(cfg.maxBodySize, 10u * 1024u * 1024u);
 }

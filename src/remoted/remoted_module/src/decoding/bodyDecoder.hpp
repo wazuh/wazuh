@@ -12,8 +12,10 @@
 #ifndef _REMOTED_DECODING_BODY_DECODER_HPP
 #define _REMOTED_DECODING_BODY_DECODER_HPP
 
-#include "iBodyDecoder.hpp"             // ContentEncoding, IBodyDecoder
 #include "http_server/IHttpServer.hpp" // remoted::http::IHttpServer
+#include "iBodyDecoder.hpp"            // ContentEncoding, IBodyDecoder
+
+#include <cstddef>
 
 namespace remoted::decoding
 {
@@ -54,22 +56,33 @@ namespace remoted::decoding
     {
     public:
         /**
-         * @param server  Transport owning the in-flight byte budget. Must outlive this decoder (both
-         *                are owned by the module facade).
-         * @param enabled Whether `Content-Encoding: zstd` is accepted at all. Takes the ALREADY
-         *                RESOLVED value of `remoted.http_content_encoding_enabled`, read in
-         *                secure.c and carried on the C-ABI config struct. This class deliberately does
-         *                NOT read configuration itself: nothing in the C++ module does, so all config
-         *                keeps entering through the single C-ABI door and this stays testable with a
-         *                plain bool.
+         * @param server        Transport owning the in-flight byte budget. Must outlive this decoder
+         *                      (both are owned by the module facade).
+         * @param enabled       Whether `Content-Encoding: zstd` is accepted at all. Takes the ALREADY
+         *                      RESOLVED value of `remoted.http_content_encoding_enabled`, read in
+         *                      secure.c and carried on the C-ABI config struct. This class deliberately
+         *                      does NOT read configuration itself: nothing in the C++ module does, so
+         *                      all config keeps entering through the single C-ABI door and this stays
+         *                      testable with a plain bool.
+         * @param maxDecodedSize 0 (default) -> no cap beyond whatever the shared in-flight byte budget
+         *                      allows -- what every AuthGateway route uses, since each one already
+         *                      requires a verified credential before decode() ever runs, closing the
+         *                      amplification lever this cap exists for. A nonzero value additionally
+         *                      refuses to grow the decoded output past it, regardless of how much
+         *                      budget is free -- for a route (namely /enroll's Open mode, which has NO
+         *                      credential check by design) where an unauthenticated peer can reach
+         *                      decode() and a small, highly-compressed frame could otherwise hold a
+         *                      large chunk of the SHARED budget (the same one /stateless and friends
+         *                      draw from) for as long as decompression takes.
          */
-        BodyDecoder(remoted::http::IHttpServer& server, bool enabled);
+        explicit BodyDecoder(remoted::http::IHttpServer& server, bool enabled, std::size_t maxDecodedSize = 0);
 
         remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const override;
 
     private:
         remoted::http::IHttpServer& m_server;
         bool m_enabled;
+        std::size_t m_maxDecodedSize;
     };
 
 } // namespace remoted::decoding

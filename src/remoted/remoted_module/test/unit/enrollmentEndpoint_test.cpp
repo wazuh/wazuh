@@ -237,6 +237,40 @@ TEST(EnrollmentEndpointTest, MissingNameIsRejectedWith400)
     EXPECT_NE(parseBody(response)["error"]["message"].get<std::string>().find("name"), std::string::npos);
 }
 
+// Mirrors OS_IsValidName() (shared/src/agent_validate_op.c): a name outside this charset must
+// never reach authd, since a space would split into extra client.keys fields on write (name/IP/key
+// all shift) and a leading '#'/'!' would collide with the removed-entry marker convention -- both
+// silently corrupt the agent record rather than producing a visible error.
+class EnrollmentEndpointNameValidationTest : public ::testing::TestWithParam<std::string>
+{
+};
+
+TEST_P(EnrollmentEndpointNameValidationTest, InvalidNameIsRejectedWith400)
+{
+    nlohmann::json body;
+    body["name"] = GetParam();
+    body["version"] = "5.0.0";
+    const auto response = run(openModeConfig(), body.dump(), makeUniqueSocketPath("enrollment_endpoint_invalid_name"));
+    EXPECT_EQ(response.status, 400);
+}
+
+INSTANTIATE_TEST_SUITE_P(InvalidNames,
+                         EnrollmentEndpointNameValidationTest,
+                         ::testing::Values("web 01",                // space -- would split client.keys fields
+                                           "#web01",                // leading '#' -- removed-entry marker
+                                           "!web01",                // leading '!' -- removed-entry marker
+                                           ".web01",                // leading '.' -- OS_IsValidName() rejects
+                                           "a",                     // length 1 -- below OS_IsValidName()'s minimum
+                                           "",                      // empty
+                                           std::string(129, 'a'))); // over the 128-char cap
+
+TEST(EnrollmentEndpointTest, NameWithAllowedPunctuationIsAccepted)
+{
+    auto stub = fixedAuthdServer(R"({"error":0,"data":{"id":"1","name":"web-01.prod_a","ip":"any","key":"k"}})");
+    const auto response = run(openModeConfig(), R"({"name":"web-01.prod_a","version":"5.0.0"})", stub.path);
+    EXPECT_EQ(response.status, 200);
+}
+
 TEST(EnrollmentEndpointTest, MissingVersionIsRejectedWith400)
 {
     const auto response = run(openModeConfig(), R"({"name":"agent1"})", makeUniqueSocketPath("enrollment_endpoint_v4"));
@@ -461,6 +495,33 @@ TEST(EnrollmentEndpointTest, AnyUsedWhenNeitherSourceIpNorBodyIpPresent)
     EXPECT_EQ(j["arguments"]["ip"], "any");
 }
 
+TEST(EnrollmentEndpointTest, SrcSentinelResolvesToThePeerAddressNotForwardedLiterally)
+{
+    // "src" mirrors legacy port 1515's own wire sentinel (os_auth/src/auth.c's `IP:'src'`, sent by
+    // an agent configured with its own client-side <use_source_ip>) -- it must resolve to the
+    // HTTPS connection's actual peer address, never reach authd as the literal string "src" (which
+    // local_add() has no notion of and would reject as an invalid IP).
+    std::string captured;
+    std::mutex mu;
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_ip_src");
+    FakeUdsServer server(path,
+                         [&](const std::string& req)
+                         {
+                             std::lock_guard<std::mutex> lock(mu);
+                             captured = req;
+                             return R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})";
+                         });
+
+    Config config = openModeConfig();
+    config.useSourceIp = false; // manager-side flag off: the body's "src" is what must be honored
+    const auto response = run(config, R"({"name":"agent1","version":"5.0.0","ip":"src"})", path, "203.0.113.7");
+    EXPECT_EQ(response.status, 200);
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto j = nlohmann::json::parse(captured);
+    EXPECT_EQ(j["arguments"]["ip"], "203.0.113.7");
+}
+
 // -----------------------------------------------------------------------------
 // Wire shape: force/id/key never sent (mirrors AuthdClient's own coverage of this, exercised here
 // end-to-end through the endpoint instead of a hand-built AuthdAddRequest).
@@ -542,6 +603,7 @@ INSTANTIATE_TEST_SUITE_P(AuthdCodes,
                                            AuthdErrorCase {9005, 400},
                                            AuthdErrorCase {9006, 400},
                                            AuthdErrorCase {9014, 400},
+                                           AuthdErrorCase {9017, 400}, // invalid agent name (new)
                                            AuthdErrorCase {9007, 409},
                                            AuthdErrorCase {9008, 409},
                                            AuthdErrorCase {9012, 409},

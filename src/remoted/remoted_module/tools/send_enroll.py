@@ -100,7 +100,16 @@ def build_body(name: str, version: str, groups: str = None, ip: str = None, key_
     return json.dumps(body).encode()
 
 
-def send(base_url, body, headers, cert=None, timeout=10):
+# A worker-node manager's AuthdClient can legitimately take up to authd_response_timeout's
+# worker-aware default (15 s, authdClient.hpp) before answering -- and much longer than that if an
+# operator raised authd_connect_timeout/authd_response_timeout. 10 s used to be below even the
+# unconfigured worker default, so this tool could report a local timeout for a request the server
+# was still legitimately processing. 20 s covers the default comfortably; --timeout raises it
+# further for a manager configured with non-default (larger) authd_* timeouts.
+DEFAULT_TIMEOUT_SECONDS = 20
+
+
+def send(base_url, body, headers, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     url = base_url.rstrip("/") + "/enroll"
     headers = {**headers, "Content-Type": "application/json"}
     return requests.post(url, headers=headers, data=body, cert=cert, verify=False, timeout=timeout)
@@ -109,7 +118,12 @@ def send(base_url, body, headers, cert=None, timeout=10):
 # --- Scenarios (Password mode only -- these all need a key to sign/tamper with) -------------
 
 def scenario_valid(key, name, timestamp):
-    body = build_body(name, "5.0.0")
+    # Unique per run: this is the one scenario that can actually SUCCEED and persist an agent
+    # record. Reusing a fixed name would make every run after the first collide with the previous
+    # run's own agent and get rejected 409 (EDUPNAME) instead of the 200 this scenario expects --
+    # a tool meant for repeatable testing must not require a fresh client.keys between runs.
+    unique_name = f"{name}-{timestamp}"
+    body = build_body(unique_name, "5.0.0")
     return _auth_header(key, "POST", "/enroll", timestamp, body), body
 
 
@@ -183,9 +197,9 @@ VALIDATION_SCENARIOS = [
 ]
 
 
-def run_scenario(base_url, key, name, scenario_name, expected_status, build):
+def run_scenario(base_url, key, name, scenario_name, expected_status, build, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     headers, body = build(key, name, int(time.time()))
-    response = send(base_url, body, headers)
+    response = send(base_url, body, headers, cert=cert, timeout=timeout)
     ok = response.status_code == expected_status
     label = "PASS" if ok else "FAIL"
     print(f"[{label}] {scenario_name}: expected {expected_status}, got {response.status_code} "
@@ -193,15 +207,17 @@ def run_scenario(base_url, key, name, scenario_name, expected_status, build):
     return ok
 
 
-def run_all(base_url, key, name):
+def run_all(base_url, key, name, cert=None, timeout=DEFAULT_TIMEOUT_SECONDS):
     scenarios = AUTH_SCENARIOS + VALIDATION_SCENARIOS if key else VALIDATION_SCENARIOS
     if not key:
         print("No --password given: skipping the signature/timing scenarios (they need a key to "
               "sign or tamper with) and running only the body-validation ones, which work "
               "regardless of the manager's configured auth mode -- as long as this manager "
               "doesn't itself require a credential.\n")
+    if cert:
+        print(f"Presenting client certificate {cert[0]} on every request (mTLS mode).\n")
     print(f"Running {len(scenarios)} scenario(s) against {base_url}/enroll\n")
-    results = [run_scenario(base_url, key, name, scenario_name, expected, build)
+    results = [run_scenario(base_url, key, name, scenario_name, expected, build, cert=cert, timeout=timeout)
                for scenario_name, expected, build in scenarios]
     passed, total = sum(results), len(results)
     print(f"\n{passed}/{total} scenarios passed.")
@@ -228,7 +244,14 @@ def main():
     parser.add_argument("--all", action="store_true",
                         help="Run every scenario instead of sending one request. Uses --password "
                              "if given (adds signature/timing scenarios on top of the body-"
-                             "validation ones); otherwise runs only the auth-agnostic ones.")
+                             "validation ones); otherwise runs only the auth-agnostic ones. If "
+                             "--client-cert/--client-key are also given, every scenario request "
+                             "presents that certificate too (mTLS mode).")
+    parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS,
+                        help=f"Per-request timeout, seconds (default {DEFAULT_TIMEOUT_SECONDS}, "
+                             "comfortably above authd_response_timeout's unconfigured worker-node "
+                             "default of 15s -- raise this if the manager's authd_connect_timeout/"
+                             "authd_response_timeout were themselves raised).")
     args = parser.parse_args()
 
     if args.password_file and args.password is not None:
@@ -238,12 +261,14 @@ def main():
     if args.password is not None or args.password_file:
         key = derive_key(read_password(args))
 
-    if args.all:
-        return 0 if run_all(args.url, key, args.name) else 1
-
+    # Computed BEFORE the --all branch: --all used to return early here, so --client-cert/
+    # --client-key were silently ignored and mTLS was never actually exercised by --all.
     cert = (args.client_cert, args.client_key) if args.client_cert or args.client_key else None
     if cert and (not args.client_cert or not args.client_key):
         parser.error("--client-cert and --client-key must be given together")
+
+    if args.all:
+        return 0 if run_all(args.url, key, args.name, cert=cert, timeout=args.timeout) else 1
 
     timestamp = int(time.time())
     signed_body = build_body(args.name, args.version, args.groups, args.ip, args.key_hash)
@@ -267,7 +292,7 @@ def main():
         print("    (Open mode: no credential)")
     print(f"    body sent ({len(sent_body)} bytes): {sent_body.decode()}")
 
-    response = send(args.url, sent_body, headers, cert=cert)
+    response = send(args.url, sent_body, headers, cert=cert, timeout=args.timeout)
 
     print(f"<-- {response.status_code} {response.reason}")
     print(f"    {response.text}")

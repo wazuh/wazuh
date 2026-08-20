@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 #include "auth/cmac.hpp"
+#include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -46,6 +47,8 @@ using namespace remoted::enrollment;
 using remoted::auth::Cmac;
 using remoted::auth::PasswordKeySource;
 using remoted::auth::toLowerHex;
+using remoted::decoding::ContentEncoding;
+using remoted::decoding::IBodyDecoder;
 using remoted::http::ClientVerificationMode;
 using remoted::http::HttpServerConfig;
 using remoted::http::Method;
@@ -54,6 +57,22 @@ using remoted::test::makeUniqueSocketPath;
 
 namespace
 {
+    // Inert stand-in for the real BodyDecoder (see enrollmentEndpoint_test.cpp's identical stub):
+    // this test is about the TLS listener's own client-certificate gate, not Content-Encoding.
+    class PassthroughBodyDecoder final : public IBodyDecoder
+    {
+    public:
+        remoted::auth::AuthError decode(ContentEncoding, remoted::auth::Payload&) const override
+        {
+            return remoted::auth::AuthError::None;
+        }
+    };
+
+    std::shared_ptr<const IBodyDecoder> passthroughDecoder()
+    {
+        return std::make_shared<const PassthroughBodyDecoder>();
+    }
+
     struct MtlsPki
     {
         std::string dir;
@@ -196,7 +215,8 @@ namespace
                                                                       EnrollmentMetrics& metrics)
     {
         auto server = remoted::http::makeHttpServer();
-        server->addRoute(Method::Post, "/enroll", makeHandler(authenticator, authdClient, config, metrics));
+        server->addRoute(
+            Method::Post, "/enroll", makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder()));
         return server;
     }
 

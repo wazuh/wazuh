@@ -18,10 +18,18 @@
 #include "http_server/IHttpServer.hpp" // remoted::http::RouteHandler
 #include "metrics.hpp"
 
+#include <cstddef>
 #include <memory>
 
 namespace remoted::enrollment
 {
+
+    /// Cap on the /enroll JSON body actually parsed, post-decode -- an endpoint-local guard on
+    /// top of the transport's own hard cap and EnrollmentAuthConfig::maxBodySize (the WIRE/
+    /// pre-decode size). Public so remotedModuleFacade.hpp can pass the SAME value as the decoded-
+    /// size cap on the dedicated BodyDecoder instance /enroll uses -- see makeHandler()'s doc
+    /// comment on why /enroll needs its own (smaller) cap there, unlike AuthGateway's shared one.
+    inline constexpr std::size_t kMaxEnrollBodySize = 16U * 1024U;
 
     /**
      * @brief Builds the `POST /enroll` route handler.
@@ -38,8 +46,13 @@ namespace remoted::enrollment
      *      AuthGateway (see authGateway.cpp).
      *   3. Runs @p bodyDecoder over the now-verified body, so /enroll honors the manager's
      *      `Content-Encoding: zstd` policy exactly like every other endpoint (`remoted.
-     *      http_content_encoding_enabled`) -- decoding only ever happens AFTER authentication, so
-     *      an unauthenticated peer can never spend CPU/memory on it.
+     *      http_content_encoding_enabled`) -- decoding only ever happens AFTER the freshness/MAC
+     *      check in Password mode, so an unauthenticated peer can't reach it THERE. Open mode has
+     *      no credential check at all by design, so decoding still runs for anonymous requests in
+     *      that mode -- @p bodyDecoder must therefore be an instance capped at kMaxEnrollBodySize
+     *      (see remotedModuleFacade.hpp), not the larger shared-budget-sized one AuthGateway's
+     *      routes use, so a small, highly-compressed frame can't hold much of the in-flight byte
+     *      budget (shared with /stateless and friends) even briefly during decompression.
      *   4. Parses and locally validates the (decoded) JSON body (name/version/groups/ip/key_hash);
      *      rejects malformed input with 400 without ever reaching authd. `force`/`id`/`key` are
      *      never read from the body even if present -- self-enrollment always gets an

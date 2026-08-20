@@ -11,10 +11,12 @@
 
 #include <cstdio>
 #include <fstream>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <thread>
 
 #include <gtest/gtest.h>
@@ -254,6 +256,95 @@ namespace
                 const auto key = source.currentKey();
                 return key.has_value() && *key != *originalKey;
             }));
+    }
+
+    // Restores RLIMIT_NOFILE to whatever it was at construction, even if the test body throws --
+    // a test that lowers the process-wide fd limit must never leak that to the rest of the suite.
+    class RlimitNofileGuard
+    {
+    public:
+        RlimitNofileGuard()
+        {
+            if (::getrlimit(RLIMIT_NOFILE, &m_original) != 0)
+            {
+                m_valid = false;
+            }
+        }
+
+        ~RlimitNofileGuard()
+        {
+            restore();
+        }
+
+        bool lowerTo(rlim_t n)
+        {
+            if (!m_valid)
+            {
+                return false;
+            }
+            struct rlimit lowered = m_original;
+            lowered.rlim_cur = n;
+            return ::setrlimit(RLIMIT_NOFILE, &lowered) == 0;
+        }
+
+        // Idempotent -- callable explicitly to restore early, and safe to call again (or not at
+        // all) from the destructor.
+        void restore()
+        {
+            if (m_valid && !m_restored)
+            {
+                ::setrlimit(RLIMIT_NOFILE, &m_original);
+                m_restored = true;
+            }
+        }
+
+    private:
+        struct rlimit m_original
+        {
+        };
+        bool m_valid {true};
+        bool m_restored {false};
+    };
+
+    TEST_F(PasswordKeySourceTest, DestructorDoesNotHangWhenEventfdCreationFails)
+    {
+        // Regression guard: eventfd() failing at construction (fd exhaustion) must not make the
+        // watcher thread unjoinable forever -- the destructor's join() would then block the
+        // process's shutdown indefinitely. Forces that exact failure by dropping the process's own
+        // fd limit low enough that eventfd()/inotify_init1() both fail (stdin/stdout/stderr, at fds
+        // 0-2, stay open regardless -- RLIMIT_NOFILE only blocks NEW fds beyond the limit), then
+        // asserts destruction completes within a bounded time instead of hanging.
+        writeFile("MyEnrollmentSecret123\n");
+
+        RlimitNofileGuard guard;
+        ASSERT_TRUE(guard.lowerTo(3));
+
+        constexpr int kRefreshSeconds = 1;
+        std::unique_ptr<PasswordKeySource> source;
+        try
+        {
+            source = std::make_unique<PasswordKeySource>(m_path, kRefreshSeconds);
+        }
+        catch (...)
+        {
+            // Restore before letting a construction failure fail the test loudly below.
+        }
+
+        // Restore immediately: everything after this point should run with a normal fd budget.
+        guard.restore();
+
+        ASSERT_TRUE(static_cast<bool>(source)) << "construction itself must still succeed "
+                                                  "(eventfd/inotify failures are handled, logged, "
+                                                  "and fallen back on, not fatal)";
+
+        const auto start = std::chrono::steady_clock::now();
+        source.reset();
+        const auto elapsed = std::chrono::steady_clock::now() - start;
+
+        // Generous margin over kRefreshSeconds (the worst-case bound via the poll() timeout
+        // fallback) to absorb scheduling jitter without being flaky, while still being far below
+        // "hung forever".
+        EXPECT_LT(elapsed, std::chrono::seconds(kRefreshSeconds * 5));
     }
 
     TEST_F(PasswordKeySourceTest, HotReloadPicksUpFileAppearingAfterStartup)

@@ -14,6 +14,7 @@
 #include "auth/authTypes.hpp" // remoted::auth::AuthError
 #include "auth/passwordKeySource.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -37,6 +38,14 @@ namespace remoted::enrollment
         bool requirePassword {false};
         std::int64_t maxRequestAgeSeconds {300};
         std::int64_t maxFutureSkewSeconds {30};
+
+        /// Same `auth_max_body_size` internal option (and the same 10 MiB default) the
+        /// agent<->manager AES-CMAC scheme's AuthConfig enforces (authTypes.cpp) -- checked BEFORE
+        /// the CMAC runs, in BOTH Open and Password mode, so an unauthenticated peer can't make
+        /// this endpoint hash an arbitrarily large body (up to the transport's own cap) and hold
+        /// that many in-flight bytes reserved, and so an oversized body gets the same 413 every
+        /// other endpoint returns instead of falling through to parseAndValidateBody()'s 400.
+        std::size_t maxBodySize {10U * 1024U * 1024U};
     };
 
     /**
@@ -75,6 +84,8 @@ namespace remoted::enrollment
          * @param method                 Raw HTTP method, as received (case-insensitive).
          * @param requestTarget          Raw path + query, exactly as received.
          * @param body                   Raw request body bytes, exactly as sent on the wire.
+         *                               Checked against maxBodySize FIRST, in every mode
+         *                               (including Open) -- see the field's own doc comment.
          * @param currentUnixTimeSeconds Current time, for the timestamp-window check.
          * @return std::nullopt on success, or the AuthError that rejected the request.
          */
