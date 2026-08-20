@@ -451,6 +451,45 @@ namespace
         }
     }
 
+    // Warn (not fatal) when the served certificate is expired or near expiry: OpenSSL serves it
+    // silently, so only verifying agents would otherwise notice.
+    void warnIfCertificateExpiring(asio::ssl::context& context, const std::string& path)
+    {
+        X509* certificate = SSL_CTX_get0_certificate(context.native_handle());
+        if (certificate == nullptr)
+        {
+            return;
+        }
+
+        const ASN1_TIME* notAfter = X509_get0_notAfter(certificate);
+        if (notAfter == nullptr)
+        {
+            return;
+        }
+
+        // X509_cmp_current_time returns < 0 when the time is in the past.
+        if (X509_cmp_current_time(notAfter) < 0)
+        {
+            LOGFN_WARN(logFn(),
+                       "The TLS certificate '%s' has expired; agents that verify the manager certificate will "
+                       "reject the connection until it is renewed.",
+                       path.c_str());
+            return;
+        }
+
+        static constexpr int EXPIRY_WARNING_DAYS {30};
+        int days = 0;
+        int seconds = 0;
+        if (ASN1_TIME_diff(&days, &seconds, nullptr, notAfter) == 1 && days < EXPIRY_WARNING_DAYS)
+        {
+            LOGFN_WARN(logFn(),
+                       "The TLS certificate '%s' expires in %d day(s); renew it to avoid an outage for agents "
+                       "that verify the manager certificate.",
+                       path.c_str(),
+                       days);
+        }
+    }
+
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
     {
         checkTlsFileReadable(config.certificatePath, "certificate");
@@ -474,6 +513,8 @@ namespace
 
         context.use_certificate_chain_file(config.certificatePath);
         context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+
+        warnIfCertificateExpiring(context, config.certificatePath);
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {

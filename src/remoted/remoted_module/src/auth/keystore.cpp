@@ -429,7 +429,7 @@ namespace remoted::auth
                 return kReloadUnreadable;
             }
 
-            std::unordered_map<AgentId, std::vector<std::uint8_t>> loaded;
+            std::unordered_map<AgentId, AgentEntry> loaded;
             std::string line;
             int count = 0;
             int lineNumber = 0;
@@ -478,11 +478,11 @@ namespace remoted::auth
                                "agent's requests will be rejected. Re-enroll it.",
                                lineNumber,
                                *agentId);
-                    loaded[*agentId] = std::move(decoded);
+                    loaded[*agentId] = AgentEntry {std::move(decoded), std::move(ip)};
                     continue;
                 }
 
-                loaded[*agentId] = std::move(decoded);
+                loaded[*agentId] = AgentEntry {std::move(decoded), std::move(ip)};
                 ++count;
             }
             file.close();
@@ -526,7 +526,18 @@ namespace remoted::auth
         {
             return std::nullopt;
         }
-        return it->second;
+        return it->second.key;
+    }
+
+    std::optional<std::string> Keystore::allowedAddressFor(AgentId agentId) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        const auto it = m_keys.find(agentId);
+        if (it == m_keys.end())
+        {
+            return std::nullopt;
+        }
+        return it->second.address;
     }
 
 } // namespace remoted::auth

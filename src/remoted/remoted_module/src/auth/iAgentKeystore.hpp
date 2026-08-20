@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "authTypes.hpp" // remoted::auth::AgentId
@@ -38,6 +39,13 @@ namespace remoted::auth
          *         is known but its on-disk key could not be used as-is.
          */
         virtual std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const = 0;
+
+        /**
+         * @brief The agent's `client.keys` source-address column; nullopt if absent (unrestricted).
+         *
+         * Pure virtual like keyFor(): a security control must not inherit a silent "unrestricted" default.
+         */
+        virtual std::optional<std::string> allowedAddressFor(AgentId agentId) const = 0;
     };
 
 } // namespace remoted::auth
