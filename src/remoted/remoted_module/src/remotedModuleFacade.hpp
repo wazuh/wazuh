@@ -543,18 +543,23 @@ private:
             enrollPasswordKeySource);
 
         m_authdClient =
-            std::make_unique<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
+            std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
                                                                m_config.worker_node,
                                                                enrollConfig.authdConnectTimeoutMs,
                                                                enrollConfig.authdResponseTimeoutMs,
                                                                enrollConfig.authdMaxQueueSize,
                                                                enrollConfig.authdWorkerThreads);
 
-        m_httpServer->addRoute(
-            remoted::http::Method::Post,
-            "/enroll",
-            remoted::enrollment::makeHandler(
-                *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics, enrollBodyDecoder));
+        registerAuthdQueueDiagnostics(m_authdClient);
+
+        m_httpServer->addRoute(remoted::http::Method::Post,
+                               "/enroll",
+                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                                                *m_authdClient,
+                                                                enrollConfig,
+                                                                m_enrollmentMetrics,
+                                                                enrollBodyDecoder,
+                                                                m_enrollHttpMetrics));
 
         // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
         // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
@@ -590,6 +595,52 @@ private:
      * (reload_failures moving). The Keystore itself stays metrics-library-free -- it only
      * maintains plain atomics these getters read.
      */
+    /**
+     * @brief Publishes the /enroll -> authd queue as remoted.enroll.authd.queue.* pulls.
+     *
+     * Registered once, re-targeted on every start (the client is rebuilt per attempt), exactly
+     * like the keystore/registry pulls below. The counter is what makes
+     * remoted.enroll.authd_unavailable actionable: that counter fires for a full queue, an
+     * unreachable authd and a shutdown alike, so the difference against this one is the share
+     * that raising 'remoted.authd_max_queue_size' / 'remoted.authd_worker_threads' could fix.
+     */
+    void registerAuthdQueueDiagnostics(const std::shared_ptr<remoted::enrollment::AuthdClient>& client)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_authdDiagMutex};
+            m_authdDiagTarget = client;
+        }
+        if (m_authdPullsRegistered)
+        {
+            return;
+        }
+        m_authdPullsRegistered = true;
+
+        const auto snapshot = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_authdDiagMutex};
+            const auto target = m_authdDiagTarget.lock();
+            return target ? target->queueDiagnostics() : remoted::enrollment::AuthdClient::QueueDiagnostics {};
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.depth",
+            [snapshot] { return static_cast<uint64_t>(snapshot().depth); },
+            "Enrollment requests waiting for an authd worker",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.capacity",
+            [snapshot] { return static_cast<uint64_t>(snapshot().capacity); },
+            "Configured depth of the authd request queue ('remoted.authd_max_queue_size')",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.rejected.total",
+            [snapshot] { return snapshot().rejectedTotal; },
+            "Enrollment requests refused because the authd queue was full (the saturation share of "
+            "remoted.enroll.authd_unavailable)",
+            "requests");
+    }
+
     void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
     {
         {
@@ -1118,6 +1169,11 @@ private:
     std::weak_ptr<remoted::control::AgentRegistry> m_registryDiagTarget;
     bool m_controlPullsRegistered {false};
     /// Same plumbing for the keystore's health (see registerKeystoreDiagnostics()).
+    /// Weak target + guard for the authd queue pulls (same shape as the keystore ones below).
+    std::mutex m_authdDiagMutex;
+    std::weak_ptr<remoted::enrollment::AuthdClient> m_authdDiagTarget;
+    bool m_authdPullsRegistered {false};
+
     std::mutex m_keystoreDiagMutex;
     std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
     bool m_keystorePullsRegistered {false};
@@ -1158,7 +1214,10 @@ private:
     remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
         remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
     std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
-    std::unique_ptr<remoted::enrollment::AuthdClient> m_authdClient;                         ///< Bridge to authd.
+    /// shared_ptr, not unique_ptr, for the same reason as m_httpServer: the queue pulls hold a
+    /// weak_ptr to it, so a dump that races the shutdown reset() sees a dead target and
+    /// quiesces to 0 instead of touching freed state.
+    std::shared_ptr<remoted::enrollment::AuthdClient> m_authdClient; ///< Bridge to authd.
 
     // Downstream failure taxonomy (remoted.forwarder.error.* / downstream_5xx / route_mismatch):
     // copied into the DeferredForwarder at construction (cold), so a fresh forwarder after a
@@ -1186,6 +1245,14 @@ private:
         remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "stats", /*withLatency=*/false)};
     remoted::metrics::EndpointHttpMetrics m_configHttpMetrics {
         remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "config", /*withLatency=*/false)};
+    // /enroll DOES get a latency histogram: it is the only endpoint whose downstream is authd
+    // (not the DeferredForwarder pair), and it is the sole evidence for sizing
+    // 'remoted.authd_connect_timeout' / 'remoted.authd_response_timeout'. Unlike the four above,
+    // the value is COPIED into the handler (see enrollment::makeHandler) rather than referenced,
+    // so this member's address does not have to outlive a restart retry -- but it lives here for
+    // the same reason as the rest: one resolution against the never-reset manager.
+    remoted::metrics::EndpointHttpMetrics m_enrollHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "enroll", /*withLatency=*/true)};
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

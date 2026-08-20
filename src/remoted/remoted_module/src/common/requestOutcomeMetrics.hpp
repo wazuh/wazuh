@@ -35,9 +35,12 @@
  * counts here (responses.503) AND in `remoted.forwarder.deferred.rejected.total`.
  */
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
+
+#include "http_server/IHttpServer.hpp" // remoted::http::IHttpResponder
 
 #include <wazuh_metrics/iManager.hpp>
 
@@ -157,6 +160,53 @@ namespace remoted::metrics
             m.latency->observe(micros);
         }
     }
+
+    /**
+     * @brief Responder decorator that counts the status it delivers and times the request.
+     *
+     * For a handler that answers from several places -- and especially one whose final answer
+     * arrives on someone else's thread (a downstream callback) -- instrumenting each send() site
+     * is both repetitive and fragile: the next branch added upstream silently escapes the
+     * accounting. Wrapping the responder once at handler entry makes the measurement structural:
+     * every response, on every path, is counted exactly once by the send-once guarantee of the
+     * responder underneath, and timed from the moment the handler received the request.
+     *
+     * Cheap by construction: one steady_clock read per request plus, per response, one relaxed
+     * atomic add and one histogram observation. Null-safe -- a default-constructed
+     * EndpointHttpMetrics counts nothing.
+     */
+    class MeteredResponder final : public remoted::http::IHttpResponder
+    {
+    public:
+        MeteredResponder(std::shared_ptr<remoted::http::IHttpResponder> inner, const EndpointHttpMetrics& metrics)
+            : m_inner {std::move(inner)}
+            , m_metrics {metrics}
+            , m_receivedAt {std::chrono::steady_clock::now()}
+        {
+        }
+
+        void send(remoted::http::HttpResponse response) override
+        {
+            m_metrics.responses.count(response.status);
+            observeLatency(m_metrics,
+                           static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                                          std::chrono::steady_clock::now() - m_receivedAt)
+                                                          .count()));
+            m_inner->send(std::move(response));
+        }
+
+        /// Forwarded untouched: a streamed body is not one of the outcomes this family models,
+        /// and re-routing it through send() would change what the client receives.
+        void stream(remoted::http::StreamResponse response) override
+        {
+            m_inner->stream(std::move(response));
+        }
+
+    private:
+        std::shared_ptr<remoted::http::IHttpResponder> m_inner;
+        EndpointHttpMetrics m_metrics;
+        std::chrono::steady_clock::time_point m_receivedAt;
+    };
 
 } // namespace remoted::metrics
 

@@ -457,12 +457,28 @@ REMOTED_MODULE_METRICS = [
 # WHY agents fail authentication, pre-collapse (the wire folds credential failures into one
 # generic 401, so only these counters keep the causes apart). Read together: one cause
 # dominating names the fix (NTP, re-enrollment, a scanner hammering the listener...).
+# Enrollment outcomes read together: one dominating line names the fix (authd down vs a full
+# queue vs a validation problem on the agent side).
+_ENROLL_OUTCOME_FUNNEL_COLS = [
+    "enroll_accepted",
+    "enroll_rejected_auth",
+    "enroll_rejected_validation",
+    "enroll_disabled",
+    "enroll_authd_error",
+    "enroll_authd_unavailable",
+    "enroll_authd_queue_rejected_total",
+]
+
+# Depth against its own cap: the pair that says whether authd_max_queue_size is sized right.
+_ENROLL_QUEUE_COLS = ["enroll_authd_queue_depth", "enroll_authd_queue_capacity"]
+
 _AUTH_REJECT_FUNNEL_COLS = [
     "auth_reject_unknown_agent",
     "auth_reject_invalid_mac",
     "auth_reject_clock_skew",
     "auth_reject_unusable_key",
     "auth_reject_address_not_allowed",
+    "auth_reject_enrollment_key_unavailable",
     "auth_reject_payload_mismatch",
     "auth_reject_body_too_large",
     "auth_reject_bad_encoding",
@@ -485,7 +501,7 @@ _FWD_ERROR_FUNNEL_COLS = [
 
 # One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
 # structurally zero for a given endpoint (kept for a uniform vocabulary).
-_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config"]
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
 _HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
 
 # The admission split: everything that arrived lands in exactly one of these. remoted is a
@@ -1063,6 +1079,22 @@ def generate_charts(
                     f"Remoted Module \u2014 Auth Rejections by Cause ({label})",
                     "Count (cumulative)",
                     os.path.join(out_dir, f"remoted_module_auth_reject_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_OUTCOME_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_OUTCOME_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Enrollment Outcomes ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_enroll_outcome_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_QUEUE_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_QUEUE_COLS,
+                    f"Remoted Module \u2014 authd Queue Depth vs Capacity ({label})",
+                    "Requests",
+                    os.path.join(out_dir, f"remoted_module_enroll_authd_queue_{safe_label}.{fmt}"),
                     y_min=0,
                 )
             if any(col in df.columns for col in _FWD_ERROR_FUNNEL_COLS):

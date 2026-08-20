@@ -403,7 +403,8 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
-    client.updateStatusCode(3, AgentStatusCode::InvalidVersion, "v0", "", "synced", [&](SocketError e) { w.complete(e); });
+    client.updateStatusCode(
+        3, AgentStatusCode::InvalidVersion, "v0", "", "synced", [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
 
     std::string got;
@@ -420,7 +421,8 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     EXPECT_EQ(got.find("connection_status"), std::string::npos);
 
     Waiter<SocketError> w2;
-    client.updateStatusCode(3, AgentStatusCode::Ok, "v5.0.0", "pending", "synced", [&](SocketError e) { w2.complete(e); });
+    client.updateStatusCode(
+        3, AgentStatusCode::Ok, "v5.0.0", "pending", "synced", [&](SocketError e) { w2.complete(e); });
     ASSERT_TRUE(w2.wait(3000ms));
     {
         std::lock_guard<std::mutex> lock(mu);

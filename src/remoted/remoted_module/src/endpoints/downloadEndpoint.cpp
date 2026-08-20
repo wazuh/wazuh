@@ -358,9 +358,7 @@ namespace remoted::endpoints::download
         // successfully. m_mtimeKnown is what makes that true -- without it, a failed fstat would
         // leave the baseline at zero, every comparison would mismatch, and EVERY transfer would
         // abort. The byte-count half of the check stands on its own either way.
-        struct stat info
-        {
-        };
+        struct stat info {};
         if (::fstat(m_fd, &info) == 0)
         {
             m_mtimeSec = static_cast<std::int64_t>(info.st_mtim.tv_sec);
@@ -436,9 +434,7 @@ namespace remoted::endpoints::download
 
     void FileByteSource::checkNotModified() const
     {
-        struct stat info
-        {
-        };
+        struct stat info {};
         if (::fstat(m_fd, &info) != 0)
         {
             throw std::system_error {errno, std::generic_category(), "fstat() failed while streaming a resource"};
@@ -492,9 +488,7 @@ namespace remoted::endpoints::download
         // fstat on the DESCRIPTOR, not stat on the path: the check then applies to the object we
         // actually opened and will stream, closing the window where the path could be swapped
         // between the check and the open.
-        struct stat info
-        {
-        };
+        struct stat info {};
         if (::fstat(fd, &info) != 0)
         {
             const int savedErrno = errno;

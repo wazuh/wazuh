@@ -211,6 +211,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.reject.clock_skew", "auth_reject_clock_skew"),
     ("remoted.auth.reject.unusable_key", "auth_reject_unusable_key"),
     ("remoted.auth.reject.address_not_allowed", "auth_reject_address_not_allowed"),
+    ("remoted.auth.reject.enrollment_key_unavailable", "auth_reject_enrollment_key_unavailable"),
     ("remoted.auth.reject.payload_mismatch", "auth_reject_payload_mismatch"),
     ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
     ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
@@ -253,6 +254,27 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.http.config.responses.500", "http_config_responses_500"),
     ("remoted.http.config.responses.503", "http_config_responses_503"),
     ("remoted.http.config.responses.other", "http_config_responses_other"),
+    # POST /enroll: same closed set as the four above. Not forwarded (its downstream is authd),
+    # so these are counted by the handler's MeteredResponder wrapper.
+    ("remoted.http.enroll.responses.2xx", "http_enroll_responses_2xx"),
+    ("remoted.http.enroll.responses.400", "http_enroll_responses_400"),
+    ("remoted.http.enroll.responses.403", "http_enroll_responses_403"),
+    ("remoted.http.enroll.responses.409", "http_enroll_responses_409"),
+    ("remoted.http.enroll.responses.413", "http_enroll_responses_413"),
+    ("remoted.http.enroll.responses.500", "http_enroll_responses_500"),
+    ("remoted.http.enroll.responses.503", "http_enroll_responses_503"),
+    ("remoted.http.enroll.responses.other", "http_enroll_responses_other"),
+    # Enrollment outcomes ("why"), the companion of the status cells above. The queue trio is
+    # what separates a saturated authd queue from an unreachable authd inside authd_unavailable.
+    ("remoted.enroll.accepted", "enroll_accepted"),
+    ("remoted.enroll.rejected_auth", "enroll_rejected_auth"),
+    ("remoted.enroll.rejected_validation", "enroll_rejected_validation"),
+    ("remoted.enroll.disabled", "enroll_disabled"),
+    ("remoted.enroll.authd_error", "enroll_authd_error"),
+    ("remoted.enroll.authd_unavailable", "enroll_authd_unavailable"),
+    ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
+    ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
+    ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
     # Downstream failure taxonomy ("why the 503s"): aggregate across services -- the per-endpoint
     # 503 columns above already say which path is failing.
     ("remoted.forwarder.error.connect", "forwarder_error_connect"),
@@ -298,6 +320,7 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
 _REMOTED_MODULE_HISTOGRAMS: tuple[tuple[str, str], ...] = (
     ("remoted.http.stateless.latency", "http_stateless_latency"),
     ("remoted.http.stateful.latency", "http_stateful_latency"),
+    ("remoted.http.enroll.latency", "http_enroll_latency"),
     ("remoted.control.wdb.latency", "control_wdb_latency"),
 )
 

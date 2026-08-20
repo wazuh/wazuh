@@ -12,7 +12,8 @@
 #pragma once
 
 #include "authdClient.hpp"
-#include "decoding/iBodyDecoder.hpp" // remoted::decoding::IBodyDecoder
+#include "common/requestOutcomeMetrics.hpp" // remoted::metrics::EndpointHttpMetrics
+#include "decoding/iBodyDecoder.hpp"        // remoted::decoding::IBodyDecoder
 #include "enrollmentAuthenticator.hpp"
 #include "enrollmentConfig.hpp"
 #include "http_server/IHttpServer.hpp" // remoted::http::RouteHandler
@@ -63,6 +64,13 @@ namespace remoted::enrollment
      *   6. Maps authd's result to the HTTP response (200 + {id,name,ip,key}; a mapped status for
      *      a business-rejection authd code; 503 for a transport failure/timeout).
      *
+     * @p httpMetrics adds the same remoted.http.<endpoint>.{responses.*,latency} accounting the four
+     * AuthGateway endpoints get. /enroll needs its own wiring for it because it is NOT registered
+     * through AuthGateway (see above), so nothing stamps a receipt time for it: the handler wraps the
+     * responder in a MeteredResponder instead, which times from handler entry and covers every answer
+     * -- including the one authd's callback delivers on another thread. Defaulted, so a caller that
+     * does not care (the module's own tests) counts nothing.
+     *
      * @warning The returned handler stores references to @p authenticator, @p authdClient and
      * @p metrics. The caller must guarantee all three outlive every route registered with this
      * handler, exactly like controlEndpoint::makeHandler()'s ControlHandler& contract. @p
@@ -73,6 +81,7 @@ namespace remoted::enrollment
                                             AuthdClient& authdClient,
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
-                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder);
+                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                                            remoted::metrics::EndpointHttpMetrics httpMetrics = {});
 
 } // namespace remoted::enrollment

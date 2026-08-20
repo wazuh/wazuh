@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -166,6 +167,27 @@ namespace remoted::enrollment
         /// Stops every worker thread and fails any still-queued requests with errorCode -1. Safe
         /// to call more than once, and safe to skip -- the destructor calls it too.
         void stop();
+
+        /// @brief Queue state behind the remoted.enroll.authd.queue.* metrics.
+        struct QueueDiagnostics
+        {
+            std::size_t depth {0};           ///< Requests waiting for a worker right now.
+            std::size_t capacity {0};        ///< Effective cap ('remoted.authd_max_queue_size').
+            std::uint64_t rejectedTotal {0}; ///< Requests refused because the queue was full.
+        };
+
+        /**
+         * @brief Snapshot the queue, for the metrics dump.
+         *
+         * Callable from any thread at any point in the client's life. Takes the same lock
+         * addAgent() does -- acceptable because it runs at dump cadence only, the same trade-off
+         * IHttpServer::diagnostics() already makes; the enrollment path itself gains no lock.
+         *
+         * `rejectedTotal` is what separates a saturated queue from an unreachable authd: both end
+         * up in remoted.enroll.authd_unavailable, so authd_unavailable minus this counter is the
+         * share that was NOT the queue's fault.
+         */
+        QueueDiagnostics queueDiagnostics() const;
 
     private:
         class Impl;

@@ -63,8 +63,7 @@ namespace
     class ThrowingKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId,
-                                                         std::string_view) const override
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId, std::string_view) const override
         {
             throw std::runtime_error("simulated keystore I/O failure");
         }

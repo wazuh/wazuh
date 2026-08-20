@@ -57,6 +57,7 @@ namespace remoted::endpoints
     constexpr auto METRIC_AUTH_REJECT_CLOCK_SKEW {"remoted.auth.reject.clock_skew"};
     constexpr auto METRIC_AUTH_REJECT_UNUSABLE_KEY {"remoted.auth.reject.unusable_key"};
     constexpr auto METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED {"remoted.auth.reject.address_not_allowed"};
+    constexpr auto METRIC_AUTH_REJECT_ENROLLMENT_KEY {"remoted.auth.reject.enrollment_key_unavailable"};
     constexpr auto METRIC_AUTH_REJECT_PAYLOAD_MISMATCH {"remoted.auth.reject.payload_mismatch"};
     constexpr auto METRIC_AUTH_REJECT_BODY_TOO_LARGE {"remoted.auth.reject.body_too_large"};
     constexpr auto METRIC_AUTH_REJECT_BAD_ENCODING {"remoted.auth.reject.bad_encoding"};
@@ -78,10 +79,11 @@ namespace remoted::endpoints
         std::shared_ptr<wazuh::metrics::ICounter> clockSkew;         ///< Timestamp outside the window.
         std::shared_ptr<wazuh::metrics::ICounter> unusableKey;       ///< client.keys entry does not decode.
         std::shared_ptr<wazuh::metrics::ICounter> addressNotAllowed; ///< Peer address outside the agent's ip column.
-        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch;   ///< Authenticated agent claimed another id.
-        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;      ///< Over the authenticated-body cap.
-        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;       ///< Unsupported/undecodable Content-Encoding.
-        std::shared_ptr<wazuh::metrics::ICounter> malformed;         ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter> enrollmentKey; ///< /enroll: the enrollment password key is unusable.
+        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch; ///< Authenticated agent claimed another id.
+        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;    ///< Over the authenticated-body cap.
+        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;     ///< Unsupported/undecodable Content-Encoding.
+        std::shared_ptr<wazuh::metrics::ICounter> malformed;       ///< Missing/malformed auth or protocol headers.
     };
 
     /// Resolves the remoted.auth.reject.* family on @p manager (creating it on first call;
@@ -103,6 +105,12 @@ namespace remoted::endpoints
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
                                        "Rejections: the peer address does not satisfy the agent's client.keys ip "
                                        "column (re-enroll the agent with the address it connects from, or 'any')",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_ENROLLMENT_KEY,
+                                       "Rejections: Password-mode POST /enroll could not use the enrollment password "
+                                       "key -- etc/authd.pass missing, unreadable, invalid or not yet synced to this "
+                                       "worker, or AES-CMAC unavailable. NOT an agent credential fault: no agent "
+                                       "exists yet, so re-enrolling fixes nothing",
                                        "count"),
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,

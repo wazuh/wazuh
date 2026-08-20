@@ -866,6 +866,60 @@ High-water mark for queued task-manager requests.
 - **Default value:** `10000`
 - **Allowed values:** Integer from `100` to `1000000`
 
+#### remoted.enroll_password_refresh_interval
+
+Seconds between polls of `etc/authd.pass` for Password-mode `POST /enroll`.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `3600`
+- **Note:** Until a change is picked up, Password-mode enrollment keeps failing with the old
+  key; those rejections count as `remoted.auth.reject.enrollment_key_unavailable` in
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
+
+#### remoted.authd_connect_timeout
+
+Seconds `remoted` waits to connect to `authd`'s local enrollment socket.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `60`
+- **Note:** Exhausting it answers the agent `503` and counts as
+  `remoted.enroll.authd_unavailable`; size it against
+  [`remoted.http.enroll.latency`](metrics.md#request-latency--remotedhttpendpointlatency), the
+  only measurement that spans the hop to `authd`.
+
+#### remoted.authd_response_timeout
+
+Seconds `remoted` waits for `authd`'s answer once connected.
+
+- **Default value:** `0` (worker-aware default: short on the master, long enough on a worker to
+  outlast `authd`'s own worker-to-master cluster retry budget)
+- **Allowed values:** Integer from `0` to `120`
+- **Note:** Same evidence as `authd_connect_timeout`; together they must stay under
+  [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout), which the
+  module warns about at startup.
+
+#### remoted.authd_max_queue_size
+
+Enrollment requests that may wait for an `authd` worker before further ones are refused.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** Visible as
+  [`remoted.enroll.authd.queue.{depth,capacity}`](metrics.md#agent-enrollment--remotedenroll);
+  refusals count in `remoted.enroll.authd.queue.rejected.total`, which is the saturation share
+  of `remoted.enroll.authd_unavailable`.
+
+#### remoted.authd_worker_threads
+
+Concurrent connections `remoted` keeps to `authd` for enrollment.
+
+- **Default value:** `8`
+- **Allowed values:** Integer from `1` to `32`
+- **Note:** Capped well under `authd`'s own local-socket listen backlog (128), so a larger pool
+  gains nothing. Raise it when
+  [`remoted.enroll.authd.queue.depth`](metrics.md#agent-enrollment--remotedenroll) sits near
+  its capacity at peak.
+
 ---
 
 ## Configuration Examples

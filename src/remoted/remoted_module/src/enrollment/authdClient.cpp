@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <atomic>
 #include <cerrno>
 #include <condition_variable>
 #include <cstring>
@@ -160,6 +161,10 @@ namespace remoted::enrollment
                 }
                 else if (m_queue.size() >= m_maxQueueSize)
                 {
+                    // Counted here and only here: shutdown rejections share the branch below but
+                    // are NOT saturation, and conflating them would make the metric lie every
+                    // time the module stops.
+                    m_queueRejectedTotal.fetch_add(1, std::memory_order_relaxed);
                     reject = std::move(callback);
                 }
                 else
@@ -495,9 +500,23 @@ namespace remoted::enrollment
 
         std::vector<std::thread> m_workers;
         std::queue<Request> m_queue;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
         std::condition_variable m_cv;
         bool m_stopping {false};
+        std::atomic<std::uint64_t> m_queueRejectedTotal {0}; ///< Refused because the queue was full.
+
+    public:
+        AuthdClient::QueueDiagnostics queueDiagnostics() const
+        {
+            AuthdClient::QueueDiagnostics d;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                d.depth = m_queue.size();
+            }
+            d.capacity = m_maxQueueSize;
+            d.rejectedTotal = m_queueRejectedTotal.load(std::memory_order_relaxed);
+            return d;
+        }
     };
 
     AuthdClient::AuthdClient(std::string socketPath,
@@ -525,6 +544,11 @@ namespace remoted::enrollment
             return configuredMs;
         }
         return isWorkerNode ? kWorkerDefaultResponseTimeoutMs : kMasterDefaultResponseTimeoutMs;
+    }
+
+    AuthdClient::QueueDiagnostics AuthdClient::queueDiagnostics() const
+    {
+        return m_impl->queueDiagnostics();
     }
 
     void AuthdClient::stop()

@@ -127,8 +127,8 @@ when the deadlines cannot be honored).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
-What each forwarded endpoint actually answered its agents. One family per endpoint —
-`stateless`, `stateful`, `stats`, `config` — each with the same closed set of eight status
+What each endpoint actually answered its agents. One family per endpoint — `stateless`,
+`stateful`, `stats`, `config` and `enroll` — each with the same closed set of eight status
 cells, so a scraper's columns line up across endpoints (some cells are structurally zero for
 a given endpoint, e.g. `/stateless` never answers 409). Every response is counted exactly
 once, at the single place it is sent. All units are `count`; all are counters.
@@ -137,7 +137,7 @@ once, at the single place it is sent. All units are `count`; all are counters.
 |---|---|---|
 | `2xx` | Success (202 for `/stateless`, 200 elsewhere) | — |
 | `400` | Client fault: empty body, bad batch, payload-identity mismatch | diagnostic — agent-side content |
-| `403` | Identity rejection relayed from the sync server (`/stateful` contract) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode) |
+| `403` | Identity rejection relayed from the sync server (`/stateful` contract), or enrollment administratively disabled (`/enroll`) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
@@ -149,19 +149,27 @@ authentication) happen before any endpoint handler runs and are therefore *not* 
 cells — they are counted, with their cause, in
 [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject).
 
+`/enroll` is the exception to that split: it is not registered through the auth gateway (an
+enrolling agent has no `client.keys` entry to authenticate with), so its own handler answers
+every rejection and **all** of them land in its cells — including the ones whose cause is
+recorded in `remoted.auth.reject.*`. Its outcome-shaped companion family is
+[`remoted.enroll.*`](#agent-enrollment--remotedenroll).
+
 ### Request latency — `remoted.http.<endpoint>.latency`
 
 End-to-end request time in microseconds, stamped when the auth gateway picks the request up
-and observed when the response is delivered. Only the two endpoints whose latency answers a
-tuning question carry one; `/stats` and `/config` share `/stateful`'s downstream and would add
-no new signal.
+and observed when the response is delivered. Only the endpoints whose latency answers a tuning
+question carry one; `/stats` and `/config` share `/stateful`'s downstream and would add no new
+signal.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.http.stateless.latency` | histogram | microseconds | The event-ingestion hot path, gateway receipt → response delivery | [`remoted.http_worker_threads`](configuration.md#remotedhttp_worker_threads), [`remoted.http_io_threads`](configuration.md#remotedhttp_io_threads), [`remoted.downstream_post_process_threads`](configuration.md#remoteddownstream_post_process_threads), [`remoted.downstream_io_threads`](configuration.md#remoteddownstream_io_threads) |
 | `remoted.http.stateful.latency` | histogram | microseconds | A sync session indexes within the request, so this is the number that sizes its dedicated deadline. The server-side half of the same span is [`sync.session.duration.*`](../inventory-sync-server/metrics.md#sync-pipeline--syncpipeline-syncshardi-syncsessionduration) on the sync server | [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout), plus the thread settings above |
 
-Both are bounded by
+| `remoted.http.enroll.latency` | histogram | microseconds | Handler entry → response delivery, the only measurement that spans the hop to `authd`. Timed from handler entry rather than gateway receipt (`/enroll` does not go through the gateway), and it covers the answer authd's callback delivers asynchronously | [`remoted.authd_connect_timeout`](configuration.md#remotedauthd_connect_timeout), [`remoted.authd_response_timeout`](configuration.md#remotedauthd_response_timeout), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
+
+All are bounded by
 [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout): a p99 creeping
 toward that cap predicts request-cutoff failures before they happen.
 
@@ -178,10 +186,42 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 | `remoted.auth.reject.clock_skew` | Timestamp outside the accepted window | [`remoted.auth_max_request_age`](configuration.md#remotedauth_max_request_age), [`remoted.auth_max_future_skew`](configuration.md#remotedauth_max_future_skew) — but fix NTP first |
 | `remoted.auth.reject.unusable_key` | The agent's `client.keys` entry does not decode to a usable AES key | diagnostic — re-enroll the agent |
 | `remoted.auth.reject.address_not_allowed` | The peer address does not satisfy the agent's [registered address](https-events-api.md#registered-address-ip-column) (`client.keys` `ip` column) | diagnostic — re-enroll the agent with the address it connects from, or with `any` |
+| `remoted.auth.reject.enrollment_key_unavailable` | Password-mode `/enroll` could not use the enrollment password key: `etc/authd.pass` missing, unreadable, invalid, or not yet synced to this worker — or AES-CMAC unavailable manager-wide. **Not** an agent credential fault: no agent exists yet, so re-enrolling fixes nothing | diagnostic — fix/sync `etc/authd.pass` |
 | `remoted.auth.reject.payload_mismatch` | An **authenticated** agent submitted a payload claiming another agent's id — a security signal, not a tuning problem | diagnostic — investigate the agent |
-| `remoted.auth.reject.body_too_large` | Body over the authenticated cap, or a zstd frame that did not fit the in-flight budget | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
+| `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd frame that did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
 | `remoted.auth.reject.malformed` | Missing/malformed authorization or protocol-version headers | diagnostic — agent/manager version drift or non-agent traffic |
+
+### Agent enrollment — `remoted.enroll.*`
+
+`POST /enroll` bridges an agent that has no credentials yet to `authd`'s local socket. These
+counters say **why** each request ended the way it did; the matching **what** (HTTP status,
+latency) is the `enroll` family in [Request outcomes](#request-outcomes--remotedhttpendpointresponsescode)
+and [Request latency](#request-latency--remotedhttpendpointlatency). All are counters, unit
+`count`, except the three queue pulls at the end.
+
+| Metric | Meaning | Tuning |
+|---|---|---|
+| `remoted.enroll.accepted` | `authd` created the agent and the key was returned | — |
+| `remoted.enroll.rejected_auth` | The enrollment credential check failed (Password mode: the `WazuhEnroll` CMAC; mTLS mode: the listener already refused the connection) | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) |
+| `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
+| `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
+| `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
+| `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
+
+The queue in front of `authd` (pulls, so they read as levels):
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `remoted.enroll.authd.queue.depth` | gauge (pull) | requests | Enrollment requests waiting for an `authd` worker right now | [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
+| `remoted.enroll.authd.queue.capacity` | gauge (pull) | requests | The configured cap the depth is measured against | [`remoted.authd_max_queue_size`](configuration.md#remotedauthd_max_queue_size) |
+| `remoted.enroll.authd.queue.rejected.total` | counter (pull) | requests | Requests refused because that queue was full — cumulative | [`remoted.authd_max_queue_size`](configuration.md#remotedauthd_max_queue_size), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
+
+`authd_unavailable` fires for saturation, an unreachable `authd`, a timeout and shutdown alike,
+which is why the queue counter exists: **`authd_unavailable` − `queue.rejected.total`** is the
+share that raising the queue or the worker count could *not* have fixed. `depth` sitting near
+`capacity` at peak is the signal to raise them; `depth` near zero with `authd_unavailable`
+moving means `authd` itself is the problem.
 
 ### Keystore health — `remoted.auth.keystore.*`
 
@@ -283,6 +323,12 @@ These rules say what sums to what — read them before comparing families:
   `budget.rejected.total` is exclusively admission sheds.
 - A **deferred-limiter** shed is the endpoint's answer: it counts **both** as that endpoint's
   `responses.503` and in `remoted.forwarder.deferred.rejected.total`.
+- **`/enroll` is counted twice on purpose, in two different vocabularies**: once by outcome
+  (`remoted.enroll.*` — why it ended that way) and once by HTTP status and latency
+  (`remoted.http.enroll.*` — what the agent got, and how long it waited). The two families are
+  not summable against each other: a single request contributes exactly one cell to each. Its
+  credential failures ALSO appear in `remoted.auth.reject.*`, which is the per-cause split of
+  `remoted.enroll.rejected_auth`.
 - **Auth-gateway rejections** (401s, 413 at authentication, bad encoding) happen before any
   endpoint handler and appear only in `remoted.auth.reject.*`. A rejection by registered
   address is deliberately indistinguishable on the wire — it collapses into the same generic

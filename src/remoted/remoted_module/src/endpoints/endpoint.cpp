@@ -59,6 +59,7 @@ namespace
                 case remoted::auth::AuthError::FutureRequest: return m.clockSkew;
                 case remoted::auth::AuthError::MissingKey: return m.unusableKey;
                 case remoted::auth::AuthError::AddressNotAllowed: return m.addressNotAllowed;
+                case remoted::auth::AuthError::EnrollmentKeyUnavailable: return m.enrollmentKey;
                 case remoted::auth::AuthError::PayloadAgentMismatch: return m.payloadMismatch;
                 case remoted::auth::AuthError::BodyTooLarge: return m.bodyTooLarge;
                 case remoted::auth::AuthError::UnsupportedContentEncoding:
