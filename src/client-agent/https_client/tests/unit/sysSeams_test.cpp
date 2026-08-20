@@ -149,7 +149,12 @@ TEST(SkewCorrectedClockTest, ConcurrentCorrectionsToTheSameServerTimeConverge)
 
             while (!go.load(std::memory_order_acquire))
             {
-                // Spin until every worker is ready.
+                // Spin until every worker is ready. The yield keeps this a
+                // barrier rather than a busy-wait: under Valgrind every thread
+                // shares one virtual CPU, and a spin that never yields holds
+                // its whole scheduling quantum, which turns this barrier into
+                // a multi-minute near-livelock.
+                std::this_thread::yield();
             }
 
             clock.correctToServerTime(serverTime);
@@ -159,6 +164,7 @@ TEST(SkewCorrectedClockTest, ConcurrentCorrectionsToTheSameServerTimeConverge)
     while (readyCount.load(std::memory_order_relaxed) < workerCount)
     {
         // Wait for every worker to reach the spin point before releasing them.
+        std::this_thread::yield();
     }
 
     go.store(true, std::memory_order_release);
@@ -202,7 +208,11 @@ TEST(SkewCorrectedClockTest, TheReadAndCommitAreOneCriticalSectionNotJustTheFina
 
                 while (m_hold.load(std::memory_order_acquire))
                 {
-                    // Spin until the test releases this read.
+                    // Spin until the test releases this read. Yielding is what
+                    // lets the other caller actually get scheduled and prove it
+                    // is blocked on the mutex -- and keeps this from stalling
+                    // for minutes under Valgrind's single virtual CPU.
+                    std::this_thread::yield();
                 }
 
                 return m_value;
@@ -218,6 +228,7 @@ TEST(SkewCorrectedClockTest, TheReadAndCommitAreOneCriticalSectionNotJustTheFina
                 while (!m_readStarted.load(std::memory_order_acquire))
                 {
                     // Spin until wallSeconds() has been entered.
+                    std::this_thread::yield();
                 }
             }
 
