@@ -102,7 +102,7 @@ function ExtractDebugSymbols(){
 
 	#all executables in current folder
 	$exeFiles = Get-ChildItem -Filter "*.exe"
-	$exeFiles += Get-ChildItem -Filter "*.dll" 
+	$exeFiles += Get-ChildItem -Filter "*.dll"
 
 	#all executables in parent folder
 	cd .. #Get-ChildItem does not take "..\" so we have to do it manually
@@ -127,7 +127,7 @@ function ExtractDebugSymbols(){
 		$args += $file.BaseName
 		$args += ".pdb"
 
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+		Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $args -NoNewWindow
 	}
 
   Write-Host "Waiting for processes to finish"
