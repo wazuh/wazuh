@@ -41,9 +41,10 @@ namespace remoted::enrollment
         return EnrollmentMetrics {
             manager.getOrCreateCounter(METRIC_ACCEPTED, "Enrollment requests that succeeded", "count"),
             manager.getOrCreateCounter(METRIC_REJECTED_AUTH, "Enrollment requests rejected on authentication", "count"),
-            manager.getOrCreateCounter(METRIC_REJECTED_VALIDATION,
-                                       "Enrollment requests rejected on local validation (schema/version)",
-                                       "count"),
+            manager.getOrCreateCounter(
+                METRIC_REJECTED_VALIDATION,
+                "Enrollment requests rejected on local validation (Content-Encoding/schema/version)",
+                "count"),
             manager.getOrCreateCounter(METRIC_DISABLED,
                                        "Enrollment requests rejected because enrollment is administratively disabled",
                                        "count"),

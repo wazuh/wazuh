@@ -312,14 +312,14 @@ private:
         m_keystore =
             std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
         // The Content-Encoding contract is composed in here rather than built into the gateway, so
-        // the auth layer stays about authentication only. Configured once on the gateway (not per
-        // route), so every authenticated endpoint gets it and none can accidentally opt out.
+        // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
+        // stateless -- see its own class comment) between AuthGateway (every client.keys-backed
+        // endpoint) and /enroll's own handler below, so every authenticated endpoint gets the same
+        // policy and none can accidentally opt out or drift out of sync with the others.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
-            authConfig,
-            m_keystore,
-            std::make_shared<const remoted::decoding::BodyDecoder>(*m_httpServer,
-                                                                   m_config.http_content_encoding_enabled));
+        const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
@@ -513,10 +513,11 @@ private:
                                                                enrollConfig.authdMaxQueueSize,
                                                                enrollConfig.authdWorkerThreads);
 
-        m_httpServer->addRoute(remoted::http::Method::Post,
-                               "/enroll",
-                               remoted::enrollment::makeHandler(
-                                   *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics));
+        m_httpServer->addRoute(
+            remoted::http::Method::Post,
+            "/enroll",
+            remoted::enrollment::makeHandler(
+                *m_enrollmentAuthenticator, *m_authdClient, enrollConfig, m_enrollmentMetrics, bodyDecoder));
 
         m_httpServer->start(config);
     }

@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
 #include "json.hpp"
@@ -29,6 +30,8 @@
 #include <wazuh_metrics/manager.hpp>
 
 using namespace remoted::enrollment;
+using remoted::decoding::ContentEncoding;
+using remoted::decoding::IBodyDecoder;
 using remoted::http::HttpRequest;
 using remoted::http::HttpResponse;
 using remoted::http::IHttpResponder;
@@ -78,6 +81,13 @@ namespace
         return req;
     }
 
+    HttpRequest makeRequestWithContentEncoding(const std::string& body, const std::string& encoding)
+    {
+        auto req = makeRequest(body);
+        req.headers.emplace("content-encoding", encoding);
+        return req;
+    }
+
     Config openModeConfig()
     {
         Config cfg;
@@ -92,11 +102,49 @@ namespace
 
     const std::string kValidBody = R"({"name":"agent1","version":"5.0.0"})";
 
+    // IBodyDecoder stub backed by a lambda, mirroring authGateway_test.cpp's StubBodyDecoder: each
+    // test states just the decode behavior it cares about. The REAL zstd decoder is exercised in
+    // bodyDecoder_test.cpp -- these tests are only about how the endpoint WIRES the step in (order
+    // relative to auth, and how a decode failure maps to an HTTP status), not about zstd itself.
+    class StubBodyDecoder final : public IBodyDecoder
+    {
+    public:
+        using Fn = std::function<remoted::auth::AuthError(ContentEncoding, remoted::auth::Payload&)>;
+
+        explicit StubBodyDecoder(Fn fn)
+            : m_fn {std::move(fn)}
+        {
+        }
+
+        remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const override
+        {
+            return m_fn(encoding, payload);
+        }
+
+    private:
+        Fn m_fn;
+    };
+
+    std::shared_ptr<const IBodyDecoder> stubDecoder(StubBodyDecoder::Fn fn)
+    {
+        return std::make_shared<const StubBodyDecoder>(std::move(fn));
+    }
+
+    // Default for tests that aren't about Content-Encoding at all: present (a required dependency)
+    // but inert.
+    std::shared_ptr<const IBodyDecoder> passthroughDecoder()
+    {
+        return stubDecoder([](ContentEncoding, remoted::auth::Payload&) { return remoted::auth::AuthError::None; });
+    }
+
     // Runs one dispatch through a freshly built handler (fresh authenticator/AuthdClient every
     // call -- AuthdClient's worker thread must not be shared across tests). authdPath need not
     // have a FakeUdsServer bound at all -- that's how the "authd unreachable" tests are expressed.
-    HttpResponse
-    run(const Config& config, const std::string& body, const std::string& authdPath, const std::string& remoteIp = "")
+    HttpResponse run(const Config& config,
+                     const std::string& body,
+                     const std::string& authdPath,
+                     const std::string& remoteIp = "",
+                     std::shared_ptr<const IBodyDecoder> bodyDecoder = nullptr)
     {
         EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
         wazuh::metrics::Manager metricsManager;
@@ -108,7 +156,8 @@ namespace
                                 config.authdResponseTimeoutMs,
                                 /*maxQueueSize=*/0);
 
-        auto handler = makeHandler(authenticator, authdClient, config, metrics);
+        auto handler =
+            makeHandler(authenticator, authdClient, config, metrics, bodyDecoder ? bodyDecoder : passthroughDecoder());
 
         auto request = std::make_shared<const HttpRequest>(makeRequest(body, remoteIp));
         auto responder = std::make_shared<CapturingResponder>();
@@ -154,7 +203,7 @@ TEST(EnrollmentEndpointTest, DisabledEnrollmentReturns403WithoutTouchingAuthOrAu
     EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
     AuthdClient authdClient(makeUniqueSocketPath("enrollment_endpoint_disabled"));
 
-    auto handler = makeHandler(authenticator, authdClient, config, metrics);
+    auto handler = makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder());
     auto request = std::make_shared<const HttpRequest>(makeRequest(kValidBody));
     auto responder = std::make_shared<CapturingResponder>();
     handler(request, responder);
@@ -240,6 +289,106 @@ TEST(EnrollmentEndpointTest, VersionTooNewIsAcceptedWhenAllowed)
     auto stub = fixedAuthdServer(R"({"error":0,"data":{"id":"1","name":"agent1","ip":"any","key":"k"}})");
     const auto response = run(config, R"({"name":"agent1","version":"5.0.0"})", stub.path);
     EXPECT_EQ(response.status, 200);
+}
+
+// -----------------------------------------------------------------------------
+// Content-Encoding wiring -- how the endpoint composes IBodyDecoder, not zstd itself (see
+// bodyDecoder_test.cpp for the real codec). These prove the decoded bytes are what actually
+// reaches JSON parsing/authd, and that a decode failure maps to the same status codes AuthGateway
+// uses for every other endpoint (415/400/413).
+// -----------------------------------------------------------------------------
+
+TEST(EnrollmentEndpointTest, ContentEncodingHeaderIsParsedAndPassedToTheDecoder)
+{
+    ContentEncoding observed = ContentEncoding::None;
+    auto decoder = stubDecoder(
+        [&](ContentEncoding encoding, remoted::auth::Payload&)
+        {
+            observed = encoding;
+            return remoted::auth::AuthError::None;
+        });
+
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
+    wazuh::metrics::Manager metricsManager;
+    EnrollmentMetrics metrics = makeEnrollmentMetrics(metricsManager);
+    AuthdClient authdClient(makeUniqueSocketPath("enrollment_endpoint_content_encoding_header"));
+
+    auto handler = makeHandler(authenticator, authdClient, openModeConfig(), metrics, decoder);
+    auto request = std::make_shared<const HttpRequest>(makeRequestWithContentEncoding(kValidBody, "zstd"));
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(request, responder);
+    responder->wait(); // authd is unreachable here; only the decoder's observed value matters
+
+    EXPECT_EQ(observed, ContentEncoding::Zstd);
+}
+
+TEST(EnrollmentEndpointTest, DecodedBodyIsWhatGetsParsedAndForwardedToAuthd)
+{
+    // The wire body is deliberately NOT valid JSON on its own -- if the endpoint ever parsed
+    // request->body directly instead of the decoder's output, this would fail with 400 and authd
+    // would never be reached.
+    std::string capturedRequest;
+    std::mutex captureMutex;
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_decode_success");
+    FakeUdsServer server(path,
+                         [&](const std::string& request)
+                         {
+                             std::lock_guard<std::mutex> lock(captureMutex);
+                             capturedRequest = request;
+                             return R"({"error":0,"data":{"id":"1","name":"decoded-agent","ip":"any","key":"k"}})";
+                         });
+
+    auto decoder = stubDecoder(
+        [](ContentEncoding, remoted::auth::Payload& payload)
+        {
+            auto replacement = std::make_shared<const std::string>(R"({"name":"decoded-agent","version":"5.0.0"})");
+            payload = remoted::auth::Payload {std::string_view {*replacement}, replacement};
+            return remoted::auth::AuthError::None;
+        });
+
+    const auto response = run(openModeConfig(), "this is not json", path, "", decoder);
+    EXPECT_EQ(response.status, 200);
+
+    std::string captured;
+    {
+        std::lock_guard<std::mutex> lock(captureMutex);
+        captured = capturedRequest;
+    }
+    const auto json = nlohmann::json::parse(captured);
+    EXPECT_EQ(json.at("arguments").at("name"), "decoded-agent");
+}
+
+TEST(EnrollmentEndpointTest, UnsupportedContentEncodingIsRejectedWith415)
+{
+    auto decoder = stubDecoder([](ContentEncoding, remoted::auth::Payload&)
+                               { return remoted::auth::AuthError::UnsupportedContentEncoding; });
+
+    const auto response = run(openModeConfig(),
+                              kValidBody,
+                              makeUniqueSocketPath("enrollment_endpoint_415"), // never actually reached
+                              "",
+                              decoder);
+    EXPECT_EQ(response.status, 415);
+}
+
+TEST(EnrollmentEndpointTest, MalformedContentEncodingIsRejectedWith400)
+{
+    auto decoder = stubDecoder([](ContentEncoding, remoted::auth::Payload&)
+                               { return remoted::auth::AuthError::MalformedContentEncoding; });
+
+    const auto response =
+        run(openModeConfig(), kValidBody, makeUniqueSocketPath("enrollment_endpoint_decode_400"), "", decoder);
+    EXPECT_EQ(response.status, 400);
+}
+
+TEST(EnrollmentEndpointTest, BodyTooLargeDuringDecodeIsRejectedWith413)
+{
+    auto decoder =
+        stubDecoder([](ContentEncoding, remoted::auth::Payload&) { return remoted::auth::AuthError::BodyTooLarge; });
+
+    const auto response =
+        run(openModeConfig(), kValidBody, makeUniqueSocketPath("enrollment_endpoint_413"), "", decoder);
+    EXPECT_EQ(response.status, 413);
 }
 
 // -----------------------------------------------------------------------------

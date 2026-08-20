@@ -63,7 +63,9 @@ namespace remoted::enrollment
         }
 
         // Cap on the /enroll JSON body actually parsed -- an endpoint-local guard on top of the
-        // transport's own hard cap, same rationale as /control's kMaxControlBodySize.
+        // transport's own hard cap, same rationale as /control's kMaxControlBodySize. Applied
+        // AFTER decoding, so it bounds the decompressed size a decompression-bomb could otherwise
+        // produce, not just the (already zstd-bomb-guarded) compressed wire size.
         constexpr std::size_t kMaxEnrollBodySize = 16U * 1024U;
         constexpr std::size_t kMaxNameLength = 128;
 
@@ -160,8 +162,9 @@ namespace remoted::enrollment
         };
 
         // Local validation only -- never authd's own rules. On failure, the string is the (fixed,
-        // quote-free) message placed in the response's "message" field.
-        std::variant<ParsedBody, std::string> parseAndValidateBody(const std::string& body)
+        // quote-free) message placed in the response's "message" field. Takes a string_view since
+        // the caller passes the (possibly decompressed) Payload's view, not necessarily a std::string.
+        std::variant<ParsedBody, std::string> parseAndValidateBody(std::string_view body)
         {
             if (body.empty() || body.size() > kMaxEnrollBodySize)
             {
@@ -303,11 +306,12 @@ namespace remoted::enrollment
     remoted::http::RouteHandler makeHandler(const EnrollmentAuthenticator& authenticator,
                                             AuthdClient& authdClient,
                                             const Config& config,
-                                            EnrollmentMetrics& metrics)
+                                            EnrollmentMetrics& metrics,
+                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder)
     {
-        return
-            [&authenticator, &authdClient, config, &metrics](std::shared_ptr<const remoted::http::HttpRequest> request,
-                                                             std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [&authenticator, &authdClient, config, &metrics, bodyDecoder = std::move(bodyDecoder)](
+                   std::shared_ptr<const remoted::http::HttpRequest> request,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             if (!config.enrollmentEnabled)
             {
@@ -315,6 +319,12 @@ namespace remoted::enrollment
                 responder->send(errorResponse(403, 0, "Enrollment is disabled on this manager"));
                 return;
             }
+
+            // Parsed here (before authentication), acted on only after it succeeds below -- same
+            // ordering AuthGateway uses: the MAC must cover the wire bytes exactly as sent,
+            // compressed or not, so decoding can never run against an unauthenticated body.
+            const auto contentEncoding =
+                remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
             const auto authErr = authenticator.authenticate(
@@ -326,7 +336,19 @@ namespace remoted::enrollment
                 return;
             }
 
-            const auto parsedOrError = parseAndValidateBody(request->body);
+            // Zero-copy view into request->body, kept alive by the request itself -- same
+            // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
+            // of the wire body, decoding replaces the view in place only on the Zstd path.
+            remoted::auth::Payload payload {std::string_view {request->body}, request};
+            const auto decodeError = bodyDecoder->decode(contentEncoding, payload);
+            if (decodeError != remoted::auth::AuthError::None)
+            {
+                incRejectedValidation(metrics);
+                responder->send(authErrorResponse(decodeError));
+                return;
+            }
+
+            const auto parsedOrError = parseAndValidateBody(payload.bytes());
             if (std::holds_alternative<std::string>(parsedOrError))
             {
                 incRejectedValidation(metrics);
