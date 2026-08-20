@@ -11,10 +11,10 @@
 
 #include "configEndpoint.hpp"
 
-#include "common/logThrottle.hpp"
 #include "loggerHelper.h"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
+#include <uds_http_server/logThrottle.hpp>
 
 #include <exception>
 #include <json.hpp>
@@ -49,17 +49,17 @@ namespace
         return instance;
     }
 
-    invsync::http::HttpResponse badRequest(const char* reason)
+    wazuh::uds_http::HttpResponse badRequest(const char* reason)
     {
-        return invsync::http::HttpResponse::json(400, nlohmann::json {{"error", reason}, {"code", 400}}.dump());
+        return wazuh::uds_http::HttpResponse::json(400, nlohmann::json {{"error", reason}, {"code", 400}}.dump());
     }
 
     /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is
     /// unreachable" are the same thing to the caller (retry later), and telling them apart would leak
     /// internal state. The two are distinguished in the logs instead.
-    invsync::http::HttpResponse serviceUnavailable()
+    wazuh::uds_http::HttpResponse serviceUnavailable()
     {
-        return invsync::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
+        return wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})");
     }
 
     /**
@@ -116,18 +116,19 @@ namespace
 namespace invsync::endpoints::config
 {
 
-    http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
-                                   invsync::common::ClusterIdentity cluster)
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+                                              invsync::common::ClusterIdentity cluster)
     {
-        return [connector = std::move(connector), cluster = std::move(cluster)](
-                   std::shared_ptr<const http::HttpRequest> request, std::shared_ptr<http::IHttpResponder> responder)
+        return [connector = std::move(connector),
+                cluster = std::move(cluster)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                                              std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
             // One slot per condition, so a persistent one cannot mask a newly-appearing different one.
-            static invsync::common::LogThrottle acceptedThrottle;
-            static invsync::common::LogThrottle goneThrottle;
-            static invsync::common::LogThrottle unavailableThrottle;
+            static wazuh::uds_http::LogThrottle acceptedThrottle;
+            static wazuh::uds_http::LogThrottle goneThrottle;
+            static wazuh::uds_http::LogThrottle unavailableThrottle;
 
             if (!request)
             {
@@ -181,7 +182,7 @@ namespace invsync::endpoints::config
                                  "Rejected %llu config document(s) with 503 in the last %d s: the module is shutting "
                                  "down and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 invsync::common::LogThrottle::kDefaultWindowSeconds);
+                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -197,7 +198,7 @@ namespace invsync::endpoints::config
                                "Rejected %llu config document(s) with 503 in the last %d s: no configured indexer host "
                                "is currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               invsync::common::LogThrottle::kDefaultWindowSeconds);
+                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -263,11 +264,11 @@ namespace invsync::endpoints::config
                 LOGFN_DEBUG1(logFn(),
                              "Indexed %llu agent config document(s) in the last %d s.",
                              static_cast<unsigned long long>(decision.total),
-                             invsync::common::LogThrottle::kDefaultWindowSeconds);
+                             wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
             }
 
             // The protocol-defined acknowledgment: an empty object, not the enriched document.
-            responder->send(http::HttpResponse::json(200, "{}"));
+            responder->send(wazuh::uds_http::HttpResponse::json(200, "{}"));
         };
     }
 

@@ -30,9 +30,24 @@ int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
 
 int w_remoted_parse_https(XML_NODE node, remoted * logr);
 
+/* Lets a test simulate the real ReadConfig(CREMOTE, ...) side effect of parsing
+ * <queue_size> out of ossec.conf into cfg->queue_size, which this file's blanket
+ * __wrap_ReadConfig otherwise leaves untouched (RemotedConfig() itself only ever
+ * hardcodes cfg->queue_size = 131072 before calling ReadConfig -- see config.c --
+ * so without this override there is no way to drive queue_size above/below the
+ * post-ReadConfig validation thresholds through the public RemotedConfig() entry
+ * point). -1 means "no override", preserving every other test's existing
+ * behavior; set right before a RemotedConfig() call, consumed (reset to -1) the
+ * first time __wrap_ReadConfig sees modules == CREMOTE. */
+static long s_read_config_queue_size_override = -1;
+
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     check_expected(modules);
     check_expected(cfgfile);
+    if (modules == CREMOTE && s_read_config_queue_size_override >= 0) {
+        ((remoted *)d1)->queue_size = s_read_config_queue_size_override;
+        s_read_config_queue_size_override = -1;
+    }
     return mock();
 }
 
@@ -448,6 +463,44 @@ static void test_remoted_legacy_task_polling_interval_bounds(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 300);
 
     cJSON_Delete(json);
+}
+
+/* docs/ref/modules/remoted/configuration.md documents that <queue_size> above
+ * 262144 logs a warning (confirmed in config.c: `if (cfg->queue_size > 262144)`),
+ * which had no test anywhere in this file. s_read_config_queue_size_override
+ * stands in for ReadConfig() having just parsed a queue_size that high out of
+ * <queue_size>, since ReadConfig itself is fully mocked out here. */
+static void test_remoted_queue_size_above_threshold_warns(void **state) {
+    (void) state;
+
+    s_read_config_queue_size_override = 262145; // one above the threshold
+
+    mock_remoted_internal_options(1);
+    expect_string(__wrap__mwarn, formatted_msg, "Queue size is very high. The application may run out of memory.");
+
+    int ret = RemotedConfig("test_ossec.conf", &logr);
+
+    // The warning does not fail the config: RemotedConfig() only rejects
+    // queue_size < 1 (a separate, unrelated check), so this must still succeed.
+    assert_int_equal(ret, 1);
+    assert_int_equal(logr.queue_size, 262145);
+}
+
+/* Boundary check for the same guard: exactly 262144 must NOT warn (config.c's
+ * condition is strictly `>`), so no expect_string(__wrap__mwarn, ...) is set up
+ * here -- cmocka would fail this test if mwarn were called without a matching
+ * expectation queued. */
+static void test_remoted_queue_size_at_threshold_does_not_warn(void **state) {
+    (void) state;
+
+    s_read_config_queue_size_override = 262144; // exactly at the threshold
+
+    mock_remoted_internal_options(1);
+
+    int ret = RemotedConfig("test_ossec.conf", &logr);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(logr.queue_size, 262144);
 }
 
 // Test w_remoted_parse_legacy
@@ -972,6 +1025,8 @@ int main(void)
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
         cmocka_unit_test(test_remoted_internal_options_config),
         cmocka_unit_test(test_remoted_legacy_task_polling_interval_bounds),
+        cmocka_unit_test(test_remoted_queue_size_above_threshold_warns),
+        cmocka_unit_test(test_remoted_queue_size_at_threshold_does_not_warn),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_valid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_invalid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_connection_section, setup, teardown),

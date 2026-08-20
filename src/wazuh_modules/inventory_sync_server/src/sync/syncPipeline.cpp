@@ -218,7 +218,7 @@ namespace invsync::sync
                     (classify(item.session) == SessionKind::BulkData) ? m_durationBulk : m_durationImmediate;
                 histogram->observe(static_cast<uint64_t>(elapsed));
             }
-            item.responder->send(http::HttpResponse::json(status, body));
+            item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
         }
         if (m_registry)
         {

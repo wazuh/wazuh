@@ -28,13 +28,13 @@
 #include <utility>
 #include <vector>
 
-using invsync::http::HttpRequest;
-using invsync::http::HttpResponse;
-using invsync::http::IHttpResponder;
 using invsync::sync::SyncPipeline;
 using invsync::sync::SyncPipelineConfig;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
+using wazuh::uds_http::HttpRequest;
+using wazuh::uds_http::HttpResponse;
+using wazuh::uds_http::IHttpResponder;
 namespace delete_agent = invsync::endpoints::delete_agent;
 
 namespace
@@ -76,7 +76,7 @@ namespace
         std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
         std::shared_ptr<FakeIndexerConnectorSync> admissionConnector;
         std::shared_ptr<SyncPipeline> pipeline;
-        invsync::http::RouteHandler handler;
+        wazuh::uds_http::RouteHandler handler;
 
         EndpointUnderTest()
         {
@@ -103,9 +103,9 @@ TEST(DeleteAgentEndpoint, RoutesArePinned)
 {
     // remoted never exposes these (D15); authd targets the POST alias because uhttp_* only POSTs.
     // Pinned so a silent rename cannot break that C caller.
-    EXPECT_EQ(delete_agent::method(), invsync::http::Method::Delete);
+    EXPECT_EQ(delete_agent::method(), wazuh::uds_http::Method::Delete);
     EXPECT_STREQ(delete_agent::path(), "/agents");
-    EXPECT_EQ(delete_agent::altMethod(), invsync::http::Method::Post);
+    EXPECT_EQ(delete_agent::altMethod(), wazuh::uds_http::Method::Post);
     EXPECT_STREQ(delete_agent::altPath(), "/agents/delete");
 }
 
@@ -139,7 +139,7 @@ TEST(DeleteAgentEndpoint, UnavailableIndexerIs503AtAdmission)
 TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)
 {
     EndpointUnderTest fixture;
-    invsync::http::RouteHandler handler = delete_agent::makeHandler(
+    wazuh::uds_http::RouteHandler handler = delete_agent::makeHandler(
         delete_agent::Dependencies {std::weak_ptr<SyncPipeline> {}, fixture.admissionConnector});
 
     auto responder = std::make_shared<FutureResponder>();

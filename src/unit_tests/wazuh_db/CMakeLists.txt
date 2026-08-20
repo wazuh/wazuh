@@ -143,3 +143,35 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Unit tests for the wazuh-db HTTP-over-Unix-socket API endpoints
+# (src/wazuh_db/src/httpsrv/), which had zero coverage before this file. Those
+# endpoint classes are header-only, templated on DBConnection/DBStatement and
+# defaulting to SQLite3Wrapper::Connection/Statement, but never requiring them --
+# see test_wdb_http_endpoints.cpp for how a hand-fed mock statement is used
+# instead to drive them without a real SQLite database, wdb_lib, or socket.
+# gtest-based (like this directory's other .c tests, this one needs real
+# exceptions -- nlohmann::json::parse_error -- which cmocka's setjmp-based
+# CMUnitTest runner isn't set up to assert on), same shape as client-agent's
+# test_task_registry_ipc_component (see client-agent/CMakeLists.txt).
+enable_language(CXX)
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
+add_executable(test_wdb_http_endpoints test_wdb_http_endpoints.cpp)
+target_include_directories(
+    test_wdb_http_endpoints
+    PRIVATE ${SRC_FOLDER}
+            ${SRC_FOLDER}/external/googletest/googletest/include/
+            ${SRC_FOLDER}/external/cpp-httplib
+            ${SRC_FOLDER}/shared_modules/utils
+            ${SRC_FOLDER}/wazuh_db/src/httpsrv)
+target_link_libraries(
+    test_wdb_http_endpoints
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+    -fprofile-arcs
+    -ftest-coverage)
+add_test(NAME test_wdb_http_endpoints COMMAND test_wdb_http_endpoints)

@@ -31,6 +31,24 @@ The remoted module serves as the primary entry point for all agent communication
 5. **Forwards events** to the analysis engine for processing
 6. **Manages agent groups** and configuration synchronization
 
+## Local admin socket
+
+The C++ module serves its own metrics over a manager-local Unix socket,
+`queue/sockets/remoted-module.sock` (fixed path, mode `0660`), separate by design from the
+agent-facing HTTPS endpoint — statistics are never exposed on the public listener.
+
+| Route | Response |
+|---|---|
+| `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
+| `GET /metrics` | `200` — JSON dump of the module's metric families (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`) |
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
+A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
+keeps serving agents without it. The legacy `getstate` control socket is unaffected.
+
 ## Related Modules
 
 - **wazuh-manager-db**: Stores agent information and connection status

@@ -24,6 +24,8 @@ void __wrap_rem_inc_recv_events();
 
 void __wrap_rem_inc_recv_ctrl();
 
+void __wrap_rem_inc_recv_upgrade_ack();
+
 void __wrap_rem_inc_recv_discarded();
 
 void __wrap_rem_inc_recv_events_failed();

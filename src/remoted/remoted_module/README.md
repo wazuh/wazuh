@@ -30,7 +30,7 @@ remoted_module/
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
-│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan queue (/scan/vd, see below)
+│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd, see below)
 │   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
@@ -499,16 +499,21 @@ Built via `remoted::control::buildControlConfig()` in the facade's startup.
 
 ### Metrics
 
-`ControlMetrics` (`metrics.hpp`) tracks:
-- `startupCount` — total `POST /control {"type":"startup"}` messages
-- `notifyCount` — total `POST /control {"type":"notify"}` messages
-- `shutdownCount` — total `POST /control {"type":"shutdown"}` messages
-- `wdbErrorCount` — wazuh-db operation failures (connection, timeout, queue full)
-- `taskFetchCount` — successful task fetches from task-manager
-- `taskFetchErrorCount` — task-manager operation failures
+`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` counter family, resolved from the
+facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeControlMetrics()`:
+- `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
+- `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
+- `remoted.control.shutdown` — total `POST /control {"type":"shutdown"}` messages
+- `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
+- `remoted.control.task_fetch` — successful task fetches from task-manager
+- `remoted.control.task_fetch_error` — task-manager operation failures
 
-All atomic `uint64_t`. Exposed via `RemotedModuleFacade::getMetrics()` (future: add a `GET /metrics`
-endpoint to surface these).
+Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
+all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
+log when the module stops; it is NEVER exposed through the public HTTPS endpoint (agent-facing,
+not an admin plane). Natural future candidates on the same registry: per-status passthrough
+counters for `/stateful`/`/stateless`, CMAC-gateway 401s, and the `AgentRegistry` size as a pull
+metric.
 
 ### Error handling
 
@@ -564,16 +569,20 @@ sequenceDiagram
     EP->>SH: handleVdScan(agentId, 100, callback)
     SH->>VC: getOffset()
     VC-->>SH: 100 (matches)
-    SH->>SH: track agent, push to queue
+    SH->>VD: POST /vulnerability-detector/scan {"agent_id":"..."}
+    VD-->>SH: 200 {} (queued in VD's dispatch lane -- it WILL run)
     SH-->>EP: Accepted
     EP-->>Ag: 200 OK {}
 
-    Note over SH: A pooled worker thread later dequeues the agent
-    SH->>VC: getOffset() (re-validate: feed may have moved since admission)
-    VC-->>SH: 100 (still matches)
-    SH->>VD: POST /vulnerability-detector/scan {"agent_id":"..."}
-    VD-->>SH: 200 OK
+    Note over VD: VD's single worker runs the scan later.<br/>its outcome lands in modulesd's log
 ```
+
+The whole exchange is synchronous: remoted holds no scan state and relays VD's **admission**
+answer. A `200` therefore genuinely promises the scan will run; anything VD refuses (dispatch
+lane full, feed mid-update, module stopping, no indexer host available) or a failed round trip
+becomes an honest `503` the agent's next `/control` notify retries. The previous design — a
+tracking table plus a worker pool retrying with backoff *behind an already-sent 200* — could
+exhaust its retries and silently drop scans the agent believed were handled.
 
 ### Components
 
@@ -582,9 +591,11 @@ sequenceDiagram
 The HTTP endpoint registration. Parses the JSON body (`type`, `feed_offset`), validates the agent
 ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome` to its wire
 response:
-- `Accepted` → `200 {}`
+- `Accepted` → `200 {}` (VD queued the scan)
 - `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
-- `QueueFull` → `503 {"error":"scan_queue_full"}`
+- `VdRejected` → `503 {"error":<VD's own cause>}` — `scan_queue_full`, `feed_not_ready`,
+  `scanner_not_ready`, `vd_not_initialized`, `shutting_down`, `indexer_unavailable`, or
+  `vd_unreachable`/`vd_error` when the relay leg itself failed
 - `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
 - Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
   `feed_offset`) → `400` with a specific `error` code (see
@@ -595,31 +606,25 @@ ever carries `type` and `feed_offset`.
 
 #### ScanVdHandlerImpl (`scanvd/scanVdHandler.hpp/.cpp`)
 
-Core business logic: an offset-gated admission check plus a small worker-pool queue that actually
-triggers the scan against the `vulnerability_scanner` module.
+A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP handler thread
+(the transport's request pool exists for handlers that do synchronous downstream round trips):
 
-- **Admission** (`handleVdScan`, called synchronously from the HTTP handler thread): rejects
-  `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with `VersionMismatch` unless
-  the request's `feed_offset` matches exactly; otherwise tracks the agent (a per-agent state map
-  keyed by agent ID — a fresh request for an already-tracked agent just refreshes the tracked
-  offset instead of queuing a duplicate entry) and pushes it onto the ready queue. Rejects with
-  `QueueFull` above a configurable tracked-agent cap (production default: 10000).
-- **Worker pool** (`scanWorkerPoolSize()`, sized to the host's available CPUs via `cpp_get_nproc()`):
-  each worker re-validates the offset immediately before calling `POST
-  /vulnerability-detector/scan` on the VD module (over the *same* modulesd UDS socket `VdClient`
-  uses for `/offset` — see below) — the feed may have moved on again while the request sat queued,
-  in which case the task is silently discarded (the agent will notice the newer offset on its next
-  `/control` notify and re-request; no error is returned for this since the original HTTP response
-  was already sent at admission time). A pool larger than one bounds the "blast radius" of one
-  agent's worst-case wait (the VD module's scan call can legitimately block up to ~30s draining a
-  syscollector VDFirst/VDSync session already in flight for the same agent, before it even starts
-  scanning) — it doesn't reflect how many scans the VD module can truly run in parallel, which is
-  exactly one, since
-  `ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock for the whole scan regardless
-  of how many worker threads call it concurrently.
-- **Retry**: a *retryable* failure (VD module briefly unready, network error) gets exponential
-  backoff (1s, 2s, 4s) up to 3 attempts, then the tracked state is dropped — the agent's next
-  `/control` notify will still show the (unaffected) higher offset and it will re-request.
+- Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
+  `VersionMismatch` unless the request's `feed_offset` matches exactly.
+- Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
+  `vd.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
+  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
+  items), so the round trip is inline route work measured in milliseconds, never a scan.
+- Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
+  VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
+  own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
+  below; an unreachable socket or unexpected status → `VdRejected` with
+  `vd_unreachable`/`vd_error` (logged throttled, one line per 90 s window with its count).
+- **No retry, by design**: the agent's pending state survives a `503` and its next `/control`
+  notify re-requests — retrying here would only duplicate that loop with a worse deadline.
+  Dedup of repeated requests lives in VD's lane, next to the queue it protects; queued scans
+  cannot go stale because a scan always runs against the feed that is current at execution
+  time (the POST carries no offset).
 
 #### VdClient (`common/vdClient.hpp/.cpp`)
 
@@ -640,19 +645,21 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 ### Metrics
 
-`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) tracks, per the design doc's Phase 4 observability
-goals: `requestsTotal`, `versionMismatchCount`, `queueFullCount`, `invalidAgentCount`,
-`acceptedCount`, `scanSucceededCount`, `scanRetriedCount`, `scanRetriesExhaustedCount`,
-`scanPermanentFailureCount`, `scanDiscardedCount` (offset moved on while queued). All atomic
-`uint64_t`, incremented inline at each outcome — same shape as `ControlMetrics`.
+`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
+admission decisions only, since that is all this handler does: `requests.total`,
+`version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
+it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
+Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
+incremented inline at each outcome — same shape (and same null-object contract) as
+`ControlMetrics`. What became of an accepted scan is the VD module's to report (it logs each
+outcome per agent).
 
 ### Lifecycle
 
 `ScanVdHandlerImpl` shares its `VdClient` instance with `ControlHandler` (constructed once in
 `RemotedModuleFacade::start()` and passed to both), so the two endpoints never see different
-offsets due to independent cache state. Its worker threads are joined in its destructor (queue
-drains are not attempted — an in-flight scan trigger already committed to the VD module completes
-or times out on its own; anything still purely queued is simply dropped).
+offsets due to independent cache state. It owns no threads and no queue — teardown is trivial.
 
 ## Streamed responses — `POST /download`
 
@@ -1059,6 +1066,42 @@ try/catch frame at ~30 per-request call sites, measurable even when the body doe
 forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
 (request target, header values), so using it as a format would be a remote format-string bug.
 
+## Local admin socket — `queue/sockets/remoted-module.sock`
+
+The module's management plane: a second, independent HTTP server (the shared
+`shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
+brought up by `startAdminServer()` right after the public server. It serves exactly two
+read-only routes, both **Liveness** class (answered inline from resident state, exempt from the
+byte budget):
+
+| Route | Answer |
+|---|---|
+| `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
+| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`), same envelope as inventory sync's `/metrics` |
+
+Contract points:
+
+- **Fixed path, no knob**: the constant `queue/sockets/remoted-module.sock` is **relative** on
+  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  `$WAZUH_HOME/queue/sockets/remoted-module.sock` (mode 0660). Internal options only carry ints,
+  so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
+- **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
+  admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
+  server keeps the opposite policy: its failure is fatal.)
+- **Local-only by construction**: agents can never reach it — no route on the public HTTPS
+  endpoint exposes it (that endpoint is agent-facing, not an admin plane), and the C-side stats
+  served by remcom's legacy `getstats` are untouched (decision U6).
+- **Dogfooding**: the admin server's own `TransportDiagnostics` are published on the same
+  registry as `remoted.admin.server.*` pull metrics (weak_ptr target behind its own mutex,
+  registered once per process — pulls cannot be unregistered), so `GET /metrics` also reports
+  the transport serving it.
+- **Shutdown**: `stopAccepting()` in `stop()`'s phase 1 alongside the HTTPS server's, full
+  `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
 ## Integration in remoted
 
 - Build wiring: `add_subdirectory(remoted_module)` + `remoted_module` added to
@@ -1100,15 +1143,22 @@ within TTL, single-flight refresh under a concurrent caller with the lock releas
 round trip, stale-value fallback and bounded retry gating on a failed query, recovery clearing the
 failure state), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
 `ScanVdHandler`: every rejection code, the `ScanVdOutcome` → response mapping), `scanVdHandler_test.cpp`
-(the queue/dedup/backoff state machine against a real `VdClient` + fake VD backend: version
-mismatch, retry-with-backoff, permanent failure, queue-full at capacity, an offset change during an
-in-flight attempt triggering an automatic re-scan with the new offset, and a purely-queued task
-being discarded — never reaching the VD backend at all — when the offset moves on before it's
-dequeued), and `controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
+(the synchronous admission passthrough against a real `VdClient` + fake VD backend: version
+mismatch and invalid-agent gates, VD's 200 relayed as exactly one POST with no retry, VD's
+capacity/readiness rejections passed through with their error codes, an unreachable VD answered
+as an honest `vd_unreachable` 503, VD's `indexer_unavailable` cause kept off the `vd_error`
+counter, and the wire shape of the scan POST), and
+`controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
 `RestinioHttpServer` + real `AuthGateway` + real `ControlHandler`/`ScanVdHandlerImpl`, with only
-wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409 responses
-survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files exercise
-directly).
+wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409/503
+responses survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files
+exercise directly).
+
+Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
+the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying the
+`remoted.control.*`/`remoted.scanvd.*`/`remoted.admin.server.*` families, 404/405 exact-match
+routing, the warn-and-continue policy when the bind fails with the public listener unaffected,
+and `stop()` unlinking the socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V

@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,14 +9,14 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_UDS_HTTP_SERVER_FACTORY_HPP
-#define _INVSYNC_UDS_HTTP_SERVER_FACTORY_HPP
+#ifndef _WAZUH_UDS_HTTP_SERVER_FACTORY_HPP
+#define _WAZUH_UDS_HTTP_SERVER_FACTORY_HPP
 
 #include "IUdsHttpServer.hpp"
 
 #include <memory>
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /**
@@ -31,6 +31,6 @@ namespace invsync::http
      */
     std::unique_ptr<IUdsHttpServer> makeUdsHttpServer();
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_UDS_HTTP_SERVER_FACTORY_HPP
+#endif // _WAZUH_UDS_HTTP_SERVER_FACTORY_HPP

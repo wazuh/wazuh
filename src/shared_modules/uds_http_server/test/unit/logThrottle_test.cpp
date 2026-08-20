@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module - unit tests
+ * Wazuh shared UDS HTTP server library - unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "common/logThrottle.hpp"
+#include <uds_http_server/logThrottle.hpp>
 
 #include <gtest/gtest.h>
 
@@ -18,7 +18,7 @@
 #include <thread>
 #include <vector>
 
-using invsync::common::LogThrottle;
+using wazuh::uds_http::LogThrottle;
 
 // An operator must not have to wait a whole window for the first sign of trouble.
 TEST(LogThrottleTest, TheFirstOccurrenceAlwaysEmits)

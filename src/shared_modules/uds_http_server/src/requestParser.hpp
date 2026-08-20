@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,17 +9,17 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_HTTP_REQUEST_PARSER_HPP
-#define _INVSYNC_HTTP_REQUEST_PARSER_HPP
+#ifndef _WAZUH_UDS_HTTP_REQUEST_PARSER_HPP
+#define _WAZUH_UDS_HTTP_REQUEST_PARSER_HPP
 
-#include "IUdsHttpServer.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /**
@@ -154,6 +154,6 @@ namespace invsync::http
         int m_rejectStatus {0};
     };
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_HTTP_REQUEST_PARSER_HPP
+#endif // _WAZUH_UDS_HTTP_REQUEST_PARSER_HPP

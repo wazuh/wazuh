@@ -850,6 +850,78 @@ stages:
           failed_items: []
         message: !anystr
 
+  - name: Try to upgrade agents with an invalid package_type value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        package_type: 'not_a_valid_package_type'
+    response:
+      # package_type is an enum (rpm, deb): rejected by OpenAPI request validation
+      # before reaching the upgrade logic, same as the other enum/format params
+      # validated this way elsewhere in this file (see e.g. group_id, status).
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Upgrade agents with a valid package_type and filters not matching them
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        upgrade_version: '4.0.0'
+        package_type: 'rpm'
+        os.platform: 'random_platform'
+    response:
+      # Same deterministic shape as "Try to upgrade a list of agents with filters
+      # not matching them" above: the os.platform filter matches no agent, so
+      # upgrade task creation (and therefore package_type) is never reached --
+      # this only confirms package_type is accepted by request validation and
+      # passed through without altering that filter-mismatch code path.
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
+  - name: Upgrade agents with a custom wpk_repo and filters not matching them
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,002'
+        upgrade_version: '4.0.0'
+        wpk_repo: 'http://packages.wazuh.com/wpk-test/'
+        os.platform: 'random_platform'
+    response:
+      # Same reasoning as above: the non-matching filter keeps this deterministic
+      # regardless of the (non-existent, test environment) wpk_repo host, since
+      # no agent is eligible for task creation.
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
+
   - name: Upgrade all agents in group group1 (only 001 is in group1)
     request:
       verify: False

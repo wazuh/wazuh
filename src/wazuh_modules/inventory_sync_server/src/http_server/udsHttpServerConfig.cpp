@@ -36,7 +36,7 @@ namespace
     // an arbitrary per-request cap would be an arbitrary session-size cap; what bounds memory is
     // the in-flight byte budget, which start() feeds to the parser so "declares more than the
     // whole budget" is refused with 413 at headers-complete.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {invsync::http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE};
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {wazuh::uds_http::UdsHttpServerConfig::UNLIMITED_BODY_SIZE};
 
     // llhttp enforces none of these itself, so they are applied by hand in the parser.
     constexpr std::size_t DEFAULT_MAX_URL_SIZE {2048};
@@ -69,6 +69,13 @@ namespace
     // under a default RLIMIT_NOFILE.
     constexpr std::size_t DEFAULT_MAX_CONNECTIONS {1024};
 
+    /* Route-class admission (QoS). The reserve is the accept headroom the data plane can never
+     * consume; the control caps bound the deletion plane (header id, empty body). Liveness stays
+     * fixed in the library: like max_header_count, it is a term of the memory ceiling. */
+    constexpr std::size_t DEFAULT_RESERVED_CONTROL_CONNECTIONS {64};
+    constexpr std::size_t DEFAULT_CONTROL_MAX_BODY_BYTES {64U * 1024U};
+    constexpr std::size_t DEFAULT_CONTROL_MAX_SESSIONS {256};
+
     // Global cap on in-flight request payload bytes. Reserved from the declared Content-Length
     // before the body is read, so it bounds the read-phase peak as well as resident payloads.
     constexpr std::size_t DEFAULT_MAX_INFLIGHT_BYTES {256U * 1024U * 1024U};
@@ -95,12 +102,22 @@ namespace
     }
 } // namespace
 
-namespace invsync::http
+namespace invsync
 {
 
     UdsHttpServerConfig buildServerConfig(const inventory_sync_server_config_t& config)
     {
         UdsHttpServerConfig result;
+
+        // This module's identity, injected into the shared transport so every diagnostic renders
+        // exactly the lines this module logged before the transport was extracted (RF-6): the
+        // serverName templates expand to "inventory sync server ...", and the capacity hints name
+        // THIS module's internal options.
+        result.logTag = "wazuh-manager-modulesd:inventory-sync-server:server";
+        result.serverName = "inventory sync";
+        result.serverHeader = "wazuh-manager-modulesd";
+        result.budgetOptionHint = "inventory_sync_server_max_inflight_bytes";
+        result.connectionCapOptionHint = "inventory_sync_server_max_parallel_connections";
 
         result.socketPath = config.socket_path[0] != '\0' ? std::string {config.socket_path} : DEFAULT_SOCKET_PATH;
         result.socketMode =
@@ -123,6 +140,12 @@ namespace invsync::http
         result.drainTimeoutSec = resolveUnsigned(config.drain_timeout, DEFAULT_DRAIN_TIMEOUT_SEC);
 
         result.maxConnections = resolveUnsigned(config.max_parallel_connections, DEFAULT_MAX_CONNECTIONS);
+
+        result.reservedControlConnections =
+            resolveUnsigned(config.reserved_control_connections, DEFAULT_RESERVED_CONTROL_CONNECTIONS);
+        result.controlPolicy.maxBodyBytes =
+            resolveUnsigned(config.control_max_body_bytes, DEFAULT_CONTROL_MAX_BODY_BYTES);
+        result.controlPolicy.maxSessions = resolveUnsigned(config.control_max_sessions, DEFAULT_CONTROL_MAX_SESSIONS);
 
         // long long rather than int, so it cannot be resolved with resolveUnsigned(). The transport
         // clamps this up to at least one max-size body at start(), so a too-small value cannot
@@ -157,4 +180,4 @@ namespace invsync::http
         return result;
     }
 
-} // namespace invsync::http
+} // namespace invsync

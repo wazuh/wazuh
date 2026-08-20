@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_UDS_HTTP_SERVER_INTERFACE_HPP
-#define _INVSYNC_UDS_HTTP_SERVER_INTERFACE_HPP
+#ifndef _WAZUH_UDS_HTTP_SERVER_INTERFACE_HPP
+#define _WAZUH_UDS_HTTP_SERVER_INTERFACE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -21,13 +21,13 @@
 #include <utility>
 #include <vector>
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
 
     /*
      * PEER CONTRACT -- do not change the wire behaviour without reading the client.
      *
-     * The production client of this server is remoted's AsioUdsHttpClient
+     * The reference client of this server is remoted's AsioUdsHttpClient
      * (src/remoted/remoted_module/src/downstream/asioUdsHttpClient.cpp). The exact bytes it
      * puts on the wire are built by its buildRequestHead():
      *
@@ -45,15 +45,15 @@ namespace invsync::http
      *
      * These types intentionally MIRROR remoted's own
      * src/remoted/remoted_module/src/http_server/IHttpServer.hpp so both sides of the socket read
-     * alike. They are DUPLICATED rather than shared, for three reasons:
-     *   - remoted puts its src/ on the include path as PRIVATE, so sharing would mean adding
-     *     remoted's private src/ to modulesd's include path.
-     *   - remoted's HttpServerConfig is TCP/TLS-shaped (bindAddress, port, certificatePath,
-     *     privateKeyPath); a UDS server has no use for any of it.
-     *   - these two are protocol PEERS, not layers of one stack. A change one side needs must not
-     *     be a change the other side is forced to take.
-     * Where this contract deliberately differs from remoted's, the difference is commented at the
-     * declaration.
+     * alike. This library is the SHARED UDS-SERVER side, consumed by manager daemons
+     * (inventory_sync_server, vulnerability_scanner, remoted_module's local admin socket).
+     * remoted's agent-facing TCP/TLS server is a protocol PEER, not a layer of this stack, and
+     * stays separate on purpose: its HttpServerConfig is TCP/TLS-shaped and a change one side
+     * needs must not be a change the other side is forced to take.
+     *
+     * NORMATIVE where the two historically diverged (both divergences are this library's
+     * behaviour): the request target is RAW with the query string included, and request header
+     * names are lower-cased before the handler sees them.
      */
 
     /**
@@ -155,6 +155,54 @@ namespace invsync::http
     using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
+     * @brief Service class of a route, classified by its SHEDDING CONTRACT -- not by verb.
+     *
+     * - Data: bulk payloads with deferred completion, the reason the byte budget exists. Charged
+     *   the budget; shed with 503 under pressure (the peer implements retry/backoff by design).
+     * - Control: small-bodied requests other daemons depend on. NEVER shed by data-plane pressure
+     *   (budget-exempt); bounded instead by their own small body cap and session cap. A Control
+     *   route that does real work still sheds ITS OWN capacity module-side (a bounded queue
+     *   answering 503) -- the class only guarantees the data plane cannot starve it.
+     * - Liveness: answered from resident state; must respond under any pressure.
+     */
+    enum class RouteClass : std::uint8_t
+    {
+        Data = 0,
+        Control = 1,
+        Liveness = 2
+    };
+
+    /// Number of route classes, for per-class arrays.
+    inline constexpr std::size_t ROUTE_CLASS_COUNT {3};
+
+    /**
+     * @brief Per-route registration options.
+     *
+     * The zeroes defer to the class policy in UdsHttpServerConfig, so a plain
+     * `RouteOptions {RouteClass::Control}` is the common spelling.
+     */
+    struct RouteOptions
+    {
+        RouteClass cls {RouteClass::Data};
+        /// Per-route body-cap override; 0 -> the class policy's cap. Checked against the DECLARED
+        /// Content-Length at headers-complete: over it is a 413 (the peer is wrong), never a 503.
+        std::size_t maxBodyBytes {0};
+        /// Per-route concurrent-session cap, enforced with the route's own counter IN ADDITION to
+        /// the class cap; 0 -> only the class cap applies.
+        std::size_t maxSessions {0};
+    };
+
+    /**
+     * @brief Admission policy of one route class.
+     */
+    struct ClassPolicy
+    {
+        bool chargeByteBudget {false}; ///< Reserve declared length + overhead from the byte budget.
+        std::size_t maxBodyBytes {0};  ///< Declared-length cap -> 413. UNLIMITED_BODY_SIZE disables.
+        std::size_t maxSessions {0};   ///< Concurrent classified sessions -> 503. 0 = resolved at start().
+    };
+
+    /**
      * @brief Server configuration, decoupled from the C-ABI struct.
      *
      * The in-struct values below ARE the module defaults; buildServerConfig() only overrides the
@@ -162,9 +210,11 @@ namespace invsync::http
      */
     struct UdsHttpServerConfig
     {
-        /// RELATIVE on purpose. modulesd chdir()s to the install dir and remoted chroot()s into
-        /// it, so a relative path is the only form both resolve to the same file.
-        std::string socketPath {"queue/sockets/inventory-sync.sock"};
+        /// No default: every consumer names its own socket. Empty makes start() throw with a
+        /// message naming the problem. Consumers use a RELATIVE path on purpose: modulesd
+        /// chdir()s to the install dir and remoted chroot()s into it, so a relative path is the
+        /// only form both resolve to the same file.
+        std::string socketPath {};
         /// bind() applies the umask, so an explicit chmod after bind is mandatory, not belt-and-braces.
         std::uint32_t socketMode {0660};
 
@@ -209,10 +259,64 @@ namespace invsync::http
         /// an explicit 503, then close. Note the accepted-and-rejected connection also costs an
         /// fd briefly, so the true ceiling is maxConnections + concurrentAccepts.
         std::size_t maxConnections {1024};
+
+        /*
+         * Server identity, injected so diagnostics read in the consumer's own vocabulary and the
+         * extraction of this library changed no log line of its first consumer.
+         */
+        /// Tag every log line is attributed to (the daemon:module:component convention).
+        std::string logTag {"wazuh-manager:uds-http-server"};
+        /// Short service name rendered into diagnostics as "<name> server", "<name> connection(s)"
+        /// and "<name> request(s)". Example: "inventory sync".
+        std::string serverName {"UDS HTTP"};
+        /// Value of the "Server:" response header. Consumers that already have a wire contract
+        /// keep their historical value; new servers pick their own daemon name.
+        std::string serverHeader {"wazuh-manager-modulesd"};
+        /// Name of the internal option that raises the in-flight byte budget, mentioned in the
+        /// budget-exhausted diagnostic. Empty: the advice sentence is omitted.
+        std::string budgetOptionHint {};
+        /// Ditto for the connection cap diagnostic.
+        std::string connectionCapOptionHint {};
+
+        /*
+         * Route-class admission policies (QoS). The defaults implement the model the classes were
+         * designed for: the DATA plane can shed (503) and is the only class charged the byte
+         * budget; CONTROL and LIVENESS are exempt from it and bounded by their own small body and
+         * session caps instead, so a saturated data plane can never starve them. The decisive
+         * mechanism is reservedControlConnections: Data's session cap resolves to
+         * maxConnections - reserved, so Data ALONE can never drive occupancy up to the
+         * accept-time cap -- headroom always remains for the other classes to be accepted,
+         * classified and served.
+         */
+        ClassPolicy dataPolicy {true, UNLIMITED_BODY_SIZE, 0}; ///< maxSessions 0 -> maxConnections - reserved.
+        ClassPolicy controlPolicy {false, 64U * 1024U, 256};
+        ClassPolicy livenessPolicy {false, 4U * 1024U, 64};
+        /// Accept-headroom the data plane can never consume. Clamped at start() to at most
+        /// maxConnections / 4 (and to 0 when that quarter is 0, i.e. tiny test configs).
+        std::size_t reservedControlConnections {64};
         /// Reserved from the declared Content-Length at headers-complete, so this bounds the
         /// read-phase peak as well as resident payloads. 0 disables. start() clamps it up to at
         /// least one maximum-size body, so a too-small value cannot reject everything.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
+    };
+
+    /**
+     * @brief Point-in-time snapshot of the transport's bounded resources.
+     *
+     * Produced by IUdsHttpServer::diagnostics() from relaxed atomic loads, so it is cheap enough
+     * to be polled by a metrics collector (the intended use: each consumer publishes these as
+     * wazuh_metrics pull metrics -- this library deliberately does not depend on wazuh_metrics).
+     * With the byte budget disabled (maxInFlightBytes == 0) the three budget fields read 0.
+     */
+    struct TransportDiagnostics
+    {
+        std::size_t budgetAvailableBytes {0}; ///< Bytes still admittable right now.
+        std::size_t budgetInFlightBytes {0};  ///< Bytes currently reserved by admitted requests.
+        std::size_t budgetInFlightCount {0};  ///< Requests currently holding a reservation.
+        std::size_t liveSessions {0};         ///< Open connections, deferred replies included.
+        /// Classified sessions per class, indexed by RouteClass. Sums to at most liveSessions
+        /// (connections still reading their head are counted only in liveSessions).
+        std::size_t sessionsByClass[ROUTE_CLASS_COUNT] {0, 0, 0};
     };
 
     /**
@@ -230,17 +334,28 @@ namespace invsync::http
         /**
          * @brief Register a route. Must be called before start().
          *
-         * @param method             HTTP verb to match.
-         * @param path               Exact path to match (compared against the pre-'?' prefix of
-         *                           the request target; no wildcards or patterns).
-         * @param handler            Handler invoked on a match.
-         * @param countAgainstBudget When false, the route is exempt from the in-flight byte budget
-         *                           (no reservation, never shed with 503). Use for tiny liveness
-         *                           probes so they stay answerable under memory pressure.
+         * @param method  HTTP verb to match.
+         * @param path    Exact path to match (compared against the pre-'?' prefix of the request
+         *                target; no wildcards or patterns).
+         * @param handler Handler invoked on a match.
+         * @param options Service class and per-route cap overrides (see RouteOptions).
          * @throws std::logic_error if called after start().
          */
-        virtual void
-        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) = 0;
+        virtual void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options) = 0;
+
+        /**
+         * @brief Compatibility spelling of addRoute() predating the class model.
+         *
+         * true maps to Data (budget-charged, sheddable), false to Liveness (the exempt probes) --
+         * exactly what the flag used to mean.
+         */
+        void addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true)
+        {
+            addRoute(method,
+                     path,
+                     std::move(handler),
+                     RouteOptions {countAgainstBudget ? RouteClass::Data : RouteClass::Liveness});
+        }
 
         /**
          * @brief Bind, chmod and start serving. Throws on any bind/permission/configuration
@@ -287,8 +402,16 @@ namespace invsync::http
          * Idempotent; safe if never started; called by the destructor.
          */
         virtual void stop() noexcept = 0;
+
+        /**
+         * @brief Snapshot the transport's bounded resources (relaxed atomic loads, lock-free).
+         *
+         * Callable from any thread at any point between construction and destruction --
+         * including before start() (all zeros) and after stop() (the quiesced values).
+         */
+        virtual TransportDiagnostics diagnostics() const noexcept = 0;
     };
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_UDS_HTTP_SERVER_INTERFACE_HPP
+#endif // _WAZUH_UDS_HTTP_SERVER_INTERFACE_HPP

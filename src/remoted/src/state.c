@@ -47,6 +47,12 @@ void rem_inc_recv_ctrl() {
     w_mutex_unlock(&state_mutex);
 }
 
+void rem_inc_recv_upgrade_ack() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.upgrade_ack_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
 void rem_inc_recv_events_failed() {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_breakdown.events_failed_count++;
@@ -116,18 +122,6 @@ void rem_inc_send_ack() {
 void rem_inc_send_shared() {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.shared_count++;
-    w_mutex_unlock(&state_mutex);
-}
-
-void rem_inc_send_ar() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.ar_count++;
-    w_mutex_unlock(&state_mutex);
-}
-
-void rem_inc_send_request() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.request_count++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -207,7 +201,6 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_received_breakdown, "dequeued_after", state_cpy.recv_breakdown.dequeued_count);
     cJSON_AddNumberToObject(_received_breakdown, "discarded", state_cpy.recv_breakdown.discarded_count);
     cJSON_AddNumberToObject(_received_breakdown, "events", state_cpy.recv_breakdown.events_count);
-    cJSON_AddNumberToObject(_received_breakdown, "states", state_cpy.recv_breakdown.states_count);
     cJSON_AddNumberToObject(_received_breakdown, "ping", state_cpy.recv_breakdown.ping_count);
     cJSON_AddNumberToObject(_received_breakdown, "unknown", state_cpy.recv_breakdown.unknown_count);
     cJSON_AddNumberToObject(_received_breakdown, "upgrade_ack", state_cpy.recv_breakdown.upgrade_ack_count);
@@ -216,9 +209,7 @@ cJSON* rem_create_state_json() {
     cJSON_AddItemToObject(_messages, "sent_breakdown", _sent_breakdown);
 
     cJSON_AddNumberToObject(_sent_breakdown, "ack", state_cpy.sent_breakdown.ack_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "ar", state_cpy.sent_breakdown.ar_count);
     cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
     cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
 
     cJSON *_queues = cJSON_CreateObject();

@@ -162,6 +162,7 @@ extern "C"
                                       ///< modulesd warns about if this exceeds it.
                                       ///< Range 0..65536. <=0 -> 1024.
 
+
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
         int sync_workers;           ///< Worker threads applying sessions to the indexer, sharded by
                                     ///< agent id (FIFO per agent). Each worker owns one
@@ -268,6 +269,20 @@ extern "C"
          * soon as start() returns. May be NULL, which is treated as {}.
          */
         const cJSON* indexer;
+        /* ---- Route-class admission (QoS): the data plane can shed, the control plane cannot -- APPENDED, never inserted: this struct crosses a C/C++ build boundary and keeping
+         * existing offsets stable makes a stale object a missing-feature bug instead of a
+         * garbage-pointer crash. ---- */
+        int reserved_control_connections; ///< Accept headroom the data plane can never consume: the
+                                          ///< data class's session cap resolves to
+                                          ///< max_parallel_connections minus this, so /stateful alone
+                                          ///< can never fill the accept queue. Clamped to at most a
+                                          ///< quarter of the connection cap.
+                                          ///< Range 0..256. <=0 -> 64.
+        int control_max_body_bytes;       ///< Declared-length cap of control-class routes (the
+                                          ///< agent-deletion plane; id in a header, body empty);
+                                          ///< over it -> 413. Range 0..1048576. <=0 -> 65536.
+        int control_max_sessions;         ///< Concurrent control-class sessions; over it -> 503.
+                                          ///< Range 0..1024. <=0 -> 256.
     } inventory_sync_server_config_t;
 
     /**

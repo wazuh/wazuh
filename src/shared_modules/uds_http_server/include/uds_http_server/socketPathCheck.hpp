@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 30, 2026.
  *
@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _INVSYNC_COMMON_SOCKET_PATH_CHECK_HPP
-#define _INVSYNC_COMMON_SOCKET_PATH_CHECK_HPP
+#ifndef _WAZUH_UDS_HTTP_SOCKET_PATH_CHECK_HPP
+#define _WAZUH_UDS_HTTP_SOCKET_PATH_CHECK_HPP
 
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -18,16 +18,15 @@
 
 #include <string>
 
-namespace invsync::common
+namespace wazuh::uds_http
 {
     /**
      * @brief Checks the things that would make binding a UDS impossible, WITHOUT binding it.
      *
-     * Used by the facade's start() so an unusable socket path is fatal at daemon startup instead of an
-     * ERROR repeated every 60 s forever while modulesd runs on looking healthy with no inventory
-     * ingress. The actual bind stays where it is -- after the indexer startup gate -- because opening
-     * the socket before the indexer objects are built is precisely what that gate exists to prevent,
-     * and moving it earlier would break that ordering.
+     * Intended for a consumer's start() so an unusable socket path is fatal at daemon startup instead
+     * of an ERROR repeated forever by a retry loop while the daemon runs on looking healthy without
+     * its ingress. Consumers that gate the bind behind other startup work (e.g. inventory sync's
+     * indexer gate) run this check early and keep the actual bind where their ordering needs it.
      *
      * Only conditions nothing can fix at runtime are checked, which is what makes failing them fatal
      * rather than retryable: the `sun_path` length cap, a non-socket file already sitting at the path,
@@ -84,6 +83,6 @@ namespace invsync::common
 
         return true;
     }
-} // namespace invsync::common
+} // namespace wazuh::uds_http
 
-#endif // _INVSYNC_COMMON_SOCKET_PATH_CHECK_HPP
+#endif // _WAZUH_UDS_HTTP_SOCKET_PATH_CHECK_HPP

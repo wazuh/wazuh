@@ -13,11 +13,11 @@
 #define _INVSYNC_SYNC_SYNC_PIPELINE_HPP
 
 #include "common/metricNames.hpp"
-#include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "sync/sessionProcessor.hpp"
 #include "vd/agentInFlightRegistry.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -77,8 +77,8 @@ namespace invsync::sync
                 DeleteAgent
             };
 
-            std::shared_ptr<const http::HttpRequest> request;
-            std::shared_ptr<http::IHttpResponder> responder;
+            std::shared_ptr<const wazuh::uds_http::HttpRequest> request;
+            std::shared_ptr<wazuh::uds_http::IHttpResponder> responder;
             /// For DeleteAgent only `session.agentId` is meaningful (sharding, registry, deletion
             /// scope); the FlatBuffer pointer stays null.
             ValidatedSession session;

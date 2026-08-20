@@ -218,6 +218,42 @@ wazuh_modules.inventory_sync_server_max_inflight_bytes=268435456
 - **Allowed values:** `0` (unlimited) or 1 to 2147483647
 - **Note:** Total in-flight request payload bytes; over it `503`. Reserved from the declared `Content-Length` at headers-complete, BEFORE the body is read, so it bounds the read-phase peak too. Raised automatically to at least one maximum-size request, so a too-small value cannot reject everything.
 
+### wazuh_modules.inventory_sync_server_reserved_control_connections
+
+Accept headroom the data plane can never consume.
+
+```ini
+wazuh_modules.inventory_sync_server_reserved_control_connections=64
+```
+
+- **Default value:** `64`
+- **Allowed values:** 0 to 256 (`0`/absent: the default; clamped to at most a quarter of `max_parallel_connections`)
+- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions) and liveness probes always find a slot.
+
+### wazuh_modules.inventory_sync_server_control_max_body_bytes
+
+Declared-length cap of control-class requests; over it `413`.
+
+```ini
+wazuh_modules.inventory_sync_server_control_max_body_bytes=65536
+```
+
+- **Default value:** `65536` (64 KiB)
+- **Allowed values:** 0 to 1048576 (`0`/absent: the default)
+- **Note:** Control-class requests (the agent-deletion routes) carry their identity in a header and an empty body by contract, so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
+
+### wazuh_modules.inventory_sync_server_control_max_sessions
+
+Concurrent control-class sessions; over it `503`.
+
+```ini
+wazuh_modules.inventory_sync_server_control_max_sessions=256
+```
+
+- **Default value:** `256`
+- **Allowed values:** 0 to 1024 (`0`/absent: the default)
+- **Note:** Bounds the control class's own concurrency (its exemption from the byte budget must not become unbounded admission). Sized an order of magnitude above the realistic concurrency of the manager-local clients; a persistent hit means a client is leaking connections.
+
 ---
 
 ### Sync pipeline and VD lane

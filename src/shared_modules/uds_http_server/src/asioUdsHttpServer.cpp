@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory sync server module
+ * Wazuh shared UDS HTTP server library
  * Copyright (C) 2015, Wazuh Inc.
  * July 28, 2026.
  *
@@ -11,12 +11,12 @@
 
 #include "asioUdsHttpServer.hpp"
 
-#include "common/logThrottle.hpp"
 #include "inFlightBudget.hpp"
 #include "loggerHelper.h"
 #include "proc.hpp"
 #include "requestParser.hpp"
-#include "udsHttpServerFactory.hpp"
+#include <uds_http_server/logThrottle.hpp>
+#include <uds_http_server/udsHttpServerFactory.hpp>
 
 #include <asio.hpp>
 
@@ -46,16 +46,8 @@
 
 namespace
 {
-    constexpr auto SERVER_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:server"};
-
-    // File-local rather than a member: LogFn has hidden ELF visibility (loggerHelper.h wraps
-    // everything in a visibility pragma), so holding one as a field of a default-visibility class
-    // trips -Wattributes. Also avoids a heap allocation per log call.
-    const LogFn& logFn()
-    {
-        static const LogFn instance {SERVER_LOGTAG};
-        return instance;
-    }
+    /// Fallback identity until start() installs the consumer's own (UdsHttpServerConfig::logTag).
+    constexpr auto DEFAULT_SERVER_LOGTAG {"wazuh-manager:uds-http-server"};
 
     using stream_protocol = asio::local::stream_protocol;
 
@@ -76,7 +68,7 @@ namespace
      * hundreds of replies are outstanding -- and the dominant term, the header map, is bounded by
      * three CONFIGURABLE limits, so a constant would drift the moment an operator raised one.
      */
-    std::size_t perRequestOverhead(const invsync::http::UdsHttpServerConfig& config)
+    std::size_t perRequestOverhead(const wazuh::uds_http::UdsHttpServerConfig& config)
     {
         const auto headBound = config.maxHeaderCount * (config.maxHeaderNameSize + config.maxHeaderValueSize);
         return headBound + config.bufferSize + SESSION_FIXED_OVERHEAD;
@@ -127,15 +119,15 @@ namespace
         }
     }
 
-    const char* methodToString(invsync::http::Method method)
+    const char* methodToString(wazuh::uds_http::Method method)
     {
         switch (method)
         {
-            case invsync::http::Method::Get: return "GET";
-            case invsync::http::Method::Post: return "POST";
-            case invsync::http::Method::Put: return "PUT";
-            case invsync::http::Method::Delete: return "DELETE";
-            case invsync::http::Method::Patch: return "PATCH";
+            case wazuh::uds_http::Method::Get: return "GET";
+            case wazuh::uds_http::Method::Post: return "POST";
+            case wazuh::uds_http::Method::Put: return "PUT";
+            case wazuh::uds_http::Method::Delete: return "DELETE";
+            case wazuh::uds_http::Method::Patch: return "PATCH";
         }
         return "POST";
     }
@@ -160,13 +152,15 @@ namespace
     }
 
     /// The exact inverse of the peer's buildRequestHead(): Content-Length delimited, Connection: close.
-    std::string serializeHead(const invsync::http::HttpResponse& response)
+    std::string serializeHead(const wazuh::uds_http::HttpResponse& response, const std::string& serverHeader)
     {
         std::string head {"HTTP/1.1 "};
         head += std::to_string(response.status);
         head += ' ';
         head += reasonPhrase(response.status);
-        head += "\r\nServer: wazuh-manager-modulesd\r\nDate: ";
+        head += "\r\nServer: ";
+        head += serverHeader;
+        head += "\r\nDate: ";
         head += httpDate();
         head += "\r\nContent-Length: ";
         head += std::to_string(response.body.size());
@@ -182,18 +176,18 @@ namespace
         return head;
     }
 
-    invsync::http::HttpResponse errorResponse(int status, const char* message)
+    wazuh::uds_http::HttpResponse errorResponse(int status, const char* message)
     {
         std::string body {R"({"error":")"};
         body += message;
         body += R"(","code":)";
         body += std::to_string(status);
         body += "}";
-        return invsync::http::HttpResponse::json(status, std::move(body));
+        return wazuh::uds_http::HttpResponse::json(status, std::move(body));
     }
 } // namespace
 
-namespace invsync::http
+namespace wazuh::uds_http
 {
     namespace
     {
@@ -215,8 +209,39 @@ namespace invsync::http
             Method method;
             std::string path;
             RouteHandler handler;
-            bool countAgainstBudget;
+            RouteOptions options;
+            /// Per-route occupancy, allocated only when options.maxSessions > 0. A shared_ptr so
+            /// Route stays copyable and a Session can keep the counter alive to decrement it.
+            std::shared_ptr<std::atomic<std::size_t>> occupancy;
         };
+
+        /// RouteClass as a per-class array index.
+        constexpr std::size_t classIndex(RouteClass cls) noexcept
+        {
+            return static_cast<std::size_t>(cls);
+        }
+
+        const char* className(RouteClass cls) noexcept
+        {
+            switch (cls)
+            {
+                case RouteClass::Data: return "data";
+                case RouteClass::Control: return "control";
+                case RouteClass::Liveness: return "liveness";
+            }
+            return "data"; // LCOV_EXCL_LINE -- unreachable, the enum is exhaustive
+        }
+
+        const ClassPolicy& policyFor(const UdsHttpServerConfig& config, RouteClass cls) noexcept
+        {
+            switch (cls)
+            {
+                case RouteClass::Data: return config.dataPolicy;
+                case RouteClass::Control: return config.controlPolicy;
+                case RouteClass::Liveness: return config.livenessPolicy;
+            }
+            return config.dataPolicy; // LCOV_EXCL_LINE -- unreachable, the enum is exhaustive
+        }
 
         struct ServerState;
 
@@ -255,6 +280,10 @@ namespace invsync::http
         struct ServerState
         {
             UdsHttpServerConfig config;
+            /// Per-server log identity, installed from config.logTag by start(); every diagnostic
+            /// goes through it so each consumer's lines carry its own component tag. (LogFn is
+            /// default-visibility by design -- see loggerHelper.h -- so holding it here is safe.)
+            LogFn log {DEFAULT_SERVER_LOGTAG};
             std::vector<Route> routes;
             std::unique_ptr<InFlightBudget> budget;
 
@@ -270,20 +299,26 @@ namespace invsync::http
             std::mutex progressMutex;
             std::condition_variable progressCv;
 
+            /// Classified sessions per class; +1 at admission, -1 when the session unregisters.
+            /// What backs both the class caps and TransportDiagnostics::sessionsByClass.
+            std::atomic<std::size_t> classSessions[ROUTE_CLASS_COUNT] {};
+
             /// Separate per condition: a storm of one kind must not suppress another kind's first line.
-            common::LogThrottle budgetThrottle;
-            common::LogThrottle connectionCapThrottle;
-            common::LogThrottle malformedThrottle;
-            common::LogThrottle abandonedThrottle;
-            common::LogThrottle responseTimeoutThrottle;
-            common::LogThrottle acceptErrorThrottle;
-            common::LogThrottle handlerThrewThrottle;
-            common::LogThrottle sessionBringupThrottle;
-            common::LogThrottle limitRejectThrottle;
-            common::LogThrottle noRouteThrottle;
-            common::LogThrottle writeErrorThrottle;
-            common::LogThrottle phaseTimeoutThrottle;
-            common::LogThrottle peerGoneThrottle;
+            LogThrottle budgetThrottle;
+            LogThrottle connectionCapThrottle;
+            LogThrottle malformedThrottle;
+            LogThrottle abandonedThrottle;
+            LogThrottle responseTimeoutThrottle;
+            LogThrottle acceptErrorThrottle;
+            LogThrottle handlerThrewThrottle;
+            LogThrottle sessionBringupThrottle;
+            LogThrottle limitRejectThrottle;
+            LogThrottle noRouteThrottle;
+            LogThrottle writeErrorThrottle;
+            LogThrottle phaseTimeoutThrottle;
+            LogThrottle peerGoneThrottle;
+            LogThrottle classBodyCapThrottle;
+            LogThrottle classSessionCapThrottle;
 
             /// Connections answered 503 because stopAccepting() found them pre-handler; reported in
             /// the shutdown INFO so the third source of 503 (besides budget and cap) is accounted for.
@@ -423,11 +458,11 @@ namespace invsync::http
                                    }
                                    if (const auto decision = self->m_state->abandonedThrottle.record())
                                    {
-                                       LOGFN_WARN(logFn(),
+                                       LOGFN_WARN(self->m_state->log,
                                                   "%llu request(s) in the last %d s were dropped by their handler "
                                                   "without a response and were answered 503. This is a handler bug.",
                                                   static_cast<unsigned long long>(decision.total),
-                                                  common::LogThrottle::kDefaultWindowSeconds);
+                                                  LogThrottle::kDefaultWindowSeconds);
                                    }
                                    self->deliver(errorResponse(503, "Handler produced no response"));
                                });
@@ -491,11 +526,11 @@ namespace invsync::http
                     // handler that kept a responder and never used it.
                     if (const auto decision = m_state->responseTimeoutThrottle.record())
                     {
-                        LOGFN_WARN(logFn(),
+                        LOGFN_WARN(m_state->log,
                                    "%llu request(s) in the last %d s were not answered within %zu s and were closed "
                                    "with 504. Their handler is stuck or lost the responder.",
                                    static_cast<unsigned long long>(decision.total),
-                                   common::LogThrottle::kDefaultWindowSeconds,
+                                   LogThrottle::kDefaultWindowSeconds,
                                    m_state->config.responseTimeoutSec);
                     }
                     deliver(errorResponse(504, "Handler did not respond in time"));
@@ -508,11 +543,11 @@ namespace invsync::http
                 // network is invisible.
                 if (const auto decision = m_state->phaseTimeoutThrottle.record())
                 {
-                    LOGFN_DEBUG1(logFn(),
+                    LOGFN_DEBUG1(m_state->log,
                                  "Closed %llu connection(s) in the last %d s that timed out before a response was "
                                  "due (last phase: %s).",
                                  static_cast<unsigned long long>(decision.total),
-                                 common::LogThrottle::kDefaultWindowSeconds,
+                                 LogThrottle::kDefaultWindowSeconds,
                                  phaseName(m_phase));
                 }
                 m_finished = true;
@@ -579,11 +614,11 @@ namespace invsync::http
                         // that a 413/414/431 happened at all.
                         if (const auto decision = m_state->limitRejectThrottle.record())
                         {
-                            LOGFN_WARN(logFn(),
+                            LOGFN_WARN(m_state->log,
                                        "Rejected %llu request(s) in the last %d s for exceeding a configured limit "
                                        "(last: %d on '%.128s').",
                                        static_cast<unsigned long long>(decision.total),
-                                       common::LogThrottle::kDefaultWindowSeconds,
+                                       LogThrottle::kDefaultWindowSeconds,
                                        m_parser.rejectStatus(),
                                        requestPath().c_str());
                         }
@@ -592,10 +627,10 @@ namespace invsync::http
                     case RequestParser::Feed::ProtocolError:
                         if (const auto decision = m_state->malformedThrottle.record())
                         {
-                            LOGFN_DEBUG1(logFn(),
+                            LOGFN_DEBUG1(m_state->log,
                                          "Rejected %llu malformed HTTP request(s) in the last %d s with 400.",
                                          static_cast<unsigned long long>(decision.total),
-                                         common::LogThrottle::kDefaultWindowSeconds);
+                                         LogThrottle::kDefaultWindowSeconds);
                         }
                         deliver(errorResponse(400, "Malformed HTTP request"));
                         return;
@@ -618,6 +653,45 @@ namespace invsync::http
                 }
             }
 
+            wazuh::uds_http::HttpResponse classBodyCapResponse(RouteClass cls) const
+            {
+                switch (cls)
+                {
+                    case RouteClass::Data: return errorResponse(413, "Request body exceeds the data-class limit");
+                    case RouteClass::Control: return errorResponse(413, "Request body exceeds the control-class limit");
+                    case RouteClass::Liveness:
+                        return errorResponse(413, "Request body exceeds the liveness-class limit");
+                }
+                return errorResponse(413, "Request body exceeds the class limit"); // LCOV_EXCL_LINE
+            }
+
+            wazuh::uds_http::HttpResponse classSessionCapResponse(RouteClass cls) const
+            {
+                switch (cls)
+                {
+                    case RouteClass::Data: return errorResponse(503, "Data session limit reached");
+                    case RouteClass::Control: return errorResponse(503, "Control session limit reached");
+                    case RouteClass::Liveness: return errorResponse(503, "Liveness session limit reached");
+                }
+                return errorResponse(503, "Session limit reached"); // LCOV_EXCL_LINE
+            }
+
+            void reportClassSessionCap(RouteClass cls, std::size_t cap)
+            {
+                if (const auto decision = m_state->classSessionCapThrottle.record())
+                {
+                    LOGFN_WARN(m_state->log,
+                               "Rejected %llu request(s) with 503 in the last %d s: the %s-class session "
+                               "limit (%zu) is reached. The class caps confine each class to its own "
+                               "headroom; a persistent hit on a control class means a client is leaking "
+                               "connections or polling too hard.",
+                               static_cast<unsigned long long>(decision.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               className(cls),
+                               cap);
+                }
+            }
+
             /**
              * @brief Admission control, run while parsing is paused at the end of the head.
              *
@@ -634,22 +708,76 @@ namespace invsync::http
                     return RequestParser::Feed::Incomplete; // deliver() already ran; nothing more to parse
                 }
 
-                if (route->countAgainstBudget && m_state->budget)
+                const auto cls = route->options.cls;
+                const auto& policy = policyFor(m_state->config, cls);
+                const auto declared = static_cast<std::size_t>(m_parser.declaredContentLength());
+
+                // Class body cap FIRST, from the declared length: over it is a 413 -- the peer is
+                // wrong and must not retry -- and no body byte is read, no counter is charged.
+                const auto bodyCap =
+                    route->options.maxBodyBytes != 0 ? route->options.maxBodyBytes : policy.maxBodyBytes;
+                if (bodyCap != UdsHttpServerConfig::UNLIMITED_BODY_SIZE && declared > bodyCap)
                 {
-                    const auto declared = static_cast<std::size_t>(m_parser.declaredContentLength());
+                    if (const auto decision = m_state->classBodyCapThrottle.record())
+                    {
+                        LOGFN_WARN(m_state->log,
+                                   "Rejected %llu request(s) with 413 in the last %d s: the declared body "
+                                   "exceeds the %s-class cap (last: %zu > %zu byte(s) on '%s').",
+                                   static_cast<unsigned long long>(decision.total),
+                                   LogThrottle::kDefaultWindowSeconds,
+                                   className(cls),
+                                   declared,
+                                   bodyCap,
+                                   route->path.c_str());
+                    }
+                    deliver(classBodyCapResponse(cls));
+                    return RequestParser::Feed::Incomplete;
+                }
+
+                // Class session cap: increment-then-check, the same pattern as the accept-time
+                // global cap. The counter is owned by m_class from here on -- a rejection still
+                // closes through the normal path, whose unregister() decrements it.
+                const auto occupied =
+                    m_state->classSessions[classIndex(cls)].fetch_add(1, std::memory_order_relaxed) + 1;
+                m_class = cls;
+                if (policy.maxSessions != 0 && occupied > policy.maxSessions)
+                {
+                    reportClassSessionCap(cls, policy.maxSessions);
+                    deliver(classSessionCapResponse(cls));
+                    return RequestParser::Feed::Incomplete;
+                }
+
+                // Per-route override, on the route's own counter, IN ADDITION to the class cap.
+                if (route->occupancy)
+                {
+                    const auto routeOccupied = route->occupancy->fetch_add(1, std::memory_order_relaxed) + 1;
+                    m_routeOccupancy = route->occupancy;
+                    if (routeOccupied > route->options.maxSessions)
+                    {
+                        reportClassSessionCap(cls, route->options.maxSessions);
+                        deliver(classSessionCapResponse(cls));
+                        return RequestParser::Feed::Incomplete;
+                    }
+                }
+
+                if (policy.chargeByteBudget && m_state->budget)
+                {
                     auto reserved = m_state->budget->tryReserve(declared + m_state->perRequestOverhead);
                     if (!reserved)
                     {
                         if (const auto decision = m_state->budgetThrottle.record())
                         {
-                            LOGFN_WARN(logFn(),
+                            const auto& hint = m_state->config.budgetOptionHint;
+                            LOGFN_WARN(m_state->log,
                                        "Rejected %llu request(s) with 503 in the last %d s: the in-flight payload "
-                                       "budget is exhausted (%zu request(s) resident, %zu byte(s) free). Consider "
-                                       "raising 'inventory_sync_server_max_inflight_bytes'.",
+                                       "budget is exhausted (%zu request(s) resident, %zu byte(s) free).%s%s%s",
                                        static_cast<unsigned long long>(decision.total),
-                                       common::LogThrottle::kDefaultWindowSeconds,
+                                       LogThrottle::kDefaultWindowSeconds,
                                        m_state->budget->inFlightCount(),
-                                       m_state->budget->availableBytes());
+                                       m_state->budget->availableBytes(),
+                                       hint.empty() ? "" : " Consider raising '",
+                                       hint.c_str(),
+                                       hint.empty() ? "" : "'.");
                         }
                         deliver(errorResponse(503, "Server is out of capacity"));
                         return RequestParser::Feed::Incomplete;
@@ -702,10 +830,10 @@ namespace invsync::http
                 // leave no trace in either daemon.
                 if (const auto decision = m_state->noRouteThrottle.record())
                 {
-                    LOGFN_WARN(logFn(),
+                    LOGFN_WARN(m_state->log,
                                "Answered %llu request(s) in the last %d s with %d: no route for %s '%.128s'.",
                                static_cast<unsigned long long>(decision.total),
-                               common::LogThrottle::kDefaultWindowSeconds,
+                               LogThrottle::kDefaultWindowSeconds,
                                m_pathMatchedOtherMethod ? 405 : 404,
                                methodToString(m_parser.request().method),
                                requestPath().c_str());
@@ -801,11 +929,11 @@ namespace invsync::http
             {
                 if (const auto decision = m_state->handlerThrewThrottle.record())
                 {
-                    LOGFN_ERROR(logFn(),
+                    LOGFN_ERROR(m_state->log,
                                 "%llu request(s) failed while being dispatched in the last %d s and were answered "
                                 "500 (last: %s).",
                                 static_cast<unsigned long long>(decision.total),
-                                common::LogThrottle::kDefaultWindowSeconds,
+                                LogThrottle::kDefaultWindowSeconds,
                                 reason);
                 }
                 if (responder)
@@ -850,12 +978,12 @@ namespace invsync::http
                                             }
                                             if (const auto decision = self->m_state->peerGoneThrottle.record())
                                             {
-                                                LOGFN_DEBUG1(logFn(),
+                                                LOGFN_DEBUG1(self->m_state->log,
                                                              "Closed %llu connection(s) in the last %d s whose "
                                                              "peer went away while the response was still "
                                                              "pending.",
                                                              static_cast<unsigned long long>(decision.total),
-                                                             common::LogThrottle::kDefaultWindowSeconds);
+                                                             LogThrottle::kDefaultWindowSeconds);
                                             }
                                             self->m_finished = true;
                                             self->m_timer.cancel();
@@ -879,7 +1007,7 @@ namespace invsync::http
                 // release the fd and the registry entry, or they leak until stop().
                 try
                 {
-                    m_writeHead = serializeHead(response);
+                    m_writeHead = serializeHead(response, m_state->config.serverHeader);
                     m_writeBody = std::move(response.body);
                     m_writeBuffers = {asio::buffer(m_writeHead), asio::buffer(m_writeBody)};
 
@@ -898,11 +1026,11 @@ namespace invsync::http
                                               {
                                                   if (const auto decision = self->m_state->writeErrorThrottle.record())
                                                   {
-                                                      LOGFN_DEBUG1(logFn(),
+                                                      LOGFN_DEBUG1(self->m_state->log,
                                                                    "Failed to write %llu response(s) in the "
                                                                    "last %d s (last: %s).",
                                                                    static_cast<unsigned long long>(decision.total),
-                                                                   common::LogThrottle::kDefaultWindowSeconds,
+                                                                   LogThrottle::kDefaultWindowSeconds,
                                                                    ec.message().c_str());
                                                   }
                                               }
@@ -970,6 +1098,14 @@ namespace invsync::http
                 if (!m_dispatched)
                 {
                     m_state->undispatched.fetch_sub(1, std::memory_order_relaxed);
+                }
+                if (m_class)
+                {
+                    m_state->classSessions[classIndex(*m_class)].fetch_sub(1, std::memory_order_relaxed);
+                }
+                if (m_routeOccupancy)
+                {
+                    m_routeOccupancy->fetch_sub(1, std::memory_order_relaxed);
                 }
                 m_state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
 
@@ -1045,6 +1181,12 @@ namespace invsync::http
 
             InFlightBudget::Reservation m_reservation;
             const Route* m_route {nullptr};
+            /// Set the moment the session is classified (class counter already incremented), so
+            /// unregister() can decrement exactly once -- including for admission rejections that
+            /// still travel the normal deliver-and-close path.
+            std::optional<RouteClass> m_class;
+            /// Non-null iff this session incremented a per-route occupancy counter.
+            std::shared_ptr<std::atomic<std::size_t>> m_routeOccupancy;
             bool m_pathMatchedOtherMethod {false};
 
             std::uint64_t m_id {0};
@@ -1067,7 +1209,8 @@ namespace invsync::http
                            std::shared_ptr<stream_protocol::socket> socket,
                            const HttpResponse& response)
         {
-            auto payload = std::make_shared<std::string>(serializeHead(response) + response.body);
+            auto payload =
+                std::make_shared<std::string>(serializeHead(response, state->config.serverHeader) + response.body);
             asio::async_write(*socket,
                               asio::buffer(*payload),
                               [state = std::move(state), socket, payload](const std::error_code& ec, std::size_t)
@@ -1076,10 +1219,10 @@ namespace invsync::http
                                   {
                                       if (const auto decision = state->writeErrorThrottle.record())
                                       {
-                                          LOGFN_DEBUG1(logFn(),
+                                          LOGFN_DEBUG1(state->log,
                                                        "Failed to write %llu response(s) in the last %d s (last: %s).",
                                                        static_cast<unsigned long long>(decision.total),
-                                                       common::LogThrottle::kDefaultWindowSeconds,
+                                                       LogThrottle::kDefaultWindowSeconds,
                                                        ec.message().c_str());
                                       }
                                   }
@@ -1130,7 +1273,7 @@ namespace invsync::http
         /// For the I/O-thread resume loop: a persistent throwing condition would otherwise emit one
         /// ERROR per queued handler, at CPU speed, multiplied by ioThreads. Lives here rather than in
         /// ServerState because the thread lambda captures the Impl.
-        common::LogThrottle ioThreadResumeThrottle;
+        LogThrottle ioThreadResumeThrottle;
 
         /// Bind, permission and listen, in an order where any failure leaves nothing running.
         void bindAcceptor()
@@ -1160,7 +1303,7 @@ namespace invsync::http
                 // EADDRINUSE forever and the module would never come back. Logged: if the socket was
                 // NOT stale (a second manager still serving on it), this line is the only trace of
                 // the takeover on this side.
-                LOGFN_INFO(logFn(),
+                LOGFN_INFO(state->log,
                            "Removing the existing socket at '%s' (a leftover from an unclean shutdown) before "
                            "binding.",
                            socketPath.c_str());
@@ -1179,7 +1322,7 @@ namespace invsync::http
             // group) can get EACCES on a socket that looks fine.
             if (::chmod(socketPath.c_str(), static_cast<::mode_t>(state->config.socketMode)) != 0)
             {
-                LOGFN_WARN(logFn(),
+                LOGFN_WARN(state->log,
                            "Could not set mode %04o on '%s': %s. The peer may not be able to connect.",
                            state->config.socketMode,
                            socketPath.c_str(),
@@ -1262,11 +1405,12 @@ namespace invsync::http
         {
             if (const auto decision = state->acceptErrorThrottle.record())
             {
-                LOGFN_WARN(logFn(),
-                           "Failed to accept %llu inventory sync connection(s) in the last %d s: %s. The "
+                LOGFN_WARN(state->log,
+                           "Failed to accept %llu %s connection(s) in the last %d s: %s. The "
                            "listener is still accepting; peers will retry.",
                            static_cast<unsigned long long>(decision.total),
-                           common::LogThrottle::kDefaultWindowSeconds,
+                           state->config.serverName.c_str(),
+                           LogThrottle::kDefaultWindowSeconds,
                            reason);
             }
         }
@@ -1305,13 +1449,16 @@ namespace invsync::http
                 state->noteProgress();
                 if (const auto decision = state->connectionCapThrottle.record())
                 {
-                    LOGFN_WARN(logFn(),
+                    const auto& hint = state->config.connectionCapOptionHint;
+                    LOGFN_WARN(state->log,
                                "Refused %llu connection(s) with 503 in the last %d s: the %zu-connection limit is "
-                               "reached. Each deferred response holds one connection; consider raising "
-                               "'inventory_sync_server_max_parallel_connections'.",
+                               "reached. Each deferred response holds one connection%s%s%s",
                                static_cast<unsigned long long>(decision.total),
-                               common::LogThrottle::kDefaultWindowSeconds,
-                               state->config.maxConnections);
+                               LogThrottle::kDefaultWindowSeconds,
+                               state->config.maxConnections,
+                               hint.empty() ? "." : "; consider raising '",
+                               hint.c_str(),
+                               hint.empty() ? "" : "'.");
                 }
                 // An explicit status rather than a silent close, so the peer classifies this as
                 // "server out of capacity" instead of a transport failure.
@@ -1358,11 +1505,12 @@ namespace invsync::http
                                {
                                    if (const auto decision = state->sessionBringupThrottle.record())
                                    {
-                                       LOGFN_ERROR(logFn(),
-                                                   "Could not bring up %llu accepted inventory sync connection(s) in "
+                                       LOGFN_ERROR(state->log,
+                                                   "Could not bring up %llu accepted %s connection(s) in "
                                                    "the last %d s.",
                                                    static_cast<unsigned long long>(decision.total),
-                                                   common::LogThrottle::kDefaultWindowSeconds);
+                                                   state->config.serverName.c_str(),
+                                                   LogThrottle::kDefaultWindowSeconds);
                                    }
                                    try
                                    {
@@ -1394,11 +1542,12 @@ namespace invsync::http
         {
             if (const auto decision = state->sessionBringupThrottle.record())
             {
-                LOGFN_ERROR(logFn(),
-                            "Could not bring up %llu accepted inventory sync connection(s) in the last %d s "
+                LOGFN_ERROR(state->log,
+                            "Could not bring up %llu accepted %s connection(s) in the last %d s "
                             "(last: %s).",
                             static_cast<unsigned long long>(decision.total),
-                            common::LogThrottle::kDefaultWindowSeconds,
+                            state->config.serverName.c_str(),
+                            LogThrottle::kDefaultWindowSeconds,
                             reason);
             }
         }
@@ -1479,9 +1628,10 @@ namespace invsync::http
                         // Deliberately does NOT close the acceptor from this thread: it belongs to the
                         // strand, and racing the queued handler for it is worse than a socket that
                         // stays bound a moment longer. Phase 2 force-closes everything regardless.
-                        LOGFN_ERROR(logFn(),
-                                    "The inventory sync server's acceptor did not close within %lld s; a request "
+                        LOGFN_ERROR(state->log,
+                                    "The %s server's acceptor did not close within %lld s; a request "
                                     "handler is not returning. Continuing to shut down.",
+                                    state->config.serverName.c_str(),
                                     static_cast<long long>(ACCEPTOR_CLOSE_TIMEOUT.count()));
                     }
                 }
@@ -1523,9 +1673,10 @@ namespace invsync::http
 
                 const auto outstanding = state->liveSessions.load(std::memory_order_relaxed);
                 const auto rejected = state->shutdownRejected.load(std::memory_order_relaxed);
-                LOGFN_INFO(logFn(),
-                           "inventory sync server is no longer accepting on '%s'; %zu deferred repl%s still "
+                LOGFN_INFO(state->log,
+                           "%s server is no longer accepting on '%s'; %zu deferred repl%s still "
                            "outstanding, %zu pre-handler connection(s) answered 503.",
+                           state->config.serverName.c_str(),
                            socketPath.c_str(),
                            outstanding,
                            outstanding == 1 ? "y" : "ies",
@@ -1536,12 +1687,16 @@ namespace invsync::http
             {
                 // noexcept by contract. A swallowed exception here makes the "no handler will run
                 // again" guarantee best-effort rather than unconditional, so the cause must be named.
-                LOGFN_ERROR(
-                    logFn(), "An error occurred while the inventory sync server stopped accepting: %s.", e.what());
+                LOGFN_ERROR(state->log,
+                            "An error occurred while the %s server stopped accepting: %s.",
+                            state->config.serverName.c_str(),
+                            e.what());
             }
             catch (...)
             {
-                LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped accepting.");
+                LOGFN_ERROR(state->log,
+                            "An error occurred while the %s server stopped accepting.",
+                            state->config.serverName.c_str());
             }
             // LCOV_EXCL_STOP
         }
@@ -1576,7 +1731,7 @@ namespace invsync::http
                 // production incident and this is its only trace on this side.
                 try
                 {
-                    LOGFN_WARN(logFn(),
+                    LOGFN_WARN(state->log,
                                "Not unlinking '%s': %s since this server started.",
                                socketPath.c_str(),
                                statResult == 0 ? "another process has re-bound it" : "something removed it");
@@ -1632,10 +1787,11 @@ namespace invsync::http
                 const auto stranded = state->liveSessions.load(std::memory_order_relaxed);
                 if (stranded > 0)
                 {
-                    LOGFN_WARN(logFn(),
-                               "%zu inventory sync request(s) had not been answered after %zu s; closing their "
+                    LOGFN_WARN(state->log,
+                               "%zu %s request(s) had not been answered after %zu s; closing their "
                                "connections. The peer will see them fail rather than time out.",
                                stranded,
+                               state->config.serverName.c_str(),
                                state->config.drainTimeoutSec);
                 }
 
@@ -1660,9 +1816,10 @@ namespace invsync::http
                     if (!drained)
                     {
                         // The fragile path, logged as such so it is never taken silently.
-                        LOGFN_ERROR(logFn(),
-                                    "The inventory sync server's I/O threads did not drain within %lld s; forcing the "
+                        LOGFN_ERROR(state->log,
+                                    "The %s server's I/O threads did not drain within %lld s; forcing the "
                                     "I/O context to stop.",
+                                    state->config.serverName.c_str(),
                                     static_cast<long long>(THREAD_EXIT_GRACE.count()));
                         runtime->ioc.stop();
                     }
@@ -1671,18 +1828,22 @@ namespace invsync::http
             // LCOV_EXCL_START -- nothing in the body throws outside allocation failure
             catch (const std::exception& e)
             {
-                LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped: %s.", e.what());
+                LOGFN_ERROR(state->log,
+                            "An error occurred while the %s server stopped: %s.",
+                            state->config.serverName.c_str(),
+                            e.what());
                 runtime->ioc.stop();
             }
             catch (...)
             {
-                LOGFN_ERROR(logFn(), "An error occurred while the inventory sync server stopped.");
+                LOGFN_ERROR(
+                    state->log, "An error occurred while the %s server stopped.", state->config.serverName.c_str());
                 runtime->ioc.stop();
             }
             // LCOV_EXCL_STOP
 
             joinThreads();
-            LOGFN_INFO(logFn(), "inventory sync server fully stopped.");
+            LOGFN_INFO(state->log, "%s server fully stopped.", state->config.serverName.c_str());
         }
 
         void forceCloseAll() noexcept
@@ -1769,25 +1930,54 @@ namespace invsync::http
         m_impl->doStop();
     }
 
-    void
-    AsioUdsHttpServer::addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget)
+    void AsioUdsHttpServer::addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options)
     {
         if (m_impl->lifecycle.load() != Impl::State::Idle)
         {
-            throw std::logic_error {"routes must be registered before the inventory sync server is started"};
+            throw std::logic_error {"routes must be registered before the server is started"};
         }
-        m_impl->state->routes.push_back(Route {method, path, std::move(handler), countAgainstBudget});
+        auto occupancy = options.maxSessions != 0 ? std::make_shared<std::atomic<std::size_t>>(0) : nullptr;
+        m_impl->state->routes.push_back(Route {method, path, std::move(handler), options, std::move(occupancy)});
     }
 
     void AsioUdsHttpServer::start(const UdsHttpServerConfig& config)
     {
         if (m_impl->lifecycle.load() != Impl::State::Idle)
         {
-            throw std::logic_error {"the inventory sync server is already started"};
+            throw std::logic_error {"the server is already started"};
         }
 
         m_impl->state->config = config;
+        // From here on every diagnostic carries the consumer's identity, not the library default.
+        m_impl->state->log = LogFn {m_impl->state->config.logTag};
         m_impl->socketPath = config.socketPath;
+
+        {
+            // Resolve the class-cap arithmetic once. The reservation may claim at most a quarter
+            // of the connection cap (and nothing on tiny test-sized configs, where the quarter is
+            // zero); Data's session cap then defaults to everything but that reservation, which is
+            // the invariant the whole model rests on: the data plane ALONE can never drive
+            // occupancy up to the accept-time cap.
+            auto& cfg = m_impl->state->config;
+            const auto reservedCeiling = cfg.maxConnections / 4;
+            if (cfg.reservedControlConnections > reservedCeiling)
+            {
+                if (reservedCeiling > 0)
+                {
+                    LOGFN_WARN(m_impl->state->log,
+                               "reserved control connections (%zu) exceed a quarter of the %zu-connection cap; "
+                               "clamping to %zu.",
+                               cfg.reservedControlConnections,
+                               cfg.maxConnections,
+                               reservedCeiling);
+                }
+                cfg.reservedControlConnections = reservedCeiling;
+            }
+            if (cfg.dataPolicy.maxSessions == 0)
+            {
+                cfg.dataPolicy.maxSessions = cfg.maxConnections - cfg.reservedControlConnections;
+            }
+        }
 
         m_impl->state->perRequestOverhead = perRequestOverhead(m_impl->state->config);
 
@@ -1800,7 +1990,7 @@ namespace invsync::http
                 const auto floorBytes = m_impl->state->config.maxBodySize + m_impl->state->perRequestOverhead;
                 if (m_impl->state->config.maxInFlightBytes < floorBytes)
                 {
-                    LOGFN_WARN(logFn(),
+                    LOGFN_WARN(m_impl->state->log,
                                "The in-flight byte budget (%zu) is below one maximum-size request (%zu); raising it, "
                                "otherwise every request would be rejected.",
                                m_impl->state->config.maxInFlightBytes,
@@ -1817,7 +2007,7 @@ namespace invsync::http
                 constexpr std::size_t MIN_UNCAPPED_BODY {1024U * 1024U};
                 if (m_impl->state->config.maxInFlightBytes < m_impl->state->perRequestOverhead + MIN_UNCAPPED_BODY)
                 {
-                    LOGFN_WARN(logFn(),
+                    LOGFN_WARN(m_impl->state->log,
                                "The in-flight byte budget (%zu) cannot fit one request's fixed overhead (%zu) plus a "
                                "minimal body; raising it, otherwise every request would be rejected.",
                                m_impl->state->config.maxInFlightBytes,
@@ -1849,10 +2039,6 @@ namespace invsync::http
             m_impl->threads.emplace_back(
                 [impl = m_impl.get()]
                 {
-                    // First use allocates LogFn's static; doing it here keeps the catch blocks below
-                    // allocation-free.
-                    logFn();
-
                     // Re-enter run() after an exception instead of letting the thread die. Letting it
                     // die would silently shrink the reactor -- the server would keep answering, just
                     // more slowly, with nothing in the log tying the two together. Throttled: a
@@ -1870,11 +2056,12 @@ namespace invsync::http
                         {
                             if (const auto decision = impl->ioThreadResumeThrottle.record())
                             {
-                                LOGFN_ERROR(logFn(),
-                                            "The inventory sync server's I/O threads caught %llu exception(s) in the "
+                                LOGFN_ERROR(impl->state->log,
+                                            "The %s server's I/O threads caught %llu exception(s) in the "
                                             "last %d s and resumed (last: %s).",
+                                            impl->state->config.serverName.c_str(),
                                             static_cast<unsigned long long>(decision.total),
-                                            common::LogThrottle::kDefaultWindowSeconds,
+                                            LogThrottle::kDefaultWindowSeconds,
                                             e.what());
                             }
                         }
@@ -1882,11 +2069,12 @@ namespace invsync::http
                         {
                             if (const auto decision = impl->ioThreadResumeThrottle.record())
                             {
-                                LOGFN_ERROR(logFn(),
-                                            "The inventory sync server's I/O threads caught %llu exception(s) in the "
+                                LOGFN_ERROR(impl->state->log,
+                                            "The %s server's I/O threads caught %llu exception(s) in the "
                                             "last %d s and resumed (last: non-standard exception).",
+                                            impl->state->config.serverName.c_str(),
                                             static_cast<unsigned long long>(decision.total),
-                                            common::LogThrottle::kDefaultWindowSeconds);
+                                            LogThrottle::kDefaultWindowSeconds);
                             }
                         }
                         // LCOV_EXCL_STOP
@@ -1911,10 +2099,11 @@ namespace invsync::http
 
         // The one always-visible record of the effective transport configuration; the C shim only
         // reports it at debug level.
-        LOGFN_INFO(logFn(),
-                   "inventory sync server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
+        LOGFN_INFO(m_impl->state->log,
+                   "%s server bound to '%s' (mode %04o, %zu I/O thread(s), %zu concurrent accept(s), "
                    "max %zu connection(s), %zu byte in-flight budget, %zu byte body cap, %zu byte per-request "
                    "overhead; timeouts s: header=%zu body=%zu response=%zu write=%zu drain=%zu).",
+                   m_impl->state->config.serverName.c_str(),
                    m_impl->socketPath.c_str(),
                    m_impl->state->config.socketMode,
                    threadCount,
@@ -1940,9 +2129,27 @@ namespace invsync::http
         m_impl->doStop();
     }
 
+    TransportDiagnostics AsioUdsHttpServer::diagnostics() const noexcept
+    {
+        TransportDiagnostics snapshot;
+        const auto& state = *m_impl->state;
+        if (state.budget && state.budget->enabled())
+        {
+            snapshot.budgetAvailableBytes = state.budget->availableBytes();
+            snapshot.budgetInFlightBytes = state.budget->capacityBytes() - snapshot.budgetAvailableBytes;
+            snapshot.budgetInFlightCount = state.budget->inFlightCount();
+        }
+        snapshot.liveSessions = state.liveSessions.load(std::memory_order_relaxed);
+        for (std::size_t i = 0; i < ROUTE_CLASS_COUNT; ++i)
+        {
+            snapshot.sessionsByClass[i] = state.classSessions[i].load(std::memory_order_relaxed);
+        }
+        return snapshot;
+    }
+
     std::unique_ptr<IUdsHttpServer> makeUdsHttpServer()
     {
         return std::make_unique<AsioUdsHttpServer>();
     }
 
-} // namespace invsync::http
+} // namespace wazuh::uds_http
