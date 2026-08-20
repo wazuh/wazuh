@@ -33,8 +33,11 @@ namespace invsync::vd
 
     struct VdScanLaneConfig
     {
-        /// Scan workers. 1 until VD gains real scan parallelism (its global mutex serializes scans
-        /// anyway -- REQ-VDQ-7); each worker owns one IndexerConnectorSync.
+        /// Scan workers; each worker owns one IndexerConnectorSync. Raising this above 1 is safe
+        /// -- VD's own ScanOrchestrator has a matching per-slot pool (REQ-VDQ-7, its
+        /// "scanWorkers" setting). Placeholder default; the facade overwrites it with
+        /// resolveVdWorkers()'s resolved value (vd_workers, or half the host's cores) before the
+        /// lane starts.
         std::size_t workers {1};
         /// Short admission queue; full => the strand answers 503 "scan capacity exhausted" (D22).
         /// 0 resolves to 2x workers.
