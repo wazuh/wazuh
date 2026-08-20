@@ -126,6 +126,12 @@ class IndexerConnectorAsyncImpl final
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound). See the sync impl's twin member: this
+    /// catches the connected-but-silent host that no health check ever reports.
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
 
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
@@ -235,6 +241,16 @@ public:
         if (m_maxRetryDelay < RetryDelay)
         {
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        // TODO: pending config and key addition
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
         // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
@@ -544,6 +560,15 @@ public:
                         LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
+                    else if (statusCode <= 0)
+                    {
+                        // No HTTP response at all (timeout, connection refused, TLS failure): the
+                        // batch may never have reached the indexer, so throwing hands it back to
+                        // the queue to retry with the usual backoff. Discarding here would turn
+                        // every transient outage -- and every request_timeout_seconds expiry --
+                        // into silent data loss.
+                        throw IndexerConnectorException(error);
+                    }
                     else
                     {
                         LOGFN_WARN(m_logFn,
@@ -562,7 +587,7 @@ public:
                                                        .data = bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
             },
             m_maxQueueBytes,
             m_bulkMaxBytes,
@@ -791,7 +816,7 @@ public:
         // Execute the POST request synchronously
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -837,7 +862,7 @@ public:
                                                       .data = deleteBody.dump(),
                                                       .secureCommunication = m_secureCommunication},
                                    PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                                   {});
+                                   ConfigurationParameters {.timeout = m_requestTimeoutMs});
         }
         catch (const std::exception& e)
         {
@@ -928,7 +953,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1012,7 +1037,7 @@ public:
                                                .data = requestBody.dump(),
                                                .secureCommunication = m_secureCommunication},
                             PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
