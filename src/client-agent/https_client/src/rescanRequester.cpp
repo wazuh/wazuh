@@ -77,10 +77,10 @@ RescanRequester::RescanRequester(const ModuleConfig& config, IHttpPerformer& per
                                  IVdOffsetStore& store)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    // All seven arguments, like every other RetrySender in this module: the old 5-argument form
-    // let &authGate convert to the `bool compressionEnabled` slot, which force-compressed every
-    // /scan/vd, left the shared CompressionGate out of a 415 here, and dropped 401s on the
-    // floor (never reaching AuthGate::reportAuthFailure).
+      // All seven arguments, like every other RetrySender in this module: the old 5-argument form
+      // let &authGate convert to the `bool compressionEnabled` slot, which force-compressed every
+      // /scan/vd, left the shared CompressionGate out of a 415 here, and dropped 401s on the
+      // floor (never reaching AuthGate::reportAuthFailure).
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate)
     , m_store(store)
 {
