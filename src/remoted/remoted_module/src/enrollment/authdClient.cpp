@@ -11,14 +11,18 @@
 
 #include "authdClient.hpp"
 
+#include <fcntl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <cerrno>
 #include <condition_variable>
 #include <cstring>
 #include <mutex>
 #include <queue>
 #include <string_view>
+#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -250,9 +254,9 @@ namespace remoted::enrollment
             // very next line with no synchronization between them -- almost always losing the race
             // against that background thread, which queued the request until a later, unrelated
             // event flushed it (or didn't). Since this method already runs on this class's own
-            // dedicated worker thread (never an I/O thread), a plain BLOCKING connect() is both
-            // simpler and correct: it returns only once truly connected, or throws immediately on a
-            // real failure -- no race, no background thread, no epoll needed.
+            // dedicated worker thread (never an I/O thread), a deterministic, bounded connect is
+            // both simpler and correct: it returns only once truly connected, or throws on a real
+            // failure or timeout -- no race, no background thread, no epoll needed.
             SocketType socket;
             try
             {
@@ -265,7 +269,65 @@ namespace remoted::enrollment
                 // turning connect()'s later dereference into a read of freed stack memory. Kept as
                 // one expression, the temporary stays alive for its whole evaluation, including
                 // this connect() call.
-                socket.connect(UnixAddress::builder().address(m_socketPath).build().data(), SOCK_STREAM);
+                //
+                // SOCK_NONBLOCK so a saturated authd accept() backlog can't block this worker
+                // thread indefinitely (the one scenario a plain blocking connect() can't bound):
+                // Socket::connect() already tolerates EINPROGRESS/EAGAIN and returns immediately in
+                // that case instead of throwing.
+                socket.connect(UnixAddress::builder().address(m_socketPath).build().data(),
+                               SOCK_STREAM | SOCK_NONBLOCK);
+
+                // Wait for the connect to complete (or fail) within m_connectTimeoutMs. For a
+                // Unix-domain socket this resolves near-instantly in practice -- this bound only
+                // matters when authd's own accept() backlog is full.
+                struct pollfd pfd
+                {
+                    socket.fileDescriptor(), POLLOUT, 0
+                };
+                const int ready = ::poll(&pfd, 1, static_cast<int>(m_connectTimeoutMs));
+                if (ready == 0)
+                {
+                    throw std::system_error(ETIMEDOUT, std::generic_category(), "Timed out connecting to authd");
+                }
+                if (ready < 0)
+                {
+                    throw std::system_error(errno, std::generic_category(), "poll() failed while connecting to authd");
+                }
+
+                // AF_UNIX quirk verified against the real kernel behavior: when the peer's listen()
+                // backlog is full, a non-blocking connect() fails synchronously with EAGAIN -- there
+                // is no async "still connecting" state the way there is for TCP, so poll() comes
+                // back ready almost immediately with POLLHUP set, and SO_ERROR below misleadingly
+                // reports 0 ("success") even though the socket was never actually connected (a
+                // subsequent send()/read() would fail with ENOTCONN). POLLHUP/POLLERR must be
+                // checked directly -- SO_ERROR alone cannot distinguish this from a real success.
+                if (pfd.revents & (POLLHUP | POLLERR))
+                {
+                    throw std::system_error(
+                        EAGAIN, std::generic_category(), "authd's accept backlog is full (connect rejected)");
+                }
+
+                int connectErr = 0;
+                socklen_t connectErrLen = sizeof(connectErr);
+                if (::getsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_ERROR, &connectErr, &connectErrLen) < 0)
+                {
+                    throw std::system_error(errno, std::generic_category(), "getsockopt(SO_ERROR) failed");
+                }
+                if (connectErr != 0)
+                {
+                    throw std::system_error(connectErr, std::generic_category(), "Error connecting to socket");
+                }
+
+                // Back to blocking mode: SO_RCVTIMEO/SO_SNDTIMEO (set below) only bound a blocking
+                // call -- on a non-blocking fd, send()/read() would instead fail immediately with
+                // EAGAIN rather than waiting up to m_responseTimeoutMs.
+                const int flags = ::fcntl(socket.fileDescriptor(), F_GETFL, 0);
+                if (flags < 0 || ::fcntl(socket.fileDescriptor(), F_SETFL, flags & ~O_NONBLOCK) < 0)
+                {
+                    throw std::system_error(
+                        errno, std::generic_category(), "Could not restore blocking mode on authd socket");
+                }
+
                 LOGFN_DEBUG2(logFn(), "Connected to authd socket at %s.", m_socketPath.c_str());
             }
             catch (const std::exception& e)
@@ -405,8 +467,7 @@ namespace remoted::enrollment
         }
 
         std::string m_socketPath;
-        // Currently unenforced -- see the constructor's doc comment in authdClient.hpp.
-        [[maybe_unused]] std::uint32_t m_connectTimeoutMs;
+        std::uint32_t m_connectTimeoutMs;
         std::uint32_t m_responseTimeoutMs;
         std::uint32_t m_maxQueueSize;
 

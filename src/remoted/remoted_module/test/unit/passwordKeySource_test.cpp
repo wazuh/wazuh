@@ -269,4 +269,26 @@ namespace
         EXPECT_TRUE(waitFor([&] { return source.currentKey().has_value(); }));
     }
 
+    TEST_F(PasswordKeySourceTest, ReappearingWithIdenticalContentAfterDisappearingIsReloaded)
+    {
+        // Regression guard: a file that goes missing (revoking Password-mode enrollment) and then
+        // comes back with the EXACT same content it had before must still be re-derived, not left
+        // stuck at nullopt forever. Before this was fixed, fileLooksChanged() compared the
+        // reappeared file's hash against the stale m_lastHash from before the disappearance, saw
+        // no difference, and never called reload() again -- even though reload()'s own
+        // missing-file branch had already cleared m_derivedKey to nullopt in the meantime.
+        writeFile("MyEnrollmentSecret123\n");
+        PasswordKeySource source(m_path, /*refreshIntervalSeconds=*/1);
+        const auto originalKey = source.currentKey();
+        ASSERT_TRUE(originalKey.has_value());
+
+        std::remove(m_path.c_str());
+        ASSERT_TRUE(waitFor([&] { return !source.currentKey().has_value(); }));
+
+        writeFile("MyEnrollmentSecret123\n"); // byte-identical to the pre-disappearance content
+
+        ASSERT_TRUE(waitFor([&] { return source.currentKey().has_value(); }));
+        EXPECT_EQ(*source.currentKey(), *originalKey);
+    }
+
 } // namespace

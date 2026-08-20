@@ -441,7 +441,13 @@ namespace remoted::auth
         const auto currentHash = hashFileOrNullopt(m_path);
         if (!currentHash)
         {
-            return false;
+            // Unlike Keystore (whose backing file is expected to always exist once created),
+            // authd.pass going missing/unreadable is an expected admin action -- revoking
+            // Password-mode enrollment -- and must invalidate any cached key right away rather
+            // than waiting for the file to reappear. reload() below clears m_hasBaseline in this
+            // same case so a later reload isn't skipped just because the file comes back with
+            // byte-identical content.
+            return true;
         }
         return !m_hasBaseline || *currentHash != m_lastHash;
     }
@@ -457,6 +463,10 @@ namespace remoted::auth
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_derivedKey.reset();
+                // Clear the baseline: if the file later reappears with content that hashes the
+                // same as what we saw before it vanished, fileLooksChanged() must still treat
+                // that as a change (there's no other signal that the key needs re-deriving).
+                m_hasBaseline = false;
                 return false;
             }
 

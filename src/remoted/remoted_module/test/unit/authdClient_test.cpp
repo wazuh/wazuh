@@ -12,10 +12,15 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <gtest/gtest.h>
 
@@ -114,9 +119,10 @@ TEST(AuthdClientTest, BusinessRejectionPreservesCodeAndStripsPrefix)
 
 TEST(AuthdClientTest, ServerAbsentIsATransportFailure)
 {
-    // No FakeUdsServer bound at this path at all. connect() is a plain blocking call (see
-    // authdClient.hpp's class comment), so this fails FAST with ENOENT -- distinct from
-    // ServerDroppingTheResponseTimesOut below, which genuinely waits out the response timeout.
+    // No FakeUdsServer bound at this path at all: connect() itself fails synchronously with
+    // ENOENT (a real failure, not "would block"), so this never reaches the connect-timeout
+    // poll() at all -- it fails FAST, distinct from ServerDroppingTheResponseTimesOut below,
+    // which genuinely waits out the response timeout.
     const std::string path = makeUniqueSocketPath("authd_client_absent");
 
     AuthdClient client(path, /*isWorkerNode=*/false, /*connectTimeoutMs=*/0, /*responseTimeoutMs=*/5000);
@@ -128,6 +134,57 @@ TEST(AuthdClientTest, ServerAbsentIsATransportFailure)
     const auto result = waiter.wait(std::chrono::milliseconds(500));
     EXPECT_EQ(result.errorCode, -1);
     EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
+}
+
+TEST(AuthdClientTest, SaturatedAcceptBacklogIsAFastConnectFailureNotAHang)
+{
+    // A real listener exists at this path, but its accept() backlog is fully saturated by other
+    // (never-accepted) connections -- the one scenario connectTimeoutMs/the POLLHUP check in
+    // performRequest() exist for. Verified against the real kernel (see authdClient.cpp's comment
+    // at the POLLHUP/POLLERR check): AF_UNIX's non-blocking connect() fails synchronously with
+    // EAGAIN when the backlog is full -- there's no async "still connecting" state -- so poll()
+    // comes back immediately with POLLHUP set, and SO_ERROR alone would misleadingly read 0.
+    const std::string path = makeUniqueSocketPath("authd_client_backlog_full");
+
+    const int listenFd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    ASSERT_GE(listenFd, 0);
+    sockaddr_un addr {};
+    addr.sun_family = AF_UNIX;
+    std::strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+    ASSERT_EQ(::bind(listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)), 0);
+    ASSERT_EQ(::listen(listenFd, 1), 0); // tiny backlog, saturated below
+
+    // Never accept() any of these: fills the listen backlog and keeps it full for the whole test.
+    std::vector<int> fillers;
+    for (int i = 0; i < 8; ++i)
+    {
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        ASSERT_GE(fd, 0);
+        ::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)); // may succeed or EAGAIN; either is fine
+        fillers.push_back(fd);
+    }
+
+    // Generous timeouts on both axes: the assertion below (well under either) is what proves this
+    // resolves via the fast POLLHUP-detected failure, not by waiting either deadline out.
+    AuthdClient client(path,
+                       /*isWorkerNode=*/false,
+                       /*connectTimeoutMs=*/2000,
+                       /*responseTimeoutMs=*/5000,
+                       /*maxQueueSize=*/0,
+                       /*workerThreads=*/1);
+    ResultWaiter waiter;
+    client.addAgent(makeRequest(), waiter.callback());
+
+    const auto result = waiter.wait(std::chrono::milliseconds(500));
+    EXPECT_EQ(result.errorCode, -1);
+    EXPECT_NE(result.message.find("Could not connect"), std::string::npos);
+
+    for (const int fd : fillers)
+    {
+        ::close(fd);
+    }
+    ::close(listenFd);
+    ::unlink(path.c_str());
 }
 
 TEST(AuthdClientTest, ServerDroppingTheResponseTimesOut)

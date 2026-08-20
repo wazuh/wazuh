@@ -90,7 +90,7 @@ namespace remoted::enrollment
      * (10) times with a 1 s sleep between failures on a flaky link, so a timeout shorter than
      * that would cut off a legitimate, still-in-progress worker enrollment as a spurious failure.
      *
-     * Connect() is a plain, fully BLOCKING call (see authdClient.cpp's performRequest()) -- not
+     * Connect() is deterministic and bounded (see authdClient.cpp's performRequest()) -- not
      * shared_modules/utils's SocketClient, whose async connect() starts a background thread and
      * returns before the connection exists. An earlier version of this class used SocketClient and
      * called send() immediately after connect() with no synchronization between them, which lost
@@ -98,11 +98,13 @@ namespace remoted::enrollment
      * successfully process the request, but the reply arrived on a connection this class was no
      * longer the one listening on (SocketClient had silently reconnected after treating the
      * original attempt as merely "still pending"), producing a client-visible timeout for a request
-     * that actually succeeded. Blocking connect() has no such race: it returns only once truly
-     * connected, or throws immediately on a real failure (e.g. ENOENT if socketPath doesn't exist)
-     * -- so, unlike before, an absent authd IS now distinguishable from a slow/unresponsive one: it
-     * fails fast with a "could not connect" message rather than waiting out the full response
-     * timeout.
+     * that actually succeeded. This class's connect() has no such race: internally it does a
+     * non-blocking connect() plus poll() bounded by connectTimeoutMs, then restores the fd to
+     * blocking mode before send()/read() -- it returns only once truly connected, or throws on a
+     * real failure (e.g. ENOENT if socketPath doesn't exist) or on the connect timeout expiring
+     * (e.g. authd's accept() backlog staying saturated) -- so an absent, refused, or overloaded
+     * authd IS distinguishable from a slow/unresponsive one: it fails fast with a "could not
+     * connect" message rather than waiting out the full response timeout.
      */
     class AuthdClient
     {
@@ -121,14 +123,11 @@ namespace remoted::enrollment
         /**
          * @param socketPath Path to authd's local socket.
          * @param isWorkerNode Selects the worker-aware default when responseTimeoutMs is 0.
-         * @param connectTimeoutMs 0 -> kDefaultConnectTimeoutMs. NOTE: currently accepted but not
-         *        enforced -- connect() is a plain blocking call (see the class comment) with no
-         *        per-call deadline hook short of a non-blocking-connect-plus-poll() rewrite. In
-         *        practice a Unix-domain connect() either resolves near-instantly or fails
-         *        near-instantly; the one scenario this doesn't bound is authd's accept() backlog
-         *        being saturated, which blocks the connecting side until a slot frees, with no
-         *        fixed limit. Kept in the signature so the ABI field it's sourced from
-         *        (authd_connect_timeout) has somewhere to go if that gap is closed later.
+         * @param connectTimeoutMs 0 -> kDefaultConnectTimeoutMs. Enforced via a non-blocking
+         *        connect() plus poll() on the fd (see performRequest()): bounds the one scenario a
+         *        plain blocking connect() couldn't -- authd's accept() backlog being saturated --
+         *        so a stuck connect attempt fails with a timeout error after this many
+         *        milliseconds instead of blocking the worker thread indefinitely.
          * @param responseTimeoutMs 0 -> worker-aware default (see class comment and
          *        resolveResponseTimeoutMs()).
          * @param maxQueueSize 0 -> kDefaultMaxQueueSize; requests beyond this are rejected

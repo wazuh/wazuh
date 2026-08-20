@@ -138,8 +138,16 @@ namespace remoted::enrollment
             {
                 return false;
             }
-            const int prefix = std::stoi(std::string(prefixPart));
-            return prefix >= 0 && prefix <= maxPrefix;
+            try
+            {
+                const int prefix = std::stoi(std::string(prefixPart));
+                return prefix >= 0 && prefix <= maxPrefix;
+            }
+            catch (const std::exception&)
+            {
+                // All-digit but out of range for int (e.g. a huge prefix string) -> not a valid prefix.
+                return false;
+            }
         }
 
         struct ParsedBody

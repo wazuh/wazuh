@@ -209,6 +209,17 @@ TEST(EnrollmentEndpointTest, ValidCidrIpIsAccepted)
     EXPECT_EQ(response.status, 200);
 }
 
+TEST(EnrollmentEndpointTest, OverlongCidrPrefixIsRejectedWith400NotAnUncaughtException)
+{
+    // All-digit but too many digits to fit in an int -- isValidIpOrCidr()'s std::stoi() call used
+    // to let std::out_of_range escape uncaught for input like this; it must be rejected as an
+    // ordinary invalid request, not crash or bubble up as an unhandled exception.
+    const auto response = run(openModeConfig(),
+                              R"({"name":"agent1","version":"5.0.0","ip":"10.0.0.0/99999999999999999999"})",
+                              makeUniqueSocketPath("enrollment_endpoint_overlong_prefix"));
+    EXPECT_EQ(response.status, 400);
+}
+
 TEST(EnrollmentEndpointTest, VersionTooNewIsRejectedWhenNotAllowed)
 {
     Config config = openModeConfig();
