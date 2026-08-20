@@ -44,6 +44,8 @@ public:
             if (event->cwd) free(event->cwd);
             if (event->audit_name) free(event->audit_name);
             if (event->audit_uid) free(event->audit_uid);
+            if (event->audit_gid) free(event->audit_gid);
+            if (event->audit_group_name) free(event->audit_group_name);
             if (event->effective_name) free(event->effective_name);
             if (event->effective_uid) free(event->effective_uid);
             if (event->group_id) free(event->group_id);
