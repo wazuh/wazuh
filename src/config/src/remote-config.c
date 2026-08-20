@@ -64,6 +64,15 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr);
  */
 STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len);
 
+/**
+ * @brief validates <remote><https><ciphers> as a TLS 1.3 suite list, so 'remoted -t' rejects a
+ *        TLS 1.2 string instead of the HTTPS server failing to start at runtime.
+ *
+ * @param ciphers raw <ciphers> content
+ * @return OS_SUCCESS when every element is a known suite, OS_INVALID otherwise
+ */
+STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers);
+
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -326,10 +335,16 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
             } else if (strcasecmp(node[i]->content, "full") == 0) {
                 logr->https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
             } else {
-                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_verification_mode);
+                // Reject, don't fall back: a typo must not silently disable certificate verification.
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_https_ciphers) == 0) {
             if (w_remoted_https_check_max_len(xml_https_ciphers, node[i]->content, REMOTED_HTTPS_CIPHERS_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
+            if (w_remoted_validate_tls13_ciphers(node[i]->content) == OS_INVALID) {
                 return (OS_INVALID);
             }
 
@@ -350,7 +365,8 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
             } else if (strcasecmp(node[i]->content, "no") == 0) {
                 logr->https.dual_stack = REMOTED_HTTPS_DUAL_STACK_NO;
             } else {
-                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_dual_stack);
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -388,6 +404,56 @@ STATIC int w_remoted_https_check_max_len(const char * element, const char * cont
     }
 
     return OS_SUCCESS;
+}
+
+STATIC int w_remoted_validate_tls13_ciphers(const char * ciphers) {
+    // Same TLS 1.3 suite names OpenSSL's SSL_CTX_set_ciphersuites() accepts (RFC 8446 section B.4).
+    static const char * VALID_TLS13_CIPHERSUITES[] = {
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256",
+        "TLS_AES_128_CCM_SHA256",
+        "TLS_AES_128_CCM_8_SHA256",
+        NULL
+    };
+
+    if (ciphers == NULL || *ciphers == '\0') {
+        merror("Invalid '<remote><https><ciphers>' option: expected TLS 1.3 cipher suite names.");
+        return (OS_INVALID);
+    }
+
+    // Hand-walked, not strtok: strtok collapses separators, so ':X' and 'X::Y' would wrongly pass.
+    const char * element = ciphers;
+
+    for (;;) {
+        const char * separator = strchr(element, ':');
+        const size_t length = separator ? (size_t)(separator - element) : strlen(element);
+
+        if (length == 0) {
+            merror("Invalid '<remote><https><ciphers>' option: '%s' has an empty cipher suite name.", ciphers);
+            return (OS_INVALID);
+        }
+
+        int valid = 0;
+        for (int i = 0; VALID_TLS13_CIPHERSUITES[i]; i++) {
+            if (strlen(VALID_TLS13_CIPHERSUITES[i]) == length &&
+                strncmp(element, VALID_TLS13_CIPHERSUITES[i], length) == 0) {
+                valid = 1;
+                break;
+            }
+        }
+
+        if (!valid) {
+            merror("Invalid TLS 1.3 cipher suite '%.*s' in the '<remote><https><ciphers>' option.", (int)length, element);
+            return (OS_INVALID);
+        }
+
+        if (!separator) {
+            return OS_SUCCESS;
+        }
+
+        element = separator + 1;
+    }
 }
 
 STATIC int w_remoted_get_net_protocol(const char * content) {

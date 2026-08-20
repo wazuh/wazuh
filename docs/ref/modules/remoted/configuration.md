@@ -138,7 +138,8 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 (the `IPV6_V6ONLY` socket option).
 
 - **Default value:** `no` (force IPv6-only)
-- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
+- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only); any other value is
+  rejected as a configuration error
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
   `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
@@ -186,8 +187,8 @@ Client-certificate verification strictness.
   connect from, not where agents may. It fits a direct deployment, or one where the balancer
   preserves the client address at network level. It also requires every agent certificate to
   carry the agent's address in its SAN, which has to be reissued whenever that address changes.
-- **Note:** any other value is ignored with a warning, leaving `verification_mode` as if it had
-  not been configured.
+- **Note:** any other value is rejected as a configuration error (the config test fails), so a
+  typo cannot silently leave client-certificate verification disabled.
 - **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
 
 ### https.ciphers
@@ -197,7 +198,10 @@ scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its min
 protocol version.
 
 - **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
-- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string. The value is validated at
+  configuration-parse time: a name that is not a TLS 1.3 suite (for example a TLS 1.2 string such
+  as `HIGH:!ADH`) is rejected so the config test catches it, instead of the listener failing to
+  start at runtime.
 
 ### https.max_body_size
 
