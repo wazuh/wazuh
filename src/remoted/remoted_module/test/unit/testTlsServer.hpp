@@ -56,13 +56,13 @@ namespace remoted::test
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::string> allowedAddressFor(remoted::auth::AgentId) const override { return std::nullopt; }
-
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
+        // Registered as `any`: the known agent may connect from any address.
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId agentId,
+                                                         std::string_view) const override
         {
             if (agentId == kTestAgentId)
             {
-                return testAgentKey();
+                return remoted::auth::AgentLookup {testAgentKey(), true};
             }
             return std::nullopt;
         }

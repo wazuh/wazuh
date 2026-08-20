@@ -13,7 +13,7 @@
 
 #include <cstdint>
 #include <optional>
-#include <string>
+#include <string_view>
 #include <vector>
 
 #include "authTypes.hpp" // remoted::auth::AgentId
@@ -22,7 +22,21 @@ namespace remoted::auth
 {
 
     /**
-     * @brief Relates agent ids to their pre-shared AES key.
+     * @brief Everything one client.keys entry contributes to authenticating a request.
+     */
+    struct AgentLookup
+    {
+        /// The agent's pre-shared AES key (16, 24 or 32 bytes). Empty when the entry exists but its
+        /// on-disk key column could not be used as-is, which is what lets a caller answer the more
+        /// precise "unusable key" instead of "unknown agent".
+        std::vector<std::uint8_t> key;
+
+        /// Whether the peer address passed to lookup() satisfies the entry's `ip` column.
+        bool addressAllowed {false};
+    };
+
+    /**
+     * @brief Relates agent ids to their pre-shared AES key and to the addresses they may connect from.
      */
     class IAgentKeystore
     {
@@ -30,22 +44,23 @@ namespace remoted::auth
         virtual ~IAgentKeystore() = default;
 
         /**
-         * @brief Look up an agent's key.
+         * @brief Resolve an agent's key and evaluate its address restriction in one step.
+         *
+         * The `ip` column is enforced here, the same restriction the legacy remoted applies via
+         * OS_IsAllowedDynamicID(): an agent registered with a fixed address (or a range) may only
+         * reach the manager from it, while `any` accepts every peer.
+         *
+         * Both answers come from a single pass over the implementation's table, under whatever lock it
+         * holds, so a concurrent reload cannot leave a caller pairing one entry's key with another
+         * entry's address. Only values are returned -- no reference into the table escapes.
          *
          * @param agentId Agent id parsed from the request's Authorization header (numeric --
          *                a non-numeric agent-id token never reaches this call, see AuthMiddleware).
-         * @return std::nullopt for an unknown agent. Otherwise the agent's
-         *         pre-shared AES key (16, 24 or 32 bytes); empty if the agent
-         *         is known but its on-disk key could not be used as-is.
+         * @param peerIp  Textual peer address as observed on the socket.
+         * @return std::nullopt for an unknown agent, which grants nothing. Otherwise the entry's key
+         *         and whether @p peerIp satisfies its address restriction.
          */
-        virtual std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const = 0;
-
-        /**
-         * @brief The agent's `client.keys` source-address column; nullopt if absent (unrestricted).
-         *
-         * Pure virtual like keyFor(): a security control must not inherit a silent "unrestricted" default.
-         */
-        virtual std::optional<std::string> allowedAddressFor(AgentId agentId) const = 0;
+        virtual std::optional<AgentLookup> lookup(AgentId agentId, std::string_view peerIp) const = 0;
     };
 
 } // namespace remoted::auth

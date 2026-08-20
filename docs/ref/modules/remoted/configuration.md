@@ -231,8 +231,9 @@ Debug logging level for remoted module.
 - **Note:** Use `debug2` for troubleshooting; generates significant log volume
 - **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
   (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
-  controls how many it can trigger; conditions an operator can act on are logged as warnings
-  regardless of this setting. See
+  controls how many it can trigger; conditions an operator can act on are logged at info or warning
+  level regardless of this setting — including a rejection caused by the agent's registered address no
+  longer matching. See
   [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
 
 ### remoted.receive_chunk

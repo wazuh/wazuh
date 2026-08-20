@@ -466,10 +466,24 @@ namespace remoted::auth
                     continue; // id column isn't numeric -- can never match a real lookup
                 }
 
+                // Skip the line rather than load it unrestricted: an ip column that does not parse
+                // would otherwise turn a fixed-address registration into one that accepts any peer.
+                auto addressRule = AddressRule::parse(ip);
+                if (!addressRule)
+                {
+                    LOGFN_WARN(logFn(),
+                               "client.keys line %d: the address '%s' registered for agent %u is not a valid address "
+                               "or range; that agent's requests will be rejected until it is fixed.",
+                               lineNumber,
+                               ip.c_str(),
+                               *agentId);
+                    continue;
+                }
+
                 auto decoded = decodeKey(key);
                 if (decoded.empty())
                 {
-                    // Store the empty key anyway: keyFor() returning an empty vector (rather than
+                    // Store the empty key anyway: lookup() returning an empty key (rather than
                     // nullopt) is what lets the auth middleware answer the more precise MissingKey
                     // instead of UnknownAgent. But do NOT count it as loaded -- it cannot
                     // authenticate anything, and counting it made a broken entry look healthy.
@@ -478,11 +492,11 @@ namespace remoted::auth
                                "agent's requests will be rejected. Re-enroll it.",
                                lineNumber,
                                *agentId);
-                    loaded[*agentId] = AgentEntry {std::move(decoded), std::move(ip)};
+                    loaded.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
                     continue;
                 }
 
-                loaded[*agentId] = AgentEntry {std::move(decoded), std::move(ip)};
+                loaded.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
                 ++count;
             }
             file.close();
@@ -518,7 +532,7 @@ namespace remoted::auth
         return kReloadUnstable;
     }
 
-    std::optional<std::vector<std::uint8_t>> Keystore::keyFor(AgentId agentId) const
+    std::optional<AgentLookup> Keystore::lookup(AgentId agentId, std::string_view peerIp) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_keys.find(agentId);
@@ -526,18 +540,9 @@ namespace remoted::auth
         {
             return std::nullopt;
         }
-        return it->second.key;
-    }
-
-    std::optional<std::string> Keystore::allowedAddressFor(AgentId agentId) const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        const auto it = m_keys.find(agentId);
-        if (it == m_keys.end())
-        {
-            return std::nullopt;
-        }
-        return it->second.address;
+        // Key copied and rule evaluated under the same lock, so the two answers always describe the
+        // same entry and no reference into the table escapes.
+        return AgentLookup {it->second.key, it->second.address.matches(peerIp)};
     }
 
 } // namespace remoted::auth

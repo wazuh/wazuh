@@ -120,6 +120,9 @@ namespace remoted::auth
         MalformedAuthorization,
         UnknownAgent,
         MissingKey,
+        AddressNotAllowed, ///< The peer address does not satisfy the agent's client.keys ip column
+                           ///< (the legacy remoted's ENC_IP_ERROR rejection). Collapses to the
+                           ///< generic 401: a distinct status would confirm that the agent id exists.
         ExpiredRequest,
         FutureRequest,
         InvalidMac,
@@ -131,7 +134,6 @@ namespace remoted::auth
         UnsupportedContentEncoding, ///< Content-Encoding present but not (case-insensitively) "zstd".
         MalformedContentEncoding,   ///< Content-Encoding: zstd, but the body isn't a valid/complete
                                     ///< zstd frame (bad magic, truncated, oversized window, ...).
-        SourceIpNotAllowed, ///< Authenticated, but the peer is outside the agent's client.keys address range.
     };
 
     /**

@@ -106,7 +106,9 @@ Forwards enriched event batches to analysisd:
 A self-contained C++ module (`remoted_module`) embedded in `remoted` runs a separate **HTTPS
 listener** (RESTinio + OpenSSL, default `127.0.0.1:1517`) for agent-authenticated event ingestion,
 independent of the AES-encrypted TCP/UDP channel above. Each request is authenticated with a
-per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`). It is
+per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`), and the
+connecting address is matched against the agent's `ip` column in `client.keys`, the same restriction
+the classic listener applies. It is
 Linux-manager only and starts **synchronously** as part of `remoted`'s startup, with **no retry**:
 if the TLS certificate/key are missing or invalid, starting the module fails and `remoted` itself
 does not start. It fully authenticates, parses, and forwards the payload: once the AES-CMAC

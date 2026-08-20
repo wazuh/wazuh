@@ -35,16 +35,46 @@ namespace
     const std::vector<std::uint8_t> kKey = {
         0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
 
+    // The peer address most tests run from. The fixture registers the agent as `any`, so the value
+    // only has to be a valid address; tests that exercise the ip column set their own.
+    constexpr const char* kPeerIp = "10.0.0.7";
+
     // Writes a one-agent client.keys to a scratch path so Keystore has
     // something real to parse, instead of a stub built just for tests.
     std::string writeClientKeysFile(const std::string& agentId,
                                     const std::vector<std::uint8_t>& key,
-                                    const std::string& address = "any")
+                                    const std::string& ip = "any",
+                                    const std::string& suffix = "")
     {
-        const std::string path = "/tmp/authMiddleware_test_" + std::to_string(getpid()) + ".keys";
+        const std::string path = "/tmp/authMiddleware_test_" + std::to_string(getpid()) + suffix + ".keys";
         std::ofstream file(path);
-        file << agentId << " test-agent " << address << " " << toLowerHex(key.data(), key.size()) << "\n";
+        file << agentId << " test-agent " << ip << " " << toLowerHex(key.data(), key.size()) << "\n";
         return path;
+    }
+
+    // Builds the same canonical byte sequence AuthMiddleware verifies, so tests can sign a request
+    // without a production signer. `signedAgentId` is the id text the agent puts in the header and
+    // therefore hashes -- not necessarily the canonical form.
+    std::string signRequest(std::string_view method,
+                            std::string_view target,
+                            std::string_view body,
+                            std::int64_t ts,
+                            std::string_view signedAgentId)
+    {
+        Cmac cmac(kKey);
+        cmac.update("WAZUH-REQUEST\n");
+        cmac.update("1\n");
+        cmac.update(method);
+        cmac.update("\n");
+        cmac.update(target);
+        cmac.update("\n");
+        cmac.update(signedAgentId);
+        cmac.update("\n");
+        cmac.update(std::to_string(ts));
+        cmac.update("\n");
+        cmac.update(body);
+        const auto mac = cmac.finalize();
+        return toLowerHex(mac.data(), mac.size());
     }
 
     struct Fixture
@@ -63,9 +93,10 @@ namespace
                                                           std::string_view method,
                                                           std::string_view target,
                                                           std::string_view body,
-                                                          std::int64_t now = kNow)
+                                                          std::int64_t now = kNow,
+                                                          std::string_view peerIp = kPeerIp)
         {
-            auto sessionOrErr = middleware.beginSession(protocolVersion, authorization, method, target, now);
+            auto sessionOrErr = middleware.beginSession(protocolVersion, authorization, method, target, peerIp, now);
             if (std::holds_alternative<AuthError>(sessionOrErr))
             {
                 return std::get<AuthError>(sessionOrErr);
@@ -79,31 +110,148 @@ namespace
             return session.finish();
         }
 
-        // Builds the same canonical byte sequence AuthMiddleware verifies, so
-        // tests can sign a request without a production signer. `signedAgentId` is the id text the
-        // agent puts in the header and therefore hashes -- not necessarily the canonical form.
         std::string sign(std::string_view method,
                          std::string_view target,
                          std::string_view body,
                          std::int64_t ts = kNow,
                          std::string_view signedAgentId = "001")
         {
-            Cmac cmac(kKey);
-            cmac.update("WAZUH-REQUEST\n");
-            cmac.update("1\n");
-            cmac.update(method);
-            cmac.update("\n");
-            cmac.update(target);
-            cmac.update("\n");
-            cmac.update(signedAgentId);
-            cmac.update("\n");
-            cmac.update(std::to_string(ts));
-            cmac.update("\n");
-            cmac.update(body);
-            const auto mac = cmac.finalize();
-            return toLowerHex(mac.data(), mac.size());
+            return signRequest(method, target, body, ts, signedAgentId);
         }
     };
+
+    // Same as Fixture, but the agent is registered with a specific ip column instead of `any`. Its
+    // scratch file gets its own name so it never collides with a Fixture living in the same test.
+    struct FixedAddressFixture
+    {
+        std::string path;
+        std::shared_ptr<Keystore> keyStore;
+        AuthMiddleware middleware;
+
+        explicit FixedAddressFixture(const std::string& ip)
+            : path {writeClientKeysFile("001", kKey, ip, "_fixed")}
+            , keyStore {std::make_shared<Keystore>(path)}
+            , middleware {AuthConfig {}, keyStore}
+        {
+        }
+
+        ~FixedAddressFixture()
+        {
+            std::remove(path.c_str());
+        }
+
+        // Signs a valid request and runs it from `peerIp`, so the only variable under test is the
+        // address the request arrives from.
+        std::variant<AuthenticatedRequest, AuthError> runFrom(std::string_view peerIp)
+        {
+            const std::string body = "payload";
+            const auto mac = signRequest("POST", "/stateless", body, kNow, "001");
+            auto sessionOrErr = middleware.beginSession(
+                "1", "Wazuh 001:" + std::to_string(kNow) + ":" + mac, "POST", "/stateless", peerIp, kNow);
+            if (std::holds_alternative<AuthError>(sessionOrErr))
+            {
+                return std::get<AuthError>(sessionOrErr);
+            }
+            auto& session = std::get<AuthMiddleware::Session>(sessionOrErr);
+            const auto err = session.update(reinterpret_cast<const std::uint8_t*>(body.data()), body.size());
+            if (err != AuthError::None)
+            {
+                return err;
+            }
+            return session.finish();
+        }
+    };
+
+    TEST(MiddlewareAddress, AnyRegistrationAcceptsAnyPeer)
+    {
+        Fixture f;
+        const std::string body = "payload";
+        const auto mac = f.sign("POST", "/stateless", body);
+        const auto authorization = "Wazuh 001:" + std::to_string(kNow) + ":" + mac;
+
+        for (const auto* peer : {"10.0.0.7", "203.0.113.9", "2001:db8::1"})
+        {
+            const auto result = f.run("1", authorization, "POST", "/stateless", body, kNow, peer);
+            EXPECT_TRUE(std::holds_alternative<AuthenticatedRequest>(result)) << "peer: " << peer;
+        }
+    }
+
+    TEST(MiddlewareAddress, FixedRegistrationAcceptsTheRegisteredPeer)
+    {
+        FixedAddressFixture f {"10.0.0.5"};
+
+        EXPECT_TRUE(std::holds_alternative<AuthenticatedRequest>(f.runFrom("10.0.0.5")));
+    }
+
+    TEST(MiddlewareAddress, FixedRegistrationRejectsAnotherPeer)
+    {
+        FixedAddressFixture f {"10.0.0.5"};
+
+        const auto result = f.runFrom("10.0.0.9");
+        ASSERT_TRUE(std::holds_alternative<AuthError>(result));
+        EXPECT_EQ(std::get<AuthError>(result), AuthError::AddressNotAllowed);
+    }
+
+    TEST(MiddlewareAddress, RangeRegistrationAcceptsAPeerInTheRange)
+    {
+        FixedAddressFixture f {"10.0.0.0/24"};
+
+        EXPECT_TRUE(std::holds_alternative<AuthenticatedRequest>(f.runFrom("10.0.0.7")));
+
+        const auto outside = f.runFrom("10.0.1.7");
+        ASSERT_TRUE(std::holds_alternative<AuthError>(outside));
+        EXPECT_EQ(std::get<AuthError>(outside), AuthError::AddressNotAllowed);
+    }
+
+    // The address gates authorization, not authentication: it is not in the canonical request, so the
+    // MAC over an otherwise identical request must be the same whatever address it arrives from.
+    // Signing the peer address would break every agent behind a NAT rewrite.
+    TEST(MiddlewareAddress, ThePeerAddressIsNotPartOfTheSignedRequest)
+    {
+        Fixture f;
+        const std::string body = "payload";
+        const auto mac = f.sign("POST", "/stateless", body);
+        const auto authorization = "Wazuh 001:" + std::to_string(kNow) + ":" + mac;
+
+        // One signature, two very different peers, both accepted by an `any` registration: the MAC
+        // cannot have covered the address.
+        EXPECT_TRUE(std::holds_alternative<AuthenticatedRequest>(
+            f.run("1", authorization, "POST", "/stateless", body, kNow, "10.0.0.7")));
+        EXPECT_TRUE(std::holds_alternative<AuthenticatedRequest>(
+            f.run("1", authorization, "POST", "/stateless", body, kNow, "203.0.113.9")));
+    }
+
+    // The address check runs before the MAC is verified, so a peer that is not allowed to use this
+    // identity is rejected on the address even when the rest of the request is valid -- and equally
+    // when it is not.
+    TEST(MiddlewareAddress, AddressIsCheckedBeforeTheMac)
+    {
+        FixedAddressFixture f {"10.0.0.5"};
+        auto sessionOrErr = f.middleware.beginSession(
+            "1", "Wazuh 001:" + std::to_string(kNow) + ":" + std::string(32, '0'), "POST", "/stateless", "10.0.0.9", kNow);
+
+        ASSERT_TRUE(std::holds_alternative<AuthError>(sessionOrErr));
+        EXPECT_EQ(std::get<AuthError>(sessionOrErr), AuthError::AddressNotAllowed);
+    }
+
+    // An unknown agent must stay indistinguishable from a known one at a disallowed address: both
+    // collapse to the same generic 401 so a caller cannot use the status to probe which ids exist.
+    TEST(MiddlewareAddress, RejectionIsIndistinguishableFromAnUnknownAgent)
+    {
+        const auto notAllowed = publicErrorFor(AuthError::AddressNotAllowed);
+        const auto unknown = publicErrorFor(AuthError::UnknownAgent);
+
+        EXPECT_EQ(notAllowed.status, 401);
+        EXPECT_EQ(notAllowed.status, unknown.status);
+        EXPECT_STREQ(notAllowed.message, unknown.message);
+    }
+
+    TEST(MiddlewareAddress, ErrorHasItsOwnLogTag)
+    {
+        // The public 401 is shared, but the internal reason must remain distinguishable for the log.
+        EXPECT_STREQ(toString(AuthError::AddressNotAllowed), "address_not_allowed");
+        EXPECT_STRNE(toString(AuthError::AddressNotAllowed), toString(AuthError::UnknownAgent));
+    }
 
     TEST(Middleware, ValidRequestSucceeds)
     {
@@ -319,58 +467,6 @@ namespace
         // Both remain std::exception, so existing generic handlers keep working.
         EXPECT_TRUE((std::is_base_of_v<std::exception, CmacKeyError>));
         EXPECT_TRUE((std::is_base_of_v<std::exception, CmacProviderError>));
-    }
-
-    // --- Source-address authorization (checkSourceAddress) --------------------------------------
-
-    TEST(AuthMiddlewareSourceAddress, AnyAllowsEveryPeer)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "any");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "10.0.0.5").has_value());
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, CidrRejectsPeerOutsideRange)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "10.99.0.0/16");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "10.99.0.1").has_value());
-
-        const auto rejected = middleware.checkSourceAddress("001", "10.100.0.1");
-        ASSERT_TRUE(rejected.has_value());
-        EXPECT_EQ(*rejected, AuthError::SourceIpNotAllowed);
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, SingleIpRejectsOtherPeer)
-    {
-        const auto path = writeClientKeysFile("001", kKey, "192.168.1.10");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("001", "192.168.1.10").has_value());
-
-        const auto rejected = middleware.checkSourceAddress("001", "192.168.1.11");
-        ASSERT_TRUE(rejected.has_value());
-        EXPECT_EQ(*rejected, AuthError::SourceIpNotAllowed);
-        std::remove(path.c_str());
-    }
-
-    TEST(AuthMiddlewareSourceAddress, UnknownAgentIsUnrestricted)
-    {
-        // A missing address (agent gone from client.keys after the key check) is not enforced --
-        // the key lookup is the authoritative gate; see AuthMiddleware::checkSourceAddress.
-        const auto path = writeClientKeysFile("001", kKey, "10.99.0.0/16");
-        auto keyStore = std::make_shared<Keystore>(path);
-        AuthMiddleware middleware {AuthConfig {}, keyStore};
-
-        EXPECT_FALSE(middleware.checkSourceAddress("999", "203.0.113.1").has_value());
-        std::remove(path.c_str());
     }
 
 } // namespace

@@ -146,26 +146,16 @@ paths:
         "401":
           description: |
             Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
-            header, an unknown agent, an unusable key, an out-of-window timestamp and an invalid MAC
-            all return the same response so the specific reason is not exposed.
+            header, an unknown agent, an unusable key, a peer address outside the one authorized for
+            the agent in `client.keys` (third column: an IP, a CIDR/netmask, or `any`), an
+            out-of-window timestamp and an invalid MAC all return the same response so the specific
+            reason is not exposed.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
                 invalidAuthentication:
                   value: { error: "Invalid client authentication", code: 401 }
-        "403":
-          description: |
-            The request authenticated, but the peer connects from an address outside the range
-            authorized for this agent in `client.keys` (the third column: a single IP, a CIDR, or
-            `any`). Checked only after the MAC verifies, so it never reveals the ACL to an
-            unauthenticated peer.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-              examples:
-                sourceAddressNotAuthorized:
-                  value: { error: "Source address not authorized", code: 403 }
         "413":
           description: |
             The request body exceeds the configured auth body limit (10 MiB). For

@@ -44,13 +44,13 @@ namespace
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::string> allowedAddressFor(remoted::auth::AgentId) const override { return std::nullopt; }
-
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
+        // Registered as `any`: the known agent may connect from any address.
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId agentId,
+                                                         std::string_view) const override
         {
             if (agentId == 1)
             {
-                return std::vector<std::uint8_t>(16, 0x0A); // 16-byte AES-128 key
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
             }
             return std::nullopt;
         }
@@ -62,9 +62,8 @@ namespace
     class ThrowingKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::string> allowedAddressFor(remoted::auth::AgentId) const override { return std::nullopt; }
-
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId) const override
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId,
+                                                         std::string_view) const override
         {
             throw std::runtime_error("simulated keystore I/O failure");
         }
@@ -127,7 +126,7 @@ namespace
     std::string
     buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
     {
-        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::keyFor(1) ("001" on the wire)
+        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
         remoted::auth::Cmac cmac(key);
         cmac.update("WAZUH-REQUEST\n");
         cmac.update("1\n"); // protocol-version
@@ -380,7 +379,7 @@ TEST(AuthGatewayTest, KeystoreThrowDuringAuthYields500)
                                   [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
                                                    std::shared_ptr<IHttpResponder>) { handlerCalled = true; });
 
-    // keyFor() is called from inside beginSession() -- exactly the code that used to run outside
+    // lookup() is called from inside beginSession() -- exactly the code that used to run outside
     // the gateway's try/catch. This must not escape dispatch() (in production, it would otherwise
     // std::terminate() the whole process on the worker-pool thread).
     const auto request = signedRequest("some-body");
