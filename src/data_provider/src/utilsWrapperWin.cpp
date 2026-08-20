@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#include <algorithm>      // For std::min/std::max
 #include <regex>
 #include <sstream>        // For std::ostringstream
 #include <iomanip>        // For std::hex
@@ -19,6 +20,33 @@
 
 #include "utilsWrapperWin.hpp"
 #include <shellapi.h>
+
+namespace
+{
+    // Releases a COM interface pointer (if non-null) when it goes out of scope, once,
+    // from whichever throw site or normal return exits the function that owns it.
+    // Centralizes the per-throw-site "if (p) p->Release();" pattern that would
+    // otherwise be duplicated at every early-exit point.
+    template <typename T>
+    class ComReleaseGuard
+    {
+        public:
+            explicit ComReleaseGuard(T*& ptr) : m_ptr(ptr) {}
+            ~ComReleaseGuard()
+            {
+                if (m_ptr)
+                {
+                    m_ptr->Release();
+                    m_ptr = nullptr;
+                }
+            }
+            ComReleaseGuard(const ComReleaseGuard&) = delete;
+            ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
+
+        private:
+            T*& m_ptr;
+    };
+}
 
 // Implement WMI functions
 HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
@@ -31,27 +59,26 @@ HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, 
     // ConnectServer() has no timeout parameter of its own; WBEM_FLAG_CONNECT_USE_MAX_WAIT
     // plus an IWbemContext __MAX_WAIT property is WMI's own documented mechanism for
     // bounding it instead of blocking indefinitely on an unresponsive Winmgmt (#38370).
+    // Creating/configuring that context object is a COM/WMI registration concern
+    // unrelated to Winmgmt being hung; if it fails, fall back to the pre-existing
+    // unbounded ConnectServer() call instead of failing hotfix collection outright, so
+    // that this narrow COM failure mode doesn't become a hard new dependency.
     IWbemContext* pCtx = NULL;
-    HRESULT hres = CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER, IID_IWbemContext, (LPVOID*)&pCtx);
+    ComReleaseGuard<IWbemContext> ctxGuard(pCtx);
 
-    if (FAILED(hres))
+    bool contextUsable = SUCCEEDED(CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER,
+                                                    IID_IWbemContext, (LPVOID*)&pCtx));
+
+    if (contextUsable)
     {
-        return hres;
+        _variant_t var(static_cast<long>(maxWaitMs));
+        contextUsable = SUCCEEDED(pCtx->SetValue(L"__MAX_WAIT", 0, &var));
     }
 
-    _variant_t var(static_cast<long>(maxWaitMs));
-    hres = pCtx->SetValue(L"__MAX_WAIT", 0, &var);
-
-    if (FAILED(hres))
-    {
-        pCtx->Release();
-        return hres;
-    }
-
-    hres = pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL,
-                               WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, pCtx, &pSvc);
-    pCtx->Release();
-    return hres;
+    const long connectFlags = contextUsable ? WBEM_FLAG_CONNECT_USE_MAX_WAIT : 0;
+    IWbemContext* const ctxArg = contextUsable ? pCtx : NULL;
+    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL,
+                               connectFlags, NULL, ctxArg, &pSvc);
 }
 
 HRESULT ComHelper::SetProxyBlanket(IWbemServices* pSvc)
@@ -120,35 +147,8 @@ std::string BstrToString(BSTR bstr)
     return converter.to_bytes(wstr);
 }
 
-namespace
-{
-    // Releases a COM interface pointer (if non-null) when it goes out of scope, once,
-    // from whichever throw site or normal return exits QueryWMIHotFixes. Centralizes the
-    // per-throw-site "if (p) p->Release();" pattern that used to be duplicated at every
-    // early-exit point in that function.
-    template <typename T>
-    class ComReleaseGuard
-    {
-        public:
-            explicit ComReleaseGuard(T*& ptr) : m_ptr(ptr) {}
-            ~ComReleaseGuard()
-            {
-                if (m_ptr)
-                {
-                    m_ptr->Release();
-                    m_ptr = nullptr;
-                }
-            }
-            ComReleaseGuard(const ComReleaseGuard&) = delete;
-            ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
-
-        private:
-            T*& m_ptr;
-    };
-}
-
-void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                      long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
+void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHelper,
+                             long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -211,9 +211,12 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         }
 
         // Clamp the per-call wait to whatever time remains so a single Next() call
-        // can never push total elapsed time past overallTimeoutMs.
+        // can never push total elapsed time past overallTimeoutMs. The millisecond
+        // truncation in duration_cast can round remainingMs down to 0 even though
+        // now < deadline still holds; per WMI's docs, Next(0, ...) is a non-blocking
+        // poll rather than a wait, so clamp to at least 1 ms to keep this an actual wait.
         const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count();
-        const long callTimeoutMs = static_cast<long>(std::min<long long>(perCallTimeoutMs, remainingMs));
+        const long callTimeoutMs = static_cast<long>(std::max<long long>(1, std::min<long long>(perCallTimeoutMs, remainingMs)));
 
         // Declared fresh each iteration so a provider that fails without touching
         // these out-params can't leave a stale, already-Release()'d pclsObj or a
@@ -261,6 +264,12 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
     // pLoc/pSvc/pEnumerator are released automatically by their guards on scope exit,
     // including the case where ExecuteWmiQuery reported success but left pEnumerator NULL.
+}
+
+void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
+{
+    QueryWMIHotFixesBounded(hotfixSet, comHelper, WMI_HOTFIX_NEXT_TIMEOUT_MS,
+                            WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS, WMI_CONNECT_MAX_WAIT_MS);
 }
 
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)

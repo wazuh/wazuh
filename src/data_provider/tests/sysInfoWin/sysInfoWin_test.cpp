@@ -200,7 +200,8 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationTimeoutThrows)
     EXPECT_CALL(mockEnum, Next(testing::_, testing::_, testing::_, testing::_))
     .WillRepeatedly(testing::Return(WBEM_S_TIMEDOUT));
 
-    EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper, /*perCallTimeoutMs*/ 1, /*overallTimeoutMs*/ 5),
+    EXPECT_THROW(QueryWMIHotFixesBounded(hotfixSet, mockComHelper, /*perCallTimeoutMs*/ 1, /*overallTimeoutMs*/ 5,
+                                         WMI_CONNECT_MAX_WAIT_MS),
                  std::runtime_error);
 }
 
