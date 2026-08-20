@@ -307,10 +307,7 @@ namespace remoted::enrollment
                 // Wait for the connect to complete (or fail) within m_connectTimeoutMs. For a
                 // Unix-domain socket this resolves near-instantly in practice -- this bound only
                 // matters when authd's own accept() backlog is full.
-                struct pollfd pfd
-                {
-                    socket.fileDescriptor(), POLLOUT, 0
-                };
+                struct pollfd pfd {socket.fileDescriptor(), POLLOUT, 0};
                 const int ready = ::poll(&pfd, 1, static_cast<int>(m_connectTimeoutMs));
                 if (ready == 0)
                 {
@@ -374,11 +371,8 @@ namespace remoted::enrollment
             // Bounds both the send and the reply wait. Socket/OSPrimitives don't expose
             // setsockopt() publicly (it's used internally for the send/receive buffer sizes only),
             // so this is set directly on the raw fd via the standard POSIX call.
-            const struct timeval timeout
-            {
-                static_cast<time_t>(m_responseTimeoutMs / 1000),
-                    static_cast<suseconds_t>((m_responseTimeoutMs % 1000) * 1000)
-            };
+            const struct timeval timeout {static_cast<time_t>(m_responseTimeoutMs / 1000),
+                                          static_cast<suseconds_t>((m_responseTimeoutMs % 1000) * 1000)};
             ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
             ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 

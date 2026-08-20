@@ -146,7 +146,7 @@ namespace remoted::metrics
         {
             m.latency = manager.getOrCreateHistogram(std::string {HTTP_METRIC_PREFIX} + endpoint + ".latency",
                                                      std::string {"POST /"} + endpoint +
-                                                         " end-to-end time, gateway receipt to response delivery",
+                                                         " end-to-end time, request receipt to response delivery",
                                                      "microseconds");
         }
         return m;

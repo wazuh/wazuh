@@ -152,7 +152,9 @@ cells — they are counted, with their cause, in
 `/enroll` is the exception to that split: it is not registered through the auth gateway (an
 enrolling agent has no `client.keys` entry to authenticate with), so its own handler answers
 every rejection and **all** of them land in its cells — including the ones whose cause is
-recorded in `remoted.auth.reject.*`. Its outcome-shaped companion family is
+recorded in `remoted.auth.reject.*`. There is no `401` cell in the closed set, so a credential
+rejection — the most common `/enroll` failure — is counted in **`other`**; read it together with
+`remoted.enroll.rejected_auth`, which counts the same requests by outcome. Its outcome-shaped companion family is
 [`remoted.enroll.*`](#agent-enrollment--remotedenroll).
 
 ### Request latency — `remoted.http.<endpoint>.latency`
