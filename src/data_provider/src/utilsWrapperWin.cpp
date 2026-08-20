@@ -39,9 +39,7 @@ HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, 
         return hres;
     }
 
-    VARIANT var;
-    var.vt = VT_I4;
-    var.lVal = maxWaitMs;
+    _variant_t var(static_cast<long>(maxWaitMs));
     hres = pCtx->SetValue(L"__MAX_WAIT", 0, &var);
 
     if (FAILED(hres))
@@ -122,13 +120,47 @@ std::string BstrToString(BSTR bstr)
     return converter.to_bytes(wstr);
 }
 
+namespace
+{
+    // Releases a COM interface pointer (if non-null) when it goes out of scope, once,
+    // from whichever throw site or normal return exits QueryWMIHotFixes. Centralizes the
+    // per-throw-site "if (p) p->Release();" pattern that used to be duplicated at every
+    // early-exit point in that function.
+    template <typename T>
+    class ComReleaseGuard
+    {
+        public:
+            explicit ComReleaseGuard(T*& ptr) : m_ptr(ptr) {}
+            ~ComReleaseGuard()
+            {
+                if (m_ptr)
+                {
+                    m_ptr->Release();
+                    m_ptr = nullptr;
+                }
+            }
+            ComReleaseGuard(const ComReleaseGuard&) = delete;
+            ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
+
+        private:
+            T*& m_ptr;
+    };
+}
+
 void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
                       long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
     IWbemServices* pSvc = NULL;
+    IEnumWbemClassObject* pEnumerator = NULL;
     std::ostringstream oss;
+
+    // Declared in this order so their destructors run in reverse (enumerator, then
+    // service, then locator) at every throw site and at normal function exit alike.
+    ComReleaseGuard<IWbemLocator> locatorGuard(pLoc);
+    ComReleaseGuard<IWbemServices> serviceGuard(pSvc);
+    ComReleaseGuard<IEnumWbemClassObject> enumeratorGuard(pEnumerator);
 
     hres = comHelper.CreateWmiLocator(pLoc);
 
@@ -142,8 +174,6 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
     if (FAILED(hres))
     {
-        if (pLoc) pLoc->Release();
-
         oss << "WMI: connection failed. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
@@ -152,23 +182,14 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
     if (FAILED(hres))
     {
-        if (pSvc) pSvc->Release();
-
-        if (pLoc) pLoc->Release();
-
         oss << "WMI: security error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
 
-    IEnumWbemClassObject* pEnumerator = NULL;
     hres = comHelper.ExecuteWmiQuery(pSvc, pEnumerator);
 
     if (FAILED(hres))
     {
-        if (pLoc) pLoc->Release();
-
-        if (pSvc) pSvc->Release();
-
         oss << "WMI: query error. Code: " << std::hex << hres;
         throw std::runtime_error(oss.str());
     }
@@ -184,12 +205,6 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
         if (now >= deadline)
         {
-            pEnumerator->Release();
-
-            if (pSvc) pSvc->Release();
-
-            if (pLoc) pLoc->Release();
-
             oss << "WMI: hotfix enumeration did not respond within " << overallTimeoutMs
                 << " ms (Winmgmt unresponsive); aborting this cycle's hotfix collection.";
             throw std::runtime_error(oss.str());
@@ -216,12 +231,6 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
 
         if (FAILED(nextRes))
         {
-            pEnumerator->Release();
-
-            if (pSvc) pSvc->Release();
-
-            if (pLoc) pLoc->Release();
-
             oss << "WMI: hotfix enumeration failed. Code: " << std::hex << nextRes;
             throw std::runtime_error(oss.str());
         }
@@ -250,15 +259,8 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         pclsObj->Release();
     }
 
-    pSvc->Release();
-    pLoc->Release();
-
-    // ExecuteWmiQuery may report success yet leave a NULL enumerator; guard the release
-    // to avoid dereferencing NULL on the syscollector scan thread.
-    if (pEnumerator)
-    {
-        pEnumerator->Release();
-    }
+    // pLoc/pSvc/pEnumerator are released automatically by their guards on scope exit,
+    // including the case where ExecuteWmiQuery reported success but left pEnumerator NULL.
 }
 
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)

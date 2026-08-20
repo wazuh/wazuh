@@ -84,10 +84,12 @@ constexpr long WMI_HOTFIX_NEXT_TIMEOUT_MS = 5000;
 // Cumulative ceiling (milliseconds) across the whole enumeration loop, enforced as an
 // absolute deadline: each IEnumWbemClassObject::Next() call is clamped to whatever time
 // remains, so total blocking time can never exceed this value regardless of whether
-// individual calls time out or keep succeeding without finishing. Comfortably under
-// stop_wmodules()'s 20 s join budget so this can never itself become the dominant cause
-// of a shutdown timeout.
-constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 15000;
+// individual calls time out or keep succeeding without finishing. Combined with
+// WMI_CONNECT_MAX_WAIT_MS, this bounds QueryWMIHotFixes to at most 12000 ms, leaving a
+// real ~8 s margin under stop_wmodules()'s 20 s join budget (src/win32/win_utils.c,
+// MODULE_JOIN_BUDGET_MS) -- that margin still has to absorb CreateWmiLocator,
+// SetProxyBlanket, and ExecuteWmiQuery, which remain unbounded (tracked as follow-up work).
+constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 9000;
 
 // Queries Windows Management Instrumentation (WMI) to retrieve installed hotfixes
 //  and stores them in the provided set. Bounded: gives up and throws std::runtime_error
