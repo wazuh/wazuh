@@ -12,8 +12,9 @@
 
 #include <dlfcn.h>
 #include <stdint.h>
+#include <string>
 #include "logging_helper.h"
-#include <bounded_queue.hpp>
+#include "bounded_queue.hpp"
 #include <memory>
 
 typedef __attribute__((aligned(4))) unsigned int __u32;

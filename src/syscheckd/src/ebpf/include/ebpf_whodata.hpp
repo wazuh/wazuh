@@ -14,8 +14,8 @@
 #include "dynamic_library_wrapper.h"
 #include <memory>
 
-volatile bool event_received = false;
-volatile bool ebpf_hc_created = false;
+extern volatile bool event_received;
+extern volatile bool ebpf_hc_created;
 
 class fimebpf
 {
@@ -27,7 +27,7 @@ public:
     }
 
     // Function pointer types for required C functions
-    using fim_configuration_directory_t = directory_t*(*)(const char*);
+    using fim_configuration_directory_t = directory_t* (*)(const char*);
     using get_user_t = char* (*)(int);
     using get_group_t = char* (*)(int);
     using fim_whodata_event_t = void (*)(whodata_evt*);
@@ -72,11 +72,10 @@ public:
     free_whodata_event_t m_free_whodata_event = nullptr;
     loggingFunction_t m_loggingFunction = nullptr;
     abspath_t m_abspath = nullptr;
-    unsigned int m_queue_size;
-    fimShutdownProcessOn_t m_fim_shutdown_process_on;
+    unsigned int m_queue_size = 0;
+    fimShutdownProcessOn_t m_fim_shutdown_process_on = nullptr;
 };
 
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
-
 
 #endif // EBPF_WHODATA_HPP
