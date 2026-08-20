@@ -995,6 +995,30 @@ python3 send_scan_vd.py --all
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
+`src/remoted/remoted_module/tools/send_enroll.py` does the same for `POST /enroll` — but since an
+enrolling agent has no `client.keys` entry to sign with, it works from whatever credential you give
+it directly (a password, a client certificate, or neither) rather than reading one from a file:
+
+```bash
+# Open mode -- no credential at all
+python3 send_enroll.py --name web-01
+
+# Password mode -- signs with the manager's actual enrollment password
+python3 send_enroll.py --name web-01 --password Secret123
+
+# tamper the body after signing -> 401 (invalid MAC)
+python3 send_enroll.py --name web-01 --password Secret123 --tamper
+
+# mTLS mode -- the client certificate presented during the handshake is the credential
+python3 send_enroll.py --name web-01 --client-cert agent.pem --client-key agent.key
+
+# run every scenario this script can drive without knowing the manager's configured mode in
+# advance (body validation always; signature/timing scenarios too if --password is given)
+python3 send_enroll.py --password Secret123 --all
+# options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
+#          --password-file (reads /var/wazuh-manager/etc/authd.pass by default)
+```
+
 ## References
 
 - [Event Protocol Specification](event-protocol.md) — the `H`/`E` wire format for event batches.
