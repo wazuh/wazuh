@@ -2657,7 +2657,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // O_NONBLOCK has no effect on a regular file, but the stream is expected to behave like fopen's.
     if (flags = fcntl(fd, F_GETFL), flags != -1) {
-        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+        (void)fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
     }
 
     if (fp = fdopen(fd, mode), fp == NULL) {
