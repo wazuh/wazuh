@@ -1349,6 +1349,50 @@ TEST_F(ControlStreamTest, PendingRescanAdvancesOffsetAndRetriesOn409WithNewerVer
     EXPECT_FALSE(m_vdOffsetStore.pending());
 }
 
+// The invariant the manager side leans on for every /scan/vd 503 (scan_queue_full,
+// indexer_unavailable, shutting_down): shedding at admission loses no work, because the pending
+// flag survives anything but a 200 and the next notify re-requests it. One attempt per cycle
+// here -- the fixture's FakeWaiter interrupts in-request backoff waits; the in-request retry
+// ladder is RetrySender's own contract.
+TEST_F(ControlStreamTest, PendingRescanSurvivesA503AndReRequestsOnTheNextNotify)
+{
+    const std::string notify = R"({"status":"ok","vd_feed_offset":100})";
+    int scanVdCalls = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillRepeatedly(Invoke([&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/control")
+        {
+            return response(TransportStatus::Ok, 200, notify);
+        }
+
+        // /scan/vd: the first request cycle fails, as it would during an indexer outage;
+        // the re-request on the next notify succeeds.
+        ++scanVdCalls;
+
+        if (scanVdCalls == 1)
+        {
+            return response(TransportStatus::Ok, 503, R"({"error":"indexer_unavailable","retryable":true})");
+        }
+
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> pending(100) -> /scan/vd 503.
+
+    EXPECT_EQ(1, scanVdCalls);
+    EXPECT_TRUE(m_vdOffsetStore.pending()) << "a 503 must NOT clear the pending flag";
+    EXPECT_TRUE(m_vdOffsetStore.clearPendingCalls().empty());
+
+    m_stream.step(m_waiter); // Same-offset notify: observe() re-reports pending -> re-request -> 200.
+
+    EXPECT_EQ(2, scanVdCalls) << "the next notify re-fires the request without any new offset";
+    EXPECT_FALSE(m_vdOffsetStore.pending());
+    EXPECT_THAT(m_vdOffsetStore.clearPendingCalls(), ::testing::ElementsAre(100u));
+}
+
 TEST_F(ControlStreamTest, NoPendingRescanMeansNoScanVdRequest)
 {
     // VDFirst not done: observe() persists the offset but never marks pending, so no

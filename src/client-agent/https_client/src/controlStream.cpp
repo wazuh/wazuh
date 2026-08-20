@@ -165,7 +165,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_authGate(authGate)
     , m_taskStore(taskStore)
     , m_vdOffsetStore(vdOffsetStore)
-    , m_rescanRequester(config, performer, signer, clock, random, authGate, vdOffsetStore)
+    , m_rescanRequester(config, performer, signer, clock, random, authGate, compressionGate, vdOffsetStore)
     , m_collectHost(std::move(collectHost))
 {
 }
