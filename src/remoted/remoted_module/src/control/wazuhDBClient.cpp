@@ -480,6 +480,7 @@ namespace remoted::control
     void WazuhDBClient::updateStatusCode(AgentId id,
                                          AgentStatusCode statusCode,
                                          const std::string& version,
+                                         const std::string& connectionStatus,
                                          const std::string& syncStatus,
                                          std::function<void(SocketError)> callback)
     {
@@ -487,6 +488,10 @@ namespace remoted::control
         params["id"] = id;
         params["status_code"] = static_cast<int>(statusCode);
         params["version"] = version;
+        if (!connectionStatus.empty())
+        {
+            params["connection_status"] = connectionStatus;
+        }
         params["sync_status"] = syncStatus;
 
         globalQuery("update-status-code", params, std::move(callback));

@@ -208,7 +208,7 @@ namespace remoted::control
                 // this manager's policy is safe to persist as-is and worth keeping visible.
                 const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
                 m_wdbClient->updateStatusCode(
-                    id, AgentStatusCode::InvalidVersion, versionToStore, syncStatus, [](SocketError) {});
+                    id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
                 HttpResponse response;
                 response.status = 400;
@@ -269,9 +269,16 @@ namespace remoted::control
                                                                    return updated;
                                                                });
 
+                                            // A single write persists the accepted version together with the
+                                            // pending keepalive. The version is not left to the notify path:
+                                            // notify only writes it alongside host metadata, which the agent
+                                            // omits until agent_info populates it, so the agent would otherwise
+                                            // be visible through the API without a version for the first
+                                            // keepalives.
                                             const std::string syncStatus =
                                                 m_config.isWorkerNode ? "syncreq_status" : "synced";
-                                            m_wdbClient->updateKeepalive(id, "pending", syncStatus, [](SocketError) {});
+                                            m_wdbClient->updateStatusCode(
+                                                id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
 
                                             nlohmann::json response;
                                             response["limits"] = m_config.limits;
@@ -431,10 +438,15 @@ namespace remoted::control
 
                     if (data.host)
                     {
-                        // Always write host info if throttle has expired
-                        if (now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
+                        // The first host-carrying notify bypasses the throttle: the agent may
+                        // send its first notifies without host metadata (agent_info populates
+                        // it asynchronously), and those lightweight writes must not delay the
+                        // first full update, or the agent stays without os data in the API for
+                        // a whole throttle window.
+                        if (!e->hostPersisted || now - e->lastKeepaliveUpdateSec >= m_config.keepaliveThrottleSec)
                         {
                             e->lastKeepaliveUpdateSec = now;
+                            e->hostPersisted = true;
                             doWrite = true;
                             doFullUpdate = true;
                         }

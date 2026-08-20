@@ -313,8 +313,8 @@ sequenceDiagram
     WDB-->>CH: groups
     CH->>AR: update(id, metadata)
     Note over AR: Sharded map insert/update
-    CH->>WDB: updateAgentData(id, version, groups, ...)
-    Note over WDB: Fire-and-forget async write
+    CH->>WDB: updateStatusCode(id, Ok, version, "pending")
+    Note over WDB: Fire-and-forget async write (version + pending keepalive)
     CH->>TC: getPendingTasks(id)
     TC-->>TM: async UDS query
     TM-->>TC: [task1, task2, ...]
@@ -328,7 +328,8 @@ sequenceDiagram
 1. **`startup`** — agent sends on connect or after config reload
    - **Request**: `{"type":"startup","version":"5.0.0"}`
    - Validates agent version (rejects if `< manager` when `allow_higher_versions=false`)
-   - Marks agent as connected in wazuh-db (global.db)
+   - Marks agent as `pending` in wazuh-db (global.db); the first notify promotes it to `active`
+   - Persists the accepted agent version and resets `status_code` (host/os data arrives later via notify)
    - Records connection timestamp
    - Fetches agent groups from wazuh-db
    - **Response**:
@@ -361,8 +362,10 @@ sequenceDiagram
      ```
    - Optional host metadata (OS, architecture, hostname, IP) — sent on first keepalive or when values change
    - Updates agent registry with last activity timestamp
-   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 300s):
-     - **Full update** (`updateAgentData`): when host metadata is present in the request
+   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 60s):
+     - **Full update** (`updateAgentData`): when host metadata is present in the request. The first
+       host-carrying notify bypasses the throttle, so host/os data lands as soon as the agent reports it
+       even if an earlier metadata-less notify already consumed the window
      - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
    - Calculates `settings_hash` (SHA256 of limits + cluster + groups from agent's startup data)
    - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file)
@@ -400,7 +403,8 @@ Implements `handleStartup()`, `handleNotify()`, `handleShutdown()` with the logi
 Wazuh-db writes are throttled per agent via `lastKeepaliveUpdateSec` (in `AgentRegistry`) to avoid
 flooding wazuh-db with writes every 10 seconds. Full updates (`updateAgentData`) are sent when the
 agent includes host metadata in the notify request; lightweight keepalives (`updateKeepalive`) are
-sent otherwise. Both respect the `keepaliveThrottleSec` window (default 300s).
+sent otherwise. Both respect the `keepaliveThrottleSec` window (default 60s), except the first
+host-carrying notify (`hostPersisted` in `AgentEntry`), which always triggers a full update.
 
 Version comparison uses a local `compareVersions()` function for semantic versioning (e.g., `"v5.0.0"`
 vs `"v4.9.2"`), stripping leading `v`/`V` and ignoring everything after `-` or `+`.
