@@ -210,12 +210,14 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.reject.invalid_mac", "auth_reject_invalid_mac"),
     ("remoted.auth.reject.clock_skew", "auth_reject_clock_skew"),
     ("remoted.auth.reject.unusable_key", "auth_reject_unusable_key"),
+    ("remoted.auth.reject.address_not_allowed", "auth_reject_address_not_allowed"),
     ("remoted.auth.reject.payload_mismatch", "auth_reject_payload_mismatch"),
     ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
     ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
     ("remoted.auth.reject.malformed", "auth_reject_malformed"),
-    # Keystore health: agents is a level, the totals are cumulative.
+    # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
     ("remoted.auth.keystore.agents", "keystore_agents"),
+    ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
     ("remoted.auth.keystore.reloads.total", "keystore_reloads_total"),
     ("remoted.auth.keystore.reload_failures.total", "keystore_reload_failures_total"),
     # Per-endpoint response outcomes ("what the agent got"), one closed set x four endpoints.

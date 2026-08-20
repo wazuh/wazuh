@@ -56,6 +56,7 @@ namespace remoted::endpoints
     constexpr auto METRIC_AUTH_REJECT_INVALID_MAC {"remoted.auth.reject.invalid_mac"};
     constexpr auto METRIC_AUTH_REJECT_CLOCK_SKEW {"remoted.auth.reject.clock_skew"};
     constexpr auto METRIC_AUTH_REJECT_UNUSABLE_KEY {"remoted.auth.reject.unusable_key"};
+    constexpr auto METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED {"remoted.auth.reject.address_not_allowed"};
     constexpr auto METRIC_AUTH_REJECT_PAYLOAD_MISMATCH {"remoted.auth.reject.payload_mismatch"};
     constexpr auto METRIC_AUTH_REJECT_BODY_TOO_LARGE {"remoted.auth.reject.body_too_large"};
     constexpr auto METRIC_AUTH_REJECT_BAD_ENCODING {"remoted.auth.reject.bad_encoding"};
@@ -72,14 +73,15 @@ namespace remoted::endpoints
      */
     struct AuthRejectMetrics
     {
-        std::shared_ptr<wazuh::metrics::ICounter> unknownAgent;    ///< Agent id not in client.keys.
-        std::shared_ptr<wazuh::metrics::ICounter> invalidMac;      ///< AES-CMAC did not verify.
-        std::shared_ptr<wazuh::metrics::ICounter> clockSkew;       ///< Timestamp outside the window.
-        std::shared_ptr<wazuh::metrics::ICounter> unusableKey;     ///< client.keys entry does not decode.
-        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch; ///< Authenticated agent claimed another id.
-        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;    ///< Over the authenticated-body cap.
-        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;     ///< Unsupported/undecodable Content-Encoding.
-        std::shared_ptr<wazuh::metrics::ICounter> malformed;       ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter> unknownAgent;      ///< Agent id not in client.keys.
+        std::shared_ptr<wazuh::metrics::ICounter> invalidMac;        ///< AES-CMAC did not verify.
+        std::shared_ptr<wazuh::metrics::ICounter> clockSkew;         ///< Timestamp outside the window.
+        std::shared_ptr<wazuh::metrics::ICounter> unusableKey;       ///< client.keys entry does not decode.
+        std::shared_ptr<wazuh::metrics::ICounter> addressNotAllowed; ///< Peer address outside the agent's ip column.
+        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch;   ///< Authenticated agent claimed another id.
+        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;      ///< Over the authenticated-body cap.
+        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;       ///< Unsupported/undecodable Content-Encoding.
+        std::shared_ptr<wazuh::metrics::ICounter> malformed;         ///< Missing/malformed auth or protocol headers.
     };
 
     /// Resolves the remoted.auth.reject.* family on @p manager (creating it on first call;
@@ -97,6 +99,10 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_UNUSABLE_KEY,
                                        "Rejections: the agent's client.keys entry does not decode to a usable AES key",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
+                                       "Rejections: the peer address does not satisfy the agent's client.keys ip "
+                                       "column (re-enroll the agent with the address it connects from, or 'any')",
                                        "count"),
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,

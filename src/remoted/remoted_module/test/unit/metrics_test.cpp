@@ -301,6 +301,7 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
                              remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC,
                              remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW,
                              remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY,
+                             remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
                              remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,
                              remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE,
                              remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING,
@@ -308,7 +309,7 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 8U);
+    EXPECT_EQ(manager.count(), 9U);
     EXPECT_EQ(m.unknownAgent->get(), 0U);
     EXPECT_EQ(m.malformed->get(), 0U);
 }
@@ -321,6 +322,15 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
 {
     using remoted::auth::AuthError;
 
+    // Tripwire: the list below is written by hand, and a hand-written list already failed once --
+    // AddressNotAllowed arrived with static-IP agent support and was silently absorbed by the
+    // `malformed` cell because nothing here fed it. Adding or reordering an AuthError moves this
+    // value and breaks the BUILD, which is the point: whoever touches the enum is forced to look
+    // at the funnel. Update both together.
+    static_assert(static_cast<int>(AuthError::MalformedContentEncoding) == 14,
+                  "AuthError changed: feed the new value below and give it its own "
+                  "remoted.auth.reject.* cell (or a deliberate one), then update this bound.");
+
     wazuh::metrics::Manager manager;
     remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::makeAuthRejectMetrics(manager));
 
@@ -330,6 +340,7 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
                            AuthError::MalformedAuthorization,
                            AuthError::UnknownAgent,
                            AuthError::MissingKey,
+                           AuthError::AddressNotAllowed,
                            AuthError::ExpiredRequest,
                            AuthError::FutureRequest,
                            AuthError::InvalidMac,
@@ -349,10 +360,23 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 2U); // Expired + Future
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING), 2U); // both encoding causes
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED), 4U);    // the four header faults
+
+    // Nothing fell through the cracks: every rejection fed above landed in exactly one cell.
+    const auto total = valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED);
+    EXPECT_EQ(total, 14U); // one per AuthError fed above
 
     // Uninstall (back to the null object): the instance is process-wide, so leaving these
     // counters live would leak this test's accounting into any later test that rejects.

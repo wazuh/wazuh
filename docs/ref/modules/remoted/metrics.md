@@ -177,6 +177,7 @@ check failed), but the operator keeps the distinction here. All counters, unit `
 | `remoted.auth.reject.invalid_mac` | The request's AES-CMAC did not verify (wrong key, or tampering) | diagnostic — re-enroll; scanners/noise on exposed listeners also land here |
 | `remoted.auth.reject.clock_skew` | Timestamp outside the accepted window | [`remoted.auth_max_request_age`](configuration.md#remotedauth_max_request_age), [`remoted.auth_max_future_skew`](configuration.md#remotedauth_max_future_skew) — but fix NTP first |
 | `remoted.auth.reject.unusable_key` | The agent's `client.keys` entry does not decode to a usable AES key | diagnostic — re-enroll the agent |
+| `remoted.auth.reject.address_not_allowed` | The peer address does not satisfy the agent's [registered address](https-events-api.md#registered-address-ip-column) (`client.keys` `ip` column) | diagnostic — re-enroll the agent with the address it connects from, or with `any` |
 | `remoted.auth.reject.payload_mismatch` | An **authenticated** agent submitted a payload claiming another agent's id — a security signal, not a tuning problem | diagnostic — investigate the agent |
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, or a zstd frame that did not fit the in-flight budget | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
@@ -190,8 +191,17 @@ the agent and it still gets 401s". All pulls.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.auth.keystore.agents` | gauge (pull) | agents | Agents with a usable key after the last successful load | diagnostic — reflects `client.keys` content |
+| `remoted.auth.keystore.entries_skipped` | gauge (pull) | entries | Lines that same load could **not** use: bad field count, non-numeric id, an `ip` column that does not parse, or a key that does not decode | diagnostic — each one is logged with its line number; fix the file |
 | `remoted.auth.keystore.reloads.total` | counter (pull) | count | Successful loads (startup load included) | [`remoted.keyupdate_interval`](configuration.md#remotedkeyupdate_interval) sets the fallback poll cadence |
 | `remoted.auth.keystore.reload_failures.total` | counter (pull) | count | Failed loads: unreadable file, or content that kept changing across every read attempt | diagnostic — fix the file/permissions |
+
+`agents` and `entries_skipped` are **levels describing the file as it stands now**, and they
+are read together: an agent that is neither authenticating nor showing up in `agents` is
+usually one of the `entries_skipped` lines. Neither equals the number of lines in
+`client.keys` — comments, blanks and entries marked as removed are counted by neither, by
+design. A *failed* load leaves both levels untouched (the previous table stays in service),
+which is why `reload_failures.total` is the metric that tells you a reload was attempted and
+lost.
 
 There is no `keystore_refresh_interval` option: the module's refresh cadence is fed by the
 pre-existing [`remoted.keyupdate_interval`](configuration.md#remotedkeyupdate_interval)
@@ -274,7 +284,10 @@ These rules say what sums to what — read them before comparing families:
 - A **deferred-limiter** shed is the endpoint's answer: it counts **both** as that endpoint's
   `responses.503` and in `remoted.forwarder.deferred.rejected.total`.
 - **Auth-gateway rejections** (401s, 413 at authentication, bad encoding) happen before any
-  endpoint handler and appear only in `remoted.auth.reject.*`. An endpoint's own pre-forward
+  endpoint handler and appear only in `remoted.auth.reject.*`. A rejection by registered
+  address is deliberately indistinguishable on the wire — it collapses into the same generic
+  401 as every credential failure, so a caller cannot learn that the agent id exists — which
+  makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
   rejection (empty body, payload identity) counts in its `responses.*` (the *what*) and, when
   it is an authentication error, in `remoted.auth.reject.*` too (the *why*).
 - `remoted.http.<endpoint>.responses.*` therefore reads as "every response this endpoint

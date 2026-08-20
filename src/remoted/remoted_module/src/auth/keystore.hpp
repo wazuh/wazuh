@@ -136,6 +136,20 @@ namespace remoted::auth
         }
 
         /// @brief Successful reloads since construction (startup load included).
+        /**
+         * @brief client.keys lines the last adopted load could not use.
+         *
+         * A level, like agentsLoaded(): it describes the file as it stands now, which is the
+         * question an operator asks ("is my client.keys healthy?"). Counts the unusable lines --
+         * fewer than four fields, a non-numeric id, an ip column that does not parse, and a key
+         * column that does not decode -- and deliberately NOT comments, blanks or entries marked
+         * as removed, which are normal states rather than defects. Each one is also logged.
+         */
+        std::size_t entriesSkipped() const noexcept
+        {
+            return m_entriesSkipped.load(std::memory_order_relaxed);
+        }
+
         std::uint64_t reloadsTotal() const noexcept
         {
             return m_reloadsTotal.load(std::memory_order_relaxed);
@@ -215,6 +229,7 @@ namespace remoted::auth
 
         // See the public accessors; maintained exclusively by reload().
         std::atomic<std::size_t> m_agentsLoaded {0};
+        std::atomic<std::size_t> m_entriesSkipped {0};
         std::atomic<std::uint64_t> m_reloadsTotal {0};
         std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
     };

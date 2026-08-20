@@ -618,6 +618,16 @@ private:
             "Agents with a usable key after the last successful client.keys load",
             "agents");
         m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.entries_skipped",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? static_cast<uint64_t>(keystore->entriesSkipped()) : 0U;
+            },
+            "client.keys lines the last successful load could not use (bad field count, non-numeric id, "
+            "unparseable ip column, or undecodable key); comments and removed entries excluded",
+            "entries");
+        m_metricsManager->registerPullMetric(
             "remoted.auth.keystore.reloads.total",
             [target]
             {
