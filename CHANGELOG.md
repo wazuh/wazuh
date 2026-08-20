@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
 - Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38410](https://github.com/wazuh/wazuh/pull/38410))
 - Fixed WPK upgrade failing on agents without the `find` binary. ([#38431](https://github.com/wazuh/wazuh/pull/38431))
+- Bounded the `snort-full` log record appends to the available buffer space in `wazuh-logcollector`. ([#38472](https://github.com/wazuh/wazuh/pull/38472))
 
 ## [v4.14.8]
 
