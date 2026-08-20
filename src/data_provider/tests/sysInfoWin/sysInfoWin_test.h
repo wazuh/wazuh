@@ -32,7 +32,7 @@ class MockComHelper : public IComHelper
 {
     public:
         MOCK_METHOD(HRESULT, CreateWmiLocator, (IWbemLocator*& pLoc), (override));
-        MOCK_METHOD(HRESULT, ConnectToWmiServer, (IWbemLocator* pLoc, IWbemServices*& pSvc), (override));
+        MOCK_METHOD(HRESULT, ConnectToWmiServer, (IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs), (override));
         MOCK_METHOD(HRESULT, SetProxyBlanket, (IWbemServices* pSvc), (override));
         MOCK_METHOD(HRESULT, ExecuteWmiQuery, (IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator), (override));
         MOCK_METHOD(HRESULT, CreateUpdateSearcher, (IUpdateSearcher*& pUpdateSearcher), (override));

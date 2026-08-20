@@ -38,7 +38,7 @@ class EXPORTED IComHelper
 
         // Abstracted methods for WMI functions
         virtual HRESULT CreateWmiLocator(IWbemLocator*& pLoc) = 0;
-        virtual HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc) = 0;
+        virtual HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) = 0;
         virtual HRESULT SetProxyBlanket(IWbemServices* pSvc) = 0;
         virtual HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) = 0;
 
@@ -56,7 +56,7 @@ class EXPORTED ComHelper : public IComHelper
     public:
         // Implement WMI functions
         HRESULT CreateWmiLocator(IWbemLocator*& pLoc) override;
-        HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc) override;
+        HRESULT ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs) override;
         HRESULT SetProxyBlanket(IWbemServices* pSvc) override;
         HRESULT ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator) override;
 
@@ -68,6 +68,13 @@ class EXPORTED ComHelper : public IComHelper
         HRESULT GetItem(IUpdateHistoryEntryCollection* pHistory, LONG index, IUpdateHistoryEntry** pEntry) override;
         HRESULT GetTitle(IUpdateHistoryEntry* pEntry, BSTR& title) override;
 };
+
+// Bounds ComHelper::ConnectToWmiServer's IWbemLocator::ConnectServer() call, which has
+// no timeout parameter of its own and can block indefinitely if Winmgmt is unresponsive
+// -- the same failure mode as the enumeration loop below, just one step earlier in the
+// same call chain (issue #38370). Enforced via WMI's own WBEM_FLAG_CONNECT_USE_MAX_WAIT
+// + an IWbemContext __MAX_WAIT property, not a detached watchdog thread.
+constexpr long WMI_CONNECT_MAX_WAIT_MS = 3000;
 
 // Per-call timeout passed to IEnumWbemClassObject::Next() (milliseconds) -- replaces
 // the previous WBEM_INFINITE, which let a slow/unresponsive Winmgmt block the
@@ -89,7 +96,8 @@ constexpr long WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS = 15000;
 //  so tests can exercise the timeout path without a real multi-second wait.
 EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
                                long perCallTimeoutMs = WMI_HOTFIX_NEXT_TIMEOUT_MS,
-                               long overallTimeoutMs = WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS);
+                               long overallTimeoutMs = WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS,
+                               long connectMaxWaitMs = WMI_CONNECT_MAX_WAIT_MS);
 
 
 // Queries Windows Update Agent (WUA) for installed update history,

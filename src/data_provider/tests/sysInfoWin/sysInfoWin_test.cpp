@@ -126,7 +126,7 @@ TEST_F(SysInfoWinTest, WmiConnectToWmiServerFailure)
     EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
     .WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
     .WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
@@ -140,7 +140,7 @@ TEST_F(SysInfoWinTest, WmiSetProxyBlanket)
     EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
     .WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
     .WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
@@ -157,7 +157,7 @@ TEST_F(SysInfoWinTest, WmiExecuteQuery)
     EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
     .WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
     .WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
@@ -183,7 +183,7 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationTimeoutThrows)
     EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
     .WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
     .WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
@@ -216,7 +216,7 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationNextFailureThrows)
     EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
     .WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_))
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
     .WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))

@@ -26,9 +26,34 @@ HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
     return CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc);
 }
 
-HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc)
+HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, long maxWaitMs)
 {
-    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0, 0, 0, 0, &pSvc);
+    // ConnectServer() has no timeout parameter of its own; WBEM_FLAG_CONNECT_USE_MAX_WAIT
+    // plus an IWbemContext __MAX_WAIT property is WMI's own documented mechanism for
+    // bounding it instead of blocking indefinitely on an unresponsive Winmgmt (#38370).
+    IWbemContext* pCtx = NULL;
+    HRESULT hres = CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER, IID_IWbemContext, (LPVOID*)&pCtx);
+
+    if (FAILED(hres))
+    {
+        return hres;
+    }
+
+    VARIANT var;
+    var.vt = VT_I4;
+    var.lVal = maxWaitMs;
+    hres = pCtx->SetValue(L"__MAX_WAIT", 0, &var);
+
+    if (FAILED(hres))
+    {
+        pCtx->Release();
+        return hres;
+    }
+
+    hres = pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL,
+                               WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, pCtx, &pSvc);
+    pCtx->Release();
+    return hres;
 }
 
 HRESULT ComHelper::SetProxyBlanket(IWbemServices* pSvc)
@@ -98,7 +123,7 @@ std::string BstrToString(BSTR bstr)
 }
 
 void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                      long perCallTimeoutMs, long overallTimeoutMs)
+                      long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -113,7 +138,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         throw std::runtime_error(oss.str());
     }
 
-    hres = comHelper.ConnectToWmiServer(pLoc, pSvc);
+    hres = comHelper.ConnectToWmiServer(pLoc, pSvc, connectMaxWaitMs);
 
     if (FAILED(hres))
     {
@@ -207,6 +232,7 @@ void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper,
         }
 
         VARIANT vtProp;
+        VariantInit(&vtProp);
         HRESULT hr = pclsObj->Get(L"HotFixID", 0, &vtProp, 0, 0);
 
         if (SUCCEEDED(hr) && vtProp.vt == VT_BSTR)
