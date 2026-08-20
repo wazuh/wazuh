@@ -8,6 +8,7 @@ param (
     [string]$SIGN_TOOLS_PATH = "",
     [string]$CERTIFICATE_PATH = "",
     [string]$CERTIFICATE_PASSWORD = "",
+    [string]$ALLOCATOR = "no",
     [switch]$help
     )
 
@@ -26,7 +27,7 @@ if(($help.isPresent)) {
         4. SIGN_TOOLS_PATH: sign tools path.
         5. CERTIFICATE_PATH: Path to the .pfx certificate file.
         6. CERTIFICATE_PASSWORD: Password for the .pfx certificate file.
-
+        7. ALLOCATOR: yes or no. By default 'yes'.
     USAGE:
 
         * WAZUH:
@@ -127,7 +128,11 @@ function ExtractDebugSymbols(){
 		$args += $file.BaseName
 		$args += ".pdb"
 
-		Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $args -NoNewWindow
+        if($ALLOCATOR -eq "no") {
+		    Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $args -NoNewWindow
+        } else {
+            Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -NoNewWindow
+        }
 	}
 
   Write-Host "Waiting for processes to finish"
