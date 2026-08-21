@@ -100,6 +100,10 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->indexer_async_logger_queue_size,
              config->indexer_async_logger_threads,
              config->indexer_async_request_timeout_seconds);
+    /* Session-level, not per-connector: the one shared health monitor's polling period. */
+    mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
+             "indexer session: monitoring_interval_seconds=%d",
+             config->indexer_monitoring_interval_seconds);
 }
 
 /**
@@ -301,6 +305,16 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                                          0,
                                          2147483647,
                                          64 * 1024 * 1024);
+
+    /* One option, not a sync/async pair: both connectors share the session's single health monitor,
+     * so there is exactly one polling cadence per module. Minimum 1: the connector rejects 0 (a zero
+     * period would busy-loop its monitor thread), so 0 is rejected here rather than forwarded. */
+    config->indexer_monitoring_interval_seconds = getDefine_Int_default(
+        "wazuh_modules",
+        "inventory_sync_server_indexer_monitoring_interval_seconds", /* -> monitoring_interval_seconds */
+        1,
+        3600,
+        10);
 }
 
 void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
@@ -483,6 +497,8 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
         config, "indexer_sync_request_timeout_seconds", data->config->indexer_sync_request_timeout_seconds);
     cJSON_AddNumberToObject(
         config, "indexer_async_request_timeout_seconds", data->config->indexer_async_request_timeout_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_monitoring_interval_seconds", data->config->indexer_monitoring_interval_seconds);
 
     cJSON_AddItemToObject(root, "inventory_sync_server", config);
     return root;

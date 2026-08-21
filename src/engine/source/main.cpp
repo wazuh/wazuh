@@ -502,6 +502,18 @@ int main(int argc, char* argv[])
                 }
                 jsonCnf.setUint64(requestTimeout, "/request_timeout_seconds");
 
+                // 0 is NOT legal: a zero polling period turns the health-monitor thread into a busy loop.
+                constexpr size_t INDEXER_MONITORING_INTERVAL_MAX = 3600;
+                const auto monitoringInterval = confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL);
+                if (monitoringInterval == 0 || monitoringInterval > INDEXER_MONITORING_INTERVAL_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_monitoring_interval must be between 1 and {} (got {})",
+                                    INDEXER_MONITORING_INTERVAL_MAX,
+                                    monitoringInterval));
+                }
+                jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
+
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 

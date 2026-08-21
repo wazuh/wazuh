@@ -73,4 +73,13 @@ namespace invsync::indexer
         return result;
     }
 
+    nlohmann::json buildSessionConfig(const nlohmann::json& indexerConfig, const inventory_sync_server_config_t& config)
+    {
+        nlohmann::json result = indexerConfig;
+
+        setIfPositive(result, "monitoring_interval_seconds", config.indexer_monitoring_interval_seconds);
+
+        return result;
+    }
+
 } // namespace invsync::indexer

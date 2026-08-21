@@ -38,6 +38,7 @@ constexpr std::string_view INDEXER_LOGGER_QUEUE_SIZE = "analysisd.indexer_logger
 constexpr std::string_view INDEXER_LOGGER_THREADS = "analysisd.indexer_logger_threads";
 constexpr std::string_view INDEXER_MAX_RETRY_DELAY = "analysisd.indexer_max_retry_delay";
 constexpr std::string_view INDEXER_REQUEST_TIMEOUT = "analysisd.indexer_request_timeout";
+constexpr std::string_view INDEXER_MONITORING_INTERVAL = "analysisd.indexer_monitoring_interval";
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";

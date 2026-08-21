@@ -19,6 +19,7 @@
 #include <vector>
 
 using invsync::indexer::buildAsyncConnectorConfig;
+using invsync::indexer::buildSessionConfig;
 using invsync::indexer::buildSyncConnectorConfig;
 
 namespace
@@ -38,6 +39,7 @@ namespace
         config.indexer_async_logger_threads = 999;
         config.indexer_sync_request_timeout_seconds = 1111;
         config.indexer_async_request_timeout_seconds = 2222;
+        config.indexer_monitoring_interval_seconds = 3333;
         return config;
     }
 
@@ -51,6 +53,8 @@ namespace
                                                "logger_queue_size",
                                                "logger_threads",
                                                "request_timeout_seconds"};
+
+    const std::vector<std::string> SESSION_KEYS {"monitoring_interval_seconds"};
 } // namespace
 
 /**
@@ -98,6 +102,30 @@ TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
 }
 
 /**
+ * The session overlay carries ONLY the session's key. The reverse also matters: the connector
+ * builders must NOT emit `monitoring_interval_seconds`, because in session mode the connectors adopt
+ * the session's already-built monitor and the key in their configs would be dead weight -- again
+ * indistinguishable from a typo.
+ */
+TEST(IndexerConnectorConfigTest, SessionOverlayEmitsOnlyTheSessionKeyName)
+{
+    const auto config = fullyPopulatedConfig();
+    const auto result = buildSessionConfig(nlohmann::json::object(), config);
+
+    for (const auto& key : SESSION_KEYS)
+    {
+        EXPECT_TRUE(result.contains(key)) << "missing session key: " << key;
+    }
+    EXPECT_EQ(1U, result.size()) << "the session overlay must add nothing beyond SESSION_KEYS";
+    EXPECT_EQ(3333U, result.at("monitoring_interval_seconds").get<std::size_t>());
+
+    EXPECT_FALSE(buildSyncConnectorConfig(nlohmann::json::object(), config).contains("monitoring_interval_seconds"))
+        << "monitoring_interval_seconds is the SESSION's key name";
+    EXPECT_FALSE(buildAsyncConnectorConfig(nlohmann::json::object(), config).contains("monitoring_interval_seconds"))
+        << "monitoring_interval_seconds is the SESSION's key name";
+}
+
+/**
  * THE regression pin. IndexerConnectorAsync gates `max_queue_bytes` on is_number_unsigned(), unlike
  * every other key. A signed JSON integer there is ignored silently and the queue stays unbounded --
  * and a contains() assertion passes just the same, which is why this checks the node's TYPE.
@@ -129,6 +157,12 @@ TEST(IndexerConnectorConfigTest, EveryOverlaidNumericKeyIsAnUnsignedJsonNumber)
     for (const auto& [key, value] : asyncResult.items())
     {
         EXPECT_TRUE(value.is_number_unsigned()) << "async key not unsigned: " << key;
+    }
+
+    const auto sessionResult = buildSessionConfig(nlohmann::json::object(), config);
+    for (const auto& [key, value] : sessionResult.items())
+    {
+        EXPECT_TRUE(value.is_number_unsigned()) << "session key not unsigned: " << key;
     }
 }
 
@@ -166,6 +200,7 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_async_logger_threads = -1;
     config.indexer_sync_request_timeout_seconds = 0;
     config.indexer_async_request_timeout_seconds = -4;
+    config.indexer_monitoring_interval_seconds = -5;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)
@@ -177,6 +212,12 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     for (const auto& key : ASYNC_KEYS)
     {
         EXPECT_FALSE(asyncResult.contains(key)) << "non-positive value must not be written: " << key;
+    }
+
+    const auto sessionResult = buildSessionConfig(nlohmann::json::object(), config);
+    for (const auto& key : SESSION_KEYS)
+    {
+        EXPECT_FALSE(sessionResult.contains(key)) << "non-positive value must not be written: " << key;
     }
 }
 
@@ -190,7 +231,7 @@ TEST(IndexerConnectorConfigTest, AZeroMaxQueueBytesLeavesTheKeyAbsentMeaningUnli
     EXPECT_FALSE(buildAsyncConnectorConfig(nlohmann::json::object(), config).contains("max_queue_bytes"));
 }
 
-TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
+TEST(IndexerConnectorConfigTest, AllBuildersPreserveHostsAndSsl)
 {
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = {"https://127.0.0.1:9200"};
@@ -199,8 +240,9 @@ TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
 
     const auto config = fullyPopulatedConfig();
 
-    for (const auto& result :
-         {buildSyncConnectorConfig(indexerConfig, config), buildAsyncConnectorConfig(indexerConfig, config)})
+    for (const auto& result : {buildSyncConnectorConfig(indexerConfig, config),
+                               buildAsyncConnectorConfig(indexerConfig, config),
+                               buildSessionConfig(indexerConfig, config)})
     {
         ASSERT_TRUE(result.contains("hosts"));
         EXPECT_EQ(1U, result.at("hosts").size());
@@ -210,7 +252,7 @@ TEST(IndexerConnectorConfigTest, BothBuildersPreserveHostsAndSsl)
     }
 }
 
-TEST(IndexerConnectorConfigTest, NeitherBuilderMutatesItsInput)
+TEST(IndexerConnectorConfigTest, NoBuilderMutatesItsInput)
 {
     nlohmann::json indexerConfig;
     indexerConfig["hosts"] = {"https://127.0.0.1:9200"};
@@ -219,6 +261,7 @@ TEST(IndexerConnectorConfigTest, NeitherBuilderMutatesItsInput)
     const auto config = fullyPopulatedConfig();
     (void)buildSyncConnectorConfig(indexerConfig, config);
     (void)buildAsyncConnectorConfig(indexerConfig, config);
+    (void)buildSessionConfig(indexerConfig, config);
 
     EXPECT_EQ(original, indexerConfig);
 }
