@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
 - Fixed missing macOS SSH authentication logs by adding the `sshd-session` and `sshd-auth` processes to the default Unified Logging query. ([#37769](https://github.com/wazuh/wazuh/pull/37769))
 - Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
+- Fixed Windows agent out-of-memory crashes in the FIM engine on large file servers. ([#38061](https://github.com/wazuh/wazuh/pull/38061))
 
 #### Added
 
