@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Hardened RSA decryption to reject malformed ciphertext blobs. ([#36243](https://github.com/wazuh/wazuh/issues/36243))
+- Improved cluster worker file path validation. ([#38378](https://github.com/wazuh/wazuh/pull/38378))
 
 
 ## [v4.10.4]
