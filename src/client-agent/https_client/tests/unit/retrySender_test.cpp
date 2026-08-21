@@ -482,7 +482,7 @@ TEST_F(RetrySenderTest, CompressionDisabledLeavesBodyAndHeadersUnchanged)
     EXPECT_TRUE(std::equal(receivedBody.begin(), receivedBody.end(), spec.body));
 }
 
-TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
+TEST_F(RetrySenderTest, CompressedBodyIsSignedOverThePlaintextBytes)
 {
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
 
@@ -517,13 +517,16 @@ TEST_F(RetrySenderTest, CompressedBodyIsSignedOverTheCompressedBytes)
     ASSERT_EQ(plain.size(), decompressedSize);
     EXPECT_EQ(plain, std::string(decompressed.begin(), decompressed.end()));
 
-    // The CMAC must cover the wire (compressed) bytes, not the original --
-    // re-signing the exact received bytes at the same timestamp (the clock
-    // never advanced) must reproduce the exact Authorization header sent.
+    // The CMAC must cover the plaintext, not the wire (compressed) bytes.
     const auto expected =
-        m_signer.sign("POST", spec.target, receivedBody.data(), receivedBody.size(), m_clock.wallSeconds());
+        m_signer.sign("POST", spec.target, spec.body, spec.bodyLength, m_clock.wallSeconds());
     ASSERT_TRUE(expected.has_value());
     EXPECT_THAT(receivedHeaders, Contains(expected->authorization));
+
+    const auto overCompressed =
+        m_signer.sign("POST", spec.target, receivedBody.data(), receivedBody.size(), m_clock.wallSeconds());
+    ASSERT_TRUE(overCompressed.has_value());
+    EXPECT_THAT(receivedHeaders, Not(Contains(overCompressed->authorization)));
 }
 
 TEST_F(RetrySenderTest, CompressionEnabledSkipsFileBackedBodies)
@@ -647,11 +650,11 @@ TEST_F(RetrySenderTest, AuthFailureFromTheCompressionRetryStillGetsItsOwnGraceRe
     EXPECT_FALSE(authGate.paused()); // Recovered by its own grace retry: never escalated.
 }
 
-TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
+TEST_F(RetrySenderTest, PrecompressedFileBodyIsSentButSignedOverTheOriginalBytes)
 {
     // /stateful's own caller (StatefulStream) compresses once, up front, and
-    // hands the sibling's path/size here -- attemptOnce() must swap it in and
-    // sign over ITS bytes, not the original file's.
+    // hands the sibling's path/size here -- attemptOnce() swaps it in for the
+    // wire only; the CMAC must still cover the original file.
     RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true};
 
     const std::string originalPath = writeTempFile("hc_rs_original.bin", "the original body");
@@ -684,10 +687,14 @@ TEST_F(RetrySenderTest, PrecompressedFileBodyIsUsedAndSignedOverItsBytes)
     EXPECT_EQ(14u, seenBodyFileSize);
     EXPECT_THAT(seenHeaders, Contains("Content-Encoding: zstd"));
 
-    // The CMAC must cover the compressed file's bytes, not the original's.
-    const auto expected = m_signer.signFile("POST", spec.target, compressedPath, m_clock.wallSeconds());
+    // The CMAC must cover the original file, not the compressed sibling.
+    const auto expected = m_signer.signFile("POST", spec.target, originalPath, m_clock.wallSeconds());
     ASSERT_TRUE(expected.has_value());
     EXPECT_THAT(seenHeaders, Contains(expected->authorization));
+
+    const auto overCompressed = m_signer.signFile("POST", spec.target, compressedPath, m_clock.wallSeconds());
+    ASSERT_TRUE(overCompressed.has_value());
+    EXPECT_THAT(seenHeaders, Not(Contains(overCompressed->authorization)));
 }
 
 TEST_F(RetrySenderTest, CompressedFileBackedAttemptRejectedWith415RetriesOnceUncompressedAndSucceeds)

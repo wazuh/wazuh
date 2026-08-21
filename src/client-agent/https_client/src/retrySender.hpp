@@ -43,8 +43,8 @@ class RetrySender final
         };
 
         /// compressionEnabled: zstd-compress in-memory bodies (Content-Encoding:
-        /// zstd) before signing, so the CMAC covers the wire bytes. File-backed
-        /// bodies (/stateful) are compressed once by the caller, not here --
+        /// zstd) for the wire, after signing (#38494). File-backed bodies
+        /// (/stateful) are compressed once by the caller, not here --
         /// attemptOnce() swaps in HttpRequestSpec::precompressedBodyFilePath
         /// when the caller set one and the gate currently allows compression.
         /// compressionGate (optional, shared across every RetrySender on this
