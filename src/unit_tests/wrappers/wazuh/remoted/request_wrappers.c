@@ -14,6 +14,7 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "request_wrappers.h"
 
 int __wrap_req_save(const char * counter, const char * buffer, size_t length) {

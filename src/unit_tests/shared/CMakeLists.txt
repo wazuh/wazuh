@@ -184,6 +184,15 @@ else()
 list(APPEND shared_tests_flags " ")
 endif()
 
+list(APPEND shared_tests_names "test_startup_gate_op")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(APPEND shared_tests_names "test_utf8_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
@@ -411,6 +420,16 @@ foreach(counter RANGE ${count})
             ${SRC_FOLDER}/shared/src/read-alert.c
             ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/debug_op_wrappers.c
         )
+    endif()
+
+    # startup_gate_wait_for_ready()'s real logic only exists under #if
+    # defined(CLIENT) (shared/src/startup_gate_op.c) -- CLIENT isn't defined
+    # globally in this standalone unit_tests project the way it is in the
+    # main build (src/CMakeLists.txt), so it must be added here explicitly
+    # for agent/winagent, matching how the real agent/winagent build compiles
+    # this file. Left undefined for manager, exercising the no-op fallback.
+    if("${test_name}" STREQUAL "test_startup_gate_op" AND NOT ${TARGET} STREQUAL "manager")
+        target_compile_definitions(${test_name} PRIVATE CLIENT)
     endif()
 
     if(${TARGET} STREQUAL "manager")
