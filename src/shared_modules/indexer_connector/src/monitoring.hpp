@@ -25,8 +25,8 @@
 #include <thread>
 #include <vector>
 
-// 60 seconds interval for monitoring
-constexpr auto INTERVAL = 60u;
+// Default health-check period, seconds, overridable via `monitoring_interval_seconds`
+constexpr auto DEFAULT_MONITORING_INTERVAL = 10u;
 
 // 5 seconds timeout for health check requests
 constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
@@ -74,7 +74,7 @@ class TMonitoring final
     std::mutex m_sleepMutex;
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
-    uint32_t m_interval {INTERVAL};
+    uint32_t m_interval {DEFAULT_MONITORING_INTERVAL};
     THttpRequest* m_httpRequest;
     /// Diagnostic strings for the unavailable hosts, read only by getUnavailableServersDetails() --
     /// the cold "no available server" error path. Guarded by its own mutex, held for a map update or
@@ -316,7 +316,7 @@ public:
      * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
      */
     explicit TMonitoring(const std::vector<std::string>& serverAddresses,
-                         const uint32_t interval = INTERVAL,
+                         const uint32_t interval = DEFAULT_MONITORING_INTERVAL,
                          const SecureCommunication& authentication = {},
                          THttpRequest* httpRequest = nullptr)
         : m_interval(interval)

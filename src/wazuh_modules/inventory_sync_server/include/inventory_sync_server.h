@@ -298,6 +298,13 @@ extern "C"
                                                    ///< <=0 -> 60 s.
         int indexer_async_request_timeout_seconds; ///< Same, for the async connector.
                                                    ///< -> `request_timeout_seconds`. <=0 -> 60 s.
+
+        /* ---- Shared health-monitor polling period -- APPENDED, same ABI rule as above. One field,
+         *      not two: both connectors share the session's single monitor, so there is exactly one
+         *      polling cadence per module. ---- */
+        int indexer_monitoring_interval_seconds; ///< Seconds between health-check rounds of the shared
+                                                 ///< session's monitor. -> `monitoring_interval_seconds`.
+                                                 ///< Range 1..3600. <=0 -> 10 s.
     } inventory_sync_server_config_t;
 
     /**

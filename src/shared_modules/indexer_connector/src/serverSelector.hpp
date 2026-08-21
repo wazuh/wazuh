@@ -39,7 +39,7 @@ public:
      * @param authentication Object that provides secure communication.
      */
     explicit TServerSelector(const std::vector<std::string>& values,
-                             const uint32_t timeout = INTERVAL,
+                             const uint32_t timeout = DEFAULT_MONITORING_INTERVAL,
                              const SecureCommunication& authentication = {},
                              HttpType* httpRequest = nullptr)
         : RoundRobinSelector<std::string>(values)

@@ -783,7 +783,7 @@ namespace invsync
             std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
 
             wazuh::uds_http::UdsHttpServerConfig serverConfig;
-            nlohmann::json rawIndexerConfig;
+            nlohmann::json sessionConfig;
             nlohmann::json syncConnectorConfig;
             nlohmann::json asyncConnectorConfig;
             IndexerSessionFactory sessionFactory;
@@ -866,7 +866,7 @@ namespace invsync
                 if (needSession || needSync || needAsync || needPipeline)
                 {
                     logIndexerSummary();
-                    rawIndexerConfig = m_indexerConfig;
+                    sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
                     syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
                     asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
 
@@ -914,7 +914,7 @@ namespace invsync
                                  [&]
                                  {
                                      return sessionFactory(
-                                         rawIndexerConfig,
+                                         sessionConfig,
                                          LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
                                  }))
             {
