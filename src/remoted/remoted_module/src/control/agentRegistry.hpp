@@ -14,6 +14,7 @@
 
 #include "controlTypes.hpp"
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -43,6 +44,11 @@ namespace remoted::control
         update(AgentId id, std::function<std::shared_ptr<AgentEntry>(std::shared_ptr<const AgentEntry>)> updater);
 
         void evictExpiredEntries(uint64_t ttlSec);
+
+        /// @brief Number of agents currently tracked, summed across the shards (each under its
+        /// shared lock, so concurrent updates make this a best-effort snapshot, not a fence).
+        /// Feeds the remoted.control.registry.agents pull metric -- dump-cadence only.
+        std::size_t size() const;
 
     private:
         struct Shard

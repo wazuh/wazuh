@@ -155,22 +155,32 @@ namespace remoted::endpoints::stateless
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
-                                                         std::string socketPath)
+                                                         std::string socketPath,
+                                                         const remoted::metrics::EndpointHttpMetrics* metrics)
     {
-        return [&forwarder,
-                socketPath = std::move(socketPath)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                                                    std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [&forwarder, socketPath = std::move(socketPath), metrics](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             const auto err = validatePayloadIdentity(*authReq);
             if (err != remoted::auth::AuthError::None)
             {
                 // Pass the authenticated agent id: this rejection happens AFTER the MAC verified, so
                 // naming the agent that signed the request is what makes the resulting warning
-                // actionable (see errorResponseFor()).
-                responder->send(remoted::endpoints::errorResponseFor(err, authReq->agentId));
+                // actionable (see errorResponseFor()). errorResponseFor() counts the WHY
+                // (remoted.auth.reject.payload_mismatch); the WHAT -- this endpoint answered a 400 --
+                // is counted here, the single place this response is sent.
+                auto rejection = remoted::endpoints::errorResponseFor(err, authReq->agentId);
+                if (metrics != nullptr)
+                {
+                    metrics->responses.count(rejection.status);
+                }
+                responder->send(std::move(rejection));
                 return;
             }
-            forwarder.forward(std::move(authReq), std::move(responder), target(socketPath), postProcess);
+            auto downstreamTarget = target(socketPath);
+            downstreamTarget.httpMetrics = metrics;
+            forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
         };
     }
 

@@ -15,8 +15,11 @@
 // which need a (fake) downstream client + a real DeferredForwarder to prove the short-circuit.
 #include "endpoints/statelessEndpoint.hpp"
 
+#include "common/requestOutcomeMetrics.hpp"
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -347,4 +350,44 @@ TEST(StatelessMakeHandler, ValidationSuccessForwardsAndPostProcesses)
 
     ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
     EXPECT_EQ(fut.get().status, 202); // stateless::postProcess still runs on the success path
+}
+
+// With a metric set wired in, the handler's own pre-forward 400 (payload identity) and the
+// forwarder-delivered 202 each land in the endpoint's responses family -- the family reads as
+// "every response this endpoint sent", whichever code path sent it.
+TEST(StatelessMakeHandler, MetricsCountBothTheLocal400AndTheDeliveredStatus)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = remoted::metrics::makeEndpointHttpMetrics(manager, "stateless", /*withLatency=*/true);
+
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/queue-http.sock", &metrics);
+
+    // Payload identity mismatch: answered 400 by the handler itself, before any forward.
+    {
+        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1002\"}}}\nE some event\n", "1001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 400);
+    }
+    EXPECT_EQ(metrics.responses.c400->get(), 1U);
+    EXPECT_FALSE(client->called());
+
+    // Valid request: the forwarder counts the delivered 202 through the target's metric pointer.
+    {
+        auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1001\"}}}\nE some event\n", "1001");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        handler(fixture.req, responder);
+        ASSERT_TRUE(client->called());
+        client->fire(DownstreamError::None, DownstreamResponse {200, ""});
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        EXPECT_EQ(fut.get().status, 202);
+    }
+    EXPECT_EQ(metrics.responses.c2xx->get(), 1U);
+    EXPECT_EQ(metrics.responses.c400->get(), 1U); // untouched by the success
 }

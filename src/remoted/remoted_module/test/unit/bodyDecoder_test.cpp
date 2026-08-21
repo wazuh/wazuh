@@ -194,8 +194,13 @@ TEST(BodyDecoderTest, DecodedBytesStayChargedUntilThePayloadIsDropped)
         // Only the OUTPUT is still charged: the decoder's own buffers were released as soon as
         // decoding finished (zstd had already freed them), so this is kPlainSize and not double it.
         EXPECT_EQ(server.m_budget.availableBytes(), kBudget - kPlainSize);
+        // And the decoded body's reservation was promoted to carry the request's identity: the
+        // request counts as exactly ONE resident request, not one per reservation the decode took.
+        // (No wire admission reservation exists in this unit test, so the 1 is the promotion's.)
+        EXPECT_EQ(server.m_budget.inFlightCount(), 1U);
+        EXPECT_EQ(server.m_budget.rejectedTotal(), 0U);
     }
-    // Payload dropped -> reservation released with it.
+    // Payload dropped -> reservation released with it, and the request count with the reservation.
     EXPECT_EQ(server.m_budget.availableBytes(), kBudget);
     EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
 }
@@ -216,6 +221,10 @@ TEST(BodyDecoderTest, OutputNotFittingTheBudgetIsTooLarge)
     // Refused: nothing stays charged, and the payload still holds the original wire bytes.
     EXPECT_EQ(server.m_budget.availableBytes(), 100U);
     EXPECT_EQ(payload.bytes(), *bytes);
+    // This 413 is the caller's answer to an ADMITTED request: it must not register as a budget
+    // shed (remoted.server.budget.rejected.total) nor linger in the in-flight request count.
+    EXPECT_EQ(server.m_budget.rejectedTotal(), 0U);
+    EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
 }
 
 TEST(BodyDecoderTest, FrameNeedingMoreBuffersThanTheBudgetHasIsTooLarge)
@@ -232,6 +241,11 @@ TEST(BodyDecoderTest, FrameNeedingMoreBuffersThanTheBudgetHasIsTooLarge)
 
     EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
     EXPECT_EQ(server.m_budget.availableBytes(), 1024U);
+    // A refused WINDOW reservation must not register as a budget shed: the transport never turned
+    // anyone away -- the request was admitted and answered 413, which already counts in
+    // remoted.auth.reject.body_too_large.
+    EXPECT_EQ(server.m_budget.rejectedTotal(), 0U);
+    EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
 }
 
 TEST(BodyDecoderTest, AmpleBudgetAllowsTheSameLargeFrame)

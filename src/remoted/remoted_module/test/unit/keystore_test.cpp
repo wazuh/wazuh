@@ -93,6 +93,75 @@ namespace
         EXPECT_EQ(key->size(), 32u);
     }
 
+    // The health counters behind the remoted.auth.keystore.* pulls: the LEVEL follows each
+    // successful load, the totals accumulate successes and failures separately, and a failed
+    // reload keeps the previous level (the table is untouched). GE where the background watcher
+    // could legitimately add reloads of its own.
+    TEST_F(KeystoreTest, HealthCountersTrackLoadsAndFailures)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 1U); // the startup load
+        EXPECT_GE(keystore.reloadsTotal(), 1U);
+        EXPECT_EQ(keystore.reloadFailuresTotal(), 0U);
+
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "3825 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        EXPECT_EQ(keystore.reload(), 2);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U);
+        EXPECT_GE(keystore.reloadsTotal(), 2U);
+
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_GE(keystore.reloadFailuresTotal(), 1U);
+        EXPECT_EQ(keystore.agentsLoaded(), 2U); // previous table (and its level) kept
+    }
+
+    // entries_skipped is the companion level to `agents`: it counts the client.keys lines the
+    // adopted load could NOT use, which is what tells an operator "that agent is silently
+    // unauthenticable, go fix line N". Comments, blanks and deliberately removed entries are
+    // normal states and must never inflate it.
+    TEST_F(KeystoreTest, SkippedEntriesLevelCountsOnlyUnusableLines)
+    {
+        const std::string goodKey {"ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751"};
+        // One well-formed line per call, so each fixture line below stays short enough to read
+        // (and to survive clang-format) while only the field under test varies.
+        const auto entry = [&goodKey](const std::string& id, const std::string& name, const std::string& ip)
+        {
+            return id + " " + name + " " + ip + " " + goodKey + "\n";
+        };
+
+        writeFile("# a comment\n"
+                  "\n" +
+                  entry("3824", "debian10", "any") +            // usable
+                  entry("3825", "debian11", "192.168.0.0/33") + // ip column does not parse
+                  "3826 debian12 any nothexatall\n" +           // key does not decode
+                  entry("notanid", "debian13", "any") +         // id column is not numeric
+                  "3827 onlythreefields\n" +                    // fewer than 4 fields
+                  entry("3828", "!removed", "any"));            // deliberately removed entry
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.agentsLoaded(), 1U);   // only the usable entry
+        EXPECT_EQ(keystore.entriesSkipped(), 4U); // the four unusable lines, and nothing else
+
+        // A file with nothing wrong clears the level: it describes the file as it stands now,
+        // not a running total across loads.
+        writeFile(entry("3824", "debian10", "any"));
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keystore.agentsLoaded(), 1U);
+        EXPECT_EQ(keystore.entriesSkipped(), 0U);
+
+        // An unreadable file is a failed load: the previous level survives untouched, exactly
+        // like agentsLoaded().
+        writeFile(entry("3824", "debian10", "any") + entry("3825", "debian11", "999.1.1.1"));
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_EQ(keystore.entriesSkipped(), 1U);
+        std::remove(m_path.c_str());
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+        EXPECT_EQ(keystore.entriesSkipped(), 1U);
+    }
+
     TEST_F(KeystoreTest, UnknownAgentIsNullopt)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");

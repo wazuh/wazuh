@@ -18,6 +18,7 @@
 #include "socketWrapper.hpp"
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -232,12 +233,22 @@ namespace remoted::control
                 try
                 {
                     LOGFN_DEBUG2(logFn(), "Sending WazuhDB command: %s", req.command.c_str());
+                    const auto sentAt = std::chrono::steady_clock::now();
                     client->send(req.command.data(), req.command.size());
 
                     std::unique_lock<std::mutex> respLock(responseMutex);
                     if (responseCv.wait_for(
                             respLock, std::chrono::milliseconds(m_deadlineMs), [&]() { return responseReady; }))
                     {
+                        // Observed only on success: wdbError already counts the failures, so the
+                        // histogram means "how long a HEALTHY round trip takes" -- the number that
+                        // sizes 'remoted.control_wdb_roundtrip_deadline'. Worker-thread-only,
+                        // dump-independent.
+                        observeWdbLatency(
+                            m_metrics,
+                            static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                                           std::chrono::steady_clock::now() - sentAt)
+                                                           .count()));
                         LOGFN_DEBUG2(logFn(), "Received WazuhDB response.");
                         req.callback(SocketError::None, response);
                     }

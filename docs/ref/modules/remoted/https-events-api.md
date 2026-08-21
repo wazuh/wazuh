@@ -469,7 +469,7 @@ mid-write rather than adopting a torn read.
 
 ## Diagnosing rejections and capacity problems
 
-Every condition where a setting may need changing is logged to `wazuh-manager.log ` and names the setting.
+Every condition where a setting may need changing is logged to `wazuh-manager.log` and names the setting.
 Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
 seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
 produces a readable summary instead of thousands of identical lines:
@@ -480,15 +480,19 @@ request(s) with 503 in the last 90 s. Consider increasing the value of 'max_defe
 investigate why the downstream service is not keeping up.
 ```
 
-| Symptom in `wazuh-manager.log `                                           | Setting to review                                                                                    |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| In-flight request memory budget exhausted                                 | `max_inflight_bytes`                                                                                 |
-| Deferred-work slots exhausted                                             | `max_deferred_requests`                                                                              |
-| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout`                          |
-| Downstream response exceeded the configured cap                           | `remoted.downstream_max_response_body_size`                                                          |
-| Timestamps outside the accepted window (agent clock drift)                | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew`                                       |
-| Body exceeded the authenticated-body cap (413)                            | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
-| Downstream timeouts add up past `http_request_timeout`                    | `remoted.http_request_timeout`                                                                       |
+Each of these conditions also has its own counter on the module's
+[`GET /metrics`](metrics.md) dump, so the totals (and their rate between polls) quantify what
+the throttled log line can only sample:
+
+| Symptom in `wazuh-manager.log` | Setting to review | Metric evidence ([Metrics](metrics.md)) |
+|---|---|---|
+| In-flight request memory budget exhausted | `remoted.max_inflight_bytes` | `remoted.server.budget.rejected.total` (+ `budget.inflight.bytes` vs the cap) |
+| Deferred-work slots exhausted | `remoted.max_deferred_requests` | `remoted.forwarder.deferred.rejected.total` (+ `deferred.inflight` vs `deferred.capacity`) |
+| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
+| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
+| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` | `remoted.auth.reject.clock_skew` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `remoted.max_inflight_bytes` (`Content-Encoding: zstd`) | `remoted.auth.reject.body_too_large` |
+| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` | `remoted.http.<endpoint>.latency` percentiles vs the cap |
 
 Two more, about a registered address that no longer matches, both collapsed on the same 90-second
 window as everything above:

@@ -78,9 +78,14 @@ namespace invsync::sync
             if (metrics)
             {
                 m_docsIndexed =
-                    metrics->getOrCreateCounter(invsync::metrics::DOCS_INDEXED, "Documents staged/indexed", "count");
+                    metrics->getOrCreateCounter(invsync::metrics::DOCS_INDEXED,
+                                                "Documents staged into bulk operations (upserts and deletes; by-query "
+                                                "deletes/updates are not counted)",
+                                                "count");
                 m_docsSkipped = metrics->getOrCreateCounter(
-                    invsync::metrics::DOCS_SKIPPED, "Documents skipped by per-document policy", "count");
+                    invsync::metrics::DOCS_SKIPPED,
+                    "Documents skipped by the per-document allowlist policy (bulk path only)",
+                    "count");
                 m_bytesIngested = metrics->getOrCreateCounter(
                     invsync::metrics::BYTES_INGESTED, "Serialized document bytes staged for indexing", "bytes");
             }

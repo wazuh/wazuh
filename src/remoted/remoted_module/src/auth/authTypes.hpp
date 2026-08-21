@@ -13,6 +13,7 @@
 
 #include "remoted_module.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -101,6 +102,12 @@ namespace remoted::auth
         std::string method;          ///< Uppercase HTTP method, e.g. "POST".
         std::string requestTarget;   ///< Raw path + query, exactly as received.
         Payload payload;             ///< Verified request body (a view into the single transport buffer).
+        /// When the auth gateway picked the request up (stamped once, before the CMAC pipeline
+        /// runs). Feeds the remoted.http.<endpoint>.latency histograms: end-to-end time is
+        /// measured from here to response delivery. steady_clock so an NTP step can't produce
+        /// negative or wild durations. Default (epoch) means "never stamped" -- consumers skip
+        /// the observation rather than record a bogus span.
+        std::chrono::steady_clock::time_point receivedAt {};
     };
 
     /**

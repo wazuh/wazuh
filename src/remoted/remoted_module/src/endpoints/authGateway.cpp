@@ -14,6 +14,7 @@
 #include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
+#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -113,6 +114,11 @@ namespace remoted::endpoints
                 // responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
+                    // Stamped ONCE, before the CMAC pipeline: this is the origin of the
+                    // remoted.http.<endpoint>.latency measurement (gateway receipt -> response
+                    // delivery). One clock read per authenticated request, no atomics.
+                    const auto receivedAt = std::chrono::steady_clock::now();
+
                     const std::string protocolVersion = headerValue(request->headers, "protocol-version");
                     const std::string authorization = headerValue(request->headers, "authorization");
                     // Parsed once here, acted on only AFTER authentication succeeds (see below): the
@@ -167,6 +173,7 @@ namespace remoted::endpoints
                     // -- dropping it (or calling payload.release()) then frees the buffer
                     // and restores the budget while the responder lives on to reply.
                     auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
+                    authRequest.receivedAt = receivedAt;
                     const std::string_view bodyView {request->body}; // capture BEFORE moving request
                     authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
 

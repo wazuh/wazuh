@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include <atomic>
 #include <cerrno>
 #include <condition_variable>
 #include <cstring>
@@ -160,6 +161,10 @@ namespace remoted::enrollment
                 }
                 else if (m_queue.size() >= m_maxQueueSize)
                 {
+                    // Counted here and only here: shutdown rejections share the branch below but
+                    // are NOT saturation, and conflating them would make the metric lie every
+                    // time the module stops.
+                    m_queueRejectedTotal.fetch_add(1, std::memory_order_relaxed);
                     reject = std::move(callback);
                 }
                 else
@@ -302,10 +307,7 @@ namespace remoted::enrollment
                 // Wait for the connect to complete (or fail) within m_connectTimeoutMs. For a
                 // Unix-domain socket this resolves near-instantly in practice -- this bound only
                 // matters when authd's own accept() backlog is full.
-                struct pollfd pfd
-                {
-                    socket.fileDescriptor(), POLLOUT, 0
-                };
+                struct pollfd pfd {socket.fileDescriptor(), POLLOUT, 0};
                 const int ready = ::poll(&pfd, 1, static_cast<int>(m_connectTimeoutMs));
                 if (ready == 0)
                 {
@@ -369,11 +371,8 @@ namespace remoted::enrollment
             // Bounds both the send and the reply wait. Socket/OSPrimitives don't expose
             // setsockopt() publicly (it's used internally for the send/receive buffer sizes only),
             // so this is set directly on the raw fd via the standard POSIX call.
-            const struct timeval timeout
-            {
-                static_cast<time_t>(m_responseTimeoutMs / 1000),
-                    static_cast<suseconds_t>((m_responseTimeoutMs % 1000) * 1000)
-            };
+            const struct timeval timeout {static_cast<time_t>(m_responseTimeoutMs / 1000),
+                                          static_cast<suseconds_t>((m_responseTimeoutMs % 1000) * 1000)};
             ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
             ::setsockopt(socket.fileDescriptor(), SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
@@ -495,9 +494,23 @@ namespace remoted::enrollment
 
         std::vector<std::thread> m_workers;
         std::queue<Request> m_queue;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
         std::condition_variable m_cv;
         bool m_stopping {false};
+        std::atomic<std::uint64_t> m_queueRejectedTotal {0}; ///< Refused because the queue was full.
+
+    public:
+        AuthdClient::QueueDiagnostics queueDiagnostics() const
+        {
+            AuthdClient::QueueDiagnostics d;
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                d.depth = m_queue.size();
+            }
+            d.capacity = m_maxQueueSize;
+            d.rejectedTotal = m_queueRejectedTotal.load(std::memory_order_relaxed);
+            return d;
+        }
     };
 
     AuthdClient::AuthdClient(std::string socketPath,
@@ -525,6 +538,11 @@ namespace remoted::enrollment
             return configuredMs;
         }
         return isWorkerNode ? kWorkerDefaultResponseTimeoutMs : kMasterDefaultResponseTimeoutMs;
+    }
+
+    AuthdClient::QueueDiagnostics AuthdClient::queueDiagnostics() const
+    {
+        return m_impl->queueDiagnostics();
     }
 
     void AuthdClient::stop()

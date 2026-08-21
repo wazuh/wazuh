@@ -11,6 +11,8 @@
 
 #include "enrollmentEndpoint.hpp"
 
+#include "common/requestOutcomeMetrics.hpp"
+
 #include "common/logThrottle.hpp"
 #include "control/controlTypes.hpp"    // isValidVersion(), compareVersions() -- shared with /control (D8)
 #include "endpoints/endpoint.hpp"      // remoted::endpoints::errorResponseFor() -- shared auth-rejection logging
@@ -351,12 +353,23 @@ namespace remoted::enrollment
                                             AuthdClient& authdClient,
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
-                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder)
+                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                                            remoted::metrics::EndpointHttpMetrics httpMetrics)
     {
-        return [&authenticator, &authdClient, config, &metrics, bodyDecoder = std::move(bodyDecoder)](
-                   std::shared_ptr<const remoted::http::HttpRequest> request,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [&authenticator,
+                &authdClient,
+                config,
+                &metrics,
+                bodyDecoder = std::move(bodyDecoder),
+                httpMetrics = std::move(httpMetrics)](std::shared_ptr<const remoted::http::HttpRequest> request,
+                                                      std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
+            // Wrapped once, here, so the status/latency accounting covers every answer below --
+            // the five inline rejections AND the one authd's callback delivers on a worker thread
+            // -- without repeating an instrumentation line per branch (and without a later branch
+            // escaping it). The enrollment counters above stay the WHY; this is the WHAT.
+            responder = std::make_shared<remoted::metrics::MeteredResponder>(std::move(responder), httpMetrics);
+
             if (!config.enrollmentEnabled)
             {
                 incDisabled(metrics);

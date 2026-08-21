@@ -19,6 +19,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 - [HTTPS Events API](https-events-api.md) - TLS endpoint + AES-CMAC agent authentication (experimental)
 - [Load balancers](load-balancers/README.md) - Deploying the HTTPS events API behind a load balancer or reverse proxy ([NGINX](load-balancers/nginx.md), [HAProxy](load-balancers/haproxy.md))
 - [Configuration](configuration.md) - Configuration options and tuning parameters
+- [Metrics](metrics.md) - The HTTPS agent server's metric catalog, each metric linked to the setting it helps size
 
 ## Overview
 
@@ -40,7 +41,7 @@ agent-facing HTTPS endpoint — statistics are never exposed on the public liste
 | Route | Response |
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
-| `GET /metrics` | `200` — JSON dump of the module's metric families (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`) |
+| `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics

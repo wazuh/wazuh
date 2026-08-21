@@ -271,6 +271,26 @@ namespace remoted::http
     };
 
     /**
+     * @brief Point-in-time snapshot of the public transport's backpressure state.
+     *
+     * The remoted::http sibling of wazuh::uds_http::TransportDiagnostics (the admin plane
+     * publishes that one): the facade adapts this into `remoted.server.budget.*` pull metrics,
+     * read only at dump cadence. All zeros is the documented quiescent value -- a server that
+     * was never started (or a default IHttpServer implementation) reports it.
+     *
+     * Accounting boundary: a request shed by the byte budget is refused on the transport's I/O
+     * thread BEFORE any route handler runs, so budgetRejectedTotal is the ONLY place those 503s
+     * are counted -- they never reach the per-endpoint `remoted.http.*.responses.*` cells.
+     */
+    struct TransportDiagnostics
+    {
+        std::size_t budgetAvailableBytes {0};  ///< Bytes the in-flight budget can still admit.
+        std::size_t budgetInFlightBytes {0};   ///< Bytes currently reserved by admitted requests.
+        std::size_t budgetInFlightCount {0};   ///< Requests currently holding a reservation.
+        std::uint64_t budgetRejectedTotal {0}; ///< Requests the budget has shed (cumulative).
+    };
+
+    /**
      * @brief Transport-agnostic HTTP(S) server interface.
      *
      * Concrete implementations (today RESTinio, tomorrow Boost.Beast + Boost.Asio)
@@ -315,12 +335,31 @@ namespace remoted::http
          * lifetime to whatever the reserved bytes actually back -- bundle it into that data's own
          * keep-alive to hold it, or let it fall out of scope to release it.
          *
+         * This is an auxiliary (bytes-only) reservation for a request that was already admitted:
+         * it neither counts toward the budget's in-flight request count nor, on failure, toward
+         * its shed total -- the caller answers its own request (e.g. 413), it does not turn a new
+         * one away. If the reservation later becomes the request's resident body (the wire buffer
+         * is dropped in its favor), call InFlightBudget::Reservation::promoteToRequest() on it so
+         * the request keeps counting as exactly one.
+         *
          * @param bytes Bytes to reserve up front (0 is always granted).
          * @return An engaged reservation on success, `std::nullopt` if the budget doesn't have
          *         that much room right now, or if there is no live budget to reserve against (the
          *         server hasn't been started yet).
          */
         virtual std::optional<InFlightBudget::Reservation> tryReserveInFlightBytes(std::size_t bytes) = 0;
+
+        /**
+         * @brief Snapshot the transport's backpressure state, for the metrics dump.
+         *
+         * Callable from any thread at any point in the server's life; before start() (and on
+         * implementations that track no budget, like the test fakes) it reports all zeros.
+         * Dump-cadence only -- implementations may take a lock.
+         */
+        virtual TransportDiagnostics diagnostics() const
+        {
+            return {};
+        }
 
         /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.

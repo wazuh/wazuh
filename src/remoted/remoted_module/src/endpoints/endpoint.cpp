@@ -33,6 +33,49 @@ namespace
         return instance;
     }
 
+    // The process-wide rejection counter set (see installAuthRejectMetrics() in endpoint.hpp for
+    // why this is a function-local static rather than threaded state). Default-constructed it is
+    // the null object that counts nothing, so a process/test that never installs pays a null
+    // check per REJECTION and nothing else.
+    remoted::endpoints::AuthRejectMetrics& authRejectMetrics()
+    {
+        static remoted::endpoints::AuthRejectMetrics instance;
+        return instance;
+    }
+
+    /// Bumps the one remoted.auth.reject.* counter @p err maps to. Its own switch, NOT
+    /// classify(): the log folds by who-must-act (ClientFault spans four causes), the metrics
+    /// keep the causes apart -- that separation is the whole point of the family.
+    void countRejection(remoted::auth::AuthError err)
+    {
+        const auto& m = authRejectMetrics();
+        const auto& counter = [&m, err]() -> const std::shared_ptr<wazuh::metrics::ICounter>&
+        {
+            switch (err)
+            {
+                case remoted::auth::AuthError::UnknownAgent: return m.unknownAgent;
+                case remoted::auth::AuthError::InvalidMac: return m.invalidMac;
+                case remoted::auth::AuthError::ExpiredRequest:
+                case remoted::auth::AuthError::FutureRequest: return m.clockSkew;
+                case remoted::auth::AuthError::MissingKey: return m.unusableKey;
+                case remoted::auth::AuthError::AddressNotAllowed: return m.addressNotAllowed;
+                case remoted::auth::AuthError::EnrollmentKeyUnavailable: return m.enrollmentKey;
+                case remoted::auth::AuthError::PayloadAgentMismatch: return m.payloadMismatch;
+                case remoted::auth::AuthError::BodyTooLarge: return m.bodyTooLarge;
+                case remoted::auth::AuthError::UnsupportedContentEncoding:
+                case remoted::auth::AuthError::MalformedContentEncoding: return m.badEncoding;
+                // MissingProtocolVersion, UnsupportedProtocolVersion, MissingAuthorization,
+                // MalformedAuthorization -- and, defensively, None (errorResponseFor() is never
+                // called with it).
+                default: return m.malformed;
+            }
+        }();
+        if (counter)
+        {
+            counter->add();
+        }
+    }
+
     /**
      * @brief Whether a rejection is the operator's problem or the client's.
      *
@@ -168,16 +211,22 @@ namespace
 namespace remoted::endpoints
 {
 
+    void installAuthRejectMetrics(AuthRejectMetrics metrics)
+    {
+        authRejectMetrics() = std::move(metrics);
+    }
+
     HttpResponse errorResponseFor(remoted::auth::AuthError err, std::string_view agentContext)
     {
         const auto pe = remoted::auth::publicErrorFor(err);
 
-        // Log the PRE-collapse reason. publicErrorFor() deliberately folds seven distinct
-        // credential failures into one generic 401 so a client cannot tell which check failed --
-        // but that also destroyed the distinction for the operator, since nothing logged it. This
-        // is the single funnel every client-visible auth rejection passes through, so one call here
-        // covers all of them.
+        // Log AND count the PRE-collapse reason. publicErrorFor() deliberately folds seven
+        // distinct credential failures into one generic 401 so a client cannot tell which check
+        // failed -- but that also destroyed the distinction for the operator, since nothing
+        // logged it. This is the single funnel every client-visible auth rejection passes
+        // through, so one call here covers all of them.
         logRejection(err, pe.status, agentContext);
+        countRejection(err);
 
         std::string body {R"({"error":")"};
         body += pe.message; // static, quote/backslash-free messages

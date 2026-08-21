@@ -379,21 +379,29 @@ INVSYNC_METRICS = [
     ("requests_500",            "Sessions Failed (500)",             "Count"),
     ("requests_400",            "Sessions Rejected (400)",           "Count"),
     ("requests_403",            "Sessions Rejected (403)",           "Count"),
+    ("requests_409",            "Sessions Rejected (409)",           "Count"),
+    ("requests_other",          "Sessions Answered Off-contract (other)", "Count"),
     ("docs_indexed",            "Documents Indexed",                 "Count"),
     ("docs_skipped",            "Documents Skipped",                 "Count"),
     ("bytes_ingested",          "Bytes Ingested",                    "Bytes"),
     ("pipeline_shed_total",     "Pipeline Shed (queue full)",        "Count"),
     ("bulk_flushes",            "Group-commit Flushes",              "Count"),
     ("bulk_bytes_total",        "Bytes Flushed in Group Commits",    "Bytes"),
+    ("bulk_sessions_total",     "Sessions Answered by Group Commits", "Count"),
     ("shard_depth_sum",         "Sharded Queue Depth (all shards)",  "Items"),
     ("shard_depth_max",         "Sharded Queue Depth (hottest)",     "Items"),
+    ("shard_bytes_sum",         "Sharded Queue Bytes (all shards)",  "Bytes"),
+    ("shard_bytes_max",         "Sharded Queue Bytes (hottest)",     "Bytes"),
     ("vd_lane_depth",           "VD Scan Lane Depth",                "Sessions"),
     ("vd_capacity_503_total",   "VD Sessions Shed (lane full)",      "Count"),
     ("vd_scans_ok",             "VD Scans Completed",                "Count"),
     ("vd_scans_failed",         "VD Scans Failed",                   "Count"),
+    ("vd_scans_skipped",        "VD Scans Skipped (legitimately)",   "Count"),
+    ("vd_retry_after_total",    "VD 503s with Retry-After (feed not ready)", "Count"),
+    ("vd_offset_mismatch_total", "VD Sessions Rejected (feed-offset mismatch)", "Count"),
     ("session_duration_bulk_p99",      "Session Duration p99 (bulk)",      "microseconds"),
     ("session_duration_immediate_p99", "Session Duration p99 (immediate)", "microseconds"),
-    ("vd_lane_time_p99",        "VD Lane Time p99 (queue+scan+index)", "microseconds"),
+    ("vd_lane_time_p99",        "VD Lane Time p99 (all outcomes)",   "microseconds"),
     ("vd_scan_duration_p99",    "VD Scan Duration p99 (scanner only)", "microseconds"),
     # Transport of the shared UDS server. All gauges: instantaneous levels, not growth.
     ("server_budget_available_bytes",   "Transport — In-flight Budget Available", "Bytes"),
@@ -417,11 +425,84 @@ REMOTED_MODULE_METRICS = [
     ("control_notify",            "Control — Keepalive Requests",         "Count"),
     ("control_startup",           "Control — Startup Requests",           "Count"),
     ("control_shutdown",          "Control — Shutdown Requests",          "Count"),
+    ("control_rejected",          "Control — Malformed Requests Rejected (400)", "Count"),
     ("control_wdb_error",         "Control — wazuh-db Failures",          "Count"),
+    ("control_wdb_latency_p99",   "Control — wazuh-db Round-trip p99 (successful)", "microseconds"),
     ("control_task_fetch",        "Control — Task Fetches",               "Count"),
     ("control_task_fetch_error",  "Control — Task Fetch Failures",        "Count"),
+    ("control_registry_agents",   "Control — Agents Tracked",             "Agents"),
+    ("keystore_agents",           "Keystore — Agents with a Usable Key",  "Agents"),
+    ("keystore_entries_skipped",   "Keystore — Unusable client.keys Lines", "Entries"),
+    ("keystore_reload_failures_total", "Keystore — client.keys Load Failures", "Count"),
+    ("http_stateless_responses_2xx", "POST /stateless — Accepted (2xx)",  "Count"),
+    ("http_stateless_responses_503", "POST /stateless — Shed/Failed (503)", "Count"),
+    ("http_stateless_latency_p99",   "POST /stateless — End-to-end p99",  "microseconds"),
+    ("http_stateful_responses_2xx",  "POST /stateful — Accepted (2xx)",   "Count"),
+    ("http_stateful_responses_503",  "POST /stateful — Shed/Failed (503)", "Count"),
+    ("http_stateful_latency_p99",    "POST /stateful — End-to-end p99",   "microseconds"),
+    ("server_budget_available_bytes", "Public Transport — In-flight Budget Available", "Bytes"),
+    ("server_budget_inflight_bytes",  "Public Transport — In-flight Bytes Resident",   "Bytes"),
+    ("server_budget_rejected_total",  "Public Transport — Requests Shed by the Budget", "Count"),
+    ("forwarder_deferred_inflight",   "Forwarder — Deferred Requests In Flight", "Requests"),
+    ("forwarder_deferred_rejected_total", "Forwarder — Requests Shed (slots full)", "Count"),
+    ("forwarder_downstream_5xx",      "Forwarder — Downstream 5xx Answers",   "Count"),
+    ("forwarder_error_response_timeout", "Forwarder — Downstream Response Timeouts", "Count"),
+    ("forwarder_route_mismatch",      "Forwarder — Downstream Route Mismatches (404/405)", "Count"),
+    ("download_started",              "POST /download — Transfers Started",   "Count"),
+    ("download_bytes_total",          "POST /download — Bytes Offered",       "Bytes"),
+    ("download_not_found",            "POST /download — Unknown Group/WPK (404)", "Count"),
     ("admin_sessions_live",       "Admin Socket — Live Connections",      "Connections"),
 ]
+
+# WHY agents fail authentication, pre-collapse (the wire folds credential failures into one
+# generic 401, so only these counters keep the causes apart). Read together: one cause
+# dominating names the fix (NTP, re-enrollment, a scanner hammering the listener...).
+# Enrollment outcomes read together: one dominating line names the fix (authd down vs a full
+# queue vs a validation problem on the agent side).
+_ENROLL_OUTCOME_FUNNEL_COLS = [
+    "enroll_accepted",
+    "enroll_rejected_auth",
+    "enroll_rejected_validation",
+    "enroll_disabled",
+    "enroll_authd_error",
+    "enroll_authd_unavailable",
+    "enroll_authd_queue_rejected_total",
+]
+
+# Depth against its own cap: the pair that says whether authd_max_queue_size is sized right.
+_ENROLL_QUEUE_COLS = ["enroll_authd_queue_depth", "enroll_authd_queue_capacity"]
+
+_AUTH_REJECT_FUNNEL_COLS = [
+    "auth_reject_unknown_agent",
+    "auth_reject_invalid_mac",
+    "auth_reject_clock_skew",
+    "auth_reject_unusable_key",
+    "auth_reject_address_not_allowed",
+    "auth_reject_enrollment_key_unavailable",
+    "auth_reject_payload_mismatch",
+    "auth_reject_body_too_large",
+    "auth_reject_bad_encoding",
+    "auth_reject_malformed",
+]
+
+# WHY forwarded requests fail, one line per cause. The per-endpoint responses funnels say WHICH
+# path is failing; this says which timeout/knob (or which downstream) to look at.
+_FWD_ERROR_FUNNEL_COLS = [
+    "forwarder_error_connect",
+    "forwarder_error_connect_timeout",
+    "forwarder_error_write_timeout",
+    "forwarder_error_response_timeout",
+    "forwarder_error_transport",
+    "forwarder_error_protocol",
+    "forwarder_error_response_too_large",
+    "forwarder_downstream_5xx",
+    "forwarder_route_mismatch",
+]
+
+# One responses funnel per forwarded endpoint: WHAT the agents were answered. Some cells are
+# structurally zero for a given endpoint (kept for a uniform vocabulary).
+_HTTP_RESPONSE_ENDPOINTS = ["stateless", "stateful", "stats", "config", "enroll"]
+_HTTP_RESPONSE_CODES = ["2xx", "400", "403", "409", "413", "500", "503", "other"]
 
 # The admission split: everything that arrived lands in exactly one of these. remoted is a
 # synchronous passthrough of VD's admission, so accepted means "VD queued it and will run it"
@@ -986,6 +1067,76 @@ def generate_charts(
                 "Count (cumulative)",
                 os.path.join(out_dir, f"remoted_module_scanvd_funnel_{safe_label}.{fmt}"),
                 y_min=0,
+            )
+
+        # WHY agents fail auth (pre-collapse causes) and WHY forwarded requests fail: same
+        # read-together rationale as the scanvd funnel \u2014 one dominating line names the fix.
+        for label, df in remoted_module_dfs.items():
+            safe_label = label.replace(" ", "_")
+            if any(col in df.columns for col in _AUTH_REJECT_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _AUTH_REJECT_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Auth Rejections by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_auth_reject_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_OUTCOME_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_OUTCOME_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Enrollment Outcomes ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_enroll_outcome_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _ENROLL_QUEUE_COLS):
+                plot_multiline_timeseries(
+                    df, _ENROLL_QUEUE_COLS,
+                    f"Remoted Module \u2014 authd Queue Depth vs Capacity ({label})",
+                    "Requests",
+                    os.path.join(out_dir, f"remoted_module_enroll_authd_queue_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            if any(col in df.columns for col in _FWD_ERROR_FUNNEL_COLS):
+                plot_multiline_timeseries(
+                    df, _FWD_ERROR_FUNNEL_COLS,
+                    f"Remoted Module \u2014 Downstream Failures by Cause ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_fwd_error_funnel_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+            # WHAT each forwarded endpoint answered its agents, one funnel per endpoint.
+            for endpoint in _HTTP_RESPONSE_ENDPOINTS:
+                cols = [f"http_{endpoint}_responses_{code}" for code in _HTTP_RESPONSE_CODES]
+                if not any(col in df.columns for col in cols):
+                    continue
+                plot_multiline_timeseries(
+                    df, cols,
+                    f"Remoted Module \u2014 POST /{endpoint} Responses ({label})",
+                    "Count (cumulative)",
+                    os.path.join(out_dir, f"remoted_module_http_{endpoint}_responses_{safe_label}.{fmt}"),
+                    y_min=0,
+                )
+
+        # Backpressure pairs, mirroring the inventory-sync transport charts: budget occupancy
+        # (levels) and the deferred-work lane (occupancy vs its configured cap).
+        if any("server_budget_available_bytes" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "server_budget_available_bytes", "server_budget_inflight_bytes",
+                "Budget available", "Bytes in flight",
+                "Bytes", "Bytes",
+                "Remoted Module \u2014 In-flight Byte Budget",
+                os.path.join(out_dir, f"remoted_module_budget.{fmt}"),
+            )
+        if any("forwarder_deferred_inflight" in df.columns for df in remoted_module_dfs.values()):
+            plot_stacked_timeseries(
+                remoted_module_dfs,
+                "forwarder_deferred_inflight", "forwarder_deferred_capacity",
+                "Deferred requests in flight", "Configured slot cap",
+                "Requests", "Requests",
+                "Remoted Module \u2014 Deferred-work Occupancy",
+                os.path.join(out_dir, f"remoted_module_deferred.{fmt}"),
             )
 
     # -- Manager log events --------------------------------------------------

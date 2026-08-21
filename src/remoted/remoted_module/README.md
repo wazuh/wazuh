@@ -24,16 +24,22 @@ remoted_module/
 │   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF-CMAC key, see Agent enrollment below
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
-│   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below)
+│   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
+│   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
-│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
+│   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
+│   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
-│   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
-│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd, see below)
+│   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
+│   │                               #   metrics.hpp = remoted.control.* catalog
+│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd,
+│   │                               #   see below); scanVdMetrics.hpp = remoted.scanvd.* catalog
 │   ├── enrollment/                 # ns remoted::enrollment — POST /enroll, bridges to authd (see below)
-│   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
+│   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below);
+│                                   #   forwarderMetrics.hpp = remoted.forwarder.* failure catalog
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
@@ -54,6 +60,9 @@ endpoints get their own folder under `src/endpoints/<name>/`.
 Transport only. The module exposes an HTTPS endpoint behind a **transport-agnostic interface** so
 the underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later) can be swapped
 without touching any registered endpoint.
+
+Metrics: the transport's backpressure state is published as the `remoted.server.budget.*` pulls
+(via `IHttpServer::diagnostics()`) — see the [Metrics catalog](#metrics-catalog).
 
 ```
 src/http_server/
@@ -98,6 +107,13 @@ src/http_server/
        holds up to three concurrent reservations — wire body, decoder buffers, decoded output — which
        is correct: all three are genuinely in memory at that moment. Exhausting the budget there
        answers **`413`** (the request is too big for the capacity free *right now*), not `503`.
+       Only the *admission* reservation carries the request-level accounting: decoder reservations
+       are uncounted (`InFlightBudget::tryReserveUncounted()` — bytes only, and their refusal is
+       not a shed), and when the wire buffer is dropped in favor of the decoded body, the output
+       reservation is promoted (`Reservation::promoteToRequest()`) to inherit the request's
+       identity. That keeps `budget.inflight.requests` at exactly one per admitted request and
+       `budget.rejected.total` moving only on admission sheds — the decoder's `413` is counted in
+       `remoted.auth.reject.body_too_large` instead.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
        early by closing the connection). *Note:* RESTinio 0.7.9 has no dynamic pre-body hook, so the
        budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
@@ -277,7 +293,7 @@ fetches pending tasks from task-manager for the agent.
 src/control/
 ├── controlTypes.hpp          # DTOs: AgentId, StartupData, NotifyData, ShutdownData, HostInfo, HttpResponse
 ├── controlConfig.hpp/.cpp    # ControlConfig + buildControlConfig() from C-ABI fields
-├── metrics.hpp               # ControlMetrics (atomic counters: startup/notify/shutdown/errors)
+├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
@@ -489,25 +505,31 @@ flooding from malformed agent requests.
 
 ### Configuration
 
-Via `ControlConfig` (`controlConfig.hpp/.cpp`), populated from C-ABI struct fields in
-`remoted_module_config_t` (see `secure.c`):
-- `managerVersion` — manager's semantic version (for version comparison)
-- `allowHigherVersions` — whether to accept agents with version > manager
-- `isWorkerNode` — true on worker nodes (affects sync_status values)
-- `agentRegistryTtlSec` — how long to keep idle agents in the registry (default 3600s)
-- `agentRegistryEvictionIntervalSec` — how often to run eviction (default 300s)
-- `wdbSocketPath` — path to wazuh-db UDS socket (default `queue/sockets/wdb`)
-- `wdbQueueSize` — wazuh-db client queue size (default 1024)
-- `wdbDeadlineMs` — wazuh-db request timeout (default 5000ms)
-- `taskSocketPath` — path to task-manager UDS socket (default `queue/sockets/task`)
-- `taskQueueSize` — task-manager client queue size (default 256)
-- `taskDeadlineMs` — task-manager request timeout (default 5000ms)
+Via `remoted::control::Config` (`controlConfig.hpp/.cpp`), populated by `buildControlConfig()`
+from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed by
+`remoted.control_*` internal options (`secure.c`, `remoted_module_control_config()`):
 
-Built via `remoted::control::buildControlConfig()` in the facade's startup.
+| `Config` field | Default | Internal option (`wazuh-manager-internal-options.conf`) |
+|---|---|---|
+| `managerVersion` | `__wazuh_version` | — (manager's own version, for comparison) |
+| `allowHigherVersions` | from XML | `<remote><agents><allow_higher_versions>` |
+| `isWorkerNode` | from cluster config | — |
+| `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
+| `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
+| `wdbRoundtripDeadlineMs` | 2000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
+| `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
+| `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
+| `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
+| `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
+| `wdbSocketPath` | `/queue/db/wdb` | — (fixed) |
+| `taskSocketPath` | `/queue/tasks/task` | — (fixed) |
+| `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
+| — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
+| `keepaliveThrottleSec` | 60 s | — (fixed) |
 
 ### Metrics
 
-`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` counter family, resolved from the
+`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` family, resolved from the
 facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeControlMetrics()`:
 - `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
 - `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
@@ -515,13 +537,21 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
 - `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
 - `remoted.control.task_fetch` — successful task fetches from task-manager
 - `remoted.control.task_fetch_error` — task-manager operation failures
+- `remoted.control.rejected` — the endpoint's own 400s (invalid body/JSON/agent-id/type), one
+  counter for all four paths: it answers "are agents sending malformed control traffic"
+  (agent/manager version drift); the throttled logs keep the which-field detail
+- `remoted.control.wdb.latency` — histogram (µs) of SUCCESSFUL wazuh-db round trips (timeouts
+  are wdb_error's, so the histogram keeps meaning "how long a healthy round trip takes" — the
+  number that sizes the internal options `remoted.control_wdb_roundtrip_deadline` /
+  `remoted.control_wdb_request_connections`)
+- `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
+  the facade; weak target, quiesces to 0 once the control plane is torn down)
 
 Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
 all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
 log when the module stops; it is NEVER exposed through the public HTTPS endpoint (agent-facing,
-not an admin plane). Natural future candidates on the same registry: per-status passthrough
-counters for `/stateful`/`/stateless`, CMAC-gateway 401s, and the `AgentRegistry` size as a pull
-metric.
+not an admin plane). The full per-family catalog, including the data-plane and backpressure
+families, lives in **Metrics catalog** below.
 
 ### Error handling
 
@@ -1109,6 +1139,10 @@ Most endpoints answer with one in-memory body. `/download` serves `merged.mg` an
 which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
 chunks) and memory that does not grow with file size.
 
+Metrics: `remoted.download.*` (admission outcomes + started transfers/offered bytes, all counted
+before the pump runs; the per-chunk loop is deliberately uninstrumented) — catalog in
+`endpoints/downloadMetrics.hpp`, overview in the [Metrics catalog](#metrics-catalog).
+
 - **Declared at registration, not per response.** The transport creates a request's response builder
   when the request is dispatched — that is what lets it release the received body before the request
   is queued — and a builder's output mode is fixed at creation. So a streaming route registers with
@@ -1194,6 +1228,12 @@ to the agent once that service answers. First target: the engine's event ingress
 `queue/sockets/queue-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
 `400` bad batch / `500` orchestrator down) — and a `/stateless` body already **is** the H/E batch it
 expects, so the forwarder is near pass-through with auth in front.
+
+Metrics: the forwarder counts each delivered response into its endpoint's
+`remoted.http.<endpoint>.responses.*` set (and observes `.latency` where wired), classifies
+failures into `remoted.forwarder.error.*`/`downstream_5xx`/`route_mismatch`
+(`forwarderMetrics.hpp`), and the limiter's occupancy/sheds are the
+`remoted.forwarder.deferred.*` pulls — see the [Metrics catalog](#metrics-catalog).
 
 ```
 src/downstream/
@@ -1383,7 +1423,11 @@ the **deferred limiter** bounds *the wait for the downstream*.
 
 Framework-agnostic implementation of the agent<->manager request authentication protocol:
 canonical request construction, incremental AES-CMAC, timestamp window and constant-time
-comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`Payload`/`AuthError`/
+comparison. Metrics: every client-visible rejection is counted with its pre-collapse cause as
+`remoted.auth.reject.*` (catalog in `endpoints/endpoint.hpp`, counted at `errorResponseFor()`),
+and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
+[Metrics catalog](#metrics-catalog). `authTypes.hpp` holds the shared contract
+(`AuthenticatedRequest`/`Payload`/`AuthError`/
 `publicErrorFor`/`AuthConfig`) and `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`,
 `cmac`, `keystore` are the implementation. It knows nothing about RESTinio or sockets
 -- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
@@ -1532,6 +1576,52 @@ try/catch frame at ~30 per-request call sites, measurable even when the body doe
 forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
 (request target, header values), so using it as a format would be a remote format-string bug.
 
+## Metrics catalog
+
+Everything lives on the facade's single `wazuh_metrics` registry and is observable in two
+places: `GET /metrics` on the local admin socket (below) and the debug-log dump on `stop()`.
+Design rules shared by every family: names are the only dimension (closed sets pre-resolved
+into structs, selected by `switch` — the hot path never formats a name); update cost is one
+relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a
+default-constructed struct is a null object that counts nothing; pull metrics read weak
+targets repointed per start and quiesce to 0 after teardown (`IManager` has no unregister).
+
+The operator-facing reference — every metric with the configuration setting it helps size,
+linked into the settings' own documentation — is the official docs page:
+[Metrics](../../../docs/ref/modules/remoted/metrics.md). This table is the developer's map
+(which component counts what, and where).
+
+| Family | What it answers | Counted at |
+|---|---|---|
+| `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
+| `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
+| `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
+| `remoted.auth.reject.{unknown_agent, invalid_mac, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
+| `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
+| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
+| `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
+| `remoted.admin.server.*` (7 pulls) | the admin transport dogfooding itself | `IUdsHttpServer::diagnostics()` |
+
+**Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
+the transport I/O thread BEFORE any route runs — it appears ONLY in
+`remoted.server.budget.rejected.total`, never in a `responses.*` cell. The converse holds too:
+an *admitted* compressed request whose decode does not fit the budget is answered `413` and
+counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
+is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
+`remoted.forwarder.deferred.rejected.total`. Auth-gateway rejections happen before any handler
+and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
+payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
+`remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
+the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
+per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
+catalogs consume.
+
 ## Local admin socket — `queue/sockets/remoted-module.sock`
 
 The module's management plane: a second, independent HTTP server (the shared
@@ -1543,7 +1633,7 @@ byte budget):
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
-| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (`remoted.control.*`, `remoted.scanvd.*`, `remoted.admin.server.*`), same envelope as inventory sync's `/metrics` |
+| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 
 Contract points:
 
@@ -1621,10 +1711,11 @@ responses survive actual HTTP/TLS/JSON serialization, not just the handler logic
 exercise directly).
 
 Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
-the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying the
-`remoted.control.*`/`remoted.scanvd.*`/`remoted.admin.server.*` families, 404/405 exact-match
-routing, the warn-and-continue policy when the bind fails with the public listener unaffected,
-and `stop()` unlinking the socket with a restart cycle bringing the plane back).
+the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
+metric family in the catalog (one representative name per family, plus live — not quiesced —
+values for the public-transport pulls), 404/405 exact-match routing, the warn-and-continue
+policy when the bind fails with the public listener unaffected, and `stop()` unlinking the
+socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V

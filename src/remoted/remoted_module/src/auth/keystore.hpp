@@ -124,6 +124,43 @@ namespace remoted::auth
          */
         std::optional<AgentLookup> lookup(AgentId agentId, std::string_view peerIp) const override;
 
+        // Health counters behind the remoted.auth.keystore.* pull metrics (registered by the
+        // facade -- this class stays metrics-library-free, the same constraint that keeps
+        // loggerHelper.h out of this header). Plain relaxed atomics: reload() maintains them,
+        // any thread may read them at dump cadence.
+
+        /// @brief Agents with a usable key after the last SUCCESSFUL reload (reload()'s return).
+        std::size_t agentsLoaded() const noexcept
+        {
+            return m_agentsLoaded.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Successful reloads since construction (startup load included).
+        /**
+         * @brief client.keys lines the last adopted load could not use.
+         *
+         * A level, like agentsLoaded(): it describes the file as it stands now, which is the
+         * question an operator asks ("is my client.keys healthy?"). Counts the unusable lines --
+         * fewer than four fields, a non-numeric id, an ip column that does not parse, and a key
+         * column that does not decode -- and deliberately NOT comments, blanks or entries marked
+         * as removed, which are normal states rather than defects. Each one is also logged.
+         */
+        std::size_t entriesSkipped() const noexcept
+        {
+            return m_entriesSkipped.load(std::memory_order_relaxed);
+        }
+
+        std::uint64_t reloadsTotal() const noexcept
+        {
+            return m_reloadsTotal.load(std::memory_order_relaxed);
+        }
+
+        /// @brief Failed reloads since construction (unreadable file or torn-read give-up).
+        std::uint64_t reloadFailuresTotal() const noexcept
+        {
+            return m_reloadFailuresTotal.load(std::memory_order_relaxed);
+        }
+
     private:
         /// One client.keys line's worth of state.
         struct AgentEntry
@@ -189,6 +226,12 @@ namespace remoted::auth
         /// Throttles the "client.keys is unreadable" warning: the watcher retries every
         /// m_refreshIntervalSeconds, so an unreadable file would otherwise flood wazuh-manager.log .
         remoted::common::LogThrottle m_unreadableThrottle;
+
+        // See the public accessors; maintained exclusively by reload().
+        std::atomic<std::size_t> m_agentsLoaded {0};
+        std::atomic<std::size_t> m_entriesSkipped {0};
+        std::atomic<std::uint64_t> m_reloadsTotal {0};
+        std::atomic<std::uint64_t> m_reloadFailuresTotal {0};
     };
 
 } // namespace remoted::auth

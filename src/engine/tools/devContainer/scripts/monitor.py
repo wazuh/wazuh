@@ -156,10 +156,12 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
     ("vd.scans.skipped", "vd_scans_skipped"),
     ("vd.capacity.503.total", "vd_capacity_503_total"),
     ("vd.retry_after.total", "vd_retry_after_total"),
+    ("vd.offset_mismatch.total", "vd_offset_mismatch_total"),
     # Transport diagnostics of the shared UDS server itself: a snapshot of the in-flight byte
     # budget and of how many connections each route class is holding. These are the numbers
     # that say WHY a session was shed -- budget exhausted vs a class at its cap -- and they
-    # are instantaneous gauges, not counters, so read them as levels rather than as growth.
+    # are instantaneous levels (dump type string: "pull"), not counters, so read them as
+    # levels rather than as growth.
     ("server.budget.available.bytes", "server_budget_available_bytes"),
     ("server.budget.inflight.bytes", "server_budget_inflight_bytes"),
     ("server.budget.inflight.requests", "server_budget_inflight_requests"),
@@ -169,8 +171,9 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
     ("server.sessions.liveness", "server_sessions_liveness"),
 )
 
-# remoted_module's registry, served by GET /metrics on the admin socket. Everything here is a
-# cumulative counter except the server.* block, which mirrors the transport gauges above.
+# remoted_module's registry, served by GET /metrics on the admin socket. Cumulative counters
+# unless a comment says otherwise (the *.server.* transport blocks and the level-style pulls
+# are instantaneous gauges -- read them as levels, not growth).
 #
 # The scanvd family is admission-only: remoted is a synchronous passthrough of VD's admission,
 # so a request either came back 200 (accepted = VD queued it and WILL run it) or an honest 503
@@ -178,6 +181,13 @@ _INVSYNC_SCALARS: tuple[tuple[str, str], ...] = (
 # host, vd_error = anything else). What became of an accepted
 # scan is VD's to report -- the sender's scan_200/scan_503 columns now mean the same thing this
 # family does, which is the whole point of the redesign.
+#
+# The http_<endpoint>_responses_* blocks share one closed status vocabulary across the four
+# forwarded endpoints so their columns line up; some cells are structurally zero for a given
+# endpoint (e.g. /stateless never answers 409) -- kept for symmetry, like the admin lanes.
+# Budget sheds never reach those cells (they are refused before any route runs); they are
+# server_budget_rejected_total's alone. A deferred-limiter shed counts BOTH as the endpoint's
+# 503 and in forwarder_deferred_rejected_total.
 _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.control.startup", "control_startup"),
     ("remoted.control.notify", "control_notify"),
@@ -185,6 +195,8 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.control.wdb_error", "control_wdb_error"),
     ("remoted.control.task_fetch", "control_task_fetch"),
     ("remoted.control.task_fetch_error", "control_task_fetch_error"),
+    ("remoted.control.rejected", "control_rejected"),
+    ("remoted.control.registry.agents", "control_registry_agents"),  # level
     ("remoted.scanvd.requests.total", "scanvd_requests_total"),
     ("remoted.scanvd.accepted", "scanvd_accepted"),
     ("remoted.scanvd.queue_full", "scanvd_queue_full"),
@@ -192,6 +204,104 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.scanvd.invalid_agent", "scanvd_invalid_agent"),
     ("remoted.scanvd.vd_error", "scanvd_vd_error"),
     ("remoted.scanvd.indexer_unavailable", "scanvd_indexer_unavailable"),
+    # Auth-gateway rejection taxonomy: the PRE-collapse cause of every client-visible auth
+    # rejection (the wire response deliberately folds the credential failures into one 401).
+    ("remoted.auth.reject.unknown_agent", "auth_reject_unknown_agent"),
+    ("remoted.auth.reject.invalid_mac", "auth_reject_invalid_mac"),
+    ("remoted.auth.reject.clock_skew", "auth_reject_clock_skew"),
+    ("remoted.auth.reject.unusable_key", "auth_reject_unusable_key"),
+    ("remoted.auth.reject.address_not_allowed", "auth_reject_address_not_allowed"),
+    ("remoted.auth.reject.enrollment_key_unavailable", "auth_reject_enrollment_key_unavailable"),
+    ("remoted.auth.reject.payload_mismatch", "auth_reject_payload_mismatch"),
+    ("remoted.auth.reject.body_too_large", "auth_reject_body_too_large"),
+    ("remoted.auth.reject.bad_encoding", "auth_reject_bad_encoding"),
+    ("remoted.auth.reject.malformed", "auth_reject_malformed"),
+    # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
+    ("remoted.auth.keystore.agents", "keystore_agents"),
+    ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),
+    ("remoted.auth.keystore.reloads.total", "keystore_reloads_total"),
+    ("remoted.auth.keystore.reload_failures.total", "keystore_reload_failures_total"),
+    # Per-endpoint response outcomes ("what the agent got"), one closed set x four endpoints.
+    ("remoted.http.stateless.responses.2xx", "http_stateless_responses_2xx"),
+    ("remoted.http.stateless.responses.400", "http_stateless_responses_400"),
+    ("remoted.http.stateless.responses.403", "http_stateless_responses_403"),
+    ("remoted.http.stateless.responses.409", "http_stateless_responses_409"),
+    ("remoted.http.stateless.responses.413", "http_stateless_responses_413"),
+    ("remoted.http.stateless.responses.500", "http_stateless_responses_500"),
+    ("remoted.http.stateless.responses.503", "http_stateless_responses_503"),
+    ("remoted.http.stateless.responses.other", "http_stateless_responses_other"),
+    ("remoted.http.stateful.responses.2xx", "http_stateful_responses_2xx"),
+    ("remoted.http.stateful.responses.400", "http_stateful_responses_400"),
+    ("remoted.http.stateful.responses.403", "http_stateful_responses_403"),
+    ("remoted.http.stateful.responses.409", "http_stateful_responses_409"),
+    ("remoted.http.stateful.responses.413", "http_stateful_responses_413"),
+    ("remoted.http.stateful.responses.500", "http_stateful_responses_500"),
+    ("remoted.http.stateful.responses.503", "http_stateful_responses_503"),
+    ("remoted.http.stateful.responses.other", "http_stateful_responses_other"),
+    ("remoted.http.stats.responses.2xx", "http_stats_responses_2xx"),
+    ("remoted.http.stats.responses.400", "http_stats_responses_400"),
+    ("remoted.http.stats.responses.403", "http_stats_responses_403"),
+    ("remoted.http.stats.responses.409", "http_stats_responses_409"),
+    ("remoted.http.stats.responses.413", "http_stats_responses_413"),
+    ("remoted.http.stats.responses.500", "http_stats_responses_500"),
+    ("remoted.http.stats.responses.503", "http_stats_responses_503"),
+    ("remoted.http.stats.responses.other", "http_stats_responses_other"),
+    ("remoted.http.config.responses.2xx", "http_config_responses_2xx"),
+    ("remoted.http.config.responses.400", "http_config_responses_400"),
+    ("remoted.http.config.responses.403", "http_config_responses_403"),
+    ("remoted.http.config.responses.409", "http_config_responses_409"),
+    ("remoted.http.config.responses.413", "http_config_responses_413"),
+    ("remoted.http.config.responses.500", "http_config_responses_500"),
+    ("remoted.http.config.responses.503", "http_config_responses_503"),
+    ("remoted.http.config.responses.other", "http_config_responses_other"),
+    # POST /enroll: same closed set as the four above. Not forwarded (its downstream is authd),
+    # so these are counted by the handler's MeteredResponder wrapper.
+    ("remoted.http.enroll.responses.2xx", "http_enroll_responses_2xx"),
+    ("remoted.http.enroll.responses.400", "http_enroll_responses_400"),
+    ("remoted.http.enroll.responses.403", "http_enroll_responses_403"),
+    ("remoted.http.enroll.responses.409", "http_enroll_responses_409"),
+    ("remoted.http.enroll.responses.413", "http_enroll_responses_413"),
+    ("remoted.http.enroll.responses.500", "http_enroll_responses_500"),
+    ("remoted.http.enroll.responses.503", "http_enroll_responses_503"),
+    ("remoted.http.enroll.responses.other", "http_enroll_responses_other"),
+    # Enrollment outcomes ("why"), the companion of the status cells above. The queue trio is
+    # what separates a saturated authd queue from an unreachable authd inside authd_unavailable.
+    ("remoted.enroll.accepted", "enroll_accepted"),
+    ("remoted.enroll.rejected_auth", "enroll_rejected_auth"),
+    ("remoted.enroll.rejected_validation", "enroll_rejected_validation"),
+    ("remoted.enroll.disabled", "enroll_disabled"),
+    ("remoted.enroll.authd_error", "enroll_authd_error"),
+    ("remoted.enroll.authd_unavailable", "enroll_authd_unavailable"),
+    ("remoted.enroll.authd.queue.depth", "enroll_authd_queue_depth"),
+    ("remoted.enroll.authd.queue.capacity", "enroll_authd_queue_capacity"),
+    ("remoted.enroll.authd.queue.rejected.total", "enroll_authd_queue_rejected_total"),
+    # Downstream failure taxonomy ("why the 503s"): aggregate across services -- the per-endpoint
+    # 503 columns above already say which path is failing.
+    ("remoted.forwarder.error.connect", "forwarder_error_connect"),
+    ("remoted.forwarder.error.connect_timeout", "forwarder_error_connect_timeout"),
+    ("remoted.forwarder.error.write_timeout", "forwarder_error_write_timeout"),
+    ("remoted.forwarder.error.response_timeout", "forwarder_error_response_timeout"),
+    ("remoted.forwarder.error.transport", "forwarder_error_transport"),
+    ("remoted.forwarder.error.protocol", "forwarder_error_protocol"),
+    ("remoted.forwarder.error.response_too_large", "forwarder_error_response_too_large"),
+    ("remoted.forwarder.downstream_5xx", "forwarder_downstream_5xx"),
+    ("remoted.forwarder.route_mismatch", "forwarder_route_mismatch"),
+    # /download admission outcomes + started transfers (bytes counted once at start).
+    ("remoted.download.rejected", "download_rejected"),
+    ("remoted.download.not_found", "download_not_found"),
+    ("remoted.download.open_error", "download_open_error"),
+    ("remoted.download.started", "download_started"),
+    ("remoted.download.bytes.total", "download_bytes_total"),
+    # Backpressure of the PUBLIC transport: the byte budget (levels + a cumulative shed total)
+    # and the deferred-work limiter. These are the numbers that size 'max_inflight_bytes' and
+    # 'max_deferred_requests'.
+    ("remoted.server.budget.available.bytes", "server_budget_available_bytes"),
+    ("remoted.server.budget.inflight.bytes", "server_budget_inflight_bytes"),
+    ("remoted.server.budget.inflight.requests", "server_budget_inflight_requests"),
+    ("remoted.server.budget.rejected.total", "server_budget_rejected_total"),
+    ("remoted.forwarder.deferred.inflight", "forwarder_deferred_inflight"),
+    ("remoted.forwarder.deferred.capacity", "forwarder_deferred_capacity"),
+    ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
     # The admin server dogfooding its own transport. Both its routes are liveness-class, so
     # the budget and the data/control lanes are structurally zero -- only sessions.live and
     # sessions.liveness ever move. They are kept for symmetry with inventory sync's block.
@@ -204,9 +314,22 @@ _REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.admin.server.sessions.liveness", "admin_sessions_liveness"),
 )
 
+# End-to-end latency histograms (microseconds, gateway receipt -> response delivery), only on
+# the endpoints whose latency answers a tuning question, plus the wazuh-db round trip. Same
+# {count,p50,p90,p99,max} expansion as inventory sync's block.
+_REMOTED_MODULE_HISTOGRAMS: tuple[tuple[str, str], ...] = (
+    ("remoted.http.stateless.latency", "http_stateless_latency"),
+    ("remoted.http.stateful.latency", "http_stateful_latency"),
+    ("remoted.http.enroll.latency", "http_enroll_latency"),
+    ("remoted.control.wdb.latency", "control_wdb_latency"),
+)
+
 REMOTED_MODULE_HEADER = (
     ["timestamp", "elapsed_s", "query_ok", "query_error"]
     + [col for _, col in _REMOTED_MODULE_SCALARS]
+    + [f"{prefix}_{field}"
+       for _, prefix in _REMOTED_MODULE_HISTOGRAMS
+       for field in _INVSYNC_HIST_FIELDS]
     + ["raw_response_json"]
 )
 
@@ -1156,14 +1279,21 @@ def _flatten_remoted_module_stats(raw: dict[str, object], timestamp: str,
                                   elapsed_s: float) -> dict[str, object]:
     """Map remoted_module's metrics dump onto the flat CSV row.
 
-    Plain scalars only: this registry has no histograms and no per-shard family, so unlike
-    inventory sync there is nothing to aggregate.
+    Scalars plus the latency histograms (expanded exactly like inventory sync's block); no
+    per-shard family, so there is nothing to aggregate.
     """
     row = _empty_remoted_module_row(timestamp, elapsed_s)
     row["query_ok"] = 1
     row["query_error"] = ""
 
-    _scalars_into_row(row, _index_metrics_by_name(raw), _REMOTED_MODULE_SCALARS)
+    by_name = _index_metrics_by_name(raw)
+    _scalars_into_row(row, by_name, _REMOTED_MODULE_SCALARS)
+
+    for metric_name, prefix in _REMOTED_MODULE_HISTOGRAMS:
+        summary = (by_name.get(metric_name) or {}).get("summary")
+        for field in _INVSYNC_HIST_FIELDS:
+            value = summary.get(field) if isinstance(summary, dict) else None
+            row[f"{prefix}_{field}"] = _as_int(value)
 
     row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
     return row
@@ -1197,10 +1327,13 @@ def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path:
                 raw = _query_uds_metrics(socket_path, REMOTED_MODULE_MAX_RESPONSE_SIZE)
                 row = _flatten_remoted_module_stats(raw, ts_now, elapsed_s)
                 # The admission split, in the order a saturation run is read: what arrived,
-                # what VD queued (and will run), and what was shed -- by capacity or otherwise.
+                # what VD queued (and will run), and what was shed -- by capacity or otherwise --
+                # plus the data-plane hot path (stateless) and the two shed totals that name the
+                # bottleneck (byte budget vs deferred-work slots).
                 logger.info(
                     "[remoted-module] scanvd req=%d accepted=%d queue_full=%d idx_unavail=%d vd_err=%d "
-                    "mismatch=%d | control notify=%d wdb_err=%d | admin sessions=%d",
+                    "mismatch=%d | control notify=%d wdb_err=%d | stateless 2xx=%d 503=%d p99=%dus | "
+                    "shed budget=%d deferred=%d | admin sessions=%d",
                     _as_int(row.get("scanvd_requests_total")),
                     _as_int(row.get("scanvd_accepted")),
                     _as_int(row.get("scanvd_queue_full")),
@@ -1209,6 +1342,11 @@ def remoted_module_api_monitor_loop(csv_path: str, interval: float, socket_path:
                     _as_int(row.get("scanvd_version_mismatch")),
                     _as_int(row.get("control_notify")),
                     _as_int(row.get("control_wdb_error")),
+                    _as_int(row.get("http_stateless_responses_2xx")),
+                    _as_int(row.get("http_stateless_responses_503")),
+                    _as_int(row.get("http_stateless_latency_p99")),
+                    _as_int(row.get("server_budget_rejected_total")),
+                    _as_int(row.get("forwarder_deferred_rejected_total")),
                     _as_int(row.get("admin_sessions_live")),
                 )
             except Exception as exc:

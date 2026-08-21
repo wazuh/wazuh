@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "common/requestOutcomeMetrics.hpp"
 #include "decoding/iBodyDecoder.hpp"
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "fakeUdsServer.hpp"
@@ -190,6 +191,69 @@ namespace
 // -----------------------------------------------------------------------------
 // Administrative disable -- checked before authentication or the authd bridge.
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// remoted.http.enroll.* -- the status/latency view of the same requests the
+// remoted.enroll.* counters describe by outcome.
+// -----------------------------------------------------------------------------
+
+// /enroll is registered straight on IHttpServer, not through AuthGateway, so nothing stamps a
+// receipt time for it and nothing counted its status codes. The handler wraps its responder in a
+// MeteredResponder instead, which is why this holds for BOTH the answers it sends inline and the
+// one authd's callback delivers on a worker thread -- the case a per-send-site instrumentation
+// is most likely to miss.
+TEST(EnrollmentEndpointTest, HttpMetricsCountEveryStatusAndTimeEveryAnswer)
+{
+    wazuh::metrics::Manager manager;
+    const auto http = remoted::metrics::makeEndpointHttpMetrics(manager, "enroll", /*withLatency=*/true);
+
+    const auto valueOf = [&manager](const std::string& name)
+    {
+        return static_cast<uint64_t>(manager.get(name)->value());
+    };
+    const auto latencyCount = [&http]
+    {
+        return http.latency->snapshot().count;
+    };
+
+    // Runs one request through a handler wired with the shared family above.
+    const auto dispatch = [&http](const Config& config, const std::string& body, const std::string& authdPath)
+    {
+        EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
+        wazuh::metrics::Manager outcomeManager;
+        EnrollmentMetrics outcomes = makeEnrollmentMetrics(outcomeManager);
+        AuthdClient authdClient(authdPath, /*isWorkerNode=*/false, /*connectTimeoutMs=*/0, 300, /*maxQueueSize=*/0);
+
+        auto handler = makeHandler(authenticator, authdClient, config, outcomes, passthroughDecoder(), http);
+        auto request = std::make_shared<const HttpRequest>(makeRequest(body, ""));
+        auto responder = std::make_shared<CapturingResponder>();
+        handler(request, responder);
+        return responder->wait();
+    };
+
+    // 1. Inline 403: administratively disabled, answered before auth or the bridge.
+    Config disabled = openModeConfig();
+    disabled.enrollmentEnabled = false;
+    EXPECT_EQ(dispatch(disabled, R"({"name":"agent1","version":"5.0.0"})", "/nonexistent").status, 403);
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.403"), 1U);
+    EXPECT_EQ(latencyCount(), 1U);
+
+    // 2. Inline 400: local validation, still without reaching authd.
+    EXPECT_EQ(dispatch(openModeConfig(), R"({"version":"5.0.0"})", "/nonexistent").status, 400);
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.400"), 1U);
+    EXPECT_EQ(latencyCount(), 2U);
+
+    // 3. The asynchronous 200: delivered from authd's callback, on another thread.
+    auto stub = fixedAuthdServer(R"({"error":0,"data":{"id":"1","name":"agent1","ip":"any","key":"k"}})");
+    EXPECT_EQ(dispatch(openModeConfig(), R"({"name":"agent1","version":"5.0.0"})", stub.path).status, 200);
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.2xx"), 1U);
+    EXPECT_EQ(latencyCount(), 3U); // every answer is timed, whichever thread sends it
+
+    // Exactly one cell per request, and no cross-talk into another endpoint's family.
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.500"), 0U);
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.503"), 0U);
+    EXPECT_EQ(valueOf("remoted.http.enroll.responses.other"), 0U);
+}
 
 TEST(EnrollmentEndpointTest, DisabledEnrollmentReturns403WithoutTouchingAuthOrAuthd)
 {

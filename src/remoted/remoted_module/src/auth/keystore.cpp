@@ -449,18 +449,23 @@ namespace remoted::auth
                 // Missing/unreadable, not a torn read -- nothing to retry. Deliberately NOT logged
                 // here: reload() is called both once at startup and repeatedly by the watcher, which
                 // need different messages and different throttling. Both call sites report it.
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
             std::ifstream file(m_path);
             if (!file.is_open())
             {
+                m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
                 return kReloadUnreadable;
             }
 
             std::unordered_map<AgentId, AgentEntry> loaded;
             std::string line;
             int count = 0;
+            // Lines the load could not use. Comments, blanks and deliberately removed entries
+            // are NOT counted here: those are normal states, not defects an operator must fix.
+            int skipped = 0;
             int lineNumber = 0;
 
             while (std::getline(file, line))
@@ -477,6 +482,7 @@ namespace remoted::auth
                 if (!(tokens >> id >> name >> ip >> key))
                 {
                     LOGFN_DEBUG1(logFn(), "client.keys line %d has fewer than 4 fields; skipping.", lineNumber);
+                    ++skipped;
                     continue; // malformed line: fewer than 4 fields
                 }
 
@@ -492,6 +498,7 @@ namespace remoted::auth
                                  "client.keys line %d: agent id '%s' is not a non-negative integer; skipping.",
                                  lineNumber,
                                  id.c_str());
+                    ++skipped;
                     continue; // id column isn't numeric -- can never match a real lookup
                 }
 
@@ -506,6 +513,7 @@ namespace remoted::auth
                                lineNumber,
                                ip.c_str(),
                                *agentId);
+                    ++skipped;
                     continue;
                 }
 
@@ -522,6 +530,7 @@ namespace remoted::auth
                                lineNumber,
                                *agentId);
                     loaded.insert_or_assign(*agentId, AgentEntry {std::move(decoded), std::move(*addressRule)});
+                    ++skipped;
                     continue;
                 }
 
@@ -543,6 +552,12 @@ namespace remoted::auth
                 }
                 m_hasBaseline = true;
                 m_lastHash = *preHash;
+                // Health counters (the remoted.auth.keystore.* pulls): the LEVEL tracks what the
+                // table now holds, the total answers "did the hot-reload actually pick my
+                // re-enrolls up".
+                m_agentsLoaded.store(static_cast<std::size_t>(count), std::memory_order_relaxed);
+                m_entriesSkipped.store(static_cast<std::size_t>(skipped), std::memory_order_relaxed);
+                m_reloadsTotal.fetch_add(1, std::memory_order_relaxed);
                 return count;
             }
 
@@ -558,6 +573,7 @@ namespace remoted::auth
 
         LOGFN_WARN(
             logFn(), "client.keys kept changing across %d attempts; keeping the previous table.", kMaxReadAttempts);
+        m_reloadFailuresTotal.fetch_add(1, std::memory_order_relaxed);
         return kReloadUnstable;
     }
 

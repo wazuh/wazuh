@@ -337,10 +337,54 @@ TEST(AuthdClientTest, QueueFullRejectsBeyondCapacity)
     EXPECT_EQ(thirdResult.errorCode, -1);
     EXPECT_NE(thirdResult.message.find("queue is full"), std::string::npos);
 
+    // The queue diagnostics behind remoted.enroll.authd.queue.*: capacity is what was configured,
+    // depth is what is actually waiting, and the counter isolates the saturation share of
+    // remoted.enroll.authd_unavailable (which also fires for an unreachable authd).
+    const auto diag = client.queueDiagnostics();
+    EXPECT_EQ(diag.capacity, 1U);
+    EXPECT_EQ(diag.depth, 1U);         // "second" is still queued behind the busy worker
+    EXPECT_EQ(diag.rejectedTotal, 1U); // exactly the one refused above
+
     // Both first and second eventually fail on the drop-response timeout -- not the assertion
     // of this test, but must still complete so the fixture can tear down cleanly.
     first.wait();
     second.wait();
+}
+
+// The saturation counter must stay clean when the client is merely stopping: addAgent() rejects
+// through the SAME branch in both cases, so counting the shutdown drain would make
+// remoted.enroll.authd.queue.rejected.total report saturation on every module stop.
+TEST(AuthdClientTest, StoppingRejectionsAreNotCountedAsSaturation)
+{
+    const std::string path = makeUniqueSocketPath("authd_client_stop_not_saturation");
+    FakeUdsServer server(path, [](const std::string&) { return "{}"; });
+
+    AuthdClient client(path,
+                       /*isWorkerNode=*/false,
+                       /*connectTimeoutMs=*/0,
+                       /*responseTimeoutMs=*/300,
+                       /*maxQueueSize=*/8,
+                       /*workerThreads=*/1);
+
+    ResultWaiter accepted;
+    client.addAgent(makeRequest(), accepted.callback());
+    accepted.wait();
+
+    // Drained: nothing is waiting, and nothing was ever refused.
+    auto diag = client.queueDiagnostics();
+    EXPECT_EQ(diag.depth, 0U);
+    EXPECT_EQ(diag.rejectedTotal, 0U);
+
+    client.stop();
+
+    ResultWaiter afterStop;
+    client.addAgent(makeRequest(), afterStop.callback());
+    const auto result = afterStop.wait();
+    EXPECT_EQ(result.errorCode, -1); // refused, like a full queue...
+
+    diag = client.queueDiagnostics();
+    EXPECT_EQ(diag.rejectedTotal, 0U); // ...but NOT as saturation
+    EXPECT_EQ(diag.depth, 0U);
 }
 
 TEST(AuthdClientTest, StopFailsQueuedRequestsAndIsIdempotent)
