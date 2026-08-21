@@ -43,7 +43,8 @@ cluster_items = {'node': 'master-node',
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1,
                                           'agent_group_start_delay': 1}},
-                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
+                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"},
+                           "queue/testing/": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 
 fernet_key = "0" * 32
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -1288,6 +1289,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1309,6 +1311,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1330,11 +1333,12 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   worker_name=worker_name,
                                                                   timeout=timeout)
 
-                assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
-                                  'generic_errors': [], 'total_updated': 0}
+                assert result == {'errors_per_folder': defaultdict(list),
+                                  'generic_errors': [], 'total_updated': 1}
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1378,7 +1382,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
+    assert result == {'errors_per_folder': defaultdict(list),
                       'generic_errors': [], 'total_updated': 0}
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                      call(decompressed_files_path, 'data')])
@@ -1390,8 +1394,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
-                      'generic_errors': [], 'total_updated': 0}
+    assert result == {'errors_per_folder': defaultdict(list),
+                      'generic_errors': ['Timeout processing extra-valid files.'], 'total_updated': 0}
 
     safe_move_mock.side_effect = Exception
     result = master_handler.process_files_from_worker(files_metadata=files_metadata,
@@ -1400,7 +1404,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
+    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ['']}),
                       'generic_errors': [], 'total_updated': 0}
 
 
@@ -1768,3 +1772,63 @@ def test_master_get_node(get_running_loop_mock):
     assert master_class.get_node() == {'type': master_class.configuration['node_type'],
                                        'cluster': master_class.configuration['name'],
                                        'node': master_class.configuration['node_name']}
+
+
+@pytest.mark.parametrize('item_key, expected_error', [
+    ("invalid_key", True),
+    ("queue/testing/", False),
+])
+@patch("wazuh.core.cluster.master.safe_join", return_value="/some/path")
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+def test_master_handler_process_files_from_worker_validates_cluster_item_key(gid_mock, uid_mock, path_join_mock,
+                                                                               item_key, expected_error):
+    """Test that process_files_from_worker validates cluster_item_key."""
+    master_handler = get_master_handler()
+    files_metadata = {"data": {"merged": False, "cluster_item_key": item_key}}
+
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed/files/path',
+        cluster_items=cluster_items,
+        worker_name='worker1',
+        timeout=0
+    )
+
+    if expected_error:
+        assert 'Invalid cluster_item_key' in str(result['generic_errors'])
+    else:
+        assert 'Invalid cluster_item_key' not in str(result.get('generic_errors', []))
+
+
+@patch("wazuh.core.cluster.master.safe_join")
+@patch("os.path.basename", return_value="file.txt")
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+def test_master_handler_process_files_from_worker_validates_path_confinement(gid_mock, uid_mock, basename_mock,
+                                                                               path_join_mock):
+    """Test that process_files_from_worker validates path confinement for merged files."""
+    master_handler = get_master_handler()
+    files_metadata = {
+        "data": {"merged": True, "merge_type": "type", "merge_name": "name", "cluster_item_key": "queue/testing/"}
+    }
+
+    def custom_safe_join(*args):
+        return "/".join(str(a) for a in args)
+
+    path_join_mock.side_effect = custom_safe_join
+
+    with patch("wazuh.core.cluster.cluster.unmerge_info",
+               return_value=[("queue/other/file.txt", "data", '1970-01-01 00:00:00+00:00')]):
+        with patch("os.path.commonpath", return_value="/var/ossec/queue/other"):
+            result = master_handler.process_files_from_worker(
+                files_metadata=files_metadata,
+                decompressed_files_path='/decompressed/files/path',
+                cluster_items=cluster_items,
+                worker_name='worker1',
+                timeout=0
+            )
+
+            assert len(result['errors_per_folder']['queue/testing/']) > 0
+            assert any('outside allowed directory' in str(e) or '3022' in str(e)
+                      for e in result['errors_per_folder']['queue/testing/'])
