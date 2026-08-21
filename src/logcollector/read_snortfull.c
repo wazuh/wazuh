@@ -16,7 +16,6 @@
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
-    int f_msg_size = OS_MAX_LOG_SIZE - 1;
     const char *one = "one";
     const char *two = "two";
     const char *p = NULL;
@@ -51,19 +50,16 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         if (p == NULL) {
             if (strncmp(str, "[**] [", 6) == 0) {
                 snprintf(f_msg, sizeof(f_msg), "%s", str);
-                f_msg_size -= strlen(str);
                 p = one;
             }
         } else {
             if (p == one) {
                 /* Second line has the [Classification: */
                 if (strncmp(str, "[Classification: ", 16) == 0) {
-                    strncat(f_msg, str, f_msg_size);
-                    f_msg_size -= strlen(str);
+                    strncat(f_msg, str, sizeof(f_msg) - strlen(f_msg) - 1);
                     p = two;
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
-                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, f_msg_size);
-                    f_msg_size -= sizeof(LABEL_PREPROCESSOR_MESSAGE) - 1;
+                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, sizeof(f_msg) - strlen(f_msg) - 1);
                     p = two;
                 }
 
@@ -71,29 +67,10 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                  * the classification.
                  */
                 else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
-                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, f_msg_size);
-                    f_msg_size -= sizeof(LABEL_PREPROCESSOR_MESSAGE) - 1;
-                    strncat(f_msg, ++q, f_msg_size - 40);
+                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, sizeof(f_msg) - strlen(f_msg) - 1);
+                    strncat(f_msg, ++q, sizeof(f_msg) - strlen(f_msg) - 1);
 
                     /* Clean for next event */
-                    p = NULL;
-
-                    /* Check ignore and restrict log regex, if configured. */
-                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
-                        /* Send message to queue */
-                        w_msg_hash_queues_push(str, lf->file, strlen(f_msg), lf->log_target, LOCALFILE_MQ);
-                    }
-
-                    f_msg[0] = '\0';
-                    f_msg_size = OS_MAX_LOG_SIZE - 1;
-                    str[0] = '\0';
-                } else {
-                    goto file_error;
-                }
-            } else if (p == two) {
-                /* Third line has the 01/13-15 (date) */
-                if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
-                    strncat(f_msg, ++q, f_msg_size);
                     p = NULL;
 
                     /* Check ignore and restrict log regex, if configured. */
@@ -103,7 +80,23 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     }
 
                     f_msg[0] = '\0';
-                    f_msg_size = OS_MAX_LOG_SIZE - 1;
+                    str[0] = '\0';
+                } else {
+                    goto file_error;
+                }
+            } else if (p == two) {
+                /* Third line has the 01/13-15 (date) */
+                if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
+                    strncat(f_msg, ++q, sizeof(f_msg) - strlen(f_msg) - 1);
+                    p = NULL;
+
+                    /* Check ignore and restrict log regex, if configured. */
+                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+                        /* Send message to queue */
+                        w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
+                    }
+
+                    f_msg[0] = '\0';
                     str[0] = '\0';
                 } else {
                     goto file_error;
