@@ -35,7 +35,7 @@ int fim_db_get_count_registry_key()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
+        count = DB::countEntries(FIMDB_REGISTRY_KEY_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -54,7 +54,7 @@ int fim_db_get_count_registry_data()
 
     try
     {
-        count = DB::instance().countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
+        count = DB::countEntries(FIMDB_REGISTRY_VALUE_TABLENAME, COUNT_SELECT_TYPE::COUNT_ALL);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -74,8 +74,8 @@ int fim_db_get_max_version_registry()
 
     try
     {
-        maxVersionKey = DB::instance().maxVersion(FIMDB_REGISTRY_KEY_TABLENAME);
-        maxVersionValue = DB::instance().maxVersion(FIMDB_REGISTRY_VALUE_TABLENAME);
+        maxVersionKey = DB::maxVersion(FIMDB_REGISTRY_KEY_TABLENAME);
+        maxVersionValue = DB::maxVersion(FIMDB_REGISTRY_VALUE_TABLENAME);
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -94,8 +94,8 @@ int fim_db_set_version_registry(int version)
 
     try
     {
-        int result_key = DB::instance().updateVersion(FIMDB_REGISTRY_KEY_TABLENAME, version);
-        int result_value = DB::instance().updateVersion(FIMDB_REGISTRY_VALUE_TABLENAME, version);
+        int result_key = DB::updateVersion(FIMDB_REGISTRY_KEY_TABLENAME, version);
+        int result_value = DB::updateVersion(FIMDB_REGISTRY_VALUE_TABLENAME, version);
 
         if (result_key != 0 || result_value != 0)
         {
