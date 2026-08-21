@@ -84,18 +84,24 @@ public function config()
 
                 not_replaced = True
                 formatted_list = vbCrLf
-                ' <server> inside <agent> since 5.x: <agent> takes no other
-                ' element name, so writing back the legacy <manager> would make the
-                ' agent reject its own configuration.
+                ' A 5.x file is <agent><manager>; a 4.x file preserved across an upgrade
+                ' is <client><server>, and the 5.x parser reads an address out of that
+                ' one only under <server> -- writing <manager> there would strand the
+                ' agent with no manager address.
+                If InStr(strText, "<agent>") > 0 Then
+                    inner_tag = "manager"
+                Else
+                    inner_tag = "server"
+                End If
                 for i=0 to UBound(ip_list)
                     If ip_list(i) <> "" Then
-                        formatted_list = formatted_list & "    <server>" & vbCrLf
+                        formatted_list = formatted_list & "    <" & inner_tag & ">" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1517</port>" & vbCrLf
                         if i = UBound(ip_list) then
-                            formatted_list = formatted_list & "    </server>"
+                            formatted_list = formatted_list & "    </" & inner_tag & ">"
                         Else
-                            formatted_list = formatted_list & "    </server>" & vbCrLf
+                            formatted_list = formatted_list & "    </" & inner_tag & ">" & vbCrLf
                         End If
                     End If
                 next
@@ -232,11 +238,10 @@ public function config()
         Set file = objFSO.OpenTextFile(home_dir & "profile-" & OS_VERSION & ".template", ForReading)
         newline = file.ReadAll
         file.Close
-        ' The shipped template uses <server> (the deprecated <manager> tag only
-        ' survives on an upgraded ossec.conf that predates that migration), so
-        ' this must anchor on either closing tag to keep inserting the profile
-        ' block right after the server/manager block on both fresh installs
-        ' and upgrades.
+        ' The shipped template uses <manager>; <server> only survives on an
+        ' ossec.conf written by previous 5.x agents, so this must anchor on
+        ' either closing tag to keep inserting the profile block right after the
+        ' address block on both fresh installs and upgrades.
         re.Pattern = "(</server>|</manager>)"
         re.Global = False
         strNewText = re.Replace(strNewText, "$1" & vbCrLf & "    " & newline)

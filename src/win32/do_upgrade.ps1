@@ -339,13 +339,13 @@ function probe_server($server, $port) {
 }
 
 # The 5x agent reads the server address from the <agent> block, falling back to the <client> block when upgrading from 4x versions.
-$server_address = get_conf_value "agent" "server" "address"
+$server_address = get_conf_value "agent" "manager" "address"
 if ([string]::IsNullOrEmpty($server_address)) {
     $server_address = get_conf_value "client" "server" "address"
 }
 
 # The 5x agent reads the server port from the <agent> block, falling back to 1517 when upgrading from 4x versions.
-$server_port = get_conf_value "agent" "server" "port"
+$server_port = get_conf_value "agent" "manager" "port"
 if ([string]::IsNullOrEmpty($server_port)) {
     $server_port = "1517"
 }

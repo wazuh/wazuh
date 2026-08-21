@@ -44,10 +44,10 @@
 
     <ossec_config>
         <agent>
-          <server>
+          <manager>
             <address>192.168.10.100</address>
             <port>1517</port>
-          </server>
+          </manager>
           <config-profile>distribution, distributionVersion</config-profile>
         </agent>
 
