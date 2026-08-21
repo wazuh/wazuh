@@ -1263,7 +1263,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
-                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
+                const char * src_msg = cleaned_msg ? cleaned_msg : tmp_msg;
+                memcpy(ctrl_msg_data->message, src_msg, strnlen(src_msg, tmp_msg_length));
 
                 // Store validation results in the control message data structure
                 ctrl_msg_data->is_startup = is_startup;
