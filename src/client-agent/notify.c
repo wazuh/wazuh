@@ -45,7 +45,17 @@ char *get_agent_ip()
     char agent_ip[IPSIZE + 1] = { '\0' };
     struct sockaddr_storage sas;
     socklen_t len = sizeof(sas);
-    const int err = getsockname(agt->sock, (struct sockaddr *)&sas, &len);
+    int err;
+
+    /* Under send_mutex so a sender thread can't invalidate agt->sock between
+     * reading it and using it here (the same reasoning as every other socket
+     * access this fix already guards this way). Worst case without this is a
+     * getsockname(-1, ...) failure and a blank agent IP for one keep-alive
+     * cycle, self-recovering the next one -- still worth closing since the
+     * fix is a two-line change and the pattern should be consistent. */
+    send_mutex_lock();
+    err = getsockname(atomic_int_get(&agt->sock), (struct sockaddr *)&sas, &len);
+    send_mutex_unlock();
 
     if (!err) {
         switch (sas.ss_family) {
@@ -106,15 +116,8 @@ void run_notify()
     if ((curr_time - available_server) > agt->max_time_reconnect_try) {
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
-        os_setwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-
-        /* Send sync message */
-        start_agent(0);
-
+        reconnect_to_server();
         minfo(SERVER_UP);
-        os_delwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
 #endif
 
@@ -122,14 +125,7 @@ void run_notify()
     if (agt->force_reconnect_interval && (curr_time - last_connection_time) >= agt->force_reconnect_interval) {
         /* Set lock and wait for it */
         minfo("Wazuh Agent will be reconnected because of force reconnect interval");
-        os_setwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-
-        /* Send sync message */
-        start_agent(0);
-
-        os_delwait();
-        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+        reconnect_to_server();
     }
 
     /* Check if time has elapsed (monotonic — immune to clock changes) */

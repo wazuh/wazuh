@@ -109,6 +109,9 @@ int local_start()
 
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);
+    /* os_calloc() only zeroes agt->sock.data; the embedded pthread_mutex_t
+     * must be initialized for real before any atomic_int_get/set(&agt->sock). */
+    w_mutex_init(&agt->sock.mutex, NULL);
 
     /* Configuration file not present */
     if (File_DateofChange(cfg) < 0) {
@@ -268,7 +271,7 @@ int local_start()
     }
 
     /* Socket connection */
-    agt->sock = -1;
+    atomic_int_set(&agt->sock, -1);
 
     /* Initialize random numbers */
     srandom(time(0));

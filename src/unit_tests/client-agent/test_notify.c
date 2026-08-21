@@ -41,8 +41,15 @@ extern void notify_reset_saved_time(void);
 static int setup(void **state) {
     static agent global_config;
     agt = &global_config;
+    // agt->sock is this project's portable atomic_int_t (headers/atomic.h):
+    // its embedded pthread_mutex_t needs a real init, not just zeroed bytes.
+    w_mutex_init(&agt->sock.mutex, NULL);
+    // get_agent_ip() now takes send_mutex (sendmsg.c); initialize it for real
+    // too instead of relying on a zero-initialized static behaving like
+    // PTHREAD_MUTEX_INITIALIZER.
+    sender_init();
     // force init value on every call
-    agt->sock = DUMMY_VALID_SOCKET_FD;
+    atomic_int_set(&agt->sock, DUMMY_VALID_SOCKET_FD);
     errno = 0;
     return 0;
 }
@@ -51,7 +58,9 @@ static int setup_run_notify(void **state) {
     static agent global_config;
     memset(&global_config, 0, sizeof(global_config));
     agt = &global_config;
-    agt->sock = DUMMY_VALID_SOCKET_FD;
+    w_mutex_init(&agt->sock.mutex, NULL);
+    sender_init();
+    atomic_int_set(&agt->sock, DUMMY_VALID_SOCKET_FD);
     agt->notify_time = 60;
     agt->max_time_reconnect_try = 3600;
     agt->force_reconnect_interval = 0;
@@ -86,7 +95,7 @@ static void get_agent_ip_invalid_socket(void **state) {
     char *retval;
 
     // force bad socket id
-    agt->sock = 0;
+    atomic_int_set(&agt->sock, 0);
     errno = EBADF;
     expect_string(__wrap__mdebug2, formatted_msg, "getsockname() failed: Bad file descriptor");
 
