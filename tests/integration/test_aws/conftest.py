@@ -165,9 +165,12 @@ def _merge_queue_configs(cfg, add_rule=None, sqs_client=None):
     for q in cfg.get('QueueConfigurations', []):
         if q.get('Id') == rule_id:
             continue
-        if _prefixes_overlap(_rule_prefix(q), own_prefix):
-            logger.warning("Dropping notification rule %s: its prefix overlaps ours (S3 forbids "
-                           "overlapping prefixes for the same event)", q.get('Id'))
+        if (_prefixes_overlap(_rule_prefix(q), own_prefix)
+                and any(e.startswith('s3:ObjectCreated') for e in q.get('Events', []))):
+            # Only overlaps that share our event type (ObjectCreated) are what S3 rejects; a rule on a
+            # different event (e.g. ObjectRemoved) is left alone.
+            logger.warning("Dropping notification rule %s: prefix overlaps ours for ObjectCreated "
+                           "(S3 forbids overlapping prefixes per event type)", q.get('Id'))
             continue
         if (sqs_client is not None and str(q.get('Id', '')).startswith('wazuh-it-')
                 and not _queue_exists(sqs_client, q.get('QueueArn', ''))):
@@ -178,7 +181,7 @@ def _merge_queue_configs(cfg, add_rule=None, sqs_client=None):
         queues.append(add_rule)
     out = {'QueueConfigurations': queues}
     for k in ('TopicConfigurations', 'LambdaFunctionConfigurations', 'EventBridgeConfiguration'):
-        if cfg.get(k):
+        if k in cfg:  # keep by presence, not truthiness: EventBridge is '{}' (falsy) when enabled
             out[k] = cfg[k]
     return out
 
@@ -234,7 +237,11 @@ def _set_run_bucket_notification(s3_resource, bucket_name, sqs_queue_arn, sqs_cl
     rule = {'Id': _notif_rule_id(), 'QueueArn': sqs_queue_arn, 'Events': ['s3:ObjectCreated:*'],
             'Filter': {'Key': {'FilterRules': [{'Name': 'prefix', 'Value': f'{_RUN_ID}/'}]}}}
     if not _put_notification(client, bucket_name, sqs_client, want_rule=rule):
-        logger.warning("Could not persist bucket notification rule for run %s", _RUN_ID)
+        # Fail setup loudly: a missing s3:GetBucketNotification permission looks exactly like this, and
+        # without the rule the test would upload, wait 30s and die on failed_sqs_message_retrieval.
+        raise RuntimeError(
+            f"Could not persist the bucket notification rule for run {_RUN_ID} after retries; "
+            "see the preceding warnings for the AWS error.")
 
 
 def _remove_run_bucket_notification(s3_resource, bucket_name, sqs_client):
@@ -653,25 +660,15 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client, create_test_bucke
         s3_client (boto3.resources.base.ServiceResource): S3 client used to manage the bucket resources.
         ec2_client (Service client instance): EC2 client to manage VPC resources.
     """
-    # Get bucket name
     bucket_name = metadata['bucket_name']
-
-    # Get bucket type
     bucket_type = metadata['bucket_type']
-
-    # Get only_logs_after, regions, prefix and suffix if set to generate file accordingly
     file_creation_date = metadata.get('only_logs_after')
     regions = metadata.get('regions', US_EAST_1_REGION).split(',')
     prefix = metadata.get('path', '')
     suffix = metadata.get('path_suffix', '')
-
-    # Check if the VPC type is the one to be tested
     vpc_bucket = bucket_type == 'vpcflow'
-
-    # Check if logs need to be created
     log_number = metadata.get("expected_results", 1) > 0
 
-    # Generate files
     # Use the original YAML bucket name for generate_file — the framework derives the
     # custom type (kms/macie/trusted) from bucket_name.split('-')[1], which breaks with
     # the shared bucket name. All actual S3 operations still use the shared bucket_name.
@@ -748,16 +745,11 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client, create_test_bucke
             for data, key in files_to_upload:
                 # Record the key BEFORE uploading so a cancelled job can still clean it up.
                 _record_uploaded_key(key)
-
-                # Upload file to bucket
                 upload_bucket_file(bucket_name=bucket_name,
                                    data=data,
                                    key=key,
                                    client=s3_client)
-
                 logger.debug('Uploaded file: %s to bucket "%s"', key, bucket_name)
-
-                # Set filename for test execution
                 metadata['uploaded_file'] += key
                 uploaded_keys.append(key)
 
@@ -1002,7 +994,6 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client, create_test_bucke
         sqs_manager (fixture): The SQS set for the test.
         s3_client (boto3.resources.base.ServiceResource): S3 client used to manage bucket resources.
     """
-    # Get bucket name
     bucket_name = metadata["bucket_name"]
     # The queue name is already unique per run: configurator._modify_metadata appends a random per-session
     # '-<uuid>-todelete' suffix, so concurrent runs never share a queue. (Do NOT append GITHUB_RUN_ID here:
@@ -1013,25 +1004,16 @@ def set_test_sqs_queue(metadata: dict, sqs_manager, s3_client, create_test_bucke
     sqs_queues, sqs_client = sqs_manager
 
     try:
-        # Create SQS and get URL
         sqs_queue_url = create_sqs_queue(sqs_name=sqs_name, client=sqs_client)
-        # Add it to sqs set
         sqs_queues.add(sqs_queue_url)
-
-        # Get SQS Queue ARN
         sqs_queue_arn = get_sqs_queue_arn(sqs_url=sqs_queue_url, client=sqs_client)
-
-        # Set policy
         set_sqs_policy(bucket_name=bucket_name,
                        sqs_queue_url=sqs_queue_url,
                        sqs_queue_arn=sqs_queue_arn,
                        client=sqs_client)
-
-        # Set bucket notification configuration (per-run, prefix-filtered, merged - see helper).
         _set_run_bucket_notification(s3_client, bucket_name, sqs_queue_arn, sqs_client)
 
     except ClientError as error:
-        # Check if the sqs exist
         if error.response['Error']['Code'] == 'ResourceNotFound':
             logger.error(f"SQS Queue {sqs_name} already exists")
             raise error
