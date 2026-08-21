@@ -322,8 +322,8 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
     allowOtherOptions(*handle);
 
     EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
-#ifdef WIN32
-    // Our OpenSSL-backed Windows curl has no bundle of its own to fall back on.
+#if defined(WIN32) || defined(__APPLE__)
+    // Our OpenSSL-backed Windows/macOS curl has no bundle of its own to fall back on.
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
 #else
     EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
