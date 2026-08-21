@@ -97,8 +97,12 @@ function BuildWazuhMsi(){
         foreach ($pattern in $filesToSign) {
             $matchedFiles = @(Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue)
             if ($matchedFiles.Count -eq 0) {
-                Write-Host "No files matched $pattern, skipping."
-                continue
+                if ($pattern -match '[*?]') {
+                    Write-Host "No files matched $pattern, skipping."
+                    continue
+                } else {
+                    throw "SignTool Error: expected file not found: $pattern"
+                }
             }
             foreach ($file in $matchedFiles) {
                 Write-Host "Signing $($file.FullName)..."
