@@ -27,7 +27,6 @@ target_link_libraries(
   gtest
   optimized
   gmock
-  urlrequest
   rocksdb
   pthread)
 

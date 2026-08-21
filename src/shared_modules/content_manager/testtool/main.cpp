@@ -1,5 +1,3 @@
-#include "HTTPRequest.hpp"
-#include "UNIXSocketRequest.hpp"
 #include "contentManager.hpp"
 #include "contentOnDemand.hpp"
 #include "contentRegister.hpp"
