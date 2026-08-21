@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Changed
+
+- Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
+
 #### Fixed
 
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
