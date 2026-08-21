@@ -45,7 +45,7 @@ class ControlStateMachine final
             TransientFailure,
             NotifyOk,
             SettingsChanged,   ///< settings_hash mismatch: refresh Startup in place.
-            CredentialRenewed, ///< hc_set_agent_key after 401: leave AuthError.
+            CredentialRenewed, ///< hc_set_agent_identity after 401: leave AuthError.
             Stop
         };
 

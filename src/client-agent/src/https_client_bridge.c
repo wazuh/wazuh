@@ -21,8 +21,8 @@
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
- * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
- * start_agent.c) and hc_set_agent_key(); on_state_change feeds the .state file
+ * on_reenroll_required is wired to the HTTPS /enroll flow (try_enroll_to_server,
+ * start_agent.c; #38465) and hc_set_agent_identity(); on_state_change feeds the .state file
  * (client-agent/include/state.h) and, since WAIT_FILE/os_setwait() had no HTTPS
  * release path either, also clears a stale producer lock on REGISTERED.
  * on_producer_pause arms and releases that same lock while running, so a
@@ -87,7 +87,7 @@ static hc_handle *g_https_client = NULL;
 bool g_https_client_stopping = false;
 
 /* Serializes the re-enroll thread's key reload against shutdown's teardown.
- * The thread's hc_set_agent_key() touches the handle; w_https_client_stop()
+ * The thread's hc_set_agent_identity() touches the handle; w_https_client_stop()
  * destroys it. Without this the stopping-flag check is a check-then-act race:
  * the thread could pass the check, then stop() destroys the handle, then the
  * thread calls into freed memory. Holding this across {set the flag} on the
@@ -122,7 +122,7 @@ static bool bridge_stopping(void)
  *
  * No bridge-side single-flight guard is needed: AuthGate (the module's 401
  * latch) only fires on_reenroll_required once per incident and won't re-arm
- * until hc_set_agent_key() is called, so at most one of these threads is ever
+ * until hc_set_agent_identity() is called, so at most one of these threads is ever
  * running at a time -- adding another lock here would just duplicate that
  * guarantee.
  *
@@ -142,14 +142,7 @@ void *bridge_reenroll_thread(void *arg)
             return NULL;
         }
 
-        if (agt->enrollment_cfg && agt->enrollment_cfg->target_cfg &&
-            agt->enrollment_cfg->target_cfg->manager_name) {
-            enroll_result = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name,
-                                                  agt->enrollment_cfg->target_cfg->network_interface);
-        }
-        if (enroll_result != 0 && agt->server && agt->server[0].rip) {
-            enroll_result = try_enroll_to_server(agt->server[0].rip, agt->server[0].network_interface);
-        }
+        enroll_result = try_enroll_to_server();
 
         if (enroll_result != 0) {
             const int retry_max = getDefine_Int_default("agent", "enrollment_retry_max", 1, 86400,
@@ -177,9 +170,14 @@ void *bridge_reenroll_thread(void *arg)
         return NULL;
     }
 
-    minfo("https_client: re-enrollment succeeded; reloading the signing key.");
-    if (!hc_set_agent_key(handle, keys.keyentries[0]->raw_key)) {
-        merror("https_client: re-enrolled, but the new key failed validation; traffic stays paused.");
+    minfo("https_client: re-enrollment succeeded; reloading the signing identity.");
+    /* #38465: /enroll can hand back a different numeric id along with the new
+     * key (the manager is expected to preserve it for an already-known
+     * identity, but the module must not assume that -- signing with a stale
+     * id after the key changed would desync from whatever id the manager
+     * now associates with this key). Both move together, never just the key. */
+    if (!hc_set_agent_identity(handle, keys.keyentries[0]->id, keys.keyentries[0]->raw_key)) {
+        merror("https_client: re-enrolled, but the new identity failed validation; traffic stays paused.");
     }
 
     w_mutex_unlock(&g_https_client_lock);
@@ -409,7 +407,7 @@ static void bridge_on_reenroll_required(void *user_data)
     (void)user_data;
     mwarn("https_client: credential rejected (401); re-enrolling.");
 
-    if (!agt->enrollment_cfg || !agt->enrollment_cfg->enabled) {
+    if (!agt->enrollment.enabled) {
         merror("https_client: re-enrollment required but auto-enrollment is disabled "
                "(<enrollment><enabled>); traffic stays paused until the key is fixed manually.");
         return;
@@ -1549,11 +1547,15 @@ static bool bridge_key_is_valid(const char *raw_key)
     return true;
 }
 
-/* Builds the module config from the parsed <server>/<ssl> block (agt->server,
- * agt->ssl; src/config/src/client-config.c) and the already-parsed
- * client.keys entry. Returns false (config left unusable) when the signing
- * key fails validation; the caller must not start the client in that case. */
-static bool bridge_build_config(hc_config_t *config)
+/* Fills the transport-only fields of a hc_config_t from the parsed
+ * <server>/<ssl> block (agt->server, agt->ssl) -- everything hc_enroll()
+ * needs (#38465) and nothing more: no identity (agent_id/agent_key, which an
+ * enrolling agent has neither yet) and none of the full-client-only fields
+ * (batch/stats/buffer ladder/sync_socket_path/config_checksum) bridge_build_
+ * config() also sets below. Shared by bridge_build_config() and
+ * w_https_client_enroll(), so /enroll and every other endpoint dial the same
+ * server/TLS material by construction, never two independently-built configs. */
+static void bridge_build_transport_config(hc_config_t *config)
 {
     memset(config, 0, sizeof(*config));
 
@@ -1561,6 +1563,36 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->server_host, agt->server[0].rip, sizeof(config->server_host) - 1);
         config->server_port = (uint16_t)agt->server[0].port;
     }
+
+    config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
+    if (agt->ssl.certificate_authorities) {
+        strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
+    }
+    if (agt->ssl.certificate) {
+        strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
+    }
+    if (agt->ssl.key) {
+        strncpy(config->client_key, agt->ssl.key, sizeof(config->client_key) - 1);
+    }
+    if (agt->ssl.ciphers) {
+        strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
+    }
+
+    /* internal_options.conf toggle, not a <client> XML setting -- request-
+     * body compression is an opt-in tuning knob, not user-facing config.
+     * getDefine_Int_default (not getDefine_Int) so a missing key defaults to
+     * on instead of aborting the agent. */
+    config->https_compression_enabled = (bool)getDefine_Int_default("agent", "https_compression_enabled", 0, 1, 1);
+}
+
+/* Builds the full module config: the transport half above, plus the
+ * already-parsed client.keys entry and the full-client-only fields (batch,
+ * periodic reporters, buffer ladder, sync intake, config checksum). Returns
+ * false (config left unusable) when the signing key fails validation; the
+ * caller must not start the client in that case. */
+static bool bridge_build_config(hc_config_t *config)
+{
+    bridge_build_transport_config(config);
 
     const char *raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
     /* The NULL test is redundant with bridge_key_is_valid()'s own, and is here
@@ -1586,20 +1618,6 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->agent_id, keys.keyentries[0]->id, sizeof(config->agent_id) - 1);
     }
     strncpy(config->agent_key, raw_key, sizeof(config->agent_key) - 1);
-
-    config->verify_mode = bridge_map_verify_mode(agt->ssl.verification_mode);
-    if (agt->ssl.certificate_authorities) {
-        strncpy(config->ca_path, agt->ssl.certificate_authorities, sizeof(config->ca_path) - 1);
-    }
-    if (agt->ssl.certificate) {
-        strncpy(config->client_cert, agt->ssl.certificate, sizeof(config->client_cert) - 1);
-    }
-    if (agt->ssl.key) {
-        strncpy(config->client_key, agt->ssl.key, sizeof(config->client_key) - 1);
-    }
-    if (agt->ssl.ciphers) {
-        strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
-    }
 
     config->notify_interval_s = (uint32_t)agt->notify_time;
     strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
@@ -1662,12 +1680,6 @@ static bool bridge_build_config(hc_config_t *config)
     config->buffer_warn_level = (uint32_t)g_buffer_warn_level;
     config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
     config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
-
-    /* internal_options.conf toggle, not a <client> XML setting -- request-
-     * body compression is an opt-in tuning knob, not user-facing config.
-     * getDefine_Int_default (not getDefine_Int) so a missing key defaults to
-     * on instead of aborting the agent. */
-    config->https_compression_enabled = (bool)getDefine_Int_default("agent", "https_compression_enabled", 0, 1, 1);
 
     /* Bug found during real-package validation: this used to be
      * getsharedfiles() (client-agent/src/notify.c), which is an MD5 (OS_MD5_File) -- the legacy
@@ -1811,7 +1823,7 @@ void w_https_client_stop(void)
 {
     /* Set the flag under the lock so it is mutually exclusive with the re-
      * enroll thread's key reload: we either block behind an in-flight
-     * hc_set_agent_key() (which finishes on the still-valid handle before we
+     * hc_set_agent_identity() (which finishes on the still-valid handle before we
      * continue) or set the flag before the thread checks it (so it abandons
      * without touching the handle). Only then is it safe to destroy. */
     w_mutex_lock(&g_https_client_lock);
@@ -1860,4 +1872,28 @@ int w_https_client_submit_event(const char *frame, size_t length)
     }
 
     return retval;
+}
+
+/* Handle-less by design (#38465): does not take g_https_client_lock and does
+ * not touch it, because it never reads or writes that handle. Safe to call
+ * whether the full client is running (re-enroll, from bridge_reenroll_thread())
+ * or does not exist yet (first boot, from start_agent.c, before
+ * w_https_client_start() ever runs). */
+bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result)
+{
+    hc_config_t config;
+    bridge_build_transport_config(&config);
+
+    hc_enroll_request_t request;
+    memset(&request, 0, sizeof(request));
+
+    if (body_json) {
+        strncpy(request.body_json, body_json, sizeof(request.body_json) - 1);
+    }
+    if (password) {
+        strncpy(request.password, password, sizeof(request.password) - 1);
+    }
+    request.log = mtLoggingFunctionsWrapper;
+
+    return hc_enroll(&config, &request, result);
 }

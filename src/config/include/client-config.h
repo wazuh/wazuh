@@ -78,6 +78,34 @@ typedef struct agent_report {
     long interval;         ///< <interval>: seconds between pushes.
 } agent_report;
 
+/**
+ * @brief <agent><enrollment>: agent-side enrollment over HTTPS (#38465).
+ *
+ * By-value, like agent_ssl/agent_server -- unlike the pointer-based
+ * w_enrollment_ctx it replaces, which made this block untestable (the config
+ * test harness zero-inits the whole agent struct, and the old parser
+ * dereferenced a lazily-allocated nested pointer with nothing there yet).
+ *
+ * `manager_address`/`port`/`interface_index` (superseded by <agent><server>)
+ * and `agent_certificate_path`/`agent_key_path`/`server_ca_path`/`ssl_cipher`
+ * (superseded by <agent><ssl>) are gone: enrollment dials the same target
+ * and presents the same TLS material as every other HTTPS endpoint, by
+ * design (#38465 explicit scope decision) -- there is no second connection
+ * to configure. `recv_timeout` is gone too: it timed the legacy raw SSL
+ * socket read (enrollment_op.c), which no longer exists; the /enroll request
+ * timeout comes from the shared hc_config_t, like every other endpoint's.
+ */
+typedef struct agent_enrollment {
+    bool enabled;                     ///< <enabled>: auto-enrollment on/off.
+    char *agent_name;                 ///< <agent_name>: NULL -> local hostname.
+    char *groups;                     ///< <groups>: comma-joined group list, or NULL.
+    char *agent_address;              ///< <agent_address>: explicit source IP override, or NULL.
+    bool use_source_ip;               ///< <use_source_ip>: force the connection's own source IP.
+    char *authorization_pass_path;    ///< <authorization_pass_path>: password FILE PATH (default
+                                       ///< AUTHD_PASS); re-read on every attempt, never cached here.
+    time_t delay_after_enrollment;    ///< <delay_after_enrollment>: seconds to wait post-enrollment.
+} agent_enrollment;
+
 /* Configuration structure */
 typedef struct _agent {
     agent_server * server;
@@ -96,7 +124,7 @@ typedef struct _agent {
     agent_batch batch; ///< /stateless batching limits (<agent><batch>).
     agent_report stats_report;  ///< Periodic /stats push (<agent><stats_report>).
     agent_report config_report; ///< Periodic /config push (<agent><config_report>).
-    w_enrollment_ctx *enrollment_cfg;
+    agent_enrollment enrollment; ///< Agent-side enrollment over HTTPS (<agent><enrollment>).
 } agent;
 
 /* Anti tampering config */

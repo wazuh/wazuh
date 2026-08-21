@@ -699,8 +699,9 @@ namespace
     void onReenroll(void* userData)
     {
         static_cast<ReenrollRecorder*>(userData)->reenrollCount++;
-        // The consumer's re-enrollment: swap in the new key (callback-safe).
-        hc_set_agent_key(g_keyRotationHandle, g_rotatedKey.c_str());
+        // The consumer's re-enrollment: swap in the new key, same identity
+        // (callback-safe). "001" matches tlsConfig()'s own agent_id.
+        hc_set_agent_identity(g_keyRotationHandle, "001", g_rotatedKey.c_str());
     }
 
     void onReenrollStartup(bool accepted, const char*, void* userData)
@@ -719,11 +720,11 @@ namespace
     }
 } // namespace
 
-TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentKeyRecovers)
+TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentIdentityRecovers)
 {
     // The manager rotates its key after 2 notifies: the old key starts getting
     // 401, the module pauses + fires on_reenroll_required once, the callback
-    // swaps the key via hc_set_agent_key, and the client re-registers (#37828).
+    // swaps the key via hc_set_agent_identity, and the client re-registers (#37828).
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
     const std::string newKey = "0f0e0d0c0b0a09080706050403020100";

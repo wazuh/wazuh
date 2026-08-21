@@ -72,7 +72,7 @@ class HttpsClientFacade final
         bool submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size);
         void notifyNow();
         void setConfigHash(const char* configHash);
-        bool setAgentKey(const char* keyHex);
+        bool setAgentIdentity(const char* agentId, const char* keyHex);
         hc_conn_state_t state() const;
 
     private:

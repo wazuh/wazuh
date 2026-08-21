@@ -290,7 +290,7 @@ int local_start()
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", agt->batch.size);
     }
 
-    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+    if(agt->enrollment.enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
     } else {

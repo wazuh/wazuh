@@ -14,6 +14,7 @@
 
 #include "cmacSigner.hpp"
 #include "digest.hpp"
+#include "enrollSigner.hpp"
 #include "keyProvider.hpp"
 
 #include "external/cpp-httplib/httplib.h"
@@ -25,6 +26,8 @@
 #include <atomic>
 #include <csignal>
 #include <cstdint>
+#include <cstdlib>
+#include <ctime>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -90,11 +93,25 @@ class FakeManager final
         /// requests are answered 409 with {"error":"version_mismatch",
         /// "current_version":vdFeedOffset} (simulating a load-balanced hit on
         /// a manager node still on an older feed); subsequent attempts get 200.
+        /// enrollPassword empty (default): /enroll accepts any request whose
+        /// protocol-version header is present, no signature required (open
+        /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
+        /// Authorization: WazuhEnroll <ts>:<mac> header whose mac verifies
+        /// against this password via the module's own EnrollSigner (the same
+        /// reuse-the-production-signer idiom the rest of this fake manager
+        /// already uses for CmacSigner on /control et al -- the independent
+        /// cross-implementation proof of the HKDF/CMAC algorithm itself lives
+        /// in enrollSigner_test.cpp's Python-derived KAT, not here).
+        /// enrollForcedStatus non-zero: /enroll always answers that status
+        /// with a generic error body instead of running the real flow, so a
+        /// test can drive the 400/401/403/409/500/503 mapping in
+        /// w_enrollment_process_response() without needing five fake servers.
         FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
                     int settingsFlipAfter = 0, std::string configBlob = {},
                     size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
                     std::string rotatedKeyHex = {}, std::string statefulHoldFile = {},
-                    uint64_t vdFeedOffset = 0, int scanVdRejectFirstNAttempts = 0)
+                    uint64_t vdFeedOffset = 0, int scanVdRejectFirstNAttempts = 0,
+                    std::string enrollPassword = {}, int enrollForcedStatus = 0)
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -106,6 +123,8 @@ class FakeManager final
             , m_statefulHoldFile(std::move(statefulHoldFile))
             , m_vdFeedOffset(vdFeedOffset)
             , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
+            , m_enrollPassword(std::move(enrollPassword))
+            , m_enrollForcedStatus(enrollForcedStatus)
         {
             m_pid = fork();
 
@@ -571,6 +590,125 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(std::to_string(scanVdAttempts->load()), "text/plain");
             });
+
+            // POST /enroll (#38465): the agent-side contract this workspace's
+            // agent-side code is built against (manager itself, #38438, out of
+            // scope here -- see plan.md). Records the last body via
+            // /peek/enroll, same peek idiom as the other endpoints.
+            const std::string enrollPassword = m_enrollPassword;
+            const int enrollForcedStatus = m_enrollForcedStatus;
+            auto lastEnrollBody = std::make_shared<std::string>();
+            auto enrollMutex = std::make_shared<std::mutex>();
+            auto verifyEnroll = [enrollPassword](const httplib::Request & request)
+            {
+                if (enrollPassword.empty())
+                {
+                    return true; // Open mode: no signature expected.
+                }
+
+                const auto auth = request.get_header_value("Authorization");
+                const std::string prefix = "WazuhEnroll ";
+
+                if (auth.rfind(prefix, 0) != 0)
+                {
+                    return false;
+                }
+
+                const std::string token = auth.substr(prefix.size());
+                const auto colon = token.find(':');
+
+                if (colon == std::string::npos)
+                {
+                    return false;
+                }
+
+                const std::time_t timestamp =
+                    static_cast<std::time_t>(std::strtoll(token.substr(0, colon).c_str(), nullptr, 10));
+                const auto expected =
+                    EnrollSigner::sign(enrollPassword, "POST", "/enroll",
+                                       reinterpret_cast<const uint8_t*>(request.body.data()),
+                                       request.body.size(), timestamp);
+
+                if (!expected)
+                {
+                    return false; // LCOV_EXCL_LINE: HKDF/CMAC cannot fail here.
+                }
+
+                const std::string authPrefix = "Authorization: ";
+                return expected->authorization.substr(authPrefix.size()) == auth;
+            };
+
+            server.Post("/enroll",
+                        [verifyEnroll, enrollForcedStatus, lastEnrollBody, enrollMutex](
+                            const httplib::Request & request, httplib::Response & response)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(*enrollMutex);
+                    *lastEnrollBody = request.body;
+                }
+
+                if (!request.has_header("protocol-version"))
+                {
+                    response.status = 400;
+                    response.set_content(
+                        R"({"error":{"code":"missing_protocol_version","message":"protocol-version required"}})",
+                        "application/json");
+                    return;
+                }
+
+                if (enrollForcedStatus != 0)
+                {
+                    response.status = enrollForcedStatus;
+                    response.set_content(R"({"error":{"code":"forced","message":"forced by test"}})",
+                                         "application/json");
+                    return;
+                }
+
+                if (!verifyEnroll(request))
+                {
+                    response.status = 401;
+                    response.set_content(
+                        R"({"error":{"code":"invalid_signature","message":"signature mismatch"}})",
+                        "application/json");
+                    return;
+                }
+
+                std::string name = "unknown";
+
+                try
+                {
+                    const auto parsed = nlohmann::json::parse(request.body);
+
+                    if (parsed.contains("name"))
+                    {
+                        name = parsed.at("name").get<std::string>();
+                    }
+                }
+                catch (const std::exception&)
+                {
+                    response.status = 400;
+                    response.set_content(
+                        R"({"error":{"code":"invalid_body","message":"malformed JSON"}})",
+                        "application/json");
+                    return;
+                }
+
+                response.status = 200;
+                nlohmann::json body;
+                body["id"] = "042";
+                body["name"] = name;
+                body["ip"] = "127.0.0.1";
+                body["key"] = "3132333435363738393031323334353637383930313233343536373839303132";
+                response.set_content(body.dump(), "application/json");
+            });
+
+            server.Get("/peek/enroll",
+                       [lastEnrollBody, enrollMutex](const httplib::Request&, httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*enrollMutex);
+                response.status = 200;
+                response.set_content(*lastEnrollBody, "text/plain");
+            });
         }
 
         // Self-signed cert + key generated in-process (no CLI, no files). The
@@ -619,14 +757,14 @@ class FakeManager final
             httplib::Client probe {base};
             probe.enable_server_certificate_verification(false);
 
-            for (int attempt = 0; attempt < 200; attempt++)
+            for (int attempt = 0; attempt < 6000; attempt++)
             {
                 if (auto result = probe.Post("/control"))
                 {
                     return; // Any HTTP reply means the listener is up.
                 }
 
-                usleep(20 * 1000);
+                usleep(50 * 1000);
             }
         }
 
@@ -642,6 +780,8 @@ class FakeManager final
         std::string m_statefulHoldFile;
         uint64_t m_vdFeedOffset {0};
         int m_scanVdRejectFirstNAttempts {0};
+        std::string m_enrollPassword;
+        int m_enrollForcedStatus {0};
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

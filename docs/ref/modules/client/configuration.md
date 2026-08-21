@@ -127,7 +127,13 @@ Automatically restart agent when receiving configuration updates from manager.
 
 ### enrollment
 
-Agent auto-enrollment configuration block (optional).
+Agent auto-enrollment configuration block (optional). Since 5.0.0 (#38465),
+enrollment runs over the same HTTPS channel and TLS material as every other
+manager endpoint — it dials `<agent><server>` and presents `<agent><ssl>`,
+instead of opening a second connection to `authd` on port 1515. There is no
+longer a separate address/port/certificate/key/CA/cipher configuration for
+enrollment: the options that used to duplicate that (see **Removed options**
+below) are gone.
 
 **Sub-options:**
 
@@ -137,20 +143,6 @@ Enable automatic agent enrollment.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-
-#### manager_address
-
-Manager address for enrollment (can differ from data connection).
-
-- **Default value:** Value from `<server><address>`
-- **Allowed values:** Valid IPv4, IPv6 address, or hostname
-
-#### port
-
-Manager enrollment port (authd).
-
-- **Default value:** `1515`
-- **Allowed values:** Valid port number (1-65535)
 
 #### agent_name
 
@@ -172,7 +164,8 @@ Path to file containing enrollment authorization password.
 
 - **Default value:** None
 - **Allowed values:** Valid file path
-- **Note:** Password must match manager's authd password
+- **Note:** Password must match manager's authd password. Re-read on every
+  enrollment attempt, so rotating the file does not require an agent restart.
 
 #### agent_address
 
@@ -180,38 +173,8 @@ Agent's IP address to use for enrollment (overrides auto-detected address).
 
 - **Default value:** Auto-detected
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Useful when agent has multiple network interfaces
-
-#### ssl_cipher
-
-TLS 1.3 ciphersuite list for the enrollment connection. Enrollment requires TLS 1.3, so this must be a colon-separated list of TLS 1.3 ciphersuite names.
-
-- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
-- **Allowed values:** Colon-separated TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`)
-- **Example:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
-
-#### server_ca_path
-
-Path to CA certificate file for verifying manager certificate during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-- **Note:** Required for SSL verification during enrollment
-
-#### agent_certificate_path
-
-Path to agent's client certificate for mutual TLS authentication during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-
-#### agent_key_path
-
-Path to agent's private key for mutual TLS authentication during enrollment.
-
-- **Default value:** None
-- **Allowed values:** Valid file path
-- **Note:** Must correspond to `agent_certificate_path`
+- **Note:** Useful when agent has multiple network interfaces. Incompatible
+  with `use_source_ip`.
 
 #### delay_after_enrollment
 
@@ -227,15 +190,16 @@ Use agent's source IP address for enrollment instead of configured address.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** Useful for NAT scenarios
+- **Note:** Useful for NAT scenarios. Incompatible with `agent_address`.
 
-#### interface_index
+#### Removed options
 
-Network interface index to bind for enrollment connection.
-
-- **Default value:** Auto-select
-- **Allowed values:** Positive integer (interface index number)
-- **Note:** Platform-specific; use `ip link` or `ifconfig` to find interface indices
+The following options are **no longer used**: `manager_address`, `port`,
+`interface_index` (superseded by `<agent><server>`) and `ssl_cipher`,
+`server_ca_path`, `agent_certificate_path`, `agent_key_path` (superseded by
+`<agent><ssl>`). A configuration carrying them — e.g. left over from a 4.x
+`ossec.conf`, which an in-place upgrade does not rewrite — still starts the
+agent normally: each is recognized and logged at `INFO`, not rejected.
 
 ---
 
@@ -278,9 +242,6 @@ Additional client settings can be configured in the internal options file.
 ```ini
 # Debug level for agentd (0=no debug, 1=basic, 2=verbose)
 agent.debug=0
-
-# Receive timeout in seconds (default: 60)
-agent.recv_timeout=60
 
 # Send timeout in seconds (default: 60)
 agent.send_timeout=60
@@ -443,8 +404,6 @@ Automatic agent registration:
 <agent>
   <enrollment>
     <enabled>yes</enabled>
-    <manager_address>manager.example.com</manager_address>
-    <port>1515</port>
     <agent_name>web-server-prod-01</agent_name>
     <groups>webservers,production</groups>
     <authorization_pass_path>/var/ossec/etc/authd.pass</authorization_pass_path>
@@ -456,6 +415,10 @@ Automatic agent registration:
   </server>
 </agent>
 ```
+
+Enrollment dials the address/port from `<server>` above (and, if configured,
+presents the TLS material from `<ssl>`) — there is no separate
+`manager_address`/`port` to set under `<enrollment>` any more.
 
 ### Client Buffer Configuration
 
@@ -498,8 +461,6 @@ Full example with all sections:
     <crypto_method>aes</crypto_method>
     <enrollment>
       <enabled>yes</enabled>
-      <manager_address>manager1.example.com</manager_address>
-      <port>1515</port>
       <groups>webservers,production</groups>
     </enrollment>
   </agent>

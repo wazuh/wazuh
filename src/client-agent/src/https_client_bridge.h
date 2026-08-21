@@ -12,7 +12,10 @@
 #ifndef _HTTPS_CLIENT_BRIDGE_H
 #define _HTTPS_CLIENT_BRIDGE_H
 
+#include <stdbool.h>
 #include <stddef.h> // size_t
+
+#include "https_client.h" // hc_enroll_result_t
 
 /**
  * @brief Start the HTTPS client module unconditionally. Relies on
@@ -31,5 +34,27 @@ void w_https_client_stop(void);
  *        is stopping / not started.
  */
 int w_https_client_submit_event(const char *frame, size_t length);
+
+/**
+ * @brief Perform exactly one /enroll HTTP request (#38465), against the same
+ *        manager/TLS material already configured for every other HTTPS
+ *        endpoint (<agent><server>, <agent><ssl>). Handle-less: usable before
+ *        the module is started (first-boot enrollment has no handle yet) or
+ *        standalone (re-enrollment after a 401). No retry loop -- the caller
+ *        (client-agent/src/start_agent.c's try_enroll_to_server()) already
+ *        owns backoff/retry one layer up.
+ * @param body_json The already-built, already-validated JSON body
+ *        (enrollment.c's job; never inspected here).
+ * @param password Empty/NULL means no WazuhEnroll header (mTLS/open
+ *        enrollment); a client cert (if <agent><ssl> has one) and a password
+ *        may both apply at once, with no precedence between them.
+ * @param result Filled with the HTTP outcome; http_code stays 0 when nothing
+ *        was ever sent (invalid transport config, e.g. no CA under a
+ *        verifying mode).
+ * @return true once a request was sent and answered, whatever the HTTP
+ *         status (the caller interprets 200 vs. 4xx/5xx); false when nothing
+ *         was ever sent.
+ */
+bool w_https_client_enroll(const char *body_json, const char *password, hc_enroll_result_t *result);
 
 #endif // _HTTPS_CLIENT_BRIDGE_H

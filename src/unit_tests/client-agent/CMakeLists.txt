@@ -102,11 +102,20 @@ list(APPEND client-agent_flags "-Wl,--wrap,w_is_file ${DEBUG_OP_WRAPPERS}")
 list(APPEND client-agent_names "test_agent_config")
 list(APPEND client-agent_flags " ")
 
+# w_enrollment_build_request()/w_enrollment_process_response() (#38465): pure
+# functions, no https_client involvement, so no hc_*/wurl_* wraps needed --
+# just the log wrappers every merror()/minfo() call goes through, plus
+# OS_IsValidIP (real PCRE2 matching isn't safe/deterministic to call
+# unmocked in a unit test -- same convention every other test in this
+# tree already follows).
+list(APPEND client-agent_names "test_enrollment")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
-                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,hc_submit_event \
-                                -Wl,--wrap,hc_set_config_hash \
+                                -Wl,--wrap,hc_set_agent_identity -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,hc_set_config_hash -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
@@ -185,6 +194,12 @@ endforeach()
 if(TARGET test_https_client_bridge)
     # https_client.h (the module's C ABI) isn't on the global include path.
     target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_enrollment)
+    # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
+    # test_https_client_bridge above.
+    target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
 # Component test for the durable dedup + IPC round-trip: wires the

@@ -7,3 +7,7 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1517'
+            - enrollment:
+                elements:
+                - delay_after_enrollment:
+                    value: '5'

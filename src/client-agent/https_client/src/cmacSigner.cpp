@@ -109,6 +109,18 @@ CmacSigner::CmacSigner(std::string agentId, const IKeyProvider& keyProvider)
 {
 }
 
+void CmacSigner::setAgentId(std::string agentId)
+{
+    std::lock_guard<std::mutex> lock(m_agentIdMutex);
+    m_agentId = std::move(agentId);
+}
+
+std::string CmacSigner::agentId() const
+{
+    std::lock_guard<std::mutex> lock(m_agentIdMutex);
+    return m_agentId;
+}
+
 std::optional<std::string> CmacSigner::macHex(const std::vector<uint8_t>& key,
                                               const uint8_t* message, size_t messageLength)
 {
@@ -138,8 +150,12 @@ std::optional<SignedHeaders> CmacSigner::sign(const std::string& method, const s
         return std::nullopt;
     }
 
+    // Snapshot once: the canonical string and the Authorization header below
+    // must carry the SAME id, even if setAgentId() runs concurrently on
+    // another thread mid-call.
+    const auto agentIdSnapshot = agentId();
     const auto canonical =
-        buildCanonicalRequest(method, target, m_agentId, timestamp, body, bodyLength);
+        buildCanonicalRequest(method, target, agentIdSnapshot, timestamp, body, bodyLength);
     const auto digest = macHex(*key, canonical.data(), canonical.size());
 
     if (!digest)
@@ -147,7 +163,7 @@ std::optional<SignedHeaders> CmacSigner::sign(const std::string& method, const s
         return std::nullopt; // LCOV_EXCL_LINE: CMAC cannot fail for a validated 16-byte key.
     }
 
-    return makeHeaders(timestamp, *digest);
+    return makeHeaders(agentIdSnapshot, timestamp, *digest);
 }
 
 std::optional<SignedHeaders> CmacSigner::signFile(const std::string& method,
@@ -176,7 +192,8 @@ std::optional<SignedHeaders> CmacSigner::signFile(const std::string& method,
         return std::nullopt; // LCOV_EXCL_LINE: init cannot fail for a validated 16-byte key.
     }
 
-    const std::string head = canonicalRequestHead(method, target, m_agentId, timestamp);
+    const auto agentIdSnapshot = agentId();
+    const std::string head = canonicalRequestHead(method, target, agentIdSnapshot, timestamp);
 
     if (EVP_MAC_update(context.get(), reinterpret_cast<const uint8_t*>(head.data()), head.size()) != 1)
     {
@@ -201,14 +218,15 @@ std::optional<SignedHeaders> CmacSigner::signFile(const std::string& method,
         return std::nullopt; // LCOV_EXCL_LINE: cannot fail after a successful init.
     }
 
-    return makeHeaders(timestamp, *digest);
+    return makeHeaders(agentIdSnapshot, timestamp, *digest);
 }
 
-SignedHeaders CmacSigner::makeHeaders(std::time_t timestamp, const std::string& macHexDigest) const
+SignedHeaders CmacSigner::makeHeaders(const std::string& agentId, std::time_t timestamp,
+                                      const std::string& macHexDigest) const
 {
     SignedHeaders headers;
     headers.protocolVersion = "protocol-version: 1";
     headers.authorization =
-        "Authorization: Wazuh " + m_agentId + ":" + std::to_string(timestamp) + ":" + macHexDigest;
+        "Authorization: Wazuh " + agentId + ":" + std::to_string(timestamp) + ":" + macHexDigest;
     return headers;
 }
