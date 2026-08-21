@@ -36,6 +36,13 @@ abort_upgrade() {
     exit 1
 }
 
+pkg_exists() {
+    for file in "$@"; do
+        [ -f "$file" ] && return 0
+    done
+    return 1
+}
+
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
 
 
@@ -124,21 +131,21 @@ fi
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
-    if find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.rpm" | read; then
+    if pkg_exists ./var/upgrade/*.rpm; then
         if command -v rpm >/dev/null 2>&1; then
             rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
-    elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
+    elif pkg_exists ./var/upgrade/*.deb; then
         if command -v dpkg >/dev/null 2>&1; then
             dpkg -i --force-confdef ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
             abort_upgrade "2"
         fi
-    elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.apk" | read; then
+    elif pkg_exists ./var/upgrade/*.apk; then
         if command -v apk >/dev/null 2>&1; then
             apk add --allow-untrusted --force ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
