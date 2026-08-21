@@ -130,9 +130,24 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 {
     HttpRequestSpec attempt = base; // Fresh copy: the auth pair differs per attempt.
 
+    // Sign the plaintext first, against base's untouched fields, before
+    // compression below mutates attempt (#38494).
+    const auto timestamp = m_clock.wallSeconds();
+    // Bind by reference: both branches return std::optional<SignedHeaders> by
+    // value, and `headers` is only read locally below, well within the
+    // ternary temporary's extended lifetime -- no need to copy it. (CID 562606)
+    const auto& headers =
+        base.bodyFilePath.empty()
+        ? m_signer.sign("POST", base.target, base.body, base.bodyLength, timestamp)
+        : m_signer.signFile("POST", base.target, base.bodyFilePath, timestamp);
+
+    if (!headers)
+    {
+        return {OutcomeClass::Permanent, {}}; // Unusable credentials: retrying cannot help.
+    }
+
     // In-memory bodies: compressed here, per attempt (cheap for the small
-    // buffers every other send path uses). Compressed before signing so the
-    // CMAC covers the wire bytes.
+    // buffers every other send path uses), for the wire only.
     std::vector<uint8_t> compressedBody;
     const bool gateAllowsCompression = m_compressionGate == nullptr || !m_compressionGate->disabled();
 
@@ -163,20 +178,6 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
         attempt.bodyFilePath = attempt.precompressedBodyFilePath;
         attempt.bodyFileSize = attempt.precompressedBodyFileSize;
         attempt.headers.push_back("Content-Encoding: zstd");
-    }
-
-    const auto timestamp = m_clock.wallSeconds();
-    // Bind by reference: both branches return std::optional<SignedHeaders> by
-    // value, and `headers` is only read locally below, well within the
-    // ternary temporary's extended lifetime -- no need to copy it. (CID 562606)
-    const auto& headers =
-        attempt.bodyFilePath.empty()
-        ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
-        : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
-
-    if (!headers)
-    {
-        return {OutcomeClass::Permanent, {}}; // Unusable credentials: retrying cannot help.
     }
 
     attempt.headers.push_back(headers->protocolVersion);
