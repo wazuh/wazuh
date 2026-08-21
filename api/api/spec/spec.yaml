@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'rc1'
+  x-revision: 'beta5'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -3454,9 +3454,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'rc1'
+                revision: 'beta5'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-beta5/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
