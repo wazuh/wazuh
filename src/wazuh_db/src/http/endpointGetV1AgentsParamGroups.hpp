@@ -14,8 +14,8 @@
 
 #include "reflectiveJson.hpp"
 #include "sqlite3Wrapper.hpp"
-#include <httplib.h>
 #include <loggerHelper.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 /**
  * @brief TEndpointGetV1AgentsParamGroups class.
@@ -25,6 +25,10 @@ template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatemen
 class TEndpointGetV1AgentsParamGroups final
 {
     static constexpr auto LOGTAG = "wazuh-db-http";
+    // uds_http_server routes exact-match only, so the agent id can't travel as a path segment
+    // (see wdb_http.cpp) -- it travels in this header instead, the same convention
+    // inventory_sync_server's DELETE /agents uses. Header names are lower-cased by the transport.
+    static constexpr auto AGENT_ID_HEADER = "x-wazuh-agent-id";
 
     struct Response final
     {
@@ -41,17 +45,15 @@ public:
      *
      * @param db The database connection.
      * @param req The HTTP request.
-     * @param res The HTTP response.
+     * @return The HTTP response.
      */
-    static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
+    static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest& req)
     {
-        auto it = req.path_params.find("agent_id");
-        if (it == req.path_params.end())
+        auto it = req.headers.find(AGENT_ID_HEADER);
+        if (it == req.headers.end())
         {
-            logWarn(LOGTAG, "Missing parameter: agent id");
-            res.status = 400;
-            res.set_content("Missing parameter: id", "text/plain");
-            return;
+            logWarn(LOGTAG, "Missing header: agent id");
+            return {400, "Missing header: X-Wazuh-Agent-Id", {{"Content-Type", "text/plain"}}};
         }
 
         DBStatement stmt( // LCOV_EXCL_LINE
@@ -66,7 +68,7 @@ public:
             resObj.agentGroups.push_back(stmt.template value<std::string>(0));
         }
 
-        res.set_content(serializeToJSON(resObj), "application/json");
+        return wazuh::uds_http::HttpResponse::json(200, serializeToJSON(resObj));
     }
 };
 

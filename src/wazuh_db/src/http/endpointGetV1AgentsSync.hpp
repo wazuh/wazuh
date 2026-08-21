@@ -14,7 +14,7 @@
 
 #include "reflectiveJson.hpp"
 #include "sqlite3Wrapper.hpp"
-#include <httplib.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 /**
  * @brief TEndpointGetV1AgentsSync class.
@@ -76,10 +76,9 @@ public:
      * synced.
      *
      * @param db The database connection.
-     * @param req The HTTP request.
-     * @param res The HTTP response.
+     * @return The HTTP response.
      */
-    static void call(const DBConnection& db, [[maybe_unused]] const httplib::Request& req, httplib::Response& res)
+    static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest&)
     {
         constexpr size_t RESERVE_SIZE = 32 * 1024 * 1024; // Size to avoid reallocation/fragmentation.
 
@@ -169,9 +168,10 @@ public:
             stmtSynced.step();
         }
 
-        res.body.reserve(RESERVE_SIZE);
-        serializeToJSON(resObj, res.body);
-        res.set_header("Content-Type", "application/json");
+        std::string jsonResponse;
+        jsonResponse.reserve(RESERVE_SIZE);
+        serializeToJSON(resObj, jsonResponse);
+        return wazuh::uds_http::HttpResponse::json(200, std::move(jsonResponse));
     }
 };
 

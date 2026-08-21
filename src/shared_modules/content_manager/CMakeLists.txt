@@ -36,7 +36,6 @@ include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
-include_directories(${SHARED_MODULES}/http-request/include)
 include_directories(${SHARED_MODULES}/content_manager/src/components)
 include_directories(${SHARED_MODULES}/indexer_connector/include)
 
@@ -47,14 +46,13 @@ link_directories(${SHARED_MODULES}/indexer_connector/build)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)
 link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
-link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
 file(GLOB CONTENT_DOWNLOAD_SRC "src/*.cpp")
 
 add_library(content_manager SHARED ${CONTENT_DOWNLOAD_SRC})
 
-target_link_libraries(content_manager PRIVATE urlrequest gcc_s wazuhext
+target_link_libraries(content_manager PRIVATE gcc_s wazuhext
                                               rocksdb flatbuffers indexer_connector)
 
 set_target_properties(content_manager PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE

@@ -14,7 +14,10 @@
 
 #include "reflectiveJson.hpp"
 #include "sqlite3Wrapper.hpp"
-#include <httplib.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
+
+#include <algorithm>
+#include <cctype>
 
 /**
  * @brief EndpointPostV1AgentsSummary class.
@@ -45,9 +48,9 @@ public:
      *
      * @param db The database connection.
      * @param req The HTTP request.
-     * @param res The HTTP response.
+     * @return The HTTP response.
      */
-    static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
+    static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest& req)
     {
         // Queries for connections
         constexpr std::string_view queryConnection = // LCOV_EXCL_LINE
@@ -182,8 +185,7 @@ public:
 
         std::string jsonResponse;
         serializeToJSON(response, jsonResponse);
-        res.body = std::move(jsonResponse);
-        res.set_header("Content-Type", "application/json");
+        return wazuh::uds_http::HttpResponse::json(200, std::move(jsonResponse));
     }
 };
 

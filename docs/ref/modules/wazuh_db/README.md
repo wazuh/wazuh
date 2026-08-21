@@ -108,6 +108,6 @@ There is no `In progress`, `Done`, `Failed`, `Timeout`, or `Cancelled` status â€
 | `src/wdb_pool.c` | Global pool of open `wdb_t` handles keyed by name (red-black tree), used by the worker threads |
 | `src/wdb_state.c` | Runtime statistics/state tracking (query counters, timings) exposed via `getstats` |
 | `src/wdb_upgrade.c` | Sequential schema migration runner for `global.db` (`wdb_upgrade_global`) |
-| `src/httpsrv/` | HTTP API implementation (`wdb_http.cpp`/`.h` plus per-endpoint handlers) backing the `wdb-http.sock` REST interface described above |
+| `src/http/` | HTTP API implementation (`wdb_http.cpp`/`.h` plus per-endpoint handlers) backing the `wdb-http.sock` REST interface described above |
 | `schemas/schema_global.sql` | DDL for `global.db` |
 | `schemas/schema_task_manager.sql` | DDL for `tasks.db` |
