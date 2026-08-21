@@ -179,6 +179,9 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
                },
+        1212: {'message': 'Invalid filename. It resolves outside of the expected rules directory.',
+               'remediation': 'Please, do not use path traversal sequences in the filename'
+               },
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -259,6 +262,9 @@ class WazuhException(Exception):
                                '(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the decoders'
+               },
+        1508: {'message': 'Invalid filename. It resolves outside of the expected decoders directory.',
+               'remediation': 'Please, do not use path traversal sequences in the filename'
                },
 
         # Syscheck/AR: 1600 - 1699

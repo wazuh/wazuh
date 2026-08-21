@@ -372,6 +372,18 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
                         upload_list_file(filename='test', content='test:content', overwrite=False)
 
 
+@patch('wazuh.cdb_list.upload_file')
+@patch('wazuh.cdb_list.safe_move')
+@patch('wazuh.cdb_list.exists', return_value=False)
+def test_upload_list_file_path_traversal(mock_exists, mock_safe_move, mock_upload_file):
+    """Check that a filename with path traversal sequences is rejected and the file is not written."""
+    result = upload_list_file(filename='../../../../../../tmp/poc_cdb_traversal',
+                              content='test_key:test_value\n', overwrite=True)
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1805
+    mock_upload_file.assert_not_called()
+
+
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
 def test_delete_list_file(mock_delete_file):
     """Check that expected result is returned when the file is deleted."""
