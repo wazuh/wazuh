@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Improved cluster non-merged file path validation during worker file processing. ([#38377](https://github.com/wazuh/wazuh/pull/38377))
 - Improved cluster worker file path validation. ([#38378](https://github.com/wazuh/wazuh/pull/38378))
 - Improved destination path validation when uploading CDB list, rule, and decoder files. ([#38379](https://github.com/wazuh/wazuh/pull/38379))
+- Improved cluster master validation of the files received from worker nodes. ([#38380](https://github.com/wazuh/wazuh/pull/38380))
 
 
 ## [v4.10.4]
