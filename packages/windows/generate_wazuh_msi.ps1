@@ -92,13 +92,15 @@ function BuildWazuhMsi(){
             "..\syscheckd\build\bin\libfimdb.dll"
         )
 
-        # Expand each pattern ourselves so a zero-match glob is a deliberate skip,
-        # not an ambiguous signtool exit code.
         foreach ($pattern in $filesToSign) {
             $matchedFiles = @(Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue)
             if ($matchedFiles.Count -eq 0) {
-                Write-Host "No files matched $pattern, skipping."
-                continue
+                if ($pattern -match '[*?]') {
+                    Write-Host "No files matched $pattern, skipping."
+                    continue
+                } else {
+                    throw "SignTool Error: expected file not found: $pattern"
+                }
             }
             foreach ($file in $matchedFiles) {
                 Write-Host "Signing $($file.FullName)..."
