@@ -288,6 +288,16 @@ extern "C"
                                           ///< over it -> 413. Range 0..1048576. <=0 -> 65536.
         int control_max_sessions;         ///< Concurrent control-class sessions; over it -> 503.
                                           ///< Range 0..1024. <=0 -> 256.
+
+        /* ---- Per-request bound of both indexer connectors -- APPENDED, same ABI rule as above.
+         *      The connectors also accept 0 (no bound), but that is the unbounded-blocking bug this
+         *      option exists to prevent, so it is deliberately not reachable from here: the option's
+         *      minimum is 1 and <=0 means "use the connector default". ---- */
+        int indexer_sync_request_timeout_seconds;  ///< Cap, seconds, on one HTTP request against the
+                                                   ///< indexer. -> `request_timeout_seconds`.
+                                                   ///< <=0 -> 60 s.
+        int indexer_async_request_timeout_seconds; ///< Same, for the async connector.
+                                                   ///< -> `request_timeout_seconds`. <=0 -> 60 s.
     } inventory_sync_server_config_t;
 
     /**

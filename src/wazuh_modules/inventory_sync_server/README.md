@@ -255,6 +255,12 @@ TLS, credentials — owned by the shared connector) and the module's `indexer_sy
 `indexer_async_*` internal-option overlays (buffer sizes, retry ceilings — owned here). The
 adapter in `src/indexer/indexerConnectorConfig.*` is where the overlay is applied.
 
+Both families include a `..._request_timeout_seconds` option (60 s default, range 1–3600),
+mapped to the connectors' `request_timeout_seconds`: the cap on any single HTTP request against
+the indexer. The connectors themselves also accept `0` (no bound), but that is the
+unbounded-blocking behavior the cap exists to prevent, so `0` is deliberately not reachable
+through these internal options.
+
 ## The request path
 
 ```mermaid

@@ -37,8 +37,9 @@ namespace invsync::indexer
     /**
      * @brief Overlays the SYNC connector's tunables onto the raw <indexer> block.
      *
-     * Emits `max_bulk_size`, `flush_interval_seconds` and `max_retry_delay_seconds` -- the three keys
-     * IndexerConnectorSync reads. `hosts` and `ssl.*` pass through untouched.
+     * Emits `max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds` and
+     * `request_timeout_seconds` -- the four keys IndexerConnectorSync reads. `hosts` and `ssl.*`
+     * pass through untouched.
      *
      * @param indexerConfig The raw <indexer> block (unmodified; the return value is a copy).
      * @param config The module's C-ABI configuration; only the `indexer_sync_*` fields are read.
@@ -51,8 +52,8 @@ namespace invsync::indexer
      * @brief Overlays the ASYNC connector's tunables onto the raw <indexer> block.
      *
      * Emits `bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`, `max_queue_bytes`,
-     * `logger_queue_size` and `logger_threads` -- the six keys IndexerConnectorAsync reads. `hosts`
-     * and `ssl.*` pass through untouched.
+     * `logger_queue_size`, `logger_threads` and `request_timeout_seconds` -- the seven keys
+     * IndexerConnectorAsync reads. `hosts` and `ssl.*` pass through untouched.
      *
      * @param indexerConfig The raw <indexer> block (unmodified; the return value is a copy).
      * @param config The module's C-ABI configuration; only the `indexer_async_*` fields are read.
