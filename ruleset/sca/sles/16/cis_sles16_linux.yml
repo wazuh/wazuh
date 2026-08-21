@@ -21,9 +21,10 @@ policy:
 requirements:
   name: "Check SUSE 16 version"
   description: "Requirements for running the SCA scan against SUSE Linux Enterprise Server 16"
-  condition: all
+  condition: any
   rules:
     - "f:/etc/os-release -> r:SUSE Linux Enterprise Server 16"
+    - "f:/etc/os-release -> r:openSUSE Leap 16"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
