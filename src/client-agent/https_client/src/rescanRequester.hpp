@@ -48,7 +48,8 @@ class RescanRequester final
     public:
         RescanRequester(const ModuleConfig& config, IHttpPerformer& performer,
                         const ISigner& signer, IClock& clock, IRandom& random,
-                        AuthGate& authGate, IVdOffsetStore& store);
+                        AuthGate& authGate, CompressionGate& compressionGate,
+                        IVdOffsetStore& store);
 
         /// Attempts to satisfy the pending re-scan for `offset` (as reported by
         /// IVdOffsetStore::observe()). Returns true if the request succeeded

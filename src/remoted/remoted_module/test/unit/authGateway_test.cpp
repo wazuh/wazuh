@@ -10,8 +10,8 @@
  */
 
 #include "auth/cmac.hpp"
-#include "endpoints/authGateway.hpp"
 #include "decoding/bodyDecoder.hpp"
+#include "endpoints/authGateway.hpp"
 #include "fakeHttpServer.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "zstdTestHelper.hpp"
@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
@@ -44,11 +45,13 @@ namespace
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
+        // Registered as `any`: the known agent may connect from any address.
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId agentId,
+                                                         std::string_view) const override
         {
             if (agentId == 1)
             {
-                return std::vector<std::uint8_t>(16, 0x0A); // 16-byte AES-128 key
+                return remoted::auth::AgentLookup {std::vector<std::uint8_t>(16, 0x0A), true};
             }
             return std::nullopt;
         }
@@ -60,7 +63,7 @@ namespace
     class ThrowingKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId) const override
+        std::optional<remoted::auth::AgentLookup> lookup(remoted::auth::AgentId, std::string_view) const override
         {
             throw std::runtime_error("simulated keystore I/O failure");
         }
@@ -123,7 +126,7 @@ namespace
     std::string
     buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
     {
-        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::keyFor(1) ("001" on the wire)
+        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::lookup(1) ("001" on the wire)
         remoted::auth::Cmac cmac(key);
         cmac.update("WAZUH-REQUEST\n");
         cmac.update("1\n"); // protocol-version
@@ -185,10 +188,8 @@ TEST(AuthGatewayTest, ForwardsTheResponseModeToTheServer)
     FakeHttpServer server;
     auto gateway = makeGateway();
 
-    gateway.addAuthenticatedRoute(
-        server, Method::Post, "/buffered", [](auto, auto) {});
-    gateway.addAuthenticatedRoute(
-        server, Method::Post, "/streamed", [](auto, auto) {}, ResponseMode::Streamable);
+    gateway.addAuthenticatedRoute(server, Method::Post, "/buffered", [](auto, auto) {});
+    gateway.addAuthenticatedRoute(server, Method::Post, "/streamed", [](auto, auto) {}, ResponseMode::Streamable);
 
     EXPECT_EQ(server.modeOf(Method::Post, "/buffered"), ResponseMode::Buffered) << "default must stay buffered";
     EXPECT_EQ(server.modeOf(Method::Post, "/streamed"), ResponseMode::Streamable);
@@ -284,26 +285,34 @@ TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
 
     std::string seenAgentId;
     std::string seenBody;
+    std::chrono::steady_clock::time_point seenReceivedAt {};
     gateway.addAuthenticatedRoute(
         server,
         Method::Post,
         "/stateless",
-        [&seenAgentId, &seenBody](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                                  std::shared_ptr<IHttpResponder> responder)
+        [&seenAgentId, &seenBody, &seenReceivedAt](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                                   std::shared_ptr<IHttpResponder> responder)
         {
             seenAgentId = authReq->agentId;
             seenBody = std::string {authReq->payload.bytes()}; // zero-copy view of the verified body
+            seenReceivedAt = authReq->receivedAt;
             responder->send(HttpResponse::json(200, R"({"ok":true})"));
         });
 
+    const auto before = std::chrono::steady_clock::now();
     const auto request = signedRequest("some-body");
     auto responder = std::make_shared<CapturingResponder>();
     server.dispatch(Method::Post, "/stateless", request, responder);
+    const auto after = std::chrono::steady_clock::now();
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(responder->captured->status, 200);
     EXPECT_EQ(seenAgentId, "001");    // the handler received the authenticated identity
     EXPECT_EQ(seenBody, "some-body"); // ... and a valid view of the payload
+    // ... stamped with a receipt time from within the dispatch window (the origin of the
+    // remoted.http.<endpoint>.latency measurement), not the "never stamped" epoch default.
+    EXPECT_GE(seenReceivedAt, before);
+    EXPECT_LE(seenReceivedAt, after);
 }
 
 TEST(AuthGatewayTest, PayloadOutlivesDispatchAndReleaseKeepsMetadata)
@@ -376,7 +385,7 @@ TEST(AuthGatewayTest, KeystoreThrowDuringAuthYields500)
                                   [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
                                                    std::shared_ptr<IHttpResponder>) { handlerCalled = true; });
 
-    // keyFor() is called from inside beginSession() -- exactly the code that used to run outside
+    // lookup() is called from inside beginSession() -- exactly the code that used to run outside
     // the gateway's try/catch. This must not escape dispatch() (in production, it would otherwise
     // std::terminate() the whole process on the worker-pool thread).
     const auto request = signedRequest("some-body");
@@ -504,10 +513,10 @@ TEST_P(AuthGatewayDecoderErrorTest, DecoderErrorIsAnsweredAndTheHandlerIsSkipped
     const auto [decoderError, expectedStatus] = GetParam();
 
     FakeHttpServer server;
-    AuthGateway gateway {remoted::auth::AuthConfig {},
-                         std::make_shared<FakeKeystore>(),
-                         stubDecoder([decoderError = decoderError](ContentEncoding, remoted::auth::Payload&)
-                                     { return decoderError; })};
+    AuthGateway gateway {
+        remoted::auth::AuthConfig {},
+        std::make_shared<FakeKeystore>(),
+        stubDecoder([decoderError = decoderError](ContentEncoding, remoted::auth::Payload&) { return decoderError; })};
 
     bool handlerCalled = false;
     gateway.addAuthenticatedRoute(server,
@@ -529,12 +538,11 @@ TEST_P(AuthGatewayDecoderErrorTest, DecoderErrorIsAnsweredAndTheHandlerIsSkipped
     EXPECT_FALSE(handlerCalled);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    DecoderErrors,
-    AuthGatewayDecoderErrorTest,
-    ::testing::Values(std::make_pair(remoted::auth::AuthError::UnsupportedContentEncoding, 415),
-                      std::make_pair(remoted::auth::AuthError::MalformedContentEncoding, 400),
-                      std::make_pair(remoted::auth::AuthError::BodyTooLarge, 413)));
+INSTANTIATE_TEST_SUITE_P(DecoderErrors,
+                         AuthGatewayDecoderErrorTest,
+                         ::testing::Values(std::make_pair(remoted::auth::AuthError::UnsupportedContentEncoding, 415),
+                                           std::make_pair(remoted::auth::AuthError::MalformedContentEncoding, 400),
+                                           std::make_pair(remoted::auth::AuthError::BodyTooLarge, 413)));
 
 TEST(AuthGatewayTest, DecoderIsNotRunWhenAuthenticationFails)
 {
@@ -661,20 +669,20 @@ TEST(AuthGatewayTest, ManyConcurrentZstdRequestsNeverOvershootTheBudget)
     std::vector<std::shared_ptr<const remoted::auth::AuthenticatedRequest>> held;
     std::atomic<int> handlerCalls {0};
 
-    gateway.addAuthenticatedRoute(server,
-                                  Method::Post,
-                                  "/stateless",
-                                  [&mutex, &held, &handlerCalls](
-                                      std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
-                                      std::shared_ptr<IHttpResponder> responder)
-                                  {
-                                      handlerCalls.fetch_add(1);
-                                      {
-                                          std::lock_guard<std::mutex> lock {mutex};
-                                          held.push_back(std::move(authReq));
-                                      }
-                                      responder->send(HttpResponse::json(200, "{}"));
-                                  });
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&mutex, &held, &handlerCalls](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                       std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalls.fetch_add(1);
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                held.push_back(std::move(authReq));
+            }
+            responder->send(HttpResponse::json(200, "{}"));
+        });
 
     const auto request = signedRequestWithContentEncoding(compressed, "zstd");
     std::vector<std::shared_ptr<CapturingResponder>> responders(kRequests);

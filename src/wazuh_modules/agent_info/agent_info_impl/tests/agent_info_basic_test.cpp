@@ -293,15 +293,16 @@ TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
 
 // Regression test for the clean-stop ordering fix (issues #37629 / #37714).
 //
-// stop() must not return until the run loop has exited, so that shared resources
-// (the main DBSync connection and the sync-protocol SQLite connection) are only
-// torn down once no other thread is using them.
+// stop() is signal-only: it must return promptly even with the run loop mid-iteration,
+// so the shutdown loop can reach the sibling modules this loop may be waiting on.
+// The teardown of the shared resources is not skipped, it just stops
+// being stop()'s job: releaseResources() performs it, and the module thread calls it on
+// its way out (wm_agent_info_main), so joining that thread is what guarantees no other
+// thread is still using them.
 //
-// The run loop calls ISysInfo::os() near the top of populateAgentMetadata(). We
-// hold it there for a fixed window so the loop is provably still active when
-// stop() is called: stop() blocks for that window; before it, stop()
-// returned immediately.
-TEST_F(AgentInfoImplTest, StopWaitsForRunLoopToExit)
+// The run loop calls ISysInfo::os() near the top of populateAgentMetadata(). We hold it
+// there for a fixed window so the loop is provably still active when stop() is called.
+TEST_F(AgentInfoImplTest, StopSignalsWithoutWaitingAndReleaseIsSeparate)
 {
     constexpr auto HOLD = std::chrono::milliseconds(300);
 
@@ -334,18 +335,82 @@ TEST_F(AgentInfoImplTest, StopWaitsForRunLoopToExit)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
+    clearLogOutput();
     const auto start = std::chrono::steady_clock::now();
     agentInfo->stop();
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
-    // AFTER the fix stop() blocks until the in-flight run-loop iteration finishes;
-    // BEFORE the fix it returned immediately (< 1 ms).
-    EXPECT_GE(elapsed, HOLD / 2) << "stop() returned before the run loop had exited";
+    // stop() only signals, so it must not sit out the in-flight iteration.
+    EXPECT_LT(elapsed, HOLD / 2) << "stop() blocked instead of only signalling";
 
+    // The signal still ends the loop promptly.
     loopThread.join();
+    EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("AgentInfo module loop ended"))
+            << "stop() did not make the run loop exit";
+
+    // And the teardown stop() used to perform is now a separate, explicit step, which
+    // the module thread runs on its way out. It must actually close the connection.
+    clearLogOutput();
+    agentInfo->releaseResources();
+    EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("DBSync connection closed"))
+            << "releaseResources() did not close the DBSync connection";
 }
 
-// After stop() tears down the sync protocol, the asynchronous response path
+TEST_F(AgentInfoImplTest, ReleaseResourcesRefusesWhileRunLoopIsActive)
+{
+    // stop() no longer waits for the run loop, and the join that is supposed to guarantee
+    // the loop finished is not authoritative: stop_wmodules() and wm_handler() only log
+    // when their shutdown budget expires and then carry on to process exit, which runs
+    // ~AgentInfoImpl() -> releaseResources(). Freeing m_dBSync / the sync protocol with the
+    // loop still inside synchronizeMetadataOrGroups() would be a use-after-free, so the
+    // teardown has to decline and leave the handles to process teardown.
+    constexpr auto HOLD = std::chrono::milliseconds(400);
+
+    auto mockSysInfo = std::make_shared<MockSysInfo>();
+    std::atomic<bool> loopInBody{false};
+
+    EXPECT_CALL(*mockSysInfo, os())
+    .WillRepeatedly(::testing::Invoke([&]() -> nlohmann::json
+    {
+        loopInBody.store(true, std::memory_order_release);
+        std::this_thread::sleep_for(HOLD);
+        return nlohmann::json::object();
+    }));
+
+    auto agentInfo =
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
+
+    std::thread loopThread([&]()
+    {
+        agentInfo->start(3600, 86400, []()
+        {
+            return true;
+        });
+    });
+
+    while (!loopInBody.load(std::memory_order_acquire))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    clearLogOutput();
+    agentInfo->releaseResources();
+    EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("run loop still active"))
+            << "releaseResources() tore down while the run loop was running";
+    EXPECT_THAT(getLogOutput(), ::testing::Not(::testing::HasSubstr("DBSync connection closed")))
+            << "releaseResources() closed DBSync under a live run loop";
+
+    agentInfo->stop();
+    loopThread.join();
+
+    // Once the loop has exited, the same call must do the teardown it just refused.
+    clearLogOutput();
+    agentInfo->releaseResources();
+    EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("DBSync connection closed"))
+            << "releaseResources() did not close the DBSync connection after the loop ended";
+}
+
+// After the sync protocol is torn down, the asynchronous response path
 // (parseResponseBuffer, called on the dispatch thread) must fail gracefully
 // instead of dereferencing the freed sync protocol.
 TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
@@ -357,8 +422,10 @@ TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
 
     const uint8_t data[] = {0x01, 0x02, 0x03};
 
-    // stop() destroys the sync protocol under m_syncProtocolMutex.
+    // stop() signals; releaseResources() destroys the sync protocol under
+    // m_syncProtocolMutex. On the module thread these run in that order.
     m_agentInfo->stop();
+    m_agentInfo->releaseResources();
 
     // The now-torn-down protocol must be rejected safely (no use-after-free).
     clearLogOutput();

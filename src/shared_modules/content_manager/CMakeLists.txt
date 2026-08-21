@@ -19,6 +19,11 @@ endif()
 
 # Include directories
 include_directories(include)
+# The on-demand entry point (contentOnDemand.hpp / onDemandManager) answers through the shared
+# UDS transport's deferred responder. Header-only use: IHttpResponder is a pure interface and
+# HttpResponse is inline, so no link against the archive is needed here -- the responder objects
+# arrive at runtime from the server the vulnerability scanner runs.
+include_directories(${SRC_FOLDER}/shared_modules/uds_http_server/include)
 
 include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/shared/include)

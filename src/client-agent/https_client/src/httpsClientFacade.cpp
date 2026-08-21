@@ -13,6 +13,7 @@
 
 #include "curlHandle.hpp"
 
+#include <exception>
 #include <functional>
 #include <string>
 
@@ -80,7 +81,22 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
 
 HttpsClientFacade::~HttpsClientFacade()
 {
-    stop();
+    // stop() is a long best-effort teardown chain (thread joins, JSON
+    // serialization, the sync intake) and is not noexcept; a destructor is
+    // implicitly noexcept(true), so letting anything escape here would call
+    // std::terminate() instead of completing a graceful shutdown. (CID 562609)
+    try
+    {
+        stop();
+    }
+    catch (const std::exception& e)
+    {
+        LOGFN_ERROR(m_logFn, "Exception during https_client shutdown: %s", e.what());
+    }
+    catch (...)
+    {
+        LOGFN_ERROR(m_logFn, "Unknown exception during https_client shutdown.");
+    }
 }
 
 bool HttpsClientFacade::start()
@@ -108,10 +124,11 @@ bool HttpsClientFacade::start()
     }
 
     LOGFN_INFO(m_logFn,
-               "Starting https_client (server=%s:%u, agent=%s).",
+               "Starting https_client (server=%s:%u, agent=%s, body compression %s).",
                m_config.serverHost.c_str(),
                m_config.serverPort,
-               m_config.agentId.c_str());
+               m_config.agentId.c_str(),
+               m_config.httpsCompressionEnabled ? "enabled" : "disabled");
     m_started = true;
     m_dispatcher.start();
     m_dispatcher.onStateChange(HC_STATE_STARTING);

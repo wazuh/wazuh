@@ -153,6 +153,27 @@ int __wrap_close(int __fd)
     return mock();
 }
 
+/* remoted_enrollment_config() calls ReadConfig(CAUTHD, ...) to read authd's own <auth> block.
+ * The mock returns a caller-queued status; on success it also populates the fields
+ * remoted_enrollment_config() actually reads, mirroring what Read_Authd() would have filled in. */
+int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
+{
+    check_expected(modules);
+    check_expected(cfgfile);
+    (void) d2;
+
+    int result = mock_type(int);
+    if (result == 0) {
+        authd_config_t *authd_cfg = (authd_config_t *) d1;
+        authd_cfg->flags.disabled = mock_type(int);
+        authd_cfg->flags.remote_enrollment = mock_type(int);
+        authd_cfg->flags.use_password = mock_type(int);
+        authd_cfg->flags.use_source_ip = mock_type(int);
+        authd_cfg->allow_higher_versions = mock_type(int);
+    }
+    return result;
+}
+
 /*****************WRAPS********************/
 int __wrap_w_mutex_lock(pthread_mutex_t* mutex)
 {
@@ -3385,13 +3406,133 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_false(rm_config.http_content_encoding_enabled);
 }
 
+// Tests remoted_enrollment_config
+//
+// Reads authd's own <auth> block via ReadConfig(CAUTHD, ...) -- deliberately NOT logr's
+// <remote> settings -- so /enroll and legacy port 1515 can never disagree on whether
+// password auth is required or which agent versions are acceptable.
+
+void test_remoted_enrollment_config_enabled_and_flags_passed_through(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, 0); // ReadConfig() succeeds
+    will_return(__wrap_ReadConfig, 0); // flags.disabled = 0 (enabled)
+    will_return(__wrap_ReadConfig, 1); // flags.remote_enrollment = 1
+    will_return(__wrap_ReadConfig, 1); // flags.use_password = 1
+    will_return(__wrap_ReadConfig, 0); // flags.use_source_ip = 0
+    will_return(__wrap_ReadConfig, 1); // allow_higher_versions = true
+    will_return(__wrap_getDefine_Int_default, 20);  // enroll_password_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 3);   // authd_connect_timeout
+    will_return(__wrap_getDefine_Int_default, 15);  // authd_response_timeout
+    will_return(__wrap_getDefine_Int_default, 128); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 4);   // authd_worker_threads
+
+    remoted_enrollment_config(&rm_config);
+
+    assert_true(rm_config.enrollment_enabled);
+    assert_true(rm_config.enroll_use_password);
+    assert_false(rm_config.enroll_use_source_ip);
+    assert_true(rm_config.enroll_allow_higher_versions);
+    assert_int_equal(rm_config.enroll_password_refresh_interval, 20);
+    assert_int_equal(rm_config.authd_connect_timeout, 3);
+    assert_int_equal(rm_config.authd_response_timeout, 15);
+    assert_int_equal(rm_config.authd_max_queue_size, 128);
+    assert_int_equal(rm_config.authd_worker_threads, 4);
+}
+
+void test_remoted_enrollment_config_authd_disabled_wins(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    // flags.disabled=1 must disable enrollment even though remote_enrollment=1 --
+    // <disabled> is authd's global kill switch, taking precedence over everything else.
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 1); // flags.disabled = 1
+    will_return(__wrap_ReadConfig, 1); // flags.remote_enrollment = 1
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
+
+    remoted_enrollment_config(&rm_config);
+
+    assert_false(rm_config.enrollment_enabled);
+}
+
+void test_remoted_enrollment_config_remote_enrollment_off(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    // remote_enrollment=0 (the broadened master switch) disables /enroll even though authd
+    // itself is not <disabled> -- legacy_enrollment plays no part in this decision.
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 0); // flags.disabled = 0
+    will_return(__wrap_ReadConfig, 0); // flags.remote_enrollment = 0
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_ReadConfig, 0);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
+
+    remoted_enrollment_config(&rm_config);
+
+    assert_false(rm_config.enrollment_enabled);
+}
+
+void test_remoted_enrollment_config_read_config_fails_closed(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+    // Poison the field with a value ReadConfig() succeeding would never produce, so a bug
+    // that skips the fail-closed assignment shows up as a mismatched assert.
+    rm_config.enrollment_enabled = true;
+
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, OS_INVALID);
+    // The operational knobs are read unconditionally, regardless of ReadConfig()'s outcome.
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8);
+
+    remoted_enrollment_config(&rm_config);
+
+    assert_false(rm_config.enrollment_enabled);
+    assert_int_equal(rm_config.enroll_password_refresh_interval, 10);
+    assert_int_equal(rm_config.authd_connect_timeout, 2);
+    assert_int_equal(rm_config.authd_response_timeout, 0);
+    assert_int_equal(rm_config.authd_max_queue_size, 256);
+    assert_int_equal(rm_config.authd_worker_threads, 8);
+}
+
 /* Tests w_remoted_build_module_config */
 //
 // w_remoted_build_module_config() calls remoted_module_https_config() internally, so
 // each test below must queue the same 25 __wrap_getDefine_Int_default return values
 // (13 http_*, then 3 memory-management, then 6 downstream_*, then 3 auth_*, in that
 // fixed order) as the remoted_module_https_config tests above, even though these
-// tests assert on the <https>-driven fields instead.
+// tests assert on the <https>-driven fields instead. Each also queues one
+// __wrap_ReadConfig scenario (see remoted_enrollment_config tests above) plus its 5
+// getDefine_Int_default calls.
 
 void test_w_remoted_build_module_config_all_fields_populated(void** state)
 {
@@ -3441,6 +3582,22 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 10485760);
 
+    // remoted_enrollment_config(): ReadConfig(CAUTHD, ...) succeeds with a "normally enabled"
+    // authd config, then its own 4 getDefine_Int_default calls.
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, 0);  // ReadConfig() succeeds
+    will_return(__wrap_ReadConfig, 0);  // flags.disabled = 0 (enabled)
+    will_return(__wrap_ReadConfig, 1);  // flags.remote_enrollment = 1
+    will_return(__wrap_ReadConfig, 1);  // flags.use_password = 1
+    will_return(__wrap_ReadConfig, 1);  // flags.use_source_ip = 1
+    will_return(__wrap_ReadConfig, 1);  // allow_higher_versions = true
+    will_return(__wrap_getDefine_Int_default, 10);  // enroll_password_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 2);   // authd_connect_timeout
+    will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout (0 = worker-aware default)
+    will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
+
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&test_logr, &rm_config);
 
@@ -3456,6 +3613,16 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
     // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
+
+    assert_true(rm_config.enrollment_enabled);
+    assert_true(rm_config.enroll_use_password);
+    assert_true(rm_config.enroll_use_source_ip);
+    assert_true(rm_config.enroll_allow_higher_versions);
+    assert_int_equal(rm_config.enroll_password_refresh_interval, 10);
+    assert_int_equal(rm_config.authd_connect_timeout, 2);
+    assert_int_equal(rm_config.authd_response_timeout, 0);
+    assert_int_equal(rm_config.authd_max_queue_size, 256);
+    assert_int_equal(rm_config.authd_worker_threads, 8);
 }
 
 void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
@@ -3494,6 +3661,17 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 10485760);
 
+    // remoted_enrollment_config(): ReadConfig(CAUTHD, ...) fails outright here (e.g. a
+    // malformed <auth> block) -- enrollment_enabled must fail closed, not default to enabled.
+    expect_value(__wrap_ReadConfig, modules, CAUTHD);
+    expect_string(__wrap_ReadConfig, cfgfile, WAZUHCONF);
+    will_return(__wrap_ReadConfig, OS_INVALID);
+    will_return(__wrap_getDefine_Int_default, 10);  // enroll_password_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 2);   // authd_connect_timeout
+    will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout
+    will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
+
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&test_logr, &rm_config);
 
@@ -3505,6 +3683,8 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_string_equal(rm_config.private_key_path, "");
     assert_string_equal(rm_config.ca_path, "");
     assert_string_equal(rm_config.ciphers, "");
+
+    assert_false(rm_config.enrollment_enabled);
 }
 
 int main(void)
@@ -3575,6 +3755,11 @@ int main(void)
         // Tests remoted_module_https_config
         cmocka_unit_test(test_remoted_module_https_config_defaults),
         cmocka_unit_test(test_remoted_module_https_config_custom_values),
+        // Tests remoted_enrollment_config
+        cmocka_unit_test(test_remoted_enrollment_config_enabled_and_flags_passed_through),
+        cmocka_unit_test(test_remoted_enrollment_config_authd_disabled_wins),
+        cmocka_unit_test(test_remoted_enrollment_config_remote_enrollment_off),
+        cmocka_unit_test(test_remoted_enrollment_config_read_config_fails_closed),
         // Tests w_remoted_build_module_config
         cmocka_unit_test(test_w_remoted_build_module_config_all_fields_populated),
         cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty)};

@@ -19,6 +19,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 - [HTTPS Events API](https-events-api.md) - TLS endpoint + AES-CMAC agent authentication (experimental)
 - [Load balancers](load-balancers/README.md) - Deploying the HTTPS events API behind a load balancer or reverse proxy ([NGINX](load-balancers/nginx.md), [HAProxy](load-balancers/haproxy.md))
 - [Configuration](configuration.md) - Configuration options and tuning parameters
+- [Metrics](metrics.md) - The HTTPS agent server's metric catalog, each metric linked to the setting it helps size
 
 ## Overview
 
@@ -30,6 +31,24 @@ The remoted module serves as the primary entry point for all agent communication
 4. **Enriches events** with agent and host metadata
 5. **Forwards events** to the analysis engine for processing
 6. **Manages agent groups** and configuration synchronization
+
+## Local admin socket
+
+The C++ module serves its own metrics over a manager-local Unix socket,
+`queue/sockets/remoted-module.sock` (fixed path, mode `0660`), separate by design from the
+agent-facing HTTPS endpoint — statistics are never exposed on the public listener.
+
+| Route | Response |
+|---|---|
+| `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
+| `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
+A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
+keeps serving agents without it. The legacy `getstate` control socket is unaffected.
 
 ## Related Modules
 

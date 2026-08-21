@@ -196,8 +196,9 @@ Correctness lives in the QA above; load lives in `tools/manager_benchmark/` (pla
 this book): a Go sender that reproduces the agent's wire over the module's UDS socket or through
 remoted's relay. Its `contract_*` scenarios pin this module's `400`/`413`/`503` contracts under
 pressure (including the admission-queue shed and the VD lane's capacity), its `real_*` scenarios
-replay real captured payloads, and every run scrapes `GET /metrics` alongside the client-side
-counters. `tools/manager_benchmark/README.md` and `SCENARIOS.md` are the entry points.
+replay real captured payloads, and every run scrapes `GET /metrics` (catalog:
+[Metrics](metrics.md)) alongside the client-side counters. `tools/manager_benchmark/README.md`
+and `SCENARIOS.md` are the entry points.
 
 ## See Also
 

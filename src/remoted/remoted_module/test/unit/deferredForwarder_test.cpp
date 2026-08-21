@@ -12,6 +12,9 @@
 #include "downstream/IDownstreamClient.hpp"
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
+#include "downstream/forwarderMetrics.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -366,4 +369,193 @@ TEST(DeferredForwarderTest, ThrowingResponderIsSwallowed)
     // the slot must still be released even though the reply itself was lost.
     EXPECT_TRUE(waitFor([&] { return responder->called(); }));
     EXPECT_TRUE(waitFor([&] { return limiter->inFlight() == 0U; }));
+}
+
+// ---------------------------------------------------------------------------
+// Metric accounting (ForwarderMetrics + DownstreamTarget::httpMetrics)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // One rig per test: a real Manager, both metric sets, and a forwarder wired with them. The
+    // endpoint set lives here (not on a facade) -- the tests only need a stable address for the
+    // duration of the rig, the same guarantee the facade's value members give production targets.
+    struct MetricsRig
+    {
+        wazuh::metrics::Manager manager;
+        ForwarderMetrics forwarderMetrics {makeForwarderMetrics(manager)};
+        remoted::metrics::EndpointHttpMetrics endpointMetrics {
+            remoted::metrics::makeEndpointHttpMetrics(manager, "stateless", /*withLatency=*/true)};
+        std::shared_ptr<DeferredWorkLimiter> limiter;
+        std::shared_ptr<FakeDownstreamClient> client {std::make_shared<FakeDownstreamClient>()};
+        DeferredForwarder forwarder;
+
+        explicit MetricsRig(std::size_t capacity = 4)
+            : limiter {std::make_shared<DeferredWorkLimiter>(capacity)}
+            , forwarder {client, limiter, 1, forwarderMetrics}
+        {
+        }
+
+        DownstreamTarget metricTarget()
+        {
+            auto target = sampleTarget();
+            target.httpMetrics = &endpointMetrics;
+            return target;
+        }
+    };
+} // namespace
+
+// A limiter shed IS this endpoint's 503 (counted in its responses family, alongside the
+// limiter's own rejected.total), but it measures nothing about processing -- no latency.
+TEST(DeferredForwarderMetricsTest, LimiterShedCountsTheEndpoints503WithoutLatency)
+{
+    MetricsRig rig {1};
+
+    auto first = makeAuthReq("first"); // takes the only slot and parks
+    rig.forwarder.forward(first.req, std::make_shared<CapturingResponder>(), rig.metricTarget(), sampleMapper);
+
+    auto second = makeAuthReq("second");
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+    rig.forwarder.forward(second.req, responder, rig.metricTarget(), sampleMapper);
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 503);
+    EXPECT_EQ(rig.endpointMetrics.responses.c503->get(), 1U);
+    EXPECT_EQ(rig.limiter->rejectedTotal(), 1U);
+    EXPECT_EQ(rig.endpointMetrics.latency->snapshot().count, 0U); // sheds observe no latency
+}
+
+// Every DownstreamError kind lands in its own remoted.forwarder.error.* counter -- the "why"
+// axis -- while the delivered status (the mapper's verdict) lands in the endpoint's responses
+// family -- the "what". Distinct per-kind totals (1, 2, 3...) so swapped cells cannot cancel.
+TEST(DeferredForwarderMetricsTest, EachDownstreamErrorKindBumpsItsOwnCounter)
+{
+    MetricsRig rig;
+
+    const DownstreamError kinds[] = {DownstreamError::Connect,
+                                     DownstreamError::ConnectTimeout,
+                                     DownstreamError::WriteTimeout,
+                                     DownstreamError::ResponseTimeout,
+                                     DownstreamError::Transport,
+                                     DownstreamError::Protocol,
+                                     DownstreamError::ResponseTooLarge};
+    uint64_t expected = 0;
+    for (const auto kind : kinds)
+    {
+        ++expected;
+        for (uint64_t i = 0; i < expected; ++i)
+        {
+            auto fixture = makeAuthReq("body");
+            auto responder = std::make_shared<CapturingResponder>();
+            auto fut = responder->future();
+            rig.forwarder.forward(fixture.req, responder, rig.metricTarget(), sampleMapper);
+            rig.client->fire(kind, DownstreamResponse {});
+            ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+        }
+        EXPECT_EQ(rig.forwarderMetrics.byError[static_cast<std::size_t>(kind)]->get(), expected) << toString(kind);
+    }
+    // Slot None (downstream_5xx) and route_mismatch stayed untouched by transport failures.
+    EXPECT_EQ(rig.forwarderMetrics.byError[static_cast<std::size_t>(DownstreamError::None)]->get(), 0U);
+    EXPECT_EQ(rig.forwarderMetrics.routeMismatch->get(), 0U);
+}
+
+// A downstream 5xx (error == None) counts through slot None as downstream_5xx; a 404/405 counts
+// as route_mismatch; an in-contract answer counts as neither.
+TEST(DeferredForwarderMetricsTest, Downstream5xxAndRouteMismatchBumpTheirCounters)
+{
+    MetricsRig rig;
+
+    const auto deliverStatus = [&rig](int status)
+    {
+        auto fixture = makeAuthReq("body");
+        auto responder = std::make_shared<CapturingResponder>();
+        auto fut = responder->future();
+        rig.forwarder.forward(fixture.req, responder, rig.metricTarget(), sampleMapper);
+        rig.client->fire(DownstreamError::None, DownstreamResponse {status, ""});
+        ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    };
+
+    deliverStatus(500);
+    deliverStatus(503);
+    EXPECT_EQ(rig.forwarderMetrics.byError[static_cast<std::size_t>(DownstreamError::None)]->get(), 2U);
+
+    deliverStatus(404);
+    deliverStatus(405);
+    EXPECT_EQ(rig.forwarderMetrics.routeMismatch->get(), 2U);
+
+    deliverStatus(200);
+    EXPECT_EQ(rig.forwarderMetrics.byError[static_cast<std::size_t>(DownstreamError::None)]->get(), 2U);
+    EXPECT_EQ(rig.forwarderMetrics.routeMismatch->get(), 2U);
+}
+
+// The endpoint's responses family counts the status the PostProcessor actually delivered (its
+// verdict, not the raw downstream status), and a gateway-stamped receivedAt yields exactly one
+// latency observation.
+TEST(DeferredForwarderMetricsTest, DeliveredStatusIsCountedAndStampedRequestsObserveLatency)
+{
+    MetricsRig rig;
+
+    // A stamped request, the way the auth gateway hands them out in production.
+    auto buffer = std::make_shared<std::string>("body");
+    AuthenticatedRequest ar;
+    ar.agentId = "001";
+    ar.payload = Payload {std::string_view {*buffer}, buffer};
+    ar.receivedAt = std::chrono::steady_clock::now();
+    auto stamped = std::make_shared<const AuthenticatedRequest>(std::move(ar));
+
+    PostProcessor accepted = [](DownstreamError, const DownstreamResponse&)
+    {
+        return HttpResponse {202, "", {}};
+    };
+
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+    rig.forwarder.forward(std::move(stamped), responder, rig.metricTarget(), accepted);
+    rig.client->fire(DownstreamError::None, DownstreamResponse {200, ""});
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 202);
+    EXPECT_EQ(rig.endpointMetrics.responses.c2xx->get(), 1U); // the delivered 202, not the raw 200
+    const auto snapshot = rig.endpointMetrics.latency->snapshot();
+    EXPECT_EQ(snapshot.count, 1U);
+}
+
+// An unstamped receivedAt (epoch default: the request never went through the gateway, as in
+// most test rigs) still counts the response but records no latency -- never a bogus span.
+TEST(DeferredForwarderMetricsTest, UnstampedRequestCountsTheResponseButRecordsNoLatency)
+{
+    MetricsRig rig;
+
+    auto fixture = makeAuthReq("body"); // makeAuthReq leaves receivedAt at the epoch default
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+    rig.forwarder.forward(fixture.req, responder, rig.metricTarget(), sampleMapper);
+    rig.client->fire(DownstreamError::None, DownstreamResponse {200, ""});
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(rig.endpointMetrics.responses.c2xx->get(), 1U);
+    EXPECT_EQ(rig.endpointMetrics.latency->snapshot().count, 0U);
+}
+
+// The "PostProcessor threw -> 500" fallback is a delivered response like any other, so it lands
+// in the endpoint's 500 cell -- the accounting can never lose a request to an endpoint bug.
+TEST(DeferredForwarderMetricsTest, ThrowingPostProcessorCountsTheDelivered500)
+{
+    MetricsRig rig;
+
+    PostProcessor throwingMapper = [](DownstreamError, const DownstreamResponse&) -> HttpResponse
+    {
+        throw std::runtime_error("simulated PostProcessor bug");
+    };
+
+    auto fixture = makeAuthReq("body");
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+    rig.forwarder.forward(fixture.req, responder, rig.metricTarget(), throwingMapper);
+    rig.client->fire(DownstreamError::None, DownstreamResponse {200, ""});
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    EXPECT_EQ(fut.get().status, 500);
+    EXPECT_EQ(rig.endpointMetrics.responses.c500->get(), 1U);
 }

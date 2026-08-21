@@ -5869,7 +5869,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node readiness"
-      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready."
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready. wazuh-manager-apid is only reported on the master node, as it does not run on workers."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6109,8 +6109,8 @@ paths:
                         use_password: "no"
                         ciphers: "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
                         ssl_verify_host: "no"
-                        ssl_manager_cert: "etc/certs/authd.pem"
-                        ssl_manager_key: "etc/certs/authd-key.pem"
+                        ssl_manager_cert: "etc/certs/remoted.pem"
+                        ssl_manager_key: "etc/certs/remoted-key.pem"
                       cluster:
                         name: "wazuh"
                         node_name: "master-node"

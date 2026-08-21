@@ -177,19 +177,12 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
     return 0;
 }
 
-/* bridge_build_config() also reads the compression toggle via
- * getDefine_Int_default(), which -- unlike getDefine_Int() above -- returns
- * default_val instead of merror_exit()ing when the key is missing. No case
- * here exercises it either, so answer with the shipped default. */
 int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
 {
     (void)high_name;
+    (void)low_name;
     (void)min;
     (void)max;
-
-    if (strcmp(low_name, "https_compression_enabled") == 0) {
-        return 0;
-    }
 
     return default_val;
 }
@@ -444,6 +437,31 @@ static void test_none_verify_mode_maps_to_hc_verify_none(void **state)
     w_https_client_start();
 
     assert_int_equal(g_captured_config.verify_mode, HC_VERIFY_NONE);
+
+    w_https_client_stop();
+}
+
+/* With agent.https_compression_enabled absent from both defines files
+ * (what __wrap_getDefine_Int_default answers above), the module must still come
+ * up compressing. */
+static void test_compression_defaults_to_enabled(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_true(g_captured_config_valid);
+    assert_true(g_captured_config.https_compression_enabled);
 
     w_https_client_stop();
 }
@@ -2201,6 +2219,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_compression_defaults_to_enabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),

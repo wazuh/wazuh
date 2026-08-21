@@ -19,6 +19,8 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
                            -Wl,--wrap,fprintf -Wl,--wrap,popen -Wl,--wrap,pclose")
 list(APPEND os_auth_names "test_authd-config")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND os_auth_names "test_local-server")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

@@ -71,7 +71,7 @@ VD_STATUS_READY = {
 
 
 def _make_modulesd_mock(vd_status=None, side_effect=None):
-    """Return a (mock_cls, mock_instance) pair for ModulesdHTTPClient."""
+    """Return a (mock_cls, mock_instance) pair for VdHTTPClient."""
     mock_cls = MagicMock()
     mock_instance = MagicMock()
     if side_effect is not None:
@@ -82,7 +82,7 @@ def _make_modulesd_mock(vd_status=None, side_effect=None):
     return mock_cls, mock_instance
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -114,7 +114,7 @@ def test_get_status_all_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
     assert data['wazuh-manager-remoted'] == {'ready': True, 'running': True}
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_analysisd_not_ready(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -129,7 +129,7 @@ def test_get_status_analysisd_not_ready(mock_status, mock_engine_cls, mock_modul
     assert data['ready'] is False
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_engine_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -145,7 +145,7 @@ def test_get_status_engine_unreachable(mock_status, mock_engine_cls, mock_module
     assert data['ready'] is False
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-analysisd': 'stopped'})
 def test_get_status_analysisd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -159,7 +159,7 @@ def test_get_status_analysisd_stopped(mock_status, mock_engine_cls, mock_modules
     mock_engine_cls.assert_not_called()
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_modulesd_updating(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -175,7 +175,7 @@ def test_get_status_modulesd_updating(mock_status, mock_engine_cls, mock_modules
     assert data['ready'] is False
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_modulesd_unreachable(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -194,7 +194,7 @@ def test_get_status_modulesd_unreachable(mock_status, mock_engine_cls, mock_modu
     assert data['ready'] is False
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-modulesd': 'stopped'})
 def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -208,7 +208,7 @@ def test_get_status_modulesd_stopped(mock_status, mock_engine_cls, mock_modulesd
     mock_modulesd_cls.assert_not_called()
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modulesd_cls):
@@ -226,7 +226,7 @@ def test_get_status_modulesd_vd_disabled(mock_status, mock_engine_cls, mock_modu
     assert data['ready'] is True
 
 
-@patch('wazuh.manager.ModulesdHTTPClient')
+@patch('wazuh.manager.VdHTTPClient')
 @patch('wazuh.manager.EngineHTTPClient')
 @patch('wazuh.manager.status', return_value=manager_status)
 def test_get_status_modulesd_vd_failed(mock_status, mock_engine_cls, mock_modulesd_cls):

@@ -96,7 +96,7 @@ def get_manager_status(cache=False) -> typing.Dict:
     Returns
     -------
     data : dict
-        Dict whose keys are daemons and the values are the status.
+        Dict whose keys are daemons and the values are the status. The API daemon is only included on master nodes.
     """
     # Check /proc directory availability
     proc_path = "/proc"
@@ -107,7 +107,11 @@ def get_manager_status(cache=False) -> typing.Dict:
 
     processes = ['wazuh-manager-analysisd', 'wazuh-manager-authd', 'wazuh-manager-monitord',
                  'wazuh-manager-remoted', 'wazuh-manager-clusterd',
-                 'wazuh-manager-modulesd', 'wazuh-manager-db', 'wazuh-manager-apid']
+                 'wazuh-manager-modulesd', 'wazuh-manager-db']
+
+    # The API daemon is only started on the master node (src/init/wazuh-server.sh).
+    if read_config()['node_type'] == 'master':
+        processes.append('wazuh-manager-apid')
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
     for process in processes:

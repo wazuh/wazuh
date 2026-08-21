@@ -21,17 +21,25 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
+│   │   └── passwordKeySource.hpp/.cpp  # etc/authd.pass -> HKDF-CMAC key, see Agent enrollment below
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
-│   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below)
+│   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
+│   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
-│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
+│   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
 │   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
+│   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
 │   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
-│   ├── control/                    # ns remoted::control — 5.x agent control messages (/control)
-│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan queue (/scan/vd, see below)
-│   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
+│   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
+│   │                               #   metrics.hpp = remoted.control.* catalog
+│   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd,
+│   │                               #   see below); scanVdMetrics.hpp = remoted.scanvd.* catalog
+│   ├── enrollment/                 # ns remoted::enrollment — POST /enroll, bridges to authd (see below)
+│   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below);
+│                                   #   forwarderMetrics.hpp = remoted.forwarder.* failure catalog
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
     ├── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
@@ -44,13 +52,17 @@ remoted_module/
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
 `"auth/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`", `"control/...`",
-`"downstream/...`" — since `src/` is on the include path). New endpoints get their own folder under `src/endpoints/<name>/`.
+`"downstream/...`", and `"enrollment/...`" — since `src/` is on the include path). New
+endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
 Transport only. The module exposes an HTTPS endpoint behind a **transport-agnostic interface** so
 the underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later) can be swapped
 without touching any registered endpoint.
+
+Metrics: the transport's backpressure state is published as the `remoted.server.budget.*` pulls
+(via `IHttpServer::diagnostics()`) — see the [Metrics catalog](#metrics-catalog).
 
 ```
 src/http_server/
@@ -95,6 +107,13 @@ src/http_server/
        holds up to three concurrent reservations — wire body, decoder buffers, decoded output — which
        is correct: all three are genuinely in memory at that moment. Exhausting the budget there
        answers **`413`** (the request is too big for the capacity free *right now*), not `503`.
+       Only the *admission* reservation carries the request-level accounting: decoder reservations
+       are uncounted (`InFlightBudget::tryReserveUncounted()` — bytes only, and their refusal is
+       not a shed), and when the wire buffer is dropped in favor of the decoded body, the output
+       reservation is promoted (`Reservation::promoteToRequest()`) to inherit the request's
+       identity. That keeps `budget.inflight.requests` at exactly one per admitted request and
+       `budget.rejected.total` moving only on admission sheds — the decoder's `413` is counted in
+       `remoted.auth.reject.body_too_large` instead.
     2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
        early by closing the connection). *Note:* RESTinio 0.7.9 has no dynamic pre-body hook, so the
        budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
@@ -274,7 +293,7 @@ fetches pending tasks from task-manager for the agent.
 src/control/
 ├── controlTypes.hpp          # DTOs: AgentId, StartupData, NotifyData, ShutdownData, HostInfo, HttpResponse
 ├── controlConfig.hpp/.cpp    # ControlConfig + buildControlConfig() from C-ABI fields
-├── metrics.hpp               # ControlMetrics (atomic counters: startup/notify/shutdown/errors)
+├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
@@ -313,8 +332,8 @@ sequenceDiagram
     WDB-->>CH: groups
     CH->>AR: update(id, metadata)
     Note over AR: Sharded map insert/update
-    CH->>WDB: updateAgentData(id, version, groups, ...)
-    Note over WDB: Fire-and-forget async write
+    CH->>WDB: updateStatusCode(id, Ok, version, "pending")
+    Note over WDB: Fire-and-forget async write (version + pending keepalive)
     CH->>TC: getPendingTasks(id)
     TC-->>TM: async UDS query
     TM-->>TC: [task1, task2, ...]
@@ -328,7 +347,8 @@ sequenceDiagram
 1. **`startup`** — agent sends on connect or after config reload
    - **Request**: `{"type":"startup","version":"5.0.0"}`
    - Validates agent version (rejects if `< manager` when `allow_higher_versions=false`)
-   - Marks agent as connected in wazuh-db (global.db)
+   - Marks agent as `pending` in wazuh-db (global.db); the first notify promotes it to `active`
+   - Persists the accepted agent version and resets `status_code` (host/os data arrives later via notify)
    - Records connection timestamp
    - Fetches agent groups from wazuh-db
    - **Response**:
@@ -361,8 +381,10 @@ sequenceDiagram
      ```
    - Optional host metadata (OS, architecture, hostname, IP) — sent on first keepalive or when values change
    - Updates agent registry with last activity timestamp
-   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 300s):
-     - **Full update** (`updateAgentData`): when host metadata is present in the request
+   - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 60s):
+     - **Full update** (`updateAgentData`): when host metadata is present in the request. The first
+       host-carrying notify bypasses the throttle, so host/os data lands as soon as the agent reports it
+       even if an earlier metadata-less notify already consumed the window
      - **Lightweight keepalive** (`updateKeepalive`): when no host metadata in the request
    - Calculates `settings_hash` (SHA256 of limits + cluster + groups from agent's startup data)
    - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file)
@@ -400,10 +422,12 @@ Implements `handleStartup()`, `handleNotify()`, `handleShutdown()` with the logi
 Wazuh-db writes are throttled per agent via `lastKeepaliveUpdateSec` (in `AgentRegistry`) to avoid
 flooding wazuh-db with writes every 10 seconds. Full updates (`updateAgentData`) are sent when the
 agent includes host metadata in the notify request; lightweight keepalives (`updateKeepalive`) are
-sent otherwise. Both respect the `keepaliveThrottleSec` window (default 300s).
+sent otherwise. Both respect the `keepaliveThrottleSec` window (default 60s), except the first
+host-carrying notify (`hostPersisted` in `AgentEntry`), which always triggers a full update.
 
-Version comparison uses a local `compareVersions()` function for semantic versioning (e.g., `"v5.0.0"`
-vs `"v4.9.2"`), stripping leading `v`/`V` and ignoring everything after `-` or `+`.
+Version comparison uses `compareVersions()` (`control/controlTypes.hpp`, shared with `/enroll` -- see
+below) for semantic versioning (e.g., `"v5.0.0"` vs `"v4.9.2"`), stripping leading `v`/`V` and
+ignoring everything after `-` or `+`.
 
 #### AgentRegistry (`agentRegistry.hpp/.cpp`)
 
@@ -481,34 +505,53 @@ flooding from malformed agent requests.
 
 ### Configuration
 
-Via `ControlConfig` (`controlConfig.hpp/.cpp`), populated from C-ABI struct fields in
-`remoted_module_config_t` (see `secure.c`):
-- `managerVersion` — manager's semantic version (for version comparison)
-- `allowHigherVersions` — whether to accept agents with version > manager
-- `isWorkerNode` — true on worker nodes (affects sync_status values)
-- `agentRegistryTtlSec` — how long to keep idle agents in the registry (default 3600s)
-- `agentRegistryEvictionIntervalSec` — how often to run eviction (default 300s)
-- `wdbSocketPath` — path to wazuh-db UDS socket (default `queue/sockets/wdb`)
-- `wdbQueueSize` — wazuh-db client queue size (default 1024)
-- `wdbDeadlineMs` — wazuh-db request timeout (default 5000ms)
-- `taskSocketPath` — path to task-manager UDS socket (default `queue/sockets/task`)
-- `taskQueueSize` — task-manager client queue size (default 256)
-- `taskDeadlineMs` — task-manager request timeout (default 5000ms)
+Via `remoted::control::Config` (`controlConfig.hpp/.cpp`), populated by `buildControlConfig()`
+from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed by
+`remoted.control_*` internal options (`secure.c`, `remoted_module_control_config()`):
 
-Built via `remoted::control::buildControlConfig()` in the facade's startup.
+| `Config` field | Default | Internal option (`wazuh-manager-internal-options.conf`) |
+|---|---|---|
+| `managerVersion` | `__wazuh_version` | — (manager's own version, for comparison) |
+| `allowHigherVersions` | from XML | `<remote><agents><allow_higher_versions>` |
+| `isWorkerNode` | from cluster config | — |
+| `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
+| `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
+| `wdbRoundtripDeadlineMs` | 2000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
+| `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
+| `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
+| `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
+| `tmMaxQueueSize` | 10000 | `remoted.control_tm_max_queue_size` (100–1000000) |
+| `wdbSocketPath` | `/queue/db/wdb` | — (fixed) |
+| `taskSocketPath` | `/queue/tasks/task` | — (fixed) |
+| `registryEvictionTtlSec` | 21600 s (6 h) | — **not configurable** (compile-time constant; never assigned from the C-ABI) |
+| — eviction cadence | 300 s | — **not configurable** (`kRegistryEvictionIntervalSec`, used as a literal by the eviction thread) |
+| `keepaliveThrottleSec` | 60 s | — (fixed) |
 
 ### Metrics
 
-`ControlMetrics` (`metrics.hpp`) tracks:
-- `startupCount` — total `POST /control {"type":"startup"}` messages
-- `notifyCount` — total `POST /control {"type":"notify"}` messages
-- `shutdownCount` — total `POST /control {"type":"shutdown"}` messages
-- `wdbErrorCount` — wazuh-db operation failures (connection, timeout, queue full)
-- `taskFetchCount` — successful task fetches from task-manager
-- `taskFetchErrorCount` — task-manager operation failures
+`ControlMetrics` (`metrics.hpp`) caches the `remoted.control.*` family, resolved from the
+facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeControlMetrics()`:
+- `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
+- `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
+- `remoted.control.shutdown` — total `POST /control {"type":"shutdown"}` messages
+- `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
+- `remoted.control.task_fetch` — successful task fetches from task-manager
+- `remoted.control.task_fetch_error` — task-manager operation failures
+- `remoted.control.rejected` — the endpoint's own 400s (invalid body/JSON/agent-id/type), one
+  counter for all four paths: it answers "are agents sending malformed control traffic"
+  (agent/manager version drift); the throttled logs keep the which-field detail
+- `remoted.control.wdb.latency` — histogram (µs) of SUCCESSFUL wazuh-db round trips (timeouts
+  are wdb_error's, so the histogram keeps meaning "how long a healthy round trip takes" — the
+  number that sizes the internal options `remoted.control_wdb_roundtrip_deadline` /
+  `remoted.control_wdb_request_connections`)
+- `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
+  the facade; weak target, quiesces to 0 once the control plane is torn down)
 
-All atomic `uint64_t`. Exposed via `RemotedModuleFacade::getMetrics()` (future: add a `GET /metrics`
-endpoint to surface these).
+Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
+all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
+log when the module stops; it is NEVER exposed through the public HTTPS endpoint (agent-facing,
+not an admin plane). The full per-family catalog, including the data-plane and backpressure
+families, lives in **Metrics catalog** below.
 
 ### Error handling
 
@@ -564,16 +607,20 @@ sequenceDiagram
     EP->>SH: handleVdScan(agentId, 100, callback)
     SH->>VC: getOffset()
     VC-->>SH: 100 (matches)
-    SH->>SH: track agent, push to queue
+    SH->>VD: POST /vulnerability-detector/scan {"agent_id":"..."}
+    VD-->>SH: 200 {} (queued in VD's dispatch lane -- it WILL run)
     SH-->>EP: Accepted
     EP-->>Ag: 200 OK {}
 
-    Note over SH: A pooled worker thread later dequeues the agent
-    SH->>VC: getOffset() (re-validate: feed may have moved since admission)
-    VC-->>SH: 100 (still matches)
-    SH->>VD: POST /vulnerability-detector/scan {"agent_id":"..."}
-    VD-->>SH: 200 OK
+    Note over VD: VD's single worker runs the scan later.<br/>its outcome lands in modulesd's log
 ```
+
+The whole exchange is synchronous: remoted holds no scan state and relays VD's **admission**
+answer. A `200` therefore genuinely promises the scan will run; anything VD refuses (dispatch
+lane full, feed mid-update, module stopping, no indexer host available) or a failed round trip
+becomes an honest `503` the agent's next `/control` notify retries. The previous design — a
+tracking table plus a worker pool retrying with backoff *behind an already-sent 200* — could
+exhaust its retries and silently drop scans the agent believed were handled.
 
 ### Components
 
@@ -582,9 +629,11 @@ sequenceDiagram
 The HTTP endpoint registration. Parses the JSON body (`type`, `feed_offset`), validates the agent
 ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome` to its wire
 response:
-- `Accepted` → `200 {}`
+- `Accepted` → `200 {}` (VD queued the scan)
 - `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
-- `QueueFull` → `503 {"error":"scan_queue_full"}`
+- `VdRejected` → `503 {"error":<VD's own cause>}` — `scan_queue_full`, `feed_not_ready`,
+  `scanner_not_ready`, `vd_not_initialized`, `shutting_down`, `indexer_unavailable`, or
+  `vd_unreachable`/`vd_error` when the relay leg itself failed
 - `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
 - Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
   `feed_offset`) → `400` with a specific `error` code (see
@@ -595,31 +644,25 @@ ever carries `type` and `feed_offset`.
 
 #### ScanVdHandlerImpl (`scanvd/scanVdHandler.hpp/.cpp`)
 
-Core business logic: an offset-gated admission check plus a small worker-pool queue that actually
-triggers the scan against the `vulnerability_scanner` module.
+A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP handler thread
+(the transport's request pool exists for handlers that do synchronous downstream round trips):
 
-- **Admission** (`handleVdScan`, called synchronously from the HTTP handler thread): rejects
-  `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with `VersionMismatch` unless
-  the request's `feed_offset` matches exactly; otherwise tracks the agent (a per-agent state map
-  keyed by agent ID — a fresh request for an already-tracked agent just refreshes the tracked
-  offset instead of queuing a duplicate entry) and pushes it onto the ready queue. Rejects with
-  `QueueFull` above a configurable tracked-agent cap (production default: 10000).
-- **Worker pool** (`scanWorkerPoolSize()`, sized to the host's available CPUs via `cpp_get_nproc()`):
-  each worker re-validates the offset immediately before calling `POST
-  /vulnerability-detector/scan` on the VD module (over the *same* modulesd UDS socket `VdClient`
-  uses for `/offset` — see below) — the feed may have moved on again while the request sat queued,
-  in which case the task is silently discarded (the agent will notice the newer offset on its next
-  `/control` notify and re-request; no error is returned for this since the original HTTP response
-  was already sent at admission time). A pool larger than one bounds the "blast radius" of one
-  agent's worst-case wait (the VD module's scan call can legitimately block up to ~30s draining a
-  syscollector VDFirst/VDSync session already in flight for the same agent, before it even starts
-  scanning) — it doesn't reflect how many scans the VD module can truly run in parallel, which is
-  exactly one, since
-  `ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock for the whole scan regardless
-  of how many worker threads call it concurrently.
-- **Retry**: a *retryable* failure (VD module briefly unready, network error) gets exponential
-  backoff (1s, 2s, 4s) up to 3 attempts, then the tracked state is dropped — the agent's next
-  `/control` notify will still show the (unaffected) higher offset and it will re-request.
+- Rejects `agentId == 0` outright; queries `VdClient::getOffset()` and rejects with
+  `VersionMismatch` unless the request's `feed_offset` matches exactly.
+- Makes **one** inline `POST /vulnerability-detector/scan` to the VD module (over the *same*
+  `vd.sock` UDS socket `VdClient` uses for `/offset` — see below), with a 5 s timeout: VD
+  answers at **admission** into its bounded dispatch lane (64 slots, per-agent dedup of queued
+  items), so the round trip is inline route work measured in milliseconds, never a scan.
+- Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
+  VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
+  own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
+  below; an unreachable socket or unexpected status → `VdRejected` with
+  `vd_unreachable`/`vd_error` (logged throttled, one line per 90 s window with its count).
+- **No retry, by design**: the agent's pending state survives a `503` and its next `/control`
+  notify re-requests — retrying here would only duplicate that loop with a worse deadline.
+  Dedup of repeated requests lives in VD's lane, next to the queue it protects; queued scans
+  cannot go stale because a scan always runs against the feed that is current at execution
+  time (the POST carries no offset).
 
 #### VdClient (`common/vdClient.hpp/.cpp`)
 
@@ -640,25 +683,465 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 ### Metrics
 
-`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) tracks, per the design doc's Phase 4 observability
-goals: `requestsTotal`, `versionMismatchCount`, `queueFullCount`, `invalidAgentCount`,
-`acceptedCount`, `scanSucceededCount`, `scanRetriedCount`, `scanRetriesExhaustedCount`,
-`scanPermanentFailureCount`, `scanDiscardedCount` (offset moved on while queued). All atomic
-`uint64_t`, incremented inline at each outcome — same shape as `ControlMetrics`.
+`ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
+admission decisions only, since that is all this handler does: `requests.total`,
+`version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
+it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
+Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
+incremented inline at each outcome — same shape (and same null-object contract) as
+`ControlMetrics`. What became of an accepted scan is the VD module's to report (it logs each
+outcome per agent).
 
 ### Lifecycle
 
 `ScanVdHandlerImpl` shares its `VdClient` instance with `ControlHandler` (constructed once in
 `RemotedModuleFacade::start()` and passed to both), so the two endpoints never see different
-offsets due to independent cache state. Its worker threads are joined in its destructor (queue
-drains are not attempted — an in-flight scan trigger already committed to the VD module completes
-or times out on its own; anything still purely queued is simply dropped).
+offsets due to independent cache state. It owns no threads and no queue — teardown is trivial.
+
+## Agent enrollment (`POST /enroll`) — `src/enrollment/`
+
+Every other authenticated route on this server requires the caller to already be a known agent with
+an entry in `etc/client.keys` — there is no such entry for an agent that has never enrolled. Today
+that agent falls back to a second protocol on a second port: legacy `wazuh-authd` on 1515, speaking
+the plaintext-inside-TLS `OSSEC A:'...'`/`OSSEC K:'...'` line format. `/enroll` lets it enroll over
+the same HTTPS channel (1517) it uses for everything else afterward.
+
+This is a **bridge, not a rewrite**: authd keeps owning every piece of enrollment business logic —
+name/IP/group validation, key generation, agent-ID assignment, force-replace decisions, `client.keys`
+and `wazuh-db` persistence, cluster forwarding. `enrollmentEndpoint` only authenticates the request,
+validates the handful of things authd's *local* interface doesn't check for it (see below), and
+relays the request to authd over its existing local Unix-domain socket — the same one `manage_agents`
+and the framework already use. Port 1515 is untouched and keeps working exactly as it does today, for
+legacy 4.x agents that never speak HTTPS. **`/enroll` is the intended long-term enrollment path**;
+1515 stays alive only for that backward-compatibility window, not as a permanent second design.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ag as New agent (no client.keys entry)
+    participant EP as POST /enroll<br/>(enrollmentEndpoint)
+    participant EA as EnrollmentAuthenticator
+    participant PK as PasswordKeySource<br/>(etc/authd.pass)
+    participant AC as AuthdClient
+    participant AD as authd<br/>(queue/sockets/auth UDS)
+
+    Ag->>EP: POST /enroll {"name":...,"version":...,"groups":...}
+    Note over EP: enrollment_enabled? -- 403 immediately if not, before auth/bridge
+    Note over EP: If the listener requires a client cert, TLS already rejected the<br/>connection before this request could ever arrive here
+    EP->>EA: authenticate(authorizationHeader, method, target, body, now)
+    alt requirePassword
+        EA->>PK: currentKey()
+        PK-->>EA: HKDF-derived AES key (or nullopt)
+        Note over EA: recompute CMAC over WAZUH-ENROLL canonical string
+    else not requirePassword
+        Note over EA: always-pass -- nothing left for THIS class to check
+    end
+    EA-->>EP: ok / AuthError
+    Note over EP: parse JSON, validate name/version/groups/ip
+    EP->>AC: addAgent({name, ip, groups, key_hash})
+    AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
+    AD-->>AC: {"error":0,"data":{id,name,ip,key}} or {"error":90xx,...}
+    AC-->>EP: AuthdResult
+    EP-->>Ag: 200 {id,name,ip,key} / mapped 4xx/5xx
+```
+
+### Two independent authentication gates
+
+Unlike every other route, `/enroll` cannot be gated by `AuthGateway`'s `client.keys` lookup — the
+caller has no key yet. Two checks apply instead, decided once at facade startup from how the HTTPS
+listener and authd are each configured — never per request — and, critically, **independently of
+each other**:
+
+- **Client certificate** — purely a property of the HTTPS listener's `ClientVerificationMode`
+  (`Certificate` or `Full`). When set, the TLS handshake validates the agent's client certificate
+  against `root-ca.pem` **before the request ever reaches a handler** — `EnrollmentAuthenticator`
+  is never even consulted for this; it has no notion of a client certificate at all. Mirrors
+  authd's own `agent_ca`/`ssl_verify_host` mode.
+- **Password (`EnrollmentAuthConfig::requirePassword`)** — set whenever authd's `use_password`
+  flag is on, regardless of whether the listener also requires a client certificate. When set, the
+  request must carry `Authorization: WazuhEnroll <unix-ts>:<mac>`
+  (`<mac>` = 32 lowercase hex chars, AES-256-CMAC = 16 bytes), verified against the canonical string:
+
+  ```
+  "WAZUH-ENROLL\n" + "1" + "\n" + METHOD + "\n" + requestTarget + "\n" + timestamp + "\n" + <raw wire body bytes>
+  ```
+
+  Deliberately shaped like the existing `Wazuh <agent-id>:<ts>:<mac>` scheme used everywhere else in
+  this module — same freshness windows (300 s max age, 30 s max future skew), same incremental-CMAC
+  construction over the *wire* bytes, same `AuthError` taxonomy — minus the `agent-id` segment, since
+  an enrolling agent doesn't have one. A distinct scheme name (`WazuhEnroll` vs `Wazuh`) means the two
+  can never be confused by a parser.
+
+  The signing key is not the password itself: `PasswordKeySource` derives a 32-byte AES key from it
+  via **HKDF-SHA256** (empty salt, `info = "WAZUH-ENROLL-CMAC-KEY\x01"`), because `Cmac` needs an
+  exact 16/24/32-byte key and a password is arbitrary length. HKDF is deterministic and salt-free on
+  purpose, so a future agent-side implementation can reproduce it in a handful of OpenSSL calls; the
+  version byte in `info` reserves room to change the construction later without ambiguity. A memory-
+  hard KDF would add nothing here — the derived key is never persisted, so the offline-guessing
+  surface already matches authd's own plaintext-password-over-TLS on 1515.
+
+  **Worked, verified example** (a real computed vector, not just an illustrative shape — useful as a
+  cross-implementation known-answer test for the agent team):
+  - Password: `MyEnrollmentSecret123`
+  - Canonical string:
+    ```
+    WAZUH-ENROLL
+    1
+    POST
+    /enroll
+    1739999999
+    {"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"}
+    ```
+  - HKDF-SHA256 derived key: `2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e`
+  - AES-256-CBC-CMAC of the canonical string: `dc07d78fc156a1944f4fb02b91da7d01`
+  - Resulting header: `Authorization: WazuhEnroll 1739999999:dc07d78fc156a1944f4fb02b91da7d01`
+
+  (This vector is confirmed by three independent implementations: `PasswordKeySource`'s actual
+  C++/OpenSSL `EVP_KDF` code — see `passwordKeySource_test.cpp`'s
+  `HkdfMatchesTheVerifiedKnownAnswerVector` — Python's stdlib `hashlib`/`hmac` computing RFC 5869
+  HKDF-SHA256 from scratch, and the Python `cryptography` library's AES-CMAC. An earlier version of
+  this vector, computed via the `openssl kdf` CLI tool, did not match and has been corrected.)
+
+  There is no per-request nonce: a captured request could in principle be replayed inside its 300 s
+  window, bounded in practice by authd's own duplicate-name/IP rejection (unless force-replace is
+  configured to permit it). Accepted for v1 — the same threat model the existing agent CMAC scheme
+  already carries, with TLS protecting the transport — not something a nonce cache closes now.
+
+When `requirePassword` is false — whether because the listener requires a client certificate
+instead, or requires nothing at all — `EnrollmentAuthenticator` runs an always-pass check with no
+header required. This is not a new exposure: it reproduces authd's own behavior today, where a
+NULL password makes `w_auth_parse_data` skip the `PASS:` check entirely.
+
+**Both gates apply simultaneously when both are configured**, exactly as legacy authd already
+behaves: authd's own `check_x509_cert()` (at the TLS handshake) and its `use_password` check (while
+parsing the enrollment message, `main-server.c:601`/`:886`) are two independent checks on the same
+connection today, not a mutually-exclusive choice. `EnrollmentAuthConfig` models this the same way
+— `requirePassword` says nothing about client certificates, and the listener's
+`ClientVerificationMode` says nothing about passwords — so an operator who wants both enforced
+together (defense in depth for the endpoint that mints new agent identities and keys) simply
+configures both, and gets both. See `enrollmentMtlsE2E_test.cpp` for the combined case exercised
+end-to-end over a real TLS listener.
+
+A missing or unreadable `etc/authd.pass` while `requirePassword` is true fails **closed** — every
+enrollment attempt gets `401`, never silently falls back to skipping the password check. This
+mirrors authd itself: `etc/authd.pass` is one of the files the cluster's own integrity sync already
+replicates from master to every worker (`framework/wazuh/core/cluster/cluster.json`, alongside
+`client.keys`), and authd treats "password required but not yet synced" as a hard rejection, never
+as a fallback to the NULL-password path (`main-server.c:777-790`) — conflating the two would let an
+unsynced worker accept anyone. `PasswordKeySource` is **strictly read-only** on every node, master
+or worker alike: only authd's master ever generates the password file (`w_authd_load_password`); a
+worker only reads it, exactly as authd's own `run_authpass_watcher` does.
+
+### Components
+
+#### `PasswordKeySource` (`auth/passwordKeySource.hpp/.cpp`)
+
+Turns the authd password file into a CMAC-usable key, hot-reloaded without a restart. Mirrors
+`Keystore`'s watcher exactly (inotify + a poll fallback + content-hash change detection, so a rewrite
+landing mid-read can never be adopted torn) — the two files have the same operational shape, an
+operator-managed secret a running process must notice without a bounce. Parsing must byte-match
+authd's own `read_password_line()`: first line only, trailing `\r`/`\n` stripped, length `<= 2` or
+all-whitespace rejected, a 4096-byte cap — otherwise the manager's two enrollment paths could disagree
+about which password is valid. Derivation runs once per file change and is cached — never per
+request.
+
+#### `EnrollmentAuthenticator` (`enrollment/enrollmentAuthenticator.hpp/.cpp`)
+
+Implements the Password gate above, and nothing about client certificates at all — that's the TLS
+listener's exclusive concern, checked before any handler runs, which is exactly why this class has
+no "mode" spanning both: `requirePassword` gates the Password check alone, and is independent of
+`maxRequestAgeSeconds`/`maxFutureSkewSeconds`/`maxBodySize` (the freshness window and body-size cap,
+sourced from the SAME `auth_max_request_age`/`auth_max_future_skew`/`auth_max_body_size` internal
+options the agent<->manager scheme reads, so the two never silently disagree). The body-size check
+runs first and unconditionally — in Open mode too — so an unauthenticated peer can never make this
+endpoint hash an arbitrarily large body before being rejected. Reuses `Cmac`, the timestamp/hex
+parsing, and the `AuthError` taxonomy from `auth/authTypes.hpp`, so a bad signature, a stale or
+future timestamp, and an oversized body all collapse through the same `publicErrorFor()` →
+`401`/`413` path every other route already uses. Because `AuthGateway` bakes the `client.keys`
+`Keystore` into its middleware with no per-route key-source hook, `/enroll` does **not** go through
+`AuthGateway` at all — it registers directly on `IHttpServer::addRoute` (the same pattern the
+unauthenticated `GET /` liveness probe already uses) and drives this authenticator itself, with
+`countAgainstBudget=true` since, unlike the liveness probe, an enrollment request carries a real
+body and does real work.
+
+**No credential re-validation happens on authd's side, by design.** authd's local socket has never
+validated passwords or certificates for any caller, including today's `manage_agents`/API caller — it
+has always been "trust the caller, validate only business rules." Credential checking lives
+exclusively at each front door (1515's TLS+`PASS:` line, or here). authd structurally *can't*
+re-check either credential even if it wanted to: the plaintext password never leaves remoted, and no
+TLS session reaches the local socket. remoted and authd already run as the same OS service account
+(`Privsep_SetUser()` against the shared default `USER "wazuh"`), so the bridge crosses no new
+privilege boundary — it joins the same trust domain `manage_agents` already sits in.
+
+#### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
+
+The bridge to authd's local socket `queue/sockets/auth`, framed with `shared_modules/utils`'s
+`Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
+`OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
+it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the
+same underlying `Socket` class: authd closes the connection after **every** reply, so `AuthdClient`
+connects, sends one frame, awaits one frame, and closes — per request, on its own dedicated worker
+thread — rather than keeping a persistent, multi-request connection the way `SocketClient` is built
+for. `SocketClient::connect()` is asynchronous (it starts a background thread and returns before the
+connection exists), which is fine for `TaskClient`/`WazuhDBClient` — they connect once and only send
+much later, well after that thread has settled — but is exactly wrong for a connect-then-immediately-
+send-every-time client: an earlier version of this class did use `SocketClient` and lost that race
+far more often than not, so `authd` would receive and successfully process a request while the reply
+arrived on a connection nothing was listening on anymore, and the caller saw a spurious timeout for an
+enrollment that had actually already succeeded. `AuthdClient` instead calls `Socket::connect()`
+directly in **blocking** mode: it returns only once genuinely connected, or throws immediately on a
+real failure, with no race and no background thread — and, as a side effect, an absent authd is now
+distinguishable from a slow one (a fast "could not connect" instead of waiting out the full response
+timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
+side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
+
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...}}`.
+**`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
+authd-generated key, never a caller-supplied one; `force` stays a manager-config decision, exactly as
+authd's local path already falls back to `config.force_options` from `ossec.conf` when it's absent.
+This matches 1515's own agent-facing protocol exactly, not a new restriction: `w_auth_parse_data`
+(`os_auth/src/auth.c`) recognizes only `PASS:`, `A:` (name), `V:` (version), `G:` (groups), `IP:`, and
+`K:` — a **key hash**, feeding only the force/key-mismatch decision, never a raw key. There is no
+`ID:` token and no raw-key token in that parser either, and no wire field for `force` at all. This
+module's optional `key_hash` field is the direct equivalent of 1515's `K:` token.
+
+**Response timeout is worker-aware.** authd's own worker→master forward can legitimately take several
+seconds on a flaky cluster link: `w_request_agent_add_clustered` → `w_send_clustered_message` retries
+up to `CLUSTER_SEND_MESSAGE_ATTEMPTS = 10` times with a 1 s sleep between failures
+(`shared/src/agent_op.c`). If `AuthdClient`'s response timeout were shorter than that, a worker-node
+enrollment authd is legitimately still retrying would be cut off early as a spurious `503`. It reads
+the same `isWorkerNode` flag already plumbed into `ControlConfig` and uses a longer default (~15 s,
+covering the worst-case retry budget) on workers versus a short default (~5 s, matching
+`WazuhDBClient`/`TaskClient`, since there's no cluster hop on the master).
+
+**Fixed: this retry no longer serializes behind authd's local-socket dispatch.** `run_local_server`
+(`os_auth/src/local-server.c`) used to be a plain accept→recv→dispatch→send→close loop with no
+per-connection thread, so while one worker-node `add` was inside
+`w_request_agent_add_clustered`'s up-to-10-second retry budget, that ONE thread could not accept or
+serve ANY other local-socket client -- another queued `/enroll` request, `manage_agents`, or the
+API -- for the same window. This was not a risk this bridge introduced on its own: port 1515's own
+worker-node enrollment forwarding calls the exact same `w_request_agent_add_clustered` inline on its
+own single event loop (`run_remote_server`'s epoll thread, `main-server.c`), blocking every other
+concurrent 1515 connection the same way -- but the local socket previously had no such exposure at
+all (every `add` on a worker failed instantly with `9015`, before cluster forwarding existed for
+it), so `manage_agents`/the API/`/enroll` would have been newly subject to a latency class 1515 has
+already lived with. `run_local_server` now hands each accepted connection to its own detached
+thread (`handle_local_client`) instead of dispatching inline, so a single slow or stuck cluster
+forward only holds up the ONE connection waiting on it. This is safe to parallelize without any
+further locking changes: every `local_add()`/`local_remove()`/`local_get()` call already serializes
+access to the shared `keys` keystore (and `write_pending`/`cond_pending`) through the existing
+`mutex_keys`, which every one of those functions already takes. Port 1515's own equivalent blocking
+window (its epoll loop, not this one) is unchanged -- fixing that would be a separate, larger change
+to `run_remote_server`'s connection model and is out of scope here.
+
+**Bounded, not unbounded.** The number of connections serviced concurrently via a detached thread
+is capped at `MAX_LOCAL_CLIENT_THREADS` (128, matching `AUTH_LOCAL_SOCK`'s own listen backlog --
+there is no benefit to servicing more concurrently than that many could ever be queued at once).
+Without this cap, a burst of connections -- e.g. many cluster workers enrolling against one
+master's `authd` at the same time (`N` workers × up to `authd_worker_threads` each), or any local
+caller not otherwise rate-limited -- would spawn one thread per connection with no ceiling at all.
+At the cap, `run_local_server` falls back to servicing the connection synchronously, inline on the
+accept loop, exactly like every connection was handled before this change -- self-limiting by
+construction, rather than either growing the thread count without bound or dropping the client.
+
+#### `enrollmentEndpoint` (`enrollment/enrollmentEndpoint.hpp/.cpp`)
+
+The HTTP registration and glue: checks `enrollment_enabled` first (see *Enrollment scoping* below),
+runs the authenticator, parses the JSON body, validates fields authd's local interface does not (see
+below), resolves the agent's IP, calls `AuthdClient::addAgent`, and maps the result to an HTTP
+response.
+
+**Request** — `POST /enroll`, `application/json`:
+
+| field | required | notes |
+|---|---|---|
+| `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only -- byte-for-byte `OS_IsValidName()` (`shared/src/agent_validate_op.c`), the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same set of names. authd's local socket (`local-server.c`) separately enforces a deliberately looser *storage-safety* floor for all of its callers (`is_storable_agent_name()`: no whitespace or control bytes, no leading `#`/`!`, non-empty, <=128 chars) -- historically it trusted every caller to have validated the name, which was never true for /enroll, but it cannot adopt `OS_IsValidName()` itself without breaking `manage_agents`/API names that predate this endpoint (`%`, single-character, leading `.`). /enroll therefore holds the tighter line here rather than relying on that floor |
+| `version` | yes | authd's local `add` path has no version check at all, so remoted enforces `allow_higher_versions` itself, reusing `compareVersions()` (`control/controlTypes.hpp`) rather than duplicating it |
+| `groups` | no | comma-separated string, passed through unchanged — matches authd's own wire format and `w_auth_validate_groups` with zero transformation |
+| `ip` | no | syntactic IPv4/IPv6/CIDR check, or one of two sentinels (`any`, `src`); see IP resolution below |
+| `key_hash` | no | opaque passthrough that drives authd's own force/key-mismatch decision |
+
+**IP resolution** mirrors authd's `use_source_ip` flag: if it's set (manager-side), the connection's
+observed peer address wins over anything the body claims — read from `HttpRequest::remoteIp`
+(`http_server/IHttpServer.hpp`), which already exists (populated from RESTinio's
+`remote_endpoint().address()`) and is already unused by any handler today. Otherwise, a body `ip` of
+`"src"` (the agent-side sentinel — mirrors legacy port 1515's own `IP:'src'` wire convention,
+os_auth/src/auth.c:208, sent by an agent configured with its own client-side `<use_source_ip>`) ALSO
+resolves to the observed peer address, and is never forwarded to authd as the literal string "src":
+authd's local `add` path has no notion of that sentinel at all (only port 1515's TEXT-protocol
+parser does) and would reject it as an invalid IP (9006). Otherwise the body's `ip` is used if
+present; if none of the above applies, `"any"` is sent, matching authd's own literal handling of
+that value.
+
+**Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"..."}`, verbatim from authd's `data`.
+**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`.
+
+| authd code | meaning | HTTP |
+|---|---|---|
+| 9001 / 9002 / 9009 | internal / JSON-parse / key-generation failure | 500 |
+| 9003 / 9004 / 9005 / 9006 / 9014 / 9017 (new) | bad function/args/name/ip/groups | 400 |
+| 9007 / 9008 / 9012 | duplicate ip/name/id | 409 |
+| 9013 | `max_agents` reached | 503 |
+| 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
+| 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
+| transport failure (authd unreachable) | — | 503 |
+| bad/missing/stale credential | — | 401 |
+| local schema or version validation failure | — | 400 |
+| enrollment administratively disabled | — | 403 |
+
+`9013`/`9016` map to `503` rather than `429`: both are server-side conditions an operator resolves
+(raise `max_agents`, fix the cluster link), not something the caller can fix by slowing down — `429`
+would suggest the wrong remedy. `9016` exists because a failed clustered forward previously had no
+dedicated code and fell through to generic `9001`/`500`, misrepresenting a transient cluster hiccup as
+a server bug.
+
+**`/enroll` is always registered — disabled enrollment answers `403`, never a missing route.**
+Considered making registration itself conditional on `enrollment_enabled` (404 when off), rejected
+because a 404 conflates two very different situations for both operators and an agent's own fallback
+logic: "this manager is too old to have `/enroll`" versus "this manager has it but an admin turned it
+off." `403` is also the more semantically precise status here: it signals a persistent policy decision
+("understood, not authorized, won't change without a config edit"), unlike this design's own `503`
+usage elsewhere (authd down, `max_agents`) which implies a transient condition that might resolve on
+its own — disabling enrollment via config isn't that. It also matches this module's existing
+philosophy of never letting a capability silently vanish, the same way `/scan/vd` always answers with
+an explicit rejection reason rather than disappearing when VD isn't ready.
+
+### authd-side change: cluster workers
+
+authd's local socket rejects every JSON function on a worker node (`error 9015`) before it even parses
+the request — only the 1515 network path knows how to forward enrollment to the master, via
+`w_request_agent_add_clustered` (`os_auth/src/main-server.c`). The fix lives in authd itself:
+`os_auth/src/local-server.c`'s worker gate moves to after the request is parsed, and on a worker,
+`"add"` specifically takes the same `w_request_agent_add_clustered` path 1515 already uses, returning
+the new `9016` when its transport leg fails; `"remove"`/`"get"` keep returning `9015` unchanged.
+remoted stays completely unaware of cluster topology — it always just talks to the local socket.
+
+**Cluster forwarding is gated on the request SHAPE, not just the function name.** `local_add_clustered()`
+has no `id`/`key` parameters at all -- it only ever produces a self-enrollment-shaped result (an
+auto-assigned ID, an authd-generated key), the same contract `/enroll` and port 1515 already have.
+`manage_agents`/`framework/wazuh/core/agent.py`, on the other hand, can supply a caller-chosen `id`
+and/or `key` on this same local socket (an admin/restore-style add, e.g. importing a specific agent
+record) -- before this fix, EVERY `add` on a worker got a blanket `9015`, so that shape was rejected
+too, just not distinguished from any other. Forwarding it through `local_add_clustered()` unchanged
+would silently drop the caller's `id`/`key` and return `200` with a DIFFERENT identity than the one
+requested, since nothing in that function's signature has anywhere to put them. So the gate now
+checks: if the parsed request carries an `id` or a `key`, it still gets the original `9015` (an
+honest "can't do this here" rather than a wrong answer); only the self-enrollment shape (`id`/`key`
+absent) reaches `local_add_clustered()`.
+
+This is a real, currently-hit gap for the self-enrollment shape specifically -- and a **net-new
+capability that regresses nothing else**: the API's `POST /agents`/`POST /agents/insert` dispatch
+through `DistributedAPI` with `request_type='local_master'`, which forwards the *entire HTTP request*
+to the master node first whenever the local node isn't the master (`core/cluster/dapi/dapi.py`) for
+that specific REST path -- but `core/agent.py`'s `add()` (the function that can attach `id`/`key`) is
+also reachable through other, non-DAPI-gated callers on a worker (`manage_agents`, or any future
+internal caller), which is exactly why the id/key-present shape keeps its own explicit `9015` above
+rather than assuming DAPI already filtered every possible caller. Mirroring DAPI's approach in
+remoted (detect worker, forward the whole HTTP request to the master's remoted) was considered and
+rejected: it would mean remoted reimplementing cross-node request forwarding — with its own auth — in
+C, for a problem the cluster's existing low-level socket protocol already solves more cheaply by
+fixing authd once.
+
+### Enrollment scoping — independent of legacy 1515
+
+Three flags in the existing `<auth>` config block, in order of precedence:
+
+| `disabled` | `remote_enrollment` | `legacy_enrollment` (new) | Port 1515 | `/enroll` |
+|---|---|---|---|---|
+| yes | – | – | off | off |
+| no | no | – | off | off |
+| no | yes | yes (default) | on | on |
+| no | yes | no | off | **on** |
+
+`<remote_enrollment>` is broadened from its current, narrower meaning ("start authd's TCP 1515
+listener") to a master switch for **all** remote self-enrollment, `/enroll` included — a deliberate,
+release-noted behavior change for any deployment already running with `remote_enrollment=no`. The new
+`<legacy_enrollment>` flag (default `yes`, so nothing changes for anyone who doesn't set it) is what
+lets an operator retire 1515 specifically while keeping HTTPS enrollment: `main-server.c`'s
+`thread_remote_server` (the 1515 listener) becomes gated by `remote_enrollment && legacy_enrollment`;
+`thread_local_server` (the UDS socket this bridge uses) stays gated only by `disabled`, unconditional
+otherwise — the bridge always has something to talk to as long as authd is running at all.
+`enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
+no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
+
+`authd_config_t.flags.disabled` looks tri-state in its header (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED`
+sentinels), but a repo-wide search shows nothing ever sets it to `AD_CONF_UNPARSED` — the one line
+that used to is commented out — so the tri-state switch in `os_auth/src/config.c` is dead code today.
+It behaves as a plain boolean, defaulting to enabled (`0`) unless `<disabled>yes</disabled>` is
+explicit. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
+normal way, call `ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)`, and read `flags.disabled` directly.
+
+### Manager certificate unification
+
+authd used to serve its own certificate pair (`etc/certs/authd.pem`/`authd-key.pem`), a separate
+manager identity from the one this module's HTTPS server presents (`etc/certs/remoted.pem`/
+`remoted-key.pem`, CA `etc/certs/root-ca.pem`). Since a client certificate on `/enroll` (when the
+listener requires one) treats "this certificate validated" as an enrollment credential, both
+listeners now present the *same* identity: the install-time generation step
+(`GenerateAuthCert()` in `init/inst-functions.sh`, plus its RPM/DEB packaging equivalents) that used
+to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
+(`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
+points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
+same certificate `GenerateHttpsManagerCert()` already generates for the HTTPS listener. Explicit
+`<auth>` certificate overrides in `ossec.conf` keep working unchanged — only the generated
+defaults change. Port 1515 keeps running with the unified certificate.
+
+Two compiled-in defaults exist alongside the generated config, both now updated to match:
+`shared/include/ssl_op.h`'s `CERTFILE`/`KEYFILE` macros (read only by `main-server.c`'s `-h` help
+text) and `config/src/authd-config.c`'s `Read_Authd()`, which hardcodes the same path as the actual
+runtime default `<ssl_manager_cert>`/`<ssl_manager_key>` fall back to when absent from
+`ossec.conf`. Both are manager-only in practice: `os_auth/CMakeLists.txt` builds exactly one
+executable (`wazuh-manager-authd`) from this module -- there is no separate agent-side `authd`
+binary, despite `ARGV0`/the CMake project name still being spelled `wazuh-authd` as a historical
+label, and every caller of `Read_Authd()`/`CAUTHD` (`os_auth/src/config.c`,
+`remoted/src/secure.c`) is itself a manager-only binary. So there was no agent-vs-manager
+conflict to avoid here, and no reason to leave a stale default in place. In practice this fallback
+is never reached on a fresh manager install anyway: `auth.template` always writes
+`<ssl_manager_cert>`/`<ssl_manager_key>` explicitly.
+
+### Configuration
+
+Unlike every other subsystem's tunables in this module, enrollment's *behavioral* flags do not come
+from a new `<https>` block or a new internal option: remoted's C side calls
+`ReadConfig(CAUTHD, OSSECCONF, &authd_cfg, NULL)` — the `config` library is already linked into
+`remoted_lib` — and copies fields straight out of authd's own `<auth>` config (`use_password`,
+`use_source_ip`, `allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and
+1515 must agree on whether password auth is required and which versions are acceptable, and reading
+the *same* config block is what guarantees that rather than two settings that can drift apart. Only
+operational knobs (password-file poll interval, authd-socket connect/response timeouts, queue size)
+are new C-ABI fields with their own defaults, following this module's usual "`<=0` means default"
+convention. `enrollment_enabled` gates only the response the endpoint gives, never whether the route
+exists (see *Two independent authentication gates* above's `403` discussion).
+
+### Metrics
+
+Following `ControlMetrics`/`ScanVdMetrics`'s pattern (relaxed atomics on the shared `wazuh_metrics`
+registry, a silent no-op on a null-object instance): `remoted.enrollment.requests`,
+`remoted.enrollment.accepted`, `remoted.enrollment.auth_rejected` (401s — a spike here means a
+password rollout is out of sync between managers and agents), `remoted.enrollment.disabled` (403s —
+useful to notice an agent still trying an enrollment path an operator turned off),
+`remoted.enrollment.authd_error` (any 90xx), `remoted.enrollment.authd_unreachable` (transport
+failures).
+
+### Lifecycle
+
+Constructed in `RemotedModuleFacade::startHttpServer()` alongside the other endpoint dependencies:
+`PasswordKeySource` only when `requirePassword` is set, `AuthdClient` always (the route is always
+registered, so the client always exists even if `enrollment_enabled` is currently false — it simply
+goes unused while the endpoint short-circuits to `403`). Torn down in the same phase as
+`m_downstreamClient` — `AuthdClient::stop()` before the HTTP transport's final `stop()` releases its
+I/O runtime, matching the ordering documented in *Deferred forwarding* above.
 
 ## Streamed responses — `POST /download`
 
 Most endpoints answer with one in-memory body. `/download` serves `merged.mg` and WPK packages,
 which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
 chunks) and memory that does not grow with file size.
+
+Metrics: `remoted.download.*` (admission outcomes + started transfers/offered bytes, all counted
+before the pump runs; the per-chunk loop is deliberately uninstrumented) — catalog in
+`endpoints/downloadMetrics.hpp`, overview in the [Metrics catalog](#metrics-catalog).
 
 - **Declared at registration, not per response.** The transport creates a request's response builder
   when the request is dispatched — that is what lets it release the received body before the request
@@ -745,6 +1228,12 @@ to the agent once that service answers. First target: the engine's event ingress
 `queue/sockets/queue-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
 `400` bad batch / `500` orchestrator down) — and a `/stateless` body already **is** the H/E batch it
 expects, so the forwarder is near pass-through with auth in front.
+
+Metrics: the forwarder counts each delivered response into its endpoint's
+`remoted.http.<endpoint>.responses.*` set (and observes `.latency` where wired), classifies
+failures into `remoted.forwarder.error.*`/`downstream_5xx`/`route_mismatch`
+(`forwarderMetrics.hpp`), and the limiter's occupancy/sheds are the
+`remoted.forwarder.deferred.*` pulls — see the [Metrics catalog](#metrics-catalog).
 
 ```
 src/downstream/
@@ -934,7 +1423,11 @@ the **deferred limiter** bounds *the wait for the downstream*.
 
 Framework-agnostic implementation of the agent<->manager request authentication protocol:
 canonical request construction, incremental AES-CMAC, timestamp window and constant-time
-comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`Payload`/`AuthError`/
+comparison. Metrics: every client-visible rejection is counted with its pre-collapse cause as
+`remoted.auth.reject.*` (catalog in `endpoints/endpoint.hpp`, counted at `errorResponseFor()`),
+and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
+[Metrics catalog](#metrics-catalog). `authTypes.hpp` holds the shared contract
+(`AuthenticatedRequest`/`Payload`/`AuthError`/
 `publicErrorFor`/`AuthConfig`) and `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`,
 `cmac`, `keystore` are the implementation. It knows nothing about RESTinio or sockets
 -- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
@@ -950,8 +1443,8 @@ default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1
 protocol constant, not an ops tuning knob. See *Configuration* above.
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
-`keystore_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
-scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
+`keystore_test.cpp`, `addressRule_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware`
+against a scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
 in-memory stand-in.
 
 **Agent key lookup:** `Keystore` reads `etc/client.keys` directly and parses it
@@ -964,6 +1457,30 @@ lowercase hex and hex-decoded as-is (no further derivation); it must decode to 1
 work as an AES-CMAC key. client.keys has no "disabled but present" state -- a removed entry is simply
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
+
+**Registered-address enforcement:** the `ip` column is parsed into an `AddressRule`
+(`auth/addressRule.hpp`) and evaluated by `IAgentKeystore::lookup()`, which resolves the agent's key
+and its address verdict in the same pass -- so the two answers always describe the same entry, even if
+the file is reloaded mid-request. `AuthMiddleware` acts on the verdict before initializing the
+AES-CMAC. An
+agent registered with a fixed address or a range authenticates only from it; `any` accepts every
+peer. The accepted forms match the manager's own `OS_IsValidIP()`/`OS_IPFound()`
+(`shared/src/validate_op.c`): `any`, an IPv4 address alone or with `/CIDR` (0-32) or a dotted
+`/mask`, an IPv6 address alone or with `/prefix` (0-128), and the `::ffff:a.b.c.d` v4-mapped form,
+unmapped before use. An IPv6 zone id (`fe80::1%eth0`) is dropped on both sides of the comparison, since
+it names a local interface rather than part of the address -- the transport unmaps the peer address the same way in
+`normalizeRemoteAddress()`, so both sides of the comparison agree on the representation. A dotted
+mask is applied as written, with no contiguity check. A leading `!` is stripped and the remainder read
+positively -- it is not a negation, matching the legacy keystore, where `OS_IsValidIP()` drops the `!`
+before storing the text so `OS_IPFound()`'s negation branch can never fire; keeping it identical is what
+lets a `client.keys` migrated from 4.x authorize the same agents it did there. A line whose `ip` column
+does not parse is skipped with a warning, like any other malformed line, rather than being loaded
+without a restriction. The peer address is **not** part of the signed canonical request, so a NAT rewrite
+between agent and manager does not invalidate a signature. A mismatch resolves to
+`AuthError::AddressNotAllowed`, which `publicErrorFor()` folds into the same generic 401 as the other
+credential failures; `AuthMiddleware` reports it with a throttled warning naming the agent id and the
+peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
+is not emitted twice.
 
 **Hot-reload:** `Keystore` runs a background watcher thread (RAII -- started at the end of the
 constructor, stopped and joined in the destructor) so an agent enrolled or removed after startup is
@@ -1059,6 +1576,88 @@ try/catch frame at ~30 per-request call sites, measurable even when the body doe
 forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
 (request target, header values), so using it as a format would be a remote format-string bug.
 
+## Metrics catalog
+
+Everything lives on the facade's single `wazuh_metrics` registry and is observable in two
+places: `GET /metrics` on the local admin socket (below) and the debug-log dump on `stop()`.
+Design rules shared by every family: names are the only dimension (closed sets pre-resolved
+into structs, selected by `switch` — the hot path never formats a name); update cost is one
+relaxed atomic op (histogram `observe()` ≈ 2×, and never on a transport I/O thread); a
+default-constructed struct is a null object that counts nothing; pull metrics read weak
+targets repointed per start and quiesce to 0 after teardown (`IManager` has no unregister).
+
+The operator-facing reference — every metric with the configuration setting it helps size,
+linked into the settings' own documentation — is the official docs page:
+[Metrics](../../../docs/ref/modules/remoted/metrics.md). This table is the developer's map
+(which component counts what, and where).
+
+| Family | What it answers | Counted at |
+|---|---|---|
+| `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
+| `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
+| `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
+| `remoted.auth.reject.{unknown_agent, invalid_mac, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed}` | WHY authentication failed, pre-collapse (the wire folds credential failures into one 401) | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll>.responses.{2xx,400,403,409,413,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` is not forwarded, so it counts through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`) — one wrap covers its five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
+| `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
+| `remoted.download.{rejected, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above) | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp` |
+| `remoted.enroll.authd.queue.{depth, capacity, rejected.total}` (pulls) | is `remoted.authd_max_queue_size`/`authd_worker_threads` sized right, and how much of `authd_unavailable` was saturation rather than an unreachable authd | `AuthdClient::queueDiagnostics()` (same lock, dump cadence only); the counter is bumped ONLY on the queue-full branch, never on shutdown |
+| `remoted.forwarder.deferred.{inflight, capacity, rejected.total}` (pulls) | is `remoted.max_deferred_requests` sized right; how much did the limiter shed | the `DeferredWorkLimiter`'s own atomics |
+| `remoted.admin.server.*` (7 pulls) | the admin transport dogfooding itself | `IUdsHttpServer::diagnostics()` |
+
+**Accounting boundary** (what sums to what): a request shed by the byte budget is refused on
+the transport I/O thread BEFORE any route runs — it appears ONLY in
+`remoted.server.budget.rejected.total`, never in a `responses.*` cell. The converse holds too:
+an *admitted* compressed request whose decode does not fit the budget is answered `413` and
+counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
+is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
+`remoted.forwarder.deferred.rejected.total`. Auth-gateway rejections happen before any handler
+and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
+payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
+`remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
+the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
+per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
+catalogs consume.
+
+## Local admin socket — `queue/sockets/remoted-module.sock`
+
+The module's management plane: a second, independent HTTP server (the shared
+`shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
+brought up by `startAdminServer()` right after the public server. It serves exactly two
+read-only routes, both **Liveness** class (answered inline from resident state, exempt from the
+byte budget):
+
+| Route | Answer |
+|---|---|
+| `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
+| `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
+
+Contract points:
+
+- **Fixed path, no knob**: the constant `queue/sockets/remoted-module.sock` is **relative** on
+  purpose — remoted `chroot()`s into the install dir, so the socket lands at
+  `$WAZUH_HOME/queue/sockets/remoted-module.sock` (mode 0660). Internal options only carry ints,
+  so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
+- **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
+  admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
+  server keeps the opposite policy: its failure is fatal.)
+- **Local-only by construction**: agents can never reach it — no route on the public HTTPS
+  endpoint exposes it (that endpoint is agent-facing, not an admin plane), and the C-side stats
+  served by remcom's legacy `getstats` are untouched (decision U6).
+- **Dogfooding**: the admin server's own `TransportDiagnostics` are published on the same
+  registry as `remoted.admin.server.*` pull metrics (weak_ptr target behind its own mutex,
+  registered once per process — pulls cannot be unregistered), so `GET /metrics` also reports
+  the transport serving it.
+- **Shutdown**: `stopAccepting()` in `stop()`'s phase 1 alongside the HTTPS server's, full
+  `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
+
+```bash
+curl --unix-socket /var/wazuh-manager/queue/sockets/remoted-module.sock http://localhost/metrics
+```
+
 ## Integration in remoted
 
 - Build wiring: `add_subdirectory(remoted_module)` + `remoted_module` added to
@@ -1100,15 +1699,23 @@ within TTL, single-flight refresh under a concurrent caller with the lock releas
 round trip, stale-value fallback and bounded retry gating on a failed query, recovery clearing the
 failure state), `scanVdEndpoint_test.cpp` (JSON dispatch in isolation against a fake
 `ScanVdHandler`: every rejection code, the `ScanVdOutcome` → response mapping), `scanVdHandler_test.cpp`
-(the queue/dedup/backoff state machine against a real `VdClient` + fake VD backend: version
-mismatch, retry-with-backoff, permanent failure, queue-full at capacity, an offset change during an
-in-flight attempt triggering an automatic re-scan with the new offset, and a purely-queued task
-being discarded — never reaching the VD backend at all — when the offset moves on before it's
-dequeued), and `controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
+(the synchronous admission passthrough against a real `VdClient` + fake VD backend: version
+mismatch and invalid-agent gates, VD's 200 relayed as exactly one POST with no retry, VD's
+capacity/readiness rejections passed through with their error codes, an unreachable VD answered
+as an honest `vd_unreachable` 503, VD's `indexer_unavailable` cause kept off the `vd_error`
+counter, and the wire shape of the scan POST), and
+`controlScanVdE2E_test.cpp` (the one test that goes over a **real** TLS
 `RestinioHttpServer` + real `AuthGateway` + real `ControlHandler`/`ScanVdHandlerImpl`, with only
-wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409 responses
-survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files exercise
-directly).
+wazuh-db/task-manager/VD faked — confirms `vd_feed_offset` and the `/scan/vd` 200/409/503
+responses survive actual HTTP/TLS/JSON serialization, not just the handler logic the other files
+exercise directly).
+
+Admin socket coverage: `adminServer_test.cpp` (C-ABI black-box + a real `httplib::Client` over
+the UDS socket: the fixed path and 0660 mode, `GET /` liveness, `GET /metrics` carrying every
+metric family in the catalog (one representative name per family, plus live — not quiesced —
+values for the public-transport pulls), 404/405 exact-match routing, the warn-and-continue
+policy when the bind fails with the public listener unaffected, and `stop()` unlinking the
+socket with a restart cycle bringing the plane back).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V

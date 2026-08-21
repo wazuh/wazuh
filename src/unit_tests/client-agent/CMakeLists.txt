@@ -98,6 +98,10 @@ list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file ${DEBUG_OP_WRAPPERS}")
 
+# getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
+list(APPEND client-agent_names "test_agent_config")
+list(APPEND client-agent_flags " ")
+
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \

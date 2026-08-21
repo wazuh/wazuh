@@ -47,7 +47,14 @@ Register agents using their source IP address instead of `any`.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When enabled, agents can only connect from the IP they enrolled from
+- **Note:** When enabled, agents can only connect from the IP they enrolled from. Both listeners
+  enforce this: the classic one via `OS_IsAllowedDynamicID()`, and the HTTPS one via the `ip` column
+  check described in
+  [Registered address](../remoted/https-events-api.md#registered-address-ip-column).
+- **Note:** Do not enable this when agents reach the manager through a **NAT or a load balancer**. The
+  address recorded at enrollment is the one the manager observes, which is the proxy's rather than the
+  agent's, and it is not necessarily the address the event listener will observe for the same agent if
+  the two are reached over different paths. In proxied deployments, register agents with `any`.
 
 ### purge
 
@@ -98,7 +105,30 @@ The agent reads the password from `etc/authd.pass` (relative to its install dire
 
 ### remote_enrollment
 
-Accept enrollment requests over the network (port 1515). Disable to restrict enrollment to the local socket only.
+Master switch for **all** remote (network) self-enrollment — both this daemon's own TCP/TLS
+listener on port 1515 and the HTTPS `POST /enroll` bridge served by `remoted_module` (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Disabling it
+turns off both at once; use [`legacy_enrollment`](#legacy_enrollment) to turn off only port 1515
+while keeping `/enroll`. Either way, the local socket (`queue/sockets/auth`) used by
+`manage_agents`/the API stays available regardless of this setting.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+
+### legacy_enrollment
+
+Narrows `remote_enrollment` further, without affecting it: when `remote_enrollment` is `yes`, this
+flag controls whether port 1515's TCP/TLS listener specifically starts. Set to `no` to retire
+legacy 1515 while keeping `/enroll` — the manager's intended long-term enrollment path — available.
+Has no effect when `remote_enrollment` is `no` (both paths are already off), and no effect on
+`/enroll` at all, which this flag exists specifically to leave alone.
+
+| `disabled` | `remote_enrollment` | `legacy_enrollment`  | Port 1515 | `POST /enroll` |
+| ---------- | -------------------- | --------------------- | --------- | -------------- |
+| `yes`      | –                    | –                     | off       | off            |
+| `no`       | `no`                 | –                     | off       | off            |
+| `no`       | `yes`                | `yes` (default)       | on        | on             |
+| `no`       | `yes`                | `no`                  | off       | **on**         |
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
@@ -126,16 +156,18 @@ Verify that the CN of the agent certificate matches the agent's IP address. Requ
 
 ### ssl_manager_cert
 
-Path to the manager's TLS certificate presented to agents during enrollment.
+Path to the manager's TLS certificate presented to agents during enrollment. Shared with the
+HTTPS agent server (`remoted_module`'s `POST /enroll`): both listeners present the same manager
+identity, since `/enroll`'s mTLS mode treats this certificate as the enrollment credential.
 
-- **Default value:** `etc/certs/authd.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/authd.pem`)
+- **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`) -- authd no longer generates or owns a separate certificate of its own
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory)
 
 ### ssl_manager_key
 
 Path to the private key corresponding to `ssl_manager_cert`.
 
-- **Default value:** `etc/certs/authd-key.pem` (resolved relative to the Wazuh install directory)
+- **Default value:** `etc/certs/remoted-key.pem` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
 
 ### force
@@ -250,8 +282,8 @@ Mutual TLS with client certificate verification:
   <use_password>yes</use_password>
   <ssl_agent_ca>/var/wazuh-manager/etc/rootCA.pem</ssl_agent_ca>
   <ssl_verify_host>yes</ssl_verify_host>
-  <ssl_manager_cert>/var/wazuh-manager/etc/certs/authd.pem</ssl_manager_cert>
-  <ssl_manager_key>/var/wazuh-manager/etc/certs/authd-key.pem</ssl_manager_key>
+  <ssl_manager_cert>/var/wazuh-manager/etc/certs/remoted.pem</ssl_manager_cert>
+  <ssl_manager_key>/var/wazuh-manager/etc/certs/remoted-key.pem</ssl_manager_key>
   <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256</ciphers>
   <force>
     <enabled>yes</enabled>

@@ -77,9 +77,6 @@ void HandleRemote(int uid) __attribute__((noreturn));
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
 
-/* Forward active response events */
-void* AR_Forward(void* arg) __attribute__((noreturn));
-
 /* Poll connected legacy (< v5.0.0) agents and deliver their pending remote_upgrade tasks */
 void* legacy_upgrade_task_delivery(void* arg);
 

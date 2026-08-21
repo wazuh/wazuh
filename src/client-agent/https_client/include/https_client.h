@@ -152,10 +152,25 @@ typedef struct hc_config_t
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
-    ///< 0 -> 120000.
+    ///< 0 -> 90000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
+
+    /* Per-stream retry budgets. An attempt count is the TOTAL number of tries,
+     * not the number of retries after the first: 1 means "send once, never
+     * retry". Only Retryable and BackPressure outcomes consume an attempt.
+     * These bound how long one step can take against the manager's own
+     * deadlines, so they are part of the agent/manager timing contract rather
+     * than free-form tuning. */
+    uint32_t control_max_attempts;    ///< /control; 0 -> 4.
+    uint32_t stateless_max_attempts;  ///< /stateless; 0 -> 5.
+    uint32_t stateful_max_attempts;   ///< /stateful; 0 -> 5.
+    uint32_t download_max_attempts;   ///< POST /download, config and WPK alike; 0 -> 2.
+
+    /// Consecutive undeliverable /control steps before event producers are
+    /// paused; a single deliverable step resets the streak. 0 -> 2.
+    uint32_t producer_pause_threshold;
 
     char spool_dir[HC_MAX_PATH];  ///< Spool dir for temp files; empty -> system tmp.
 
@@ -174,7 +189,7 @@ typedef struct hc_config_t
 
     /// zstd-compress in-memory request bodies before signing/sending.
     /// internal_options.conf (agent.https_compression_enabled), not a <client>
-    /// XML setting -- OFF by default.
+    /// XML setting -- ON by default.
     bool https_compression_enabled;
 } hc_config_t;
 

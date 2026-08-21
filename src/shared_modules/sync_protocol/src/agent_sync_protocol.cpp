@@ -316,10 +316,20 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         success = false;
     }
 
-    const std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    std::string failureReason;
+    bool managerNotReady = false;
+    bool awaitingPrerequisite = false;
+    {
+        // These fields are also written by applyHttpResult() on the response
+        // thread while phase stays WaitingResponse (cleared only by
+        // clearSyncState() below), so reading them without the lock races
+        // against a late/duplicate HCRESULT for this session. (CID 562615)
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        managerNotReady = m_syncState.lastSyncManagerNotReady;
+        awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+    }
     const bool stopped = shouldStop();
-    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
-    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
     return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
@@ -387,7 +397,15 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
         // Only spend the retry budget on an explicit checksum mismatch (409). Any other
         // failure (communication error, manager offline, timeout) returns false right
         // away -- it says nothing about whether the checksum actually matches.
-        const bool isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        bool isChecksumMismatch = false;
+        {
+            // Locked for the same reason as synchronizeDeltaByBlocks/
+            // synchronizeMetadataOrGroups above: phase is still WaitingResponse
+            // until clearSyncState() below, so a late response can still write
+            // this field concurrently. (CID 562605)
+            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            isChecksumMismatch = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
+        }
         clearSyncState();
 
         if (!isChecksumMismatch)
@@ -464,13 +482,21 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         m_logger(LOG_DEBUG, "Synchronization failed for metadata/groups mode");
     }
 
-    std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    std::string failureReason;
+    bool managerNotReady = false;
+    bool awaitingPrerequisite = false;
+    {
+        // Same unlocked-read race as synchronizeDeltaByBlocks(); see the
+        // comment there. (CID 562619)
+        std::lock_guard<std::mutex> lock(m_syncState.mtx);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        managerNotReady = m_syncState.lastSyncManagerNotReady;
+        awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+    }
     // Report whether a stop was requested so the caller can demote an expected
     // shutdown-time failure from WARNING to INFO/DEBUG.
     // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
-    const bool managerNotReady = m_syncState.lastSyncManagerNotReady;
-    const bool awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
     clearSyncState();
     return {success, std::move(failureReason), stopped, managerNotReady, consecutiveFailures, awaitingPrerequisite};
@@ -600,8 +626,14 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         else
         {
             m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
-            m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
-            m_syncState.lastSyncAwaitingPrerequisite = true;
+            {
+                // Unlocked writes here would race applyHttpResult() on the
+                // response thread, which can still write these same fields
+                // while phase is WaitingResponse. (CID 562608)
+                std::lock_guard<std::mutex> lock(m_syncState.mtx);
+                m_syncState.lastSyncResult = SyncResult::NO_GROUPS_ERROR;
+                m_syncState.lastSyncAwaitingPrerequisite = true;
+            }
 
             if (has_metadata)
             {
@@ -620,8 +652,12 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         {
             m_logger(LOG_DEBUG, "No VD feed offset available yet. Waiting for the server to report "
                      "one via /control. Cannot proceed with VD synchronization.");
-            m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
-            m_syncState.lastSyncAwaitingPrerequisite = true;
+            {
+                // Same race as the NO_GROUPS_ERROR branch above. (CID 562608)
+                std::lock_guard<std::mutex> lock(m_syncState.mtx);
+                m_syncState.lastSyncResult = SyncResult::NO_VD_OFFSET_ERROR;
+                m_syncState.lastSyncAwaitingPrerequisite = true;
+            }
 
             if (has_metadata)
             {

@@ -14,11 +14,11 @@
 
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
-#include "http_server/IUdsHttpServer.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
 #include "vd/IVdScanner.hpp"
 #include "vd/vdScanLane.hpp"
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 #include <memory>
 
@@ -35,9 +35,9 @@ namespace invsync::endpoints::sync
      */
 
     /// @brief The verb this endpoint answers.
-    constexpr http::Method method()
+    constexpr wazuh::uds_http::Method method()
     {
-        return http::Method::Post;
+        return wazuh::uds_http::Method::Post;
     }
 
     /// @brief The path this endpoint answers. Mirrors the `POST /stateful` route remoted exposes
@@ -90,7 +90,7 @@ namespace invsync::endpoints::sync
      * or enqueues {request, responder, session} on the pipeline and returns without answering --
      * the transport's deferred-response contract is what makes that safe.
      */
-    http::RouteHandler makeHandler(Dependencies dependencies);
+    wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies);
 
 } // namespace invsync::endpoints::sync
 

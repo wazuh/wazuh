@@ -8,7 +8,7 @@ distinction comes first:
 |---|---|---|
 | What it carries | The inventory itself (packages, system, hotfixes) | Nothing but `type` + `feed_offset` (4 KiB body cap) |
 | What is scanned | The inventory in **that** session | The inventory the manager **already** holds for that agent |
-| Manager-side path | `inventory_sync_server`'s VD scan lane (`src/vd/vdScanLane.cpp`) | remoted's own worker pool (`src/scanvd/scanVdHandler.cpp`) → `POST /vulnerability-detector/scan` over the modulesd UDS |
+| Manager-side path | `inventory_sync_server`'s VD scan lane (`src/vd/vdScanLane.cpp`) | remoted as a synchronous passthrough of VD's admission (`src/scanvd/scanVdHandler.cpp`) → one inline `POST /vulnerability-detector/scan` over the modulesd UDS |
 | When a real agent does it | On connect, and on every inventory change | When a `/control` notify reports a `vd_feed_offset` **higher** than the one it last synced against |
 | Sender step | `delta` / `full_resync` with `option: VDFirst`/`VDSync` (or a dump that declares it) | `kind: "scan_vd"` |
 
@@ -53,12 +53,14 @@ different offsets:
 |---|---|---|---|
 | Queued | `200 {}` | `scan_200` | no |
 | `feed_offset` != the node's offset | `409 {"error":"version_mismatch","current_version":N}` | `scan_409` | no |
-| Tracking table full (default cap 10000 agents) | `503 {"error":"scan_queue_full"}` | `scan_503` | no |
+| VD did not queue it | `503 {"error":"<cause>"}` — `scan_queue_full` (dispatch lane at capacity) \| `indexer_unavailable` (no healthy indexer host) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `shutting_down` \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
 | Malformed request (`invalid_body`/`invalid_json`/`invalid_type`/`missing_feed_offset`/`invalid_agent_id`) | `400` | `scan_other` | **yes** |
 | Credentials (keys not loaded yet, bad MAC) | `401` | `scan_other` | **yes** |
 
 `409` and `503` are ordinary results: they are what a real fleet gets when its offset knowledge went
-stale or when a node is saturated, and a scenario may assert them. `400`/`401` mean the sender built
+stale or when a node cannot queue the scan right now, and a scenario may assert them. A real agent's
+pending state survives a `503` — its next notify re-requests — which is why remoted never retries
+on its behalf. `400`/`401` mean the sender built
 a request the manager cannot even parse — a sender bug, invalid measurement ([10](10-error-handling-and-shutdown.md)).
 
 A `409` carries the node's real offset in `current_version`. The sender **records it and does not
@@ -68,19 +70,30 @@ The one server value that does steer the sender is still notify's `vd_feed_offse
 
 ## `200` means queued, not scanned
 
-The manager answers at **admission** — offset check plus enqueue — and dispatches the scan afterward
-on a worker pool sized to the host's CPUs. Two consequences the report must respect:
+remoted is a synchronous passthrough of VD's **admission**: it validates the agent id and the
+offset, makes one inline `POST /vulnerability-detector/scan` over the modulesd UDS, and relays the
+answer. VD's own preflight also requires a healthy indexer host, answering `503
+indexer_unavailable` instead of queueing when none is; a scan already queued when the indexer goes
+down is HELD, not dropped, and resumes once a host answers healthy again. Otherwise, VD answers at
+admission into its bounded dispatch queue (64 slots, per-agent dedup of queued items, a single
+worker), so a `200 {}` means "VD queued the scan and it **will** run" — only a manager shutdown
+sheds it. There is no tracking table, no worker pool and no retry in remoted;
+any VD refusal or a failed round trip is an honest `503` naming the cause. Two consequences the
+report must respect:
 
-- The recorded latency (`scan_latency_ms_*`) is admission time, **not** scan duration. A p99 of 2 ms
-  says nothing about how long the scans took.
-- Concurrency is an illusion at that layer: `ScanOrchestrator::runScanAfterFeedUpdate()` takes an
-  exclusive lock for the whole scan, so the VD module runs **one scan at a time** no matter how many
-  workers call it. A 100-agent storm is 100 serialized scans.
+- The recorded latency (`scan_latency_ms_*`) is admission time — the offset check plus one local
+  UDS round trip — **not** scan duration. A p99 of 2 ms says nothing about how long the scans took.
+- Concurrency is an illusion at that layer: the dispatch queue has a single worker, and
+  `ScanOrchestrator::runScanAfterFeedUpdate()` takes an exclusive lock for the whole scan, so the VD
+  module runs **one scan at a time**. A 100-agent storm is 100 serialized scans.
 
-Whether the scans ran is therefore **not observable from this side of the wire**. remoted's own
-`/scan/vd` counters (`acceptedCount`, `scanSucceededCount`, `scanDiscardedCount`,
-`scanRetriesExhaustedCount` in `scanvd/scanVdMetrics.hpp`) live in `remotedModuleFacade` and are not
-exposed on any metrics endpoint, so the evidence is modulesd's log:
+What became of the scans **is** observable, on two channels. remoted's admin socket exposes the
+admission split over `GET /metrics` — `remoted.scanvd.requests.total`, `remoted.scanvd.accepted`,
+`remoted.scanvd.queue_full`, `remoted.scanvd.indexer_unavailable`,
+`remoted.scanvd.version_mismatch`, `remoted.scanvd.invalid_agent`, `remoted.scanvd.vd_error` —
+and the per-agent outcomes are in modulesd's log
+(`wazuh-manager-modulesd:vulnerability_scanner`: `VD scan succeeded for agent N` /
+`VD scan failed for agent N: ...`, plus the scan lines themselves):
 
 ```text
 Vulnerability scan start: agent='005' (5.0.0) type=full reason=feed_update

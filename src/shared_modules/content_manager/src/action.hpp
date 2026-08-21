@@ -148,7 +148,7 @@ public:
     {
         OnDemandManager::instance().addEndpoint(m_topicName,
                                                 [this](const ActionOrchestrator::UpdateData& updateData)
-                                                { this->runActionOnDemand(updateData); });
+                                                { return this->runActionOnDemand(updateData); });
     }
 
     /**
@@ -174,13 +174,17 @@ public:
      *
      * @param updateData Update orchestration data.
      */
-    void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
+    /// @return false when an update for this topic was already in progress (the request is NOT
+    ///         run twice) -- surfaced to the on-demand caller as 409 instead of the old blind 200.
+    bool runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(updateData))
+        const bool ran = runActionExclusively(updateData);
+        if (!ran)
         {
             logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
+        return ran;
     }
 
     /**

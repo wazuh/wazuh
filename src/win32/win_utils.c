@@ -93,6 +93,24 @@ void *win_module_thread(void *arg)
 
     startup_gate_wait_for_ready(ctx->name[0] ? ctx->name : "wazuh-modulesd");
 
+    // The gate also releases when shutdown is requested, so getting here does not mean
+    // the agent is starting -- it may already be stopping. Starting a module then is
+    // never useful: it opens databases and runs a scan that the join below is about to
+    // interrupt anyway. Each module also refuses to start under a stop it already
+    // received (wm_sys_stop() records it before returning, SCA sets g_shutting_down,
+    // agent-info consults the injected predicate), but this check keeps the whole
+    // routine from running in the first place.
+    if (wm_shutdown_requested) {
+        mdebug1("Shutdown requested before '%s' started; skipping module start.",
+                ctx->name[0] ? ctx->name : "wazuh-modulesd");
+        os_free(ctx);
+#ifdef WIN32
+        return 0;
+#else
+        return NULL;
+#endif
+    }
+
 #ifdef WIN32
     DWORD result = ctx->routine(ctx->data);
     os_free(ctx);
@@ -111,25 +129,59 @@ void stop_wmodules()
     // handler sets this; on Windows shutdown flows through here instead.
     wm_shutdown_requested = 1;
 
-    // Generous relative to each module's own internal shutdown-wait timeout (e.g.
-    // syscollector's 10 s), so this join is the actual gate and not a race against it.
-    // Shared across every module in the loop below (not reset per module), so total
-    // time spent in stop_wmodules() is bounded regardless of how many wodles are
-    // configured -- otherwise N modules could each burn a fresh timeout and the sum
-    // could outlast the SCM's own patience (WaitToKillServiceTimeout).
+    // Two passes, mirroring the POSIX SIGTERM handler (wazuh_modules/src/main.c):
+    // signal every module first, then join every module against one shared budget.
+    //
+    // The passes must not be interleaved. A module's stop() only tells that module
+    // to wind down; some modules cannot finish winding down until a *sibling* has
+    // been told too -- agent-info's run loop, for instance, can sit in
+    // Syscollector::pause() until syscollector's stop() clears its scan/sync state.
+    // Stopping and joining one module at a time therefore deadlocked agent-info
+    // against syscollector for the length of its own timeout.
+    wmodule * cur_module;
+
+    // Shared across every module and started before the signal pass, so the budget
+    // covers everything done here and not just the joins -- otherwise N modules could
+    // each burn a fresh timeout, or a slow stop() callback could spend minutes off the
+    // clock, and either way the total could outlast the SCM's own patience
+    // (WaitToKillServiceTimeout). The stops are signalling only, but not instantaneous:
+    // syscollector's and SCA's quiesce() both wait for an in-flight flush to finish,
+    // with no timeout of their own. Each module runs its own teardown before its thread
+    // returns, so the join is what guarantees that teardown completed.
     const DWORD MODULE_JOIN_BUDGET_MS = 20000;
     const ULONGLONG budget_start = GetTickCount64();
 
-    wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {
             cur_module->context->stop(cur_module->data);
         }
+    }
 
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->win_thread) {
+            // Never wait on our own thread. merror_exit() from a module thread routes
+            // through WinSetError() -> OssecServiceCtrlHandler() -> here, so without this
+            // the pass would wait on its own handle for the whole budget, log a timeout
+            // that never happened and leave nothing left for the modules after it. The
+            // POSIX handler skips the same way (wazuh_modules/src/main.c: thread ==
+            // pthread_self()).
+            if (GetThreadId(cur_module->win_thread) == GetCurrentThreadId()) {
+                mdebug1("Module '%s' is the thread requesting the shutdown; not joining it.",
+                        cur_module->context->name);
+                CloseHandle(cur_module->win_thread);
+                cur_module->win_thread = NULL;
+                continue;
+            }
+
             const ULONGLONG elapsed = GetTickCount64() - budget_start;
             const DWORD remaining = (elapsed < MODULE_JOIN_BUDGET_MS) ? (DWORD)(MODULE_JOIN_BUDGET_MS - elapsed) : 0;
-            const DWORD wait_result = remaining ? WaitForSingleObject(cur_module->win_thread, remaining) : WAIT_TIMEOUT;
+
+            // Always ask, even with the budget spent: a zero timeout still reports
+            // WAIT_OBJECT_0 for a thread that already finished. Asserting a timeout
+            // without looking at the handle logged the error below for modules that
+            // had shut down cleanly and were merely charged for a budget an earlier
+            // module had spent.
+            const DWORD wait_result = WaitForSingleObject(cur_module->win_thread, remaining);
 
             if (wait_result == WAIT_TIMEOUT) {
                 merror("Module '%s' worker thread did not exit within the %lu ms shutdown budget; "

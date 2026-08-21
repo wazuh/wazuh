@@ -132,16 +132,17 @@ scan entry points, in the order a real agent does. Its `vd_*` lane first sends t
 `option=VDFirst` scan per agent in modulesd's log. Then, after `initial_delay: "90s"`
 (the gap that lets the documents actually land in the indexer), the `scan_vd` step sends
 `POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset the agent learned from
-`/control`, and **remoted's** own worker pool dispatches a re-scan of that already-indexed inventory
-— one `reason=feed_update` scan per agent. Two things to keep in mind when reading a run:
+`/control`, and **remoted relays VD's admission** of a re-scan of that already-indexed inventory —
+VD queues it in its dispatch lane and runs one `reason=feed_update` scan per agent. Two things to
+keep in mind when reading a run:
 
-- **`200` means queued, not scanned.** The manager answers at admission and scans afterward, one
-  agent at a time (`ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive lock), so the
-  sender's `scan_latency_ms_*` is admission time. remoted's own `/scan/vd` counters are not exposed
-  on any metrics endpoint, which leaves modulesd's log as the only evidence the scans ran:
-  `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
+- **`200` means queued, not scanned.** VD answers at admission into its dispatch queue and scans
+  afterward, one agent at a time (`ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive
+  lock), so the sender's `scan_latency_ms_*` is admission time. remoted's admin socket exposes the
+  `remoted.scanvd.*` admission counters over `GET /metrics`, and modulesd's log is the evidence the
+  scans ran: `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
 - **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
-  Check with `curl --unix-socket queue/sockets/modulesd http://localhost/vulnerability-detector/offset`
+  Check with `curl --unix-socket queue/sockets/vd.sock http://localhost/vulnerability-detector/offset`
   and wait for `CVE feed fully loaded — per-agent scans unblocked` in the log.
 
 - **The VD scan lane, not `/scan/vd`, is what 100 simultaneous first connections hit first.** The
