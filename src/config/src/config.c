@@ -125,7 +125,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
              * fatal here), so an ossec.conf or a pushed agent.conf still
              * carrying it does not stop the agent from starting. */
             minfo("'%s' is no longer used and will be ignored. Event batching is configured "
-                  "under <client><batch>.", node[i]->element);
+                  "under <agent><batch>.", node[i]->element);
         }
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {

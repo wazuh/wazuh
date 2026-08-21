@@ -60,8 +60,8 @@ The following changes were identified during agent startup validation after upgr
 
 | 4.X configuration element | 5.0 status | Agent log message (observed) | Required action |
 |---|---|---|---|
-| `<client>...</client>` | Renamed | `INFO: <agent><manager><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. A 5.0 agent still starts without the rename: it reads `<client><server><address>` and defaults the port to `1517`. Nothing else inside `<client>` is read. |
-| `<client><server>...</server></client>` | Renamed | `ERROR: (1230): Invalid element in the configuration: 'server'.` | Rename `<server>` to `<manager>`. This message appears when the root tag was renamed to `<agent>` but the inner block was left as `<server>`, which 5.0 rejects. |
+| `<client>...</client>` | Renamed | — | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` is read out of a `<client>` block, so every other option in it (`<enrollment>`, `<config-profile>`, `<notify_time>`) stops taking effect until the block is renamed. |
+| `<client><server><address>` | Read as fallback | `INFO: <agent><manager><address> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517.` | None, to keep connecting: this is the one value a 5.0 agent still takes from a legacy block, with the port defaulted to `1517`. Move it to `<agent><manager><address>` for the supported end state. |
 | `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | `INFO: Ignoring the 'protocol' option. Switching to TCP.` | Remove `<protocol>`. TCP is used. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `INFO: Ignoring the 'crypto_method' option. Switching to AES.` | Remove `<crypto_method>`. |
