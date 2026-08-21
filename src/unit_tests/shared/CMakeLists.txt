@@ -350,7 +350,10 @@ list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
-                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,os_find_ca_bundle ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND shared_tests_names "test_os_cert_bundle")
+list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
 

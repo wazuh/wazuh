@@ -109,7 +109,8 @@ bool ModuleConfig::validateTransport(const IFsProbe& fsProbe, const LogFn& logFn
 
 bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const
 {
-    if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE)
+    if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE
+            && verifyMode != HC_VERIFY_SYSTEM)
     {
         LOGFN_ERROR(logFn, "Config rejected: unknown verify_mode %d.", verifyMode);
         return false;
@@ -120,6 +121,38 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
         // The agent's own configured default (client-config.h's agent_verify_mode_t),
         // not an operator opt-out to flag -- informational, not a WARNING.
         LOGFN_INFO(logFn, "TLS verification is DISABLED (verify_mode=none).");
+        return true;
+    }
+
+    if (verifyMode == HC_VERIFY_SYSTEM)
+    {
+        // A configured CA would simply be unused under 'system' (the OS store is the trust
+        // anchor instead); failing closed here surfaces that mismatch instead of silently
+        // ignoring an operator's certificate_authorities.
+        if (!caPath.empty())
+        {
+            LOGFN_CRITICAL(logFn,
+                           "https_client config rejected: verify_mode=system must not set "
+                           "certificate_authorities (got '%s').",
+                           caPath.c_str());
+            return false;
+        }
+
+#if !defined(WIN32) && !defined(__APPLE__)
+
+        // Windows/macOS ask their native certificate store (CurlPerformer), which this
+        // process cannot introspect at validation time; Linux's trust anchor is a probed
+        // file, so fail closed now rather than at the first handshake if none is found.
+        if (fsProbe.findSystemCaBundle().empty())
+        {
+            LOGFN_CRITICAL(logFn,
+                           "https_client config rejected: verify_mode=system found no OS CA "
+                           "bundle in any known location.");
+            return false;
+        }
+
+#endif
+
         return true;
     }
 

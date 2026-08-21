@@ -50,9 +50,10 @@ extern "C"
  * fails closed instead of silently disabling verification. */
 typedef enum hc_verify_mode_t
 {
-    HC_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
-    HC_VERIFY_CERT = 1, ///< Verify peer against the CA only.
-    HC_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_FULL = 0,  ///< Verify peer against the CA and check the hostname.
+    HC_VERIFY_CERT = 1,  ///< Verify peer against the CA only.
+    HC_VERIFY_NONE = 2,  ///< No TLS verification (explicit opt-out).
+    HC_VERIFY_SYSTEM = 3 ///< Verify peer + hostname against the OS trust store, not ca_path.
 } hc_verify_mode_t;
 
 /* Connection state, surfaced to the C core (feeds the .state metrics). */

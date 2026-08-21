@@ -247,6 +247,22 @@ static void test_ssl_none_verification_mode(void **state) {
     cleanup(&xml, nodes, &cfg);
 }
 
+static void test_ssl_system_verification_mode(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<ssl><verification_mode>system</verification_mode></ssl>";
+
+    expect_valid_ip("10.0.0.1");
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.ssl.verification_mode, AGENT_VERIFY_SYSTEM);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
 static void test_ssl_zero_initialized_reads_as_full(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
@@ -1271,6 +1287,7 @@ int main(void) {
         cmocka_unit_test(test_ssl_full_verification_mode),
         cmocka_unit_test(test_ssl_certificate_verification_mode),
         cmocka_unit_test(test_ssl_none_verification_mode),
+        cmocka_unit_test(test_ssl_system_verification_mode),
         cmocka_unit_test(test_ssl_zero_initialized_reads_as_full),
         cmocka_unit_test(test_ssl_absent_keeps_the_default_the_caller_set),
         cmocka_unit_test(test_ssl_invalid_verification_mode_is_rejected),

@@ -256,6 +256,7 @@ extern const char *__local_name;
 #include "information_messages.h"
 #include "warning_messages.h"
 #include "custom_output_search.h"
+#include "os_cert_bundle.h"
 #include "url.h"
 #include "yaml2json.h"
 #include "cluster_utils.h"
