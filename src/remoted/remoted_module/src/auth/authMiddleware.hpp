@@ -119,13 +119,17 @@ namespace remoted::auth
         /**
          * @brief Steps 1-5 of the manager-side procedure: validate the
          *        protocol version and Authorization header, check the
-         *        timestamp window, resolve the agent key and initialize the
-         *        running AES-CMAC with the canonical prefix.
+         *        timestamp window, resolve the agent key, check the peer
+         *        address against client.keys and initialize the running
+         *        AES-CMAC with the canonical prefix.
          *
          * @param protocolVersionHeader  Value of the protocol-version header; empty means absent or duplicated.
          * @param authorizationHeader    Value of the Authorization header; empty means absent.
          * @param method                 Raw HTTP method, as received (case-insensitive; uppercased internally).
          * @param requestTarget          Raw path + query, exactly as received from the HTTP parser.
+         * @param peerIp                 Textual peer address observed on the socket, matched against the
+         *                               agent's client.keys ip column (AuthError::AddressNotAllowed on a
+         *                               mismatch). Never signed -- see the implementation.
          * @param currentUnixTimeSeconds Current time, for the timestamp-window check.
          * @return A Session ready for body bytes, or the AuthError that rejected the request.
          */
@@ -133,6 +137,7 @@ namespace remoted::auth
                                                       std::string_view authorizationHeader,
                                                       std::string_view method,
                                                       std::string_view requestTarget,
+                                                      std::string_view peerIp,
                                                       std::int64_t currentUnixTimeSeconds) const;
 
         /// @return The auth-protocol configuration this middleware was constructed with.

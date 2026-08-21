@@ -272,20 +272,22 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
     return wdb_exec_stmt_silent(stmt);
 }
 
-int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status) {
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *connection_status, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
+    const wdb_stmt stmt_index = connection_status ? WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE
+                                                  : WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE) < 0) {
+    if (wdb_stmt_cache(wdb, stmt_index) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
-    stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE];
+    stmt = wdb->stmt[stmt_index];
 
     if (sqlite3_bind_int(stmt, 1, status_code) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -302,7 +304,17 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
         return OS_INVALID;
     }
 
-    if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
+    if (connection_status) {
+        if (sqlite3_bind_text(stmt, 4, connection_status, -1, NULL) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+
+        if (sqlite3_bind_int(stmt, 5, id) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+        }
+    } else if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

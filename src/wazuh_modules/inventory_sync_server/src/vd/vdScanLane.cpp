@@ -72,24 +72,25 @@ namespace invsync::vd
         }
 
         m_requestCounters = invsync::metrics::RequestCounters::make(*m_metrics);
-        m_capacity503 = m_metrics->getOrCreateCounter(
-            invsync::metrics::VD_CAPACITY_503_TOTAL, "VD sessions refused because the scan queue was full", "count");
-        m_retryAfterTotal = m_metrics->getOrCreateCounter(
-            invsync::metrics::VD_RETRY_AFTER_TOTAL, "503 responses carrying a Retry-After header", "count");
+        m_capacity503 = m_metrics->getOrCreateCounter(invsync::metrics::VD_CAPACITY_503_TOTAL,
+                                                      "VD sessions refused because the scan queue was full "
+                                                      "('wazuh_modules.inventory_sync_server_vd_scan_queue_slots')",
+                                                      "count");
+        m_retryAfterTotal = invsync::metrics::makeVdRetryAfterCounter(*m_metrics);
         m_scansOk =
             m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_OK, "Vulnerability scans completed", "count");
-        m_scansFailed =
-            m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_FAILED, "Vulnerability scans failed", "count");
+        m_scansFailed = m_metrics->getOrCreateCounter(
+            invsync::metrics::VD_SCANS_FAILED, "Vulnerability scans failed (the scanner threw)", "count");
         m_scansSkipped = m_metrics->getOrCreateCounter(
             invsync::metrics::VD_SCANS_SKIPPED, "Vulnerability scans skipped legitimately", "count");
         m_offsetMismatchTotal =
             m_metrics->getOrCreateCounter(invsync::metrics::VD_OFFSET_MISMATCH_TOTAL,
-                                          "VDFirst/VDSync sessions rejected for a stale or ahead-of-node feed offset",
+                                          "VD data sessions rejected for a stale or ahead-of-node feed offset",
                                           "count");
         m_laneDepth =
             m_metrics->getOrCreateGaugeInt(invsync::metrics::VD_LANE_DEPTH, "VD sessions queued in the lane", "items");
         m_laneTime = m_metrics->getOrCreateHistogram(invsync::metrics::VD_LANE_TIME,
-                                                     "Enqueue-to-response time of VD sessions (queue+scan+index)",
+                                                     "Enqueue-to-response time of VD data sessions, all outcomes",
                                                      "microseconds");
         m_scanDuration = m_metrics->getOrCreateHistogram(
             invsync::metrics::VD_SCAN_DURATION, "Time inside the vulnerability scanner", "microseconds");
@@ -186,18 +187,23 @@ namespace invsync::vd
         }
     }
 
+    void VdScanLane::observeLaneTime(const Item& item)
+    {
+        if (item.enqueuedAt != std::chrono::steady_clock::time_point {})
+        {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                                     std::chrono::steady_clock::now() - item.enqueuedAt)
+                                     .count();
+            m_laneTime->observe(static_cast<uint64_t>(elapsed));
+        }
+    }
+
     void VdScanLane::respond(Item& item, int status, const std::string& body)
     {
         if (item.responder)
         {
             m_requestCounters.count(status);
-            if (item.enqueuedAt != std::chrono::steady_clock::time_point {})
-            {
-                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-                                         std::chrono::steady_clock::now() - item.enqueuedAt)
-                                         .count();
-                m_laneTime->observe(static_cast<uint64_t>(elapsed));
-            }
+            observeLaneTime(item);
             item.responder->send(wazuh::uds_http::HttpResponse::json(status, body));
         }
     }
@@ -301,8 +307,14 @@ namespace invsync::vd
                 {
                     m_retryAfterTotal->add();
                     m_requestCounters.count(503);
+                    // This is the one send that cannot go through respond() (the header), so it
+                    // takes its lane-time sample here -- the histogram covers ALL outcomes.
+                    observeLaneTime(item);
                     item.responder->send(std::move(response));
-                    item.responder.reset(); // finish() must not answer twice
+                    // finish() must not answer twice. The reset is ALSO what keeps finish(0, "")
+                    // out of the metrics: with a live responder it would count a bogus
+                    // sync.requests.total.other and a duplicate lane-time sample.
+                    item.responder.reset();
                 }
                 finish(0, "");
                 continue;
@@ -394,6 +406,8 @@ namespace invsync::vd
                 {
                 }
                 respondConnectorFailure(item, connector);
+                // Same contract as the feed-not-ready path above: the reset keeps finish(0, "")
+                // from counting a bogus sync.requests.total.other / duplicate lane-time sample.
                 item.responder.reset();
                 finish(0, "");
             }

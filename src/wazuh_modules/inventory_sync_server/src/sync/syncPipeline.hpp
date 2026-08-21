@@ -39,9 +39,15 @@ namespace invsync::sync
         /// over it (the endpoint answers 503). The memory itself is already bounded by the
         /// transport's in-flight budget -- this sheds earlier so other routes keep admitting.
         std::size_t maxQueueBytes {64U * 1024U * 1024U};
-        /// Group-commit threshold: a worker flushes its open batch when the staged payload bytes
-        /// reach this (mirrors the connector's own max_bulk_size) or when its queue drains.
+        /// Group-commit threshold: a worker flushes its open batch when the accumulated REQUEST
+        /// payload bytes (wire FlatBuffer size, the same measure the shard gauges track) reach
+        /// this, or when its queue drains. Fed from the same option as the connector's own
+        /// max_bulk_size ('wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size'), so
+        /// the one knob plays two roles against two DIFFERENT byte measures: here request bytes,
+        /// in the connector serialized-bulk bytes.
         std::size_t bulkFlushBytes {10U * 1024U * 1024U};
+        /// Indexer search page size the session processor uses while draining a session.
+        int sessionQueryBatchSize {0}; ///< <=0 -> SessionProcessor's own default.
     };
 
     /**

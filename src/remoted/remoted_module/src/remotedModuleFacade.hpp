@@ -24,6 +24,7 @@
 #include <thread>
 
 #include "auth/keystore.hpp"
+#include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
 #include "control/controlConfig.hpp"
@@ -37,14 +38,21 @@
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
+#include "downstream/forwarderMetrics.hpp"
 #include "endpoints/authGateway.hpp"
 #include "endpoints/configEndpoint.hpp"
 #include "endpoints/controlEndpoint.hpp"
 #include "endpoints/downloadEndpoint.hpp"
+#include "endpoints/endpoint.hpp"
 #include "endpoints/scanVdEndpoint.hpp"
 #include "endpoints/statefulEndpoint.hpp"
 #include "endpoints/statelessEndpoint.hpp"
 #include "endpoints/statsEndpoint.hpp"
+#include "enrollment/authdClient.hpp"
+#include "enrollment/enrollmentAuthenticator.hpp"
+#include "enrollment/enrollmentConfig.hpp"
+#include "enrollment/enrollmentEndpoint.hpp"
+#include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
@@ -214,11 +222,22 @@ public:
             // the same io_context runtime via the response send path.
             m_controlHandler.reset();
             m_scanVdHandler.reset();
+            // /enroll has no async callback machinery of its own to race with a wdb-worker join
+            // (unlike ControlHandler above) -- reset here anyway, alongside every other
+            // per-request handler object, once stopAccepting() guarantees nothing can still call in.
+            m_enrollmentAuthenticator.reset();
 
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
+            // m_authdClient->stop() belongs in this phase for the same reason: it fails any
+            // queued/in-flight /enroll->authd request right away rather than let it linger, and
+            // the resulting responder->send() calls are still safe here (phase 4 hasn't run).
             if (m_downstreamClient)
             {
                 m_downstreamClient->stop();
+            }
+            if (m_authdClient)
+            {
+                m_authdClient->stop();
             }
 
             // Phase 3: drain the post-processing pool. Anything that was mid-flight when phase 1
@@ -227,11 +246,14 @@ public:
             m_forwarder.reset();
             m_downstreamClient.reset();
             m_deferredLimiter.reset();
+            m_authdClient.reset();
 
             // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
             // runtime). Nothing can still be touching a responder: worker pool B was drained in
             // phase 1, the post-processing pool D was drained in phase 3, and phase 2 stopped
-            // the downstream client so nothing new can reach D either.
+            // the downstream client so nothing new can reach D either. This reset (like the
+            // limiter's in phase 3) also expires the public transport-diagnostics weak targets,
+            // so those pulls read 0 from here on.
             m_httpServer.reset();
 
             // The admin server is torn down in the same phase: accepts were already closed in
@@ -283,6 +305,12 @@ private:
     {
         const auto config = remoted::http::buildHttpServerConfig(m_config);
 
+        // The auth-rejection counters live behind errorResponseFor()'s process-wide funnel, so
+        // they are installed rather than threaded through the gateway/endpoints. Under the
+        // lifecycle lock, before any route serves; idempotent across restarts (the counters
+        // dedupe by name on the never-reset manager, so totals carry over).
+        remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::makeAuthRejectMetrics(*m_metricsManager));
+
         m_httpServer = remoted::http::makeHttpServer();
 
         // Framework-agnostic auth layer: reads agent keys from client.keys and
@@ -292,17 +320,32 @@ private:
         const auto keystoreRefreshSeconds = m_config.keystore_refresh_interval > 0
                                                 ? m_config.keystore_refresh_interval
                                                 : remoted::auth::Keystore::kDefaultRefreshIntervalSeconds;
-        m_keystore =
+        // Held as the CONCRETE type in a local so the health pulls can weak-point at it (the
+        // health accessors are Keystore's, not IAgentKeystore's); m_keystore keeps only the
+        // interface, and its reset in stop() expires the pulls to 0.
+        auto keystore =
             std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
+        m_keystore = keystore;
+        registerKeystoreDiagnostics(keystore);
         // The Content-Encoding contract is composed in here rather than built into the gateway, so
-        // the auth layer stays about authentication only. Configured once on the gateway (not per
-        // route), so every authenticated endpoint gets it and none can accidentally opt out.
+        // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
+        // stateless -- see its own class comment) across every AuthGateway route, so they all get
+        // the same policy and none can accidentally opt out or drift out of sync with each other.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
-            authConfig,
-            m_keystore,
-            std::make_shared<const remoted::decoding::BodyDecoder>(*m_httpServer,
-                                                                   m_config.http_content_encoding_enabled));
+        const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+
+        // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
+        // route requires a verified credential before decode() ever runs, which closes the
+        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
+        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
+        // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
+        // shared in-flight byte budget (the same one /stateless and friends draw from) even
+        // briefly while decompressing -- see makeHandler()'s and BodyDecoder's own doc comments.
+        const auto enrollBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, remoted::enrollment::kMaxEnrollBodySize);
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
@@ -321,7 +364,7 @@ private:
         downstreamClient->start();
         m_downstreamClient = downstreamClient;
         m_forwarder = std::make_unique<remoted::downstream::DeferredForwarder>(
-            downstreamClient, m_deferredLimiter, downstreamConfig.postProcessThreads);
+            downstreamClient, m_deferredLimiter, downstreamConfig.postProcessThreads, m_forwarderMetrics);
         const std::string eventsSocketPath = downstreamConfig.eventsSocketPath;
         const std::string inventorySyncSocketPath = downstreamConfig.inventorySyncSocketPath;
 
@@ -346,7 +389,7 @@ private:
             *m_httpServer,
             remoted::http::Method::Post,
             "/stateless",
-            remoted::endpoints::stateless::makeHandler(*m_forwarder, eventsSocketPath));
+            remoted::endpoints::stateless::makeHandler(*m_forwarder, eventsSocketPath, &m_statelessHttpMetrics));
 
         // /download: streams merged.mg and WPK packages with chunked transfer encoding. Registered
         // ResponseMode::Streamable because the transport fixes a response's output mode when the
@@ -358,7 +401,7 @@ private:
         m_authGateway->addAuthenticatedRoute(*m_httpServer,
                                              remoted::http::Method::Post,
                                              "/download",
-                                             remoted::endpoints::download::makeHandler(),
+                                             remoted::endpoints::download::makeHandler({}, m_downloadMetrics),
                                              remoted::http::ResponseMode::Streamable);
 
         // /stateless takes the client's default response deadline (its target leaves the override
@@ -372,13 +415,13 @@ private:
             *m_httpServer,
             remoted::http::Method::Post,
             "/stats",
-            remoted::endpoints::stats::makeHandler(*m_forwarder, inventorySyncSocketPath));
+            remoted::endpoints::stats::makeHandler(*m_forwarder, inventorySyncSocketPath, &m_statsHttpMetrics));
 
         m_authGateway->addAuthenticatedRoute(
             *m_httpServer,
             remoted::http::Method::Post,
             "/config",
-            remoted::endpoints::config::makeHandler(*m_forwarder, inventorySyncSocketPath));
+            remoted::endpoints::config::makeHandler(*m_forwarder, inventorySyncSocketPath, &m_configHttpMetrics));
 
         // Both leave the per-endpoint response override at 0 as well, so they are checked against the
         // same cap. The agent id passed here is irrelevant to the check -- only the timeouts matter --
@@ -398,8 +441,10 @@ private:
             *m_httpServer,
             remoted::http::Method::Post,
             "/stateful",
-            remoted::endpoints::stateful::makeHandler(
-                *m_forwarder, inventorySyncSocketPath, downstreamConfig.statefulResponseTimeoutMs));
+            remoted::endpoints::stateful::makeHandler(*m_forwarder,
+                                                      inventorySyncSocketPath,
+                                                      downstreamConfig.statefulResponseTimeoutMs,
+                                                      &m_statefulHttpMetrics));
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",
@@ -425,8 +470,12 @@ private:
         // carry over too -- desirable for observability.
         const auto controlConfig = remoted::control::buildControlConfig(m_config);
         auto vdClient = std::make_shared<remoted::common::VdClient>();
+        // Held in a local (not passed inline) so the registry-size pull metric can weak-point at
+        // it; the ControlHandler owns it, so the weak_ptr expires when stop() phase 1b resets
+        // the handler.
+        auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
-            std::make_shared<remoted::control::AgentRegistry>(),
+            agentRegistry,
             std::make_shared<remoted::control::WazuhDBClient>(controlConfig.wdbSocketPath,
                                                               controlConfig.wdbRequestConnections,
                                                               controlConfig.wdbRoundtripDeadlineMs,
@@ -442,10 +491,11 @@ private:
             m_controlMetrics,
             controlConfig);
 
-        m_authGateway->addAuthenticatedRoute(*m_httpServer,
-                                             remoted::http::Method::Post,
-                                             "/control",
-                                             remoted::endpoints::control::makeHandler(*m_controlHandler));
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/control",
+            remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics));
 
         // /scan/vd: agent-initiated VD scans. Offset queries and scan triggers both travel to
         // VD's socket (queue/sockets/vd.sock -- see ScanVdHandlerImpl's and VdClient's default
@@ -459,7 +509,228 @@ private:
                                              "/scan/vd",
                                              remoted::endpoints::scanvd::makeHandler(*m_scanVdHandler));
 
+        // /enroll: bridges to authd's local socket (see the Agent enrollment chapter of this
+        // module's README). Registered directly on m_httpServer -- NOT through m_authGateway --
+        // because an enrolling agent has no client.keys entry yet, so the agent<->manager
+        // AES-CMAC protocol cannot authenticate it. Always registered, regardless of
+        // enrollment_enabled: the handler itself answers 403 when enrollment is administratively
+        // disabled, so the route is never a bare 404.
+        //
+        // The listener's own client-certificate requirement (config.verificationMode, set below
+        // via buildHttpServerConfig()) and authd's <use_password> are independent gates -- exactly
+        // like legacy authd, which already enforces its own <ssl_verify_host> at the TLS handshake
+        // and <use_password> while parsing the enrollment message as two separate checks on the
+        // same connection (main-server.c). So EnrollmentAuthenticator only ever needs to know
+        // whether it must additionally require the WazuhEnroll CMAC; it has no notion of "mTLS
+        // mode" at all, because a client certificate is never its concern -- the TLS listener
+        // enforces (or doesn't) that entirely on its own, before any handler runs. PasswordKeySource
+        // (constructed only when required) is owned by m_enrollmentAuthenticator from here on -- its
+        // background watcher thread's lifetime is tied to the authenticator's.
+        const auto enrollConfig = remoted::enrollment::buildEnrollmentConfig(m_config);
+
+        std::shared_ptr<remoted::auth::PasswordKeySource> enrollPasswordKeySource;
+        if (enrollConfig.usePassword)
+        {
+            enrollPasswordKeySource = std::make_shared<remoted::auth::PasswordKeySource>(
+                remoted::auth::PasswordKeySource::kDefaultPath, enrollConfig.passwordRefreshIntervalSec);
+        }
+
+        m_enrollmentAuthenticator = std::make_unique<remoted::enrollment::EnrollmentAuthenticator>(
+            remoted::enrollment::EnrollmentAuthConfig {enrollConfig.usePassword,
+                                                       enrollConfig.maxRequestAgeSeconds,
+                                                       enrollConfig.maxFutureSkewSeconds,
+                                                       enrollConfig.maxBodySize},
+            enrollPasswordKeySource);
+
+        m_authdClient =
+            std::make_shared<remoted::enrollment::AuthdClient>(remoted::enrollment::AuthdClient::kDefaultSocketPath,
+                                                               m_config.worker_node,
+                                                               enrollConfig.authdConnectTimeoutMs,
+                                                               enrollConfig.authdResponseTimeoutMs,
+                                                               enrollConfig.authdMaxQueueSize,
+                                                               enrollConfig.authdWorkerThreads);
+
+        registerAuthdQueueDiagnostics(m_authdClient);
+
+        m_httpServer->addRoute(remoted::http::Method::Post,
+                               "/enroll",
+                               remoted::enrollment::makeHandler(*m_enrollmentAuthenticator,
+                                                                *m_authdClient,
+                                                                enrollConfig,
+                                                                m_enrollmentMetrics,
+                                                                enrollBodyDecoder,
+                                                                m_enrollHttpMetrics));
+
+        // Same sanity check the other four endpoints get (see warnIfDownstreamBudgetExceedsRequestTimeout's
+        // own comment) -- /enroll's downstream is AuthdClient, not the DeferredForwarder pair those
+        // use, so it needs its own budget computed from AuthdClient's own (already worker-aware-
+        // resolved) timeouts rather than DownstreamConfig's. At MAXIMUM configured values
+        // (authd_connect_timeout=60s, authd_response_timeout=120s) this reaches 180s against a 30s
+        // http_request_timeout default -- silent with the defaults (2s + 5s/15s), so this only fires
+        // when an operator has pushed these up without also raising http_request_timeout.
+        const auto resolvedAuthdConnectTimeoutMs =
+            enrollConfig.authdConnectTimeoutMs != 0
+                ? static_cast<long long>(enrollConfig.authdConnectTimeoutMs)
+                : static_cast<long long>(remoted::enrollment::AuthdClient::kDefaultConnectTimeoutMs);
+        const auto resolvedAuthdResponseTimeoutMs =
+            static_cast<long long>(remoted::enrollment::AuthdClient::resolveResponseTimeoutMs(
+                enrollConfig.authdResponseTimeoutMs, enrollConfig.isWorkerNode));
+        warnIfBudgetExceedsRequestTimeout("/enroll",
+                                          "authd_connect_timeout'/'authd_response_timeout",
+                                          resolvedAuthdConnectTimeoutMs + resolvedAuthdResponseTimeoutMs,
+                                          static_cast<long long>(config.requestTimeoutSec) * 1000);
+
         m_httpServer->start(config);
+
+        registerPublicTransportDiagnostics();
+        registerControlRegistryDiagnostics(agentRegistry);
+    }
+
+    /**
+     * @brief Publish the keystore's health as pull metrics (remoted.auth.keystore.*).
+     *
+     * Same wiring as the other diagnostics: weak target repointed per start, registered once,
+     * quiesced to 0 after stop() resets m_keystore. Answers: how many keys are loaded (did the
+     * hot-reload pick up my re-enrolls?), and is client.keys unreadable/unstable in production
+     * (reload_failures moving). The Keystore itself stays metrics-library-free -- it only
+     * maintains plain atomics these getters read.
+     */
+    /**
+     * @brief Publishes the /enroll -> authd queue as remoted.enroll.authd.queue.* pulls.
+     *
+     * Registered once, re-targeted on every start (the client is rebuilt per attempt), exactly
+     * like the keystore/registry pulls below. The counter is what makes
+     * remoted.enroll.authd_unavailable actionable: that counter fires for a full queue, an
+     * unreachable authd and a shutdown alike, so the difference against this one is the share
+     * that raising 'remoted.authd_max_queue_size' / 'remoted.authd_worker_threads' could fix.
+     */
+    void registerAuthdQueueDiagnostics(const std::shared_ptr<remoted::enrollment::AuthdClient>& client)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_authdDiagMutex};
+            m_authdDiagTarget = client;
+        }
+        if (m_authdPullsRegistered)
+        {
+            return;
+        }
+        m_authdPullsRegistered = true;
+
+        const auto snapshot = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_authdDiagMutex};
+            const auto target = m_authdDiagTarget.lock();
+            return target ? target->queueDiagnostics() : remoted::enrollment::AuthdClient::QueueDiagnostics {};
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.depth",
+            [snapshot] { return static_cast<uint64_t>(snapshot().depth); },
+            "Enrollment requests waiting for an authd worker",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.capacity",
+            [snapshot] { return static_cast<uint64_t>(snapshot().capacity); },
+            "Configured depth of the authd request queue ('remoted.authd_max_queue_size')",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.enroll.authd.queue.rejected.total",
+            [snapshot] { return snapshot().rejectedTotal; },
+            "Enrollment requests refused because the authd queue was full (the saturation share of "
+            "remoted.enroll.authd_unavailable)",
+            "requests");
+    }
+
+    void registerKeystoreDiagnostics(const std::shared_ptr<remoted::auth::Keystore>& keystore)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_keystoreDiagMutex};
+            m_keystoreDiagTarget = keystore;
+        }
+        if (m_keystorePullsRegistered)
+        {
+            return;
+        }
+        m_keystorePullsRegistered = true;
+
+        const auto target = [this]() -> std::shared_ptr<remoted::auth::Keystore>
+        {
+            std::lock_guard<std::mutex> lock {m_keystoreDiagMutex};
+            return m_keystoreDiagTarget.lock();
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.agents",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? static_cast<uint64_t>(keystore->agentsLoaded()) : 0U;
+            },
+            "Agents with a usable key after the last successful client.keys load",
+            "agents");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.entries_skipped",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? static_cast<uint64_t>(keystore->entriesSkipped()) : 0U;
+            },
+            "client.keys lines the last successful load could not use (bad field count, non-numeric id, "
+            "unparseable ip column, or undecodable key); comments and removed entries excluded",
+            "entries");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.reloads.total",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->reloadsTotal() : 0U;
+            },
+            "Successful client.keys loads (startup load included)",
+            "count");
+        m_metricsManager->registerPullMetric(
+            "remoted.auth.keystore.reload_failures.total",
+            [target]
+            {
+                const auto keystore = target();
+                return keystore ? keystore->reloadFailuresTotal() : 0U;
+            },
+            "Failed client.keys loads: unreadable file, or torn reads on every attempt",
+            "count");
+    }
+
+    /**
+     * @brief Publish the agent registry's live size as a pull metric
+     *        (remoted.control.registry.agents).
+     *
+     * Same wiring as the transport diagnostics: weak target repointed per start, registered
+     * once. The registry is OWNED by m_controlHandler (reset in stop() phase 1b), so the pull
+     * quiesces to 0 as soon as the control plane is torn down. size() sums the shards under
+     * shared locks -- dump-cadence only. Purely diagnostic: it answers "how many agents does
+     * this node currently track"; there is no knob behind it (the registry TTL and eviction
+     * cadence are compile-time constants -- see controlConfig.hpp).
+     */
+    void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry)
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_controlDiagMutex};
+            m_registryDiagTarget = registry;
+        }
+        if (m_controlPullsRegistered)
+        {
+            return;
+        }
+        m_controlPullsRegistered = true;
+
+        m_metricsManager->registerPullMetric(
+            "remoted.control.registry.agents",
+            [this]
+            {
+                std::lock_guard<std::mutex> lock {m_controlDiagMutex};
+                const auto target = m_registryDiagTarget.lock();
+                return target ? static_cast<uint64_t>(target->size()) : 0U;
+            },
+            "Agents currently tracked by the /control registry",
+            "agents");
     }
 
     /**
@@ -531,6 +802,7 @@ private:
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
+            config.reservedControlConnections = 16;
             m_adminServer->start(config);
 
             registerAdminTransportDiagnostics();
@@ -635,6 +907,105 @@ private:
     }
 
     /**
+     * @brief Publish the PUBLIC transport's backpressure state as pull metrics
+     *        (remoted.server.budget.* and remoted.forwarder.deferred.*).
+     *
+     * Sibling of registerAdminTransportDiagnostics(), same wiring: the weak targets are
+     * repointed at the new server/limiter after every successful startHttpServer(), while the
+     * pulls themselves are registered exactly once -- IManager has no unregister. After stop()
+     * resets m_httpServer / m_deferredLimiter the weak_ptrs expire and every metric reads 0,
+     * the documented quiesced value.
+     *
+     * Together these answer the sizing questions the two-phase backpressure raises: how close
+     * the byte budget ('max_inflight_bytes') and the deferred-work limiter
+     * ('max_deferred_requests') run to their ceilings, and how much each has shed. A budget
+     * shed never appears in the per-endpoint remoted.http.*.responses.* cells (it is refused
+     * before any route runs), so budget.rejected.total is its only record; a limiter shed
+     * counts both here and as that endpoint's 503.
+     */
+    void registerPublicTransportDiagnostics()
+    {
+        {
+            std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+            m_publicDiagTarget = m_httpServer;
+            m_limiterDiagTarget = m_deferredLimiter;
+        }
+        if (m_publicPullsRegistered)
+        {
+            return;
+        }
+        m_publicPullsRegistered = true;
+
+        // Safe to capture this: the facade is a process-lifetime singleton. The server snapshot
+        // may take the transport's own lock -- fine at dump cadence.
+        const auto snapshot = [this]() -> remoted::http::TransportDiagnostics
+        {
+            std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+            if (const auto server = m_publicDiagTarget.lock())
+            {
+                return server->diagnostics();
+            }
+            return {};
+        };
+        // Locks the weak limiter under the same mutex; the returned shared_ptr keeps it alive
+        // for the duration of one metric read even if stop() races the dump.
+        const auto limiter = [this]() -> std::shared_ptr<remoted::downstream::DeferredWorkLimiter>
+        {
+            std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+            return m_limiterDiagTarget.lock();
+        };
+
+        m_metricsManager->registerPullMetric(
+            "remoted.server.budget.available.bytes",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetAvailableBytes); },
+            "Bytes the public server's in-flight payload budget can still admit",
+            "bytes");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.budget.inflight.bytes",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightBytes); },
+            "Bytes currently reserved by admitted public requests (payloads plus zstd decode scratch)",
+            "bytes");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.budget.inflight.requests",
+            [snapshot] { return static_cast<uint64_t>(snapshot().budgetInFlightCount); },
+            "Admitted public requests currently resident (one per request, compressed or not)",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.server.budget.rejected.total",
+            [snapshot] { return snapshot().budgetRejectedTotal; },
+            "Requests the byte budget refused to admit (503, before any route ran)",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.forwarder.deferred.inflight",
+            [limiter]
+            {
+                const auto l = limiter();
+                return l ? static_cast<uint64_t>(l->inFlight()) : 0U;
+            },
+            "Requests currently parked awaiting a downstream service",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.forwarder.deferred.capacity",
+            [limiter]
+            {
+                const auto l = limiter();
+                return l ? static_cast<uint64_t>(l->capacity()) : 0U;
+            },
+            "Configured deferred-work slot cap, 'remoted.max_deferred_requests' (reads 0 only while the module is "
+            "stopped)",
+            "requests");
+        m_metricsManager->registerPullMetric(
+            "remoted.forwarder.deferred.rejected.total",
+            [limiter]
+            {
+                const auto l = limiter();
+                return l ? l->rejectedTotal() : 0U;
+            },
+            "Requests shed with 503 because every deferred-work slot was taken",
+            "requests");
+    }
+
+    /**
      * @brief Warns when an endpoint's downstream deadlines cannot actually be honored.
      *
      * RESTinio's handle_request_timeout (http_request_timeout) bounds the WHOLE request, and its
@@ -655,17 +1026,34 @@ private:
                                    downstreamConfig.writeTimeoutMs + responseTimeoutMs;
         const long long requestCapMs = static_cast<long long>(serverConfig.requestTimeoutSec) * 1000;
 
+        warnIfBudgetExceedsRequestTimeout(
+            path,
+            "downstream_connect_timeout'/'downstream_write_timeout'/'downstream_response_timeout",
+            budgetMs,
+            requestCapMs);
+    }
+
+    /// Shared core of warnIfDownstreamBudgetExceedsRequestTimeout(): pulled out so /enroll, whose
+    /// downstream is AuthdClient (a completely different config shape -- authd_connect_timeout +
+    /// authd_response_timeout, no write phase) rather than the DeferredForwarder/DownstreamConfig
+    /// pair every other endpoint here shares, can run the same sanity check without forcing that
+    /// shape onto it.
+    void warnIfBudgetExceedsRequestTimeout(const char* path,
+                                           const char* tunablesToReduce,
+                                           long long budgetMs,
+                                           long long requestCapMs)
+    {
         if (budgetMs > requestCapMs)
         {
             LOGFN_WARN(moduleLogFn(),
                        "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
                        "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
                        "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
-                       "reducing 'downstream_connect_timeout'/'downstream_write_timeout'/"
-                       "'downstream_response_timeout'.",
+                       "reducing '%s'.",
                        path,
                        budgetMs,
-                       requestCapMs);
+                       requestCapMs,
+                       tunablesToReduce);
         }
     }
 
@@ -683,13 +1071,19 @@ private:
         // ScanVdHandlerImpl is stateless (a synchronous passthrough of VD's admission), but the
         // next retry constructs a fresh one, so drop the old instance alongside its siblings.
         m_scanVdHandler.reset();
+        m_enrollmentAuthenticator.reset();
         if (m_downstreamClient)
         {
             m_downstreamClient->stop();
         }
+        if (m_authdClient)
+        {
+            m_authdClient->stop();
+        }
         m_forwarder.reset();
         m_downstreamClient.reset();
         m_deferredLimiter.reset();
+        m_authdClient.reset();
         m_authGateway.reset();
         m_keystore.reset();
     }
@@ -751,7 +1145,10 @@ private:
     std::thread m_worker;                ///< The C++ thread launched for remoted.
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 
-    std::unique_ptr<remoted::http::IHttpServer> m_httpServer; ///< HTTPS transport (behind our interface).
+    /// HTTPS transport (behind our interface). shared_ptr (not unique_ptr) solely so the
+    /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
+    /// nothing else shares ownership.
+    std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
     /// Local admin plane (fixed UDS socket, GET / + GET /metrics). OPTIONAL by policy: a failed
     /// start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
@@ -761,6 +1158,25 @@ private:
     std::mutex m_adminDiagMutex;
     std::weak_ptr<wazuh::uds_http::IUdsHttpServer> m_adminDiagTarget;
     bool m_adminPullsRegistered {false};
+    /// Same plumbing for the PUBLIC transport's backpressure state (the byte budget) and the
+    /// deferred-work limiter (see registerPublicTransportDiagnostics()).
+    std::mutex m_publicDiagMutex;
+    std::weak_ptr<remoted::http::IHttpServer> m_publicDiagTarget;
+    std::weak_ptr<remoted::downstream::DeferredWorkLimiter> m_limiterDiagTarget;
+    bool m_publicPullsRegistered {false};
+    /// Same plumbing for the /control agent registry (see registerControlRegistryDiagnostics()).
+    std::mutex m_controlDiagMutex;
+    std::weak_ptr<remoted::control::AgentRegistry> m_registryDiagTarget;
+    bool m_controlPullsRegistered {false};
+    /// Same plumbing for the keystore's health (see registerKeystoreDiagnostics()).
+    /// Weak target + guard for the authd queue pulls (same shape as the keystore ones below).
+    std::mutex m_authdDiagMutex;
+    std::weak_ptr<remoted::enrollment::AuthdClient> m_authdDiagTarget;
+    bool m_authdPullsRegistered {false};
+
+    std::mutex m_keystoreDiagMutex;
+    std::weak_ptr<remoted::auth::Keystore> m_keystoreDiagTarget;
+    bool m_keystorePullsRegistered {false};
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
     std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
@@ -790,6 +1206,53 @@ private:
     remoted::scanvd::ScanVdMetrics m_scanVdMetrics {
         remoted::scanvd::makeScanVdMetrics(*m_metricsManager)};          ///< /scan/vd counters.
     std::unique_ptr<remoted::scanvd::ScanVdHandlerImpl> m_scanVdHandler; ///< VD scan handler.
+
+    // /enroll lifecycle: bridges agent self-enrollment to authd's local socket. Metric struct on
+    // the facade for the same reason as m_controlMetrics/m_scanVdMetrics. m_enrollmentAuthenticator
+    // owns the PasswordKeySource (Password mode only; null otherwise) constructed for it in
+    // startHttpServer() -- its background watcher thread's lifetime is tied to the authenticator's.
+    remoted::enrollment::EnrollmentMetrics m_enrollmentMetrics {
+        remoted::enrollment::makeEnrollmentMetrics(*m_metricsManager)};                      ///< /enroll counters.
+    std::unique_ptr<remoted::enrollment::EnrollmentAuthenticator> m_enrollmentAuthenticator; ///< /enroll auth.
+    /// shared_ptr, not unique_ptr, for the same reason as m_httpServer: the queue pulls hold a
+    /// weak_ptr to it, so a dump that races the shutdown reset() sees a dead target and
+    /// quiesces to 0 instead of touching freed state.
+    std::shared_ptr<remoted::enrollment::AuthdClient> m_authdClient; ///< Bridge to authd.
+
+    // Downstream failure taxonomy (remoted.forwarder.error.* / downstream_5xx / route_mismatch):
+    // copied into the DeferredForwarder at construction (cold), so a fresh forwarder after a
+    // restart retry keeps counting on the same registry totals.
+    remoted::downstream::ForwarderMetrics m_forwarderMetrics {
+        remoted::downstream::makeForwarderMetrics(*m_metricsManager)};
+
+    // /download admission outcomes + started-transfer bytes (remoted.download.*): copied into
+    // the handler at route registration, same restart-retry rationale.
+    remoted::endpoints::download::DownloadMetrics m_downloadMetrics {
+        remoted::endpoints::download::makeDownloadMetrics(*m_metricsManager)};
+
+    // Per-endpoint HTTP outcome sets (remoted.http.<endpoint>.*). Value members for the same
+    // reason as m_controlMetrics: the endpoints' handlers and forwarded targets hold RAW
+    // POINTERS to these (see DownstreamTarget::httpMetrics), so their addresses must stay
+    // stable across HTTP-server restart retries. Latency histograms only where they answer a
+    // tuning question: /stateless (the hot path; ioThreads/worker/budget sizing) and /stateful
+    // (sessions index in-request; downstream_stateful_response_timeout sizing). /stats and
+    // /config share the stateful downstream and add no new answer -- counters only.
+    remoted::metrics::EndpointHttpMetrics m_statelessHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "stateless", /*withLatency=*/true)};
+    remoted::metrics::EndpointHttpMetrics m_statefulHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "stateful", /*withLatency=*/true)};
+    remoted::metrics::EndpointHttpMetrics m_statsHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "stats", /*withLatency=*/false)};
+    remoted::metrics::EndpointHttpMetrics m_configHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "config", /*withLatency=*/false)};
+    // /enroll DOES get a latency histogram: it is the only endpoint whose downstream is authd
+    // (not the DeferredForwarder pair), and it is the sole evidence for sizing
+    // 'remoted.authd_connect_timeout' / 'remoted.authd_response_timeout'. Unlike the four above,
+    // the value is COPIED into the handler (see enrollment::makeHandler) rather than referenced,
+    // so this member's address does not have to outlive a restart retry -- but it lives here for
+    // the same reason as the rest: one resolution against the never-reset manager.
+    remoted::metrics::EndpointHttpMetrics m_enrollHttpMetrics {
+        remoted::metrics::makeEndpointHttpMetrics(*m_metricsManager, "enroll", /*withLatency=*/true)};
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

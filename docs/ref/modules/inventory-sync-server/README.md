@@ -49,7 +49,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 | `DELETE /agents` / `POST /agents/delete` | authd | Delete every document of an agent, across `wazuh-states-*`, `wazuh-agent-config` and `wazuh-agent-stats` |
 | `POST /stats`, `POST /config` | Remoted (relaying agents) | Agent stats/config documents |
 | `GET /` | anyone local | Liveness probe |
-| `GET /metrics` | anyone local (operators, the benchmark harness) | Runtime statistics as JSON |
+| `GET /metrics` | anyone local (operators, the benchmark harness) | Runtime statistics as JSON — full catalog in [Metrics](metrics.md) |
 
 ## Overview
 
@@ -112,8 +112,10 @@ agent's documents). The situations an operator will recognize:
 - **Where are the metrics?** `GET /metrics` on the module's socket, UDS-local (agents can never
   reach it): `curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync.sock
   http://localhost/metrics`. Shard depths/bytes tell you whether load is skewed;
-  `sync.pipeline.shed.total` counts admission-queue sheds; `vd.lane.*` covers the scan lane. See
-  the [API reference](api-reference.md#get-metrics).
+  `sync.pipeline.shed.total` counts admission-queue sheds; `vd.lane.*` covers the scan lane;
+  `server.*` the transport's own budget and session levels. The full catalog — each metric with
+  the setting it helps size — is in [Metrics](metrics.md); the envelope in the
+  [API reference](api-reference.md#get-metrics).
 - **What should I tune first?** If the admission queue sheds while CPUs sit idle, raise
   `sync_workers` — the queue (`sync_queue_bytes`) is a buffer, not throughput. Raise the byte
   budget or the connection cap only when those specific gates are the ones logging. Every option:

@@ -65,15 +65,14 @@ with no extra configuration). A few things to know before choosing one:
   today.
 - Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
   an "IPv4-mapped IPv6" address (`::ffff:10.0.0.5`), not the plain `10.0.0.5` form. `remoted_module`
-  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), so any
-  future code comparing it against a plain IPv4 address (such as the IP column in `client.keys`)
-  doesn't need to handle the mapped form itself.
+  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), which is
+  what lets the registered-address check below compare it against the `ip` column in `client.keys`
+  without either side having to handle the mapped form.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
-`.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
-`authd` uses for `authd.pem`/`authd-key.pem` — now shared code, invoked through remoted's
-own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read it once
-`remoted` drops privileges:
+`.deb` and `.rpm` all wire this in) via the shared `generate_cert()` routine, invoked through
+remoted's own binary, and chowned to `wazuh-manager:wazuh-manager` afterward so the module can read
+it once `remoted` drops privileges:
 
 ```bash
 wazuh-manager-remoted -C 365 -B 2048 \
@@ -91,7 +90,13 @@ the `wazuh-manager` user (e.g. via the same ownership/mode) or the module fails 
 
 ## Authentication (AES-CMAC)
 
-Every request MUST carry two headers:
+**Single exception: `POST /enroll`.** Every other endpoint on this page requires the agent<->manager
+AES-CMAC scheme described in this section, keyed by an agent's pre-shared `client.keys` entry. An
+enrolling agent has no such entry yet, so `/enroll` cannot use it — it authenticates with an
+independent, per-listener credential instead (a client certificate, a shared password, or neither).
+See [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
+
+Every other request MUST carry two headers:
 
 ```text
 protocol-version: 1
@@ -120,6 +125,57 @@ The manager resolves the agent key by reading `etc/client.keys` directly (the sa
 format `OS_ReadKeys()` uses); the key column is lowercase hex and must decode to 16, 24 or 32 bytes.
 A removed/disabled agent (`#`/`!`-marked, or simply absent) is treated as unknown.
 
+### Registered address (`ip` column)
+
+The same lookup also enforces the entry's `ip` column, matching what the classic listener does through
+`OS_IsAllowedDynamicID()`: an agent registered with a fixed address or a range authenticates **only**
+from it, while `any` — what `authd` writes when no address was requested — accepts every peer.
+
+The address is checked after the key is resolved and **before** the AES-CMAC is initialized, so a peer
+that cannot use that identity never costs a MAC computation. On a mismatch the request is rejected
+with the same generic `401` as any other credential failure.
+
+Accepted forms in the column:
+
+| Column | Matches |
+|---|---|
+| `any` | every peer, both families |
+| `10.0.0.5` | that address only (an implicit `/32`) |
+| `10.0.0.0/24` | the range |
+| `10.0.0.0/255.255.255.0` | the same range, mask written in full |
+| `2001:db8::/64` | the IPv6 range (dotted masks are IPv4-only) |
+| `::ffff:10.0.0.5` | equivalent to `10.0.0.5`; the mapped form is unmapped before comparing |
+
+Notes:
+
+- Host bits are masked off, so `10.0.0.7/24` describes the `10.0.0.0/24` range rather than matching
+  nothing.
+- A dotted mask is applied exactly as written, with no contiguity check.
+- **A leading `!` is not a negation.** `!10.0.0.5` is read as plain `10.0.0.5`, so the agent is allowed
+  *from* that address rather than excluded from it. There is no way to express an exclusion in this
+  column.
+
+  This is the classic listener's behavior, kept identical on purpose: `OS_IsValidIP()` strips the `!`
+  before storing the address, so `OS_IPFound()`'s negation branch can never fire, and `!IP` has always
+  meant positive `IP`. A `client.keys` carried over from 4.x therefore authorizes exactly the same
+  agents here — a line that worked before an upgrade does not start being rejected after it.
+
+  `authd` never writes such a value anyway: enrolling with `IP:'!10.0.0.5'` stores `10.0.0.5`, so the
+  form only survives in a hand-edited file.
+- An agent of one address family never matches an entry of the other.
+- An IPv6 zone id is ignored on both sides: a peer reported as `fe80::1%eth0` matches an entry written
+  as `fe80::1`, and vice versa. The zone names a local interface, not the address being compared.
+- A line whose `ip` column is not a valid address or range is **skipped**, with a warning naming the
+  line number, and that agent is then treated as unknown. The rest of the file still loads.
+- The peer address is **not** part of the signed canonical byte sequence above. A NAT rewrite between
+  agent and manager therefore does not invalidate a signature; the address gates authorization on top
+  of authentication, it is not part of it.
+
+> An agent reaching the manager through a **NAT or a load balancer** must be registered with `any` (or
+> with the proxy's address): the address the manager observes is the proxy's, not the agent's. This is
+> also true of the classic listener; it only becomes visible here because a mismatched fixed address is
+> now actually rejected.
+
 ### Content-Encoding (zstd)
 
 The request body MAY optionally be compressed with `Content-Encoding: zstd` (case-insensitive). No
@@ -131,12 +187,12 @@ its default level zstd beats gzip's default on all three axes at once, so there 
 weigh — and decompression speed is the side that matters here, since agents compress while the
 manager decompresses:
 
-| Codec | Compressed | Compress | Decompress |
-|---|---|---|---|
-| `gzip-6` (default) | 4.25 MB | 224 ms | 44.2 ms |
-| `gzip-9` (max) | 4.10 MB | 429 ms | 43.1 ms |
+| Codec                  | Compressed  | Compress  | Decompress  |
+| ---------------------- | ----------- | --------- | ----------- |
+| `gzip-6` (default)     | 4.25 MB     | 224 ms    | 44.2 ms     |
+| `gzip-9` (max)         | 4.10 MB     | 429 ms    | 43.1 ms     |
 | **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
-| `zstd-9` | 3.44 MB | 157 ms | 24.3 ms |
+| `zstd-9`               | 3.44 MB     | 157 ms    | 24.3 ms     |
 
 Supporting both was considered and dropped: it would mean two decoders, two dependency chains and
 two test matrices for a codec that is dominated on this workload.
@@ -183,18 +239,18 @@ two test matrices for a codec that is dominated on this workload.
 On rejection the body is `{"error":"<message>","code":<status>}`. Credential-related failures all
 collapse to a **single generic `401`** so a client cannot tell which specific check failed.
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Missing `protocol-version` header | `400` | `Missing required header: protocol-version` |
-| Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
-| Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
-| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large` |
-| `Content-Encoding` present but not (case-insensitively) `zstd` | `415` | `Unsupported Content-Encoding` |
-| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame | `400` | `Malformed compressed body` |
-| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
-| Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
-| Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
-| Endpoint handler raised an unexpected error | `500` | `Internal server error` |
+| Condition                                                                                                                                                                               | HTTP  | `error` message                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------- |
+| Missing `protocol-version` header                                                                                                                                                       | `400` | `Missing required header: protocol-version` |
+| Unsupported `protocol-version`                                                                                                                                                          | `400` | `Unsupported protocol-version`              |
+| Missing / malformed `Authorization`, unknown agent, unusable key, peer address not allowed by the agent's `ip` column, expired or future timestamp, invalid MAC                         | `401` | `Invalid client authentication`             |
+| Body exceeds the auth body limit (10 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
+| `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
+| `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id`                                                                        | `400` | `Invalid event batch`                       |
+| Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
+| Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
+| Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
 
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
@@ -247,6 +303,13 @@ awaiting the downstream service. The liveness `GET /` is exempt from the byte bu
   malformed requests, **`401`** on auth failures, or **`503`** when VD did not queue it (dispatch
   lane full, feed mid-update, module stopping or unreachable, no indexer host available). See
   [Scan endpoint](#scan-endpoint-post-scanvd) below for details.
+- **`POST /enroll`** — bridges a new agent's self-enrollment request to `authd` (see
+  [Authd](../authd/README.md)), which owns all enrollment business logic. Unlike every other
+  authenticated endpoint above, it does **not** use the agent<->manager AES-CMAC scheme — the agent
+  has no key yet — and it is **always registered**, answering **`403`** rather than a bare `404`
+  when enrollment is administratively disabled. Returns **`200 OK`** with the new agent's
+  `{id,name,ip,key}` on success, or a mapped `4xx`/`5xx` on failure. See
+  [Enrollment endpoint](#enrollment-endpoint-post-enroll) below for details.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -261,21 +324,21 @@ non-numeric) prevents `remoted` from starting, same as every other internal opti
 [Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
 notes).
 
-| Setting | Default | Internal option |
-|---|---|---|
-| I/O threads | `cpp_get_nproc()` | `remoted.http_io_threads` |
-| Handler worker threads | `2 * cpp_get_nproc()` | `remoted.http_worker_threads` |
-| Read / handshake timeout | `10 s` | `remoted.http_read_timeout` |
-| Write timeout | `10 s` | `remoted.http_write_timeout` |
-| Request timeout | `30 s` | `remoted.http_request_timeout` |
-| Max URL size | `2048 B` | `remoted.http_max_url_size` |
-| Max header name size | `256 B` | `remoted.http_max_header_name_size` |
-| Max header value size | `8192 B` | `remoted.http_max_header_value_size` |
-| Max header count | `64` | `remoted.http_max_header_count` |
-| Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
-| Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
-| Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
-| Accept `Content-Encoding: zstd` | enabled | `remoted.http_content_encoding_enabled` |
+| Setting                               | Default               | Internal option                         |
+| ------------------------------------- | --------------------- | --------------------------------------- |
+| I/O threads                           | `cpp_get_nproc()`     | `remoted.http_io_threads`               |
+| Handler worker threads                | `2 * cpp_get_nproc()` | `remoted.http_worker_threads`           |
+| Read / handshake timeout              | `10 s`                | `remoted.http_read_timeout`             |
+| Write timeout                         | `10 s`                | `remoted.http_write_timeout`            |
+| Request timeout                       | `30 s`                | `remoted.http_request_timeout`          |
+| Max URL size                          | `2048 B`              | `remoted.http_max_url_size`             |
+| Max header name size                  | `256 B`               | `remoted.http_max_header_name_size`     |
+| Max header value size                 | `8192 B`              | `remoted.http_max_header_value_size`    |
+| Max header count                      | `64`                  | `remoted.http_max_header_count`         |
+| Max pipelined requests per connection | `4`                   | `remoted.http_max_pipelined_requests`   |
+| Concurrent TCP accepts                | `2`                   | `remoted.http_concurrent_accepts`       |
+| Socket read buffer size               | `8192 B`              | `remoted.http_buffer_size`              |
+| Accept `Content-Encoding: zstd`       | enabled               | `remoted.http_content_encoding_enabled` |
 
 I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
 set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
@@ -294,17 +357,17 @@ built-in default below. See
 `http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
 above).
 
-| Setting | `<https>` tag | Default |
-|---|---|---|
-| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
-| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
-| Port | `port` | `1517` |
-| Transport max body size | `max_body_size` | `20 MiB` |
-| TLS certificate chain | `certificate` | `etc/certs/remoted.pem` |
-| TLS private key | `key` | `etc/certs/remoted-key.pem` |
-| Client CA bundle | `ca` | `etc/certs/root-ca.pem` |
-| Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
-| TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| Setting                                                                          | `<https>` tag       | Default                                                                                       |
+| -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr`         | `127.0.0.1`                                                                                   |
+| Dual-stack override (IPv6 `bind_addr` only)                                      | `dual_stack`        | `no` (force IPv6-only)                                                                        |
+| Port                                                                             | `port`              | `1517`                                                                                        |
+| Transport max body size                                                          | `max_body_size`     | `20 MiB`                                                                                      |
+| TLS certificate chain                                                            | `certificate`       | `etc/certs/remoted.pem`                                                                       |
+| TLS private key                                                                  | `key`               | `etc/certs/remoted-key.pem`                                                                   |
+| Client CA bundle                                                                 | `ca`                | `etc/certs/root-ca.pem`                                                                       |
+| Client verification mode                                                         | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
+| TLS 1.3 ciphersuites                                                             | `ciphers`           | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`                  |
 
 > There is no `enabled` toggle: the listener always attempts to start and self-gates on the
 > presence of a valid certificate/key, same as before this configuration surface existed.
@@ -315,11 +378,11 @@ deliberately **not** internal options -- they bound in-memory resource usage rat
 transport, so they don't go through `remoted_module_https_config()`/the internal-options table
 above.
 
-| Setting | Default | Source |
-|---|---|---|
-| Max in-flight payload bytes (→ `503`) | `256 MiB` | remoted config `max_inflight_bytes` |
-| Max simultaneous connections | `512` | remoted config `max_parallel_connections` |
-| Max deferred requests awaiting downstream (→ `503`) | `256` | remoted config `max_deferred_requests` |
+| Setting                                             | Default   | Source                                    |
+| --------------------------------------------------- | --------- | ----------------------------------------- |
+| Max in-flight payload bytes (→ `503`)               | `256 MiB` | remoted config `max_inflight_bytes`       |
+| Max simultaneous connections                        | `512`     | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `256`     | remoted config `max_deferred_requests`    |
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
 (RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
@@ -338,17 +401,17 @@ reads each `remoted.*` option and passes it through the C-ABI struct;
 built-in default on `<=0`. The three timeouts are configured in **seconds** and converted to
 milliseconds internally.
 
-| Setting | Default | Internal option |
-|---|---|---|
-| Downstream connect timeout | `2 s` | `remoted.downstream_connect_timeout` |
-| Downstream write timeout | `5 s` | `remoted.downstream_write_timeout` |
-| Downstream response timeout | `5 s` | `remoted.downstream_response_timeout` |
-| Downstream client I/O threads | `cpp_get_nproc()` | `remoted.downstream_io_threads` |
-| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads` |
-| Max downstream response body | `10 MiB` | `remoted.downstream_max_response_body_size` |
-| Auth max request age | `300 s` | `remoted.auth_max_request_age` |
-| Auth max future skew | `30 s` | `remoted.auth_max_future_skew` |
-| Auth max body size | `10 MiB` | `remoted.auth_max_body_size` |
+| Setting                            | Default           | Internal option                             |
+| ---------------------------------- | ----------------- | ------------------------------------------- |
+| Downstream connect timeout         | `2 s`             | `remoted.downstream_connect_timeout`        |
+| Downstream write timeout           | `5 s`             | `remoted.downstream_write_timeout`          |
+| Downstream response timeout        | `5 s`             | `remoted.downstream_response_timeout`       |
+| Downstream client I/O threads      | `cpp_get_nproc()` | `remoted.downstream_io_threads`             |
+| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads`   |
+| Max downstream response body       | `10 MiB`          | `remoted.downstream_max_response_body_size` |
+| Auth max request age               | `300 s`           | `remoted.auth_max_request_age`              |
+| Auth max future skew               | `30 s`            | `remoted.auth_max_future_skew`              |
+| Auth max body size                 | `10 MiB`          | `remoted.auth_max_body_size`                |
 
 The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
 `http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
@@ -356,6 +419,41 @@ a purely async I/O reactor or documented as non-blocking work). The downstream c
 socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVersion` are not
 internal options -- the former is an installation detail (mirrors the classic C forwarder's
 socket), the latter a protocol constant.
+
+### Enrollment bridge (`POST /enroll`)
+
+A fifth, small group of internal options tunes the `/enroll`-to-`authd` bridge
+(`AuthdClient`/`PasswordKeySource`, see [Enrollment endpoint](#enrollment-endpoint-post-enroll)
+below). Same resolution pattern: `secure.c` reads each option and passes it through the C-ABI
+struct.
+
+| Setting                                     | Default                                                | Internal option                          |
+| -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| `etc/authd.pass` hot-reload poll interval     | `10 s`                                                  | `remoted.enroll_password_refresh_interval` |
+| `authd` local-socket connect timeout          | `2 s`                                                   | `remoted.authd_connect_timeout`            |
+| `authd` local-socket response timeout         | `5 s` on a master, `15 s` on a cluster worker           | `remoted.authd_response_timeout`           |
+| Bridge request queue high-water mark          | `256`                                                   | `remoted.authd_max_queue_size`             |
+| Concurrent bridge worker threads              | `8`                                                      | `remoted.authd_worker_threads`             |
+
+The response timeout's worker default is longer than the master's on purpose: on a worker, `authd`'s
+own forward to the master can retry internally for several seconds before answering, and a shorter
+client-side timeout here would cut off a legitimate, still-in-progress worker enrollment as a
+spurious `503`. All other enrollment behavior (whether it's enabled, whether a password/client
+certificate is required, which agent versions are accepted) is deliberately **not** a separate
+`remoted`-owned setting — it's read from `authd`'s own `<auth>` block so the two enrollment paths
+can never disagree; see [Enrollment endpoint](#enrollment-endpoint-post-enroll) below.
+
+**Why more than one worker.** `authd`'s local-socket accept loop hands each accepted connection to
+its own detached thread (`os_auth/src/local-server.c`'s `handle_local_client`), so several `add`
+requests -- including a worker's cluster-forwarded ones, which can legitimately take several
+seconds -- now genuinely run concurrently on `authd`'s side too, not just queue one-at-a-time behind
+a single dispatcher. A single-worker `remoted` would still only ever have ONE such request in
+flight at a time no matter how parallel `authd` itself can go, and would still pay the
+connection-setup round trip (connect + send + await reply + close) sitting on the critical path *in
+addition to* `authd`'s processing time, for every single request. With several workers, `authd` can
+actually work on more than one at once, and another connection is normally already waiting in its
+listen backlog (128 slots) by the time it finishes one and calls `accept()` again. Keep this well
+under 128 — there's no benefit to more workers than that backlog can hold.
 
 ### client.keys hot-reload
 
@@ -371,7 +469,7 @@ mid-write rather than adopting a torn read.
 
 ## Diagnosing rejections and capacity problems
 
-Every condition where a setting may need changing is logged to `wazuh-manager.log ` and names the setting.
+Every condition where a setting may need changing is logged to `wazuh-manager.log` and names the setting.
 Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
 seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
 produces a readable summary instead of thousands of identical lines:
@@ -382,15 +480,30 @@ request(s) with 503 in the last 90 s. Consider increasing the value of 'max_defe
 investigate why the downstream service is not keeping up.
 ```
 
-| Symptom in `wazuh-manager.log ` | Setting to review |
-|---|---|
-| In-flight request memory budget exhausted | `max_inflight_bytes` |
-| Deferred-work slots exhausted | `max_deferred_requests` |
-| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
-| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
-| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `max_inflight_bytes` (`Content-Encoding: zstd`) |
-| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
+Each of these conditions also has its own counter on the module's
+[`GET /metrics`](metrics.md) dump, so the totals (and their rate between polls) quantify what
+the throttled log line can only sample:
+
+| Symptom in `wazuh-manager.log` | Setting to review | Metric evidence ([Metrics](metrics.md)) |
+|---|---|---|
+| In-flight request memory budget exhausted | `remoted.max_inflight_bytes` | `remoted.server.budget.rejected.total` (+ `budget.inflight.bytes` vs the cap) |
+| Deferred-work slots exhausted | `remoted.max_deferred_requests` | `remoted.forwarder.deferred.rejected.total` (+ `deferred.inflight` vs `deferred.capacity`) |
+| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
+| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
+| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` | `remoted.auth.reject.clock_skew` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (uncompressed body), or `remoted.max_inflight_bytes` (`Content-Encoding: zstd`) | `remoted.auth.reject.body_too_large` |
+| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` | `remoted.http.<endpoint>.latency` percentiles vs the cap |
+
+Two more, about a registered address that no longer matches, both collapsed on the same 90-second
+window as everything above:
+
+- **`Rejected N request(s) … from an address the agent is not registered with`** (INFO) names the agent
+  id and the address it connected from, and is the line to look for when an agent that used to work
+  starts getting `401`s after its address changed. INFO rather than WARNING: the condition is a
+  property of the agent's registration, not a fault on the manager side.
+- **`client.keys line N: the address '<value>' registered for agent M is not a valid address or
+  range`** (WARNING) means that line was skipped, so that agent is now treated as unknown. Fix the
+  column or re-enroll the agent.
 
 Three more that are not about tuning:
 
@@ -602,15 +715,15 @@ timestamp, last keepalive update timestamp) to minimize wazuh-db round-trips dur
 Errors follow the same pattern as `/stateless` (see [Error responses](#error-responses) above).
 Control-specific conditions:
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Body empty or exceeds 64 KiB | `400` | `invalid_body` |
-| Malformed JSON body | `400` | `invalid_json` |
-| Invalid agent ID format | `400` | `invalid_agent_id` |
-| Unknown message type | `400` | `unknown_message_type` |
-| Invalid agent version (startup only) | `400` | `invalid_version` |
-| Invalid host info format (notify only) | `400` | `invalid_host_info` |
-| wazuh-db error during startup (get groups) | `500` | `database_error` |
+| Condition                                  | HTTP  | `error` message        |
+| ------------------------------------------ | ----- | ---------------------- |
+| Body empty or exceeds 64 KiB               | `400` | `invalid_body`         |
+| Malformed JSON body                        | `400` | `invalid_json`         |
+| Invalid agent ID format                    | `400` | `invalid_agent_id`     |
+| Unknown message type                       | `400` | `unknown_message_type` |
+| Invalid agent version (startup only)       | `400` | `invalid_version`      |
+| Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
+| wazuh-db error during startup (get groups) | `500` | `database_error`       |
 
 Auth failures (`401`) and body-too-large at transport layer (`413`) reuse the same responses as
 `/stateless`. Throttled logging (one message per 90 seconds per condition) prevents log flooding
@@ -671,19 +784,19 @@ local value with an older `current_version`.
 
 ### Error handling
 
-| Condition | HTTP | `error` message |
-|---|---|---|
-| Body empty or exceeds 4 KiB | `400` | `invalid_body` |
-| Malformed JSON body | `400` | `invalid_json` |
-| Invalid agent ID format | `400` | `invalid_agent_id` |
-| Missing or non-string `type` | `400` | `missing_type` |
-| `type` other than `"feed_update"` | `400` | `invalid_type` |
-| Missing or non-unsigned `feed_offset` | `400` | `missing_feed_offset` |
-| `feed_offset` != current offset | `409` | `version_mismatch` (carries `current_version`) |
-| VD's scan dispatch lane at capacity | `503` | `scan_queue_full` |
-| Indexer not usable (no healthy host) | `503` | `indexer_unavailable` |
+| Condition                                        | HTTP  | `error` message                                               |
+| ------------------------------------------------ | ----- | ------------------------------------------------------------- |
+| Body empty or exceeds 4 KiB                      | `400` | `invalid_body`                                                |
+| Malformed JSON body                              | `400` | `invalid_json`                                                |
+| Invalid agent ID format                          | `400` | `invalid_agent_id`                                            |
+| Missing or non-string `type`                     | `400` | `missing_type`                                                |
+| `type` other than `"feed_update"`                | `400` | `invalid_type`                                                |
+| Missing or non-unsigned `feed_offset`            | `400` | `missing_feed_offset`                                         |
+| `feed_offset` != current offset                  | `409` | `version_mismatch` (carries `current_version`)                |
+| VD's scan dispatch lane at capacity              | `503` | `scan_queue_full`                                             |
+| Indexer not usable (no healthy host)             | `503` | `indexer_unavailable`                                         |
 | VD not ready (feed mid-update, scanner starting) | `503` | `feed_not_ready` / `scanner_not_ready` / `vd_not_initialized` |
-| VD stopping or unreachable, or the relay failed | `503` | `shutting_down` / `vd_unreachable` / `vd_error` |
+| VD stopping or unreachable, or the relay failed  | `503` | `shutting_down` / `vd_unreachable` / `vd_error`               |
 
 Every `503` means the same thing to the agent — not accepted, retry on the next notify cycle —
 and its pending state survives; the `error` code exists so an operator reading the exchange sees
@@ -722,6 +835,163 @@ endpoint themselves) are not covered by `/scan/vd` at all — they're swept sepa
 update, by the cluster's master node only (`VulnerabilityScannerFacade::rescanDisconnectedAgents()`
 in the `vulnerability_scanner` module).
 
+## Enrollment endpoint (`POST /enroll`)
+
+`/enroll` lets a new agent register over the same HTTPS channel (port 1517) it uses for everything
+else afterward, instead of falling back to legacy `authd` on port 1515. It is a **bridge, not a
+second implementation**: `authd` keeps 100% of enrollment business logic (name/version/group
+validation, key generation, duplicate handling, cluster forwarding on a worker); this endpoint only
+authenticates the request and relays it to `authd`'s existing local socket
+(`queue/sockets/auth`) — the same interface `manage_agents` and the API's agent-registration
+endpoints already use. See [Authd](../authd/README.md) for what happens once a request reaches
+that socket, and [`legacy_enrollment`](../authd/configuration.md#legacy_enrollment) for how an
+operator can retire port 1515 while keeping `/enroll` (or disable both together via
+`remote_enrollment`).
+
+**The route is always registered**, regardless of configuration. When enrollment is
+administratively disabled (`<auth><disabled>yes</disabled>`, or `<auth><remote_enrollment>no</auth>`),
+it answers **`403`** rather than disappearing — a missing route (`404`) would mean "this manager
+doesn't support enrollment at all," which is a different, more permanent statement than "an operator
+turned this off."
+
+### Authentication
+
+Unlike every other endpoint on this page, `/enroll` cannot use the agent<->manager AES-CMAC scheme
+(see [Authentication](#authentication-aes-cmac) above) — an enrolling agent has no `client.keys`
+entry yet to sign with. Two credential checks apply instead, decided once at manager startup and
+**independently** of each other (an operator can require either, both, or neither — see below):
+
+- **Client certificate** — purely a property of the HTTPS listener's own `verification_mode`
+  (`certificate` or `full`; see [Configuration](configuration.md#https-configuration)). When
+  configured, the TLS handshake validates the agent's certificate against the manager's CA
+  **before the request ever reaches this endpoint** — there is nothing further for `/enroll` itself
+  to check.
+- **Password** — required whenever `authd`'s [`use_password`](../authd/configuration.md#use_password)
+  is enabled. The request must carry:
+
+  ```text
+  Authorization: WazuhEnroll <unix-timestamp>:<mac>
+  ```
+
+  `<mac>` is a 32-character lowercase-hex AES-256-CMAC, keyed by a 32-byte key derived from
+  `authd`'s enrollment password (`etc/authd.pass`) via **HKDF-SHA256** (empty salt,
+  `info = "WAZUH-ENROLL-CMAC-KEY" + 0x01`) — never the password bytes themselves. The timestamp
+  accepts the same window as the AES-CMAC scheme above (300 s past, 30 s future) -- tunable via the
+  SAME two internal options, `remoted.auth_max_request_age`/`remoted.auth_max_future_skew` (see the
+  table under [Authentication (AES-CMAC)](#authentication-aes-cmac) above). The request body is
+  also capped by the same `remoted.auth_max_body_size` (10 MiB default) that scheme enforces --
+  checked before anything else, in **every** mode including Open, so an oversized body is rejected
+  with `413` before it is ever hashed. The MAC covers a canonical byte sequence deliberately similar
+  to the AES-CMAC scheme's, minus the agent-id field (an enrolling agent doesn't have one):
+
+  ```text
+  WAZUH-ENROLL\n
+  1\n
+  <uppercase-method>\n
+  <request-target>\n      (raw path + query, exactly as sent)
+  <unix-timestamp>\n
+  <request-body>          (exact body bytes, no trailing newline)
+  ```
+
+  A missing/unreadable/invalid password file fails **closed** — every request is rejected, never
+  silently treated as if no password were required.
+
+Both checks failing to apply (no client-certificate requirement, no password configured) means the
+request needs no credential at all, matching `authd`'s own behavior on port 1515 in that
+configuration.
+
+Every auth rejection collapses to the same generic response, so a client cannot tell which check
+failed: `401` with `{"error":{"code":0,"message":"Invalid client authentication"}}`.
+
+**Worked example** (verified known-answer vector, useful as a cross-implementation test):
+
+| Input | Value |
+| --- | --- |
+| Password | `MyEnrollmentSecret123` |
+| HKDF-SHA256 derived key | `2ea29504f294bce5039bdb4fb78747dec59866204dc2588dc59f3b8cd5875a9e` |
+| Canonical string | `WAZUH-ENROLL\n1\nPOST\n/enroll\n1739999999\n{"name":"web-server-01","version":"5.0.0","groups":"default,web-servers","ip":"10.0.0.15"}` |
+| AES-256-CMAC | `dc07d78fc156a1944f4fb02b91da7d01` |
+| Resulting header | `Authorization: WazuhEnroll 1739999999:dc07d78fc156a1944f4fb02b91da7d01` |
+
+There is no per-request nonce, so a captured request could in principle be replayed inside its
+freshness window — bounded in practice by `authd`'s own duplicate-name/IP rejection (unless
+force-replace is configured to permit it). This mirrors the threat model the AES-CMAC scheme above
+already accepts, with TLS protecting the transport either way.
+
+### Request
+
+```json
+{
+  "name": "web-server-01",
+  "version": "5.0.0",
+  "groups": "default,web-servers",
+  "ip": "10.0.0.15"
+}
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, `manage_agents` and the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
+| `version` | yes | Rejected if newer than the manager's unless `<remote><agents><allow_higher_versions>` is `yes` — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `groups` | no | Comma-separated, passed through unchanged. |
+| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
+
+`force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
+for admin/restore use (`manage_agents`): `/enroll` is exclusively for a brand-new agent
+self-enrolling, which always gets an auto-assigned ID and an `authd`-generated key.
+
+**IP resolution** mirrors `authd`'s own [`use_source_ip`](../authd/configuration.md#use_source_ip):
+if enabled (manager-side), the HTTPS connection's observed peer address is used, overriding
+anything the body claims. Otherwise, a body `ip` of `src` (agent-side sentinel) also resolves to
+the observed peer address — never forwarded to `authd` literally, since its local socket has no
+notion of that sentinel at all (only port 1515's own wire parser does) and would reject it as an
+invalid IP. Otherwise the body's `ip` is used if present; otherwise `any`.
+
+### Responses
+
+**Success (`200 OK`):**
+
+```json
+{
+  "id": "003",
+  "name": "web-server-01",
+  "ip": "10.0.0.15",
+  "key": "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"
+}
+```
+
+Verbatim from `authd` — the `key` the agent must store and use to sign every subsequent request
+(via the AES-CMAC scheme above) with its new numeric `id`.
+
+### Error handling
+
+| Condition | HTTP | Notes |
+| --- | --- | --- |
+| Enrollment administratively disabled | `403` | Route always exists; see above. |
+| Missing/invalid credential | `401` | Collapsed to one generic message; see Authentication above. |
+| Body exceeds `remoted.auth_max_body_size` (10 MiB default) | `413` | Checked BEFORE the CMAC runs (and before a credential check, in Open mode too) -- an oversized body is rejected without ever being hashed or reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
+| Malformed body, missing `name`/`version`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. |
+| Agent version newer than allowed | `400` | See `version` in the request table above. |
+| `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
+| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
+| `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
+| `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a per-client rate limit. |
+| Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
+| `authd` unreachable, or its reply was unparseable/timed out | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}` |
+
+Every error the `/enroll` **endpoint itself** produces — every row in the table above, disabled/
+credential/body-size/validation/`authd` business and transport failures alike — has the shape
+`{"error":{"code":<code>,"message":"<text>"}}`, distinct from every other endpoint's flat
+`{"error":"<message>","code":<status>}` shape, since this one passes through `authd`'s own numeric
+codes for diagnostics (`code` is `0` for the non-`authd` rows, which carry no numeric code).
+
+A few conditions never reach the endpoint's own code at all — the shared HTTP transport rejects them
+first, in the same flat shape it uses for every route, `/enroll` included: an uncaught exception
+(`500`), capacity-based load shedding once the module's in-flight byte budget is exhausted (`503`),
+or (mTLS mode) a client certificate that doesn't match the connecting peer's address (`403`). These
+are the exception to the "always nested" rule above, not a second business-error shape.
+
 ## Testing
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
@@ -758,10 +1028,37 @@ python3 send_scan_vd.py --all
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
+`src/remoted/remoted_module/tools/send_enroll.py` does the same for `POST /enroll` — but since an
+enrolling agent has no `client.keys` entry to sign with, it works from whatever credential you give
+it directly (a password, a client certificate, or neither) rather than reading one from a file:
+
+```bash
+# Open mode -- no credential at all
+python3 send_enroll.py --name web-01
+
+# Password mode -- signs with the manager's actual enrollment password
+python3 send_enroll.py --name web-01 --password Secret123
+
+# tamper the body after signing -> 401 (invalid MAC)
+python3 send_enroll.py --name web-01 --password Secret123 --tamper
+
+# mTLS mode -- the client certificate presented during the handshake is the credential
+python3 send_enroll.py --name web-01 --client-cert agent.pem --client-key agent.key
+
+# run every scenario this script can drive without knowing the manager's configured mode in
+# advance (body validation always; signature/timing scenarios too if --password is given)
+python3 send_enroll.py --password Secret123 --all
+# options: --url (default https://127.0.0.1:1517), --version, --groups, --ip, --key-hash,
+#          --password-file (reads /var/wazuh-manager/etc/authd.pass by default)
+```
+
 ## References
 
 - [Event Protocol Specification](event-protocol.md) — the `H`/`E` wire format for event batches.
 - [Configuration](configuration.md) — classic `remoted` (`<remote>`) options and internal options.
 - [Architecture](architecture.md) — where the HTTPS listener sits in the `remoted` pipeline.
+- [Authd](../authd/README.md) / [Authd Configuration](../authd/configuration.md) — the enrollment
+  service `/enroll` bridges to, and the `remote_enrollment`/`legacy_enrollment` flags that gate
+  both enrollment paths.
 - Endpoint contract: [`stateless-api.yaml`](stateless-api.yaml) /
   [ReDoc reference](stateless-api-reference.html).

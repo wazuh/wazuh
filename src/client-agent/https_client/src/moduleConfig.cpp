@@ -57,10 +57,15 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.version = boundedString(config.version, sizeof(config.version));
     typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
-    typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 120000);
+    typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 90000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
+    typed.controlMaxAttempts = orDefault<uint32_t>(config.control_max_attempts, 4);
+    typed.statelessMaxAttempts = orDefault<uint32_t>(config.stateless_max_attempts, 5);
+    typed.statefulMaxAttempts = orDefault<uint32_t>(config.stateful_max_attempts, 5);
+    typed.downloadMaxAttempts = orDefault<uint32_t>(config.download_max_attempts, 2);
+    typed.producerPauseThreshold = orDefault<uint32_t>(config.producer_pause_threshold, 2);
     typed.spoolDir = boundedString(config.spool_dir, sizeof(config.spool_dir));
     typed.syncSocketPath = boundedString(config.sync_socket_path, sizeof(config.sync_socket_path));
     typed.httpsCompressionEnabled = config.https_compression_enabled;
@@ -75,7 +80,26 @@ bool ModuleConfig::validate(const IFsProbe& fsProbe, const LogFn& logFn) const
         return false;
     }
 
-    return validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
+    return validateTiming(logFn) && validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
+}
+
+bool ModuleConfig::validateTiming(const LogFn& logFn) const
+{
+    // Paired internal options: getDefine_Int_default() range-checks each one on its own, but
+    // nothing relates the two, so an inverted pair is reachable from two individually valid
+    // values. Rejected rather than silently reordered -- an inverted min/max is always an
+    // operator error, and starting with a quietly corrected value hides it.
+    if (backoffBaseMs > backoffCapMs)
+    {
+        LOGFN_ERROR(logFn,
+                    "Config rejected: agent.https_backoff_base (%u) is above "
+                    "agent.https_backoff_cap (%u).",
+                    backoffBaseMs,
+                    backoffCapMs);
+        return false;
+    }
+
+    return true;
 }
 
 bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const

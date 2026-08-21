@@ -104,6 +104,10 @@ namespace invsync::vd
         void workerLoop(std::size_t index);
         void respond(Item& item, int status, const std::string& body);
         void respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector);
+        /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
+        /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which
+        /// carries a Retry-After header -- still lands in the histogram like every other outcome.
+        void observeLaneTime(const Item& item);
 
         VdScanLaneConfig m_config;
         std::shared_ptr<IVdScanner> m_scanner;

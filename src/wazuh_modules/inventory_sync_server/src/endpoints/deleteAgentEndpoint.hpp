@@ -12,6 +12,7 @@
 #ifndef _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 #define _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 
+#include "common/metricNames.hpp" // invsync::metrics::RequestCounters
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
@@ -64,11 +65,18 @@ namespace invsync::endpoints::delete_agent
      * Both weak, like every other route: the facade's stop() resets them and the weak capture keeps
      * that reset destructive. The connector is only the admission availability check; the pipeline
      * worker re-checks its own at dispatch.
+     *
+     * requestCounters is the same sync.requests.total.* family the sync route holds (dedupe by
+     * name on one manager): the handler counts its own inline 400/503 rejections here, while an
+     * enqueued deletion's terminal response is counted by the pipeline -- each response counted
+     * exactly once, at the site that sends it. Default-constructed it counts nothing (the null
+     * object the tests rely on).
      */
     struct Dependencies
     {
         std::weak_ptr<invsync::sync::SyncPipeline> pipeline;
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
+        invsync::metrics::RequestCounters requestCounters;
     };
 
     /**

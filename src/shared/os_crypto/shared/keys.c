@@ -745,6 +745,10 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
 
+    if (!keys->keytree_id) {
+        return -1;
+    }
+
     const int key_id = OS_IsAllowedID(keys, agent_id);
 
     return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);

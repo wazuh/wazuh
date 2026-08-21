@@ -170,7 +170,7 @@ namespace
             vdClient = std::make_shared<remoted::common::VdClient>();
             handler =
                 std::make_unique<ControlHandler>(registry, wdbClient, taskClient, hashCache, vdClient, metrics, cfg);
-            endpointHandler = remoted::endpoints::control::makeHandler(*handler);
+            endpointHandler = remoted::endpoints::control::makeHandler(*handler, metrics);
         }
         ~DispatchFixture()
         {
@@ -221,6 +221,30 @@ TEST(ControlEndpointTest, OversizedBodyReturns400InvalidBody)
     ASSERT_TRUE(resp->wait(500ms));
     EXPECT_EQ(resp->captured().status, 400);
     EXPECT_NE(resp->captured().body.find("invalid_body"), std::string::npos);
+}
+
+// remoted.control.rejected aggregates all four 400 paths into one "agents are sending
+// malformed control traffic" signal (the throttled logs keep the which-field detail); every
+// path must land there, and nothing else may.
+TEST(ControlEndpointTest, EveryRejectionPathBumpsTheRejectedCounter)
+{
+    RejectionFixture f;
+    ASSERT_EQ(f.metrics.rejected->get(), 0U);
+
+    const auto reject = [&f](const std::string& agentId, const std::string& body)
+    {
+        auto resp = std::make_shared<CapturingResponder>();
+        f.endpointHandler(makeRequest(agentId, body), resp);
+        ASSERT_TRUE(resp->wait(500ms));
+        EXPECT_EQ(resp->captured().status, 400);
+    };
+
+    reject("1", "");                       // invalid_body (empty)
+    reject("1", "{not json");              // invalid_json
+    reject("abc", R"({"type":"notify"})"); // invalid_agent_id
+    reject("1", R"({"type":"reboot"})");   // unknown_message_type
+
+    EXPECT_EQ(f.metrics.rejected->get(), 4U);
 }
 
 TEST(ControlEndpointTest, MalformedJsonReturns400InvalidJson)

@@ -18,12 +18,6 @@
 
 namespace
 {
-    /// Few attempts on purpose, matching ConfigFetcher: a WPK is fetched once
-    /// per task_id (the durable registry already guarantees that), so there
-    /// is no "next notify re-arms it" safety net here -- a failed download
-    /// simply aborts the upgrade (fire-and-forget).
-    constexpr uint32_t WPK_DOWNLOAD_MAX_ATTEMPTS = 2;
-
     std::string lowered(std::string value)
     {
         std::transform(value.begin(), value.end(), value.begin(),
@@ -67,7 +61,7 @@ std::shared_ptr<SpoolFile> WpkFetcher::fetch(const std::string& wpkFile,
     spec.maxResponseBytes = m_config.wpkMaxDownloadBytes;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
 
-    const auto result = m_sender.send(spec, waiter, WPK_DOWNLOAD_MAX_ATTEMPTS);
+    const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
 
     if (result.outcome != OutcomeClass::Ok)
     {

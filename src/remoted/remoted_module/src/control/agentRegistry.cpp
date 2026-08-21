@@ -44,6 +44,17 @@ namespace remoted::control
         return updated;
     }
 
+    std::size_t AgentRegistry::size() const
+    {
+        std::size_t total = 0;
+        for (const auto& shard : m_shards)
+        {
+            std::shared_lock lock(shard.mtx);
+            total += shard.map.size();
+        }
+        return total;
+    }
+
     void AgentRegistry::evictExpiredEntries(uint64_t ttlSec)
     {
         const auto now = static_cast<uint64_t>(std::time(nullptr));

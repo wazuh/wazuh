@@ -403,7 +403,8 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
     Waiter<SocketError> w;
-    client.updateStatusCode(3, AgentStatusCode::InvalidVersion, "v0", "synced", [&](SocketError e) { w.complete(e); });
+    client.updateStatusCode(
+        3, AgentStatusCode::InvalidVersion, "v0", "", "synced", [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
 
     std::string got;
@@ -415,6 +416,21 @@ TEST(WazuhDBClientTest, UpdateStatusCodeSerializesInteger)
     // InvalidVersion == 1.
     EXPECT_NE(got.find("\"status_code\":1"), std::string::npos);
     EXPECT_NE(got.find("\"version\":\"v0\""), std::string::npos);
+    // An empty connectionStatus must not reach the wire: without the key, wdb
+    // keeps the plain status-code statement and does not touch the keepalive.
+    EXPECT_EQ(got.find("connection_status"), std::string::npos);
+
+    Waiter<SocketError> w2;
+    client.updateStatusCode(
+        3, AgentStatusCode::Ok, "v5.0.0", "pending", "synced", [&](SocketError e) { w2.complete(e); });
+    ASSERT_TRUE(w2.wait(3000ms));
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        got = received;
+    }
+    EXPECT_NE(got.find("\"status_code\":0"), std::string::npos);
+    EXPECT_NE(got.find("\"version\":\"v5.0.0\""), std::string::npos);
+    EXPECT_NE(got.find("\"connection_status\":\"pending\""), std::string::npos);
 }
 
 // -----------------------------------------------------------------------------
@@ -438,6 +454,33 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::Timeout);
     EXPECT_GE(metrics.wdbError->get(), 1U);
+    // A timeout is already accounted by wdbError; observing it would poison the latency
+    // histogram's "healthy round trip" meaning with deadline-shaped values.
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// -----------------------------------------------------------------------------
+// Latency: one observation per SUCCESSFUL round trip -- the histogram is the
+// number that sizes wdbRoundtripDeadlineMs, so failures must never feed it.
+// -----------------------------------------------------------------------------
+TEST(WazuhDBClientTest, SuccessfulRoundTripObservesLatencyOnce)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_lat");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    Waiter<SocketError> w;
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+
+    const auto snapshot = metrics.wdbLatency->snapshot();
+    EXPECT_EQ(snapshot.count, 1U);
+    EXPECT_EQ(metrics.wdbError->get(), 0U);
 }
 
 // -----------------------------------------------------------------------------

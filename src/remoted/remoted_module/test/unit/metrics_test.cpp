@@ -1,5 +1,5 @@
 /*
- * Wazuh remoted module - Control and /scan/vd metrics unit tests
+ * Wazuh remoted module - Metric catalog unit tests
  * Copyright (C) 2015, Wazuh Inc.
  * July 31, 2026.
  *
@@ -9,7 +9,9 @@
  * Foundation.
  */
 
+#include "common/requestOutcomeMetrics.hpp"
 #include "control/metrics.hpp"
+#include "endpoints/endpoint.hpp"
 #include "scanvd/scanVdMetrics.hpp"
 
 #include <wazuh_metrics/jsonDump.hpp>
@@ -18,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -48,14 +51,22 @@ TEST(ControlMetricsTest, MakeRegistersFamilyAtZero)
     wazuh::metrics::Manager manager;
     const ControlMetrics m {makeControlMetrics(manager)};
 
-    for (const auto* name :
-         {METRIC_STARTUP, METRIC_NOTIFY, METRIC_SHUTDOWN, METRIC_WDB_ERROR, METRIC_TASK_FETCH, METRIC_TASK_FETCH_ERROR})
+    for (const auto* name : {METRIC_STARTUP,
+                             METRIC_NOTIFY,
+                             METRIC_SHUTDOWN,
+                             METRIC_WDB_ERROR,
+                             METRIC_TASK_FETCH,
+                             METRIC_TASK_FETCH_ERROR,
+                             METRIC_REJECTED,
+                             METRIC_WDB_LATENCY})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 6U);
+    EXPECT_EQ(manager.count(), 8U);
     EXPECT_EQ(m.startup->get(), 0U);
     EXPECT_EQ(m.taskFetchError->get(), 0U);
+    EXPECT_EQ(m.rejected->get(), 0U);
+    EXPECT_EQ(m.wdbLatency->snapshot().count, 0U);
 }
 
 // Each inc helper touches exactly its own counter; a regression in the wrong counter
@@ -86,6 +97,18 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     EXPECT_EQ(valueOf(METRIC_TASK_FETCH), 1U);
     incTaskFetchError(m);
     EXPECT_EQ(valueOf(METRIC_TASK_FETCH_ERROR), 1U);
+    incRejected(m);
+    EXPECT_EQ(valueOf(METRIC_REJECTED), 1U);
+
+    // The histogram helper records exactly one observation with the given value -- and, like
+    // every helper here, is a safe no-op on the null object.
+    observeWdbLatency(m, 2500U);
+    const auto snapshot = m.wdbLatency->snapshot();
+    EXPECT_EQ(snapshot.count, 1U);
+    EXPECT_EQ(snapshot.sum, 2500U);
+    ControlMetrics nullObject;
+    incRejected(nullObject);
+    observeWdbLatency(nullObject, 1U); // not crashing IS the contract
 }
 
 // Resolving the family twice on the same manager yields the SAME counters (dedupe by name), so
@@ -184,19 +207,209 @@ TEST(ScanVdMetricsTest, MakeRegistersFamilyAndIncHelpersEachTouchOneCounter)
     }
 }
 
-// Both families resolve on ONE manager in production (the facade's), so the dump must show them
+// Null-object contract for the per-endpoint response set, same rationale as the control one.
+TEST(ResponseCountersTest, DefaultConstructedCountsNothing)
+{
+    remoted::metrics::ResponseCounters c;
+    c.count(200);
+    c.count(503);
+    c.count(101);
+    EXPECT_EQ(c.c2xx, nullptr);
+    EXPECT_EQ(c.other, nullptr);
+}
+
+// make() registers the whole remoted.http.<endpoint>.responses.* family at zero. Guards the
+// member<->name pairing and the fixed 8-cell vocabulary every endpoint must share.
+TEST(ResponseCountersTest, MakeRegistersFamilyAtZero)
+{
+    wazuh::metrics::Manager manager;
+    const auto c = remoted::metrics::ResponseCounters::make(manager, "stateless");
+
+    for (const auto* code : {"2xx", "400", "403", "409", "413", "500", "503", "other"})
+    {
+        const std::string name = std::string {"remoted.http.stateless.responses."} + code;
+        EXPECT_TRUE(manager.exists(name)) << name;
+        EXPECT_EQ(static_cast<uint64_t>(manager.get(name)->value()), 0U) << name;
+    }
+    EXPECT_EQ(manager.count(), 8U);
+    EXPECT_EQ(c.c2xx->get(), 0U);
+}
+
+// count() maps each status to exactly one cell: the whole 2xx range collapses into one counter,
+// each cataloged code hits its own, and everything else (1xx, 3xx, uncataloged 4xx/5xx) lands in
+// "other". Distinct increment counts so two swapped cells cannot cancel out.
+TEST(ResponseCountersTest, CountMapsStatusToExactlyOneCell)
+{
+    wazuh::metrics::Manager manager;
+    const auto c = remoted::metrics::ResponseCounters::make(manager, "stateful");
+
+    c.count(200);
+    c.count(202);
+    c.count(299);
+    EXPECT_EQ(c.c2xx->get(), 3U);
+
+    const std::vector<std::pair<int, std::shared_ptr<wazuh::metrics::ICounter>>> cells {
+        {400, c.c400}, {403, c.c403}, {409, c.c409}, {413, c.c413}, {500, c.c500}, {503, c.c503}};
+    uint64_t expected = 0;
+    for (const auto& [status, cell] : cells)
+    {
+        ++expected;
+        for (uint64_t i = 0; i < expected; ++i)
+        {
+            c.count(status);
+        }
+        EXPECT_EQ(cell->get(), expected) << status;
+    }
+
+    c.count(101);
+    c.count(304);
+    c.count(404);
+    c.count(504);
+    EXPECT_EQ(c.other->get(), 4U);
+    EXPECT_EQ(c.c2xx->get(), 3U); // untouched by the non-2xx traffic above
+}
+
+// makeEndpointHttpMetrics() resolves the latency histogram only on request: /stateless and
+// /stateful pay for one, /stats and /config do not -- and observeLatency() stays a safe no-op
+// on the histogram-less (and on the default-constructed) struct.
+TEST(EndpointHttpMetricsTest, LatencyHistogramIsOptInAndObserveIsNullSafe)
+{
+    wazuh::metrics::Manager manager;
+
+    const auto withLatency = remoted::metrics::makeEndpointHttpMetrics(manager, "stateless", true);
+    ASSERT_NE(withLatency.latency, nullptr);
+    EXPECT_TRUE(manager.exists("remoted.http.stateless.latency"));
+    remoted::metrics::observeLatency(withLatency, 1500U);
+    EXPECT_EQ(withLatency.latency->snapshot().count, 1U);
+    EXPECT_EQ(withLatency.latency->snapshot().sum, 1500U);
+
+    const auto withoutLatency = remoted::metrics::makeEndpointHttpMetrics(manager, "stats", false);
+    EXPECT_EQ(withoutLatency.latency, nullptr);
+    EXPECT_FALSE(manager.exists("remoted.http.stats.latency"));
+    remoted::metrics::observeLatency(withoutLatency, 1500U); // not crashing IS the contract
+
+    remoted::metrics::observeLatency(remoted::metrics::EndpointHttpMetrics {}, 1U);
+}
+
+// makeAuthRejectMetrics() registers the whole remoted.auth.reject.* family at zero. Guards the
+// member<->name pairing, like the control/scanvd equivalents.
+TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
+{
+    wazuh::metrics::Manager manager;
+    const auto m = remoted::endpoints::makeAuthRejectMetrics(manager);
+
+    for (const auto* name : {remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT,
+                             remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC,
+                             remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW,
+                             remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY,
+                             remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED,
+                             remoted::endpoints::METRIC_AUTH_REJECT_ENROLLMENT_KEY,
+                             remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,
+                             remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE,
+                             remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING,
+                             remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED})
+    {
+        EXPECT_TRUE(manager.exists(name)) << name;
+    }
+    EXPECT_EQ(manager.count(), 10U);
+    EXPECT_EQ(m.unknownAgent->get(), 0U);
+    EXPECT_EQ(m.malformed->get(), 0U);
+}
+
+// errorResponseFor() is the single funnel every client-visible auth rejection passes through;
+// once a family is installed, each AuthError must land in exactly one cell -- with the
+// PRE-collapse cause, not classify()'s coarser who-must-act folding. Every enum value is fed
+// through so a new AuthError can never silently fall out of the accounting.
+TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
+{
+    using remoted::auth::AuthError;
+
+    wazuh::metrics::Manager manager;
+    remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::makeAuthRejectMetrics(manager));
+
+    // The set of AuthErrors is DISCOVERED, not hand-listed, and that is the whole point: a
+    // hand-written list has now failed twice. AddressNotAllowed (static-IP agents) and
+    // EnrollmentKeyUnavailable (/enroll) each arrived upstream, each fell into the `malformed`
+    // cell, and no test noticed -- the second time even though a static_assert was guarding the
+    // enum, because it was anchored to a fixed enumerator and the new value was APPENDED past it.
+    //
+    // toString() is the registry that cannot go stale: it switches over AuthError with no
+    // default, so -Wswitch forces whoever adds a value to extend it, and it answers "unknown"
+    // for anything not yet named. So: probe well past the current size, treat every named value
+    // as live, feed it through the funnel, and require the cells to account for all of them.
+    // Append a value without giving it a cell and this test fails on the total.
+    std::vector<AuthError> live;
+    for (int i = 1; i <= 128; ++i)
+    {
+        const auto err = static_cast<AuthError>(i);
+        if (std::string_view {remoted::auth::toString(err)} != "unknown")
+        {
+            live.push_back(err);
+        }
+    }
+    // Sanity floor: if the probe stopped finding values, the discovery itself broke.
+    ASSERT_GE(live.size(), 15U) << "AuthError discovery via toString() found implausibly few values";
+
+    for (const auto err : live)
+    {
+        (void)remoted::endpoints::errorResponseFor(err);
+    }
+
+    const auto valueOf = [&manager](const char* name)
+    {
+        return static_cast<uint64_t>(manager.get(name)->value());
+    };
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW), 2U); // Expired + Future
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ENROLLMENT_KEY), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE), 1U);
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING), 2U); // both encoding causes
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED), 4U);    // the four header faults
+
+    // The tripwire: every discovered AuthError landed in exactly one cell. A value appended to
+    // the enum without a cell of its own lands in `malformed`, which makes that cell exceed the
+    // four header faults asserted above AND keeps this total honest -- so the failure names
+    // itself instead of hiding as a silently widened bucket.
+    const auto total = valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNKNOWN_AGENT) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_CLOCK_SKEW) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_UNUSABLE_KEY) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ADDRESS_NOT_ALLOWED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_ENROLLMENT_KEY) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_PAYLOAD_MISMATCH) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED);
+    EXPECT_EQ(total, live.size()) << "an AuthError is not accounted for in any remoted.auth.reject.* cell";
+
+    // Uninstall (back to the null object): the instance is process-wide, so leaving these
+    // counters live would leak this test's accounting into any later test that rejects.
+    remoted::endpoints::installAuthRejectMetrics(remoted::endpoints::AuthRejectMetrics {});
+    (void)remoted::endpoints::errorResponseFor(AuthError::InvalidMac); // not crashing IS the contract
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_INVALID_MAC), 1U);
+}
+
+// All families resolve on ONE manager in production (the facade's), so the dump must show them
 // side by side under their remoted.* namespaces -- that dump is the only observation path today.
 TEST(RemotedMetricsTest, DumpJsonShowsBothFamilies)
 {
     wazuh::metrics::Manager manager;
     ControlMetrics control {makeControlMetrics(manager)};
     ScanVdMetrics scanVd {makeScanVdMetrics(manager)};
+    const auto http = remoted::metrics::makeEndpointHttpMetrics(manager, "stateless", true);
 
     incStartup(control);
     incAccepted(scanVd);
+    http.responses.count(202);
 
     const std::string dump = wazuh::metrics::dumpJson(manager, {"remoted"});
     EXPECT_NE(dump.find("\"name\":\"remoted\""), std::string::npos) << dump;
     EXPECT_NE(dump.find(METRIC_STARTUP), std::string::npos) << dump;
     EXPECT_NE(dump.find(METRIC_ACCEPTED), std::string::npos) << dump;
+    EXPECT_NE(dump.find("remoted.http.stateless.responses.2xx"), std::string::npos) << dump;
+    EXPECT_NE(dump.find("remoted.http.stateless.latency"), std::string::npos) << dump;
 }

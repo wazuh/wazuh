@@ -139,6 +139,10 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
     /* Max 10, not 30: modulesd gives the WHOLE daemon 30 s to shut down, so letting one module's drain
      * window alone consume all of it defeats the budget this value exists to respect. */
     config->drain_timeout = getDefine_Int_default("wazuh_modules", "inventory_sync_server_drain_timeout", 0, 10, 0);
+    /* Indexer search page size while draining a session. Sized against the indexer's own limits
+     * (page size vs. response memory), which this module cannot know at build time. */
+    config->session_query_batch_size =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_session_query_batch_size", 0, 100000, 0);
     config->max_parallel_connections =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_max_parallel_connections", 0, 65536, 0);
     /* Route-class admission (QoS). The liveness class stays fixed inside the module -- it is a term

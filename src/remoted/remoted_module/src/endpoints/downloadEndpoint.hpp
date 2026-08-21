@@ -12,6 +12,7 @@
 #ifndef _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 #define _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 
+#include "downloadMetrics.hpp"         // DownloadMetrics
 #include "endpoint.hpp"                // AuthenticatedHandler
 #include "http_server/IHttpServer.hpp" // HttpResponse, IByteSource
 
@@ -318,8 +319,12 @@ namespace remoted::endpoints::download
      * @warning The route MUST be registered with remoted::http::ResponseMode::Streamable. A
      * Buffered registration reaches IHttpResponder::stream()'s fail-loud default and every download
      * answers 500.
+     *
+     * @param metrics The remoted.download.* set (copied into the handler, cold path): admission
+     * outcomes plus started-transfer count/bytes, all recorded before the streaming pump runs.
+     * The default null object counts nothing.
      */
-    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths = {});
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths = {}, DownloadMetrics metrics = {});
 
 } // namespace remoted::endpoints::download
 

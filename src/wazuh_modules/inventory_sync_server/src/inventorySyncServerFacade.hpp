@@ -400,22 +400,23 @@ namespace invsync
 
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
-            m_httpServer->addRoute(
-                invsync::endpoints::sync::method(),
-                invsync::endpoints::sync::path(),
-                invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
-                    m_syncPipeline,
-                    m_indexerConnectorSync,
-                    clusterIdentity,
-                    m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
-                                                             : DEFAULT_VD_RETRY_AFTER_SECS,
-                    m_vdScanLane,
-                    m_vdScanner,
-                    invsync::metrics::RequestCounters::make(*m_metricsManager),
-                    m_metricsManager->getOrCreateCounter(invsync::metrics::VD_RETRY_AFTER_TOTAL,
-                                                         "503 responses carrying a Retry-After header",
-                                                         "count")}),
-                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
+            m_httpServer->addRoute(invsync::endpoints::sync::method(),
+                                   invsync::endpoints::sync::path(),
+                                   invsync::endpoints::sync::makeHandler(invsync::endpoints::sync::Dependencies {
+                                       m_syncPipeline,
+                                       m_indexerConnectorSync,
+                                       clusterIdentity,
+                                       m_config.vd_feed_retry_after_seconds > 0 ? m_config.vd_feed_retry_after_seconds
+                                                                                : DEFAULT_VD_RETRY_AFTER_SECS,
+                                       m_vdScanLane,
+                                       m_vdScanner,
+                                       invsync::metrics::RequestCounters::make(*m_metricsManager),
+                                       // The shared helper, NOT a getOrCreateCounter with its own strings: the lane
+                                       // registers this counter too, and getOrCreate keeps only the first
+                                       // registration's metadata -- a second copy of the strings here would be dead
+                                       // text that silently drifts.
+                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager)}),
+                                   wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
             // rather than sharing one handler because their real payloads will diverge. DATA class
@@ -438,8 +439,11 @@ namespace invsync
             // ingest budget must never fail deletions that cost it no payload memory; their real
             // capacity control stays in the pipeline.
             {
-                const invsync::endpoints::delete_agent::Dependencies deleteDeps {m_syncPipeline,
-                                                                                 m_indexerConnectorSync};
+                // Same RequestCounters family as the sync route (getOrCreateCounter dedupes by
+                // name): the deletion plane's inline 400/503 rejections count into the same
+                // sync.requests.total.* cells its pipeline-answered responses already use.
+                const invsync::endpoints::delete_agent::Dependencies deleteDeps {
+                    m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
                 m_httpServer->addRoute(invsync::endpoints::delete_agent::method(),
                                        invsync::endpoints::delete_agent::path(),
                                        invsync::endpoints::delete_agent::makeHandler(deleteDeps),
@@ -520,7 +524,8 @@ namespace invsync
             m_metricsManager->registerPullMetric(
                 invsync::metrics::SERVER_SESSIONS_LIVE,
                 [snapshot] { return static_cast<uint64_t>(snapshot().liveSessions); },
-                "Open transport connections, deferred replies included",
+                "Open transport connections, deferred replies included (superset: the per-class "
+                "counts exclude connections still reading their head)",
                 "connections");
             m_metricsManager->registerPullMetric(
                 invsync::metrics::SERVER_SESSIONS_DATA,
@@ -855,6 +860,7 @@ namespace invsync
                 pipelineConfig.bulkFlushBytes = m_config.indexer_sync_max_bulk_size > 0
                                                     ? static_cast<std::size_t>(m_config.indexer_sync_max_bulk_size)
                                                     : DEFAULT_BULK_FLUSH_BYTES;
+                pipelineConfig.sessionQueryBatchSize = m_config.session_query_batch_size;
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
                 if (needSession || needSync || needAsync || needPipeline)

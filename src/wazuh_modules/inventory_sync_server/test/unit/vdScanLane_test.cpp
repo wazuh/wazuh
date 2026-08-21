@@ -18,6 +18,8 @@
 #include "vd/agentInFlightRegistry.hpp"
 #include "vd/serverScanCoordinator.hpp"
 
+#include <wazuh_metrics/manager.hpp>
+
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -127,14 +129,16 @@ namespace
         std::shared_ptr<AgentInFlightRegistry> registry {std::make_shared<AgentInFlightRegistry>()};
         std::shared_ptr<VdScanLane> lane;
 
-        explicit LaneUnderTest(VdScanLaneConfig config = {})
+        explicit LaneUnderTest(VdScanLaneConfig config = {},
+                               std::shared_ptr<wazuh::metrics::IManager> metrics = nullptr)
         {
             lane = std::make_shared<VdScanLane>(config,
                                                 std::make_shared<FakeVdScanner>(events),
                                                 std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
                                                     std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
                                                 registry,
-                                                CLUSTER);
+                                                CLUSTER,
+                                                std::move(metrics));
         }
 
         ~LaneUnderTest()
@@ -271,6 +275,54 @@ TEST(VdScanLaneTest, FeedTurningUnreadyBetweenAdmissionAndDispatchAnswers503With
     EXPECT_TRUE(hasRetryAfter) << "the D17 re-check at dispatch must carry the Retry-After too";
     // Only doc-1 was scanned+indexed; doc-2 was rejected without processing.
     EXPECT_EQ(1, fixture.events->m_syncFlushes.load());
+}
+
+// The dispatch-time feed gate is a lane outcome like any other: counted once in the shared
+// sync.requests.total.503 cell, once in vd.retry_after.total, and -- because the item spent
+// real queue time -- sampled into vd.lane.time. Regression guard: this is the one send that
+// bypasses respond() (it carries the Retry-After header) and it used to silently skip the
+// histogram. Also pins the single-source registration of vd.retry_after.total's metadata
+// (makeVdRetryAfterCounter): a second registration's strings would be silently discarded.
+TEST(VdScanLaneTest, FeedUnreadyAtDispatchCountsOnceAndSamplesLaneTime)
+{
+    auto metrics = std::make_shared<wazuh::metrics::Manager>();
+    VdScanLaneConfig config;
+    config.retryAfterSeconds = 42;
+    LaneUnderTest fixture {config, metrics};
+    fixture.events->closeScanGate(); // hold the worker so we can flip the feed under a QUEUED item
+
+    auto first = std::make_shared<FutureResponder>();
+    auto firstItem = makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "1"), first);
+    firstItem.enqueuedAt = std::chrono::steady_clock::now(); // the endpoint stamps this in production
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(firstItem)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
+
+    auto queued = std::make_shared<FutureResponder>();
+    auto queuedItem = makeItem(vdDeltaBody("doc-2", invsync::test::fb::Option_VDFirst, "2"), queued, "2");
+    queuedItem.enqueuedAt = std::chrono::steady_clock::now();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(std::move(queuedItem)));
+
+    fixture.events->m_vdFeedReady.store(false);
+    fixture.events->openScanGate();
+
+    EXPECT_EQ(200, first->get().status);
+    EXPECT_EQ(503, queued->get().status);
+
+    const auto valueOf = [&metrics](const char* name)
+    {
+        return static_cast<uint64_t>(metrics->get(name)->value());
+    };
+    EXPECT_EQ(1U, valueOf("sync.requests.total.503"));   // counted exactly once, at the send
+    EXPECT_EQ(1U, valueOf("sync.requests.total.200"));   // the first session's own count
+    EXPECT_EQ(0U, valueOf("sync.requests.total.other")); // the responder reset kept finish(0,"") out
+    EXPECT_EQ(1U, valueOf("vd.retry_after.total"));
+
+    const auto laneTime = std::dynamic_pointer_cast<wazuh::metrics::IHistogram>(metrics->get("vd.lane.time"));
+    ASSERT_NE(nullptr, laneTime);
+    EXPECT_EQ(2U, laneTime->snapshot().count) << "both outcomes sampled: the 200 AND the header-carrying 503";
+
+    EXPECT_EQ("503 responses carrying a Retry-After header (the CVE feed was not ready)",
+              metrics->getMetadata("vd.retry_after.total").description);
 }
 
 TEST(VdScanLaneTest, TheRegistrySerializesTwoSessionsOfTheSameAgent)

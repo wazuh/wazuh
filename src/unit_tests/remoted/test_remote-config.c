@@ -589,6 +589,56 @@ static void test_w_remoted_parse_legacy_denied_ips_section(void **state) {
     free_node_array(nodes);
 }
 
+static void test_w_remoted_parse_legacy_enabled_yes(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = false;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("enabled", "yes")
+    );
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_true(ts->logr->legacy_enabled);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_legacy_enabled_no(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = true;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("enabled", "no")
+    );
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_false(ts->logr->legacy_enabled);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_legacy_enabled_invalid(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = true;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("enabled", "maybe")
+    );
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'maybe' for 'enabled'.");
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_true(ts->logr->legacy_enabled);
+
+    free_node_array(nodes);
+}
+
 // Test w_remoted_parse_https
 
 static void test_w_remoted_parse_https_valid_full(void **state) {
@@ -601,7 +651,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
         create_xml_node("key", "etc/remoted-https/server.key"),
         create_xml_node("ca", "etc/remoted-https/ca.crt"),
         create_xml_node("verification_mode", "certificate"),
-        create_xml_node("ciphers", "HIGH:!ADH"),
+        create_xml_node("ciphers", "TLS_AES_256_GCM_SHA384"),
         create_xml_node("max_body_size", "50MB")
     );
 
@@ -618,7 +668,7 @@ static void test_w_remoted_parse_https_valid_full(void **state) {
     assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
     assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
     assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
-    assert_string_equal(ts->logr->https.ciphers, "HIGH:!ADH");
+    assert_string_equal(ts->logr->https.ciphers, "TLS_AES_256_GCM_SHA384");
     assert_int_equal(ts->logr->https.max_body_size, 50L * 1024 * 1024);
 
     free_node_array(nodes);
@@ -669,16 +719,50 @@ static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
         create_xml_node("verification_mode", "invalid_value")
     );
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                  "(9001): Ignored invalid value 'invalid_value' for 'verification_mode'.");
+    // Rejected rather than ignored: silently defaulting an invalid verification_mode to 'none'
+    // would disable client-certificate verification on a typo.
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'verification_mode': invalid_value.");
 
     int result = w_remoted_parse_https(nodes, ts->logr);
 
-    assert_int_equal(result, OS_SUCCESS);
-    // Invalid input is ignored (mwarn above), leaving verification_mode exactly as it
-    // started -- UNSET, since this test never configures <ca> either (create_remoted()
-    // mirrors RemotedConfig()'s real pre-parse UNSET initialization).
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_ciphers(void **state) {
+    test_state *ts = *state;
+
+    // A TLS 1.2-style cipher string is rejected at parse time; left unchecked it would make the
+    // HTTPS server fail to start at runtime, past the point 'wazuh-manager-remoted -t' could catch it.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("ciphers", "HIGH:!ADH")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Invalid TLS 1.3 cipher suite 'HIGH' in the '<remote><https><ciphers>' option.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_dual_stack(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("dual_stack", "maybe")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'dual_stack': maybe.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
 
     free_node_array(nodes);
 }
@@ -977,7 +1061,7 @@ static void test_read_remote_denied_ips_section(void **state) {
     free_node_array(nodes);
 }
 
-static void test_read_remote_local_ip_defaults_to_loopback(void **state) {
+static void test_read_remote_no_legacy_block_disables_legacy(void **state) {
     test_state *ts = *state;
 
     xml_node **nodes = create_node_array(0);
@@ -985,6 +1069,24 @@ static void test_read_remote_local_ip_defaults_to_loopback(void **state) {
     int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
 
     assert_int_equal(result, 0);
+    assert_false(ts->logr->legacy_enabled);
+    assert_null(ts->logr->lip);
+    assert_int_equal(ts->logr->port, 0);
+    assert_int_equal(ts->logr->proto, 0);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_legacy_block_present_defaults_applied(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = true;
+
+    xml_node **nodes = create_node_array(0);
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, 0);
+    assert_true(ts->logr->legacy_enabled);
     assert_non_null(ts->logr->lip);
     assert_string_equal(ts->logr->lip, "127.0.0.1");
     assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
@@ -993,9 +1095,30 @@ static void test_read_remote_local_ip_defaults_to_loopback(void **state) {
     free_node_array(nodes);
 }
 
+static void test_read_remote_explicit_values_cleared_when_disabled(void **state) {
+    test_state *ts = *state;
+    ts->logr->legacy_enabled = false;
+    ts->logr->port = 1514;
+    ts->logr->proto = REMOTED_NET_PROTOCOL_TCP;
+    os_strdup("127.0.0.1", ts->logr->lip);
+
+    xml_node **nodes = create_node_array(0);
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, 0);
+    assert_false(ts->logr->legacy_enabled);
+    assert_int_equal(ts->logr->port, 0);
+    assert_int_equal(ts->logr->proto, 0);
+    assert_null(ts->logr->lip);
+
+    free_node_array(nodes);
+}
+
 static void test_read_remote_local_ip_not_defaulted_for_ipv6(void **state) {
     test_state *ts = *state;
     ts->logr->ipv6 = 1;
+    ts->logr->legacy_enabled = true;
 
     xml_node **nodes = create_node_array(0);
 
@@ -1032,10 +1155,15 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_connection_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_allowed_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_denied_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_yes, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_no, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_enabled_invalid, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_valid_full, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_port, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_ciphers, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_dual_stack, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_without_ca, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_full, setup, teardown),
         cmocka_unit_test_setup_teardown(
@@ -1055,7 +1183,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_local_ip_defaults_to_loopback, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_no_legacy_block_disables_legacy, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_legacy_block_present_defaults_applied, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_explicit_values_cleared_when_disabled, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
 
     };

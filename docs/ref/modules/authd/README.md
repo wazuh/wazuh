@@ -2,6 +2,14 @@
 
 `wazuh-manager-authd` handles agent enrollment. It listens for agent registration requests over TLS, validates credentials, generates cryptographic keys, and writes the resulting entries to the agent keystore.
 
+Agents can also enroll over HTTPS, through `remoted_module`'s `POST /enroll` (port 1517) — see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll). That endpoint
+is a bridge, not a second implementation: it forwards to this same daemon's local socket (see
+[Local socket enrollment protocol](#local-socket-enrollment-protocol) below), so every enrollment —
+however it arrives — goes through the one business-logic path documented on this page. Port 1515
+(this document) remains fully supported for legacy 4.x agents; `/enroll` is the manager's intended
+long-term enrollment path going forward.
+
 Source: `src/os_auth/`
 
 For configuration options see [Authd Configuration](configuration.md).
@@ -34,7 +42,7 @@ For configuration options see [Authd Configuration](configuration.md).
 
 | Thread | Role |
 |--------|------|
-| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` is `yes`) |
+| Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
 | Local server | Handles enrollment via the local Unix socket `queue/sockets/auth` |
 | Writer | Periodically flushes the in-memory key queue to `client.keys` on disk, and — for each removed agent — asks the [Inventory Sync Server](../inventory-sync-server/README.md) to delete that agent's documents from the indexer |
 
@@ -76,10 +84,20 @@ The `<force>` sub-block controls when an agent may overwrite an existing registr
 ## Local socket enrollment protocol
 
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
-the Unix domain socket `queue/sockets/auth`. This is what `manage_agents` and the API's agent
-registration endpoints use to add, remove, and query agents without going through TLS or the
-enrollment password. It is only served on the master node — a worker rejects any JSON request here
-(error `9015`, "Cannot execute this request on a worker node").
+the Unix domain socket `queue/sockets/auth`. This is what `manage_agents`, the API's agent
+registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
+remove, and query agents without going through TLS or the enrollment password directly.
+
+On a cluster **worker** node: a self-enrollment-shaped `add` request (no caller-supplied `id` or
+`key` — the only shape `/enroll` and port 1515 ever produce) is forwarded to the master over the
+same cluster protocol port 1515's own worker-to-master enrollment forwarding already uses, and
+answered with the master's result — a transport failure during that forward answers `9016` ("Cannot
+communicate with master node"). An `add` that DOES carry a caller-chosen `id` and/or `key` (an
+admin/restore-style add — `manage_agents`/the API can send this shape, self-enrollment never does)
+is rejected outright with `9015`, same as `remove`/`get`: there is no cluster RPC to honor a
+caller-chosen identity on a worker, so this is an explicit rejection rather than silently returning a
+different id/key than the one requested.
 
 A request is a single-line JSON object:
 
@@ -92,6 +110,15 @@ A request is a single-line JSON object:
 - **`add`** — register a new agent (or replace an existing one, subject to the same duplicate
   ID/IP/name and `force` checks used by the network enrollment path). Arguments:
   - `name` (required), `ip` (required, or `"any"`)
+
+    The name must be *storable* in `client.keys`: non-empty, at most 128 characters, no whitespace
+    or control bytes, and not starting with `#` or `!`. A name violating any of these is rejected
+    with `9017` ("Invalid agent name") — distinct from `9005` ("No such name"), which means the
+    argument was absent. This is deliberately a narrower rule than the `OS_IsValidName()` charset
+    the two *enrollment* paths (port 1515 and `POST /enroll`) enforce on the names they mint: it
+    refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
+    `manage_agents` and the API have always accepted — containing `%`, a single character, or a
+    leading `.` — keep working.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one
   - `groups` (optional) — comma-separated centralized group(s) to assign
   - `key` (optional) — a caller-supplied key instead of a randomly generated one

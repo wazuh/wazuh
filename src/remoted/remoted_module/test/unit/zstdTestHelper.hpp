@@ -95,7 +95,66 @@ namespace remoted::testutil
             if (ZSTD_isError(remaining))
             {
                 throw std::runtime_error(std::string("ZSTD_compressStream2 (end) failed: ") +
-                                        ZSTD_getErrorName(remaining));
+                                         ZSTD_getErrorName(remaining));
+            }
+        } while (remaining != 0);
+
+        out.resize(output.pos);
+        return out;
+    }
+
+    /**
+     * @brief Like zstdCompressWithoutDeclaredSize(), but forces the frame header to DECLARE a
+     *        window of 2^windowLog bytes.
+     *
+     * The window size is what drives the decoder's up-front allocation, and it is attacker-chosen:
+     * a tiny frame can claim a huge window. Used to exercise zstdDecode()'s kMaxDeclaredWindowSize
+     * guard, which must refuse such a frame before reserving anything. The size is deliberately
+     * left undeclared, since zstd sizes the window down to the content size when it knows it.
+     */
+    inline std::string zstdCompressWithDeclaredWindowLog(std::string_view plain, int windowLog)
+    {
+        ZSTD_CCtx* cctx = ZSTD_createCCtx();
+        if (cctx == nullptr)
+        {
+            throw std::runtime_error("ZSTD_createCCtx failed");
+        }
+        struct Guard
+        {
+            ZSTD_CCtx* ctx;
+            ~Guard()
+            {
+                ZSTD_freeCCtx(ctx);
+            }
+        } guard {cctx};
+
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_windowLog, windowLog);
+
+        std::string out(ZSTD_compressBound(plain.size()) + 1024, '\0');
+        ZSTD_outBuffer output {out.data(), out.size(), 0};
+
+        // Fed and ended in two separate calls, for the same reason as
+        // zstdCompressWithoutDeclaredSize(): the frame header must be written before zstd has seen
+        // the whole input, or it records the content size and sizes the window down to match.
+        ZSTD_inBuffer in {plain.data(), plain.size(), 0};
+        while (in.pos < in.size)
+        {
+            const std::size_t ret = ZSTD_compressStream2(cctx, &output, &in, ZSTD_e_continue);
+            if (ZSTD_isError(ret))
+            {
+                throw std::runtime_error(std::string("ZSTD_compressStream2 failed: ") + ZSTD_getErrorName(ret));
+            }
+        }
+
+        ZSTD_inBuffer end {nullptr, 0, 0};
+        std::size_t remaining = 0;
+        do
+        {
+            remaining = ZSTD_compressStream2(cctx, &output, &end, ZSTD_e_end);
+            if (ZSTD_isError(remaining))
+            {
+                throw std::runtime_error(std::string("ZSTD_compressStream2 (end) failed: ") +
+                                         ZSTD_getErrorName(remaining));
             }
         } while (remaining != 0);
 

@@ -160,6 +160,23 @@ void test_OS_IsAllowedID_entry_OK(void **state)
 }
 
 // Test w_get_agent_net_protocol_from_keystore
+void test_w_get_agent_net_protocol_from_keystore_uninitialized_keystore(void **state)
+{
+    test_mode = 1;
+
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keytree_id = NULL;
+
+    const char * id = "12345";
+
+    int ret = w_get_agent_net_protocol_from_keystore(keys, id);
+
+    assert_int_equal(ret, -1);
+
+    os_free(keys);
+}
+
 void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
 {
     test_mode = 1;
@@ -456,6 +473,7 @@ int main(void)
         cmocka_unit_test(test_OS_IsAllowedID_entry_NULL),
         cmocka_unit_test(test_OS_IsAllowedID_entry_OK),
         // Tests w_get_agent_net_protocol_from_keystore
+        cmocka_unit_test(test_w_get_agent_net_protocol_from_keystore_uninitialized_keystore),
         cmocka_unit_test(test_w_get_agent_net_protocol_from_keystore_key_NULL),
         cmocka_unit_test(test_w_get_agent_net_protocol_from_keystore_OK),
         // Test OS_ReadTimestamps

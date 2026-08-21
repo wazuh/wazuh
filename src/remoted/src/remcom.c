@@ -214,6 +214,12 @@ void * remcom_main(__attribute__((unused)) void * arg) {
                 OS_SendSecureTCP(peer, length, response);
                 os_free(response);
                 close(peer);
+            } else if (!logr.legacy_enabled) {
+                // req_sender()/req_dispatch() only ever forward to an agent over the legacy
+                // AES channel (send_msg()); reject here instead of touching that keystore.
+                static const char *response_disabled = "err Legacy delivery disabled";
+                OS_SendSecureTCP(peer, strlen(response_disabled), response_disabled);
+                close(peer);
             } else {
                 req_sender(peer, buffer, length);
             }

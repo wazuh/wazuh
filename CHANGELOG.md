@@ -43,7 +43,6 @@
 | [#38091](https://github.com/wazuh/wazuh/issues/38091) | Raised the minimum TLS protocol version accepted by `wazuh-manager-authd` (agent enrollment) to TLS 1.3, removed the `ssl_auto_negotiate` fallback and its `-a` CLI flag, and changed `<auth><ciphers>` to a TLS 1.3 ciphersuite list. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
 | [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
-| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Renamed the communications metrics data stream to `wazuh-metrics-comms-v4`. It holds the statistics of the legacy communication protocol, which only agents below v5.0.0 use. |
 
 #### Removed
 
@@ -57,7 +56,6 @@
 | [#28425](https://github.com/wazuh/wazuh/issues/28425) | Removed legacy API security configuration endpoints. |
 | [#35908](https://github.com/wazuh/wazuh/issues/35908) | Removed SELinux integration from the manager. |
 | [#38024](https://github.com/wazuh/wazuh/issues/38024) | Removed the `GET /agents/{agent_id}/stats/{component}` API endpoint. Agent statistics are read from the `wazuh-agent-stats` index. |
-| [#38280](https://github.com/wazuh/wazuh/issues/38280) | Removed the `states`, `sent_breakdown.ar` and `sent_breakdown.request` counters from the `wazuh-manager-remoted` statistics served by `GET /cluster/{node_id}/daemons/stats`. None of them has a writer left in 5.0, so all three reported a constant zero. |
 
 #### Fixed
 
