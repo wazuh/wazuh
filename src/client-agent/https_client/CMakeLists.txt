@@ -14,7 +14,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 file(GLOB_RECURSE HTTPS_CLIENT_SRC "src/*.cpp")
 
-add_library(https_client SHARED ${HTTPS_CLIENT_SRC} ${RESOURCE_OBJ_DLL})
+# Compiled directly (not linked via libwazuh, which this module otherwise avoids
+# entirely -- see the wazuhext/pthread/ext_zstd link list below): os_cert_bundle.c
+# is a dependency-free leaf (plain POSIX stat(), no shared.h), so vendoring this one
+# translation unit costs nothing and keeps the CA bundle candidate list a single
+# source of truth shared with src/shared/src/url.c's WPK/upgrade download path.
+add_library(https_client SHARED ${HTTPS_CLIENT_SRC}
+            ${SRC_FOLDER}/shared/src/os_cert_bundle.c ${RESOURCE_OBJ_DLL})
 
 target_compile_options(
   https_client PRIVATE -Wall -Wextra -Wshadow -Wnon-virtual-dtor
@@ -29,7 +35,8 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
           ${SRC_FOLDER}/external/curl/include
-          ${SRC_FOLDER}/external/openssl/include)
+          ${SRC_FOLDER}/external/openssl/include
+          ${SRC_FOLDER}/shared/include) # os_cert_bundle.h only -- not shared.h's full surface
 
 # wazuhext carries the vendored libcurl + OpenSSL symbols for agent targets.
 # ext_zstd: request-body compression, same target remoted_module

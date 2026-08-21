@@ -168,6 +168,49 @@ namespace
         return ModuleConfig::fromC(config); // scheme stays "https".
     }
 
+    // verify_mode=system never sets ca_path (validateTls rejects a config that
+    // does, see moduleConfig_test.cpp) -- the trust anchor comes from an
+    // injected IFsProbe instead, below.
+    ModuleConfig tlsSystemConfig(uint16_t port)
+    {
+        hc_config_t config {};
+        std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+        config.server_port = port;
+        std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+        config.verify_mode = HC_VERIFY_SYSTEM;
+        config.request_timeout_ms = 3000;
+        config.backoff_base_ms = 10;
+        config.backoff_cap_ms = 50;
+        return ModuleConfig::fromC(config);
+    }
+
+    // Stands in for "the OS trust store" without touching the real one: points
+    // findSystemCaBundle() at a file this test controls, so the real curl/OpenSSL
+    // handshake exercises the actual verify_mode=system code path end to end
+    // (CurlPerformer's constructor resolution -> applyTrustAnchors -> CURLOPT_CAINFO)
+    // without needing root or mutating the test machine's real CA store.
+    class FixedFsProbe final : public IFsProbe
+    {
+        public:
+            explicit FixedFsProbe(std::string bundlePath)
+                : m_bundlePath(std::move(bundlePath))
+            {
+            }
+
+            bool isReadableFile(const std::string&) const override
+            {
+                return true;
+            }
+
+            std::string findSystemCaBundle() const override
+            {
+                return m_bundlePath;
+            }
+
+        private:
+            std::string m_bundlePath;
+    };
+
     HttpResponse sendSigned(CurlPerformer& performer, const CmacSigner& signer,
                             const std::string& body)
     {
@@ -241,3 +284,74 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
 
     std::remove(wrongCaPath.c_str());
 }
+
+// verify_mode=system's Linux path (an injected OS-bundle stand-in, per FixedFsProbe
+// above) is not meaningful on Windows/macOS, which trust their native store instead
+// (see openssl-vendoring.md / questions.md: proven there by manual VM evidence, not
+// a component test that would otherwise have to fake out a real OS certificate store).
+#if !defined(WIN32) && !defined(__APPLE__)
+
+TEST(TlsVerificationTest, SystemVerificationAgainstAnOsTrustedCaCompletesTheHandshake)
+{
+    constexpr uint16_t port = 44859;
+    EVP_PKEY* key = nullptr;
+    X509* cert = nullptr;
+    makeSelfSigned(&key, &cert);
+    const std::string bundlePath = writeCertPem(cert, "system_trusted");
+    ASSERT_FALSE(bundlePath.empty());
+
+    TlsServer server {cert, key, port};
+    X509_free(cert);
+    EVP_PKEY_free(key);
+
+    const auto config = tlsSystemConfig(port);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    CmacSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    // Proves the real code path, not just the config: no certificate_authorities was
+    // ever set (tlsSystemConfig leaves ca_path empty) -- the CA came entirely from
+    // CurlPerformer resolving it through the injected "OS bundle" at construction.
+    EXPECT_EQ(TransportStatus::Ok, response.status);
+    EXPECT_EQ(200, response.httpCode);
+
+    std::remove(bundlePath.c_str());
+}
+
+TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
+{
+    constexpr uint16_t port = 44860;
+    // Same shape as FullVerificationRejectsAnUntrustedCertificate: the server
+    // presents cert A, but the "OS bundle" the agent is told to trust only has
+    // unrelated cert B -- system must fail closed exactly like full does.
+    EVP_PKEY* serverKey = nullptr;
+    X509* serverCert = nullptr;
+    makeSelfSigned(&serverKey, &serverCert);
+
+    EVP_PKEY* otherKey = nullptr;
+    X509* otherCert = nullptr;
+    makeSelfSigned(&otherKey, &otherCert);
+    const std::string bundlePath = writeCertPem(otherCert, "system_untrusted");
+    ASSERT_FALSE(bundlePath.empty());
+
+    TlsServer server {serverCert, serverKey, port};
+    X509_free(serverCert);
+    EVP_PKEY_free(serverKey);
+    X509_free(otherCert);
+    EVP_PKEY_free(otherKey);
+
+    const auto config = tlsSystemConfig(port);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    CmacSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+
+    std::remove(bundlePath.c_str());
+}
+
+#endif // !defined(WIN32) && !defined(__APPLE__)

@@ -192,6 +192,37 @@ TEST(ModuleConfigTest, NoneModeIsValidWithoutCa)
     EXPECT_TRUE(ModuleConfig::fromC(minimalConfig()).validate(fsProbe, TEST_LOG));
 }
 
+TEST(ModuleConfigTest, SystemModeValidWithoutCaWhenBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+#if !defined(WIN32) && !defined(__APPLE__)
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+#endif
+    EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenCaIsSet)
+{
+    ::testing::StrictMock<MockFsProbe> fsProbe; // Probe must not even be asked.
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    std::strncpy(config.ca_path, "/etc/ca.pem", sizeof(config.ca_path) - 1);
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(ModuleConfigTest, SystemModeFailsClosedWhenNoBundleFound)
+{
+    MockFsProbe fsProbe;
+    auto config = minimalConfig();
+    config.verify_mode = HC_VERIFY_SYSTEM;
+    EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
+    EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
+}
+#endif
+
 // -----------------------------------------------------------------------------
 // Paired timing options. getDefine_Int_default() range-checks each option on its
 // own, so an inverted pair is reachable from two individually valid values --
