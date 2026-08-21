@@ -172,11 +172,13 @@ namespace
             // transport substitutes HttpServerConfig::streamChunkSize there, so a double that
             // passed the 0 straight through would read nothing at all.
             chunkSize = response.chunkSize != 0 ? response.chunkSize : 64U * 1024U;
+            compressible = response.compressible;
             body = drain(*response.source, chunkSize);
         }
 
         bool answered {false};
         bool streamed {false};
+        bool compressible {true};
         std::size_t chunkSize {0}; ///< The size actually used, after the 0 -> default substitution.
         int status {0};
         std::string body;
@@ -770,6 +772,8 @@ TEST(DownloadHandlerTest, StreamsTheResolvedFileAsAnOctetStream)
     ASSERT_EQ(responder->headers.size(), 1U);
     EXPECT_EQ(responder->headers.front().first, "Content-Type");
     EXPECT_EQ(responder->headers.front().second, "application/octet-stream");
+    // A merged.mg is plain text: eligible for a negotiated transport coding.
+    EXPECT_TRUE(responder->compressible);
 }
 
 // The remoted.download.* family: each admission outcome lands in its own counter, and a started
@@ -861,6 +865,8 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, contents);
+    // A WPK is already-compressed payload: it must opt out of any negotiated transport coding.
+    EXPECT_FALSE(responder->compressible);
 }
 
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)

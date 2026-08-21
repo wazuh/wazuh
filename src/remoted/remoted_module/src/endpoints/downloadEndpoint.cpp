@@ -590,6 +590,8 @@ namespace remoted::endpoints::download
             response.status = 200;
             response.headers.emplace_back("Content-Type", "application/octet-stream");
             response.source = std::move(*source);
+            // A WPK is already-compressed payload: opt it out of any negotiated transport coding.
+            response.compressible = downloadRequest.type == ResourceType::Config;
 
             responder->stream(std::move(response));
         };

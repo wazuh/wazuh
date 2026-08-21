@@ -11,6 +11,8 @@
 
 #include "RestinioHttpServer.hpp"
 #include "common/logThrottle.hpp"
+#include "compressingResponder.hpp"
+#include "headerUtils.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
 
@@ -924,6 +926,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                const auto responseCompressionEnabled = m_config.responseCompressionEnabled;
 
                 requestRouter->add_handler(
                     toRestinioMethod(method),
@@ -936,6 +939,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     responseCompressionEnabled,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1014,6 +1018,19 @@ namespace remoted::http
                                 // only routes whose requests are tiny should ever stream.
                                 responder =
                                     std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+
+                                // Response-side content negotiation, decided here -- the one place
+                                // that still sees the request headers AND hands out the responder --
+                                // so no handler (nor the auth gateway) ever knows compression
+                                // exists. The wrapper only acts on stream(); buffered (error)
+                                // responses pass through untouched.
+                                if (responseCompressionEnabled &&
+                                    remoted::http::acceptsZstdResponseEncoding(
+                                        remoted::http::headerValue(context->request.headers, "accept-encoding")))
+                                {
+                                    responder = std::make_shared<remoted::http::ZstdCompressingResponder>(
+                                        std::move(responder), budget);
+                                }
                             }
                             else
                             {

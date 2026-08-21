@@ -219,6 +219,18 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.dualStackMode, DualStackMode::Unset);
 }
 
+TEST(HttpServerConfigTest, ResponseCompressionFollowsTheContentEncodingGate)
+{
+    // One gate for both directions: the same C-ABI bool that enables request-body decoding
+    // (BodyDecoder) is copied verbatim into the response-compression switch.
+    auto raw = zeroedConfig();
+    raw.http_content_encoding_enabled = true;
+    EXPECT_TRUE(buildHttpServerConfig(raw).responseCompressionEnabled);
+
+    raw.http_content_encoding_enabled = false;
+    EXPECT_FALSE(buildHttpServerConfig(raw).responseCompressionEnabled);
+}
+
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
 {
     // remoted config field wins when positive.

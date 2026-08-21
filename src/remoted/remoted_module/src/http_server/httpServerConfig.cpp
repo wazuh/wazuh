@@ -160,6 +160,11 @@ namespace remoted::http
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
         result.streamChunkSize = resolveUnsigned(config.http_stream_chunk_size, DEFAULT_STREAM_CHUNK_SIZE);
 
+        // The single content-encoding gate, shared with the request-side BodyDecoder (see
+        // remoted.http_content_encoding_enabled): response compression is only offered while
+        // request decoding is accepted.
+        result.responseCompressionEnabled = config.http_content_encoding_enabled;
+
         // Memory-management knobs come from remoted's config struct (a positive value wins),
         // otherwise the built-in default -- deliberately NOT env-driven. The transport clamps the
         // in-flight budget to at least one max-size body at start() so a too-small value can't
