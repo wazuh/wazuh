@@ -8,6 +8,8 @@ param (
     [string]$SIGN_TOOLS_PATH = "",
     [string]$CERTIFICATE_PATH = "",
     [string]$CERTIFICATE_PASSWORD = "",
+    [string]$DLIB_PATH = "",
+    [string]$DLIB_METADATA = "",
     [switch]$help
     )
 
@@ -26,6 +28,10 @@ if(($help.isPresent)) {
         4. SIGN_TOOLS_PATH: sign tools path.
         5. CERTIFICATE_PATH: Path to the .pfx certificate file.
         6. CERTIFICATE_PASSWORD: Password for the .pfx certificate file.
+        7. DLIB_PATH: Full path to the x64 Azure.CodeSigning.Dlib.dll from the Artifact Signing Client Tools
+           (e.g. C:\Program Files\Artifact Signing Client Tools\bin\x64\Azure.CodeSigning.Dlib.dll).
+           Overrides CERTIFICATE_PATH/`/a` when set together with DLIB_METADATA.
+        8. DLIB_METADATA: Path to the dlib metadata.json (Endpoint/CodeSigningAccountName/CertificateProfileName).
 
     USAGE:
 
@@ -56,9 +62,15 @@ function BuildWazuhMsi(){
     }
 
     if($SIGN -eq "yes"){
-        # Determine signing command options
         $signOptions = @()
-        if ($CERTIFICATE_PATH -ne "" -and $CERTIFICATE_PASSWORD -ne "") {
+        $tsaUrl = "http://timestamp.digicert.com"
+        if ($DLIB_PATH -ne "" -and $DLIB_METADATA -ne "") {
+            $signOptions += "/dlib"
+            $signOptions += "`"$DLIB_PATH`""
+            $signOptions += "/dmdf"
+            $signOptions += "`"$DLIB_METADATA`""
+            $tsaUrl = "http://timestamp.acs.microsoft.com"
+        } elseif ($CERTIFICATE_PATH -ne "" -and $CERTIFICATE_PASSWORD -ne "") {
             $signOptions += "/f"
             $signOptions += "`"$CERTIFICATE_PATH`""
             $signOptions += "/p"
@@ -80,21 +92,51 @@ function BuildWazuhMsi(){
             "..\syscheckd\build\bin\libfimdb.dll"
         )
 
-        # Sign the files
-        foreach ($file in $filesToSign) {
-            Write-Host "Signing $file..."
-            & $SIGNTOOL_EXE sign $signOptions /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 $file
+        # Expand each pattern ourselves so a zero-match glob is a deliberate skip,
+        # not an ambiguous signtool exit code.
+        foreach ($pattern in $filesToSign) {
+            $matchedFiles = @(Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue)
+            if ($matchedFiles.Count -eq 0) {
+                if ($pattern -match '[*?]') {
+                    Write-Host "No files matched $pattern, skipping."
+                    continue
+                } else {
+                    throw "SignTool Error: expected file not found: $pattern"
+                }
+            }
+            foreach ($file in $matchedFiles) {
+                Write-Host "Signing $($file.FullName)..."
+                & $SIGNTOOL_EXE sign /v /debug $signOptions /tr $tsaUrl /fd SHA256 /td SHA256 $file.FullName
+                if ($LASTEXITCODE -ne 0) {
+                    throw "SignTool Error: signing failed for $($file.FullName) (exit code $LASTEXITCODE)"
+                }
+            }
         }
     }
 
     Write-Host "Building MSI installer..."
 
     & $CANDLE_EXE -nologo .\wazuh-installer.wxs -out "wazuh-installer.wixobj" -ext WixUtilExtension -ext WixUiExtension
+    if ($LASTEXITCODE -ne 0) {
+        throw "candle.exe failed with exit code $LASTEXITCODE"
+    }
     & $LIGHT_EXE ".\wazuh-installer.wixobj" -out $MSI_NAME -ext WixUtilExtension -ext WixUiExtension
+    if ($LASTEXITCODE -ne 0) {
+        throw "light.exe failed with exit code $LASTEXITCODE"
+    }
 
     if($SIGN -eq "yes"){
         Write-Host "Signing $MSI_NAME..."
-        & $SIGNTOOL_EXE sign $signOptions /tr http://timestamp.digicert.com /d $MSI_NAME /fd SHA256 /td SHA256 $MSI_NAME
+        & $SIGNTOOL_EXE sign /v /debug $signOptions /tr $tsaUrl /d $MSI_NAME /fd SHA256 /td SHA256 $MSI_NAME
+        if ($LASTEXITCODE -ne 0) {
+            throw "SignTool Error: signing failed for $MSI_NAME (exit code $LASTEXITCODE)"
+        }
+
+        Write-Host "Verifying $MSI_NAME signature..."
+        & $SIGNTOOL_EXE verify /v /debug /pa $MSI_NAME
+        if ($LASTEXITCODE -ne 0) {
+            throw "SignTool Error: signature verification failed for $MSI_NAME (exit code $LASTEXITCODE)"
+        }
     }
 }
 
