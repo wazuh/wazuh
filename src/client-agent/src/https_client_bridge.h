@@ -38,7 +38,7 @@ int w_https_client_submit_event(const char *frame, size_t length);
 /**
  * @brief Perform exactly one /enroll HTTP request (#38465), against the same
  *        manager/TLS material already configured for every other HTTPS
- *        endpoint (<agent><server>, <agent><ssl>). Handle-less: usable before
+ *        endpoint (<agent><manager>, <agent><ssl>). Handle-less: usable before
  *        the module is started (first-boot enrollment has no handle yet) or
  *        standalone (re-enrollment after a 401). No retry loop -- the caller
  *        (client-agent/src/start_agent.c's try_enroll_to_server()) already

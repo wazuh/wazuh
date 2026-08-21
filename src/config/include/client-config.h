@@ -86,7 +86,7 @@ typedef struct agent_report {
  * test harness zero-inits the whole agent struct, and the old parser
  * dereferenced a lazily-allocated nested pointer with nothing there yet).
  *
- * `manager_address`/`port`/`interface_index` (superseded by <agent><server>)
+ * `manager_address`/`port`/`interface_index` (superseded by <agent><manager>)
  * and `agent_certificate_path`/`agent_key_path`/`server_ca_path`/`ssl_cipher`
  * (superseded by <agent><ssl>) are gone: enrollment dials the same target
  * and presents the same TLS material as every other HTTPS endpoint, by

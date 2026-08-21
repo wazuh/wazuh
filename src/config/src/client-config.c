@@ -836,7 +836,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
     const char *xml_delay_after_enrollment = "delay_after_enrollment";
     const char *xml_use_source_ip = "use_source_ip";
 
-    /* Superseded by <agent><server>/<agent><ssl> (#38465): enrollment now
+    /* Superseded by <agent><manager>/<agent><ssl> (#38465): enrollment now
      * dials the same target and presents the same TLS material as every
      * other HTTPS endpoint, so a second address/port/interface/cert/key/CA
      * for it is redundant by design. Recognized-but-ignored rather than
@@ -918,7 +918,7 @@ int Read_Agent_Enrollment(XML_NODE node, agent * logr){
                    strcmp(node[j]->element, xml_agent_certif_path) == 0 ||
                    strcmp(node[j]->element, xml_agent_key_path) == 0) {
             minfo("<%s> under <enrollment> is no longer used: enrollment reuses "
-                  "<agent><server>/<agent><ssl>. Ignoring.", node[j]->element);
+                  "<agent><manager>/<agent><ssl>. Ignoring.", node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
