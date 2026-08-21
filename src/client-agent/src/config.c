@@ -80,12 +80,16 @@ int ClientConf(const char *cfgfile)
 
     modules |= CCLIENT;
 
-    w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
-    w_enrollment_target *target_cfg = w_enrollment_target_init();
-
-    // Initialize enrollment_cfg
-    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
-    agt->enrollment_cfg->recv_timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
+    /* <agent><enrollment> defaults (#38465): a by-value struct now, like
+     * <ssl>/<batch> above -- set by hand before parsing, the same convention
+     * this function already uses for those. */
+    agt->enrollment.enabled = true;
+    agt->enrollment.agent_name = NULL;
+    agt->enrollment.groups = NULL;
+    agt->enrollment.agent_address = NULL;
+    agt->enrollment.use_source_ip = false;
+    os_strdup(AUTHD_PASS, agt->enrollment.authorization_pass_path);
+    agt->enrollment.delay_after_enrollment = 20;
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
         return (OS_INVALID);
@@ -184,34 +188,20 @@ cJSON *getAgentConfig(void) {
         cJSON_AddItemToObject(agent_config,"manager",servers);
     }
 
-    if (agt->enrollment_cfg) {
+    {
         cJSON *enrollment_cfg = cJSON_CreateObject();
-        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment_cfg->enabled ? "yes" : "no");
-        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment_cfg->delay_after_enrollment);
+        cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment.enabled ? "yes" : "no");
+        cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment.delay_after_enrollment);
 
-        if (agt->enrollment_cfg->target_cfg->manager_name)
-            cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
-
-        if (agt->enrollment_cfg->target_cfg->network_interface)
-            cJSON_AddNumberToObject(enrollment_cfg, "interface_index", agt->enrollment_cfg->target_cfg->network_interface);
-
-        cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
-
-        if (agt->enrollment_cfg->target_cfg->agent_name)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg->target_cfg->agent_name);
-        if (agt->enrollment_cfg->target_cfg->centralized_group)
-            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg->target_cfg->centralized_group);
-
-        cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg->cert_cfg->ciphers);
-
-        if (agt->enrollment_cfg->cert_cfg->ca_cert)
-            cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg->cert_cfg->ca_cert);
-        if (agt->enrollment_cfg->cert_cfg->agent_cert)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg->cert_cfg->agent_cert);
-        if (agt->enrollment_cfg->cert_cfg->agent_key)
-            cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg->cert_cfg->agent_key);
-        if(agt->enrollment_cfg->cert_cfg->authpass)
-            cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
+        if (agt->enrollment.agent_name)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment.agent_name);
+        if (agt->enrollment.groups)
+            cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment.groups);
+        if (agt->enrollment.agent_address)
+            cJSON_AddStringToObject(enrollment_cfg, "agent_address", agt->enrollment.agent_address);
+        cJSON_AddStringToObject(enrollment_cfg, "use_source_ip", agt->enrollment.use_source_ip ? "yes" : "no");
+        if (agt->enrollment.authorization_pass_path)
+            cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment.authorization_pass_path);
 
         cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
     }
@@ -288,7 +278,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"warn_level",warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",getDefine_Int("agent", "normal_level", 0, warn_level - 1));
     cJSON_AddNumberToObject(agent,"tolerance",getDefine_Int("agent", "tolerance", 0, 600));
-    cJSON_AddNumberToObject(agent,"recv_timeout",getDefine_Int("agent", "recv_timeout", 1, 600));
     cJSON_AddNumberToObject(agent,"state_interval",interval);
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
 

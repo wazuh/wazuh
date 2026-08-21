@@ -1191,7 +1191,7 @@ TEST_F(ControlStreamTest, ANewKeyClearsTheAuthPauseAndResumesProducers)
     m_stream.step(m_waiter); // 401, retried, 401 again -> gate latches, 1/2.
     m_stream.step(m_waiter); // Gated cycle -> 2/2 -> pause.
 
-    m_authGate.release();  // What hc_set_agent_key() does after re-enrolling.
+    m_authGate.release();  // What hc_set_agent_identity() does after re-enrolling.
     EXPECT_EQ(0, resumes); // Clearing the gate alone does not resume.
 
     m_stream.step(m_waiter);

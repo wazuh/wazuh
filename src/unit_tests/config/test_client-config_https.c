@@ -461,7 +461,10 @@ static void test_legacy_client_reads_nothing_but_the_address(void **state) {
     assert_int_equal(cfg.server[0].port, DEFAULT_HTTPS_REMOTE_PORT);
     assert_int_equal(cfg.notify_time, 0);
     assert_null(cfg.profile);
-    assert_null(cfg.enrollment_cfg);
+    /* The legacy <client> parser must not touch <enrollment> at all: despite
+     * the XML above explicitly setting <enabled>yes</enabled>, cfg.enrollment
+     * stays at its zeroed default (#38465: a by-value struct now). */
+    assert_false(cfg.enrollment.enabled);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -625,6 +628,132 @@ static void test_agent_invalid_tag_is_rejected(void **state) {
 
     const char *xml_str = "<nonsense>1</nonsense>";
 
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* <enrollment> block (#38465): by-value now, like <ssl> above -- previously
+ * untestable through parse_agent() because Read_Agent_Enrollment() dereferenced
+ * a lazily-allocated pointer parse_agent()'s memset() left NULL. */
+
+static void test_enrollment_kept_options_are_parsed(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<enrollment>"
+        "<enabled>no</enabled>"
+        "<agent_name>my-agent</agent_name>"
+        "<groups>default,web-servers</groups>"
+        "<agent_address>10.0.0.15</agent_address>"
+        "<use_source_ip>no</use_source_ip>"
+        "<authorization_pass_path>/var/ossec/etc/my.pass</authorization_pass_path>"
+        "<delay_after_enrollment>30</delay_after_enrollment>"
+        "</enrollment>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_valid_ip("10.0.0.15");
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_false(cfg.enrollment.enabled);
+    assert_string_equal(cfg.enrollment.agent_name, "my-agent");
+    assert_string_equal(cfg.enrollment.groups, "default,web-servers");
+    assert_string_equal(cfg.enrollment.agent_address, "10.0.0.15");
+    assert_false(cfg.enrollment.use_source_ip);
+    assert_string_equal(cfg.enrollment.authorization_pass_path, "/var/ossec/etc/my.pass");
+    assert_int_equal(cfg.enrollment.delay_after_enrollment, 30);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_enrollment_use_source_ip_yes(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<enrollment><use_source_ip>yes</use_source_ip></enrollment>";
+
+    expect_valid_ip("10.0.0.1");
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    assert_true(cfg.enrollment.use_source_ip);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+/* Superseded-by-<server>/<ssl> options (#38465 Q5): a 4.x ossec.conf (an
+ * upgrade never rewrites it) still parses successfully, logging INFO per
+ * recognized-but-ignored tag instead of rejecting the whole block. */
+static void test_enrollment_legacy_options_are_ignored_not_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<enrollment>"
+        "<manager_address>old-manager.example</manager_address>"
+        "<port>1515</port>"
+        "<interface_index>2</interface_index>"
+        "<ssl_cipher>HIGH:!aNULL</ssl_cipher>"
+        "<server_ca_path>/etc/wazuh/ca.pem</server_ca_path>"
+        "<agent_certificate_path>/etc/wazuh/agent.pem</agent_certificate_path>"
+        "<agent_key_path>/etc/wazuh/agent.key</agent_key_path>"
+        "</enrollment>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<manager_address> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<port> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<interface_index> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<ssl_cipher> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<server_ca_path> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent_certificate_path> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "<agent_key_path> under <enrollment> is no longer used: enrollment reuses "
+                  "<agent><server>/<agent><ssl>. Ignoring.");
+
+    assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
+
+    /* None of the removed tags map to a surviving field: the struct stays at
+     * its zeroed defaults. */
+    assert_false(cfg.enrollment.enabled);
+    assert_null(cfg.enrollment.agent_name);
+    assert_null(cfg.enrollment.groups);
+    assert_null(cfg.enrollment.agent_address);
+    assert_null(cfg.enrollment.authorization_pass_path);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_enrollment_unknown_element_is_still_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address><port>1517</port></server>"
+        "<enrollment><nonsense>1</nonsense></enrollment>";
+
+    expect_valid_ip("10.0.0.1");
     expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), OS_INVALID);
@@ -1152,6 +1281,10 @@ int main(void) {
         cmocka_unit_test(test_ssl_ciphers_rejects_a_leading_separator),
         cmocka_unit_test(test_ssl_ciphers_rejects_a_trailing_separator),
         cmocka_unit_test(test_ssl_ciphers_rejects_a_doubled_separator),
+        cmocka_unit_test(test_enrollment_kept_options_are_parsed),
+        cmocka_unit_test(test_enrollment_use_source_ip_yes),
+        cmocka_unit_test(test_enrollment_legacy_options_are_ignored_not_rejected),
+        cmocka_unit_test(test_enrollment_unknown_element_is_still_rejected),
         cmocka_unit_test(test_server_address_and_explicit_port),
         cmocka_unit_test(test_manager_tag_is_rejected),
         cmocka_unit_test(test_second_server_block_prevails_with_warning),
