@@ -1735,6 +1735,21 @@ python3 tools/send_stateless.py --all      # every success/failure scenario with
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys
 ```
 
+Same signing, for `POST /stateless`. Verifies the response is chunked (`Transfer-Encoding: chunked`,
+no `Content-Length`) and byte-for-byte identical to the resolved file. `--accept-encoding zstd` sends
+that header and transparently decodes a `Content-Encoding: zstd` response; omitted, behavior is
+unchanged. Reports timing (time to first byte, transfer, decompression) and throughput. `--simulate`
+drives many enrolled agents concurrently, optionally sampling remoted's RSS/CPU/fd count.
+
+```bash
+python3 tools/send_download.py                                # config download for agent 001's group
+python3 tools/send_download.py --all                          # every success/failure scenario
+python3 tools/send_download.py --accept-encoding zstd          # negotiate compression, decode, verify
+python3 tools/send_download.py --simulate 20 --repeat 5        # 20 concurrent simulated agents
+python3 tools/send_download.py --simulate 20 --watch-rss       # + RSS/CPU/fd/throughput report
+# options: --url, --agent-id, --resource-type (config|wpk), --resource-id, --save-to, --manager-home
+```
+
 ### Manual / end-to-end (`tools/send_agent_json.py`)
 
 Same signing, for `POST /stats` and `POST /config`. This one is the end-to-end check of the *whole*
