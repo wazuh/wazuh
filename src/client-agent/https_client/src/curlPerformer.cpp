@@ -74,9 +74,26 @@ namespace
 }
 
 CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory)
+    : CurlPerformer(config, std::move(factory), FsProbe {})
+{
+}
+
+CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory, const IFsProbe& fsProbe)
     : m_config(config)
     , m_factory(std::move(factory))
 {
+#if !defined(WIN32) && !defined(__APPLE__)
+
+    // Resolved once, here, instead of in applyTrustAnchors(): that runs on every perform(),
+    // which would mean probing the filesystem on every single request. A config that fails
+    // this (no bundle found) is rejected by ModuleConfig::validateTls before the client ever
+    // starts, so an empty result here is inert -- perform() is never reached in that case.
+    if (m_config.verifyMode == HC_VERIFY_SYSTEM && m_config.caPath.empty())
+    {
+        m_config.caPath = fsProbe.findSystemCaBundle();
+    }
+
+#endif
 }
 
 HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
@@ -273,7 +290,9 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 bool CurlPerformer::applyTls(ICurlHandle& handle) const
 {
     const bool verifyPeer = m_config.verifyMode != HC_VERIFY_NONE;
-    const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL;
+    // system trusts a different anchor (the OS store instead of a configured CA) but is
+    // otherwise as strict as full: it checks the hostname too, the way a browser would.
+    const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL || m_config.verifyMode == HC_VERIFY_SYSTEM;
 
     // The manager's HTTPS listener sets a TLS 1.3 floor of its own
     // (SSL_CTX_set_min_proto_version in RestinioHttpServer), so match it instead
@@ -298,18 +317,25 @@ bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle) const
     if (!m_config.caPath.empty())
     {
         // An explicit <ca> is the whole trust set; adding the machine's stores
-        // on top of it would widen what the agent accepts.
+        // on top of it would widen what the agent accepts. (verify_mode=system's
+        // Linux trust anchor also flows through here: the constructor resolves it
+        // into caPath once, up front, so this branch needs no mode-awareness.)
         return setMandatoryOption(handle, CurlOption::CaInfo, m_config.caPath);
     }
 
-#ifdef WIN32
-    // Windows curl is built against our OpenSSL (src/external/CMakeLists.txt),
-    // which carries no CA bundle there, so without this nothing is trusted at
-    // all. Schannel used to consult the Windows stores implicitly; this asks
-    // OpenSSL for the same ROOT+CA stores through the Win32 crypto API.
+#if defined(WIN32) || defined(__APPLE__)
+    // Windows/macOS curl is built against our OpenSSL (src/external/CMakeLists.txt),
+    // which carries no CA bundle there, so without this nothing is trusted at all
+    // under verify_mode=system. Schannel/SecTrust used to consult the native store
+    // implicitly; this asks OpenSSL for the same store through the platform's own
+    // crypto API (Win32 CryptoAPI / Apple SecTrust). Reached under NONE too (caPath
+    // is also empty there), but harmless: applyTls() already turned off verifyPeer.
     return setMandatoryOption(handle, CurlOption::SslOptions, TLS_NATIVE_CA_STORE);
 #else
-    // Elsewhere libcurl already defaults to the system bundle it was built with.
+    // Elsewhere (verify_mode=none with no configured CA) libcurl already defaults
+    // to the system bundle it was built with. Not reached under verify_mode=system:
+    // the constructor's resolution guarantees caPath is non-empty there once
+    // validateTls has passed, so the branch above always handles that case.
     return true;
 #endif
 }

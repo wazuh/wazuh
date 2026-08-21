@@ -17,6 +17,7 @@
 
 #include "curlPerformer.hpp"
 #include "mockCurlHandle.hpp"
+#include "mockFsProbe.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -331,6 +332,60 @@ TEST(CurlPerformerTest, TrustAnchorsWithoutConfiguredCa)
     auto performer = makePerformer(makeConfig(HC_VERIFY_FULL), std::move(mock));
     performer.perform(HttpRequestSpec {});
 }
+
+TEST(CurlPerformerTest, TlsSystemModeVerifiesPeerAndHost)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    NiceMock<MockFsProbe> fsProbe;
+
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::VerifyPeer, 1L));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::VerifyHost, 2L)); // Same strictness as full.
+
+#if defined(WIN32) || defined(__APPLE__)
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, TLS_NATIVE_CA_STORE));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, _)).Times(0);
+#else
+    ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
+    EXPECT_CALL(*handle, setOptionLong(CurlOption::SslOptions, _)).Times(0);
+#endif
+
+    auto shared = std::make_shared<std::unique_ptr<ICurlHandle>>(std::move(mock));
+    CurlPerformer performer {config,
+                             [shared]() -> std::unique_ptr<ICurlHandle> { return std::move(*shared); },
+                             fsProbe};
+    performer.perform(HttpRequestSpec {});
+}
+
+#if !defined(WIN32) && !defined(__APPLE__)
+TEST(CurlPerformerTest, TlsSystemModeResolvesTrustAnchorOnceNotPerRequest)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    NiceMock<MockFsProbe> fsProbe;
+
+    // Resolved once at construction; perform() below runs twice and must not
+    // probe the filesystem again on the second request.
+    EXPECT_CALL(fsProbe, findSystemCaBundle())
+    .Times(1)
+    .WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
+
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+        EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory, fsProbe};
+    performer.perform(HttpRequestSpec {});
+    performer.perform(HttpRequestSpec {});
+}
+#endif
 
 TEST(CurlPerformerTest, FileBodyStreamsInsteadOfPostFields)
 {

@@ -1514,6 +1514,8 @@ static int bridge_map_verify_mode(int agent_verify_mode)
         return HC_VERIFY_CERT;
     case AGENT_VERIFY_NONE:
         return HC_VERIFY_NONE;
+    case AGENT_VERIFY_SYSTEM:
+        return HC_VERIFY_SYSTEM;
     case AGENT_VERIFY_FULL:
     default:
         return HC_VERIFY_FULL;

@@ -35,9 +35,10 @@ typedef struct agent_server {
  * goes through the agent's own default-setting path (ClientConf) still fails
  * closed. The agent's own default, applied when <ssl> is absent, is NONE. */
 typedef enum agent_verify_mode_t {
-    AGENT_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
-    AGENT_VERIFY_CERT = 1, ///< Verify peer against the CA only.
-    AGENT_VERIFY_NONE = 2  ///< No TLS verification (the agent's own configured default).
+    AGENT_VERIFY_FULL = 0,   ///< Verify peer against the CA and check the hostname.
+    AGENT_VERIFY_CERT = 1,   ///< Verify peer against the CA only.
+    AGENT_VERIFY_NONE = 2,   ///< No TLS verification (the agent's own configured default).
+    AGENT_VERIFY_SYSTEM = 3  ///< Verify peer (+ hostname) against the OS trust store, not a configured CA.
 } agent_verify_mode_t;
 
 /* Agent-side HTTPS transport TLS settings: the <agent><ssl> block (FR10 / #37702 §10). */
