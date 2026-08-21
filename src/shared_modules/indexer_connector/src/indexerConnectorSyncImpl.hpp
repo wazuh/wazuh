@@ -336,6 +336,17 @@ class IndexerConnectorSyncImpl final
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
     size_t m_maxRetryDelay {MaxRetryDelay};
+    /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
+    static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
+    /// Upper bound in milliseconds for one data request against the indexer
+    /// ('request_timeout_seconds'; 0 disables the bound). Unreachable hosts are the monitor's
+    /// job -- this bound is the only thing that catches a host that ACCEPTED the connection and
+    /// then never answers, which otherwise blocks the caller inside curl_easy_perform forever.
+    long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
+    /// Fallback for 'monitoring_interval_seconds' when the configuration has no opinion. Kept
+    /// equal to monitoring.hpp's DEFAULT_MONITORING_INTERVAL, which this selector-agnostic
+    /// template deliberately does not include.
+    static constexpr long DEFAULT_MONITORING_INTERVAL_SECONDS {10};
 
     void processBulk()
     {
@@ -437,7 +448,7 @@ class IndexerConnectorSyncImpl final
                     RequestParameters {
                         .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
-                    {});
+                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
             }
             catch (...)
             {
@@ -536,7 +547,7 @@ class IndexerConnectorSyncImpl final
                                                        .data = m_bulkData,
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                    {});
+                                    ConfigurationParameters {.timeout = m_requestTimeoutMs});
                 if (needToRetry)
                 {
                     const auto retryDelay = retryBackoff.nextDelay();
@@ -688,7 +699,7 @@ class IndexerConnectorSyncImpl final
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
@@ -757,8 +768,25 @@ public:
         m_secureCommunication =
             secureCommunication ? std::move(*secureCommunication) : buildSecureCommunication(config, m_logFn);
 
-        m_selector =
-            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+        if (selector)
+        {
+            m_selector = std::move(selector);
+        }
+        else
+        {
+            // Health-monitor polling period, read only by whoever builds the monitor.
+            const auto monitoringInterval = config.contains("monitoring_interval_seconds") &&
+                                                    config.at("monitoring_interval_seconds").is_number_integer()
+                                                ? config.at("monitoring_interval_seconds").get<long>()
+                                                : DEFAULT_MONITORING_INTERVAL_SECONDS;
+            if (monitoringInterval < 1)
+            {
+                throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
+            }
+
+            m_selector = std::make_unique<TSelector>(
+                config.at("hosts"), static_cast<uint32_t>(monitoringInterval), m_secureCommunication);
+        }
 
         m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
                             ? config.at("max_bulk_size").get<size_t>()
@@ -776,6 +804,15 @@ public:
         if (m_maxRetryDelay < RetryDelay)
         {
             throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
+
+        m_requestTimeoutMs =
+            config.contains("request_timeout_seconds") && config.at("request_timeout_seconds").is_number_integer()
+                ? config.at("request_timeout_seconds").get<long>() * 1000
+                : m_requestTimeoutMs;
+        if (m_requestTimeoutMs < 0)
+        {
+            throw IndexerConnectorException("request_timeout_seconds must be >= 0 (0 disables the bound)");
         }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
@@ -1013,7 +1050,7 @@ public:
                                                    .data = updateQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1091,7 +1128,7 @@ public:
                                                    .data = searchQuery.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1256,7 +1293,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
         if (!success)
         {
@@ -1296,7 +1333,7 @@ public:
                                                   .data = deleteBody.dump(),
                                                   .secureCommunication = m_secureCommunication},
                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                               {});
+                               ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     nlohmann::json search(const PointInTime& pit,
@@ -1391,7 +1428,7 @@ public:
                                                    .data = requestBody.dump(),
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                {});
+                                ConfigurationParameters {.timeout = m_requestTimeoutMs});
 
             if (needToRetry)
             {
@@ -1608,7 +1645,7 @@ public:
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+                            ConfigurationParameters {.timeout = m_requestTimeoutMs});
     }
 
     bool isAvailable() const
