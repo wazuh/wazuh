@@ -158,11 +158,8 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     cJSON_Delete(response);
 }
 
-/* is_storable_agent_name() is STATIC in local-server.c (visible here under WAZUH_UNIT_TESTING).
- * It guards the ONE invariant every caller of the local socket must satisfy: the name has to
- * survive a round trip through client.keys' `<id> <name> <ip> <key>` line format. It is
- * deliberately NOT OS_IsValidName()'s charset -- see the tests below for the names that
- * distinction keeps working. */
+/* STATIC in local-server.c, visible here under WAZUH_UNIT_TESTING. Guards the one invariant every
+ * caller must satisfy: the name has to survive a round trip through client.keys' line format. */
 int is_storable_agent_name(const char *name);
 
 static void test_storable_agent_name_accepts_ordinary_names(void **state) {
@@ -176,10 +173,8 @@ static void test_storable_agent_name_accepts_ordinary_names(void **state) {
 static void test_storable_agent_name_accepts_names_os_isvalidname_rejects(void **state) {
     (void) state;
 
-    /* The whole point of not reusing OS_IsValidName() here: the API's own documented contract for
-     * `agent_name` is `^[\w\-.%]+$` with no minimum length, so all three of these have always been
-     * accepted through this socket by manage_agents/the API. None of them can corrupt client.keys,
-     * so rejecting them would be a regression for existing callers with no safety gain. */
+    /* The point of not reusing OS_IsValidName(): the API's contract is `^[\w\-.%]+$` with no
+     * minimum length, so these have always been accepted here and corrupt nothing. */
     assert_int_equal(is_storable_agent_name("a"), 1);          // single character
     assert_int_equal(is_storable_agent_name("100%cpu"), 1);    // '%' is outside OS_IsValidName()
     assert_int_equal(is_storable_agent_name(".hidden"), 1);    // leading '.'
@@ -188,9 +183,8 @@ static void test_storable_agent_name_accepts_names_os_isvalidname_rejects(void *
 static void test_storable_agent_name_rejects_whitespace_and_control_bytes(void **state) {
     (void) state;
 
-    /* client.keys is whitespace-delimited, so any of these would split the name into extra fields
-     * and shift every later column -- the agent would be stored with a bogus IP and an undecodable
-     * key, then get 401 on every request it ever made. */
+    /* client.keys is whitespace-delimited: any of these splits the name into extra fields and
+     * shifts every later column, leaving the agent with a bogus IP and an undecodable key. */
     assert_int_equal(is_storable_agent_name("web 01"), 0);
     assert_int_equal(is_storable_agent_name("web\t01"), 0);
     assert_int_equal(is_storable_agent_name("web\n01"), 0);
@@ -204,8 +198,7 @@ static void test_storable_agent_name_rejects_whitespace_and_control_bytes(void *
 static void test_storable_agent_name_rejects_removed_entry_markers(void **state) {
     (void) state;
 
-    /* Both OS_ReadKeys() and remoted's keystore treat a leading '#'/'!' on this field as the
-     * removed/disabled-entry marker and skip the line, silently dropping the agent. */
+    /* A leading '#'/'!' is the removed-entry marker: readers skip the line, dropping the agent. */
     assert_int_equal(is_storable_agent_name("#agent"), 0);
     assert_int_equal(is_storable_agent_name("!agent"), 0);
 
@@ -231,6 +224,65 @@ static void test_storable_agent_name_rejects_empty_and_overlong(void **state) {
     assert_int_equal(is_storable_agent_name(overlong), 0);
 }
 
+/* STATIC in local-server.c, visible here under WAZUH_UNIT_TESTING. Keeps a non-string JSON value
+ * (valuestring is NULL for those) from becoming a NULL deref in the dispatcher. */
+int get_optional_string_arg(cJSON *arguments, const char *key, char **out);
+
+static void test_optional_string_arg_absent_or_null_means_not_supplied(void **state) {
+    (void) state;
+    cJSON *arguments = cJSON_Parse("{\"other\": \"x\", \"key\": null}");
+    char *out = (char *)0x1; // poisoned: the function must always write *out
+
+    assert_non_null(arguments);
+
+    assert_int_equal(get_optional_string_arg(arguments, "missing", &out), 0);
+    assert_null(out);
+
+    out = (char *)0x1;
+    /* Explicit null is how a client spells "unset": absent, not a type error. */
+    assert_int_equal(get_optional_string_arg(arguments, "key", &out), 0);
+    assert_null(out);
+
+    cJSON_Delete(arguments);
+}
+
+static void test_optional_string_arg_returns_string_values(void **state) {
+    (void) state;
+    cJSON *arguments = cJSON_Parse("{\"id\": \"003\", \"empty\": \"\"}");
+    char *out = NULL;
+
+    assert_non_null(arguments);
+
+    assert_int_equal(get_optional_string_arg(arguments, "id", &out), 0);
+    assert_string_equal(out, "003");
+
+    assert_int_equal(get_optional_string_arg(arguments, "empty", &out), 0);
+    assert_string_equal(out, "");
+
+    cJSON_Delete(arguments);
+}
+
+static void test_optional_string_arg_rejects_non_string_types(void **state) {
+    (void) state;
+    cJSON *arguments = cJSON_Parse("{\"n\": 5, \"b\": true, \"o\": {}, \"a\": []}");
+    char *out = NULL;
+
+    assert_non_null(arguments);
+
+    /* Each leaves valuestring NULL. Rejecting rather than treating them as absent matters most for
+     * "id"/"key", where dropping a malformed value would add a different agent and report success. */
+    assert_int_equal(get_optional_string_arg(arguments, "n", &out), -1);
+    assert_null(out);
+    assert_int_equal(get_optional_string_arg(arguments, "b", &out), -1);
+    assert_null(out);
+    assert_int_equal(get_optional_string_arg(arguments, "o", &out), -1);
+    assert_null(out);
+    assert_int_equal(get_optional_string_arg(arguments, "a", &out), -1);
+    assert_null(out);
+
+    cJSON_Delete(arguments);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_local_add_clustered_success),
@@ -241,6 +293,9 @@ int main(void) {
         cmocka_unit_test(test_storable_agent_name_rejects_whitespace_and_control_bytes),
         cmocka_unit_test(test_storable_agent_name_rejects_removed_entry_markers),
         cmocka_unit_test(test_storable_agent_name_rejects_empty_and_overlong),
+        cmocka_unit_test(test_optional_string_arg_absent_or_null_means_not_supplied),
+        cmocka_unit_test(test_optional_string_arg_returns_string_values),
+        cmocka_unit_test(test_optional_string_arg_rejects_non_string_types),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
