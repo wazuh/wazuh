@@ -420,15 +420,28 @@ void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg) {
     w_mutex_lock(&exec_sock_mutex);
 
     if (*socket < 0) {
-        if ((*socket = connect_exec_queue(queue_path)) < 0) {
+        /* Connect with the mutex released: connecting may block, and a thread waiting
+         * inside connect_exec_queue must not stall the rest of the rule matching threads */
+        w_mutex_unlock(&exec_sock_mutex);
+        int new_socket = connect_exec_queue(queue_path);
+        int conn_errno = errno;
+        w_mutex_lock(&exec_sock_mutex);
+
+        if (*socket >= 0) {
+            /* Another thread reconnected while the mutex was released: keep its socket */
+            if (new_socket >= 0) {
+                OS_CloseSocket(new_socket);
+            }
+        } else if (new_socket < 0) {
             if (conn_error_sent == 0){
-                merror(QUEUE_ERROR, queue_path, strerror(errno));
+                merror(QUEUE_ERROR, queue_path, strerror(conn_errno));
                 conn_error_sent = 1;
             }
 
             w_mutex_unlock(&exec_sock_mutex);
             return;
         } else {
+            *socket = new_socket;
             conn_error_sent = 0;
         }
     }
