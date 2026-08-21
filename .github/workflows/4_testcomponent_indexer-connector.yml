@@ -21,7 +21,7 @@ permissions:
 jobs:
   indexer_connector-qa:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -31,6 +31,21 @@ jobs:
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
 
+      # Compilation cache (issue 38139). Skipped on fork PRs (no credentials).
+      - name: "Configure AWS credentials for the compilation cache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+          role-duration-seconds: 7200
+      - name: "Set up sccache"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/setup-sccache
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          region: ${{ secrets.CI_AWS_REGION }}
+          key-prefix: sccache/4.14.8
       - name: Project dependencies
         uses: ./.github/actions/indexer_connector_deps
 
@@ -76,3 +91,6 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: QA log files
           path: ${{ github.workspace }}/qa_logs
+      - name: "Compilation cache statistics"
+        if: always()
+        run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true

@@ -831,6 +831,8 @@ void test_send_exec_msg_reconnect_socket(void **state){
     expect_OS_SendUnix_call(new_socket, exec_msg, 0, 0);
 
     send_exec_msg(&socket, queue_path, exec_msg);
+
+    assert_int_equal(socket, new_socket);
 }
 
 void test_send_exec_msg_reconnect_socket_fail(void **state){
@@ -843,6 +845,8 @@ void test_send_exec_msg_reconnect_socket_fail(void **state){
     expect_string(__wrap__merror, formatted_msg, "(1210): Queue '/path/to/queue' not accessible: 'Operation not permitted'");
 
     send_exec_msg(&socket, queue_path, exec_msg);
+
+    assert_int_equal(socket, -1);
 }
 
 void test_send_exec_msg_OS_SOCKBUSY(void **state){
