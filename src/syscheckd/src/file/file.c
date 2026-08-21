@@ -1113,11 +1113,29 @@ void fim_file(const char *path,
         }
         OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
 
+        // Sync flag updates deferred like the scan path (file.c's fim_file_scan()) so the
+        // DELETED branch's later read of the sync column (run_check.c) is not stuck at its
+        // insert-time default of 0 for files first seen outside a scheduled scan (#38522).
+        // Unlike fim_file_scan(), this path doesn't need syscheck.fim_scan_mutex: both
+        // fim_db_file_update() above and fim_db_set_sync_flag() (inside
+        // process_pending_sync_updates() below) go through FIMDB::updateItem(), which already
+        // takes m_handlersMutex and checks m_stopping before touching the dbsync handler, so a
+        // concurrent FIMDB::teardown() can't run underneath either call.
+        OSList* pending_sync_updates = OSList_Create();
+        if (!pending_sync_updates) {
+            merror("Failed to create pending sync updates list");
+            OSList_Destroy(failed_paths);
+            free_file_data(new_entry.file_entry.data);
+            return;
+        }
+        OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
+
         callback_ctx ctx = {
             .event = evt_data,
             .config = configuration,
             .entry = &new_entry,
-            .failed_paths = failed_paths
+            .failed_paths = failed_paths,
+            .pending_sync_updates = pending_sync_updates
         };
 
         callback_context_t callback_data;
@@ -1129,6 +1147,10 @@ void fim_file(const char *path,
         // Delete files that failed schema validation (outside transaction)
         cleanup_failed_fim_files(failed_paths);
         OSList_Destroy(failed_paths);
+
+        process_pending_sync_updates(FIMDB_FILE_TABLE_NAME, pending_sync_updates);
+        OSList_Destroy(pending_sync_updates);
+
         free_file_data(new_entry.file_entry.data);
     }
 }
