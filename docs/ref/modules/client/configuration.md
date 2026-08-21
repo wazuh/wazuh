@@ -18,11 +18,13 @@ For module overview and architecture, see [Client Module](index.html).
 
 Configures the agent's connection to the Wazuh manager.
 
-`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0. A configuration left by a 4.X agent still starts: `<server><address>` is read from `<client>` and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent>` to keep them all.
+`<client>` is the 4.X name of this block and is renamed to `<agent>` in 5.0. A configuration left by a 4.X agent still starts: `<server><address>` is read from `<client>` and the port defaults to `1517`. No other option inside `<client>` is read, so rename the block to `<agent>` to keep them all. See [Deprecated Options](#deprecated-options).
 
 ### server
 
-Manager server configuration block.
+Manager connection block.
+
+**Only one `<server>` block is supported.** Server rotation and failover were removed with the HTTPS transport (#37702 restriction 2/3): if more than one `<server>` block is present, the agent logs `Only one <server> block is supported; the last one prevails.` and keeps only the last one.
 
 **Sub-options:**
 
@@ -30,7 +32,7 @@ Manager server configuration block.
 
 Manager IP address or hostname.
 
-- **Required:** Yes (at least one server must be defined)
+- **Required:** Yes
 - **Allowed values:** Valid IPv4, IPv6 address, or hostname
 - **Example:** `192.168.1.100`, `manager.example.com`, `::1`
 
@@ -53,19 +55,19 @@ Manager port number for the agent's HTTPS connection.
 
 #### max_retries
 
-Maximum connection retry attempts before failing over to next server.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Note:** Only applicable when multiple servers are configured
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Server rotation and the connection-retry loop were removed with the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <max_retries> option is deprecated and no longer has any effect."
 
 #### retry_interval
 
-Time in seconds to wait between connection retry attempts.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
-- **Note:** Applies when retrying connection to the same server
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Server rotation and the connection-retry loop were removed with the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <retry_interval> option is deprecated and no longer has any effect."
 
 #### interface_index
 
@@ -103,11 +105,11 @@ Interval between agent keep-alive notifications to the manager.
 
 ### time-reconnect
 
-Time to wait before attempting to reconnect after connection loss.
+**DEPRECATED:** This option is parsed but has no effect.
 
-- **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Minimum:** `1`
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** There is no persistent connection to reconnect under the HTTPS transport (#37702 restriction 4)
+- **Note:** The parser accepts this tag but logs "The <time-reconnect> option is deprecated and no longer has any effect."
 
 ### auto_restart
 
@@ -386,15 +388,32 @@ Single manager, standard settings:
   <server>
     <address>10.0.0.10</address>
     <port>1517</port>
-    <protocol>tcp</protocol>
   </server>
   <config-profile>webserver,production</config-profile>
   <notify_time>60</notify_time>
-  <time-reconnect>60</time-reconnect>
   <auto_restart>yes</auto_restart>
-  <crypto_method>aes</crypto_method>
 </agent>
 ```
+
+### Only the Last `<server>` Block Is Used
+
+There is no failover: a second `<server>` block does not add a backup manager, it replaces the first one, with a warning:
+
+```xml
+<agent>
+  <server>
+    <address>manager1.example.com</address>
+    <port>1514</port>
+  </server>
+  <server>
+    <address>manager2.example.com</address>
+    <port>1514</port>
+  </server>
+  <notify_time>30</notify_time>
+</agent>
+```
+
+Only `manager2.example.com` is used; the agent logs `Only one <server> block is supported; the last one prevails.`
 
 ### Auto-Enrollment Configuration
 
@@ -411,7 +430,6 @@ Automatic agent registration:
   <server>
     <address>manager.example.com</address>
     <port>1517</port>
-    <protocol>tcp</protocol>
   </server>
 </agent>
 ```
@@ -452,13 +470,11 @@ Full example with all sections:
   <agent>
     <server>
       <address>manager1.example.com</address>
-      <port>1517</port>
+      <port>1514</port>
     </server>
     <config-profile>webserver,production,linux</config-profile>
     <notify_time>60</notify_time>
-    <time-reconnect>60</time-reconnect>
     <auto_restart>yes</auto_restart>
-    <crypto_method>aes</crypto_method>
     <enrollment>
       <enabled>yes</enabled>
       <groups>webservers,production</groups>
@@ -478,6 +494,22 @@ Full example with all sections:
 ---
 
 ## Deprecated Options
+
+### client
+
+**DEPRECATED:** The `<client>` block was renamed to `<agent>` in 5.0.
+
+- **Status:** Deprecated, still parsed
+- **Behavior:** Only `<server><address>` is read from a legacy `<client>` block, as a fallback when `<agent>` provides none; every other option inside `<client>` is ignored. The port defaults to `1517`.
+- **Recommendation:** Rename the block to `<agent>`
+
+### server-ip, server-hostname
+
+**DEPRECATED:** Flat connection tags placed directly inside `<agent>`, superseded by the `<server>` block.
+
+- **Status:** Deprecated, still parsed and honored
+- **Behavior:** Each one logs a warning pointing at its replacement: `<server-ip>` and `<server-hostname>` map to `<server><address>`
+- **Recommendation:** Move the values into a `<server>` block
 
 ### disable-active-response
 
