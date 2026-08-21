@@ -23,12 +23,22 @@
 #define TEST_AR_SCRIPT  "test-ar.sh"
 #define TEST_AR_COMMAND AR_BINDIR "/" TEST_AR_SCRIPT
 
+/* Number of commands used to check that the table grows past any fixed size */
+#define TEST_AR_LARGE   500
+
 static char test_dir[PATH_MAX + 1];
 static char previous_dir[PATH_MAX + 1];
 
 /* Build the name of the entry number 'index' of the generated ar.conf */
 static void ar_entry_name(char *buffer, size_t size, int index) {
     snprintf(buffer, size, "ar-cmd-%03d", index);
+}
+
+/* Every entry carries a distinct timeout, so that the value cannot be
+ * confused with the one of another entry
+ */
+static int ar_entry_timeout(int index) {
+    return index + 1;
 }
 
 /* Write an ar.conf holding 'entries' distinct active response commands */
@@ -41,7 +51,7 @@ static void write_ar_conf(int entries) {
 
     for (i = 0; i < entries; i++) {
         ar_entry_name(name, sizeof(name), i);
-        assert_true(fprintf(fp, "%s - %s - 0\n", name, TEST_AR_SCRIPT) > 0);
+        assert_true(fprintf(fp, "%s - %s - %d\n", name, TEST_AR_SCRIPT, ar_entry_timeout(i)) > 0);
     }
 
     fclose(fp);
@@ -57,9 +67,10 @@ static void append_ar_line(const char *line) {
 }
 
 static void expect_max_ar_error(void) {
-    char expected_msg[OS_MAXSTR];
+    /* expect_string() keeps the pointer, so the buffer must outlive this call */
+    static char expected_msg[OS_MAXSTR];
 
-    snprintf(expected_msg, sizeof(expected_msg), EXEC_MAX_AR, MAX_AR, DEFAULTAR);
+    snprintf(expected_msg, sizeof(expected_msg), EXEC_MAX_AR, MAX_AR_COMMANDS, DEFAULTAR);
     expect_string(__wrap__merror, formatted_msg, expected_msg);
 }
 
@@ -74,7 +85,7 @@ static void assert_entry_loaded(int index) {
 
     assert_non_null(command);
     assert_string_equal(command, TEST_AR_COMMAND);
-    assert_int_equal(timeout, 0);
+    assert_int_equal(timeout, ar_entry_timeout(index));
 }
 
 /* Assert that the entry number 'index' was not loaded */
@@ -113,6 +124,8 @@ static int group_setup(void **state) {
 static int group_teardown(void **state) {
     (void)state;
 
+    FreeExecConfig();
+
     remove(DEFAULTAR);
     remove(TEST_AR_COMMAND);
     remove(AR_BINDIR);
@@ -127,7 +140,7 @@ static int group_teardown(void **state) {
 }
 
 /* A regular configuration is loaded in full */
-static void test_read_exec_config_below_limit(void **state) {
+static void test_read_exec_config_small(void **state) {
     (void)state;
 
     write_ar_conf(10);
@@ -139,25 +152,90 @@ static void test_read_exec_config_below_limit(void **state) {
     assert_entry_not_loaded(10);
 }
 
-/* Exactly MAX_AR commands still fit, and no entry is reported as ignored */
+/* The table holds as many commands as the file defines */
+static void test_read_exec_config_large(void **state) {
+    (void)state;
+    int i;
+
+    write_ar_conf(TEST_AR_LARGE);
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    for (i = 0; i < TEST_AR_LARGE; i++) {
+        assert_entry_loaded(i);
+    }
+
+    assert_entry_not_loaded(TEST_AR_LARGE);
+}
+
+/* The commands around the number supported by previous agent versions are
+ * loaded like any other one
+ */
+static void test_read_exec_config_past_legacy_limit(void **state) {
+    (void)state;
+
+    write_ar_conf(MAX_AR + 32);
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(MAX_AR - 1);
+    assert_entry_loaded(MAX_AR);
+    assert_entry_loaded(MAX_AR + 31);
+    assert_entry_not_loaded(MAX_AR + 32);
+}
+
+/* A shorter configuration replaces the previous one, leaving no entry behind */
+static void test_read_exec_config_reload_shrinks(void **state) {
+    (void)state;
+
+    write_ar_conf(TEST_AR_LARGE);
+    assert_int_equal(ReadExecConfig(), 1);
+    assert_entry_loaded(TEST_AR_LARGE - 1);
+
+    write_ar_conf(10);
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(0);
+    assert_entry_loaded(9);
+    assert_entry_not_loaded(10);
+    assert_entry_not_loaded(TEST_AR_LARGE - 1);
+}
+
+/* Exactly MAX_AR_COMMANDS commands still fit, and nothing is reported */
 static void test_read_exec_config_at_limit(void **state) {
     (void)state;
 
-    write_ar_conf(MAX_AR);
+    write_ar_conf(MAX_AR_COMMANDS);
 
     assert_int_equal(ReadExecConfig(), 1);
 
     assert_entry_loaded(0);
-    assert_entry_loaded(MAX_AR - 1);
-    assert_entry_not_loaded(MAX_AR);
+    assert_entry_loaded(MAX_AR_COMMANDS - 1);
+    assert_entry_not_loaded(MAX_AR_COMMANDS);
 }
 
-/* A line that consumes no slot must not be reported as an exceeding entry */
+/* Beyond MAX_AR_COMMANDS the remaining entries are reported and discarded */
+static void test_read_exec_config_above_limit(void **state) {
+    (void)state;
+
+    write_ar_conf(MAX_AR_COMMANDS + 32);
+
+    expect_max_ar_error();
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(0);
+    assert_entry_loaded(MAX_AR_COMMANDS - 1);
+    assert_entry_not_loaded(MAX_AR_COMMANDS);
+    assert_entry_not_loaded(MAX_AR_COMMANDS + 31);
+}
+
+/* A line that consumes no entry must not be taken for an exceeding one */
 static void test_read_exec_config_at_limit_trailing_junk(void **state) {
     (void)state;
     char expected_msg[OS_MAXSTR];
 
-    write_ar_conf(MAX_AR);
+    write_ar_conf(MAX_AR_COMMANDS);
     append_ar_line("\n");
 
     snprintf(expected_msg, sizeof(expected_msg), EXEC_INV_CONF, DEFAULTAR);
@@ -165,32 +243,20 @@ static void test_read_exec_config_at_limit_trailing_junk(void **state) {
 
     assert_int_equal(ReadExecConfig(), 1);
 
-    assert_entry_loaded(MAX_AR - 1);
-    assert_entry_not_loaded(MAX_AR);
+    assert_entry_loaded(MAX_AR_COMMANDS - 1);
+    assert_entry_not_loaded(MAX_AR_COMMANDS);
 }
 
-/* Beyond MAX_AR commands the remaining entries are reported and discarded */
-static void test_read_exec_config_above_limit(void **state) {
-    (void)state;
-
-    write_ar_conf(MAX_AR + 32);
-
-    expect_max_ar_error();
-
-    assert_int_equal(ReadExecConfig(), 1);
-
-    assert_entry_loaded(0);
-    assert_entry_loaded(MAX_AR - 1);
-    assert_entry_not_loaded(MAX_AR);
-    assert_entry_not_loaded(MAX_AR + 31);
-}
-
-/* The table is reloaded on every unresolved command, so the condition is
+/* The table is reloaded on every unresolved command, so the truncation is
  * reported once and not again until the configuration is corrected
  */
 static void test_read_exec_config_reported_once(void **state) {
     (void)state;
     int i;
+
+    write_ar_conf(MAX_AR_COMMANDS + 1);
+    expect_max_ar_error();
+    assert_int_equal(ReadExecConfig(), 1);
 
     /* Still truncated: no further report */
     for (i = 0; i < 3; i++) {
@@ -198,25 +264,71 @@ static void test_read_exec_config_reported_once(void **state) {
     }
 
     /* Corrected configuration: nothing to report, and the condition is re-armed */
-    write_ar_conf(MAX_AR);
+    write_ar_conf(MAX_AR_COMMANDS);
     assert_int_equal(ReadExecConfig(), 1);
 
     /* Truncated again: reported again */
-    write_ar_conf(MAX_AR + 1);
+    write_ar_conf(MAX_AR_COMMANDS + 1);
     expect_max_ar_error();
     assert_int_equal(ReadExecConfig(), 1);
 
-    assert_entry_loaded(MAX_AR - 1);
-    assert_entry_not_loaded(MAX_AR);
+    assert_entry_loaded(MAX_AR_COMMANDS - 1);
+    assert_entry_not_loaded(MAX_AR_COMMANDS);
+}
+
+/* A duplicated name whose first definition holds no command is back-filled
+ * with the command of the second one
+ */
+static void test_read_exec_config_duplicated_name(void **state) {
+    (void)state;
+    int timeout = -1;
+    char *command;
+
+    write_ar_conf(0);
+    append_ar_line("dup-cmd - ../" TEST_AR_SCRIPT " - 7\n");
+    append_ar_line("dup-cmd - " TEST_AR_SCRIPT " - 7\n");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Active response command '../" TEST_AR_SCRIPT "' vulnerable to directory traversal attack. Ignoring.");
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    command = GetCommandbyName("dup-cmd", &timeout);
+
+    assert_non_null(command);
+    assert_string_equal(command, TEST_AR_COMMAND);
+    assert_int_equal(timeout, 7);
+}
+
+/* A malformed line is reported and consumes no entry */
+static void test_read_exec_config_invalid_line(void **state) {
+    (void)state;
+    char expected_msg[OS_MAXSTR];
+
+    write_ar_conf(10);
+    append_ar_line("\n");
+
+    snprintf(expected_msg, sizeof(expected_msg), EXEC_INV_CONF, DEFAULTAR);
+    expect_string(__wrap__merror, formatted_msg, expected_msg);
+
+    assert_int_equal(ReadExecConfig(), 1);
+
+    assert_entry_loaded(9);
+    assert_entry_not_loaded(10);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_read_exec_config_below_limit),
+        cmocka_unit_test(test_read_exec_config_small),
+        cmocka_unit_test(test_read_exec_config_large),
+        cmocka_unit_test(test_read_exec_config_past_legacy_limit),
+        cmocka_unit_test(test_read_exec_config_reload_shrinks),
         cmocka_unit_test(test_read_exec_config_at_limit),
-        cmocka_unit_test(test_read_exec_config_at_limit_trailing_junk),
         cmocka_unit_test(test_read_exec_config_above_limit),
+        cmocka_unit_test(test_read_exec_config_at_limit_trailing_junk),
         cmocka_unit_test(test_read_exec_config_reported_once),
+        cmocka_unit_test(test_read_exec_config_duplicated_name),
+        cmocka_unit_test(test_read_exec_config_invalid_line),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
