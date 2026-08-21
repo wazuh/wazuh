@@ -376,16 +376,16 @@ WriteAgent()
     echo "" >> $NEWCONFIG
 
     echo "<ossec_config>" >> $NEWCONFIG
-    # <client> is renamed to <agent> in 5.x: same options, new block name.
+    # <client> is renamed to <agent> in 5.x; the inner block stays <manager>.
     echo "  <agent>" >> $NEWCONFIG
-    echo "    <server>" >> $NEWCONFIG
+    echo "    <manager>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
       echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
     else
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1517</port>" >> $NEWCONFIG
-    echo "    </server>" >> $NEWCONFIG
+    echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
