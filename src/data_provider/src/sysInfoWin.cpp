@@ -439,17 +439,17 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 std::string location;
                 std::string architecture;
 
-                if (packageReg.string("DisplayName", value))
+                if (packageReg.stringUtf8("DisplayName", value))
                 {
                     name = value;
                 }
 
-                if (packageReg.string("DisplayVersion", value))
+                if (packageReg.stringUtf8("DisplayVersion", value))
                 {
                     version = value;
                 }
 
-                if (packageReg.string("Publisher", value))
+                if (packageReg.stringUtf8("Publisher", value))
                 {
                     vendor = value;
                 }
@@ -470,7 +470,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                 }
 
-                if (packageReg.string("InstallLocation", value))
+                if (packageReg.stringUtf8("InstallLocation", value))
                 {
                     location = value;
                 }

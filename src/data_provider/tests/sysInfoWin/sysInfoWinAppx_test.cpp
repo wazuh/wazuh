@@ -88,7 +88,33 @@ class FakeRegistry
             return ret;
         }
 
+        /*
+         * Mimics Registry::string(): the ANSI registry API hands the caller data already
+         * transcoded to the system ANSI code page, so every character missing from that code
+         * page is lost before the caller sees it. Replacing each non-ASCII byte reproduces
+         * that loss, so a test using non-ASCII data fails if a call site goes back to the
+         * ANSI path.
+         */
         bool string(const std::string& valueName, std::string& value) const
+        {
+            if (!stringUtf8(valueName, value))
+            {
+                return false;
+            }
+
+            for (auto& character : value)
+            {
+                if (static_cast<unsigned char>(character) > 0x7F)
+                {
+                    character = '?';
+                }
+            }
+
+            return true;
+        }
+
+        // Mimics Registry::stringUtf8(): the stored data is returned as UTF-8, untouched.
+        bool stringUtf8(const std::string& valueName, std::string& value) const
         {
             const auto key { data.find(m_path) };
 
@@ -374,4 +400,68 @@ TEST_F(SysInfoWinAppxTest, MalformedPackageNameIsDiscarded)
 
     EXPECT_TRUE(wrapper.name().empty());
     EXPECT_TRUE(wrapper.version().empty());
+}
+
+/*
+ * Package names, sub-application names and publishers can hold characters that the system
+ * ANSI code page cannot represent, so they must be read through the Unicode registry API.
+ * FakeRegistry::string() drops non-ASCII characters exactly like the ANSI API does, so these
+ * tests fail if any of those values is read through it again. The expected data is written as
+ * hex escapes to keep this file ASCII.
+ */
+TEST_F(SysInfoWinAppxTest, NonAsciiDisplayNameAndPublisherAreReadAsUtf8)
+{
+    constexpr auto wechatPackage { "Tencent.WeChat_3.9.10.19_x64__a1b2c3d4e5f6" };
+    // U+5FAE U+4FE1 ("WeChat" in Chinese), UTF-8 encoded.
+    constexpr auto displayName { "\xE5\xBE\xAE\xE4\xBF\xA1" };
+    // U+9A30 U+8A0A U+79D1 U+6280 ("Tencent Technology" in Chinese), UTF-8 encoded.
+    constexpr auto publisher { "\xE9\xA8\xB0\xE8\xA8\x8A\xE7\xA7\x91\xE6\x8A\x80" };
+    const auto root { packagePath(wechatPackage) };
+
+    FakeRegistry::data[root].strings["PackageRootFolder"] = std::string{ "C:\\Program Files\\WindowsApps\\" } + wechatPackage;
+    FakeRegistry::data[root].strings["DisplayName"] = displayName;
+    FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = displayName;
+    FakeRegistry::data[root + "\\App\\Capabilities\\FileAssociations"].strings[".wxwork"] = "Tencent.WeChat.wxwork";
+    FakeRegistry::data[std::string{ TEST_USER_SID } + "\\" + TEST_CLASSES_REGISTRY + "\\Tencent.WeChat.wxwork\\Application"]
+    .strings["ApplicationCompany"] = publisher;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, wechatPackage, {});
+
+    EXPECT_EQ(displayName, wrapper.name());
+    EXPECT_EQ(publisher, wrapper.vendor());
+}
+
+TEST_F(SysInfoWinAppxTest, NonAsciiApplicationNameFallbackIsReadAsUtf8)
+{
+    constexpr auto notepadPackage { "Microsoft.WindowsNotepad_11.2402.22.0_x64__8wekyb3d8bbwe" };
+    // U+8A18 U+4E8B U+672C ("Notepad" in Chinese), UTF-8 encoded.
+    constexpr auto applicationName { "\xE8\xA8\x98\xE4\xBA\x8B\xE6\x9C\xAC" };
+    const auto root { packagePath(notepadPackage) };
+
+    FakeRegistry::data[root].strings["PackageRootFolder"] = std::string{ "C:\\Program Files\\WindowsApps\\" } + notepadPackage;
+    // No DisplayName: the name comes from the sub-application capabilities.
+    FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = applicationName;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, notepadPackage, {});
+
+    EXPECT_EQ(applicationName, wrapper.name());
+}
+
+TEST_F(SysInfoWinAppxTest, NonAsciiLocalizedNameFromCacheRegistryIsReadAsUtf8)
+{
+    constexpr auto calculatorPackage { "Microsoft.WindowsCalculator_11.2401.0.0_x64__8wekyb3d8bbwe" };
+    constexpr auto resourceKey { "@{Microsoft.WindowsCalculator?ms-resource://AppName}" };
+    // U+8A08 U+7B97 U+6A5F ("Calculator" in Chinese), UTF-8 encoded.
+    constexpr auto localizedName { "\xE8\xA8\x88\xE7\xAE\x97\xE6\xA9\x9F" };
+    const auto root { packagePath(calculatorPackage) };
+    const auto cacheFolder { "Microsoft.WindowsCalculator_8wekyb3d8bbwe" };
+
+    FakeRegistry::data[root].strings["PackageRootFolder"] = std::string{ "C:\\Program Files\\WindowsApps\\" } + calculatorPackage;
+    FakeRegistry::data[root].strings["DisplayName"] = resourceKey;
+    FakeRegistry::data[root + "\\App\\Capabilities"].strings["ApplicationName"] = resourceKey;
+    FakeRegistry::data[std::string{ TEST_USER_SID } + "\\" + TEST_CACHE_REGISTRY + "\\" + cacheFolder].strings[resourceKey] = localizedName;
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, calculatorPackage, { cacheFolder });
+
+    EXPECT_EQ(localizedName, wrapper.name());
 }
