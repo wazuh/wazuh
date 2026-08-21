@@ -48,9 +48,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT TARGET sm_httpsrv)
-  add_subdirectory(${SHARED_MODULES}/httpsrv
-                   ${CMAKE_BINARY_DIR}/shared_modules/httpsrv EXCLUDE_FROM_ALL)
+if(NOT TARGET wazuh_uds_http_server)
+  add_subdirectory(${SHARED_MODULES}/uds_http_server
+                   ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
 endif()
 
 set(WAZUH_RUNTIME_GROUP "wazuh")
@@ -87,7 +87,7 @@ endforeach()
 
 # Collect source files
 file(GLOB WDB_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
-file(GLOB WDB_CXX_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/httpsrv/*.cpp")
+file(GLOB WDB_CXX_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/http/*.cpp")
 
 # Build static library (without main.c) for unit tests
 list(REMOVE_ITEM WDB_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
@@ -101,7 +101,8 @@ if(UNIT_TEST)
 endif()
 
 target_link_libraries(wdb_lib PUBLIC wazuhext pthread config wazuh_modulesd_lib
-                                     wazuh sm_httpsrv)
+                                     wazuh
+                              PRIVATE wazuh_uds_http_server)
 
 if(UNIX)
   target_link_libraries(wdb_lib PUBLIC dl)

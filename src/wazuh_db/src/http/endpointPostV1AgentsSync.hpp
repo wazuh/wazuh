@@ -14,7 +14,7 @@
 
 #include "external/nlohmann/json.hpp"
 #include "sqlite3Wrapper.hpp"
-#include <httplib.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 /**
  * @brief EndpointPostV1AgentsSync class.
@@ -60,9 +60,9 @@ public:
      *
      * @param db The database connection.
      * @param req The HTTP request.
-     * @param res The HTTP response.
+     * @return The HTTP response.
      */
-    static void call(const DBConnection& db, const httplib::Request& req, [[maybe_unused]] const httplib::Response& res)
+    static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest& req)
     {
         nlohmann::json jsonBody = nlohmann::json::parse(req.body);
 
@@ -139,6 +139,8 @@ public:
                 }
             }
         }
+
+        return wazuh::uds_http::HttpResponse {};
     }
 };
 

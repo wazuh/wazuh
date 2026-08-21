@@ -9,19 +9,21 @@
 
 /*
  * Unit tests for the wazuh-db HTTP-over-Unix-socket API endpoints
- * (src/wazuh_db/src/httpsrv/). Before this file, that directory had zero
- * test coverage anywhere in src/unit_tests/wazuh_db, despite being the
- * implementation behind the documented queue/sockets/wdb-http.sock API
- * (docs/ref/modules/wazuh_db/README.md).
+ * (src/wazuh_db/src/http/). Ported from httplib::Request/Response to
+ * wazuh::uds_http::HttpRequest/HttpResponse when wazuh_db moved onto
+ * shared_modules/uds_http_server -- that server's router is exact-match only,
+ * so the agent_id that GET /v1/agents/:agent_id/groups used to carry as a path
+ * parameter now travels in the X-Wazuh-Agent-Id header instead (the path
+ * became GET /v1/agents/groups). See wdb_http.cpp.
  *
  * The endpoint classes (TEndpointGetV1AgentsParamGroups, TEndpointPostV1AgentsSync,
  * ...) are header-only and templated on DBConnection/DBStatement, defaulting to
  * SQLite3Wrapper::Connection/Statement but never requiring them: TEndpoint*::call()
  * only ever touches whatever type is substituted in, duck-typed. That is the seam
- * this file uses to exercise the endpoints' real request-handling logic (path
- * parameter validation, JSON body parsing, response serialization) against a
- * hand-fed fake statement instead of a real SQLite database -- no wdb_lib linkage,
- * no real socket, no real httpsrv::Server needed.
+ * this file uses to exercise the endpoints' real request-handling logic (header
+ * validation, JSON body parsing, response serialization) against a hand-fed fake
+ * statement instead of a real SQLite database -- no wdb_lib linkage, no real
+ * socket, no real transport server needed.
  */
 
 #include <gtest/gtest.h>
@@ -31,9 +33,12 @@
 #include <variant>
 #include <vector>
 
-#include <httplib.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
 
+#include "endpointGetV1AgentsAll.hpp"
 #include "endpointGetV1AgentsParamGroups.hpp"
+#include "endpointGetV1AgentsSync.hpp"
+#include "endpointPostV1AgentsSummary.hpp"
 #include "endpointPostV1AgentsSync.hpp"
 
 namespace Log
@@ -65,6 +70,14 @@ namespace
     /// a variant so the same fake can back both the string columns
     /// TEndpointGetV1AgentsParamGroups reads and the int64/string mix other
     /// endpoints read, matching the real Statement::value<T>() template.
+    ///
+    /// NOTE: s_rowsToReturn is shared by every DBStatement constructed during one
+    /// call() -- there is no per-query result set. Endpoints that run more than
+    /// one query in a single call() (e.g. AgentsSummary, AgentsSync) therefore
+    /// need either an empty result set (safe: step() returns SQLITE_DONE
+    /// immediately, so no column is ever read) or rows whose shape happens to fit
+    /// every query they run. The tests below stick to the empty case for the
+    /// multi-query endpoints for exactly that reason.
     class MockStatement final
     {
     public:
@@ -92,14 +105,32 @@ namespace
             s_lastQuery = std::string(query);
         }
 
-        void bind(std::int32_t, std::int32_t value) { s_boundInts.push_back(value); }
-        void bind(std::int32_t, std::int64_t value) { s_boundInts.push_back(value); }
-        void bind(std::int32_t, std::uint64_t value) { s_boundInts.push_back(static_cast<std::int64_t>(value)); }
-        void bind(std::int32_t, const std::string& value) { s_boundStrings.push_back(value); }
-        void bind(std::int32_t, std::string_view value) { s_boundStrings.emplace_back(value); }
-        void bind(std::int32_t, double) { }
+        void bind(std::int32_t, std::int32_t value)
+        {
+            s_boundInts.push_back(value);
+        }
+        void bind(std::int32_t, std::int64_t value)
+        {
+            s_boundInts.push_back(value);
+        }
+        void bind(std::int32_t, std::uint64_t value)
+        {
+            s_boundInts.push_back(static_cast<std::int64_t>(value));
+        }
+        void bind(std::int32_t, const std::string& value)
+        {
+            s_boundStrings.push_back(value);
+        }
+        void bind(std::int32_t, std::string_view value)
+        {
+            s_boundStrings.emplace_back(value);
+        }
+        void bind(std::int32_t, double) {}
 
-        void reset() { m_rowIndex = 0; }
+        void reset()
+        {
+            m_rowIndex = 0;
+        }
 
         std::int32_t step()
         {
@@ -130,17 +161,23 @@ namespace
     std::vector<std::string> MockStatement::s_boundStrings;
 
     using TestEndpointGetV1AgentsParamGroups = TEndpointGetV1AgentsParamGroups<MockConnection, MockStatement>;
+    using TestEndpointGetV1AgentsAll = TEndpointGetV1AgentsAll<MockConnection, MockStatement>;
+    using TestEndpointGetV1AgentsSync = TEndpointGetV1AgentsSync<MockConnection, MockStatement>;
+    using TestEndpointPostV1AgentsSummary = TEndpointPostV1AgentsSummary<MockConnection, MockStatement>;
     using TestEndpointPostV1AgentsSync = TEndpointPostV1AgentsSync<MockConnection, MockStatement>;
 
     class WdbHttpEndpointsTest : public ::testing::Test
     {
     protected:
-        void SetUp() override { MockStatement::resetTestState(); }
+        void SetUp() override
+        {
+            MockStatement::resetTestState();
+        }
     };
 } // namespace
 
-// Basic successful round-trip: GET /v1/agents/:agent_id/groups with a valid
-// agent_id path parameter should query the belongs/group tables (see
+// Basic successful round-trip: GET /v1/agents/groups with a valid
+// X-Wazuh-Agent-Id header should query the belongs/group tables (see
 // endpointGetV1AgentsParamGroups.hpp's `call()`) and serialize whatever rows
 // come back.
 //
@@ -150,8 +187,8 @@ namespace
 // serializeToJSON(obj) special-cases tuple_size==1 (line ~534): it serializes
 // only that field's value, skipping the enclosing object and the field's own
 // "agent_groups" key entirely. That shortcut is what call() actually uses
-// (`res.set_content(serializeToJSON(resObj), ...)`), so the real wire response
-// for this endpoint is just `["group1","group2"]`.
+// (`HttpResponse::json(200, serializeToJSON(resObj))`), so the real wire
+// response for this endpoint is just `["group1","group2"]`.
 TEST_F(WdbHttpEndpointsTest, ParamGroupsReturnsGroupsForAgent)
 {
     MockStatement::s_rowsToReturn = {
@@ -160,14 +197,13 @@ TEST_F(WdbHttpEndpointsTest, ParamGroupsReturnsGroupsForAgent)
     };
 
     MockConnection db;
-    httplib::Request req;
-    req.path_params["agent_id"] = "42";
-    httplib::Response res;
+    wazuh::uds_http::HttpRequest req;
+    req.headers["x-wazuh-agent-id"] = "42";
 
-    TestEndpointGetV1AgentsParamGroups::call(db, req, res);
+    const auto response = TestEndpointGetV1AgentsParamGroups::call(db, req);
 
-    ASSERT_EQ(res.status, -1); // untouched on success: no error path taken
-    EXPECT_EQ(res.body, "[\"group1\",\"group2\"]");
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body, "[\"group1\",\"group2\"]");
 
     // The endpoint binds the parsed agent_id (not the raw string) as the query
     // parameter.
@@ -175,38 +211,95 @@ TEST_F(WdbHttpEndpointsTest, ParamGroupsReturnsGroupsForAgent)
     EXPECT_EQ(MockStatement::s_boundInts[0], 42);
 }
 
-// Error-handling case: a request reaching this endpoint without the agent_id
-// path parameter (malformed/incomplete routing) must be rejected with 400 and
-// must never touch the database -- see the `if (it == req.path_params.end())`
-// guard at the top of endpointGetV1AgentsParamGroups.hpp's `call()`, which
-// returns before constructing any DBStatement.
+// Error-handling case: a request reaching this endpoint without the
+// X-Wazuh-Agent-Id header (malformed/incomplete caller) must be rejected with
+// 400 and must never touch the database -- see the
+// `if (it == req.headers.end())` guard at the top of
+// endpointGetV1AgentsParamGroups.hpp's `call()`, which returns before
+// constructing any DBStatement.
 TEST_F(WdbHttpEndpointsTest, ParamGroupsMissingAgentIdReturns400WithoutQuerying)
 {
     MockConnection db;
-    httplib::Request req; // no "agent_id" path param set
-    httplib::Response res;
+    wazuh::uds_http::HttpRequest req; // no "x-wazuh-agent-id" header set
 
-    TestEndpointGetV1AgentsParamGroups::call(db, req, res);
+    const auto response = TestEndpointGetV1AgentsParamGroups::call(db, req);
 
-    EXPECT_EQ(res.status, 400);
-    EXPECT_EQ(res.body, "Missing parameter: id");
+    EXPECT_EQ(response.status, 400);
+    EXPECT_EQ(response.body, "Missing header: X-Wazuh-Agent-Id");
     EXPECT_TRUE(MockStatement::s_lastQuery.empty()) << "should not have prepared any statement";
 }
 
 // Malformed-request case for the other side of the surface: POST bodies.
 // TEndpointPostV1AgentsSync::call() parses the request body with
 // nlohmann::json::parse(req.body) unconditionally and without a try/catch (see
-// endpointPostV1AgentsSync.hpp) -- registerRoute() in wdb_http.cpp doesn't wrap
-// the per-route handler in one either, so an invalid JSON body is expected to
-// propagate out of call() as a real exception, not to be swallowed into a 4xx
-// response. This test pins that actual (if perhaps surprising) behavior rather
-// than guessing a status code no code path here produces.
+// endpointPostV1AgentsSync.hpp) -- registerRoute() in wdb_http.cpp wraps the
+// per-route handler in one instead, since uds_http_server has no process-wide
+// exception-to-500 fallback of its own. So at the endpoint level an invalid
+// JSON body is still expected to propagate out of call() as a real exception.
+// This test pins that actual (if perhaps surprising) endpoint-level behavior
+// rather than guessing a status code no code path here produces.
 TEST_F(WdbHttpEndpointsTest, PostAgentsSyncMalformedJsonBodyThrows)
 {
     MockConnection db;
-    httplib::Request req;
+    wazuh::uds_http::HttpRequest req;
     req.body = "{not-valid-json";
-    httplib::Response res;
 
-    EXPECT_THROW(TestEndpointPostV1AgentsSync::call(db, req, res), nlohmann::json::parse_error);
+    EXPECT_THROW(TestEndpointPostV1AgentsSync::call(db, req), nlohmann::json::parse_error);
+}
+
+// GET /v1/agents/all against an empty table: no rows means the query loop never
+// runs, so the response is an empty JSON array. Also pins the exact SQL text --
+// this endpoint has no other behavior to distinguish a passing test from a
+// silently-broken query.
+TEST_F(WdbHttpEndpointsTest, GetAllAgentsEmptyDbReturnsEmptyArray)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+
+    const auto response = TestEndpointGetV1AgentsAll::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body, "[]");
+    EXPECT_EQ(MockStatement::s_lastQuery,
+              "SELECT id, name, coalesce(ip, register_ip) as ip, connection_status as status, "
+              "os_name, os_version, os_type, os_platform, version, date_add, "
+              "os_major, os_minor, os_arch, last_keepalive, register_ip, "
+              "disconnection_time, status_code "
+              "FROM agent WHERE id > 0 ORDER BY id ASC;");
+}
+
+// GET /v1/agents/sync against an empty table: all three sync-status queries
+// return no rows, so the response's three lists all stay empty and (per
+// reflectiveJson's NOEMPTY default) are omitted entirely, leaving "{}". The
+// final statement call() runs unconditionally is the mark-as-synced UPDATE --
+// asserting it ran last confirms that side effect still happens even when there
+// was nothing to report.
+TEST_F(WdbHttpEndpointsTest, GetAgentsSyncEmptyDbReturnsEmptyObjectAndMarksSynced)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+
+    const auto response = TestEndpointGetV1AgentsSync::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body, "{}");
+    EXPECT_EQ(MockStatement::s_lastQuery, "UPDATE agent SET sync_status = 'synced' WHERE id > 0;");
+}
+
+// POST /v1/agents/summary with an empty body takes the no-filter branch (top-5
+// aggregate queries, see endpointPostV1AgentsSummary.hpp). Against an empty
+// table all three aggregates come back empty and are omitted, same NOEMPTY
+// behavior as the sync endpoint above.
+TEST_F(WdbHttpEndpointsTest, PostAgentsSummaryEmptyBodyEmptyDbReturnsEmptyObject)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req; // empty body -> no-filter aggregate branch
+
+    const auto response = TestEndpointPostV1AgentsSummary::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(response.body, "{}");
+    EXPECT_EQ(MockStatement::s_lastQuery,
+              "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 "
+              "AND os_platform IS NOT NULL AND os_platform <> '' GROUP BY platform ORDER BY quantity DESC limit 5;");
 }

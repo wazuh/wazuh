@@ -14,7 +14,7 @@
 
 #include "reflectiveJson.hpp"
 #include "sqlite3Wrapper.hpp"
-#include <httplib.h>
+#include <uds_http_server/IUdsHttpServer.hpp>
 
 /**
  * @brief TEndpointGetV1AgentsAll class.
@@ -73,10 +73,9 @@ public:
      * such as metrics snapshots and indexer synchronization.
      *
      * @param db The database connection.
-     * @param req The HTTP request.
-     * @param res The HTTP response.
+     * @return The HTTP response.
      */
-    static void call(const DBConnection& db, const httplib::Request& req, httplib::Response& res)
+    static wazuh::uds_http::HttpResponse call(const DBConnection& db, const wazuh::uds_http::HttpRequest&)
     {
         constexpr std::string_view query =
             "SELECT id, name, coalesce(ip, register_ip) as ip, connection_status as status, "
@@ -115,8 +114,7 @@ public:
 
         std::string jsonResponse;
         serializeToJSON<std::vector<AgentData>, true, true>(agents, jsonResponse);
-        res.body = std::move(jsonResponse);
-        res.set_header("Content-Type", "application/json");
+        return wazuh::uds_http::HttpResponse::json(200, std::move(jsonResponse));
     }
 };
 
