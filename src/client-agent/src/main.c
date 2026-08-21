@@ -14,6 +14,10 @@
 #include "agentd.h"
 #include <getopt.h>
 
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
+
 #ifndef ARGV0
 #define ARGV0 "wazuh-agentd"
 #endif
@@ -61,6 +65,24 @@ int main(int argc, char **argv)
     gid_t gid;
 
     run_foreground = 0;
+
+#if defined(__GLIBC__)
+    /* Cap the number of malloc arenas.
+     *
+     * The HTTPS transport runs several allocating threads, and glibc answers
+     * that by giving each one its own 64 MiB arena. Those arenas are reserved
+     * rather than committed, so most of the cost is address space, and it is
+     * what takes this process past 690 MB of virtual size. But each arena also
+     * carries its own top chunk and bins, which is real resident memory that is
+     * never handed back. Capping the count trades a little allocator contention
+     * for that overhead.
+     *
+     * Set here, before any thread is created: extra arenas are only spawned
+     * when a thread finds every existing one locked, so the limit has to be in
+     * place before the transport's threads start. Allocations already made on
+     * this thread came from the main arena and are unaffected. */
+    mallopt(M_ARENA_MAX, 2);
+#endif
 
     /* Set the name */
     OS_SetName(ARGV0);
