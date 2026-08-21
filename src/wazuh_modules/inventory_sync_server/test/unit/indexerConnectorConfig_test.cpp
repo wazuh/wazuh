@@ -36,17 +36,21 @@ namespace
         config.indexer_async_max_queue_bytes = 777;
         config.indexer_async_logger_queue_size = 888;
         config.indexer_async_logger_threads = 999;
+        config.indexer_sync_request_timeout_seconds = 1111;
+        config.indexer_async_request_timeout_seconds = 2222;
         return config;
     }
 
-    const std::vector<std::string> SYNC_KEYS {"max_bulk_size", "flush_interval_seconds", "max_retry_delay_seconds"};
+    const std::vector<std::string> SYNC_KEYS {
+        "max_bulk_size", "flush_interval_seconds", "max_retry_delay_seconds", "request_timeout_seconds"};
 
     const std::vector<std::string> ASYNC_KEYS {"bulk_max_bytes",
                                                "flush_interval_seconds",
                                                "max_retry_delay_seconds",
                                                "max_queue_bytes",
                                                "logger_queue_size",
-                                               "logger_threads"};
+                                               "logger_threads",
+                                               "request_timeout_seconds"};
 } // namespace
 
 /**
@@ -70,6 +74,7 @@ TEST(IndexerConnectorConfigTest, SyncOverlayEmitsOnlyTheSyncKeyNames)
     EXPECT_EQ(111U, result.at("max_bulk_size").get<std::size_t>());
     EXPECT_EQ(222U, result.at("flush_interval_seconds").get<std::size_t>());
     EXPECT_EQ(333U, result.at("max_retry_delay_seconds").get<std::size_t>());
+    EXPECT_EQ(1111U, result.at("request_timeout_seconds").get<std::size_t>());
 }
 
 TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
@@ -89,6 +94,7 @@ TEST(IndexerConnectorConfigTest, AsyncOverlayEmitsOnlyTheAsyncKeyNames)
     EXPECT_EQ(777U, result.at("max_queue_bytes").get<std::size_t>());
     EXPECT_EQ(888U, result.at("logger_queue_size").get<std::size_t>());
     EXPECT_EQ(999U, result.at("logger_threads").get<std::size_t>());
+    EXPECT_EQ(2222U, result.at("request_timeout_seconds").get<std::size_t>());
 }
 
 /**
@@ -158,6 +164,8 @@ TEST(IndexerConnectorConfigTest, NonPositiveValuesLeaveTheConnectorDefaultUntouc
     config.indexer_async_max_queue_bytes = -3;
     config.indexer_async_logger_queue_size = 0;
     config.indexer_async_logger_threads = -1;
+    config.indexer_sync_request_timeout_seconds = 0;
+    config.indexer_async_request_timeout_seconds = -4;
 
     const auto syncResult = buildSyncConnectorConfig(nlohmann::json::object(), config);
     for (const auto& key : SYNC_KEYS)

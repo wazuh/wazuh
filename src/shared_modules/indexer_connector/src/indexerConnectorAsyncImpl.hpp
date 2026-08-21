@@ -129,8 +129,7 @@ class IndexerConnectorAsyncImpl final
     /// Fallback for 'request_timeout_seconds' when the configuration has no opinion.
     static constexpr long DEFAULT_REQUEST_TIMEOUT_SECONDS {60};
     /// Upper bound in milliseconds for one data request against the indexer
-    /// ('request_timeout_seconds'; 0 disables the bound). See the sync impl's twin member: this
-    /// catches the connected-but-silent host that no health check ever reports.
+    /// ('request_timeout_seconds'; 0 disables the bound).
     long m_requestTimeoutMs {DEFAULT_REQUEST_TIMEOUT_SECONDS * 1000};
 
 public:
@@ -562,11 +561,13 @@ public:
                     }
                     else if (statusCode <= 0)
                     {
-                        // No HTTP response at all (timeout, connection refused, TLS failure): the
-                        // batch may never have reached the indexer, so throwing hands it back to
-                        // the queue to retry with the usual backoff. Discarding here would turn
-                        // every transient outage -- and every request_timeout_seconds expiry --
-                        // into silent data loss.
+                        // No HTTP response at all (timeout, connection refused, TLS failure):
+                        // Discarding here would turn every transient outage into silent data loss.
+                        LOGFN_DEBUG2(m_logFn,
+                                     "Transport-level failure, no HTTP status received (code %ld): %s. "
+                                     "Requeueing the batch for retry.",
+                                     statusCode,
+                                     error.c_str());
                         throw IndexerConnectorException(error);
                     }
                     else

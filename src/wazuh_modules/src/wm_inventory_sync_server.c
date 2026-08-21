@@ -84,19 +84,22 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
      * same way they are in the configuration: their key names are NOT interchangeable. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d",
+             "indexer sync: max_bulk_size=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
+             "request_timeout_seconds=%d",
              config->indexer_sync_max_bulk_size,
              config->indexer_sync_flush_interval_seconds,
-             config->indexer_sync_max_retry_delay_seconds);
+             config->indexer_sync_max_retry_delay_seconds,
+             config->indexer_sync_request_timeout_seconds);
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
-             "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d",
+             "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d, request_timeout_seconds=%d",
              config->indexer_async_bulk_max_bytes,
              config->indexer_async_flush_interval_seconds,
              config->indexer_async_max_retry_delay_seconds,
              config->indexer_async_max_queue_bytes,
              config->indexer_async_logger_queue_size,
-             config->indexer_async_logger_threads);
+             config->indexer_async_logger_threads,
+             config->indexer_async_request_timeout_seconds);
 }
 
 /**
@@ -241,6 +244,15 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         1,
         3600,
         15);
+    /* Minimum 1 on both request timeouts: the connectors read 0 as "no bound", which is the
+     * unbounded-blocking bug this option exists to prevent, so 0 is rejected here rather than
+     * forwarded. */
+    config->indexer_sync_request_timeout_seconds = getDefine_Int_default(
+        "wazuh_modules",
+        "inventory_sync_server_indexer_sync_request_timeout_seconds", /* -> request_timeout_seconds */
+        1,
+        3600,
+        60);
 
     config->indexer_async_bulk_max_bytes =
         getDefine_Int_default("wazuh_modules",
@@ -272,6 +284,12 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                               1,
                               64,
                               1);
+    config->indexer_async_request_timeout_seconds = getDefine_Int_default(
+        "wazuh_modules",
+        "inventory_sync_server_indexer_async_request_timeout_seconds", /* -> request_timeout_seconds */
+        1,
+        3600,
+        60);
     /* Minimum 0, NOT 1: 0 is the connector's own legitimate "unlimited", and
      * getDefine_Int_default() calls merror_exit() on an out-of-range value, so a minimum of 1
      * would turn that documented setting into a fatal abort. The shipped default is bounded
@@ -461,6 +479,10 @@ cJSON* wm_inventory_sync_server_dump(wm_inventory_sync_server_t* data)
     cJSON_AddNumberToObject(config, "indexer_async_logger_threads", data->config->indexer_async_logger_threads);
     cJSON_AddNumberToObject(
         config, "indexer_async_max_queue_bytes", (double)data->config->indexer_async_max_queue_bytes);
+    cJSON_AddNumberToObject(
+        config, "indexer_sync_request_timeout_seconds", data->config->indexer_sync_request_timeout_seconds);
+    cJSON_AddNumberToObject(
+        config, "indexer_async_request_timeout_seconds", data->config->indexer_async_request_timeout_seconds);
 
     cJSON_AddItemToObject(root, "inventory_sync_server", config);
     return root;

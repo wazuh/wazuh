@@ -179,7 +179,8 @@ public:
      * network I/O at construction.
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
-     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`). Its
+     *               (`max_bulk_size`, `flush_interval_seconds`, `max_retry_delay_seconds`,
+     *               `request_timeout_seconds`). Its
      *               `hosts` list MUST equal the session's: the monitor only knows the hosts it was
      *               built with, so a foreign host would throw std::out_of_range on the first request.
      * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
@@ -414,7 +415,8 @@ public:
      *
      * @param config Indexer configuration. Still supplies this connector's own tunables
      *               (`bulk_max_bytes`, `flush_interval_seconds`, `max_retry_delay_seconds`,
-     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`). Its `hosts` list MUST
+     *               `max_queue_bytes`, `logger_queue_size`, `logger_threads`,
+     *               `request_timeout_seconds`). Its `hosts` list MUST
      *               equal the session's: the monitor only knows the hosts it was built with, so a
      *               foreign host would throw std::out_of_range on the first request.
      * @param session Session to share. Not retained -- see IndexerSession's LIFETIME note.
