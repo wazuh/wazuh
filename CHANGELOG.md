@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Improved `tmp_file` path validation in cluster DAPI. ([#38376](https://github.com/wazuh/wazuh/pull/38376))
 - Improved cluster non-merged file path validation during worker file processing. ([#38377](https://github.com/wazuh/wazuh/pull/38377))
 - Improved cluster worker file path validation. ([#38378](https://github.com/wazuh/wazuh/pull/38378))
+- Improved destination path validation when uploading CDB list, rule, and decoder files. ([#38379](https://github.com/wazuh/wazuh/pull/38379))
 
 
 ## [v4.10.4]
