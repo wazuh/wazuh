@@ -36,6 +36,7 @@ extern int max_restart_lock;
 /** Function prototypes **/
 
 int ReadExecConfig(void);
+void FreeExecConfig(void);
 cJSON *getARConfig(void);
 cJSON *getExecdInternalOptions(void);
 cJSON *getClusterConfig(void);
